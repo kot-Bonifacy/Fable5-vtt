@@ -137,6 +137,19 @@
   --self-rgb: 241 236 228;
   /* Napis na plamie `--self` (znaczek „▶ Ty”). */
   --self-ink: #141211;
+  /* Kolory graczy (etap 60c) — nazwy z `PLAYER_COLORS` w `shared`. Noc: jasne
+     na czarnym kartonie, każdy ≥ 3:1 z `--cp-paper`; sąsiednie pary palety
+     rozróżnialne przy deuteranopii i protanopii (`player-palette.test.ts`).
+     MG ma bursztyn ostrzeżeń — spoza palety. */
+  --player-sky: #56b4e9;
+  --player-vermilion: #ef6c4a;
+  --player-sea: #2fbf8f;
+  --player-pink: #e07ab8;
+  --player-lemon: #d4d94a;
+  --player-lavender: #b7a4f2;
+  --player-lime: #8fd14f;
+  --player-cornflower: #6f8ff0;
+  --player-gm: var(--warn);
   /* Chip informacyjny bez ładunku emocjonalnego (poziom sklepu, ostrzeżenie). */
   --info: #8ab4f8;
   /* Plakietka „nic z tego nie wynika" — celowo bez odcienia. */
@@ -247,6 +260,16 @@
   --self: #100e0d;
   --self-rgb: 16 14 13;
   --self-ink: #f4e2c8;
+  /* Kolory graczy w dzień: te same nazwy, ściemnione do ≥ 3:1 z papierem. */
+  --player-sky: #1d6fa5;
+  --player-vermilion: #b5401c;
+  --player-sea: #09644a;
+  --player-pink: #b23b86;
+  --player-lemon: #5f6b00;
+  --player-lavender: #6a4fb0;
+  --player-lime: #3f7a12;
+  --player-cornflower: #3a4fc0;
+  --player-gm: var(--warn);
   --info: #2554a3;
   --neutral-rgb: 110 100 88;
   --armed: #8f6600;

@@ -62,6 +62,7 @@ import type {
   AdvancementUndoProblem,
   ChatHistoryPage,
   ChatMessageBroadcast,
+  ChatRecolorPush,
   ChatSendPayload,
   CheckCallPayload,
   CheckCancelPayload,
@@ -1292,6 +1293,8 @@ export function connectSocket(userId: string): Socket {
     },
     (broadcast) => broadcast.dice !== undefined && toAnimationNotation(broadcast.dice) !== null,
   );
+  // Etap 60c: MG zmienił kolor gracza — pokazane karty przemalowują się w miejscu.
+  onPresented('chat:recolor', (push: ChatRecolorPush) => chat().recolorAuthor(push));
   onPresented('presence:update', (broadcast: PresenceBroadcast) => {
     if (chat().applyPresence(broadcast)) socket?.emit('state:request');
   });

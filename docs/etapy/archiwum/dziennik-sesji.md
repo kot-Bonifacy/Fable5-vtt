@@ -1,5 +1,36 @@
 # Dziennik sesji — archiwum
 
+### Sesja 24.10, dziewiąta (po `1aed3f1`) — etap 60a: „to dotyczy mnie” i filtr „Ja”
+
+**Zlecenie:** „wykonaj teraz etap 60a; podświetlenie ma działać też u MG, a kolor niech będzie
+przypisany do gracza, a nie do postaci” — obie odpowiedzi na „Do potwierdzenia” z pliku etapu
+(kolor to 60c, zapisany w pliku etapu). Reszta rozstrzygnięta bez pytań, lista w pliku etapu.
+
+**Shared.** `chatInvolvement(message, userId, isGm, tokenIds?)` w `chat.ts` (rdzeń: stan prośby
+o operację sprawdzany wprost, bo `surgery.ts` czyta cennik CP RED) i `chat-involvement.test.ts`
+(39 testów: każdy `ChatKind` z trzech stron przez `satisfies Record<ChatKind, …>`, rozstrzygnięte
+sprawy, atak, starcie, Konfrontacja, MG).
+
+**Klient.** `FeedRow` opakowuje kartę w `.chat-row` z klasą stanu; `ChatPanel` liczy figury
+gracza (klucz, żeby ruch figury nie przeliczał czatu) i stan każdej wiadomości. Filtr „Ja”
+(`mineOnly`, `vtt.chat.mineOnly`) z ikoną `hud/person.svg` (game-icons.net, Delapouite, CC BY 3.0,
+atrybucja dopisana). „Czeka na mnie” wygrywa z filtrem kategorii jak `isPending`. Style
+w `02-chat-dice.css`, tokeny `--self`, `--self-rgb`, `--self-ink` w `theme.css` (noc i dzień).
+
+**Testy.** `shared` 2719/2719, klient 427/427, `tsc` (shared, client, server) i ESLint czyste.
+E2E `@szybkie`: 67/68 — padła T9a „konsola bez nowych błędów” (Firefox MG: „connection … was
+interrupted while the page was loading” przy przeładowaniu); sam plik T9a powtórzony: 7/7.
+
+**Oględziny:** tymczasowy spec `99-ogledziny/t99-czytelny-czat` (nie commitowany) na historii
+`po-T6` (176 wierszy MG, Marka i Oli) plus świeże szepty, `/r`, wezwanie dla Iskry i prośba Oli —
+**MG w Chromium, Ola w Firefoksie, Marek w trzecim kontekście (Chromium)**. U Oli „moje” jej rzuty
+i szepty, „do mnie” obrażenia Iskry, strzał wieżyczki, Tura Demona, prośba Marka o operację,
+szept MG, a wezwanie pulsuje; u MG „do mnie” szept Marka, prośba Oli pulsuje, NPC-e i karty
+serwera bez znaku. „Ja” u Oli: 47 wierszy, reszta w 20 separatorach; zapamiętane po
+przeładowaniu. Motyw dzienny i nocny w Firefoksie. Poprawione po oglądaniu: zaokrąglenie
+wyginało pasek w nawias. Z `prefers-reduced-motion` obwódka stoi (sprawdzone tylko regułą CSS
+— u Marka nie było wiersza „czeka”).
+
 ### Sesja 24.10, ósma (po `fcee88b`) — zlecenie MG: panel decyzji MG dla prośby o Test
 
 **Zlecenie:** „dodaj automatyczne okienko u MG przy testach z karty, np. przesłuchiwania; w razie

@@ -2,6 +2,7 @@ import type { AiStatus } from './ai.js';
 import type { CampaignSummary, Role } from './auth.js';
 import type { BotView } from './bots/types.js';
 import type { ChatMessageView } from './chat.js';
+import type { PlayerColor } from './player-colors.js';
 import type { CheckCallVisibility } from './checks.js';
 import type { CombatView } from './combat.js';
 import type { CharacterView, PortraitAssetView } from './characters.js';
@@ -363,6 +364,16 @@ export interface ChatMessageBroadcast {
    * tumbles it first and only then swaps the card.
    */
   dice?: RollResult;
+}
+
+/**
+ * `chat:recolor` (etap 60c): MG zmienił kolor gracza, a historia na ekranach
+ * niesie stary. Klient przemalowuje karty tego autora w miejscu. Bez `seq` —
+ * to nie zmienia stanu stołu, tylko barwę już pokazanych kart.
+ */
+export interface ChatRecolorPush {
+  userId: string;
+  color: PlayerColor;
 }
 
 /** Payload of `presence:update`. */

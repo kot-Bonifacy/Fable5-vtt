@@ -34,6 +34,7 @@ import {
   isInventoryMoveOpen,
   isSurgeryOpen,
   isCardSubmissionOpen,
+  playerInitial,
 } from '@vtt/shared';
 import {
   allowCombatAction,
@@ -799,6 +800,11 @@ const INVOLVEMENT_CLASS: Record<ChatInvolvement, string> = {
  * filtra, podany zmienną CSS. Rysuje ją `::after` nagłówka karty, więc żaden
  * z ~20 komponentów kart nie musi o niej wiedzieć. Karta `continued` dokleja
  * się do poprzedniej: CSS chowa jej nagłówek, godzina zostaje w dymku.
+ *
+ * Kolor autora (etap 60c) idzie tą samą drogą: `data-author-color` wybiera
+ * barwę z motywu (cienki pasek pod paskiem „ja” i kropka przy nicku), a
+ * `--author-initial` niesie literę na kropkę — inicjał gracza, nie postaci,
+ * bo kolor należy do gracza.
  */
 function FeedRow({
   item,
@@ -819,12 +825,17 @@ function FeedRow({
 }) {
   if (item.type === 'note') return <NoteRow item={item} />;
   const base = involvement ? INVOLVEMENT_CLASS[involvement] : 'chat-row';
+  const { authorColor, accountName, authorName } = item.message;
   const style = {
     '--chat-kind-icon': `url("/icons/hud/${CATEGORY_ICON[chatCategoryOf(item.message.kind)]}.svg")`,
+    ...(authorColor
+      ? { '--author-initial': JSON.stringify(playerInitial(accountName ?? authorName)) }
+      : {}),
   } as CSSProperties;
   return (
     <div
       className={continued ? `${base} chat-row--cont` : base}
+      data-author-color={authorColor}
       style={style}
       title={continued ? formatTime(item.message.createdAt) : undefined}
     >

@@ -407,6 +407,26 @@
   font-size: 0.9rem;
 }
 
+/* Kolor gracza (60c): ta sama kropka z inicjałem, co przy nicku na czacie. */
+.player-swatch {
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  width: 1.15rem;
+  height: 1.15rem;
+  border-radius: 50%;
+  font-family: var(--font-ui-head);
+  font-size: 0.68rem;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--bg-panel);
+  background: var(--player);
+}
+
+.player-color-select {
+  font-size: 0.8rem;
+}
+
 .new-player-form {
   margin-top: 0.6rem;
 }

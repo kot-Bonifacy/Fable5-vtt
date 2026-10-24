@@ -20,7 +20,13 @@ import type {
   RollGesture,
   SessionUser,
 } from '@vtt/shared';
-import { CHAT_HISTORY_PAGE_SIZE, ROLE_GM, isDiceSkinId } from '@vtt/shared';
+import {
+  CHAT_HISTORY_PAGE_SIZE,
+  ROLE_GM,
+  chatAuthorColor,
+  isDiceSkinId,
+  playerColors,
+} from '@vtt/shared';
 import type { RollResult } from '@vtt/shared';
 import type { PrismaClient } from '../db.js';
 import type { RealtimeDeps } from './registry.js';
@@ -65,10 +71,14 @@ export async function getRoster(prisma: PrismaClient, campaignId: string): Promi
 export const INCLUDE_CHAT_NAMES = {
   // `diceSkin` rides along so a roll card knows whose dice to tumble
   // (stage 27d): the skin belongs to the roller, not to the viewer.
-  author: { select: { name: true, diceSkin: true } },
+  author: { select: { name: true, diceSkin: true, role: true } },
   recipient: { select: { name: true } },
   bot: { select: { name: true, portraitUrl: true } },
   recipientBot: { select: { name: true } },
+  // Kolor autora (etap 60c) liczy się z całej kampanii — domyślny zależy od
+  // kolejności dołączenia wszystkich graczy, nie tylko autora. Kilka wierszy na
+  // kampanię, a Prisma dociąga je jednym zapytaniem na stronę historii.
+  campaign: { select: { members: { select: { userId: true, color: true, joinedAt: true } } } },
 } as const;
 
 interface StoredMessage {
@@ -82,10 +92,11 @@ interface StoredMessage {
   recipientBotId: string | null;
   speakerName: string | null;
   createdAt: Date;
-  author: { name: string; diceSkin: string };
+  author: { name: string; diceSkin: string; role: string };
   recipient: { name: string } | null;
   bot: { name: string; portraitUrl: string | null } | null;
   recipientBot: { name: string } | null;
+  campaign: { members: { userId: string; color: string | null; joinedAt: Date }[] };
 }
 
 export function toChatMessageView(message: StoredMessage): ChatMessageView {
@@ -157,6 +168,14 @@ export function toChatMessageView(message: StoredMessage): ChatMessageView {
     }
     view.rolltable = entry;
   }
+  // Etap 60c: ten sam kolor u każdego widza, więc wpisany tu, przed
+  // przycięciem per widz — i w historii, i w każdym dostarczeniu.
+  const color = chatAuthorColor(
+    view,
+    message.author.role === ROLE_GM,
+    playerColors(message.campaign.members),
+  );
+  if (color) view.authorColor = color;
   return view;
 }
 

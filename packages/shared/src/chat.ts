@@ -22,6 +22,7 @@ import type { HandoutLogEntry } from './handouts.js';
 import type { JournalLogEntry } from './journal.js';
 import type { TimeLogEntry } from './gametime.js';
 import type { RandomTableRollEntry } from './tables.js';
+import { GM_AUTHOR_COLOR, type ChatAuthorColor, type PlayerColor } from './player-colors.js';
 
 /**
  * `action` is the public log of a spent combat action (stage 14b); `gmaction`
@@ -412,6 +413,12 @@ export interface ChatMessageView {
   sighting?: SightingLogEntry;
   /** Wynik losowania — kinds `rolltable` i `gmrolltable` only (etap 34). */
   rolltable?: RandomTableRollEntry;
+  /**
+   * Kolor autora (etap 60c) — wspólny dla całego stołu, wpisany przez serwer
+   * przy budowie widoku (`chatAuthorColor`). Brak: NPC, karta wystawiona przez
+   * serwer kontem MG albo autor spoza kampanii.
+   */
+  authorColor?: ChatAuthorColor;
   /** ISO timestamp — always assigned by the server. */
   createdAt: string;
 }
@@ -680,6 +687,24 @@ const GM_OWN_KINDS: ReadonlySet<ChatKind> = new Set<ChatKind>([
 function gmWroteItself(message: ChatMessageView): boolean {
   if (message.botId || !GM_OWN_KINDS.has(message.kind)) return false;
   return message.roll?.actor === undefined;
+}
+
+/**
+ * Kolor autora karty (etap 60c). Gracz ma swój zawsze — jego karty są jego
+ * (rzut, akcja, zakup). MG dostaje bursztyn tylko na tym, co pisze sam
+ * (`gmWroteItself`, ta sama granica co „moje” u MG): karta serwera i rzut
+ * z karty NPC-a w kolorze MG pomalowałyby pół czatu. Linia NPC-a (`botId`) nie
+ * ma koloru u nikogo — jej znakiem jest portret, a w barwie MG zlewałaby się
+ * z jego własnymi wypowiedziami.
+ */
+export function chatAuthorColor(
+  message: ChatMessageView,
+  authorIsGm: boolean,
+  colors: ReadonlyMap<string, PlayerColor>,
+): ChatAuthorColor | undefined {
+  if (message.botId) return undefined;
+  if (authorIsGm) return gmWroteItself(message) ? GM_AUTHOR_COLOR : undefined;
+  return colors.get(message.authorId);
 }
 
 /** Na moje kliknięcie czeka ten wiersz — nie na cudze i nie na „kogokolwiek”. */

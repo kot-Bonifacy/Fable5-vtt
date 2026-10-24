@@ -1,5 +1,6 @@
 import type { AiAccessStatus } from './ai-access.js';
 import type { DiceSkinId } from './dice.js';
+import type { PlayerColor } from './player-colors.js';
 
 /**
  * User roles. Two at the table by design (see the project survey); the third,
@@ -119,6 +120,8 @@ export interface PlayerSummary {
   id: string;
   name: string;
   joinedAt: string;
+  /** Kolor wybrany przez MG (etap 60c); `null` — z palety po kolejności dołączenia. */
+  color: PlayerColor | null;
 }
 
 export interface CampaignDetail extends CampaignSummary {

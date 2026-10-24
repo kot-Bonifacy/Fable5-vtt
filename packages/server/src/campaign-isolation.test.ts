@@ -1364,6 +1364,8 @@ describe('izolacja kampanii — trasy REST i pliki (etap 44b)', () => {
       ['DELETE', `/api/campaigns/${A.campaignId}`, 404],
       ['POST', `/api/campaigns/${A.campaignId}/invitations`, 404],
       ['POST', `/api/campaigns/${A.campaignId}/players/${A.playerId}/renewal`, 404],
+      // Etap 60c: kolor gracza — cudza kampania nie istnieje, zanim ktoś spojrzy na kolor.
+      ['POST', `/api/campaigns/${A.campaignId}/players/${A.playerId}/color`, 404],
       ['POST', `/api/invitations/${link.id}/revoke`, 404],
       ['DELETE', `/api/portrait-assets/${A.portraitAssetId}`, 404],
       ['POST', `/api/music/${A.campaignId}/upload`, 409],

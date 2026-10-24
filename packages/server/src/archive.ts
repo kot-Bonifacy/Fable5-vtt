@@ -934,7 +934,11 @@ export interface CampaignArchive {
   campaign: Record<string, unknown>;
   /** Kto tu jest kim — sama nazwa i rola; **nigdy** skrót hasła. */
   users: { id: string; name: string; role: string }[];
-  members: { userId: string; joinedAt: string }[];
+  /**
+   * Członkowie nie wjeżdżają przy wczytaniu (57a: to cudze konta), ale paczka
+   * mówi, kto siedział przy stole — od 60c także w jakim kolorze.
+   */
+  members: { userId: string; joinedAt: string; color: string | null }[];
   characters: (CharacterArchive & {
     id: string;
     ownerId: string | null;
@@ -1056,7 +1060,7 @@ export async function exportCampaign(
     }),
     prisma.campaignMember.findMany({
       where: { campaignId },
-      select: { userId: true, joinedAt: true },
+      select: { userId: true, joinedAt: true, color: true },
     }),
   ]);
 
@@ -1183,7 +1187,11 @@ export async function exportCampaign(
   const payload: CampaignArchive = {
     campaign: { ...campaign, createdAt: campaign.createdAt.toISOString() },
     users,
-    members: members.map((row) => ({ userId: row.userId, joinedAt: row.joinedAt.toISOString() })),
+    members: members.map((row) => ({
+      userId: row.userId,
+      joinedAt: row.joinedAt.toISOString(),
+      color: row.color,
+    })),
     characters,
     scenes,
     bots: plain(bots),

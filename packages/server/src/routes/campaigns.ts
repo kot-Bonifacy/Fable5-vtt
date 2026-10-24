@@ -2,19 +2,27 @@ import { randomBytes } from 'node:crypto';
 import { rm } from 'node:fs/promises';
 import { join } from 'node:path';
 import type { FastifyInstance } from 'fastify';
-import type { CampaignDeleteResult, CampaignDetail, CpredDataPayload } from '@vtt/shared';
+import type {
+  CampaignDeleteResult,
+  CampaignDetail,
+  ChatRecolorPush,
+  CpredDataPayload,
+} from '@vtt/shared';
 import {
   GAME_TIME_DEFAULT,
   INVITATION_TTL_HOURS,
   ROLE_PLAYER,
   confirmsCampaignName,
   gameMonthKey,
+  isPlayerColor,
+  playerColors,
 } from '@vtt/shared';
 import type { AppContext } from '../context.js';
 import { requireAuth, requireGm } from '../auth/guards.js';
 import { endUserSessions } from '../auth/sessions.js';
 import { notifyAdmins } from '../realtime/admin-room.js';
 import type { RealtimeDeps } from '../realtime/registry.js';
+import { campaignRoom, lobbyRoom } from '../realtime/state.js';
 import { playerNameTaken, sanitizePlayerName, toInvitationSummary } from '../invitations.js';
 import {
   getUserActiveCampaign,
@@ -101,6 +109,7 @@ export function registerCampaignRoutes(app: FastifyInstance, ctx: AppContext): v
         id: m.user.id,
         name: m.user.name,
         joinedAt: m.joinedAt.toISOString(),
+        color: isPlayerColor(m.color) ? m.color : null,
       })),
       invitations: c.invitations.map(toInvitationSummary),
       pendingCards: c.characters.map((card) => ({
@@ -268,6 +277,47 @@ export function registerCampaignRoutes(app: FastifyInstance, ctx: AppContext): v
         });
     return toInvitationSummary(revoked);
   });
+}
+
+/**
+ * Kolor gracza na czacie (etap 60c): MG wybiera go w „Graczach” — nazwę
+ * z palety albo `null` (z powrotem kolor z kolejności dołączenia).
+ *
+ * Rejestrowana po gniazdach: karty tego gracza już leżą w historii na
+ * ekranach, więc stół dostaje `chat:recolor` i przemalowuje je w miejscu —
+ * także gracze w poczekalni. Odpowiedź to kolor, który obowiązuje od teraz.
+ */
+export function registerPlayerColorRoute(
+  app: FastifyInstance,
+  ctx: AppContext,
+  deps: RealtimeDeps,
+): void {
+  app.post<{ Params: { id: string; userId: string } }>(
+    '/api/campaigns/:id/players/:userId/color',
+    { preHandler: requireGm },
+    async (request, reply) => {
+      const { id, userId } = request.params;
+      const { color } = (request.body ?? {}) as { color?: unknown };
+      // Cudza kampania i obcy gracz wyglądają jak nieistniejące.
+      const campaign = await ownCampaignOf(ctx.prisma, id, request.user!.id);
+      if (!campaign) return reply.code(404).send({ error: 'NOT_FOUND' });
+      if (color !== null && !isPlayerColor(color)) {
+        return reply.code(400).send({ error: 'INVALID_COLOR' });
+      }
+      const member = await ctx.prisma.campaignMember.findUnique({
+        where: { campaignId_userId: { campaignId: campaign.id, userId } },
+      });
+      if (!member) return reply.code(404).send({ error: 'NOT_FOUND' });
+      await ctx.prisma.campaignMember.update({ where: { id: member.id }, data: { color } });
+      const members = await ctx.prisma.campaignMember.findMany({
+        where: { campaignId: campaign.id },
+        select: { userId: true, color: true, joinedAt: true },
+      });
+      const push: ChatRecolorPush = { userId, color: playerColors(members).get(userId)! };
+      deps.io.to([campaignRoom(campaign.id), lobbyRoom(campaign.id)]).emit('chat:recolor', push);
+      return push;
+    },
+  );
 }
 
 /**

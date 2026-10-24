@@ -35,6 +35,7 @@ export * from './pace.js';
 export * from './pathfinding.js';
 export * from './ping.js';
 export * from './plural.js';
+export * from './player-colors.js';
 export * from './portrait-crop.js';
 export * from './rects.js';
 export * from './relations.js';

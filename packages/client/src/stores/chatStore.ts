@@ -6,6 +6,7 @@ import type {
   ChatHistoryPage,
   ChatMessageBroadcast,
   ChatMessageView,
+  ChatRecolorPush,
   CheckCallEntry,
   PresenceBroadcast,
   PresenceEntry,
@@ -83,6 +84,11 @@ interface ChatStoreState {
    * applied damage entry). Returns true when a seq gap was detected.
    */
   updateMessage: (broadcast: ChatMessageBroadcast) => boolean;
+  /**
+   * MG zmienił kolor gracza (etap 60c): karty tego autora, które już niosą
+   * kolor gracza, dostają nowy. Linie NPC-ów i karty bez koloru zostają.
+   */
+  recolorAuthor: (push: ChatRecolorPush) => void;
   setDraft: (draft: string) => void;
   /** Returns true when a seq gap was detected and a resync is needed. */
   applyPresence: (broadcast: PresenceBroadcast) => boolean;
@@ -289,6 +295,25 @@ export const useChatStore = create<ChatStoreState>((set, get) => ({
       held: state.held.map((held) => (held.id === message.id ? message : held)),
     });
     return false;
+  },
+
+  recolorAuthor: ({ userId, color }) => {
+    const state = get();
+    const recolor = (message: ChatMessageView): ChatMessageView =>
+      message.authorId === userId &&
+      message.authorColor !== undefined &&
+      message.authorColor !== color
+        ? { ...message, authorColor: color }
+        : message;
+    set({
+      // Wiersz bez zmiany zostaje tym samym obiektem — reszta czatu się nie przelicza.
+      items: state.items.map((item) => {
+        if (item.type !== 'message') return item;
+        const message = recolor(item.message);
+        return message === item.message ? item : { type: 'message', message };
+      }),
+      held: state.held.map(recolor),
+    });
   },
 
   setDraft: (draft) => set({ draft }),

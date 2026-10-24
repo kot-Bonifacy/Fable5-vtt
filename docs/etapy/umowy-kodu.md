@@ -648,6 +648,7 @@ droga do usunięcia paczki prowadzi przez guzik z pytaniem niosącym liczbę.
 
 ## czat — Rodzaje wierszy, widoczność, filtr
 
+- **Kolor autora to `authorColor` wpisany w `toChatMessageView` (24.10, etap 60c)** — `chatAuthorColor` (`shared/chat.ts`): gracz zawsze swój, MG `gm` tylko na tym, co pisze sam (`gmWroteItself`), NPC i karty serwera bez koloru. Członkowie kampanii jadą w `INCLUDE_CHAT_NAMES` (`campaign.members`) — **nowe zapytanie budujące widok czatu bierze tę stałą**, inaczej `tsc` odmówi. Paleta to nazwy (`PLAYER_COLORS`, `playerColors` po `joinedAt`), barwy `--player-*` w `theme.css` (noc i dzień, `player-palette.test.ts`); wiersz wybiera barwę `[data-author-color]` → `--player`. Przy krawędzi wiersza **jeden** pasek: `--self` dla moje/do mnie, inaczej `--player`. Zmiana MG: `POST …/players/:userId/color` → `chat:recolor` → `recolorAuthor`.
 - **Grupy kart i ikona rubryki liczy `chat-grouping.ts` i opakowanie, nie karta (24.10, etap 60b)** — karta doklejona do poprzedniej dostaje `.chat-row--cont` (CSS chowa jej `.chat-message-meta`, godzina w `title`), a sklejają się tylko rodzaje z białej listy `chatHeaderKey` (klucz = wszystko, co pokazuje nagłówek). Nowy rodzaj, którego nagłówek to sam mówiący, dopisuje się tam; bez wpisu zostaje przy pełnym nagłówku. Ikonę rubryki podaje `FeedRow` zmienną `--chat-kind-icon` z `CATEGORY_BUTTONS`, a rysuje `.chat-message-meta::after` — **karta ma dalej dokładnie jeden nagłówek `.chat-message-meta`**, inaczej dostanie dwie ikony i schowa niewłaściwy.
 - **„To dotyczy mnie” liczy `chatInvolvement` w `shared/src/chat.ts`, nie karta (24.10, etap 60a)** — `'mine' | 'forMe' | 'awaitingMe' | null` z pól, które wiersz już niesie, porównanych z własnym id (+ figury gracza z `tokenStore`; u MG pusto). Klasę `.chat-row--mine` / `--for-me` / `--awaiting-me` daje opakowanie w `FeedRow` (`ChatPanel.tsx`), a pasek, podkład i „▶ Ty” rysuje CSS (`02-chat-dice.css`, tokeny `--self*`) — karta nie wie, kto na nią patrzy. Nowe pole z właścicielem albo adresatem → gałąź w `awaitsMe`/`concernsMe` i wiersz w `chat-involvement.test.ts`. Filtr „Ja” to `mineOnly` w `chatFilterStore` (klucz `vtt.chat.mineOnly`); `isPending` **i** `awaitingMe` wygrywają z każdym filtrem.
 - **`gmrecovery` — prywatna karta „zastrzyku” (24.10, etap 59b)** — ten sam `RecoveryLogEntry` co `recovery`, ale tylko autor, `recipientId` (właściciel celu) i każdy MG (`visibleTo` MG; gracz przez `authorId`/`recipientId`); doręcza `postPrivateRecoveryCard` (`realtime/chems.ts`) przez `deliverChatMessageTo`. Rysuje `RecoveryRow`, rubryka „Stół”. Narkotyk, alkohol, trucizna, koniec działania — zawsze tym rodzajem.
@@ -662,6 +663,15 @@ droga do usunięcia paczki prowadzi przez guzik z pytaniem niosącym liczbę.
 - **Nowy rodzaj wiersza czatu ma SIEDEM miejsc (od 60a, 24.10)** — `ChatKind`, `chatCategoryOf`, `toChatMessageView`, **`visibleTo` w `chat-io.ts`** (biała lista rodzajów: wiersz spoza niej znika z historii i widzi go tylko autor; rodzaj publiczny do **obu** gałęzi, gracza i MG), `FullMessageRow`, `isPending` (gdy czeka na decyzję) i **wpis w `BY_KIND` w `chat-involvement.test.ts`** — `satisfies Record<ChatKind, …>` nie skompiluje się bez niego, a gałąź w `chatInvolvement` dopisuje się, gdy wiersz ma właściciela albo adresata.
 
 ---
+
+**Kolor gracza na czacie (24.10, etap 60c).** Kolor jest wspólny dla stołu, więc liczy go serwer,
+nie klient — przy budowie widoku, przed przycięciem per widz; historia, rozgłoszenie i dostarczenie
+dostają go tą samą drogą, a gracz nieobecny ma kolor jak obecny. Domyślny kolor zależy od kolejności
+dołączenia **wszystkich** członków, dlatego `INCLUDE_CHAT_NAMES` dociąga członków kampanii (Prisma
+robi to jednym zapytaniem na stronę historii). MG zmienia kolor trasą REST zarejestrowaną po
+gniazdach (`registerPlayerColorRoute`), która rozsyła `chat:recolor` do stołu i poczekalni; eksport
+kampanii niesie `members[].color`, cofnięcie członków nie rusza. Uwaga MG z 24.10: najwyżej jeden
+pasek przy krawędzi wiersza — biały „ja” wygrywa z kolorem autora.
 
 **Grupy kart czatu (24.10, etap 60b).** Kolejna karta tego samego nagłówka w 2 min od
 poprzedniej traci nagłówek — rozstrzyga `chatContinuations(rows, breaksGroup)` w

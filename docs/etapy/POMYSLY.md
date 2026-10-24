@@ -1,5 +1,10 @@
 # Pomysły poza zakresem etapów
 
+**24.10.2026 (etap 60c) — kolor gracza poza czatem.** Ten sam kolor (`PLAYER_COLORS`, tokeny
+`--player-*`) na liście obecnych, na obwódce figury gracza i przy pingu mapy. Do rozważenia przy
+oględzinach MG: przygaszenie lewych krawędzi samych kart (czerwień rzutu, zieleń odpoczynku)
+w wierszach z paskiem autora — ikona rubryki z 60b mówi już, co to za karta.
+
 **24.10.2026 (panel decyzji MG) — kolejne sprawy do panelu.** Panel z prośby o Test ma być
 wzorcem (decyzja MG). Kandydaci z szybką decyzją: (1) **karta zgłoszona z pliku** (57c) —
 „Przyjmij” / „Odrzuć”; (2) **propozycja bota** bez sterującego gracza — „Zatwierdź” / „Odrzuć”;

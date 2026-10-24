@@ -407,6 +407,9 @@ model CampaignMember {
   creationRulesAcceptedAt DateTime?
   /// The GM's terms with the consent, as JSON: method, rank, skill points.
   creationTerms           String?
+  /// Kolor gracza na czacie (etap 60c): nazwa z `PLAYER_COLORS`, wybrana
+  /// przez MG. null — kolor z palety według kolejności dołączenia.
+  color                   String?
 
   campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
   user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)

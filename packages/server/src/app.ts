@@ -19,7 +19,11 @@ import { registerAuthRoutes } from './routes/auth.js';
 import { registerJoinRoutes } from './routes/join.js';
 import { registerAdminRoutes } from './routes/admin.js';
 import { registerAiAccessRoutes } from './routes/ai-access.js';
-import { registerCampaignDeleteRoute, registerCampaignRoutes } from './routes/campaigns.js';
+import {
+  registerCampaignDeleteRoute,
+  registerCampaignRoutes,
+  registerPlayerColorRoute,
+} from './routes/campaigns.js';
 import { MAX_MAP_UPLOAD_BYTES, registerUploadRoutes } from './routes/uploads.js';
 import { registerArchiveRoutes } from './routes/archive.js';
 import { registerMusicRoutes } from './routes/music.js';
@@ -225,6 +229,8 @@ export async function buildApp(
   registerArchiveRoutes(app, ctx, realtime.deps);
   // „Usuń kampanię” (57b) wylogowuje gniazda jej graczy.
   registerCampaignDeleteRoute(app, ctx, realtime.deps);
+  // Kolor gracza (60c) przemalowuje karty na ekranach stołu.
+  registerPlayerColorRoute(app, ctx, realtime.deps);
   registerMusicRoutes(app, ctx, io);
   gateway.start();
 

@@ -1,6 +1,6 @@
 # Etap 60 — Czytelny czat: „to dotyczy mnie”, ikony rodzaju, kolor gracza
 
-**Faza:** przed betą (zlecenie MG z 24.10 spoza planu) · **Wymaga etapów:** 55 · **Stan:** 🟨 (60a ✅ 24.10, 60b ✅ 24.10)
+**Faza:** przed betą (zlecenie MG z 24.10 spoza planu) · **Wymaga etapów:** 55 · **Stan:** 🟨 (60a, 60b, 60c ✅ 24.10 — czeka na oględziny MG z pierwszego kryterium)
 Trzy podetapy po jednej sesji: 60a → 60b → 60c (60b i 60c niezależne od siebie, oba po 60a).
 
 ## Skąd ten etap
@@ -132,33 +132,66 @@ zgłoszona karta, propozycja bota).
 
 ## 60c — kolor gracza
 
-- [ ] Kolumna `CampaignMember.color String?` (migracja Prismy). `null` = kolor z palety według
+- [x] Kolumna `CampaignMember.color String?` (migracja Prismy). `null` = kolor z palety według
       kolejności dołączenia (`joinedAt`); MG ustawia go ręką w „Graczach” kampanii (`CampaignPlayers`).
-- [ ] Paleta 8 kolorów w `packages/shared` (rdzeń), dobrana tak, by pary sąsiednie były
+      *Migracja `20261024190000_player_color`; trasa `POST /api/campaigns/:id/players/:userId/color`
+      (`registerPlayerColorRoute`), w „Graczach” kropka z inicjałem i lista „z kolejności (…)” + 8 nazw.*
+- [x] Paleta 8 kolorów w `packages/shared` (rdzeń), dobrana tak, by pary sąsiednie były
       rozróżnialne przy deuteranopii i protanopii i miały kontrast ≥ 3:1 z tłem czatu w obu
-      motywach; MG ma kolor stały spoza palety (bursztyn akcentu).
-- [ ] `ChatMessageView.authorColor?: string` — serwer wpisuje go przy budowie widoku (historia
+      motywach; MG ma kolor stały spoza palety (bursztyn akcentu). *`shared/player-colors.ts` niesie
+      **nazwy** (`PLAYER_COLORS`), barwy — `--player-*` w `theme.css`, osobno noc i dzień;
+      pilnuje `client/src/player-palette.test.ts` (kontrast ≥ 3:1, ΔE76 sąsiadów ≥ 15 po symulacji
+      Machado, także ósmy z pierwszym). Najniższy kontrast: 4,1:1 (limonka w dzień).*
+- [x] `ChatMessageView.authorColor?: string` — serwer wpisuje go przy budowie widoku (historia
       **i** dostarczenie), także dla wiadomości graczy nieobecnych. Linia NPC (`botId`) nie dostaje
       koloru u nikogo — jej znakiem zostaje portret; NPC w kolorze MG zlewałby się z wypowiedziami
-      samego MG.
-- [ ] Na karcie: cienki pasek autora po lewej (pod paskiem `mine`/`forMe`, nie zamiast niego) i
-      kropka z inicjałem przy nicku.
-- [ ] Kopie kampanii (57a): kolor jedzie w paczce ZIP i wraca przy wczytaniu; biała lista eksportu.
-- [ ] Testy dymne: zmiana koloru przez MG, kolor w historii po restarcie serwera.
-- [ ] Oględziny jak w 60a, plus podgląd palety w obu motywach.
+      samego MG. *`toChatMessageView` + `chatAuthorColor` (`shared/chat.ts`); członkowie kampanii
+      jadą w `INCLUDE_CHAT_NAMES`, więc wszystkie 61 miejsc budowy widoku dostały kolor same.*
+- [x] Na karcie: cienki pasek autora po lewej (pod paskiem `mine`/`forMe`, nie zamiast niego) i
+      kropka z inicjałem przy nicku. *Zmienione po uwadze MG (24.10, „trzy poziomy pasków w jednym
+      wierszu to za dużo”): przy krawędzi wiersza **jeden** pasek — biały „moje / do mnie” albo
+      kolor autora. Kropka z inicjałem gracza (`::before` nicku) stoi zawsze.*
+- [x] Kopie kampanii (57a): kolor jedzie w paczce ZIP i wraca przy wczytaniu; biała lista eksportu.
+      *Jedzie w `members` eksportu. Wczytanie jako nowa kampania członków nie przenosi (57a: to cudze
+      konta), więc „wraca” dotyczy cofnięcia (57b) — członkowie z kolorem zostają nietknięci.*
+- [x] Testy dymne: zmiana koloru przez MG, kolor w historii po restarcie serwera.
+      *`player-color.test.ts` (5) + wiersz w macierzy izolacji kampanii.*
+- [x] Oględziny jak w 60a, plus podgląd palety w obu motywach.
 
-Pomysły na później (do `POMYSLY.md`, nie do tego etapu): ten sam kolor na liście graczy, na
-obwódce figury i przy pingu mapy.
+Pomysły na później — w `POMYSLY.md` (24.10).
+
+**Rozstrzygnięcia 60c (24.10, bez pytań — do potwierdzenia przez MG przy oględzinach):**
+
+- **Jeden pasek przy krawędzi wiersza (uwaga MG w trakcie etapu):** wiersz „moje / do mnie” ma
+  biały pasek z 60a, każdy inny wiersz z kolorem — pasek autora (3 px). Szept w kolorze autora
+  traci własną fioletową kreskę. Zostaje lewa krawędź samej karty (czerwień rzutu, zieleń
+  odpoczynku, błękit zegara) — razem najwyżej dwie kreski.
+- **Paleta to nazwy, barwy daje motyw.** Jeden odcień nie trzyma 3:1 jednocześnie z czarnym
+  kartonem i pożółkłym papierem, więc noc ma jasne odcienie, dzień ściemnione. Nazwy po polsku
+  w „Graczach”: błękit, cynober, morska zieleń, róż, cytryna, lawenda, limonka, chaber.
+- **Kolor MG** to bursztyn `--warn`, i to **tylko na tym, co MG pisze sam** (granica „moje u MG”
+  z 60a). Karty serwera wystawione kontem MG i rzuty z kart NPC-ów są bez koloru — inaczej pół
+  czatu miałoby pasek MG. Przy deuteranopii bursztyn zbliża się do cynobru, cytryny i limonki —
+  wymóg dotyczy sąsiadów palety, a MG odróżnia kropka „M”.
+- **Wybór MG nikogo nie przesuwa:** gracz bez wyboru bierze kolor z pozycji w kolejności
+  dołączenia, więc dwóch graczy może mieć ten sam kolor, gdy MG tak wybierze — widać to w „Graczach”.
+  Usunięcie gracza z kampanii przesuwa pozycje późniejszych (rzadkie; karty na ekranach poprawi
+  przeładowanie).
+- **Inicjał na kropce to gracz, nie postać** (kolor należy do gracza): „O” przy „Iskra”.
+- **`chat:recolor`** (`{ userId, color }`, bez `seq`) do stołu i poczekalni — klient przemalowuje
+  w miejscu karty tego autora, które już niosą kolor gracza.
 
 ## Kryteria ukończenia
 
 - [ ] Gracz w Firefoksie, przy czacie z co najmniej 50 wierszami od trzech osób, wskazuje swoje
       rzuty i rzeczy skierowane do niego bez czytania nicków (oględziny MG).
-- [ ] Filtr „Ja” zwija wszystko poza moimi wierszami i sprawami do mnie; nic czekającego na decyzję
+- [x] Filtr „Ja” zwija wszystko poza moimi wierszami i sprawami do mnie; nic czekającego na decyzję
       nie znika.
-- [ ] Kolor gracza jest ten sam na każdym ekranie i przetrwa restart serwera oraz kopię kampanii.
-- [ ] Testy `involvement` w `shared` przechodzą; `pnpm test:e2e --grep @szybkie` przechodzi.
-- [ ] Umowa `czat` zaktualizowana (sześć miejsc nowego rodzaju wiersza, `authorColor`).
+- [x] Kolor gracza jest ten sam na każdym ekranie i przetrwa restart serwera oraz kopię kampanii.
+- [x] Testy `involvement` w `shared` przechodzą; `pnpm test:e2e --grep @szybkie` przechodzi.
+      *24.10: `shared` 2728/2728 (z `chat-involvement.test.ts`); `@szybkie` 67/68 — znany T9a „konsola”
+      (zerwane gniazdo Firefoksa), powtórka `t9a-konta` 7/7.*
+- [x] Umowa `czat` zaktualizowana (sześć miejsc nowego rodzaju wiersza, `authorColor`).
 
 ## Potwierdzone przez MG na starcie 60a (24.10)
 

@@ -1,6 +1,13 @@
 import { useState, type FormEvent } from 'react';
 import type { CampaignDetail, InvitationState, InvitationSummary } from '@vtt/shared';
-import { PLAYER_NAME_MAX_LENGTH } from '@vtt/shared';
+import {
+  PLAYER_COLORS,
+  PLAYER_COLOR_LABELS,
+  PLAYER_NAME_MAX_LENGTH,
+  isPlayerColor,
+  playerColors,
+  playerInitial,
+} from '@vtt/shared';
 import { ApiError, apiPost } from '../api.js';
 
 function inviteUrl(token: string): string {
@@ -125,6 +132,20 @@ export function CampaignPlayers({
   const cardName = (link: InvitationSummary) =>
     pendingCards.find((card) => card.id === link.characterId)?.name ?? null;
   const spent = campaign.invitations.filter((link) => !isLive(link));
+  // Kolor na czacie (60c): wybrany albo z palety po kolejności dołączenia.
+  const colors = playerColors(campaign.players.map((player) => ({ ...player, userId: player.id })));
+
+  async function setColor(playerId: string, value: string) {
+    setError(null);
+    try {
+      await apiPost(`/api/campaigns/${campaign.id}/players/${playerId}/color`, {
+        color: isPlayerColor(value) ? value : null,
+      });
+      onChanged();
+    } catch {
+      setError('Nie udało się zmienić koloru. Spróbuj ponownie.');
+    }
+  }
 
   async function issue(url: string, body: unknown, who: string) {
     setBusy(true);
@@ -173,7 +194,26 @@ export function CampaignPlayers({
         <ul className="player-list">
           {campaign.players.map((player) => (
             <li key={player.id} className="player-row">
+              <span className="player-swatch" data-author-color={colors.get(player.id)} aria-hidden>
+                {playerInitial(player.name)}
+              </span>
               <span>{player.name}</span>
+              <select
+                className="player-color-select"
+                value={player.color ?? ''}
+                aria-label={`Kolor gracza ${player.name} na czacie`}
+                title="Kolor gracza na czacie — pasek przy jego kartach i kropka przy nicku, ten sam u całego stołu"
+                onChange={(event) => void setColor(player.id, event.target.value)}
+              >
+                <option value="">
+                  z kolejności ({PLAYER_COLOR_LABELS[colors.get(player.id) ?? PLAYER_COLORS[0]]})
+                </option>
+                {PLAYER_COLORS.map((color) => (
+                  <option key={color} value={color}>
+                    {PLAYER_COLOR_LABELS[color]}
+                  </option>
+                ))}
+              </select>
               <span className="invite-expiry">
                 dołączył(a) {new Date(player.joinedAt).toLocaleDateString('pl-PL')}
               </span>
