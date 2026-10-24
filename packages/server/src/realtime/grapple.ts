@@ -82,6 +82,7 @@ import {
   INCLUDE_CHAT_NAMES,
   broadcastRedactedChatMessage,
   deliverRollMessage,
+  inPlaceDice,
   toChatMessageView,
 } from './chat-io.js';
 import { createMixedRng } from './dice-rng.js';
@@ -563,13 +564,14 @@ export const grappleResistEvent = defineEvent<
       if (combat) await emitReloaded(deps, campaignId, scene, combat.id);
     }
 
+    const defenderName = tokenTableName(defenderToken, character.name);
     const updated: RollResult = {
       ...roll,
       opposed: {
         ...roll.opposed,
         won: verdict.won,
         answered: true,
-        detail: `${roll.opposed.detail} · Obrona ${tokenTableName(defenderToken, character.name)}: ${defence.total}${
+        detail: `${roll.opposed.detail} · Obrona ${defenderName}: ${defence.total}${
           planned.plan.luckSpent > 0 ? ` (Szczęście ${planned.plan.luckSpent})` : ''
         } → ${verdict.won ? 'mimo wszystko udane' : 'wywinął się'}`,
       },
@@ -579,7 +581,15 @@ export const grappleResistEvent = defineEvent<
       data: { payload: JSON.stringify(updated) },
       include: INCLUDE_CHAT_NAMES,
     });
-    await broadcastRedactedChatMessage(deps, campaignId, toChatMessageView(saved), 'chat:update');
+    // The card only changes its verdict, so the defender's dice ride along to
+    // be tumbled — without them the table saw one side of the contest only.
+    await broadcastRedactedChatMessage(
+      deps,
+      campaignId,
+      toChatMessageView(saved),
+      'chat:update',
+      inPlaceDice(defence, `Obrona: ${defenderName}`, defenderName, user, gesture),
+    );
     return { total: defence.total, won: verdict.won };
   },
 });

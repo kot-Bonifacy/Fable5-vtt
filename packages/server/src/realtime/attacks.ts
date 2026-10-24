@@ -151,6 +151,7 @@ import {
   INCLUDE_CHAT_NAMES,
   broadcastRedactedChatMessage,
   deliverRollMessage,
+  inPlaceDice,
   toChatMessageView,
 } from './chat-io.js';
 import { createMixedRng } from './dice-rng.js';
@@ -1691,31 +1692,9 @@ function checkTargetsIn(targets: readonly BlastTarget[]): AmmoCheckTarget[] {
  * for ranged attacks and always for melee; the check on REF is deliberately
  * left to the table, because a GM may rule that a target saw the shot coming.
  */
-/**
- * The dice of a roll that rewrites an attack card in place (a dodge, a smart
- * round's second go) dressed for the table to tumble (17.10): the card itself
- * only changes its verdict, so these ride the `chat:update` as `dice`.
- */
 /** „ (Szczęście 2)" after a rewritten card's total — the dice alone do not say it. */
 function luckNote(luckSpent: number): string {
   return luckSpent > 0 ? ` (Szczęście ${luckSpent})` : '';
-}
-
-function inPlaceDice(
-  rolled: RollResult,
-  title: string,
-  actor: string,
-  user: SessionUser,
-  gesture: RollGesture | undefined,
-): RollResult {
-  return {
-    ...rolled,
-    title,
-    actor,
-    skin: user.diceSkin,
-    ...(gesture && gesture.strength > 0 ? { tossStrength: gesture.strength } : {}),
-    ...(gesture?.toss ? { toss: gesture.toss } : {}),
-  };
 }
 
 export const attackEvadeEvent = defineEvent<AttackEvadePayload, { total: number; hit: boolean }>({

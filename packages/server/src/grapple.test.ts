@@ -515,6 +515,7 @@ describe('grappling', () => {
     );
     expect(await luckOf(vexCharacterId)).toBe(vexLuck - 2);
 
+    const updated = waitFor<ChatMessageBroadcast>(player, 'chat:update');
     const answered = await emitAck<{ total: number; won: boolean }>(gm, 'grapple:resist', {
       messageId: started.messageId,
       characterId: thugCharacterId,
@@ -523,6 +524,11 @@ describe('grappling', () => {
     expect(answered.ok).toBe(true);
     const verdict = data(answered, 'grapple:resist');
     expect(await luckOf(thugCharacterId)).toBe(thugLuck - 1);
+    // The defender's dice reach the whole table to be tumbled, like a dodge's —
+    // the card alone only showed the attacker's roll (24.10.2026).
+    const broadcast = await updated;
+    expect(broadcast.dice?.total).toBe(verdict.total);
+    expect(broadcast.dice?.title).toMatch(/^Obrona: /);
 
     // Whatever the dice said, the tracker and the card must agree about it.
     const view = await tracker();

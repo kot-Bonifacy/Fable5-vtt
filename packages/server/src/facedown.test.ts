@@ -568,7 +568,11 @@ describe('reputacja i konfrontacja', () => {
     // still a flaky test.
     const expected = roll.total > answer.total ? 'win' : roll.total < answer.total ? 'loss' : 'tie';
     expect(answer.outcome).toBe(expected);
-    const card = (await updated).message.roll?.opposed;
+    const broadcast = await updated;
+    // The answer is tumbled for the table, not only written into the card.
+    expect(broadcast.dice?.total).toBe(answer.total);
+    expect(broadcast.dice?.title).toMatch(/^Konfrontacja: /);
+    const card = broadcast.message.roll?.opposed;
     expect(card?.answered).toBe(true);
     expect(card?.answerLabel).toBeUndefined();
     expect(card?.detail).toContain('odpowiedź');

@@ -42,6 +42,7 @@ import {
   INCLUDE_CHAT_NAMES,
   broadcastRedactedChatMessage,
   deliverRollMessage,
+  inPlaceDice,
   toChatMessageView,
 } from './chat-io.js';
 import { createMixedRng } from './dice-rng.js';
@@ -378,13 +379,21 @@ async function saveFacedownCard(
   campaignId: string,
   messageId: number,
   roll: RollResult,
+  /** The answering roll, when there was one, for the table to tumble. */
+  dice?: RollResult,
 ): Promise<void> {
   const saved = await deps.ctx.prisma.chatMessage.update({
     where: { id: messageId },
     data: { payload: JSON.stringify(roll) },
     include: INCLUDE_CHAT_NAMES,
   });
-  await broadcastRedactedChatMessage(deps, campaignId, toChatMessageView(saved), 'chat:update');
+  await broadcastRedactedChatMessage(
+    deps,
+    campaignId,
+    toChatMessageView(saved),
+    'chat:update',
+    dice,
+  );
 }
 
 /**
@@ -454,7 +463,14 @@ export const facedownResistEvent = defineEvent<
         detail: `${opposed.detail} · odpowiedź: ${describeBreakdown(planned.plan.breakdown)}`,
       },
     };
-    await saveFacedownCard(deps, campaignId, card.id, updated);
+    const defenderName = tokenTableName(defenderToken, character.name);
+    await saveFacedownCard(
+      deps,
+      campaignId,
+      card.id,
+      updated,
+      inPlaceDice(answer, `Konfrontacja: ${defenderName}`, defenderName, user, gesture),
+    );
     return { total: answer.total, outcome: opposed.outcome ?? 'tie' };
   },
 });

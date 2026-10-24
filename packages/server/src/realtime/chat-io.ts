@@ -17,6 +17,7 @@ import type {
   JournalLogEntry,
   RandomTableRollEntry,
   TimeLogEntry,
+  RollGesture,
   SessionUser,
 } from '@vtt/shared';
 import { CHAT_HISTORY_PAGE_SIZE, ROLE_GM, isDiceSkinId } from '@vtt/shared';
@@ -555,6 +556,29 @@ export async function broadcastRedactedChatMessage(
     socket.emit(event, payload);
   }
   await deliverToLobbyParties(deps, campaignId, message, event);
+}
+
+/**
+ * The dice of a roll that rewrites a card in place (a dodge, a smart round's
+ * second go, the defender's answer to a Pochwycenie or Konfrontacja) dressed
+ * for the table to tumble (17.10): the card itself only changes its verdict,
+ * so these ride the `chat:update` as `dice`.
+ */
+export function inPlaceDice(
+  rolled: RollResult,
+  title: string,
+  actor: string,
+  user: SessionUser,
+  gesture: RollGesture | undefined,
+): RollResult {
+  return {
+    ...rolled,
+    title,
+    actor,
+    skin: user.diceSkin,
+    ...(gesture && gesture.strength > 0 ? { tossStrength: gesture.strength } : {}),
+    ...(gesture?.toss ? { toss: gesture.toss } : {}),
+  };
 }
 
 /**
