@@ -68,6 +68,7 @@ Obowiązuje na nie ta sama licencja co na kod repozytorium, a nie CC BY 3.0; w t
 | `hud/sniper.svg`            | rysunek własny       | projekt (VTT) | slot broni: karabin snajperski           |
 | `hud/stand-up.svg`          | Person               | Delapouite    | akcja „Wstanie”; stan pusty panelu       |
 | `hud/sword.svg`             | Katana               | Delapouite    | slot broni: średnia broń biała           |
+| `hud/trash-can.svg`         | Trash can            | Delapouite    | karta postaci: usuń przedmiot (24.10)    |
 | `hud/two-handed-sword.svg`  | Two handed sword     | Delapouite    | slot broni: bardzo duża broń biała       |
 
 ## Miniatury rodzaju na listach (24.09.2026)

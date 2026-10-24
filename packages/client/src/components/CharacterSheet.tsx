@@ -1,6 +1,8 @@
 import {
   Fragment,
+  createContext,
   useCallback,
+  useContext,
   useEffect,
   useMemo,
   useRef,
@@ -239,6 +241,8 @@ import {
 } from '../stores/rollStore.js';
 import { useWindowPlacement } from '../window-placement.js';
 import { WindowResizeGrip } from './WindowResizeGrip.js';
+import { ConfirmDialog } from './ConfirmDialog.js';
+import { HudIcon } from './HudIcon.js';
 import { NumberStepper } from './NumberStepper.js';
 import {
   ItemIcon,
@@ -343,6 +347,7 @@ function CharacterSheetWindow({
     y: 70 + (stackIndex % 6) * 24,
   }));
   const [issues, setIssues] = useState<Record<string, string>>({});
+  const [question, setQuestion] = useState<SheetQuestion | null>(null);
 
   useEffect(() => {
     ensureCpredDataLoaded();
@@ -398,121 +403,198 @@ function CharacterSheetWindow({
   const awaitingGm = !isGm && !character.playReady && character.ownerId === userId;
 
   return (
-    <section
-      ref={placement.ref}
-      className={`sheet-window sheet-window--paper${data.container ? ' sheet-window--container' : ''}`}
-      style={{ ...placement.style, zIndex: 300 + stackIndex }}
-      onPointerDown={() => focusSheet(characterId)}
-      aria-label={`Karta postaci: ${character.name}`}
-      // Keys pressed on the sheet's own buttons stay here (naprawa 2b).
-      data-owns-keys
-    >
-      <div className="sheet-header" {...placement.dragProps}>
-        {character.portraitUrl ? (
-          <img className="sheet-header-portrait" src={character.portraitUrl} alt="" />
-        ) : null}
-        {/* Belka tytułowa tylko pokazuje — ksywę edytuje się w jej własnym polu
+    <SheetAskContext.Provider value={setQuestion}>
+      <section
+        ref={placement.ref}
+        className={`sheet-window sheet-window--paper${data.container ? ' sheet-window--container' : ''}`}
+        style={{ ...placement.style, zIndex: 300 + stackIndex }}
+        onPointerDown={() => focusSheet(characterId)}
+        aria-label={`Karta postaci: ${character.name}`}
+        // Keys pressed on the sheet's own buttons stay here (naprawa 2b).
+        data-owns-keys
+      >
+        <div className="sheet-header" {...placement.dragProps}>
+          {character.portraitUrl ? (
+            <img className="sheet-header-portrait" src={character.portraitUrl} alt="" />
+          ) : null}
+          {/* Belka tytułowa tylko pokazuje — ksywę edytuje się w jej własnym polu
             na karcie, tak jak na wydruku. Dwa pola na to samo się rozjeżdżają. */}
-        <span className="sheet-title">
-          <span className="sheet-title-name">{character.name}</span>
-          {roleName && <span className="sheet-title-role">{roleName}</span>}
-        </span>
-        <span
-          className={`sheet-save sheet-save--${saveState ?? 'idle'}`}
-          {...(saveIssue ? { title: saveIssue } : {})}
-        >
-          {saveLabel}
-        </span>
-        {/* Etap 57c: gracz pobiera kopię własnej karty (MG ma „Kopie”). */}
-        {!isGm && character.ownerId === userId && !data.container && (
+          <span className="sheet-title">
+            <span className="sheet-title-name">{character.name}</span>
+            {roleName && <span className="sheet-title-role">{roleName}</span>}
+          </span>
+          <span
+            className={`sheet-save sheet-save--${saveState ?? 'idle'}`}
+            {...(saveIssue ? { title: saveIssue } : {})}
+          >
+            {saveLabel}
+          </span>
+          {/* Etap 57c: gracz pobiera kopię własnej karty (MG ma „Kopie”). */}
+          {!isGm && character.ownerId === userId && !data.container && (
+            <button
+              type="button"
+              className="sheet-download"
+              onClick={() => downloadArchive(ARCHIVE_DOWNLOAD_PATHS.character(characterId))}
+              title="Pobierz kopię karty — paczka ZIP z portretem; w innej kampanii zgłosisz ją MG w „Postaciach”"
+              aria-label="Pobierz kopię karty"
+            >
+              ⤓
+            </button>
+          )}
           <button
             type="button"
-            className="sheet-download"
-            onClick={() => downloadArchive(ARCHIVE_DOWNLOAD_PATHS.character(characterId))}
-            title="Pobierz kopię karty — paczka ZIP z portretem; w innej kampanii zgłosisz ją MG w „Postaciach”"
-            aria-label="Pobierz kopię karty"
+            className="sheet-close"
+            onClick={() => closeSheet(characterId)}
+            title="Zamknij kartę"
+            aria-label="Zamknij kartę"
           >
-            ⤓
+            ✕
           </button>
-        )}
-        <button
-          type="button"
-          className="sheet-close"
-          onClick={() => closeSheet(characterId)}
-          title="Zamknij kartę"
-          aria-label="Zamknij kartę"
-        >
-          ✕
-        </button>
-      </div>
-      {isGm && <PendingOwnerStrip character={character} />}
-
-      {/* Etap 46b2: pojemnik nie ma Cech, PW ani Umiejętności — zamiast czterech
-          stron jedna kompaktowa karta: zamek i zawartość (decyzja MG z 09.10). */}
-      {data.container ? (
-        <div className="sheet-body" ref={bodyRef}>
-          <ContainerSheet
-            character={character}
-            container={data.container}
-            saveData={saveData}
-            saveName={saveName}
-          />
         </div>
-      ) : (
-        <>
-          <nav className="sheet-tabs">
-            {TABS.map((t) => (
-              <button
-                key={t.id}
-                type="button"
-                className={`sheet-tab ${tab === t.id ? 'sheet-tab--active' : ''}`}
-                onClick={() => {
-                  flushCharacterSave(characterId);
-                  setTab(t.id);
-                }}
-              >
-                {t.label}
-              </button>
-            ))}
-          </nav>
+        {isGm && <PendingOwnerStrip character={character} />}
 
+        {/* Etap 46b2: pojemnik nie ma Cech, PW ani Umiejętności — zamiast czterech
+          stron jedna kompaktowa karta: zamek i zawartość (decyzja MG z 09.10). */}
+        {data.container ? (
           <div className="sheet-body" ref={bodyRef}>
-            {/* Karta czekająca na MG jest u właściciela tylko do podglądu (25.09):
+            <ContainerSheet
+              character={character}
+              container={data.container}
+              saveData={saveData}
+              saveName={saveName}
+            />
+          </div>
+        ) : (
+          <>
+            <nav className="sheet-tabs">
+              {TABS.map((t) => (
+                <button
+                  key={t.id}
+                  type="button"
+                  className={`sheet-tab ${tab === t.id ? 'sheet-tab--active' : ''}`}
+                  onClick={() => {
+                    flushCharacterSave(characterId);
+                    setTab(t.id);
+                  }}
+                >
+                  {t.label}
+                </button>
+              ))}
+            </nav>
+
+            <div className="sheet-body" ref={bodyRef}>
+              {/* Karta czekająca na MG jest u właściciela tylko do podglądu (25.09):
               serwer i tak odmawia (`refuseAwaitingGm`), a wyłączony `fieldset`
               gasi naraz każdy przycisk i pole wszystkich czterech stron, zamiast
               nieść flagę przez kilkadziesiąt komponentów. Zakładki i ✕ leżą
               poza nim, więc kartę da się dalej przeglądać. */}
-            <fieldset className="sheet-lock" disabled={awaitingGm}>
-              {tab === 'stats' && (
-                <FrontPage
-                  character={character}
-                  data={data}
-                  saveData={saveData}
-                  saveName={saveName}
-                  setIssues={setIssues}
-                />
-              )}
-              {tab === 'gear' && <GearTab character={character} data={data} saveData={saveData} />}
-              {tab === 'bio' && (
-                <LifepathPage character={character} data={data} saveData={saveData} />
-              )}
-              {tab === 'chrome' && (
-                <ChromePage characterId={character.id} data={data} saveData={saveData} />
-              )}
-            </fieldset>
-          </div>
-        </>
-      )}
+              <fieldset className="sheet-lock" disabled={awaitingGm}>
+                {tab === 'stats' && (
+                  <FrontPage
+                    character={character}
+                    data={data}
+                    saveData={saveData}
+                    saveName={saveName}
+                    setIssues={setIssues}
+                  />
+                )}
+                {tab === 'gear' && (
+                  <GearTab character={character} data={data} saveData={saveData} />
+                )}
+                {tab === 'bio' && (
+                  <LifepathPage character={character} data={data} saveData={saveData} />
+                )}
+                {tab === 'chrome' && (
+                  <ChromePage characterId={character.id} data={data} saveData={saveData} />
+                )}
+              </fieldset>
+            </div>
+          </>
+        )}
 
-      {issueList.length > 0 && (
-        <InlineNotice tone="danger" title="Błąd" className="sheet-issues" role="alert">
-          {issueList.map((message) => (
-            <p key={message}>{message}</p>
-          ))}
-        </InlineNotice>
-      )}
-      <WindowResizeGrip resizeProps={placement.resizeProps} />
-    </section>
+        {issueList.length > 0 && (
+          <InlineNotice tone="danger" title="Błąd" className="sheet-issues" role="alert">
+            {issueList.map((message) => (
+              <p key={message}>{message}</p>
+            ))}
+          </InlineNotice>
+        )}
+        <WindowResizeGrip resizeProps={placement.resizeProps} />
+        {/* Na oknie, nie w przewijanym `.sheet-body` — tam zasłona zostałaby
+          na pierwszym ekranie, gdy pytanie padło niżej. */}
+        {question && (
+          <ConfirmDialog
+            title={question.title}
+            confirmLabel={question.confirmLabel}
+            onConfirm={question.onConfirm}
+            onClose={() => setQuestion(null)}
+          >
+            {question.lines.map((line) => (
+              <p key={line} className="confirm-dialog-line">
+                {line}
+              </p>
+            ))}
+          </ConfirmDialog>
+        )}
+      </section>
+    </SheetAskContext.Provider>
+  );
+}
+
+/** Pytanie zadane w oknie karty (24.10.2026 — na razie usunięcie przedmiotu). */
+interface SheetQuestion {
+  title: string;
+  lines: string[];
+  confirmLabel: string;
+  onConfirm: () => void;
+}
+
+/**
+ * Okno karty zadaje pytania w sobie, a zakładki i tabele leżą kilka pięter
+ * niżej — kontekst oszczędza przekazywania `ask` przez każdą z nich. Bez
+ * okna (nie powinno się zdarzyć) pyta przeglądarka, żeby usunięcie nigdy nie
+ * przeszło bez pytania.
+ */
+const SheetAskContext = createContext<(question: SheetQuestion) => void>((question) => {
+  if (window.confirm(question.title)) question.onConfirm();
+});
+
+/**
+ * Usunięcie przedmiotu z karty pyta (zlecenie MG z 24.10.2026): gracze kasowali
+ * rzeczy przypadkiem, a skasowanego wiersza nic nie przywraca. Pytanie
+ * podpowiada drogi, którymi przedmiot naprawdę zmienia właściciela.
+ */
+function useAskRemoval(): (name: string, remove: () => void, qty?: number) => void {
+  const ask = useContext(SheetAskContext);
+  return useCallback(
+    (name, remove, qty) => {
+      const label = name.trim();
+      ask({
+        title: label ? `Usunąć „${label}” z karty?` : 'Usunąć ten przedmiot z karty?',
+        lines: [
+          ...(qty !== undefined && qty > 1 ? [`Znikną wszystkie sztuki (${qty}).`] : []),
+          'Usuniętego przedmiotu nic nie przywróci.',
+          'Żeby go komuś oddać, sprzedać albo zostawić na ziemi, użyj „Wymiana…” albo przeciągnij go na mapę.',
+        ],
+        confirmLabel: 'Usuń',
+        onConfirm: remove,
+      });
+    },
+    [ask],
+  );
+}
+
+/** Karta w chwili wywołania — pytanie o usunięcie mogło przeczekać zmianę z serwera. */
+function latestData(characterId: string, fallback: CpredCharacterData): CpredCharacterData {
+  return useCharacterStore.getState().characters[characterId]?.data ?? fallback;
+}
+
+/** Kosz przy przedmiocie — czerwona sylwetka na tle komórki (24.10.2026). */
+function RemoveItemButton({ label, onClick }: { label: string; onClick: () => void }) {
+  return (
+    <button type="button" className="cp-remove" title={label} aria-label={label} onClick={onClick}>
+      <HudIcon name="trash-can" />
+    </button>
   );
 }
 
@@ -1504,13 +1586,18 @@ function RowTable<T extends CpredItemRow>({
   /** Co stoi przed polem pierwszej kolumny — miniatura rodzaju (24.09). */
   lead?: (row: T) => ReactNode;
 }) {
+  const askRemoval = useAskRemoval();
+  // Usunięcie liczy listę z chwili „Usuń”, nie z chwili pytania — w tym
+  // czasie MG mógł dać albo zabrać inny przedmiot.
+  const rowsNow = useRef(rows);
+  rowsNow.current = rows;
   function updateRow(rowId: string, key: keyof T & string, value: string | number) {
     onChange(rows.map((row) => (row.id === rowId ? { ...row, [key]: value } : row)));
   }
 
   return (
     <div className="cp-strip">
-      <table className="cp-table">
+      <table className="cp-table cp-table--items">
         <thead>
           <tr>
             {columns.map((c) => (
@@ -1563,16 +1650,17 @@ function RowTable<T extends CpredItemRow>({
                   </td>
                 );
               })}
-              <td>
-                <button
-                  type="button"
-                  className="cp-mini-button cp-mini-button--danger"
-                  onClick={() => onChange(rows.filter((r) => r.id !== row.id))}
-                  title="Usuń wiersz"
-                  aria-label="Usuń wiersz"
-                >
-                  ✕
-                </button>
+              <td className="cp-remove-cell">
+                <RemoveItemButton
+                  label={`Usuń: ${row.name}`}
+                  onClick={() =>
+                    askRemoval(
+                      row.name,
+                      () => onChange(rowsNow.current.filter((r) => r.id !== row.id)),
+                      'qty' in row && typeof row.qty === 'number' ? row.qty : undefined,
+                    )
+                  }
+                />
               </td>
             </tr>
           ))}
@@ -1834,6 +1922,7 @@ function WeaponStrip({
   const tokens = useTokenStore((s) => s.tokens);
   const isGm = useAuthStore((s) => s.user?.role === ROLE_GM);
   const rowIcon = useRowIcon();
+  const askRemoval = useAskRemoval();
   /**
    * Etap 46c: ekwipunek, z którego ta karta przeładowuje granaty i rakiety.
    * Gracz ręką tylko odejmuje (decyzja MG z 09.10), więc jego licznik
@@ -2287,22 +2376,23 @@ function WeaponStrip({
                     </button>
                   </div>
                 </td>
-                <td>
+                <td className="cp-remove-cell">
                   {!innate && (
-                    <button
-                      type="button"
-                      className="small-button character-delete"
+                    <RemoveItemButton
+                      label={`Usuń: ${row.name}`}
                       onClick={() =>
-                        saveData(
-                          { weapons: data.weapons.filter((r) => r.id !== row.id) },
-                          'weapons',
+                        askRemoval(row.name, () =>
+                          saveData(
+                            {
+                              weapons: latestData(character.id, data).weapons.filter(
+                                (r) => r.id !== row.id,
+                              ),
+                            },
+                            'weapons',
+                          ),
                         )
                       }
-                      title="Usuń wiersz"
-                      aria-label="Usuń wiersz"
-                    >
-                      ✕
-                    </button>
+                    />
                   )}
                 </td>
               </tr>,
@@ -2551,6 +2641,7 @@ function ArmorStrip({ character, data, saveData }: TabProps & { character: Chara
   const isGm = useAuthStore((s) => s.user?.role === ROLE_GM);
   const registry = useCharacterStore((s) => s.registry);
   const rowIcon = useRowIcon();
+  const askRemoval = useAskRemoval();
   const tokens = useTokenStore((s) => s.tokens);
   // Poziom Specjalizacji Naprawa decyduje, czy „Prowizorka" ma się w ogóle
   // pokazać; figura na scenie — kto płaci za nią Akcję, gdy trwa walka.
@@ -2653,54 +2744,52 @@ function ArmorStrip({ character, data, saveData }: TabProps & { character: Chara
                     {row.fieldRepair ? (
                       <button
                         type="button"
-                        className="cp-mini-button"
+                        className="small-button"
                         title={`Prowizorka na ${row.fieldRepair.minutes} min — kliknij, gdy puści (OB wraca do ${row.fieldRepair.restoredFrom})`}
-                        aria-label="Zakończ prowizorkę"
                         onClick={() => void endFieldRepair(character.id, row.id)}
                       >
-                        ⌫
+                        Koniec prowizorki
                       </button>
                     ) : repair > 0 && row.spCurrent < row.sp ? (
                       <button
                         type="button"
-                        className="cp-mini-button"
+                        className="small-button"
                         title={`Prowizorka: pełne OB na ${cpredFieldRepairMinutes(repair)} min. Kosztuje Akcję, gdy trwa walka.`}
-                        aria-label="Prowizorka — tymczasowa naprawa"
                         onClick={() => void makeFieldRepair(character.id, row.id, ownToken?.id)}
                       >
-                        ⚒
+                        Prowizorka
                       </button>
                     ) : null}
                     {/* Etap 48c: OB zmienia MG — także po Ulepszaniu Technika. */}
                     {!row.upgrade && isGm && (
                       <button
                         type="button"
-                        className="cp-mini-button"
+                        className="small-button"
                         title="Ulepszanie: +1 OB (s. 148). Jeden przedmiot można ulepszyć tylko raz."
                         aria-label="Ulepsz: +1 OB"
                         onClick={() => upgradeSp(row)}
                       >
-                        ⊕
+                        +1 OB
                       </button>
                     )}
                     <button
                       type="button"
-                      className="cp-mini-button"
-                      title="Zdejmij — sztuka schodzi na dół i przestaje chronić"
-                      aria-label="Zdejmij — sztuka schodzi na dół i przestaje chronić"
+                      className="small-button"
+                      title="Sztuka schodzi do „Reszty pancerza” i przestaje chronić"
                       onClick={() => update(row.id, { equipped: false })}
                     >
-                      ⤓
+                      Zdejmij
                     </button>
-                    <button
-                      type="button"
-                      className="cp-mini-button cp-mini-button--danger"
-                      title="Usuń pancerz"
-                      aria-label="Usuń pancerz"
-                      onClick={() => write(data.armor.filter((r) => r.id !== row.id))}
-                    >
-                      ✕
-                    </button>
+                    <RemoveItemButton
+                      label={`Usuń: ${row.name}`}
+                      onClick={() =>
+                        askRemoval(row.name, () =>
+                          write(
+                            latestData(character.id, data).armor.filter((r) => r.id !== row.id),
+                          ),
+                        )
+                      }
+                    />
                   </td>
                 </>
               ) : (
@@ -2780,27 +2869,27 @@ function ArmorStrip({ character, data, saveData }: TabProps & { character: Chara
                     {row.equipped === false ? (
                       <button
                         type="button"
-                        className="cp-mini-button"
-                        title="Załóż"
-                        aria-label="Załóż"
+                        className="small-button"
+                        title="Sztuka wraca na swoją lokację i chroni"
                         onClick={() => update(row.id, { equipped: true })}
                       >
-                        ⤒
+                        Załóż
                       </button>
                     ) : (
                       <span className="armor-weaker" title="Noszona, ale słabsza od wpisanej wyżej">
                         słabsza
                       </span>
                     )}
-                    <button
-                      type="button"
-                      className="cp-mini-button cp-mini-button--danger"
-                      title="Usuń pancerz"
-                      aria-label="Usuń pancerz"
-                      onClick={() => write(data.armor.filter((r) => r.id !== row.id))}
-                    >
-                      ✕
-                    </button>
+                    <RemoveItemButton
+                      label={`Usuń: ${row.name}`}
+                      onClick={() =>
+                        askRemoval(row.name, () =>
+                          write(
+                            latestData(character.id, data).armor.filter((r) => r.id !== row.id),
+                          ),
+                        )
+                      }
+                    />
                   </td>
                 </tr>
               ))}

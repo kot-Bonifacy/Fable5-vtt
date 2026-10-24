@@ -138,6 +138,7 @@ import { useWindowPlacement } from '../window-placement.js';
 import { WindowResizeGrip } from './WindowResizeGrip.js';
 import { RoleChoresList } from './RoleChores.js';
 import { CreationRulesDialog } from './CreationGate.js';
+import { ConfirmDialog, FOCUSABLE } from './ConfirmDialog.js';
 import { ItemIcon, WeaponTypeFilter, filterWeaponsByType, useEntryIcon } from './ItemIcons.js';
 
 /** Same wording as the sheet's own portrait upload (stage 07). */
@@ -551,104 +552,39 @@ interface CreatorQuestion {
 /**
  * The creator's own confirmation, drawn over its body instead of a browser
  * `window.confirm` (naprawa 2b, the GM's decision): it lists what the change
- * throws away, starts on „Anuluj", keeps Tab inside itself, closes on Esc and
- * gives the keyboard back to the control that opened it.
+ * throws away. Focus, Tab and Esc live in `ConfirmDialog`.
  */
 function CreatorDialog({ question, onClose }: { question: CreatorQuestion; onClose: () => void }) {
-  const titleId = useId();
-  const bodyId = useId();
-  const box = useRef<HTMLDivElement>(null);
-  const cancel = useRef<HTMLButtonElement>(null);
-
-  useEffect(() => {
-    const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-    cancel.current?.focus();
-    return () => {
-      if (opener?.isConnected) opener.focus({ preventScroll: true });
-    };
-  }, []);
-
-  function onKeyDown(event: KeyboardEvent<HTMLDivElement>) {
-    if (event.key === 'Escape') {
-      // Stops here: Esc also puts a loaded dice cup down, which is not what
-      // closing this question means.
-      event.preventDefault();
-      event.stopPropagation();
-      onClose();
-      return;
-    }
-    if (event.key !== 'Tab' || !box.current) return;
-    const focusable = [...box.current.querySelectorAll<HTMLElement>(FOCUSABLE)];
-    const first = focusable[0];
-    const last = focusable[focusable.length - 1];
-    if (!first || !last) return;
-    if (event.shiftKey && document.activeElement === first) {
-      event.preventDefault();
-      last.focus();
-    } else if (!event.shiftKey && document.activeElement === last) {
-      event.preventDefault();
-      first.focus();
-    }
-  }
-
   return (
-    <div
-      className="creator-dialog-scrim"
-      onMouseDown={(event) => {
-        if (event.target === event.currentTarget) onClose();
-      }}
+    <ConfirmDialog
+      title={question.title}
+      confirmLabel={question.confirmLabel}
+      onConfirm={question.onConfirm}
+      onClose={onClose}
     >
-      <div
-        ref={box}
-        className="creator-dialog"
-        role="alertdialog"
-        aria-modal="true"
-        aria-labelledby={titleId}
-        aria-describedby={bodyId}
-        onKeyDown={onKeyDown}
-      >
-        <h3 id={titleId}>{question.title}</h3>
-        <div id={bodyId} className="creator-dialog-body">
-          {question.lost.length > 0 && (
-            <>
-              <p className="creator-dialog-lead">Przepadnie:</p>
-              <ul className="creator-dialog-list creator-dialog-list--lost">
-                {question.lost.map((line) => (
-                  <li key={line}>{line}</li>
-                ))}
-              </ul>
-            </>
-          )}
-          {question.notes && question.notes.length > 0 && (
-            <>
-              <p className="creator-dialog-lead">Poza tym:</p>
-              <ul className="creator-dialog-list">
-                {question.notes.map((line) => (
-                  <li key={line}>{line}</li>
-                ))}
-              </ul>
-            </>
-          )}
-          {question.note && <p className="creator-hint">{question.note}</p>}
-          <p className="creator-dialog-lead">Tego nie da się cofnąć.</p>
-        </div>
-        <div className="creator-dialog-actions">
-          <button ref={cancel} type="button" className="small-button" onClick={onClose}>
-            Anuluj
-          </button>
-          <button
-            type="button"
-            className="small-button small-button--danger"
-            onClick={() => {
-              onClose();
-              question.onConfirm();
-            }}
-          >
-            {question.confirmLabel}
-          </button>
-        </div>
-      </div>
-    </div>
+      {question.lost.length > 0 && (
+        <>
+          <p className="creator-dialog-lead">Przepadnie:</p>
+          <ul className="creator-dialog-list creator-dialog-list--lost">
+            {question.lost.map((line) => (
+              <li key={line}>{line}</li>
+            ))}
+          </ul>
+        </>
+      )}
+      {question.notes && question.notes.length > 0 && (
+        <>
+          <p className="creator-dialog-lead">Poza tym:</p>
+          <ul className="creator-dialog-list">
+            {question.notes.map((line) => (
+              <li key={line}>{line}</li>
+            ))}
+          </ul>
+        </>
+      )}
+      {question.note && <p className="creator-hint">{question.note}</p>}
+      <p className="creator-dialog-lead">Tego nie da się cofnąć.</p>
+    </ConfirmDialog>
   );
 }
 
@@ -688,9 +624,6 @@ function countIssuesByStep(issues: CpredValidationIssue[]): Map<CpredCreationSte
   }
   return counts;
 }
-
-const FOCUSABLE =
-  'input:not([disabled]), select:not([disabled]), button:not([disabled]), textarea:not([disabled])';
 
 /**
  * Finds the element a validation field names (`data-creation-field`) — or the

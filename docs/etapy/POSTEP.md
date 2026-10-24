@@ -423,7 +423,7 @@ a nie do tego pliku.
 | `tura`      | budżet Akcji i metrów, kolejka, trasa, ruch przez ściany, skok, walka z zauważenia, pytanie MG o przekroczenie, Percepcja w drodze, ukryte figury | 30   | 7       |
 | `atak`      | broń i dodatki, amunicja, obrażenia, pancerz, rany krytyczne   | 48   | 8       |
 | `statysta`  | figura z kartą, `statBlock`, Wartość bojowa, `token:stat`, wzorce | 17   | 3       |
-| `karta`     | strony i zakładki, panele, `sheet.css`, walidacja list         | 10   | 12      |
+| `karta`     | strony i zakładki, panele, `sheet.css`, walidacja list, usuwanie przedmiotu | 11   | 12      |
 | `postac`    | kreator, PD i awanse, koszyk i cofanie awansów, Role i Zdolności, cyborgizacje, ekonomia | 54   | 3       |
 | `ekwipunek` | wiersze wyposażenia, przekazanie, łup, handel, sklepy, zasięg, amunicja bez dna | 34   | 3       |
 | `czas`      | zegar świata, kalendarz, `statEffects`, leczenie po dobie      | 18   | 2       |
@@ -438,6 +438,27 @@ a nie do tego pliku.
 ## Notatki z dwóch ostatnich sesji
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
+
+### Sesja 24.10, czwarta (po `bb6eb39`) — zlecenie MG: pytanie przy usuwaniu przedmiotu
+
+**Zlecenie:** „przy usunięciu przedmiotu z ekwipunku niech pojawia się pytanie o potwierdzenie
+(…) i niech te przyciski będą większe (ikony i pola też)”, potem: „ikony zdejmij i ulepszenie też
+można by jakoś lepiej zaplanować” i „ikona kosza w dziennym widoku powinna mieć tło tegoż widoku”.
+
+**Klient.** `ConfirmDialog` wydzielony z `CreatorDialog` (kreator rysuje przez niego swoją listę
+„Przepadnie”; style `.confirm-dialog*` przeniesione do `14-windows.css`). W „Ekwipunku” każdy
+kosz (broń, pancerz, reszta pancerza, wyposażenie) pyta „Usunąć „X” z karty?” z liczbą sztuk
+i podpowiedzią „Wymiana…” / przeciągnij na mapę. Kosz `.cp-remove` 2,1 rem z sylwetką
+`hud/trash-can.svg` (game-icons, Delapouite, wpis w `ATTRIBUTION.md`), przezroczysty. Pancerz:
+plakietki z napisem zamiast ⤓ ⤒ ⊕ ⚒ ⌫. W zakładce pola 16 px, miniatury 32 px, uchwyt ⠿ większy,
+wiersze wyposażenia wyższe. Umowa na górze `karta`.
+
+**Sprawdzone:** `tsc`, ESLint i Prettier czyste w kodzie; vitest klienta 421/421. **Oglądano
+w Firefoksie** (Playwright MCP, `dev.db`, kampania Test_1): obie skóry, pytanie z fokusem na
+„Anuluj”, `Esc` zamyka bez usuwania, pytanie kreatora („Wyrzuć szkic” → Anuluj) wygląda jak
+przedtem; pełne usunięcie sprawdzone na NPC „Korpogliniarz 1” na wierszu testowym dodanym na tę
+chwilę (stan „saved”, wyposażenie NPC znów puste). E2E nie puszczano — żadna spec nie klika
+starych ✕.
 
 ### Sesja 24.10, trzecia (po `37164f3`) — zaległości: kopie, odtworzenie, przebiegi E2E
 
@@ -461,32 +482,3 @@ UI nie zmieniano, więc oględzin nie było (przebiegi E2E szły w Chromium i Fi
 **Uwaga dla MG:** zatrzymanie marszu przez ukrytą Percepcję pokazuje graczowi czerwony pasek
 „Odmowa — Postać przystanęła po drodze — kliknij cel jeszcze raz.” (`MOVE_HALTED`), obok karty
 rzutu — do oceny, czy tak ma wyglądać.
-
-### Sesja 24.10, druga (po `a350c32`) — zlecenie MG: Percepcja w drodze w ukryciu
-
-**Zlecenie:** „testy na percepcję z ukrytymi rzeczami mają się odbywać w ukrytej formie bez wiedzy
-gracza i bez zatrzymywania postaci, chyba że test będzie zdany i postać wykryje przedmiot — wtedy
-zatrzymuje postać, żeby nie weszła w ten przedmiot, i pokazuje test”.
-
-**Serwer.** Klatka marszu w zasięgu ukrytej rzeczy (`hiddenNoticeDue`) sprawdza pole zatrzymania
-na sucho, potem rzuca: `rollHiddenNotice` (`hidden-notice.ts`) → `spotHiddenZones` (`zones.ts`)
-i `spotHiddenFigures` (`hidden-figures.ts`). Rzut robi `rollSecretPerception`
-(`character-rolls.ts`) — ten sam plan co rzut z karty, bez Szczęścia. Porażka: postać na `tried`,
-wiersz MG, marsz idzie dalej. Sukces: klatka staje się lądowaniem, a po nim `token:halt`, karta
-`gmroll` do MG i właściciela, odsłonięcie, `hidden:spotted`. Lądowanie bez trasy (MG, skok) rzuca
-w hakach z całej drogi i pokazuje sukcesy tak samo. Usunięte: wezwania `hiddenZone` /
-`hiddenFigure` w `createCheckCall`, rozliczenia `settleSpotTest` / `settleSpotFigureTest`,
-`refuseWhileNoticePending` / `NOTICE_ROLL_PENDING` (też w skoku), u klienta pasek „rzuć kubkiem”
-i zdanie odmowy. Pola w `CpredRollRequest` zostały dla starych kart w historii (redakcja dalej je
-zdejmuje).
-
-**Sprawdzone:** `tsc` i ESLint (shared, server, client, e2e bez `99-ogledziny`), vitest shared
-2610/2610, klienta 421/421, serwera 1623/1623 (`zones.test.ts` i `hidden-figures.test.ts`
-przepisane: porażka bez zatrzymania i bez śladu u gracza, sukces z kolejnością halt → karta →
-„zauważa”, jeden rzut na postać). E2E T5b krok 5.7 przepisany (Kowal przechodzi na podłogę jednym
-marszem, wezwania i karty rzutu brak) — od `po-T5a` 24/25, padł tylko `5.10 @llm` bez żywego
-gatewaya. **Oglądano** tymczasowym specem `99-ogledziny/t99-ukryta-percepcja` (nie commitowany)
-na instancji E2E: Ola w **Firefoksie** — przy pierwszej podłodze przeszła bez słowa, przy drugiej
-stanęła 2 m przed nią, kości 3D, karta „Percepcja (INT) 31 · Zdane > PT 17” i pasek „Iskra
-zauważa: Podłoga elektryczna”; MG w Chromium — oba wiersze „Percepcja — ukryta rzecz w pobliżu”
-(„wynik 2 … nie zauważa”, „wynik 31 … zauważa”) i karta rzutu.

@@ -182,7 +182,7 @@
   flex: 1 0 auto;
 }
 
-.sheet-window--paper :is(.creator-footer, .creator-dialog) {
+.sheet-window--paper :is(.creator-footer, .confirm-dialog) {
   position: relative;
 }
 
@@ -191,7 +191,7 @@
 }
 
 .sheet-window--paper
-  :is(.sheet-body > *, .creator-sticky, .creator-footer, .creator-dialog)::after {
+  :is(.sheet-body > *, .creator-sticky, .creator-footer, .confirm-dialog)::after {
   content: '';
   position: absolute;
   inset: 0;
@@ -1444,6 +1444,99 @@
   color: var(--cp-red);
 }
 
+/* Kosz przy przedmiocie (24.10.2026, zlecenie MG). Do tej pory był to znak
+   ✕ w kroju wiersza, który gracze trafiali przypadkiem, a celowo z trudem.
+   Teraz to pole 2 rem z czerwoną sylwetką kosza na tle komórki — papier
+   w dzień, ciemne pole w nocy; czarnego kwadratu MG nie chciał (24.10).
+   Pod kursorem pole wypełnia się czerwienią ze ściętymi rogami arkusza,
+   a każde usunięcie najpierw pyta (`ConfirmDialog`). Obrys fokusu ścięłaby
+   `clip-path`, więc klawiatura dostaje ten sam kolor co kursor. */
+.sheet-window .cp-remove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  vertical-align: middle;
+  width: 2.1rem;
+  height: 2.1rem;
+  padding: 0;
+  background: transparent;
+  color: var(--cp-red);
+  border: none;
+  border-radius: 0;
+  cursor: pointer;
+  clip-path: polygon(
+    0.45rem 0,
+    100% 0,
+    100% calc(100% - 0.45rem),
+    calc(100% - 0.45rem) 100%,
+    0 100%,
+    0 0.45rem
+  );
+}
+
+.sheet-window .cp-remove .hud-icon {
+  width: 1.35rem;
+  height: 1.35rem;
+}
+
+.sheet-window .cp-remove:is(:hover, :focus-visible) {
+  background: var(--cp-red);
+  color: var(--cp-on-red);
+  outline: none;
+}
+
+/* Kolumna kosza ma szerokość guzika, nie dzieli reszty tabeli z „Uwagami”. */
+.cp-table td.cp-remove-cell {
+  width: 1%;
+  padding: 0.2rem;
+  text-align: center;
+}
+
+/* Zakładka „Ekwipunek” (24.10.2026, zlecenie MG): pola, sylwetki i uchwyty
+   były „bardzo małe” — pismo 14 px i ikona 26 px w wierszu 35 px. Rośnie tylko
+   ta zakładka; tabele na stronie pierwszej zostają gęste. */
+.sheet-gear .cp-table input,
+.sheet-gear .cp-table select {
+  font-size: 1rem;
+}
+
+.sheet-gear .cp-table .item-icon {
+  width: 2rem;
+  height: 2rem;
+}
+
+.sheet-gear .cp-table .map-drop-handle {
+  font-size: 1.5rem;
+}
+
+.sheet-gear .cp-table .item-name-cell {
+  gap: 0.4rem;
+}
+
+/* Czynności przy pancerzu to od 24.10.2026 plakietki z napisem jak „Atak”
+   i „Dobądź” przy broni, nie znaki ⤓ ⤒ ⊕ ⚒ ⌫, których trzeba było się
+   domyślać. Wysokość kosza obok, żeby rząd stał równo. */
+.armor-actions .small-button {
+  min-height: 2.1rem;
+  vertical-align: middle;
+}
+
+/* Wyposażenie nie ma guzików, które robiłyby wierszowi wysokość — robi ją
+   pole z oddechem nad i pod pismem. */
+.cp-table--items td {
+  padding: 0.2rem 0.4rem;
+}
+
+.cp-table--items input {
+  min-height: 2.1rem;
+  padding: 0.25rem 0.2rem;
+}
+
+.cp-table--items input[type='number'] {
+  width: 3rem;
+  font-size: 1.05rem;
+}
+
 /* --- pas broni --- */
 
 .weapon-table .weapon-actions-row {
@@ -1812,7 +1905,7 @@
 }
 
 .armor-actions > * + * {
-  margin-left: 0.2rem;
+  margin-left: var(--cp-gutter);
 }
 
 .armor-weaker {

@@ -1111,3 +1111,56 @@
   font-family: inherit;
   font-size: 0.74rem;
 }
+
+/* ===== Okno potwierdzenia — kreator (naprawa 2b) i karta postaci (24.10) ===== */
+
+.confirm-dialog-scrim {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  background: var(--scrim);
+}
+
+.confirm-dialog {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  width: min(40rem, 100%);
+  max-height: 100%;
+  overflow: auto;
+  padding: 1rem 1.1rem;
+  background: var(--bg-float);
+  border: 1px solid var(--border-strong);
+  border-left: 4px solid var(--warn);
+  border-radius: 8px;
+  box-shadow: var(--shadow-lg);
+}
+
+.confirm-dialog h3 {
+  margin: 0;
+  font-size: 1.125rem;
+}
+
+.confirm-dialog-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.confirm-dialog-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
+/* Zdanie treści bez listy — karta postaci pyta krótko (24.10). */
+.confirm-dialog-line {
+  margin: 0;
+  font-size: 0.9375rem;
+  line-height: 1.5;
+}

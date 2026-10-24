@@ -1,5 +1,34 @@
 # Dziennik sesji — archiwum
 
+### Sesja 24.10, druga (po `a350c32`) — zlecenie MG: Percepcja w drodze w ukryciu
+
+**Zlecenie:** „testy na percepcję z ukrytymi rzeczami mają się odbywać w ukrytej formie bez wiedzy
+gracza i bez zatrzymywania postaci, chyba że test będzie zdany i postać wykryje przedmiot — wtedy
+zatrzymuje postać, żeby nie weszła w ten przedmiot, i pokazuje test”.
+
+**Serwer.** Klatka marszu w zasięgu ukrytej rzeczy (`hiddenNoticeDue`) sprawdza pole zatrzymania
+na sucho, potem rzuca: `rollHiddenNotice` (`hidden-notice.ts`) → `spotHiddenZones` (`zones.ts`)
+i `spotHiddenFigures` (`hidden-figures.ts`). Rzut robi `rollSecretPerception`
+(`character-rolls.ts`) — ten sam plan co rzut z karty, bez Szczęścia. Porażka: postać na `tried`,
+wiersz MG, marsz idzie dalej. Sukces: klatka staje się lądowaniem, a po nim `token:halt`, karta
+`gmroll` do MG i właściciela, odsłonięcie, `hidden:spotted`. Lądowanie bez trasy (MG, skok) rzuca
+w hakach z całej drogi i pokazuje sukcesy tak samo. Usunięte: wezwania `hiddenZone` /
+`hiddenFigure` w `createCheckCall`, rozliczenia `settleSpotTest` / `settleSpotFigureTest`,
+`refuseWhileNoticePending` / `NOTICE_ROLL_PENDING` (też w skoku), u klienta pasek „rzuć kubkiem”
+i zdanie odmowy. Pola w `CpredRollRequest` zostały dla starych kart w historii (redakcja dalej je
+zdejmuje).
+
+**Sprawdzone:** `tsc` i ESLint (shared, server, client, e2e bez `99-ogledziny`), vitest shared
+2610/2610, klienta 421/421, serwera 1623/1623 (`zones.test.ts` i `hidden-figures.test.ts`
+przepisane: porażka bez zatrzymania i bez śladu u gracza, sukces z kolejnością halt → karta →
+„zauważa”, jeden rzut na postać). E2E T5b krok 5.7 przepisany (Kowal przechodzi na podłogę jednym
+marszem, wezwania i karty rzutu brak) — od `po-T5a` 24/25, padł tylko `5.10 @llm` bez żywego
+gatewaya. **Oglądano** tymczasowym specem `99-ogledziny/t99-ukryta-percepcja` (nie commitowany)
+na instancji E2E: Ola w **Firefoksie** — przy pierwszej podłodze przeszła bez słowa, przy drugiej
+stanęła 2 m przed nią, kości 3D, karta „Percepcja (INT) 31 · Zdane > PT 17” i pasek „Iskra
+zauważa: Podłoga elektryczna”; MG w Chromium — oba wiersze „Percepcja — ukryta rzecz w pobliżu”
+(„wynik 2 … nie zauważa”, „wynik 31 … zauważa”) i karta rzutu.
+
 ### Sesja 24.10 (po `4842f2b`) — zlecenie MG: koszyk awansów i cofanie wpisów rejestru
 
 **„Podnieś” nie wydaje od razu.** Panel Awansu (`AdvancementPanel.tsx`) zbiera kliknięcia w koszyk
