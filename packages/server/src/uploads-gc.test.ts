@@ -172,4 +172,29 @@ describe('sweepOrphanUploads', () => {
     await sweepOrphanUploads(built.prisma, UPLOADS);
     expect(present('prywatne')).toEqual(['nie-ruszaj.txt']);
   });
+
+  /**
+   * Zaległość z 18.10.2026: po nieudanym odtworzeniu kopii serwer wstał na
+   * pustej bazie i zbieracz skasował 189 ze 190 plików kampanii. Katalog
+   * kampanii, której baza nie zna, to baza nie ta — nie sieroty.
+   */
+  it('sweeps a known campaign directory, but leaves one the database does not know', async () => {
+    putFile(`campaigns/${campaignId}/maps`, 'sierota.png');
+    putFile('campaigns/nieznana-kampania/maps', 'cudza.png');
+    const result = await sweepOrphanUploads(built.prisma, UPLOADS);
+    expect(result.removed).toContain(`/uploads/campaigns/${campaignId}/maps/sierota.png`);
+    expect(present(`campaigns/${campaignId}/maps`)).toEqual([]);
+    expect(present('campaigns/nieznana-kampania/maps')).toEqual(['cudza.png']);
+  });
+
+  // Ostatni w pliku — kasuje kampanię, na której stoją testy wyżej.
+  it('touches nothing at all while the database has no campaign', async () => {
+    putFile('maps', 'po-awarii.png');
+    putFile(`campaigns/${campaignId}/tokens`, 'po-awarii.png');
+    await built.prisma.campaign.deleteMany({});
+    const result = await sweepOrphanUploads(built.prisma, UPLOADS);
+    expect(result.removed).toEqual([]);
+    expect(present('maps')).toContain('po-awarii.png');
+    expect(present(`campaigns/${campaignId}/tokens`)).toEqual(['po-awarii.png']);
+  });
 });

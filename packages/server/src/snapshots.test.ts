@@ -239,6 +239,25 @@ describe('restoreSnapshot', () => {
     );
   });
 
+  it('przerwane kopiowanie bazy zostawia starą bazę nietkniętą', async () => {
+    const snapshot = await takeSnapshot(paths, 'gm');
+    writeRow('po');
+    // Katalog w miejscu pliku roboczego — `copyFile` na nim pada, jak pada
+    // kopiowanie na zerwanym montowaniu.
+    const incoming = `${paths.databaseFile}.restoring`;
+    mkdirSync(join(incoming, 'zajete'), { recursive: true });
+    try {
+      await expect(restoreSnapshot(paths, snapshot.name)).rejects.toThrow();
+      expect(readRow(paths.databaseFile)).toBe('po');
+    } finally {
+      rmSync(incoming, { recursive: true, force: true });
+    }
+    // Po usunięciu przeszkody przywrócenie przechodzi i nie zostawia śmieci.
+    await restoreSnapshot(paths, snapshot.name);
+    expect(readRow(paths.databaseFile)).toBe('przed');
+    expect(existsSync(incoming)).toBe(false);
+  });
+
   it('odmawia kopii, której nie ma', async () => {
     await expect(restoreSnapshot(paths, 'snapshot-2020-01-01-0000')).rejects.toThrow(
       /Nie ma kopii/,

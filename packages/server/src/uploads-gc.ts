@@ -30,13 +30,23 @@ import { uploadDirectories } from './campaign-uploads.js';
 
 /**
  * Katalogi, które zbieracz w ogóle ogląda — płaskie sprzed 44b i katalogi
- * każdej kampanii na dysku (`uploadDirectories`). Nic poza nimi nie jest
- * ruszane, więc `uploads/art/` jest bezpieczne.
+ * kampanii z dysku (`uploadDirectories`). Nic poza nimi nie jest ruszane,
+ * więc `uploads/art/` jest bezpieczne.
+ *
+ * **Tylko kampanie, które baza zna (zaległość z 18.10.2026).** Usunięcie
+ * kampanii kasuje jej katalog razem z wierszem, więc katalog bez wiersza to
+ * baza nie ta albo pusta — po nieudanym odtworzeniu kopii serwer wstał na
+ * świeżej bazie i zbieracz skasował 189 ze 190 plików. Taki katalog, a przy
+ * bazie bez żadnej kampanii także płaskie katalogi, zostaje nietknięty.
  */
-async function sweptDirectories(uploadsDir: string) {
+async function sweptDirectories(prisma: PrismaClient, uploadsDir: string) {
+  const known = new Set(
+    (await prisma.campaign.findMany({ select: { id: true } })).map((row) => row.id),
+  );
+  if (known.size === 0) return [];
   return uploadDirectories(uploadsDir, async () => {
     try {
-      return await readdir(join(uploadsDir, 'campaigns'));
+      return (await readdir(join(uploadsDir, 'campaigns'))).filter((id) => known.has(id));
     } catch {
       return [];
     }
@@ -124,7 +134,7 @@ export async function sweepOrphanUploads(
   const referenced = await referencedUploadUrls(prisma);
   const result: UploadSweepResult = { removed: [], spared: 0, freedBytes: 0 };
 
-  for (const { path, urlPrefix } of await sweptDirectories(uploadsDir)) {
+  for (const { path, urlPrefix } of await sweptDirectories(prisma, uploadsDir)) {
     let names: string[];
     try {
       names = await readdir(path);

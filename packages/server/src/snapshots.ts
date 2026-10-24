@@ -6,6 +6,7 @@ import {
   mkdir,
   readdir,
   readFile,
+  rename,
   rm,
   stat,
   writeFile,
@@ -353,7 +354,8 @@ export interface RestoreResult {
  *  - **najpierw kopia bezpieczeństwa** stanu bieżącego, pod nazwą, której
  *    rotacja nie rozpoznaje, więc nigdy jej nie skasuje;
  *  - **`-wal` i `-shm` idą do kosza** razem z bazą; zostawiony `-wal` dolałby do
- *    przywróconego pliku transakcje z przyszłości;
+ *    przywróconego pliku transakcje z przyszłości — ale dopiero, gdy kopia bazy
+ *    leży już cała obok i czeka tylko na `rename`;
  *  - **pliki `uploads/` tylko się dokłada, nigdy nie kasuje.** Grafika wgrana po
  *    snapshocie zostaje na dysku jako sierota — i tak zbierze ją `uploads-gc`
  *    godzinę po tym, jak przestanie być przez cokolwiek wymieniana.
@@ -383,9 +385,21 @@ export async function restoreSnapshot(
   vacuumInto(paths.databaseFile, join(safetyDir, SNAPSHOT_DB_FILE));
   await linkTree(paths.uploadsDir, join(safetyDir, SNAPSHOT_UPLOADS_DIR));
 
+  // Kopia ląduje obok bazy i dopiero cała podmienia ją jednym `rename` w tym
+  // samym katalogu (zaległość z 18.10.2026: odtworzenie w Docker Desktop padło
+  // po kopii bezpieczeństwa, a serwer wstał na pustej bazie). Przerwane
+  // kopiowanie zostawia starą bazę z jej `-wal` nietkniętą, nie uciętą nową.
+  const incoming = `${paths.databaseFile}.restoring`;
+  try {
+    await copyFile(sourceDb, incoming);
+  } catch (error) {
+    // Sprzątanie nie może przykryć prawdziwego błędu kopiowania.
+    await rm(incoming, { force: true }).catch(() => undefined);
+    throw error;
+  }
   await rm(`${paths.databaseFile}-wal`, { force: true });
   await rm(`${paths.databaseFile}-shm`, { force: true });
-  await copyFile(sourceDb, paths.databaseFile);
+  await rename(incoming, paths.databaseFile);
 
   let filesRestored = 0;
   const sourceUploads = join(source, SNAPSHOT_UPLOADS_DIR);
