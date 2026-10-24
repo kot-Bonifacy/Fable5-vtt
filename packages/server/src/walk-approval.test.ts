@@ -29,8 +29,9 @@ import { joinUrl } from './test-join.js';
  * Do 52 klatka pośrednia gracza była pozycją z ręki: przeciągnięcie figury
  * przez mur odsłaniało pokój za nim, choć lądowanie wracało odmową. Tu szew:
  * klatka bez `token:walk` nie istnieje, klatka „za ścianą” ląduje na trasie,
- * trasa przez wroga, ścianę albo ponad pulę odpada przed pierwszym krokiem,
- * a zatwierdzenie niczego nie pobiera — płaci lądowanie, za przebyty kawałek.
+ * trasa przez wroga albo ścianę odpada przed pierwszym krokiem, a zatwierdzenie
+ * niczego nie pobiera — w walce płaci lądowanie, za przebyty kawałek. Puli
+ * Eksploracji marsz klikiem nie pyta wcale (zlecenie MG z 24.10).
  */
 
 const TEST_DB = `./.test-${randomBytes(6).toString('hex')}.db`;
@@ -304,14 +305,21 @@ describe('trasa marszu gracza (etap 52)', () => {
     });
   });
 
-  it('trasa ponad pulę odpada, a zatwierdzenie niczego z puli nie bierze', async () => {
+  it('marsz klikiem puli nie pyta i z niej nie płaci — idzie do celu jednym ciągiem (24.10)', async () => {
     refill();
-    expect(await walk([{ x: 1150, y: 100 }])).toEqual({ ok: false, error: 'MOVE_PACE' });
-    expect((await walk([{ x: 1000, y: 100 }])).ok).toBe(true);
-    expect(paceOwedNow(vexTokenId, CAP_M)).toBe(0);
+    // MG przestawia Vexa — trasa z poprzedniego testu przestaje obowiązywać.
+    expect((await step(gm, 100, 200, true)).ok).toBe(true);
+    // Lądowanie bez trasy dalej płaci z puli: 18 m z 20 m.
+    expect(await step(vex, 1000, 200, true)).toEqual({ ok: true, data: { x: 1000, y: 200 } });
+    expect(paceOwedNow(vexTokenId, CAP_M)).toBeCloseTo(18, 5);
+    // 22 m marszu przy 2 m w puli (i ponad całą pulę): zgoda, lądowanie, dług bez zmian.
+    expect((await walk([{ x: 1000, y: 1300 }])).ok).toBe(true);
+    expect(await step(vex, 1000, 1300, true)).toEqual({ ok: true, data: { x: 1000, y: 1300 } });
+    expect(paceOwedNow(vexTokenId, CAP_M)).toBeCloseTo(18, 5);
+    await home();
   });
 
-  it('klatka zza muru ląduje na trasie, a lądowanie płaci za przebyty kawałek', async () => {
+  it('klatka zza muru ląduje na trasie, a lądowanie zamyka trasę', async () => {
     refill();
     expect((await walk([{ x: 1000, y: 100 }])).ok).toBe(true);
     const gmSaw = waitFor<TokenMoveBroadcast>(gm, 'token:move');
@@ -319,15 +327,21 @@ describe('trasa marszu gracza (etap 52)', () => {
     expect(await gmSaw).toMatchObject({ x: 1000, y: 100, final: false });
     expect(await step(vex, 420, 900, false)).toEqual({ ok: true, data: { x: 420, y: 100 } });
     expect(await step(vex, 400, 100, true)).toEqual({ ok: true, data: { x: 400, y: 100 } });
-    // 300 px = 6 m z puli 20 m.
-    expect(paceOwedNow(vexTokenId, CAP_M)).toBeCloseTo(6, 5);
     // Po lądowaniu trasy już nie ma.
     expect(await step(vex, 500, 100, false)).toEqual({ ok: false, error: 'MOVE_NOT_PLANNED' });
     await home();
   });
 
-  it('lądowanie płaci do najdalszego punktu, do którego doszły klatki', async () => {
-    refill();
+  it('w walce lądowanie płaci do najdalszego punktu, do którego doszły klatki', async () => {
+    const combat = data(
+      await emitAck<CombatView>(gm, 'combat:start', { sceneId, tokenIds: [vexTokenId] }),
+      'combat:start',
+    );
+    const row = combat.combatants.find((entry: CombatantView) => entry.tokenId === vexTokenId);
+    if (!row) throw new Error('Vex missing from the tracker');
+    await emitAck(gm, 'combat:set-initiative', { combatantId: row.id, initiative: 20 });
+    data(await emitAck<CombatView>(gm, 'combat:next', {}), 'combat:next');
+
     const approved = await walk([
       { x: 300, y: 100 },
       { x: 300, y: 800 },
@@ -336,8 +350,12 @@ describe('trasa marszu gracza (etap 52)', () => {
     // Klatki doszły do (300, 700), lądowanie wraca na róg (300, 100).
     expect((await step(vex, 300, 700, false)).ok).toBe(true);
     expect(await step(vex, 300, 100, true)).toEqual({ ok: true, data: { x: 300, y: 100 } });
-    // Start → róg (300, 100) → z powrotem na róg: 200 px = 4 m, nie 0.
-    expect(paceOwedNow(vexTokenId, CAP_M)).toBeCloseTo(4, 5);
+    const sync = waitFor<StateSyncPayload>(gm, 'state:sync');
+    await emitAck(gm, 'state:request');
+    const turn = (await sync).combat?.combatants.find((entry) => entry.tokenId === vexTokenId)?.turn;
+    // Start → róg (300, 100) → z powrotem na róg: nie 0 m, choć figura stoi tam, skąd szła.
+    expect(turn?.distance?.used).toBeGreaterThan(0);
+    await emitAck(gm, 'combat:end', {});
     await home();
   });
 
@@ -452,14 +470,11 @@ describe('trasa marszu gracza (etap 52)', () => {
       patch: { gridMode: 'grid', grid: { sizePx: cell, offsetX: 0, offsetY: 0 } },
     });
     expect((await step(gm, 0, 9 * cell, true)).ok).toBe(true);
-    refill();
-    // 9 pól w prawo = 18 m z 20 m.
+    // Pula marszu już nie liczy (24.10), ale lądowanie na ułamkowej kratce
+    // dalej musi trafić w koniec zatwierdzonej trasy.
     const corner = Math.round(9 * cell);
     expect((await walk([{ x: corner, y: corner }])).ok).toBe(true);
     expect((await step(vex, 9 * cell, 9 * cell, true)).ok).toBe(true);
-    expect(paceOwedNow(vexTokenId, CAP_M)).toBeCloseTo(18, 1);
-    // 0,42 s odnowy: w puli 2,84 m — na jedną przekątną z luzem, nie na 2,9 m.
-    now += 420;
     const diagonal = [{ x: Math.round(8 * cell), y: Math.round(8 * cell) }];
     expect((await walk(diagonal)).ok).toBe(true);
     expect((await step(vex, 8 * cell, 8 * cell, true)).ok).toBe(true);

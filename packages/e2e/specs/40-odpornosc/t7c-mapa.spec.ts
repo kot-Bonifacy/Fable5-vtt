@@ -137,17 +137,13 @@ test.describe.serial('T7c odporność: wydajność mapy @odpornosc', () => {
    * więc jak człowiek — klik w figurę i cel jeszcze raz. Koniec, gdy klient i baza
    * stoją na celu; liczba przerwań idzie do pomiaru.
    */
-  /** `PACE_REFILL_MS` (10 s, `shared/pace.ts`) i zapas na ostatni krok. */
-  const PLAYER_REST_MS = 12_000;
-
   async function march(
     actor: Actor,
     tokenId: string,
     to: readonly [number, number],
     /**
-     * Ile postoju uznać za koniec marszu. Gracz od etapu 52 płaci z puli
-     * Eksploracji: staje na jej granicy i sam rusza dalej, gdy pula odrośnie
-     * (`PLAYER_REST_MS`), a nowy klik ten dalszy ciąg kasuje.
+     * Ile postoju uznać za koniec marszu. Od 24.10 marsz gracza nie staje na
+     * granicy puli Eksploracji, więc gracz i MG czekają tak samo.
      */
     restMs = 1_500,
   ): Promise<{ ms: number; przerwania: number }> {
@@ -219,7 +215,7 @@ test.describe.serial('T7c odporność: wydajność mapy @odpornosc', () => {
       await frameBoth(page, cellCentre(from), cellCentre(to));
       let walk = { ms: 0, przerwania: 0 };
       result.marsz = await meter(actor, 'march', async () => {
-        walk = await march(actor, figure, to, viewer.player ? PLAYER_REST_MS : 1_500);
+        walk = await march(actor, figure, to);
       });
       result.marszMs = walk.ms;
       result.marszPrzerwania = walk.przerwania;

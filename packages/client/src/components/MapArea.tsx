@@ -28,7 +28,6 @@ import {
   type SceneObjectRef,
   type SceneObjectShape,
   type ScenePoint,
-  type PaceState,
   type SceneView,
   type TokenView,
 } from '@vtt/shared';
@@ -160,13 +159,7 @@ import { NoticeColumn, type PinnedNotice } from './NoticeColumn.js';
 import { useFoesDefeatedNotice } from '../foes-defeated.js';
 import { useSightingNotice } from '../foe-sighting.js';
 import { clearNotices, noteAck, notifyInfo, notifyRefusal } from '../notices.js';
-import { usePaceStore } from '../stores/paceStore.js';
-import {
-  PLAYER_MOVE_PACE_NOTE,
-  PLAYER_MOVE_STOP_NOTE,
-  paceFor,
-  paceRefusal,
-} from '../map/player-move.js';
+import { PLAYER_MOVE_PACE_NOTE, PLAYER_MOVE_STOP_NOTE } from '../map/player-move.js';
 import { MAP_TOOL_KEYS } from '../shortcuts.js';
 import {
   currentDrawingStyle,
@@ -480,7 +473,6 @@ function walkRefusalFor(
   token: TokenView | undefined,
   isGm: boolean,
   scene: SceneView | null,
-  pace: PaceState | undefined,
 ): string | null {
   if (!tokenId || isGm) return null;
   // „Ruch graczy: Stop" (etap 45; mapa zamknięta od 12.09) wyprzedza wszystko
@@ -489,44 +481,12 @@ function walkRefusalFor(
   if (scene?.playerMove === 'stop') return PLAYER_MOVE_STOP_NOTE;
   const blocked = token ? cpredMovementBlock(token.statuses) : null;
   if (blocked) return blocked;
+  // Pusta pula Eksploracji marszu już nie zatrzymuje (24.10) — płaci z niej
+  // tylko Skok, który pyta o nią sam.
   // „Not your turn" is asked in exactly one place (stage 16f): the action bar
   // greys itself out with the same sentence, and two answers to „may this
   // figure act" would eventually disagree.
-  const turn = hudTurnRefusal(combat, tokenId, isGm);
-  if (turn) return turn;
-  // Pusta pula Eksploracji (etap 45): kursor mówi, za ile figura ruszy.
-  return paceRefusal(paceFor(scene, combat, token, isGm, pace, Date.now()));
-}
-
-/**
- * Pula Eksploracji jako budżet marszu (etap 45) — ta sama maszyna, co Tura:
- * okrąg zasięgu, ślady butów czerwone za pulą i trasa przycięta tam, gdzie
- * serwer by ją zatrzymał. Tylko dla figury, którą gracz właśnie prowadzi.
- */
-function paceAllowanceOf(
-  tokenId: string | null,
-  combat: CombatView | null,
-  isGm: boolean,
-): MoveAllowance | null {
-  if (!tokenId) return null;
-  const pace = paceFor(
-    useSceneStore.getState().scene,
-    combat,
-    useTokenStore.getState().tokens[tokenId],
-    isGm,
-    usePaceStore.getState().pace[tokenId],
-    Date.now(),
-  );
-  if (!pace) return null;
-  // Etap 52: pula odrasta — marsz przycięty na jej granicy pójdzie dalej sam.
-  return {
-    tokenId,
-    metresLeft: pace.availableM,
-    costFactor: 1,
-    enforced: true,
-    refills: true,
-    fullM: pace.capM,
-  };
+  return hudTurnRefusal(combat, tokenId, isGm);
 }
 
 const WALK_LEARNED_KEY = 'vtt.walkPreviewLearned';
@@ -1571,7 +1531,6 @@ export function MapArea() {
         selected ? useTokenStore.getState().tokens[selected] : undefined,
         useAuthStore.getState().user?.role === ROLE_GM,
         useSceneStore.getState().scene,
-        selected ? usePaceStore.getState().pace[selected] : undefined,
       ),
     );
   }, []);
@@ -1593,13 +1552,11 @@ export function MapArea() {
     // musi dojść tą samą drogą, co powalenie figury — inaczej gracz miałby
     // kursor „nie wolno" jeszcze długo po otwarciu mapy.
     const unsubScene = useSceneStore.subscribe(pushWalkRefusal);
-    const unsubPace = usePaceStore.subscribe(pushWalkRefusal);
     return () => {
       unsubSelection();
       unsubCombat();
       unsubTokens();
       unsubScene();
-      unsubPace();
     };
   }, [ready, pushWalkRefusal]);
 
@@ -1712,38 +1669,15 @@ export function MapArea() {
     const state = useCombatStore.getState();
     const user = useAuthStore.getState().user;
     const isGm = user?.role === ROLE_GM;
-    const allowance =
-      moveAllowanceOf(state.combat, user?.id ?? null, isGm) ??
-      paceAllowanceOf(useSelectionStore.getState().tokenId, state.combat, isGm);
+    const allowance = moveAllowanceOf(state.combat, user?.id ?? null, isGm);
     rendererRef.current?.setMoveAllowance(allowance && { ...allowance, showReach: isGm });
   }, []);
 
   useEffect(() => {
     if (!ready) return;
     pushMoveAllowance();
-    const unsubCombat = useCombatStore.subscribe(pushMoveAllowance);
-    // Pula Eksploracji (etap 45) zależy od prowadzonej figury, jej karty, trybu
-    // sceny i stanu puli — i od zegara: odnawia się sama, więc póki nie jest
-    // pełna, okrąg i kursor odświeżają się dwa razy na sekundę.
-    const unsubPace = usePaceStore.subscribe(pushMoveAllowance);
-    const unsubSelection = useSelectionStore.subscribe(pushMoveAllowance);
-    const unsubScene = useSceneStore.subscribe(pushMoveAllowance);
-    const timer = window.setInterval(() => {
-      if (useSceneStore.getState().scene?.playerMove !== 'explore') return;
-      if (useAuthStore.getState().user?.role === ROLE_GM) return;
-      const selected = useSelectionStore.getState().tokenId;
-      if (!selected || !usePaceStore.getState().pace[selected]) return;
-      pushMoveAllowance();
-      pushWalkRefusal();
-    }, 500);
-    return () => {
-      unsubCombat();
-      unsubPace();
-      unsubSelection();
-      unsubScene();
-      window.clearInterval(timer);
-    };
-  }, [ready, pushMoveAllowance, pushWalkRefusal]);
+    return useCombatStore.subscribe(pushMoveAllowance);
+  }, [ready, pushMoveAllowance]);
 
   useEffect(() => {
     if (!placement) return;

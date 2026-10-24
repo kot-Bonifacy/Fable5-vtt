@@ -1,5 +1,32 @@
 # Dziennik sesji — archiwum
 
+### Sesja 24.10, dziesiąta (po `c437442`) — etap 60b: ikona rubryki i grupy kart
+
+**Zlecenie:** „wykonaj teraz etap 60b”. Bez pytań; rozstrzygnięcia w pliku etapu (sekcja 60b) —
+najważniejsze: „ten sam autor” to ten sam **nagłówek** (biała lista rodzajów), bo karty serwera
+mają autora MG, a nagłówek o kimś innym.
+
+**Klient (tylko).** Nowy `chat-grouping.ts`: `chatHeaderKey` (wypowiedź i szept, akcja tury,
+odpoczynek i zastrzyk, zegar) i `chatContinuations` (okno 2 min od poprzedniej karty; separator,
+notatka i karta przerywająca — `isPending`, „do mnie”, „czeka na mnie” — rozcinają grupę po obu
+stronach) + `chat-grouping.test.ts` (9). `ChatPanel` liczy doklejone na `feed` i w każdej grupie
+ukrytych, `FeedRow` daje `.chat-row--cont`, godzinę w `title` i `--chat-kind-icon` z
+`CATEGORY_BUTTONS`. CSS w `02-chat-dice.css`: `::after` nagłówka (maska, `order: -1`), doklejona
+karta bez nagłówka i bez szczeliny. `theme.test.ts` zna `--chat-kind-icon` jako token lokalny.
+
+**Testy.** Klient 436/436, `tsc` i ESLint czyste, Prettier czysty w zmienionych plikach; `shared`
+i serwer nie ruszane. E2E `@szybkie`: 67/68 — padła T9a „konsola bez nowych błędów” (znane zerwane gniazdo Firefoksa MG
+przy przeładowaniu, jak w 60a); sam plik T9a powtórzony: 7/7.
+
+**Oględziny:** tymczasowy spec `99-ogledziny/t99-grupy-czatu` (nie commitowany) na historii
+`po-T6` plus świeże ciągi — **MG w Chromium, Ola w Firefoksie, Marek w trzecim kontekście
+(Chromium)**. Trzy wypowiedzi Iskry w jednej grupie, wypowiedź Kowala rozcina, dwa szepty Oli do
+MG sklejone u niej, a u MG osobno (oba „do mnie”); rzut Marka i wezwanie stoją osobno, wypowiedź
+po rzucie wraca z nagłówkiem. Zgaszone „Rzuty” i rozwinięta grupa nie zmieniają doklejonych.
+Długa historia u Oli: 174 wiersze, doładowanie u góry dokleja dwie akcje Iskry/Kowala ze starszej
+strony, nic z pierwszej nie odkleja, powtórka od zera — ten sam zestaw. Motyw nocny i dzienny
+w Firefoksie; karty akcji sklejają się czytelnie (wspólna ramka rubryki).
+
 ### Sesja 24.10, dziewiąta (po `1aed3f1`) — etap 60a: „to dotyczy mnie” i filtr „Ja”
 
 **Zlecenie:** „wykonaj teraz etap 60a; podświetlenie ma działać też u MG, a kolor niech będzie

@@ -1,11 +1,12 @@
 /**
  * Pula metrów Eksploracji (etap 45, decyzja MG z 08.10.2026).
  *
- * Poza walką na scenie w trybie „Eksploracja” każdy krok gracza płaci z puli,
- * która się odnawia: pełna mieści ruch figury z jednej tury walki, a pusta
- * napełnia się cała w `PACE_REFILL_MS`. Gracz chodzi płynnie, ale mapy
- * w kilka sekund nie przebiegnie — trwałe tempo to pula na dziesięć sekund,
- * czyli spacer.
+ * Poza walką na scenie w trybie „Eksploracja” przeciągnięcie figury i Skok
+ * płacą z puli, która się odnawia: pełna mieści ruch figury z jednej tury
+ * walki, a pusta napełnia się cała w `PACE_REFILL_MS`. Gracz nie przeniesie
+ * figury przez mapę kilkoma szarpnięciami. Marsz klikiem puli nie płaci
+ * (zlecenie MG z 24.10): postój „Złap oddech” co kilkanaście metrów rwał
+ * eksplorację, a tempo marszu i tak trzyma prędkość chodu.
  *
  * Rdzeń VTT: liczy wyłącznie metry i milisekundy. Ile mieści pula, mówi system
  * (CP RED: RUCH × 2 m z karty), a gdzie leży stan — serwer, w pamięci.

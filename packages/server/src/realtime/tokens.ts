@@ -1753,8 +1753,9 @@ async function dragGrappledToken(
  * „Idę tędy” (etap 52) — trasa marszu gracza zgłoszona przed pierwszym krokiem.
  *
  * Sprawdzana w całości tak samo jak lądowanie (`validateTokenMove` na sucho:
- * Stop, mgła, ściany, figury, statusy, Tura albo pula — z kartą odmowy w walce),
- * ale bez płacenia: metry pobiera lądowanie, za przebyty kawałek. Przyjęta trasa
+ * Stop, mgła, ściany, figury, statusy, Tura — z kartą odmowy w walce),
+ * ale bez płacenia: metry pobiera lądowanie, za przebyty kawałek. Puli
+ * Eksploracji marsz nie pyta (24.10) — idzie do celu jednym ciągiem. Przyjęta trasa
  * czeka w `walks.ts` na klatki marszu, które `performTokenMove` na nią rzutuje.
  *
  * MG może ją zgłosić bez skutku — jego klatek nic nie pilnuje.
@@ -1782,7 +1783,7 @@ export const tokenWalkEvent = defineEvent<TokenWalkPayload, { tokenId: string }>
     // Koniec trasy przyciąga się tak, jak przyciągnie go lądowanie: punkty
     // jadą po drucie zaokrąglone do piksela, a na kratce o ułamkowym boku
     // przekątna do (356, 356) zamiast (356,36, 356,36) to „2,9 m” zamiast
-    // „2,8 m” — dość, żeby pula policzona u klienta co do metra odmówiła
+    // „2,8 m” — dość, żeby budżet policzony u klienta co do metra odmówił
     // (T6b 6.6b, 18.10). Ocenia się trasę, za którą lądowanie zapłaci.
     const last = legs[legs.length - 1]!;
     const to = snapTokenPosition(last.x, last.y, token.size, snapScene);
@@ -1792,7 +1793,15 @@ export const tokenWalkEvent = defineEvent<TokenWalkPayload, { tokenId: string }>
         deps,
         campaignId,
         user,
-        { scene, token, from, to, path: legs, ...(payload.extra === true ? { extra: true } : {}) },
+        {
+          scene,
+          token,
+          from,
+          to,
+          path: legs,
+          marched: true,
+          ...(payload.extra === true ? { extra: true } : {}),
+        },
         { dryRun: true },
       );
     }
@@ -1959,6 +1968,8 @@ export async function performTokenMove(
     }
     /** Klatka marszu, która stała się lądowaniem przy ukrytej rzeczy (58a). */
     let noticeHalt = false;
+    /** Lądowanie kończy marsz po zatwierdzonej trasie — puli nie płaci (24.10). */
+    let marched = false;
     /** Zdane ukryte Testy Percepcji — pokażą się po lądowaniu (24.10). */
     const spots: HiddenSpot[] = [];
     if (walk) {
@@ -1970,7 +1981,7 @@ export async function performTokenMove(
         // ukrytej rzeczy, której ta postać jeszcze nie sprawdzała — serwer
         // rzuca tu Percepcję w ukryciu. Porażka nie zatrzymuje, sukces
         // zamienia klatkę w lądowanie, więc figura płaci za przebyty kawałek
-        // jak każda (Tura w walce, pula poza nią) i nie wchodzi w to, co
+        // jak każda (Tura w walce; poza nią nic, 24.10) i nie wchodzi w to, co
         // zauważyła. Na polu, na którym nie wolno stanąć, nikt nie rzuca —
         // następna klatka spróbuje jeszcze raz.
         const stand = snapTokenPosition(x, y, token.size, snapScene);
@@ -1991,6 +2002,7 @@ export async function performTokenMove(
                 from: { x: token.x, y: token.y },
                 to: stand,
                 path: passed,
+                marched: true,
                 ...(walk.extra === true ? { extra: true } : {}),
               },
               { dryRun: true },
@@ -2008,6 +2020,7 @@ export async function performTokenMove(
               endWalk(token.id);
               markWalkHalted(token.id, user.id);
               noticeHalt = true;
+              marched = true;
               final = true;
               ({ x, y } = stand);
               reportedPath = passed;
@@ -2024,6 +2037,7 @@ export async function performTokenMove(
         // pokazany stołowi do końca i „cofnięty” na start nie jest darmowy.
         if (hit.offset > WALK_LANDING_SLACK_CELLS * scene.gridSizePx + 1) endWalk(token.id);
         else {
+          marched = true;
           reportedPath = routeWaypointsBefore(walk.route, Math.max(walk.reached, hit.distance));
         }
       }
@@ -2065,6 +2079,7 @@ export async function performTokenMove(
             from: { x: token.x, y: token.y },
             to: { x, y },
             path: reportedPath,
+            marched,
             ...(payload.extra === true || (noticeHalt && walk?.extra === true)
               ? { extra: true }
               : {}),

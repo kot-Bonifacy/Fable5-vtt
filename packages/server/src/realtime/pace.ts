@@ -6,7 +6,8 @@ import { RealtimeError, type RealtimeDeps } from './registry.js';
 import { emitToCampaignUser } from './state.js';
 
 /**
- * Pula metrów Eksploracji po stronie serwera (etap 45).
+ * Pula metrów Eksploracji po stronie serwera (etap 45). Od 24.10 płaci z niej
+ * tylko przeciąganie figury i Skok — marsz klikiem idzie do celu bez postoju.
  *
  * Stan żyje **w pamięci procesu**, nie w bazie: to tempo marszu z ostatnich
  * dziesięciu sekund, a restart serwera po prostu napełnia wszystkim pule. Klucz
@@ -91,9 +92,9 @@ export async function chargePace(
 }
 
 /**
- * To samo pytanie co `chargePace`, bez płacenia (etap 52): czy trasa, którą
- * gracz dopiero zgłasza (`token:walk`), zmieści się w puli. Zapłata przychodzi
- * z lądowaniem, za przebyty kawałek — a do tej chwili pula tylko rośnie.
+ * To samo pytanie co `chargePace`, bez płacenia (etap 52): czy ruch osądzany
+ * na sucho zmieści się w puli. Marsz klikiem puli już nie pyta (24.10), więc
+ * pyta tu tylko Skok przed lądowaniem, które zapłaci.
  */
 export async function checkPace(
   deps: RealtimeDeps,

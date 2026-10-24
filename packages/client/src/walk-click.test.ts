@@ -92,7 +92,6 @@ describe('gest marszu w rendererze (etap 54)', () => {
     const walkTo = blockAfter('private walkTo(worldX: number, worldY: number): void {');
     expect(walkTo).toContain('this.planWalkRoute(goal)');
     expect(walkTo).toContain('walkClickNeedsConfirm(');
-    expect(blockAfter('private tryResumeWalk(): void {')).toContain('this.planWalkRoute(');
   });
 
   it('prawy klik w puste zdejmuje najpierw cel marszu', () => {

@@ -29,6 +29,10 @@ Pełna tabela z nazwami i datami: `archiwum/tabela-etapow.md`.
 
 ## Od czego zacząć
 
+**Eksploracja bez „Złap oddech” (zlecenie MG z 24.10):** marsz klikiem idzie do celu jednym
+ciągiem, pula Eksploracji płaci już tylko lądowanie bez trasy i Skok. Czeka na oględziny
+w przeglądarce (notatka sesji). Umowa na górze `tura`.
+
 **Czytelny czat (etap 60, 24.10): 60a–60c zrobione, etap czeka na oględziny MG przy stole
 (pierwsze kryterium) — dalej etap 28 i T10.** Karta czatu dostaje opakowanie `.chat-row`: „moje” (pasek i podkład), „do mnie”
 (pasek i „▶ Ty”) albo „czeka na mnie” (do tego pulsująca bursztynowa obwódka). Rozstrzyga czysta
@@ -462,7 +466,7 @@ a nie do tego pliku.
 | `serwer`    | Prisma i migracje, zdarzenia gniazda, zapisy karty, uploady    | 26   | 21      |
 | `ui`        | okna pływające, `z-index`, motyw, skróty, dostępność, wejście, panel decyzji MG | 37   | 15      |
 | `kosci`     | kubek, `rollFormula`, wezwania i prośby o Test, tabele losowe, PT od MG | 24   | 2       |
-| `tura`      | budżet Akcji i metrów, kolejka, trasa, ruch przez ściany, skok, walka z zauważenia, pytanie MG o przekroczenie, Percepcja w drodze, ukryte figury | 30   | 7       |
+| `tura`      | budżet Akcji i metrów, kolejka, trasa, ruch przez ściany, skok, walka z zauważenia, pytanie MG o przekroczenie, Percepcja w drodze, ukryte figury | 31   | 7       |
 | `atak`      | broń i dodatki, amunicja, obrażenia, pancerz, rany krytyczne, trucizna na ostrzu | 49   | 8       |
 | `statysta`  | figura z kartą, `statBlock`, Wartość bojowa, `token:stat`, wzorce | 17   | 3       |
 | `karta`     | strony i zakładki, panele, `sheet.css`, walidacja list, usuwanie przedmiotu | 11   | 12      |
@@ -480,6 +484,26 @@ a nie do tego pliku.
 ## Notatki z dwóch ostatnich sesji
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
+
+### Sesja 24.10, dwunasta (po `0b1fc7f`) — Eksploracja bez „Złap oddech” (zlecenie MG)
+
+**Zlecenie:** „zmień tryb eksploracji tak, aby nie następowały w nim co chwilę przerwy
+spowodowane potrzebą złapania oddechu przez postać”. Odpowiedzi MG na pytania: marsz klikiem
+bez limitu długości (pula zostaje dla lądowania bez trasy i Skoku), prędkość stała 3 m/s,
+serwer tempa nie mierzy.
+
+**Przyczyna:** pula RUCH × 2 m odrastała w 10 s (~1,2 m/s), a figura idzie 3 m/s — 4 s marszu,
+~6 s postoju. **Serwer:** `MoveIntent.marched` — marsz po zatwierdzonej trasie nie pyta puli
+(`validateTokenMove`), umowa na górze `tura`. **Klient:** pula nie jest już budżetem marszu,
+kursor nie mówi „Złap oddech”, z `MapRenderer` zniknął postój i dalszy ciąg marszu; podpowiedź
+„Eksploracja” w przełączniku MG mówi „marsz idzie do celu bez postojów”. Testy: przepisane
+`walk-approval.test.ts` (marsz 22 m przy 2 m w puli przechodzi, dług bez zmian; „do najdalszego
+punktu” sprawdzane teraz na Turze), `walk-click.test.ts`, E2E t7c bez 12 s czekania gracza.
+shared 2728, client 440, server 1649 — zielone.
+
+**Nie zrobione:** oględziny w przeglądarce — Firefox z Playwright MCP nie wstał (timeout
+`initializeServer`, dwie próby; pewnie zajęty profil `.playwright-mcp/profile-firefox`). Do
+obejrzenia: gracz w Eksploracji klika cel ~30 m dalej i figura dochodzi bez przystanku.
 
 ### Sesja 24.10, jedenasta (po `2d90dce`) — etap 60c: kolor gracza
 
@@ -525,31 +549,3 @@ jak w 60a i 60b); sam plik T9a powtórzony: 7/7.
 (Marek błękit, Ola cynober, MG bursztyn), wiersz „moje” z białym paskiem, cudzy z kolorowym; MG
 zmienia Marka na lawendę w „Graczach” — u Oli i Marka karty przemalowują się na żywo i zostają
 po przeładowaniu. Podgląd całej palety i czat w motywie nocnym i dziennym w Firefoksie.
-
-### Sesja 24.10, dziesiąta (po `c437442`) — etap 60b: ikona rubryki i grupy kart
-
-**Zlecenie:** „wykonaj teraz etap 60b”. Bez pytań; rozstrzygnięcia w pliku etapu (sekcja 60b) —
-najważniejsze: „ten sam autor” to ten sam **nagłówek** (biała lista rodzajów), bo karty serwera
-mają autora MG, a nagłówek o kimś innym.
-
-**Klient (tylko).** Nowy `chat-grouping.ts`: `chatHeaderKey` (wypowiedź i szept, akcja tury,
-odpoczynek i zastrzyk, zegar) i `chatContinuations` (okno 2 min od poprzedniej karty; separator,
-notatka i karta przerywająca — `isPending`, „do mnie”, „czeka na mnie” — rozcinają grupę po obu
-stronach) + `chat-grouping.test.ts` (9). `ChatPanel` liczy doklejone na `feed` i w każdej grupie
-ukrytych, `FeedRow` daje `.chat-row--cont`, godzinę w `title` i `--chat-kind-icon` z
-`CATEGORY_BUTTONS`. CSS w `02-chat-dice.css`: `::after` nagłówka (maska, `order: -1`), doklejona
-karta bez nagłówka i bez szczeliny. `theme.test.ts` zna `--chat-kind-icon` jako token lokalny.
-
-**Testy.** Klient 436/436, `tsc` i ESLint czyste, Prettier czysty w zmienionych plikach; `shared`
-i serwer nie ruszane. E2E `@szybkie`: 67/68 — padła T9a „konsola bez nowych błędów” (znane zerwane gniazdo Firefoksa MG
-przy przeładowaniu, jak w 60a); sam plik T9a powtórzony: 7/7.
-
-**Oględziny:** tymczasowy spec `99-ogledziny/t99-grupy-czatu` (nie commitowany) na historii
-`po-T6` plus świeże ciągi — **MG w Chromium, Ola w Firefoksie, Marek w trzecim kontekście
-(Chromium)**. Trzy wypowiedzi Iskry w jednej grupie, wypowiedź Kowala rozcina, dwa szepty Oli do
-MG sklejone u niej, a u MG osobno (oba „do mnie”); rzut Marka i wezwanie stoją osobno, wypowiedź
-po rzucie wraca z nagłówkiem. Zgaszone „Rzuty” i rozwinięta grupa nie zmieniają doklejonych.
-Długa historia u Oli: 174 wiersze, doładowanie u góry dokleja dwie akcje Iskry/Kowala ze starszej
-strony, nic z pierwszej nie odkleja, powtórka od zera — ten sam zestaw. Motyw nocny i dzienny
-w Firefoksie; karty akcji sklejają się czytelnie (wspólna ramka rubryki).
-

@@ -172,6 +172,12 @@ export interface MoveIntent {
    * gdy metry go sięgają — marsz klikiem w bursztyn.
    */
   extra?: boolean;
+  /**
+   * Marsz klikiem po trasie zatwierdzonej `token:walk` (24.10, zlecenie MG):
+   * poza walką nie płaci z puli Eksploracji, więc figura idzie do celu jednym
+   * ciągiem. Pula pilnuje już tylko przeciągania i Skoku.
+   */
+  marched?: boolean;
 }
 
 /** What the validator decided; the caller only ever sees a pass or a throw. */
@@ -209,8 +215,10 @@ export async function validateTokenMove(
     await refuseWalkThroughFigures(deps, campaignId, user, intent, walked, null);
     // Poza walką na scenie w Eksploracji krok gracza płaci z puli (etap 45).
     // W walce rachunek prowadzi Tura i pula milczy — dwa liczniki naraz
-    // odmawiałyby temu samemu krokowi z dwóch różnych powodów.
-    if (user.role !== ROLE_GM) {
+    // odmawiałyby temu samemu krokowi z dwóch różnych powodów. Marsz klikiem
+    // nie płaci wcale (24.10): postój „Złap oddech” co kilkanaście metrów
+    // tylko przeszkadzał, a tempo i tak trzyma prędkość chodu.
+    if (user.role !== ROLE_GM && intent.marched !== true) {
       const metres = movementMetres(scene, token, walked);
       if (dryRun) await checkPace(deps, campaignId, scene, token, metres);
       else await chargePace(deps, campaignId, scene, token, metres);
