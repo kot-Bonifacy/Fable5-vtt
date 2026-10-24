@@ -259,23 +259,11 @@
   min-width: 0;
 }
 
-.chat-action {
-  border-left: 3px solid var(--border);
-  padding-left: 0.5rem;
-}
+/* Bez wewnętrznej kolorowej krawędzi (MG 24.10, etap 60c: „2 paski to po prostu
+   za dużo”) — wiersz czatu ma jeden pasek przy krawędzi i ikonę rubryki. */
 
-.chat-action--refused {
-  border-left-color: var(--err);
-}
-
-.chat-action--overspent {
-  border-left-color: var(--warn);
-}
-
-.chat-economy {
-  border-left: 3px solid var(--accent);
-  padding-left: 0.5rem;
-}
+/* Karta eurodolców bez czerwonej krawędzi (MG 24.10, etap 60c): wiersz czatu
+   ma już ikonę rubryki i pasek autora — trzecia kreska była szumem. */
 
 .chat-economy-lines {
   list-style: none;
@@ -295,16 +283,8 @@
   color: var(--text-dim);
 }
 
-/* Dzień odpoczynku i podana dawka — zielona krawędź jak przy karcie ekonomii,
-   bo to też jest rozliczenie przerwy między scenami, a nie zdarzenie walki. */
-.chat-recovery {
-  border-left: 3px solid var(--ok);
-  padding-left: 0.5rem;
-}
-
-.chat-recovery--warn {
-  border-left-color: var(--warn);
-}
+/* Dzień odpoczynku i podana dawka — rozliczenie przerwy między scenami, a nie
+   zdarzenie walki (rubryka „Stół”). Zielona krawędź zdjęta w 60c. */
 
 .chat-recovery-title {
   margin: 0 0 0.15rem;
@@ -328,16 +308,8 @@
   white-space: nowrap;
 }
 
-/* Skok zegara świata (etap 37) — cezura przerwy, nie zdarzenie walki. */
-
-.chat-time {
-  border-left: 3px solid var(--info);
-  padding-left: 0.5rem;
-}
-
-.chat-time--back {
-  border-left-color: var(--warn);
-}
+/* Skok zegara świata (etap 37) — cezura przerwy, nie zdarzenie walki.
+   Niebieska krawędź zdjęta w 60c. */
 
 .chat-time-title {
   margin: 0 0 0.15rem;
@@ -363,19 +335,9 @@
 
 /* Tabele losowe (etap 34).
 
-   Karta ma fioletową krawędź — ani zielona przerwa (odpoczynek), ani niebieski
-   zegar, ani czerwona walka: losowanie fabularne jest osobną rubryką stołu.
-   Kości są tu celowo nieomalowane (`plain`): dziesiątka znaczy „wiersz
-   dziesiąty", a nie krytyk. */
-
-.chat-table {
-  border-left: 3px solid var(--fate);
-  padding-left: 0.5rem;
-}
-
-.chat-table--secret {
-  border-left-style: dashed;
-}
+   Losowanie fabularne jest osobną rubryką stołu; fioletowa krawędź karty
+   zdjęta w 60c, cichy wynik mówi napisem „tylko MG”. Kości są tu celowo
+   nieomalowane (`plain`): dziesiątka znaczy „wiersz dziesiąty", a nie krytyk. */
 
 .chat-table-steps {
   list-style: none;

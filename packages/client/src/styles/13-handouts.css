@@ -5,16 +5,11 @@
 
 /* --- etap 20a: karta propozycji akcji bota --- */
 
-/* Ta karta nigdy nie trafia do stołu — widzi ją MG i sterujący gracz. Ramka
-   w kolorze akcentu, a nie ostrzeżenia: propozycja niczego nie odmawia ani
-   nie łamie, tylko czeka na jedno kliknięcie. */
-.chat-proposal {
-  border-left: 3px solid var(--accent);
-  padding-left: 0.5rem;
-}
+/* Ta karta nigdy nie trafia do stołu — widzi ją MG i sterujący gracz.
+   Czerwona krawędź zdjęta (MG 24.10, etap 60c): wiersz ma ikonę rubryki
+   i pasek, a czekanie na kliknięcie pokazuje obwódka „czeka na mnie”. */
 
 .chat-proposal--rejected {
-  border-left-color: var(--border);
   opacity: 0.65;
 }
 

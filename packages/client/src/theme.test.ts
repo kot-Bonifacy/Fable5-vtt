@@ -73,11 +73,9 @@ describe('motyw (etap 27e)', () => {
      * (43a) to odsetek ran na portrecie w zakładce „Walka”. `--top-bar-control`
      * to wysokość kafla górnego paska, ustawiana na `.top-bar` — wymiar, nie kolor.
      * `--chat-kind-icon` (60b) to adres ikony rubryki, podawany przez `FeedRow`,
-     * a `--author-initial` (60c) — litera na kropkę koloru gracza. `--player`
-     * (60c) wybiera z motywu barwę autora karty po `data-author-color`.
+     * a `--player` (60c) wybiera z motywu barwę autora karty po `data-author-color`.
      */
     const local = new Set([
-      '--author-initial',
       '--chat-kind-icon',
       '--hud-hp-color',
       '--hud-icon',

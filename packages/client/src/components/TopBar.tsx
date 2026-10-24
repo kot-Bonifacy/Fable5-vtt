@@ -48,12 +48,13 @@ export function TopBar() {
           <SettingsButton />
         </div>
         {/* Konto: MG podpisany loginem (każde konto MG siedzi przy stole jako
-            „MG”, więc samo imię nic tu nie mówi), gracz imieniem. Rolę niesie
-            „Panel MG” obok, nie dopisek w nawiasie. */}
+            „MG”, więc samo imię nic tu nie mówi). Gracz bez podpisu (MG 24.10):
+            imię gracza nadał MG, żeby go rozpoznawać — w grze gracz jest swoją
+            postacią. Rolę niesie „Panel MG” obok, nie dopisek w nawiasie. */}
         <div className="top-bar-account">
-          {user && (
-            <span className="top-bar-user" title={user.role === 'GM' ? 'Prowadzący grę' : 'Gracz'}>
-              {user.role === 'GM' ? (user.login ?? user.name) : user.name}
+          {user?.role === 'GM' && (
+            <span className="top-bar-user" title="Prowadzący grę">
+              {user.login ?? user.name}
             </span>
           )}
           {user?.role === 'GM' && (

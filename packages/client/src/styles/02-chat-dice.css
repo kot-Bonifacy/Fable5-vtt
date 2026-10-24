@@ -241,9 +241,10 @@
    wiersza stoi zawsze JEDEN pasek (MG 24.10: trzy obok siebie — autor, „ja”
    i krawędź karty — to za dużo): biały „moje / do mnie” z 60a wygrywa,
    w pozostałych wierszach pasek ma kolor autora. Kto napisał wiersz „do mnie”,
-   mówi kropka z inicjałem przed nickiem — taki wiersz nigdy nie traci
-   nagłówka (60b), a kolor nigdy nie jest jedynym nośnikiem. Wybór barwy po
-   samym atrybucie, bo tą samą kropką MG widzi kolor w „Graczach”. */
+   mówi nick postaci w nagłówku — taki wiersz nigdy go nie traci (60b).
+   Inicjału gracza przy nicku nie ma (MG 24.10): imię gracza nadał MG do
+   rozpoznawania graczy, w grze go nie ma. Wybór barwy po
+   samym atrybucie, bo tą samą barwą MG widzi kolor w „Graczach”. */
 [data-author-color='sky'] {
   --player: var(--player-sky);
 }
@@ -281,24 +282,6 @@
 .chat-row[data-author-color] .chat-message--whisper {
   border-left: none;
   padding-left: 0;
-}
-
-.chat-row[data-author-color] .chat-message-author::before {
-  content: var(--author-initial);
-  display: inline-grid;
-  place-items: center;
-  width: 1.15em;
-  height: 1.15em;
-  margin-right: 0.3em;
-  vertical-align: 0.08em;
-  border-radius: 50%;
-  font-family: var(--font-ui-head);
-  font-size: 0.72em;
-  font-style: normal;
-  font-weight: 700;
-  line-height: 1;
-  color: var(--bg-panel);
-  background: var(--player);
 }
 
 /* Czeka na moje kliknięcie: obwódka pulsuje bursztynem przypomnienia tury. */
@@ -607,12 +590,7 @@ body:has(.creator-window) .dice-overlay {
   padding: 0.45rem 0.55rem;
   background: var(--bg);
   border: 1px solid var(--border);
-  border-left: 3px solid var(--accent);
   border-radius: 6px;
-}
-
-.chat-roll--gm .chat-roll-body {
-  border-left-color: var(--whisper);
 }
 
 .chat-roll-gm-label {

@@ -333,13 +333,8 @@
 
 /* --- Karta przekazania na czacie --------------------------------------- */
 
-.chat-inventory {
-  border-left: 3px solid var(--info);
-  padding-left: 0.5rem;
-}
-
+/* Niebieska krawędź zdjęta w 60c (MG 24.10: jeden pasek na wiersz). */
 .chat-inventory--refused {
-  border-left-color: var(--border);
   opacity: 0.65;
 }
 

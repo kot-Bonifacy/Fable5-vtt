@@ -150,7 +150,8 @@ zgłoszona karta, propozycja bota).
 - [x] Na karcie: cienki pasek autora po lewej (pod paskiem `mine`/`forMe`, nie zamiast niego) i
       kropka z inicjałem przy nicku. *Zmienione po uwadze MG (24.10, „trzy poziomy pasków w jednym
       wierszu to za dużo”): przy krawędzi wiersza **jeden** pasek — biały „moje / do mnie” albo
-      kolor autora. Kropka z inicjałem gracza (`::before` nicku) stoi zawsze.*
+      kolor autora. **Kropki z inicjałem nie ma** (MG 24.10, po oddaniu 60c: imię gracza nadał MG
+      do rozpoznawania graczy, w rozgrywce ma go nie być) — obok paska stoi nick postaci.*
 - [x] Kopie kampanii (57a): kolor jedzie w paczce ZIP i wraca przy wczytaniu; biała lista eksportu.
       *Jedzie w `members` eksportu. Wczytanie jako nowa kampania członków nie przenosi (57a: to cudze
       konta), więc „wraca” dotyczy cofnięcia (57b) — członkowie z kolorem zostają nietknięci.*
@@ -164,20 +165,27 @@ Pomysły na później — w `POMYSLY.md` (24.10).
 
 - **Jeden pasek przy krawędzi wiersza (uwaga MG w trakcie etapu):** wiersz „moje / do mnie” ma
   biały pasek z 60a, każdy inny wiersz z kolorem — pasek autora (3 px). Szept w kolorze autora
-  traci własną fioletową kreskę. Zostaje lewa krawędź samej karty (czerwień rzutu, zieleń
-  odpoczynku, błękit zegara) — razem najwyżej dwie kreski.
+  traci własną fioletową kreskę. **Wewnętrzne kolorowe krawędzie kart zdjęte** (MG 24.10:
+  „wewnętrzny czerwony pasek też już chyba nie będzie potrzebny”, „2 paski to po prostu za
+  dużo”): rzut, eurodolce, propozycja bota, akcja, obrażenia, odpoczynek, zegar, losowanie,
+  wezwanie, prośba o Test, przekazanie, operacja, zgłoszona karta, handout. Stany niesione
+  dotąd kolorem krawędzi mają napis albo przygaszenie (`--cancelled`, `--closed`, `--refused`).
+  Wiersz ma więc **najwyżej jeden** pasek; fioletowa kreska szeptu zostaje tylko w wierszu bez
+  innego paska.
 - **Paleta to nazwy, barwy daje motyw.** Jeden odcień nie trzyma 3:1 jednocześnie z czarnym
   kartonem i pożółkłym papierem, więc noc ma jasne odcienie, dzień ściemnione. Nazwy po polsku
   w „Graczach”: błękit, cynober, morska zieleń, róż, cytryna, lawenda, limonka, chaber.
 - **Kolor MG** to bursztyn `--warn`, i to **tylko na tym, co MG pisze sam** (granica „moje u MG”
   z 60a). Karty serwera wystawione kontem MG i rzuty z kart NPC-ów są bez koloru — inaczej pół
   czatu miałoby pasek MG. Przy deuteranopii bursztyn zbliża się do cynobru, cytryny i limonki —
-  wymóg dotyczy sąsiadów palety, a MG odróżnia kropka „M”.
+  wymóg dotyczy sąsiadów palety, a MG odróżnia nick „MG” w nagłówku.
 - **Wybór MG nikogo nie przesuwa:** gracz bez wyboru bierze kolor z pozycji w kolejności
   dołączenia, więc dwóch graczy może mieć ten sam kolor, gdy MG tak wybierze — widać to w „Graczach”.
   Usunięcie gracza z kampanii przesuwa pozycje późniejszych (rzadkie; karty na ekranach poprawi
   przeładowanie).
-- **Inicjał na kropce to gracz, nie postać** (kolor należy do gracza): „O” przy „Iskra”.
+- ~~Inicjał na kropce to gracz, nie postać~~ — **wycofane przez MG 24.10**: imiona graczy służą
+  tylko MG, w rozgrywce się nie pojawiają. Kropka zniknęła z czatu, a imię gracza — z górnego
+  paska u gracza (login MG u MG zostaje). Kropka z inicjałem została tylko w „Graczach” MG.
 - **`chat:recolor`** (`{ userId, color }`, bez `seq`) do stołu i poczekalni — klient przemalowuje
   w miejscu karty tego autora, które już niosą kolor gracza.
 

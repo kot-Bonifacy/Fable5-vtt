@@ -699,10 +699,7 @@
 
 /* --- linia na czacie ----------------------------------------------------- */
 
-.chat-handout {
-  border-left: 3px solid var(--whisper);
-  padding-left: 0.5rem;
-}
+/* Fioletowa krawędź handoutu zdjęta w 60c (MG 24.10: jeden pasek na wiersz). */
 
 .chat-handout-body {
   display: flex;

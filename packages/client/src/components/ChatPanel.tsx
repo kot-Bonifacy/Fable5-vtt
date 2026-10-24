@@ -34,7 +34,6 @@ import {
   isInventoryMoveOpen,
   isSurgeryOpen,
   isCardSubmissionOpen,
-  playerInitial,
 } from '@vtt/shared';
 import {
   allowCombatAction,
@@ -802,9 +801,8 @@ const INVOLVEMENT_CLASS: Record<ChatInvolvement, string> = {
  * się do poprzedniej: CSS chowa jej nagłówek, godzina zostaje w dymku.
  *
  * Kolor autora (etap 60c) idzie tą samą drogą: `data-author-color` wybiera
- * barwę z motywu (cienki pasek pod paskiem „ja” i kropka przy nicku), a
- * `--author-initial` niesie literę na kropkę — inicjał gracza, nie postaci,
- * bo kolor należy do gracza.
+ * barwę pasku z motywu. Bez inicjału przy nicku (MG 24.10): imię gracza
+ * nadał MG do rozpoznawania graczy, w grze go nie ma.
  */
 function FeedRow({
   item,
@@ -825,17 +823,13 @@ function FeedRow({
 }) {
   if (item.type === 'note') return <NoteRow item={item} />;
   const base = involvement ? INVOLVEMENT_CLASS[involvement] : 'chat-row';
-  const { authorColor, accountName, authorName } = item.message;
   const style = {
     '--chat-kind-icon': `url("/icons/hud/${CATEGORY_ICON[chatCategoryOf(item.message.kind)]}.svg")`,
-    ...(authorColor
-      ? { '--author-initial': JSON.stringify(playerInitial(accountName ?? authorName)) }
-      : {}),
   } as CSSProperties;
   return (
     <div
       className={continued ? `${base} chat-row--cont` : base}
-      data-author-color={authorColor}
+      data-author-color={item.message.authorColor}
       style={style}
       title={continued ? formatTime(item.message.createdAt) : undefined}
     >

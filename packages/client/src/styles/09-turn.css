@@ -753,10 +753,8 @@
   width: 3.5rem;
 }
 
-.chat-damage {
-  border-left: 3px solid var(--accent);
-  padding-left: 0.5rem;
-}
+/* Bez wewnętrznej kolorowej krawędzi (MG 24.10, etap 60c: „2 paski to po prostu
+   za dużo”) — wiersz czatu ma jeden pasek przy krawędzi i ikonę rubryki. */
 
 .chat-damage--undone {
   opacity: 0.55;

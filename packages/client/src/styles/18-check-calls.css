@@ -16,13 +16,9 @@
   animation: dice-cup-call 1.2s ease-in-out infinite;
 }
 
-.chat-check {
-  border-left: 3px solid var(--warn);
-  padding-left: 0.5rem;
-}
-
+/* Bursztynowa krawędź zdjęta w 60c (MG 24.10: jeden pasek na wiersz) — wezwanie
+   niesie ikonę rubryki „Rzuty”, a czekające na mnie pulsuje obwódką. */
 .chat-check--cancelled {
-  border-left-color: var(--border);
   opacity: 0.65;
 }
 
@@ -61,17 +57,11 @@
 /*
  * Prośba gracza o Test (etap 40) — druga strona wezwania.
  *
- * Ta sama bursztynowa krawędź, co przy `.chat-check`, i to jest umyślne: obie
- * karty są zapowiedzią rzutu, a stół ma je czytać jednym spojrzeniem jako
- * jedną sprawę. Zamknięta prośba gaśnie tak, jak odwołane wezwanie.
+ * Obie karty są zapowiedzią rzutu i czyta się je jako jedną sprawę (ta sama
+ * ikona rubryki; bursztynowa krawędź zdjęta w 60c). Zamknięta prośba gaśnie
+ * tak, jak odwołane wezwanie.
  */
-.chat-request {
-  border-left: 3px solid var(--warn);
-  padding-left: 0.5rem;
-}
-
 .chat-request--closed {
-  border-left-color: var(--border);
   opacity: 0.65;
 }
 

@@ -39,9 +39,11 @@ potwierdził: podświetlenie także u MG, kolor (60c) należy do gracza, nie do 
 nagłówek karty zaczyna ikona rubryki filtra, a kolejna karta tego samego nagłówka w 2 min traci
 go (`chat-grouping.ts`, biała lista `chatHeaderKey`; rzut, sprawa czekająca i „do mnie” stoją
 osobno). Od 60c każdy gracz ma kolor (`CampaignMember.color`, paleta 8 nazw w `shared`, barwy
-`--player-*` w motywie; MG — bursztyn tylko na tym, co pisze sam): pasek przy krawędzi wiersza
-i kropka z inicjałem gracza przed nickiem. **Przy krawędzi zawsze jeden pasek** (uwaga MG z 24.10):
-biały „ja” wygrywa z kolorem autora. Kolor zmienia MG w „Graczach” (`chat:recolor` przemalowuje
+`--player-*` w motywie; MG — bursztyn tylko na tym, co pisze sam): pasek przy krawędzi wiersza.
+**Imiona kont graczy nie pojawiają się w rozgrywce** (MG 24.10 — bez inicjału przy nicku, gracz bez
+imienia w górnym pasku; reszta miejsc z kontem czeka na decyzję MG). **Wiersz ma najwyżej jeden
+pasek** (uwagi MG z 24.10): biały „ja” wygrywa z kolorem autora, a karty czatu nie mają już
+własnych kolorowych krawędzi. Kolor zmienia MG w „Graczach” (`chat:recolor` przemalowuje
 karty na żywo). Rozstrzygnięcia bez pytań — w pliku etapu (sekcje 60a–60c). Umowy na górze `czat`.
 
 **Prośba o Test wyskakuje MG panelem decyzji (zlecenie MG z 24.10) — dalej etap 28, potem T10.**
@@ -480,6 +482,14 @@ a nie do tego pliku.
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
 
 ### Sesja 24.10, jedenasta (po `2d90dce`) — etap 60c: kolor gracza
+
+**Po oddaniu (MG):** „inicjałów przed nickiem niech nie będzie … nazwy graczy, które wybrał MG,
+mają służyć tylko jemu … usuń je też z górnego paska menu” — kropka zniknęła z czatu (została
+w „Graczach” MG), `top-bar-user` tylko u MG. Potem: „wewnętrzny czerwony pasek też już chyba nie
+będzie potrzebny”, „2 paski to po prostu za dużo” — zdjęte wszystkie wewnętrzne kolorowe krawędzie
+kart czatu (14 kart w 7 plikach stylów), wiersz ma najwyżej jeden pasek. Oglądane w Firefoksie
+(Ola) i Chromium (MG, Marek), noc i dzień. Klient 440/440; `@szybkie` po tych poprawkach nie
+puszczane (same style i podpis w pasku — E2E ich nie czyta).
 
 **Zlecenie:** „wykonaj teraz etap 60c”. W trakcie MG: „teraz widać nawet 3 poziomy (w jednym
 wierszu) pasków czasami. To za dużo” — pasek autora, pasek „ja” i krawędź karty stały obok siebie.
