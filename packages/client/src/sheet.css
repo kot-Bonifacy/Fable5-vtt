@@ -1855,6 +1855,19 @@
   width: calc(100% - 6rem);
 }
 
+/* „Zdejmij” / „Załóż” / „słabsza” pod nazwą sztuki, jak „Dobądź” pod nazwą
+   broni (24.10.2026, zlecenie MG) — wcięte do ikony, nie pod lokację. */
+.armor-wear {
+  margin-top: 0.15rem;
+  padding-left: 4.95rem;
+  line-height: 1;
+}
+
+/* W reszcie pancerza przed nazwą stoi wybór lokacji, nie jej etykieta. */
+.armor-table--rest .armor-wear {
+  padding-left: 5.5rem;
+}
+
 /* Nazwa lokacji stoi w wierszu jak na karcie — kapitalikami, przed polem.
    Klasa nazywa się `cp-armor-slot`, a nie `cp-slot`, i to jest naprawa
    z 06.09: `.cp-slot` istniało w tym pliku **dwa razy** — drugi raz jako

@@ -2719,6 +2719,20 @@ function ArmorStrip({ character, data, saveData }: TabProps & { character: Chara
                     />
                   </span>
                 ) : null}
+                {/* Pod nazwą, jak „Dobądź” przy broni (24.10.2026): zdjęcie
+                    zmienia to, co postać ma na sobie, a nie samą sztukę. */}
+                {row ? (
+                  <div className="armor-wear">
+                    <button
+                      type="button"
+                      className="small-button"
+                      title="Sztuka schodzi do „Reszty pancerza” i przestaje chronić"
+                      onClick={() => update(row.id, { equipped: false })}
+                    >
+                      Zdejmij
+                    </button>
+                  </div>
+                ) : null}
               </td>
               {row ? (
                 <>
@@ -2772,14 +2786,6 @@ function ArmorStrip({ character, data, saveData }: TabProps & { character: Chara
                         +1 OB
                       </button>
                     )}
-                    <button
-                      type="button"
-                      className="small-button"
-                      title="Sztuka schodzi do „Reszty pancerza” i przestaje chronić"
-                      onClick={() => update(row.id, { equipped: false })}
-                    >
-                      Zdejmij
-                    </button>
                     <RemoveItemButton
                       label={`Usuń: ${row.name}`}
                       onClick={() =>
@@ -2846,6 +2852,29 @@ function ArmorStrip({ character, data, saveData }: TabProps & { character: Chara
                         aria-label="Nazwa pancerza"
                       />
                     </span>
+                    {/* Sztuka noszona, która i tak stoi tutaj, jest słabsza od
+                        wydrukowanej — mówimy to wprost, zamiast zostawiać MG
+                        z pytaniem, czemu jej nie widać wyżej. Pod nazwą, jak
+                        „Dobądź” przy broni (24.10.2026). */}
+                    <div className="armor-wear">
+                      {row.equipped === false ? (
+                        <button
+                          type="button"
+                          className="small-button"
+                          title="Sztuka wraca na swoją lokację i chroni"
+                          onClick={() => update(row.id, { equipped: true })}
+                        >
+                          Załóż
+                        </button>
+                      ) : (
+                        <span
+                          className="armor-weaker"
+                          title="Noszona, ale słabsza od wpisanej wyżej"
+                        >
+                          słabsza
+                        </span>
+                      )}
+                    </div>
                   </td>
                   <td className="armor-sp-cell">
                     <ArmorSp row={row} update={update} />
@@ -2863,23 +2892,6 @@ function ArmorStrip({ character, data, saveData }: TabProps & { character: Chara
                     />
                   </td>
                   <td className="armor-actions">
-                    {/* Sztuka noszona, która i tak stoi tutaj, jest słabsza od
-                        wydrukowanej — mówimy to wprost, zamiast zostawiać MG
-                        z pytaniem, czemu jej nie widać wyżej. */}
-                    {row.equipped === false ? (
-                      <button
-                        type="button"
-                        className="small-button"
-                        title="Sztuka wraca na swoją lokację i chroni"
-                        onClick={() => update(row.id, { equipped: true })}
-                      >
-                        Załóż
-                      </button>
-                    ) : (
-                      <span className="armor-weaker" title="Noszona, ale słabsza od wpisanej wyżej">
-                        słabsza
-                      </span>
-                    )}
                     <RemoveItemButton
                       label={`Usuń: ${row.name}`}
                       onClick={() =>
