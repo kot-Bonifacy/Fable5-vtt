@@ -1,5 +1,50 @@
 # Dziennik sesji — archiwum
 
+### Sesja 24.10, jedenasta (po `2d90dce`) — etap 60c: kolor gracza
+
+**Po oddaniu (MG):** „inicjałów przed nickiem niech nie będzie … nazwy graczy, które wybrał MG,
+mają służyć tylko jemu … usuń je też z górnego paska menu” — kropka zniknęła z czatu (została
+w „Graczach” MG), `top-bar-user` tylko u MG. Potem: „wewnętrzny czerwony pasek też już chyba nie
+będzie potrzebny”, „2 paski to po prostu za dużo” — zdjęte wszystkie wewnętrzne kolorowe krawędzie
+kart czatu (14 kart w 7 plikach stylów), wiersz ma najwyżej jeden pasek. Oglądane w Firefoksie
+(Ola) i Chromium (MG, Marek), noc i dzień. Klient 440/440; `@szybkie` po tych poprawkach nie
+puszczane (same style i podpis w pasku — E2E ich nie czyta).
+
+**Zlecenie:** „wykonaj teraz etap 60c”. W trakcie MG: „teraz widać nawet 3 poziomy (w jednym
+wierszu) pasków czasami. To za dużo” — pasek autora, pasek „ja” i krawędź karty stały obok siebie.
+Poprawione: przy krawędzi wiersza jeden pasek (biały „ja” wygrywa z kolorem autora), szept
+w kolorze traci fioletową kreskę. Reszta rozstrzygnięta bez pytań (plik etapu, sekcja 60c).
+
+**Shared.** `player-colors.ts` (`PLAYER_COLORS` — 8 nazw, `playerColors` po `joinedAt`,
+`playerInitial`, `GM_AUTHOR_COLOR`), `chatAuthorColor` w `chat.ts`, `authorColor` w widoku,
+`ChatRecolorPush`, `PlayerSummary.color`; `player-colors.test.ts` (9).
+
+**Serwer.** Migracja `20261024190000_player_color` (`CampaignMember.color`). `INCLUDE_CHAT_NAMES`
+dociąga członków kampanii i rolę autora, `toChatMessageView` wpisuje kolor — wszystkie 61 miejsc
+budowy widoku bez zmian. `registerPlayerColorRoute` (`POST …/players/:userId/color`, 404 cudzej
+kampanii, 400 złej nazwy) rozsyła `chat:recolor`; lista graczy niesie `color`, eksport kampanii
+`members[].color`. `player-color.test.ts` (5: na żywo i w historii, nieobecny gracz, zmiana MG,
+odmowy, restart drugim procesem, eksport) + wiersz w macierzy izolacji. Test restartu wisiał
+w pełnej suicie: otwarte gniazdo trzymało `close()` drugiego procesu — rozłączane przed nim.
+
+**Klient.** Barwy `--player-*` w `theme.css` (noc jasne, dzień ściemnione; `--player-gm` =
+`--warn`), `[data-author-color]` → `--player` i kropka `::before` nicku w `02-chat-dice.css`,
+`FeedRow` daje atrybut i `--author-initial`. `recolorAuthor` w `chatStore`, `chat:recolor`
+w `socket.ts`. „Gracze” u MG: kropka i lista „z kolejności (…)” + 8 nazw (`CampaignPlayers`).
+`player-palette.test.ts` czyta `theme.css`: kontrast ≥ 3:1 z `--cp-paper` w obu motywach, sąsiedzi
+palety ΔE76 ≥ 15 po symulacji deuteranopii i protanopii (Machado). `theme.test.ts` zna `--player`
+i `--author-initial` jako tokeny lokalne.
+
+**Testy.** `shared` 2728/2728, serwer 1649/1649, klient 440/440; `tsc` w trzech pakietach,
+ESLint i Prettier czyste w zmienionych plikach. E2E `@szybkie`: 67/68 — padła T9a „konsola bez nowych błędów” (znane zerwane gniazdo Firefoksa MG,
+jak w 60a i 60b); sam plik T9a powtórzony: 7/7.
+
+**Oględziny:** tymczasowy spec `99-ogledziny/t99-kolor-gracza` (nie commitowany) na `po-T6` —
+**MG w Chromium, Ola w Firefoksie, Marek w trzecim kontekście (Chromium)**. Kolor ten sam u trojga
+(Marek błękit, Ola cynober, MG bursztyn), wiersz „moje” z białym paskiem, cudzy z kolorowym; MG
+zmienia Marka na lawendę w „Graczach” — u Oli i Marka karty przemalowują się na żywo i zostają
+po przeładowaniu. Podgląd całej palety i czat w motywie nocnym i dziennym w Firefoksie.
+
 ### Sesja 24.10, dziesiąta (po `c437442`) — etap 60b: ikona rubryki i grupy kart
 
 **Zlecenie:** „wykonaj teraz etap 60b”. Bez pytań; rozstrzygnięcia w pliku etapu (sekcja 60b) —

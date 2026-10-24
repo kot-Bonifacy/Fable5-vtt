@@ -18,8 +18,10 @@ import {
   describeNetProgramEffects,
   netProgramSlots,
   ARMOR_LOCATION_LABELS,
-  COMPENDIUM_CATEGORIES,
-  COMPENDIUM_CATEGORY_LABELS,
+  CPRED_PHARMACEUTICALS,
+  CPRED_PHARMA_CRAFT_DV,
+  cpredBladeToxinOfRow,
+  cpredDrugOfRow,
   CPRED_RANGE_BANDS,
   CPRED_AMMO_PATTERN_LABELS,
   CYBERWARE_INSTALL_COST,
@@ -55,6 +57,7 @@ import {
   shopTierOf,
   shopTierRefusalText,
   shopTierVerdict,
+  slugify,
 } from '@vtt/shared';
 import {
   deleteCompendiumEntry,
@@ -71,6 +74,8 @@ import { useAuthStore } from '../stores/authStore.js';
 import { COMBAT_LOCKED_HINT, useCombatLocked } from '../stores/combatStore.js';
 import { useCharacterStore } from '../stores/characterStore.js';
 import {
+  COMPENDIUM_SHELF_LABELS,
+  COMPENDIUM_SHELVES,
   countByCategory,
   shopTierContextOf,
   useCompendiumStore,
@@ -146,6 +151,13 @@ export function CompendiumPanel() {
   );
   const entryIcon = useEntryIcon();
   const counts = useMemo(() => countByCategory(entriesById, shelf), [entriesById, shelf]);
+  const pharma = useMemo(() => {
+    if (category !== 'chems') return [];
+    const needle = slugify(query);
+    return CPRED_PHARMACEUTICALS.filter(
+      (row) => !needle || slugify(`${row.name} ${row.effect}`).includes(needle),
+    );
+  }, [category, query]);
 
   const selected = selectedId ? (entriesById[selectedId] ?? null) : null;
 
@@ -167,14 +179,14 @@ export function CompendiumPanel() {
       </div>
 
       <nav className="compendium-categories">
-        {COMPENDIUM_CATEGORIES.map((id) => (
+        {COMPENDIUM_SHELVES.map((id) => (
           <button
             key={id}
             type="button"
             className={`compendium-category ${category === id ? 'compendium-category--active' : ''}`}
             onClick={() => setCategory(id)}
           >
-            {COMPENDIUM_CATEGORY_LABELS[id]} <span className="compendium-count">{counts[id]}</span>
+            {COMPENDIUM_SHELF_LABELS[id]} <span className="compendium-count">{counts[id]}</span>
           </button>
         ))}
       </nav>
@@ -189,7 +201,7 @@ export function CompendiumPanel() {
         <EntryCard entry={selected} isGm={isGm} onBack={() => select(null)} />
       ) : (
         <ul className="compendium-list">
-          {entries.length === 0 ? (
+          {entries.length === 0 && pharma.length === 0 ? (
             <li>
               {/* Trzy różne pustki, trzy różne odpowiedzi (27f): pusta baza
                   czeka na import, pusta kategoria na wpis, a pusty wynik
@@ -198,7 +210,7 @@ export function CompendiumPanel() {
                 <EmptyState text="Kompendium jest puste — MG wczytuje je z rozdziałów podręcznika (skrypt importu w narzędziach)." />
               ) : query.trim().length > 0 ? (
                 <EmptyState
-                  text={`Nic nie pasuje do „${query.trim()}” w kategorii „${COMPENDIUM_CATEGORY_LABELS[category]}”.`}
+                  text={`Nic nie pasuje do „${query.trim()}” w kategorii „${COMPENDIUM_SHELF_LABELS[category]}”.`}
                   action={{ label: 'Wyczyść szukanie', onClick: () => setQuery('') }}
                 />
               ) : (
@@ -251,6 +263,27 @@ export function CompendiumPanel() {
               </li>
             );
           })}
+          {pharma.length > 0 ? (
+            <li className="compendium-pharma">
+              {/* Farmaceutyków nie ma w sklepie ani w danych — wytwarza je Medyk
+                  z karty (`character:craft-pharma`), więc tu są do czytania. */}
+              <p
+                className="compendium-pharma-title"
+                title={`Medyk wytwarza je z karty: Test Farmaceutyków PT ${CPRED_PHARMA_CRAFT_DV}, jeden środek za każdy punkt Specjalizacji.`}
+              >
+                Farmaceutyki — wytwarza Medyk
+              </p>
+              <dl className="compendium-stats">
+                {pharma.map((row) => (
+                  <Stat
+                    key={row.id}
+                    label={row.name}
+                    value={row.limit ? `${row.effect} ${row.limit}` : row.effect}
+                  />
+                ))}
+              </dl>
+            </li>
+          ) : null}
         </ul>
       )}
 
@@ -950,6 +983,7 @@ function EntryCard({
             ) : null}
           </>
         ) : null}
+        {entry.category === 'gear' ? <ChemStats entry={entry} /> : null}
         {entry.category === 'criticalInjury' ? null : (
           <>
             <Stat label="Cena" value={formatCost(entry)} />
@@ -1270,9 +1304,66 @@ function ShopEntryTierChoice({
 }
 
 /** `hint` becomes a tooltip — the place to explain a rulebook abbreviation. */
-function Stat({ label, value, hint }: { label: string; value: string; hint?: string }) {
+/** Co robi narkotyk albo fiolka trucizny — to samo, co liczy karta przy „Zażyj”. */
+function ChemStats({ entry }: { entry: CompendiumEntry }) {
+  const row = { name: entry.name, compendiumId: entry.id };
+  const drug = cpredDrugOfRow(row);
+  if (drug) {
+    return (
+      <>
+        <Stat label="Działanie" value={drug.effect} wide />
+        <Stat label="Czas działania" value={chemSpanLabel(drug.durationS)} />
+        {drug.narrative ? <Stat label="Przy stole" value={drug.narrative} wide /> : null}
+        <Stat
+          label="Uzależnienie"
+          value={
+            drug.addiction
+              ? `PT ${drug.addiction.dv} — ${drug.addiction.effect}`
+              : 'nie uzależnia (zasada domowa)'
+          }
+          hint="Po końcu działania: SW + Odporność na tortury/narkotyki + 1k10."
+          wide
+        />
+      </>
+    );
+  }
+  const toxin = cpredBladeToxinOfRow(row);
+  if (!toxin) return null;
   return (
-    <div className="compendium-stat">
+    <>
+      <Stat
+        label="Na ostrze"
+        value={`${chemSpanLabel(toxin.durationS)} — trafiony rzuca ${toxin.check.skillLabel} PT ${toxin.check.dv}, porażka: ${toxin.check.failure.damage ?? '—'} obrażeń`}
+        hint="Fiolkę nakłada się na lekką broń białą z karty."
+        wide
+      />
+    </>
+  );
+}
+
+function chemSpanLabel(seconds: number): string {
+  const minutes = Math.round(seconds / 60);
+  if (minutes < 60) return `${minutes} min`;
+  const hours = Math.round(minutes / 60);
+  if (hours === 1) return '1 godzina';
+  const few = hours % 10 >= 2 && hours % 10 <= 4 && (hours % 100 < 12 || hours % 100 > 14);
+  return `${hours} ${few ? 'godziny' : 'godzin'}`;
+}
+
+function Stat({
+  label,
+  value,
+  hint,
+  wide = false,
+}: {
+  label: string;
+  value: string;
+  hint?: string;
+  /** Zdanie zamiast liczby — cała szerokość karty. */
+  wide?: boolean;
+}) {
+  return (
+    <div className={`compendium-stat ${wide ? 'compendium-stat--wide' : ''}`}>
       <dt {...(hint ? { title: hint } : {})}>{label}</dt>
       <dd>{value}</dd>
     </div>

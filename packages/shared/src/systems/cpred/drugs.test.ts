@@ -20,6 +20,7 @@ import {
   cpredDrug,
   cpredDrugOfRow,
   cpredEmptyChems,
+  cpredIsChemEntry,
   cpredPharmaCooldown,
   cpredRemoveAddiction,
   cpredTakeDose,
@@ -109,6 +110,14 @@ describe('rozpoznanie wiersza ekwipunku', () => {
     );
     expect(cpredBladeToxinOfRow({ name: 'Fiolka trucizny' })?.id).toBe('toxin.trucizna');
     expect(cpredBladeToxinOfRow({ name: 'Dopalacz' })).toBeNull();
+  });
+
+  it('półka „Używki i leki”: narkotyki, alkohol i fiolki — reszta Sprzętu nie', () => {
+    expect(cpredIsChemEntry({ id: 'gear.czarna-szpryca', name: 'Czarna szpryca' })).toBe(true);
+    expect(cpredIsChemEntry({ id: 'gear.alkohol', name: 'Alkohol' })).toBe(true);
+    expect(cpredIsChemEntry({ id: 'gear.fiolka-trucizny', name: 'Fiolka trucizny' })).toBe(true);
+    expect(cpredIsChemEntry({ id: 'custom.abc', name: 'Grzmot' })).toBe(true);
+    expect(cpredIsChemEntry({ id: 'gear.lom', name: 'Łom' })).toBe(false);
   });
 });
 

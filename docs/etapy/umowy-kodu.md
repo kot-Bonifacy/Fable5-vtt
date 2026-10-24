@@ -3271,6 +3271,7 @@ doklejenie `stale: false` do kopii sprzed zapisu wysyła wiersz z `indexedAt: nu
 
 ## dane — Kompendium, parsery, dane podręcznika
 
+- **Zakładka Kompendium to półka, nie kategoria (24.10, „Używki i leki”)** — `COMPENDIUM_SHELVES` i `shelfOf` w `compendiumStore.ts`; nową półkę z istniejącej kategorii dokłada się tam, bez ruszania danych i serwera.
 - **Półka „Elektronika” w sklepie kreatora (10.10)** — `GearEntry.electronics`, czytane przez `isElectronicsGear` (dek z gniazdami liczy się sam). Flagę ustawia `parse-gear.py` po nazwie z listy `ELECTRONICS` — nowa elektronika z podręcznika idzie na tę listę, rzecz domowa MG dostaje checkbox w edytorze. Pole czyta tylko `GearStep` w kreatorze.
 - **Opis wpisu kompendium ma do 2000 znaków (10.10)** — `COMPENDIUM_DESCRIPTION_MAX_LENGTH` w `compendium.ts` i `DESCRIPTION_MAX` w `parse-manual.py`, `parse-gear.py`, `parse-netrunning.py` zmieniają się razem; pole „Opis” w edytorze czyta stałą. Podstawowy wpis broni (`base_weapon_entries`) bierze opis swojego typu.
 - **Ceny w JSON-ach kompendium zostają cenami podręcznika (10.10, etap 47a)** — cennik domowy nakłada się przy wczytaniu, nie w danych; importer nadpisałby każdą ręczną zmianę. Zmiana cennika = `pricing.ts`, nie `data/private`. Wyjątki od reguły pasm (dziś Komputer) — po id w `DURABLE_GEAR_IDS`.
@@ -3281,6 +3282,14 @@ doklejenie `stale: false` do kopii sprzed zapisu wysyła wiersz z `indexedAt: nu
 - **Nowe pole typu broni** — dopisz je **razem** do `CpredWeaponTypeInput` i do białej listy `schema_fields` w `tools/import/parse-manual.py`; pominięta lista wycina pole po cichu (tak zginęły `explosive` i `ammoPatterns`).
 
 ---
+
+**Zakładka Kompendium to półka klienta, nie kategoria danych (24.10).** Narkotyki, alkohol
+i fiolki trucizny zostają w danych wpisami `gear` (importer, sklep, kreator, skrzynie i serwer
+czytają je jak dotąd), a panel odkłada je na półkę „Używki i leki” przez `shelfOf` →
+`cpredIsChemEntry` (`drugs.ts`: wpis z `compendiumIds` albo nazwa). Nowy narkotyk czy fiolka
+trafia na półkę sam, gdy ma wiersz w `CPRED_DRUGS` / `CPRED_BLADE_TOXINS`. Farmaceutyki nie są
+wpisami — półka drukuje `CPRED_PHARMACEUTICALS` pod listą, do czytania (licznik zakładki je
+wlicza). Nowa kategoria w `COMPENDIUM_CATEGORIES` dostaje półkę automatycznie.
 
 **Nowe pole typu broni dopisuje się w TRZECH miejscach, nie w dwóch (04.09).** Do
 `CpredWeaponTypeInput`, do wpisu w `manual-overrides.json` — **i do białej listy `schema_fields`

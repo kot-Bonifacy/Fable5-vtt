@@ -475,7 +475,7 @@ a nie do tego pliku.
 | `czas`      | zegar świata, kalendarz, `statEffects`, leczenie po dobie, dawki i uzależnienia (`chems`) | 19   | 2       |
 | `siec`      | Programy, LOD, demony, piętra architektury, dek jako towar, strefy bronione, kamery, rozbrajanie | 12   | 4       |
 | `boty`      | llama-server, RAG, reindeks, dziennik i baza wiedzy, brama AI  | 10   | 10      |
-| `dane`      | `parse-manual.py`, kompendium poza repo, tabele z podręcznika  | 8    | 12      |
+| `dane`      | `parse-manual.py`, kompendium poza repo, tabele z podręcznika  | 9    | 12      |
 | `kopie`     | `snapshot`, `archive`, paczki ZIP, wczytanie kampanii, „czeka na gracza”, kopie kampanii i cofnięcie, sklep i bot w paczce, zgłoszenie karty gracza | 19   | 6       |
 | `ogledziny` | CDP i Playwright MCP, zrzuty, dwie sesje, `window.confirm`    | 0    | 114     |
 | `testy`     | vitest, migotanie, `tsc --noEmit`, środowisko dev              | 0    | 151     |
@@ -484,6 +484,18 @@ a nie do tego pliku.
 ## Notatki z dwóch ostatnich sesji
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
+
+### Sesja 24.10, trzynasta (po `18d65fd`) — półka „Używki i leki” w Kompendium (zlecenie MG)
+
+**Zlecenie:** „nie widzę w kompendium leków i dragów, które powinny mieć swoją zakładkę”.
+Narkotyki, alkohol i fiolki trucizny są w danych wpisami `gear` (`gear.json`), a farmaceutyki
+Medyka w ogóle nie są wpisami. **Bez zmiany danych:** zakładka jest półką klienta —
+`CompendiumShelf` i `shelfOf` w `compendiumStore.ts`, rozpoznanie przez `cpredIsChemEntry`
+(`drugs.ts`, po wpisie albo nazwie). Pod wpisami pięć farmaceutyków do czytania („wytwarza
+Medyk”), karta narkotyku i fiolki niesie działanie, czas i uzależnienie z `CPRED_DRUGS` /
+`CPRED_BLADE_TOXINS`. Umowa na górze `dane`. Testy: `drugs.test.ts` +1, klient 440 zielone,
+`tsc`/ESLint/Prettier czyste. Oglądane w Firefoksie tymczasowym specem `t99-uzywki` (MCP Firefox
+nie wstał — znana pułapka `ogledziny`).
 
 ### Sesja 24.10, dwunasta (po `0b1fc7f`) — Eksploracja bez „Złap oddech” (zlecenie MG)
 
@@ -505,47 +517,3 @@ shared 2728, client 440, server 1649 — zielone.
 `initializeServer`, dwie próby; pewnie zajęty profil `.playwright-mcp/profile-firefox`). Do
 obejrzenia: gracz w Eksploracji klika cel ~30 m dalej i figura dochodzi bez przystanku.
 
-### Sesja 24.10, jedenasta (po `2d90dce`) — etap 60c: kolor gracza
-
-**Po oddaniu (MG):** „inicjałów przed nickiem niech nie będzie … nazwy graczy, które wybrał MG,
-mają służyć tylko jemu … usuń je też z górnego paska menu” — kropka zniknęła z czatu (została
-w „Graczach” MG), `top-bar-user` tylko u MG. Potem: „wewnętrzny czerwony pasek też już chyba nie
-będzie potrzebny”, „2 paski to po prostu za dużo” — zdjęte wszystkie wewnętrzne kolorowe krawędzie
-kart czatu (14 kart w 7 plikach stylów), wiersz ma najwyżej jeden pasek. Oglądane w Firefoksie
-(Ola) i Chromium (MG, Marek), noc i dzień. Klient 440/440; `@szybkie` po tych poprawkach nie
-puszczane (same style i podpis w pasku — E2E ich nie czyta).
-
-**Zlecenie:** „wykonaj teraz etap 60c”. W trakcie MG: „teraz widać nawet 3 poziomy (w jednym
-wierszu) pasków czasami. To za dużo” — pasek autora, pasek „ja” i krawędź karty stały obok siebie.
-Poprawione: przy krawędzi wiersza jeden pasek (biały „ja” wygrywa z kolorem autora), szept
-w kolorze traci fioletową kreskę. Reszta rozstrzygnięta bez pytań (plik etapu, sekcja 60c).
-
-**Shared.** `player-colors.ts` (`PLAYER_COLORS` — 8 nazw, `playerColors` po `joinedAt`,
-`playerInitial`, `GM_AUTHOR_COLOR`), `chatAuthorColor` w `chat.ts`, `authorColor` w widoku,
-`ChatRecolorPush`, `PlayerSummary.color`; `player-colors.test.ts` (9).
-
-**Serwer.** Migracja `20261024190000_player_color` (`CampaignMember.color`). `INCLUDE_CHAT_NAMES`
-dociąga członków kampanii i rolę autora, `toChatMessageView` wpisuje kolor — wszystkie 61 miejsc
-budowy widoku bez zmian. `registerPlayerColorRoute` (`POST …/players/:userId/color`, 404 cudzej
-kampanii, 400 złej nazwy) rozsyła `chat:recolor`; lista graczy niesie `color`, eksport kampanii
-`members[].color`. `player-color.test.ts` (5: na żywo i w historii, nieobecny gracz, zmiana MG,
-odmowy, restart drugim procesem, eksport) + wiersz w macierzy izolacji. Test restartu wisiał
-w pełnej suicie: otwarte gniazdo trzymało `close()` drugiego procesu — rozłączane przed nim.
-
-**Klient.** Barwy `--player-*` w `theme.css` (noc jasne, dzień ściemnione; `--player-gm` =
-`--warn`), `[data-author-color]` → `--player` i kropka `::before` nicku w `02-chat-dice.css`,
-`FeedRow` daje atrybut i `--author-initial`. `recolorAuthor` w `chatStore`, `chat:recolor`
-w `socket.ts`. „Gracze” u MG: kropka i lista „z kolejności (…)” + 8 nazw (`CampaignPlayers`).
-`player-palette.test.ts` czyta `theme.css`: kontrast ≥ 3:1 z `--cp-paper` w obu motywach, sąsiedzi
-palety ΔE76 ≥ 15 po symulacji deuteranopii i protanopii (Machado). `theme.test.ts` zna `--player`
-i `--author-initial` jako tokeny lokalne.
-
-**Testy.** `shared` 2728/2728, serwer 1649/1649, klient 440/440; `tsc` w trzech pakietach,
-ESLint i Prettier czyste w zmienionych plikach. E2E `@szybkie`: 67/68 — padła T9a „konsola bez nowych błędów” (znane zerwane gniazdo Firefoksa MG,
-jak w 60a i 60b); sam plik T9a powtórzony: 7/7.
-
-**Oględziny:** tymczasowy spec `99-ogledziny/t99-kolor-gracza` (nie commitowany) na `po-T6` —
-**MG w Chromium, Ola w Firefoksie, Marek w trzecim kontekście (Chromium)**. Kolor ten sam u trojga
-(Marek błękit, Ola cynober, MG bursztyn), wiersz „moje” z białym paskiem, cudzy z kolorowym; MG
-zmienia Marka na lawendę w „Graczach” — u Oli i Marka karty przemalowują się na żywo i zostają
-po przeładowaniu. Podgląd całej palety i czat w motywie nocnym i dziennym w Firefoksie.

@@ -9,7 +9,14 @@ import type {
   StateSyncPayload,
   WeaponTypeDefinition,
 } from '@vtt/shared';
-import { SHOP_TIER_MIN, searchCompendium } from '@vtt/shared';
+import {
+  COMPENDIUM_CATEGORIES,
+  COMPENDIUM_CATEGORY_LABELS,
+  CPRED_PHARMACEUTICALS,
+  SHOP_TIER_MIN,
+  cpredIsChemEntry,
+  searchCompendium,
+} from '@vtt/shared';
 
 /**
  * The item catalogue (stage 13). Unlike characters or bots this is shared,
@@ -19,6 +26,27 @@ import { SHOP_TIER_MIN, searchCompendium } from '@vtt/shared';
 
 /** Stable empty array: a new [] per render would loop zustand selectors. */
 const NO_ENTRIES: CompendiumEntry[] = [];
+
+/**
+ * A tab of the panel. Mostly a category, plus „Używki i leki” (24.10): drugs,
+ * alcohol and toxin vials are `gear` entries in the data, the pharmaceuticals
+ * are not entries at all (the Medic crafts them), and the GM wanted all of it
+ * on one shelf instead of lost among „Sprzęt”.
+ */
+export type CompendiumShelf = CompendiumCategory | 'chems';
+
+export const COMPENDIUM_SHELVES: readonly CompendiumShelf[] = COMPENDIUM_CATEGORIES.flatMap(
+  (category): CompendiumShelf[] => (category === 'gear' ? ['gear', 'chems'] : [category]),
+);
+
+export const COMPENDIUM_SHELF_LABELS: Record<CompendiumShelf, string> = {
+  ...COMPENDIUM_CATEGORY_LABELS,
+  chems: 'Używki i leki',
+};
+
+export function shelfOf(entry: CompendiumEntry): CompendiumShelf {
+  return entry.category === 'gear' && cpredIsChemEntry(entry) ? 'chems' : entry.category;
+}
 
 interface CompendiumStoreState {
   entries: Record<string, CompendiumEntry>;
@@ -46,7 +74,7 @@ interface CompendiumStoreState {
   roleTools: Record<string, CpredShopRoleTools>;
 
   /** Browse state of the side panel. */
-  category: CompendiumCategory;
+  category: CompendiumShelf;
   query: string;
   /** Entry whose card is open; null shows the list. */
   selectedId: string | null;
@@ -59,7 +87,7 @@ interface CompendiumStoreState {
   applyShopEntryTier: (entryId: string, tier: ShopTier | null) => void;
   applyUpsert: (entry: CompendiumEntry) => void;
   applyDelete: (id: string) => void;
-  setCategory: (category: CompendiumCategory) => void;
+  setCategory: (category: CompendiumShelf) => void;
   setQuery: (query: string) => void;
   select: (id: string | null) => void;
   edit: (id: string | null) => void;
@@ -162,37 +190,36 @@ export function shopTierContextOf(
   return { overrides, weaponTypeName: (id) => weaponTypeById[id]?.name };
 }
 
-/** Entries of the active category matching the search box, in server order. */
+/** Entries of the active shelf matching the search box, in server order. */
 export function visibleEntries(
   entries: Record<string, CompendiumEntry>,
   order: string[],
   query: string,
-  category: CompendiumCategory,
+  shelf: CompendiumShelf,
 ): CompendiumEntry[] {
-  const all = order.map((id) => entries[id]).filter((e): e is CompendiumEntry => !!e);
+  const all = order
+    .map((id) => entries[id])
+    .filter((e): e is CompendiumEntry => !!e && shelfOf(e) === shelf);
   if (all.length === 0) return NO_ENTRIES;
-  return searchCompendium(all, query, category);
+  return searchCompendium(all, query);
 }
 
-/** How many entries each category holds, for the badges on the category chips. */
+/**
+ * How many entries each shelf holds, for the badges on the tabs. „Używki
+ * i leki” also counts the pharmaceuticals listed under its entries.
+ */
 export function countByCategory(
   entries: Record<string, CompendiumEntry>,
   order: string[],
-): Record<CompendiumCategory, number> {
-  const counts: Record<CompendiumCategory, number> = {
-    weapon: 0,
-    ammo: 0,
-    attachment: 0,
-    armor: 0,
-    gear: 0,
-    cyberware: 0,
-    program: 0,
-    netDefense: 0,
-    criticalInjury: 0,
-  };
+): Record<CompendiumShelf, number> {
+  const counts = Object.fromEntries(COMPENDIUM_SHELVES.map((shelf) => [shelf, 0])) as Record<
+    CompendiumShelf,
+    number
+  >;
+  counts.chems = CPRED_PHARMACEUTICALS.length;
   for (const id of order) {
     const entry = entries[id];
-    if (entry) counts[entry.category] += 1;
+    if (entry) counts[shelfOf(entry)] += 1;
   }
   return counts;
 }

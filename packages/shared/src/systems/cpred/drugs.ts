@@ -250,6 +250,16 @@ export function cpredDrugOfRow(row: ChemGearRow): CpredDrug | null {
   return DRUG_BY_NAME.get(normalizeChromeName(row.name)) ?? null;
 }
 
+/**
+ * Wpis kompendium, który jest używką — narkotyk, alkohol albo fiolka trucizny.
+ * Kompendium trzyma je w „Sprzęcie” (`parse-gear.py`), a panel zbiera je na
+ * osobną półkę „Używki i leki” (24.10).
+ */
+export function cpredIsChemEntry(entry: { id: string; name: string }): boolean {
+  const row = { name: entry.name, compendiumId: entry.id };
+  return cpredDrugOfRow(row) !== null || cpredBladeToxinOfRow(row) !== null;
+}
+
 /* ------------------------------------------------------------------ *
  * Trucizna na ostrzu
  * ------------------------------------------------------------------ */
