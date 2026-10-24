@@ -2352,8 +2352,8 @@ function WeaponStrip({
                       <button
                         type="button"
                         className="small-button small-button--icon"
-                        title="Pokaż pierścienie przedziałów PT wokół swojego tokenu (kliknij ponownie, by schować)"
-                        aria-label="Pokaż pierścienie przedziałów PT wokół swojego tokenu (kliknij ponownie, by schować)"
+                        title="Pokaż na 10 s pierścienie przedziałów PT wokół swojego tokenu (kliknij ponownie, by schować wcześniej)"
+                        aria-label="Pokaż na 10 s pierścienie przedziałów PT wokół swojego tokenu (kliknij ponownie, by schować wcześniej)"
                         onClick={() => showRangeRings(row, resolved)}
                       >
                         ◎

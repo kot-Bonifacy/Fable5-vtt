@@ -79,6 +79,16 @@ interface AttackStoreState {
   toggleOverlay: (overlay: RangeOverlay) => void;
 }
 
+/** How long range rings stay on the map after the sheet button shows them. */
+export const OVERLAY_VISIBLE_MS = 10_000;
+
+let overlayTimer: ReturnType<typeof setTimeout> | null = null;
+
+function clearOverlayTimer() {
+  if (overlayTimer) clearTimeout(overlayTimer);
+  overlayTimer = null;
+}
+
 export const useAttackStore = create<AttackStoreState>((set, get) => ({
   targeting: null,
   overlay: null,
@@ -94,13 +104,26 @@ export const useAttackStore = create<AttackStoreState>((set, get) => ({
     else delete next.aimedAt;
     set({ targeting: next });
   },
-  setOverlay: (overlay) => set({ overlay }),
+  setOverlay: (overlay) => {
+    clearOverlayTimer();
+    set({ overlay });
+  },
   toggleOverlay: (overlay) => {
     const current = get().overlay;
     const same =
       current?.tokenId === overlay.tokenId &&
       current?.weaponName === overlay.weaponName &&
       current?.autofire === overlay.autofire;
-    set({ overlay: same ? null : overlay });
+    clearOverlayTimer();
+    if (same) {
+      set({ overlay: null });
+      return;
+    }
+    set({ overlay });
+    // Rings are a quick glance, not a fixture: left on, they break immersion.
+    overlayTimer = setTimeout(() => {
+      overlayTimer = null;
+      if (get().overlay === overlay) set({ overlay: null });
+    }, OVERLAY_VISIBLE_MS);
   },
 }));
