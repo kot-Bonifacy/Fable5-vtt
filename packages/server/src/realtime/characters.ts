@@ -176,7 +176,9 @@ export const characterCreateEvent = defineEvent<CharacterCreatePayload, Characte
         portraitUrl,
         // Wzorzec ma sens tylko bez właściciela: kopie stawia MG.
         template: payload?.template === true && ownerId === null,
-        data: JSON.stringify(sheet),
+        // Zapis jak każdy inny (`mergeCharacterData`): baza trzyma tę samą kartę,
+        // którą widzi stół — z Bijatyką z urzędu (47b), nie surowy szablon.
+        data: JSON.stringify(mergeCharacterData(sheet, {})),
       },
     });
     const view = toCharacterView(character, deps.ctx.cpred);

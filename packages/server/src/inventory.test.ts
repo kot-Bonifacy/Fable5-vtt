@@ -727,6 +727,19 @@ describe('przedmioty między kartami', () => {
     expect((await sheetOf(vex, vexCharacterId)).weapons.at(-1)?.name).toBe('Bijatyka');
   });
 
+  it('nowa karta ma Bijatykę już w bazie, nie tylko w widoku (24.10, T7b)', async () => {
+    // Do 24.10 `character:create` zapisywał surowy szablon (`weapons: []`), a stół
+    // dostawał kartę po odczycie z Bijatyką — baza i stół różniły się do pierwszej łaty.
+    const created = data(
+      await emitAck<CharacterView>(gm, 'character:create', { name: 'Świeża' }),
+      'character:create',
+    );
+    const row = await built.prisma.character.findUniqueOrThrow({ where: { id: created.id } });
+    const stored = JSON.parse(row.data) as CpredCharacterData;
+    expect(stored.weapons.map((w) => w.id)).toEqual([CPRED_BARE_HANDS_ROW_IDS.brawling]);
+    expect(stored.weapons).toEqual((created.data as CpredCharacterData).weapons);
+  });
+
   it('przekazuje same eurodolce — wiersz „Gotówka" w oknie wymiany (naprawa 23.09)', async () => {
     // Do 23.09 serwer odrzucał pustą listę przedmiotów (`NO_ITEMS`), więc guzik
     // „Gotówka →" w oknie „Wymiana" nie przenosił niczego.
