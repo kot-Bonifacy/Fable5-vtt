@@ -29,6 +29,11 @@ Pełna tabela z nazwami i datami: `archiwum/tabela-etapow.md`.
 
 ## Od czego zacząć
 
+**Ciała leżą otworem jak otwarte skrzynie (zlecenie MG z 24.10) — dalej etap 28, potem T10.**
+Martwą, leżącą, Ogłuszoną, Unieruchomioną albo Pochwyconą figurę — NPC-a **i postać gracza** —
+przeszukuje każdy, kto stoi obok („Wymiana…” → łup). Bezbronne naklejki to flaga `searchable`
+w `statuses.json`. Umowa na górze `ekwipunek`.
+
 **Percepcja w drodze to ukryty rzut serwera (zlecenie MG z 24.10) — dalej etap 28, potem T10.**
 Postać gracza w 4 m od ukrytej pułapki albo ukrytej figury MG rzuca Test Percepcji bez wezwania
 i bez wiedzy gracza. Porażka nie zatrzymuje marszu, a wynik z nazwą rzeczy zna tylko MG. Sukces
@@ -425,7 +430,7 @@ a nie do tego pliku.
 | `statysta`  | figura z kartą, `statBlock`, Wartość bojowa, `token:stat`, wzorce | 17   | 3       |
 | `karta`     | strony i zakładki, panele, `sheet.css`, walidacja list, usuwanie przedmiotu | 11   | 12      |
 | `postac`    | kreator, PD i awanse, koszyk i cofanie awansów, Role i Zdolności, cyborgizacje, ekonomia | 54   | 3       |
-| `ekwipunek` | wiersze wyposażenia, przekazanie, łup, handel, sklepy, zasięg, amunicja bez dna | 34   | 3       |
+| `ekwipunek` | wiersze wyposażenia, przekazanie, łup (także ciała graczy), handel, sklepy, zasięg, amunicja bez dna | 35   | 3       |
 | `czas`      | zegar świata, kalendarz, `statEffects`, leczenie po dobie      | 18   | 2       |
 | `siec`      | Programy, LOD, demony, piętra architektury, dek jako towar, strefy bronione, kamery, rozbrajanie | 12   | 4       |
 | `boty`      | llama-server, RAG, reindeks, dziennik i baza wiedzy, brama AI  | 10   | 10      |
@@ -438,6 +443,26 @@ a nie do tego pliku.
 ## Notatki z dwóch ostatnich sesji
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
+
+### Sesja 24.10, piąta (po `2c42c8b`) — zlecenie MG: ciała leżą otworem jak skrzynie
+
+**Zlecenie:** „postaci martwe, ogłuszone stają się czymś w rodzaju otwartych skrzynek, które
+można swobodnie otworzyć i zabrać z nich ich wyposażenie”, potem: „ogłuszony i unieruchomiony,
+itp.”.
+
+**Zmiana.** Łup z leżących i martwych NPC-ów był od 38b; teraz to samo dotyczy **postaci graczy**
+(dotąd z karty gracza przenosił tylko MG — decyzja z 06.09 odwołana) i figur z naklejką
+`"searchable": true` w rejestrze statusów: Ogłuszony, Unieruchomiony, Pochwycony (dobrane na „itp.”
+— Powalony, Oślepiony, Spowolniony i reszta zostają bez flagi; zmiana listy to jedna linia JSON-u).
+Reguła w `bodySearchable` (`shared/src/exchange.ts`), serwer pyta `searchableBody`; leżący kolega
+na liście „Wymiany” to łup, nie handel, a `inventory:take` stojącego gracza odmawia
+`STILL_STANDING` zamiast `NOT_YOURS`. Okno („Weź”, „Zabierz wszystko”) i zasięg ramienia bez
+zmian. Umowa na górze `ekwipunek`.
+
+**Sprawdzone:** `tsc` (shared, server, client) i ESLint czyste, Prettier czysty w zmienionych
+plikach; vitest `shared` 2613/2613 (+3), serwera 1629/1629 (+1: ogłuszony Rico — łup na liście,
+„Weź”, po wstaniu `STILL_STANDING`). **W przeglądarce nie oglądano** — klient nie zmieniony, ale
+zachowanie okna „Wymiana” tak; zaległość w `zaleglosci.md`.
 
 ### Sesja 24.10, czwarta (po `bb6eb39`) — zlecenie MG: pytanie przy usuwaniu przedmiotu
 
@@ -461,26 +486,3 @@ w Firefoksie** (Playwright MCP, `dev.db`, kampania Test_1): obie skóry, pytanie
 przedtem; pełne usunięcie sprawdzone na NPC „Korpogliniarz 1” na wierszu testowym dodanym na tę
 chwilę (stan „saved”, wyposażenie NPC znów puste). E2E nie puszczano — żadna spec nie klika
 starych ✕.
-
-### Sesja 24.10, trzecia (po `37164f3`) — zaległości: kopie, odtworzenie, przebiegi E2E
-
-**Kod (4 commity).** `59518e6`: kopie karty i kampanii (także cofnięcie 57b) niosą w rejestrze PD
-`revert` i `undoneAt` (`advancementUndoColumns`), więc MG cofa awanse i po wczytaniu kopii.
-`15c6fca`: `restoreSnapshot` podmienia bazę jednym `rename` po pełnej kopii, a `uploads-gc`
-rusza tylko katalogi kampanii, które baza zna (przy bazie bez kampanii — nic). `cfb521f`:
-`character:create` zapisuje kartę przez `mergeCharacterData` — świeża karta miała w bazie
-`weapons: []`, a stół widział Bijatykę (złapał to T7b). `6e43140`: T4b, T6b i `t8a-ekrany`
-przepięte na zasady od 19.10 (pułapki na górze `testy`). Zaległość „kopie na VPS bez dowiązań”
-zamknięta odczytem na VPS (`"linked": true`, jedno montowanie). Przyczyny awarii odtworzenia
-z 18.10 nie odtworzono — zablokowane są jej skutki.
-
-**Sprawdzone:** `tsc`, ESLint i Prettier czyste w zmienionych plikach; vitest serwera 1628/1628
-(+5: kopie z rejestrem, cofnięcie kampanii, przerwane odtworzenie, dwa testy zbieracza, nowa
-karta z Bijatyką — każdy czerwony bez poprawki); `shared` i klient nie ruszane. E2E: T3a od zera
-17/17, T4a od `po-T3` 13/13, T4b od `po-T4a` 20/20, T5b od `po-T5a` 27/27 **z gatewayem**, T6b
-od `po-T6a` 15/15 (3 `@llm` pominięte — gateway ruszył później), `t8a-ekrany` 24/24,
-`t8a-macierz` 16/16, `t7b-obciazenie` 3/3 w skali 0,1, `t46c-` 10/10 z 46c.9 na żywym modelu.
-UI nie zmieniano, więc oględzin nie było (przebiegi E2E szły w Chromium i Firefoksie).
-**Uwaga dla MG:** zatrzymanie marszu przez ukrytą Percepcję pokazuje graczowi czerwony pasek
-„Odmowa — Postać przystanęła po drodze — kliknij cel jeszcze raz.” (`MOVE_HALTED`), obok karty
-rzutu — do oceny, czy tak ma wyglądać.

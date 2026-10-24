@@ -213,7 +213,7 @@ describe('exchangeOptionsFor — pojemnik ma jeden tryb', () => {
   const facts = {
     anchorOwnerId: 'marek',
     ownerId: null,
-    condition: 'dead' as const,
+    searchable: true,
     merchant: null,
   };
 

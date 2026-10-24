@@ -6,6 +6,11 @@ w `POMYSLY.md` („Do sprawdzenia przy stole”), decyzje MG — w `decyzje-i-up
 
 ## Otwarte
 
+**24.10.2026 — oględziny łupu z ciała gracza.** Zmiana z sesji piątej 24.10 (ciała leżą otworem)
+ma testy serwera, ale nie była oglądana. Do sprawdzenia w Firefoksie (Playwright) obok Chrome MG:
+MG daje figurze gracza „Ogłuszony”, drugi gracz obok niej — „Wymiana…” i podwójny klik otwierają
+łup („Weź”, „Zabierz wszystko”), okradany dostaje kartę czatu; po zdjęciu naklejki znów handel.
+
 **24.10.2026 — punkty kontrolne E2E z różnych dni; jeden rozjazd pozycji w T7b do obserwacji.** Po
 sesji 24.10 (trzecia) `po-T3a`, `po-T4a`, `po-T4`, `po-T5` i `po-T6` są zapisane na nowo, ale każdy
 z innego, starszego punktu (`po-T3`, `po-T5a`, `po-T6a` sprzed zasady „kule się nie kończą”), a

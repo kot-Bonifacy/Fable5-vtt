@@ -19,6 +19,7 @@ import {
   INVENTORY_ITEMS_MAX,
   INVENTORY_NOTE_MAX,
   ROLE_GM,
+  bodySearchable,
   conditionRegistry,
   cpredItemLine,
   cpredMoveItems,
@@ -234,6 +235,20 @@ export function searchableCondition(
     { statuses: view.statuses, hp: { current: data.hpCurrent, max } },
     conditions,
   );
+}
+
+/**
+ * Czy ciało tej figury leży otworem (`bodySearchable`, 24.10.2026): leży, nie
+ * żyje albo nosi naklejkę `searchable` (Ogłuszony,
+ * Unieruchomiony, Pochwycony) — także postać gracza.
+ */
+export function searchableBody(
+  token: Token,
+  data: CpredCharacterData,
+  statuses: StatusDefinition[],
+): boolean {
+  const condition = searchableCondition(token, data, conditionsOf(statuses));
+  return bodySearchable(condition, toTokenView(token, true).statuses, statuses);
 }
 
 /* ------------------------------------------------------------------ *
@@ -512,9 +527,11 @@ export const inventoryTakeEvent = defineEvent<InventoryTakePayload, { messageId:
     if (fromData.container) {
       if (fromData.container.lock !== 'open' && !isGm) throw new RealtimeError('CONTAINER_LOCKED');
     } else if (!isGm) {
-      if (from.ownerId !== null) throw new RealtimeError('NOT_YOURS');
-      const condition = searchableCondition(token, fromData, conditionsOf(deps.ctx.statuses.list));
-      if (condition !== 'down' && condition !== 'dead') throw new RealtimeError('STILL_STANDING');
+      // Ciało leży otworem jak otwarta skrzynia — NPC-a i od 24.10 także
+      // postać innego gracza (zlecenie MG); stojącego nikt nie obszuka.
+      if (!searchableBody(token, fromData, deps.ctx.statuses.list)) {
+        throw new RealtimeError('STILL_STANDING');
+      }
     }
 
     // Przeszukanie jest czynnością **przy** ciele: figura biorącego musi stać na

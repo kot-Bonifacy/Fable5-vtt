@@ -1,5 +1,28 @@
 # Dziennik sesji — archiwum
 
+### Sesja 24.10, trzecia (po `37164f3`) — zaległości: kopie, odtworzenie, przebiegi E2E
+
+**Kod (4 commity).** `59518e6`: kopie karty i kampanii (także cofnięcie 57b) niosą w rejestrze PD
+`revert` i `undoneAt` (`advancementUndoColumns`), więc MG cofa awanse i po wczytaniu kopii.
+`15c6fca`: `restoreSnapshot` podmienia bazę jednym `rename` po pełnej kopii, a `uploads-gc`
+rusza tylko katalogi kampanii, które baza zna (przy bazie bez kampanii — nic). `cfb521f`:
+`character:create` zapisuje kartę przez `mergeCharacterData` — świeża karta miała w bazie
+`weapons: []`, a stół widział Bijatykę (złapał to T7b). `6e43140`: T4b, T6b i `t8a-ekrany`
+przepięte na zasady od 19.10 (pułapki na górze `testy`). Zaległość „kopie na VPS bez dowiązań”
+zamknięta odczytem na VPS (`"linked": true`, jedno montowanie). Przyczyny awarii odtworzenia
+z 18.10 nie odtworzono — zablokowane są jej skutki.
+
+**Sprawdzone:** `tsc`, ESLint i Prettier czyste w zmienionych plikach; vitest serwera 1628/1628
+(+5: kopie z rejestrem, cofnięcie kampanii, przerwane odtworzenie, dwa testy zbieracza, nowa
+karta z Bijatyką — każdy czerwony bez poprawki); `shared` i klient nie ruszane. E2E: T3a od zera
+17/17, T4a od `po-T3` 13/13, T4b od `po-T4a` 20/20, T5b od `po-T5a` 27/27 **z gatewayem**, T6b
+od `po-T6a` 15/15 (3 `@llm` pominięte — gateway ruszył później), `t8a-ekrany` 24/24,
+`t8a-macierz` 16/16, `t7b-obciazenie` 3/3 w skali 0,1, `t46c-` 10/10 z 46c.9 na żywym modelu.
+UI nie zmieniano, więc oględzin nie było (przebiegi E2E szły w Chromium i Firefoksie).
+**Uwaga dla MG:** zatrzymanie marszu przez ukrytą Percepcję pokazuje graczowi czerwony pasek
+„Odmowa — Postać przystanęła po drodze — kliknij cel jeszcze raz.” (`MOVE_HALTED`), obok karty
+rzutu — do oceny, czy tak ma wyglądać.
+
 ### Sesja 24.10, druga (po `a350c32`) — zlecenie MG: Percepcja w drodze w ukryciu
 
 **Zlecenie:** „testy na percepcję z ukrytymi rzeczami mają się odbywać w ukrytej formie bez wiedzy

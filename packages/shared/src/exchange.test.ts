@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { compareExchangeCounterparts, exchangeOptionsFor, type ExchangeFacts } from './exchange.js';
+import {
+  bodySearchable,
+  compareExchangeCounterparts,
+  exchangeOptionsFor,
+  type ExchangeFacts,
+} from './exchange.js';
+import type { StatusDefinition } from './tokens.js';
 
 /**
  * Etap 46a: jedno okno, rodzaj zależy od drugiej strony (decyzja MG 5).
@@ -11,7 +17,7 @@ function facts(patch: Partial<ExchangeFacts> = {}): ExchangeFacts {
     isGm: false,
     anchorOwnerId: 'u-marek',
     ownerId: null,
-    condition: 'ok',
+    searchable: false,
     merchant: null,
     ...patch,
   };
@@ -26,9 +32,14 @@ describe('rodzaj drugiej strony u gracza', () => {
     expect(exchangeOptionsFor(facts())).toEqual([{ kind: 'trade' }]);
   });
 
-  it('leżący albo martwy NPC → łup', () => {
-    expect(exchangeOptionsFor(facts({ condition: 'down' }))).toEqual([{ kind: 'loot' }]);
-    expect(exchangeOptionsFor(facts({ condition: 'dead' }))).toEqual([{ kind: 'loot' }]);
+  it('NPC, którego ciało leży otworem → łup', () => {
+    expect(exchangeOptionsFor(facts({ searchable: true }))).toEqual([{ kind: 'loot' }]);
+  });
+
+  it('postać innego gracza, która leży otworem → łup, nie handel (24.10)', () => {
+    expect(exchangeOptionsFor(facts({ ownerId: 'u-ola', searchable: true }))).toEqual([
+      { kind: 'loot' },
+    ]);
   });
 
   it('handlarz otwarty → sklep, zamknięty → wyszarzony', () => {
@@ -41,9 +52,30 @@ describe('rodzaj drugiej strony u gracza', () => {
   });
 
   it('martwy handlarz → łup, nie sklep (decyzja MG 7)', () => {
-    expect(
-      exchangeOptionsFor(facts({ condition: 'dead', merchant: { closed: 'keeper' } })),
-    ).toEqual([{ kind: 'loot' }]);
+    expect(exchangeOptionsFor(facts({ searchable: true, merchant: { closed: 'keeper' } }))).toEqual(
+      [{ kind: 'loot' }],
+    );
+  });
+});
+
+describe('ciało leży otworem (24.10, zlecenie MG)', () => {
+  const registry: StatusDefinition[] = [
+    { id: 'stunned', name: 'Ogłuszony', icon: '', searchable: true },
+    { id: 'immobilized', name: 'Unieruchomiony', icon: '', searchable: true },
+    { id: 'prone', name: 'Powalony', icon: '' },
+  ];
+
+  it('martwe i leżące — zawsze, bez naklejki', () => {
+    expect(bodySearchable('dead', [], registry)).toBe(true);
+    expect(bodySearchable('down', [], registry)).toBe(true);
+  });
+
+  it('stojące — tylko z naklejką, którą rejestr znaczy `searchable`', () => {
+    expect(bodySearchable('ok', ['stunned'], registry)).toBe(true);
+    expect(bodySearchable('wounded', ['immobilized'], registry)).toBe(true);
+    expect(bodySearchable('ok', ['prone'], registry)).toBe(false);
+    expect(bodySearchable('ok', ['nieznany'], registry)).toBe(false);
+    expect(bodySearchable('ok', [], registry)).toBe(false);
   });
 });
 

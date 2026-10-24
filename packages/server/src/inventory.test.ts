@@ -431,14 +431,74 @@ describe('przedmioty między kartami', () => {
     expect(vexGear[0]?.qty).toBe(4);
   });
 
-  it('gracz nie zabierze niczego z karty innego gracza', async () => {
+  it('gracz nie zabierze niczego z karty innego gracza, który stoi na nogach', async () => {
     expect(
       await emitAck(vex, 'inventory:take', {
         fromTokenId: ricoTokenId,
         toCharacterId: vexCharacterId,
         items: [{ list: 'gear', rowId: 'whatever' }],
       }),
-    ).toEqual({ ok: false, error: 'NOT_YOURS' });
+    ).toEqual({ ok: false, error: 'STILL_STANDING' });
+  });
+
+  it('ogłuszony gracz leży otworem: kolega widzi łup i zabiera rzecz (24.10)', async () => {
+    const vexGearBefore = (await sheetOf(gm, vexCharacterId)).gear;
+    expect(
+      (
+        await emitAck(gm, 'character:update', {
+          characterId: ricoCharacterId,
+          patch: { data: { gear: [gearRow('g-rico', 2)] } },
+        })
+      ).ok,
+    ).toBe(true);
+    expect(
+      (
+        await emitAck(gm, 'token:update', {
+          tokenId: ricoTokenId,
+          patch: { statuses: ['stunned'] },
+        })
+      ).ok,
+    ).toBe(true);
+    const listed = data(
+      await emitAck<ExchangeCounterpartsResult>(vex, 'exchange:counterparts', {
+        characterId: vexCharacterId,
+      }),
+      'exchange:counterparts',
+    );
+    const body = listed.counterparts.filter((row) => row.tokenId === ricoTokenId);
+    expect(body.map((row) => row.kind)).toEqual(['loot']);
+    expect(body[0]?.items?.map((item) => item.rowId)).toContain('g-rico');
+
+    const taken = await emitAck(vex, 'inventory:take', {
+      fromTokenId: ricoTokenId,
+      toCharacterId: vexCharacterId,
+      items: [{ list: 'gear', rowId: 'g-rico', qty: 1 }],
+    });
+    expect(taken.ok).toBe(true);
+    expect((await sheetOf(gm, ricoCharacterId)).gear.find((row) => row.id === 'g-rico')?.qty).toBe(
+      1,
+    );
+
+    // Rico wstaje — znów handel, nie łup.
+    expect(
+      (await emitAck(gm, 'token:update', { tokenId: ricoTokenId, patch: { statuses: [] } })).ok,
+    ).toBe(true);
+    expect(
+      await emitAck(vex, 'inventory:take', {
+        fromTokenId: ricoTokenId,
+        toCharacterId: vexCharacterId,
+        items: [{ list: 'gear', rowId: 'g-rico' }],
+      }),
+    ).toEqual({ ok: false, error: 'STILL_STANDING' });
+    // Dalsze testy liczą na plecaki sprzed przeszukania.
+    await emitAck(gm, 'character:update', {
+      characterId: ricoCharacterId,
+      patch: { data: { gear: [] } },
+    });
+    await emitAck(gm, 'character:update', {
+      characterId: vexCharacterId,
+      patch: { data: { gear: vexGearBefore } },
+    });
   });
 
   it('gracz nie przeszuka figury, która stoi na nogach', async () => {

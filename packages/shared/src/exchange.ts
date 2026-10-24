@@ -22,6 +22,7 @@
 import type { ContainerLock } from './containers.js';
 import type { TokenCondition } from './figures.js';
 import type { MerchantClosedReason } from './merchants.js';
+import type { StatusDefinition } from './tokens.js';
 
 export type ExchangeCounterpartKind = 'trade' | 'loot' | 'merchant' | 'gm' | 'container';
 
@@ -50,8 +51,11 @@ export interface ExchangeFacts {
   anchorOwnerId: string | null;
   /** Właściciel karty drugiej strony (`null` — NPC). */
   ownerId: string | null;
-  /** Stan figury drugiej strony; `null`, gdy nie stoi na wspólnej scenie. */
-  condition: TokenCondition | null;
+  /**
+   * Ciało drugiej strony leży otworem (`bodySearchable`); `false` także wtedy,
+   * gdy figura nie stoi na wspólnej scenie.
+   */
+  searchable: boolean;
   /** Sklep tej karty, jeśli jest handlarzem: `null` w `closed` znaczy „sprzedaje”. */
   merchant: { closed: MerchantClosedReason | null } | null;
   /** Pojemnik (46b) — wtedy nic poza trybem pojemnika (i trybem MG) nie wchodzi w grę. */
@@ -63,8 +67,20 @@ export interface ExchangeOption {
   unavailable?: ExchangeUnavailable;
 }
 
-function lying(condition: TokenCondition | null): boolean {
-  return condition === 'down' || condition === 'dead';
+/**
+ * Czy ciało tej figury leży otworem jak otwarta skrzynia (24.10.2026, zlecenie
+ * MG): martwe, leżące (Nieprzytomny, Śmiertelnie ranny, zero PW) albo
+ * z naklejką, którą rejestr znaczy `searchable` (Ogłuszony, Unieruchomiony,
+ * Pochwycony). Tak samo NPC,
+ * jak postać gracza — przeszukać może każdy, kto stoi obok.
+ */
+export function bodySearchable(
+  condition: TokenCondition,
+  statuses: readonly string[],
+  registry: readonly StatusDefinition[],
+): boolean {
+  if (condition === 'down' || condition === 'dead') return true;
+  return statuses.some((id) => registry.some((status) => status.id === id && status.searchable));
 }
 
 /**
@@ -73,9 +89,9 @@ function lying(condition: TokenCondition | null): boolean {
  * serwer i dopisuje `OUT_OF_REACH` sam.
  *
  * Gracz:
+ *  - ciało, które leży otworem (`bodySearchable`) → łup — NPC, martwy handlarz
+ *    (decyzja MG 7) i od 24.10 także postać innego gracza;
  *  - karta z właścicielem (drużyna) → handel;
- *  - NPC leżący albo martwy → łup — także martwy handlarz, którego ekwipunek
- *    staje się łupem (decyzja MG 7);
  *  - NPC-handlarz → sklep, wyszarzony, gdy MG go zamknął;
  *  - żywy NPC → handel (jego stronę prowadzi MG).
  *
@@ -86,7 +102,7 @@ function lying(condition: TokenCondition | null): boolean {
  * Zamknięty sklep MG widzi jako zwykłego NPC-a.
  */
 export function exchangeOptionsFor(facts: ExchangeFacts): ExchangeOption[] {
-  const { isGm, anchorOwnerId, ownerId, condition, merchant, container } = facts;
+  const { isGm, anchorOwnerId, ownerId, searchable, merchant, container } = facts;
   // Pojemnik nie handluje, nie leży i nie sprzedaje — ma jeden tryb, a MG
   // dokłada swój („Skąd / Dokąd” bez zgód, jak przy każdej karcie).
   if (container) {
@@ -99,8 +115,8 @@ export function exchangeOptionsFor(facts: ExchangeFacts): ExchangeOption[] {
     options.push({ kind: 'gm' });
     return options;
   }
+  if (searchable) return [{ kind: 'loot' }];
   if (ownerId !== null) return [{ kind: 'trade' }];
-  if (lying(condition)) return [{ kind: 'loot' }];
   if (merchant) {
     if (merchant.closed === 'closed') return [{ kind: 'merchant', unavailable: 'MERCHANT_CLOSED' }];
     return [{ kind: 'merchant' }];

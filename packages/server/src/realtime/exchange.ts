@@ -19,10 +19,9 @@ import { defineEvent } from './registry.js';
 import { requireCampaignId } from './combat.js';
 import {
   closestMetres,
-  conditionsOf,
   metresBetweenPlaced,
   requireOwnCharacter,
-  searchableCondition,
+  searchableBody,
   tokensOf,
   type PlacedToken,
 } from './inventory.js';
@@ -80,7 +79,6 @@ export const exchangeCounterpartsEvent = defineEvent<
     });
 
     const merchants = await merchantsOfCampaign(deps, campaignId);
-    const conditions = conditionsOf(deps.ctx.statuses.list);
     const found = new Map<string, ExchangeCounterpartView>();
     const add = (view: ExchangeCounterpartView) => {
       const known = found.get(view.key);
@@ -150,7 +148,7 @@ export const exchangeCounterpartsEvent = defineEvent<
           isGm,
           anchorOwnerId: anchor.ownerId,
           ownerId: card.ownerId,
-          condition: searchableCondition(token, data, conditions),
+          searchable: searchableBody(token, data, deps.ctx.statuses.list),
           merchant: merchant ? { closed: merchant.closed } : null,
           container: container ? { lock: container.lock } : null,
         });

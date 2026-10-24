@@ -1,6 +1,11 @@
 {
   "statuses": [
-    { "id": "stunned", "name": "Ogłuszony", "icon": "/public/cpred/status-icons/stunned.svg" },
+    {
+      "id": "stunned",
+      "name": "Ogłuszony",
+      "icon": "/public/cpred/status-icons/stunned.svg",
+      "searchable": true
+    },
     {
       "id": "seriously-wounded",
       "name": "Poważnie ranny",
@@ -31,10 +36,16 @@
     {
       "id": "immobilized",
       "name": "Unieruchomiony",
-      "icon": "/public/cpred/status-icons/immobilized.svg"
+      "icon": "/public/cpred/status-icons/immobilized.svg",
+      "searchable": true
     },
     { "id": "slowed", "name": "Spowolniony", "icon": "/public/cpred/status-icons/slowed.svg" },
-    { "id": "grappled", "name": "Pochwycony", "icon": "/public/cpred/status-icons/grappled.svg" },
+    {
+      "id": "grappled",
+      "name": "Pochwycony",
+      "icon": "/public/cpred/status-icons/grappled.svg",
+      "searchable": true
+    },
     { "id": "prone", "name": "Powalony", "icon": "/public/cpred/status-icons/prone.svg" },
     { "id": "poisoned", "name": "Zatruty", "icon": "/public/cpred/status-icons/poisoned.svg" },
     { "id": "drowning", "name": "Tonięcie", "icon": "/public/cpred/status-icons/drowning.svg" },

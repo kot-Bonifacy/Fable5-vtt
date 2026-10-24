@@ -209,6 +209,13 @@ export interface StatusDefinition {
    * statuses that change nothing about how the figure stands.
    */
   condition?: TokenCondition;
+  /**
+   * The body wearing this sticker lies open to anyone standing next to it
+   * (24.10.2026, zlecenie MG) — Ogłuszony, Unieruchomiony, Pochwycony. `down`
+   * and `dead` need no flag: every figure in those conditions can be searched
+   * (`bodySearchable`).
+   */
+  searchable?: boolean;
 }
 
 /** Ack data of the token image upload (`POST /api/uploads/tokens`). */
