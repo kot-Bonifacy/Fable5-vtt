@@ -422,7 +422,9 @@ model Invitation {
   id         String    @id @default(cuid())
   token      String    @unique
   campaignId String
-  expiresAt  DateTime
+  /// Null = link bez terminu (od 24.10.2026 domyślnie); termin ma tylko link
+  /// z jawnie skróconą ważnością, i tylko póki nikt go nie użył.
+  expiresAt  DateTime?
   revokedAt  DateTime?
   createdAt  DateTime  @default(now())
   /// Imię gracza wypisane przez MG; null tylko na anonimowych linkach sprzed

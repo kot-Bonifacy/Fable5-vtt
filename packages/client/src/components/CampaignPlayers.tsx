@@ -9,10 +9,14 @@ function inviteUrl(token: string): string {
 
 const STATE_LABEL: Record<InvitationState, string> = {
   waiting: 'czeka',
-  used: 'użyty',
+  used: 'w użyciu',
   expired: 'wygasł',
   revoked: 'unieważniony',
 };
+
+/** Link wpuszcza: czeka na pierwsze wejście albo jest już stałym kluczem gracza (24.10). */
+const isLive = (invitation: InvitationSummary): boolean =>
+  invitation.state === 'waiting' || invitation.state === 'used';
 
 /** Link do schowka; przeglądarka bez dostępu do schowka zostawia go na liście do ręcznego skopiowania. */
 async function copyLink(token: string): Promise<boolean> {
@@ -35,7 +39,7 @@ function InvitationRow({
   onRevoke: (id: string) => void;
 }) {
   const [copied, setCopied] = useState(false);
-  const waiting = invitation.state === 'waiting';
+  const live = isLive(invitation);
 
   async function copy() {
     if (await copyLink(invitation.token)) {
@@ -51,15 +55,17 @@ function InvitationRow({
         {invitation.renewal ? 'odnowienie' : invitation.name ? 'nowy gracz' : 'stary link'}
       </span>
       {cardName && <span className="invite-expiry">z kartą „{cardName}”</span>}
-      <span className={`badge ${waiting ? 'badge--ok' : 'badge--off'}`}>
+      <span className={`badge ${live ? 'badge--ok' : 'badge--off'}`}>
         {STATE_LABEL[invitation.state]}
       </span>
       <span className="invite-expiry">
         {invitation.usedAt
-          ? `użyty ${new Date(invitation.usedAt).toLocaleString('pl-PL')}`
-          : `do ${new Date(invitation.expiresAt).toLocaleString('pl-PL')}`}
+          ? `pierwsze wejście ${new Date(invitation.usedAt).toLocaleString('pl-PL')}`
+          : invitation.expiresAt
+            ? `do ${new Date(invitation.expiresAt).toLocaleString('pl-PL')}`
+            : 'bez terminu'}
       </span>
-      {waiting && (
+      {live && (
         <>
           <code className="invite-url">{inviteUrl(invitation.token)}</code>
           <button type="button" className="small-button" onClick={() => void copy()}>
@@ -92,11 +98,12 @@ function issueErrorText(error: unknown): string {
 }
 
 /**
- * Gracze kampanii i ich imienne linki (etap 44b). Link jest kluczem do jednego
- * miejsca przy stole: „Nowy gracz” wypisuje imię i daje link, który działa raz,
- * a „Link odnowienia” przy graczu wpuszcza go na to samo konto z nowego
- * komputera. Świeży link od razu trafia do schowka, bo następny krok MG to
- * wkleić go graczowi na Discordzie.
+ * Gracze kampanii i ich imienne linki (etap 44b). Link jest stałym kluczem do
+ * jednego miejsca przy stole (24.10): „Nowy gracz” wypisuje imię i daje link,
+ * który zakłada konto, a potem wpuszcza na nie za każdym razem. „Link
+ * odnowienia” przy graczu to nowy klucz w miejsce zgubionego — poprzednie
+ * przestają działać. Świeży link od razu trafia do schowka, bo następny krok
+ * MG to wkleić go graczowi na Discordzie.
  */
 export function CampaignPlayers({
   campaign,
@@ -112,12 +119,12 @@ export function CampaignPlayers({
   const [notice, setNotice] = useState<string | null>(null);
   const [showSpent, setShowSpent] = useState(false);
 
-  const waiting = campaign.invitations.filter((link) => link.state === 'waiting');
+  const live = campaign.invitations.filter(isLive);
   // Etap 57a: karty z pliku, które czekają na gracza — „ta karta jest twoja”.
   const pendingCards = campaign.pendingCards ?? [];
   const cardName = (link: InvitationSummary) =>
     pendingCards.find((card) => card.id === link.characterId)?.name ?? null;
-  const spent = campaign.invitations.filter((link) => link.state !== 'waiting');
+  const spent = campaign.invitations.filter((link) => !isLive(link));
 
   async function issue(url: string, body: unknown, who: string) {
     setBusy(true);
@@ -128,7 +135,7 @@ export function CampaignPlayers({
       const copied = await copyLink(link.token);
       setNotice(
         copied
-          ? `Link dla gracza ${who} jest w schowku — wyślij mu go. Działa raz, przez tydzień.`
+          ? `Link dla gracza ${who} jest w schowku — wyślij mu go. Działa bez terminu, za każdym razem.`
           : `Link dla gracza ${who} czeka na liście niżej — skopiuj go i wyślij.`,
       );
       onChanged();
@@ -174,7 +181,7 @@ export function CampaignPlayers({
                 type="button"
                 className="small-button"
                 disabled={busy}
-                title="Nowy komputer albo zgubione ciasteczko: link wpuszcza na to samo konto, inne urządzenia gracza zostają zalogowane"
+                title="Gracz zgubił link albo wyciekł: nowy link na to samo konto, poprzednie przestają działać, zalogowane urządzenia zostają"
                 onClick={() =>
                   void issue(
                     `/api/campaigns/${campaign.id}/players/${player.id}/renewal`,
@@ -229,9 +236,9 @@ export function CampaignPlayers({
       {notice && <p className="auth-hint">{notice}</p>}
 
       <h3 className="panel-section-title">Linki</h3>
-      {waiting.length === 0 && <p className="placeholder-text">Żaden link nie czeka na gracza.</p>}
+      {live.length === 0 && <p className="placeholder-text">Żaden link nie jest ważny.</p>}
       <ul className="invite-list">
-        {waiting.map((invitation) => (
+        {live.map((invitation) => (
           <InvitationRow
             key={invitation.id}
             invitation={invitation}
@@ -248,7 +255,7 @@ export function CampaignPlayers({
             aria-expanded={showSpent}
             onClick={() => setShowSpent((value) => !value)}
           >
-            {showSpent ? 'Ukryj' : 'Pokaż'} użyte i nieważne ({spent.length})
+            {showSpent ? 'Ukryj' : 'Pokaż'} nieważne ({spent.length})
           </button>
           {showSpent && (
             <ul className="invite-list">

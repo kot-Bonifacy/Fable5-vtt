@@ -25,16 +25,17 @@ import {
 const HOUR_MS = 60 * 60 * 1000;
 const MAX_CAMPAIGN_NAME_LENGTH = 64;
 
-/** Ważność nieużytego linku: domyślnie tydzień (decyzja MG z 03.10), test może skrócić. */
-function invitationExpiry(body: unknown): Date {
+/**
+ * Ważność nieużytego linku: domyślnie bez terminu (decyzja MG z 24.10 — gracze
+ * wchodzą tylko linkami), wywołujący może ją jawnie skrócić (testy).
+ */
+function invitationExpiry(body: unknown): Date | null {
   const { expiresInHours } = (body ?? {}) as { expiresInHours?: unknown };
-  const hours =
-    typeof expiresInHours === 'number' &&
+  return typeof expiresInHours === 'number' &&
     expiresInHours > 0 &&
     expiresInHours <= INVITATION_TTL_HOURS
-      ? expiresInHours
-      : INVITATION_TTL_HOURS;
-  return new Date(Date.now() + hours * HOUR_MS);
+    ? new Date(Date.now() + expiresInHours * HOUR_MS)
+    : null;
 }
 
 const newToken = (): string => randomBytes(24).toString('base64url');
@@ -217,10 +218,10 @@ export function registerCampaignRoutes(app: FastifyInstance, ctx: AppContext): v
   });
 
   /**
-   * „Link odnowienia” (etap 44b): gracz na nowym komputerze albo bez
-   * ciasteczka wraca na **to samo** konto. Poprzedni czekający link odnowienia
-   * tego gracza traci ważność — klucz do jednego konta jest jeden naraz.
-   * Inne urządzenia gracza zostają zalogowane (decyzja MG z 03.10).
+   * „Link odnowienia” (etap 44b): nowy klucz do **tego samego** konta w miejsce
+   * zgubionego albo wyciekłego. Od 24.10 linki się nie zużywają, więc wszystkie
+   * poprzednie linki tego gracza tracą ważność — klucz do jednego konta jest
+   * jeden naraz. Inne urządzenia gracza zostają zalogowane (decyzja MG z 03.10).
    */
   app.post('/api/campaigns/:id/players/:userId/renewal', gmOnly, async (request, reply) => {
     const { id, userId } = request.params as { id: string; userId: string };
@@ -236,7 +237,7 @@ export function registerCampaignRoutes(app: FastifyInstance, ctx: AppContext): v
 
     const invitation = await ctx.prisma.$transaction(async (tx) => {
       await tx.invitation.updateMany({
-        where: { campaignId: campaign.id, userId, renewal: true, usedAt: null, revokedAt: null },
+        where: { campaignId: campaign.id, userId, revokedAt: null },
         data: { revokedAt: new Date() },
       });
       return tx.invitation.create({

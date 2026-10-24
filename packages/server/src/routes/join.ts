@@ -14,8 +14,9 @@ type LoadedInvitation = Invitation & { campaign: Campaign };
 
 /**
  * Imienny link (etap 44b) albo odmowa. Nieznany i unieważniony link to 404
- * i liczy się do limitu zgadywania (#12); użyty i wygasły to 410 — token był
- * prawdziwy, więc gracz dostaje zdanie, co dalej, a nie „nieważne”.
+ * i liczy się do limitu zgadywania (#12); wygasły to 410 — token był
+ * prawdziwy, więc gracz dostaje zdanie, co dalej, a nie „nieważne”. Użyty
+ * link działa dalej (24.10): to stały klucz gracza.
  */
 async function requireUsableInvitation(
   ctx: AppContext,
@@ -31,10 +32,6 @@ async function requireUsableInvitation(
   if (!invitation || state === 'revoked') {
     ctx.loginLimiter?.fail(request.ip);
     void reply.code(404).send({ error: 'INVALID_INVITATION' });
-    return null;
-  }
-  if (state === 'used') {
-    void reply.code(410).send({ error: 'INVITATION_USED' });
     return null;
   }
   if (state === 'expired') {
@@ -61,16 +58,18 @@ export function registerJoinRoutes(
     const info: JoinInfo = {
       campaignName: invitation.campaign.name,
       playerName: invitation.name!,
-      renewal: invitation.renewal,
+      // Użyty link nowego gracza otwiera już istniejące konto.
+      renewal: invitation.renewal || invitation.usedAt !== null,
     };
     return info;
   });
 
   /**
-   * Wejście z linku. Imię bierze się z linku, nie z formularza: link nowego
-   * gracza zakłada konto w tej kampanii, link odnowienia otwiera istniejące.
-   * Oba zużywają się w tej samej transakcji, w której powstaje konto —
-   * dwa równoczesne kliknięcia nie założą dwóch kont.
+   * Wejście z linku. Imię bierze się z linku, nie z formularza: pierwsze
+   * użycie linku nowego gracza zakłada konto w tej kampanii, każde następne
+   * (i każdy link odnowienia) otwiera istniejące. Pierwsze użycie zapisuje się
+   * w tej samej transakcji, w której powstaje konto — dwa równoczesne
+   * kliknięcia nie założą dwóch kont.
    */
   app.post('/api/join/:token', async (request, reply) => {
     if (refuseRateLimited(ctx, request, reply)) return reply;
@@ -81,7 +80,7 @@ export function registerJoinRoutes(
     const outcome = await ctx.prisma
       .$transaction(async (tx) => {
         let userId = invitation.userId;
-        if (invitation.renewal) {
+        if (invitation.renewal || invitation.usedAt) {
           // Gracz, którego MG w międzyczasie usunął z kampanii, nie wraca kluczem.
           const member = userId
             ? await tx.campaignMember.findUnique({
@@ -111,12 +110,14 @@ export function registerJoinRoutes(
             });
           }
         }
-        const used = await tx.invitation.updateMany({
-          where: { id: invitation.id, usedAt: null },
-          data: { usedAt: new Date(), userId },
-        });
-        // Ktoś był szybszy tym samym linkiem — cała transakcja się cofa.
-        if (used.count !== 1) throw new LinkAlreadyUsed();
+        if (!invitation.usedAt) {
+          const used = await tx.invitation.updateMany({
+            where: { id: invitation.id, usedAt: null },
+            data: { usedAt: new Date(), userId },
+          });
+          // Ktoś był szybszy tym samym linkiem — cała transakcja się cofa.
+          if (used.count !== 1) throw new LinkAlreadyUsed();
+        }
         return tx.user.findUniqueOrThrow({ where: { id: userId! } });
       })
       .catch((error: unknown) => {
@@ -129,7 +130,7 @@ export function registerJoinRoutes(
     if (outcome === 'NAME_TAKEN') return reply.code(409).send({ error: outcome });
 
     const deps = realtime();
-    if (!invitation.renewal && invitation.characterId && deps) {
+    if (!invitation.renewal && !invitation.usedAt && invitation.characterId && deps) {
       const card = await ctx.prisma.character.findFirst({
         where: { id: invitation.characterId, ownerId: outcome.id },
       });

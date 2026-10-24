@@ -166,7 +166,7 @@ test.describe.serial('T3b: sceny, figury, boty, aktywacja i czat', () => {
   });
 
   test('start z po-T3a: MG, Marek i Ola przy stole, scen jeszcze nie ma', async ({ cast }) => {
-    // Linki z T3a są zużyte (etap 44b: link działa raz) — wracają linki odnowienia.
+    // Linki z T3a są użyte — gracze wracają nowymi linkami (odnowienia albo nowych graczy).
     expect(
       query<{ state: string }>(
         'SELECT usedAt IS NOT NULL AS state FROM Invitation WHERE campaignId = ? AND name IS NOT NULL',

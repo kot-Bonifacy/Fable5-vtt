@@ -86,13 +86,17 @@ export interface JoinInfo {
   renewal: boolean;
 }
 
-/** Where a named link stands (stage 44b). */
+/**
+ * Where a named link stands (stage 44b). Since 24.10 a used link keeps working —
+ * it is the player's permanent key — so only `expired` and `revoked` refuse entry.
+ */
 export type InvitationState = 'waiting' | 'used' | 'expired' | 'revoked';
 
 export interface InvitationSummary {
   id: string;
   token: string;
-  expiresAt: string;
+  /** Null: no deadline (the default since 24.10). */
+  expiresAt: string | null;
   revoked: boolean;
   createdAt: string;
   /** Player name on the link; null only on pre-44b anonymous links (all revoked). */
@@ -105,7 +109,7 @@ export interface InvitationSummary {
   characterId?: string | null;
 }
 
-/** A named link is valid this long when nobody uses it (decision of 03.10). */
+/** Longest deadline a caller may put on an unused named link; by default it has none (24.10). */
 export const INVITATION_TTL_HOURS = 7 * 24;
 
 /** Longest player name the GM can write on a link. */

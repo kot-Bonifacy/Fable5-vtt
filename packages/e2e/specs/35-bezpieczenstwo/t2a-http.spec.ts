@@ -244,7 +244,7 @@ test.describe.serial('T2 HTTP: uploady, zaproszenia, sesja, nagłówki, hasło M
     }
   });
 
-  test('6.2.7 zaproszenia: imię MG nie przejmuje konta MG, link działa raz', async () => {
+  test('6.2.7 zaproszenia: imię MG nie przejmuje konta MG, link wraca na to samo konto', async () => {
     // Etap 44b: imię wypisuje MG na linku — „MG” w żadnej pisowni nie przejdzie.
     for (const name of ['MG', 'mg', ' Mg ']) {
       const response = await gm.post(`/api/campaigns/${campaign}/invitations`, {
@@ -253,16 +253,17 @@ test.describe.serial('T2 HTTP: uploady, zaproszenia, sesja, nagłówki, hasło M
       expect(response.status(), name).toBe(409);
       expect(((await response.json()) as { error: string }).error).toBe('NAME_TAKEN');
     }
-    // Imię z formularza nic nie znaczy: wchodzi się jako imię z linku, i tylko raz.
+    // Imię z formularza nic nie znaczy: wchodzi się jako imię z linku. Od 24.10
+    // link jest stałym kluczem — drugie wejście otwiera to samo konto.
     const token = await invite(gm, 'Gapa');
     const first = await anon.post(`/api/join/${token}`, { data: { name: 'MG' } });
     expect(first.status()).toBe(200);
-    expect(((await first.json()) as { user: { name: string; role: string } }).user).toMatchObject({
-      name: 'Gapa',
-      role: 'PLAYER',
-    });
-    const second = await anon.post(`/api/join/${token}`);
-    expect(second.status()).toBe(410);
+    const gapa = ((await first.json()) as { user: { id: string; name: string; role: string } })
+      .user;
+    expect(gapa).toMatchObject({ name: 'Gapa', role: 'PLAYER' });
+    const second = await anon.post(`/api/join/${token}`, { data: { name: 'MG' } });
+    expect(second.status()).toBe(200);
+    expect(((await second.json()) as { user: { id: string } }).user.id).toBe(gapa.id);
   });
 
   test('6.2.7 zaproszenie innej kampanii nie daje wstępu do aktywnej', async () => {

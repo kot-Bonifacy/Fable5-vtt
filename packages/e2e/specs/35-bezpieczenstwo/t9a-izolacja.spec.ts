@@ -680,15 +680,17 @@ test.describe
     expect(reverse.status()).toBe(404);
   });
 
-  test('9.6 linki: drugi raz nie wpuszcza, odnowienie na to samo konto, unieważniony i wygasły nie wpuszczają, imię zajęte w kampanii', async ({
+  test('9.6 linki: drugi raz wraca na to samo konto, odnowienie unieważnia stary, unieważniony i wygasły nie wpuszczają, imię zajęte w kampanii', async ({
     cast,
   }) => {
-    // Link Kuby po użyciu — w innej przeglądarce, przez UI i przez API.
+    // Link Kuby po użyciu (od 24.10 stały klucz) — w innej przeglądarce, przez UI i przez API.
     const again = await cast.open('Kuba-ponownie', 'firefox');
     await again.page.goto(`/join/${kubaToken}`);
-    await expect(again.page.getByRole('heading', { name: 'Link już wykorzystany' })).toBeVisible();
+    await expect(again.page.getByRole('heading', { name: 'Wracasz do gry' })).toBeVisible();
     const anon = await request.newContext({ baseURL: SERVER_URL });
-    expect((await anon.post(`/api/join/${kubaToken}`)).status()).toBe(410);
+    const reused = await anon.post(`/api/join/${kubaToken}`);
+    expect(reused.status()).toBe(200);
+    expect(((await reused.json()) as { user: { id: string } }).user.id).toBe(kubaId);
 
     const page = bartek.page;
     await page.goto('/gm');
@@ -717,7 +719,11 @@ test.describe
     const kuba2 = await cast.gracz('Kuba', 'firefox', renewalToken);
     expect((await authOf(kuba2)).user!.id).toBe(kubaId);
     expect((await authOf(kuba)).status).toBe('authenticated');
-    expect((await anon.post(`/api/join/${renewalToken}`)).status()).toBe(410);
+    // Nowy klucz działa dalej, stary przestał.
+    expect((await anon.post(`/api/join/${renewalToken}`)).status()).toBe(200);
+    expect((await anon.post(`/api/join/${kubaToken}`)).status()).toBe(404);
+    await again.page.goto(`/join/${kubaToken}`);
+    await expect(again.page.getByRole('heading', { name: 'Zaproszenie nieważne' })).toBeVisible();
 
     // Unieważniony.
     await page.getByPlaceholder('Imię nowego gracza').fill('Zosia');

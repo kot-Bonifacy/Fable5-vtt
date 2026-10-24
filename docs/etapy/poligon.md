@@ -380,8 +380,8 @@ postaci** (to jego zadanie: pokazuje pusty stan listy postaci z 27f).
   unieważniła wszystkie dotychczasowe (anonimowe) linki, a imię wpisane na ekranie wejścia nic już
   nie znaczy. Wchodzi się **linkiem odnowienia**: Panel MG → kampania → „Gracze” → „Link
   odnowienia” przy `Tester` (albo `POST /api/campaigns/<id>/players/<userId>/renewal` kontem MG).
-  Link działa raz i przez 7 dni, a inne zalogowane okna gracza zostają. Gracze **nie mają haseł**
-  — link jest całą procedurą.
+  Od 24.10 link działa bez terminu i za każdym razem (nowy link odnowienia unieważnia poprzednie),
+  a inne zalogowane okna gracza zostają. Gracze **nie mają haseł** — link jest całą procedurą.
 - **Tak samo wraca się na każde inne konto** (Tony / avatar9 / Marcin) — link odnowienia przy jego
   imieniu. „Nowy gracz” zakłada **nowe** konto, nawet gdy imię istnieje w innej kampanii.
 - **Dwie sesje naraz w jednym Chrome** działają jak dotąd: `localhost:5173` i `[::1]:5173`

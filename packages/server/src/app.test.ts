@@ -221,11 +221,13 @@ describe('campaigns and invitations (GM)', () => {
     const invitation = res.json() as InvitationSummary;
     inviteToken = invitation.token;
     invitationId = invitation.id;
-    expect(invitation).toMatchObject({ name: 'Rogue', renewal: false, state: 'waiting' });
-    // Tydzień (decyzja MG z 03.10), nie rok jak anonimowy link sprzed 44b.
-    const days = (new Date(invitation.expiresAt).getTime() - Date.now()) / 86_400_000;
-    expect(days).toBeGreaterThan(6.9);
-    expect(days).toBeLessThan(7.1);
+    // Bez terminu (decyzja MG z 24.10): gracze wchodzą tylko linkami.
+    expect(invitation).toMatchObject({
+      name: 'Rogue',
+      renewal: false,
+      state: 'waiting',
+      expiresAt: null,
+    });
   });
 
   it('refuses a link without a name, with the GM name, or a name already waiting', async () => {
@@ -272,12 +274,17 @@ describe('player join flow (stage 44b — named links)', () => {
     playerId = state.user.id;
   });
 
-  it('works once — a used link says so, for both info and join', async () => {
+  it('keeps working — a used link opens the same account again (24.10)', async () => {
     const info = await built.app.inject({ method: 'GET', url: `/api/join/${inviteToken}` });
-    expect(info.statusCode).toBe(410);
-    expect(info.json()).toEqual({ error: 'INVITATION_USED' });
+    expect(info.statusCode).toBe(200);
+    expect(info.json()).toMatchObject({ playerName: 'Rogue', renewal: true });
     const again = await built.app.inject({ method: 'POST', url: `/api/join/${inviteToken}` });
-    expect(again.statusCode).toBe(410);
+    expect(again.statusCode).toBe(200);
+    expect((again.json() as AuthState).user.id).toBe(playerId);
+    expect(await built.prisma.user.count({ where: { name: 'Rogue' } })).toBe(1);
+    // Pierwsze ciasteczko dalej ważne.
+    const me = await built.app.inject({ url: '/api/auth/me', headers: { cookie: playerCookie } });
+    expect((me.json() as AuthState).user.id).toBe(playerId);
     const listed = await built.app.inject({
       method: 'GET',
       url: '/api/campaigns',
@@ -309,10 +316,13 @@ describe('player join flow (stage 44b — named links)', () => {
     const me = await built.app.inject({ url: '/api/auth/me', headers: { cookie: playerCookie } });
     expect((me.json() as AuthState).user.id).toBe(playerId);
     const second = await built.app.inject({ method: 'POST', url: `/api/join/${renewal.token}` });
-    expect(second.statusCode).toBe(410);
+    expect(second.statusCode).toBe(200);
+    // Nowy klucz unieważnia poprzedni — także pierwszy link gracza.
+    const original = await built.app.inject({ method: 'GET', url: `/api/join/${inviteToken}` });
+    expect(original.statusCode).toBe(404);
   });
 
-  it('a newer renewal link voids the older one still waiting', async () => {
+  it('a newer renewal link voids the older one', async () => {
     const issue = async () =>
       (
         await built.app.inject({

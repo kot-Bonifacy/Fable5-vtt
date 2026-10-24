@@ -22,14 +22,15 @@ const REFUSALS: Record<Exclude<PageState, 'loading' | 'ready'>, [string, string,
     'Link zaproszenia jest nieprawidłowy albo MG go unieważnił.',
     'Poproś MG o nowy link.',
   ],
+  // Tylko wyścig dwóch pierwszych wejść naraz — od 24.10 użyty link działa dalej.
   used: [
-    'Link już wykorzystany',
-    'Ten link otworzył już miejsce przy stole i drugi raz nie zadziała.',
-    'Jeśli to Ty, a grasz z innego komputera albo przeglądarki, poproś MG o link odnowienia.',
+    'Link właśnie użyty',
+    'Ktoś wszedł tym linkiem w tej samej chwili.',
+    'Otwórz link jeszcze raz — wpuści Cię na Twoje konto.',
   ],
   expired: [
     'Link wygasł',
-    'Nieużyty link jest ważny tydzień.',
+    'MG wystawił ten link z ograniczoną ważnością.',
     'Poproś MG o nowy — wystawi go jednym kliknięciem.',
   ],
   limited: [
@@ -137,8 +138,8 @@ export function JoinPage() {
         </p>
         <p className="auth-hint">
           {info.renewal
-            ? 'Link odnowienia wpuszcza na Twoje dotychczasowe konto — z postacią i czatem.'
-            : 'Link działa raz. Ta przeglądarka zapamięta Cię na rok.'}
+            ? 'Link wpuszcza na Twoje dotychczasowe konto — z postacią i czatem.'
+            : 'Zachowaj ten link — wejdziesz nim na swoje konto z każdego komputera.'}
         </p>
         {error && <p className="auth-error">{error}</p>}
         <button className="primary-button" type="submit" disabled={busy} autoFocus>

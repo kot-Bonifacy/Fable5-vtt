@@ -4,19 +4,23 @@ import type { PrismaClient } from './db.js';
 import type { Invitation } from './generated/prisma/client.js';
 
 /**
- * Imienne linki graczy (etap 44b, decyzje MG z 03.10).
+ * Imienne linki graczy (etap 44b, decyzje MG z 03.10 i 24.10).
  *
- * Link jest kluczem do jednego miejsca przy stole: MG wypisuje na nim imię,
- * pierwsze użycie zakłada konto gracza w tej kampanii, a link się zużywa. Nowy
- * komputer to **link odnowienia** — ten sam klucz do istniejącego konta, bez
- * wylogowania innych urządzeń. Do 44b link był anonimowy, a imię wpisywał
- * gracz, więc kto znał imię, wchodził na cudze konto.
+ * Link jest stałym kluczem do jednego miejsca przy stole: MG wypisuje na nim
+ * imię, pierwsze użycie zakłada konto gracza w tej kampanii, a każde następne
+ * wpuszcza na to samo konto — z dowolnego komputera, bez wylogowania innych
+ * urządzeń. Do 24.10 link działał raz i tydzień, ale gracze wchodzili tylko
+ * linkami i MG co chwilę wystawiał nowe. **Link odnowienia** zastępuje
+ * zgubiony albo wyciekły klucz: poprzednie linki gracza przestają działać.
+ * Do 44b link był anonimowy, a imię wpisywał gracz, więc kto znał imię,
+ * wchodził na cudze konto.
  */
 
 export function invitationState(invitation: Invitation, now = Date.now()): InvitationState {
-  if (invitation.usedAt) return 'used';
   if (invitation.revokedAt || invitation.name === null) return 'revoked';
-  if (invitation.expiresAt.getTime() <= now) return 'expired';
+  if (invitation.usedAt) return 'used';
+  // Termin ma tylko link z jawnie skróconą ważnością, i tylko póki nikt go nie użył.
+  if (invitation.expiresAt && invitation.expiresAt.getTime() <= now) return 'expired';
   return 'waiting';
 }
 
@@ -24,7 +28,7 @@ export function toInvitationSummary(invitation: Invitation): InvitationSummary {
   return {
     id: invitation.id,
     token: invitation.token,
-    expiresAt: invitation.expiresAt.toISOString(),
+    expiresAt: invitation.expiresAt?.toISOString() ?? null,
     revoked: invitation.revokedAt !== null,
     createdAt: invitation.createdAt.toISOString(),
     name: invitation.name,
@@ -72,7 +76,7 @@ export async function playerNameTaken(
         renewal: false,
         usedAt: null,
         revokedAt: null,
-        expiresAt: { gt: new Date() },
+        OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
       },
       select: { name: true },
     }),
