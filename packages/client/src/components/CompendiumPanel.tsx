@@ -18,8 +18,6 @@ import {
   describeNetProgramEffects,
   netProgramSlots,
   ARMOR_LOCATION_LABELS,
-  CPRED_PHARMACEUTICALS,
-  CPRED_PHARMA_CRAFT_DV,
   cpredBladeToxinOfRow,
   cpredDrugOfRow,
   CPRED_RANGE_BANDS,
@@ -57,7 +55,6 @@ import {
   shopTierOf,
   shopTierRefusalText,
   shopTierVerdict,
-  slugify,
 } from '@vtt/shared';
 import {
   deleteCompendiumEntry,
@@ -151,13 +148,6 @@ export function CompendiumPanel() {
   );
   const entryIcon = useEntryIcon();
   const counts = useMemo(() => countByCategory(entriesById, shelf), [entriesById, shelf]);
-  const pharma = useMemo(() => {
-    if (category !== 'chems') return [];
-    const needle = slugify(query);
-    return CPRED_PHARMACEUTICALS.filter(
-      (row) => !needle || slugify(`${row.name} ${row.effect}`).includes(needle),
-    );
-  }, [category, query]);
 
   const selected = selectedId ? (entriesById[selectedId] ?? null) : null;
 
@@ -201,7 +191,7 @@ export function CompendiumPanel() {
         <EntryCard entry={selected} isGm={isGm} onBack={() => select(null)} />
       ) : (
         <ul className="compendium-list">
-          {entries.length === 0 && pharma.length === 0 ? (
+          {entries.length === 0 ? (
             <li>
               {/* Trzy różne pustki, trzy różne odpowiedzi (27f): pusta baza
                   czeka na import, pusta kategoria na wpis, a pusty wynik
@@ -263,27 +253,6 @@ export function CompendiumPanel() {
               </li>
             );
           })}
-          {pharma.length > 0 ? (
-            <li className="compendium-pharma">
-              {/* Farmaceutyków nie ma w sklepie ani w danych — wytwarza je Medyk
-                  z karty (`character:craft-pharma`), więc tu są do czytania. */}
-              <p
-                className="compendium-pharma-title"
-                title={`Medyk wytwarza je z karty: Test Farmaceutyków PT ${CPRED_PHARMA_CRAFT_DV}, jeden środek za każdy punkt Specjalizacji.`}
-              >
-                Farmaceutyki — wytwarza Medyk
-              </p>
-              <dl className="compendium-stats">
-                {pharma.map((row) => (
-                  <Stat
-                    key={row.id}
-                    label={row.name}
-                    value={row.limit ? `${row.effect} ${row.limit}` : row.effect}
-                  />
-                ))}
-              </dl>
-            </li>
-          ) : null}
         </ul>
       )}
 

@@ -74,6 +74,11 @@ const PRICE_SCALE_BY_ID: ReadonlyMap<string, number> = new Map([
   ['gear.fiolka-trucizny', CPRED_PRICE_SCALE_AMMO], // 100 ed
   ['gear.fiolka-biotoksyny', CPRED_PRICE_SCALE_AMMO], // 500 ed
   ['gear.alkohol-doskonalej-jakosci', CPRED_PRICE_SCALE_CONSUMABLE], // 300 ed
+  // 24.10: farmaceutyki z pasma Premium to dawka, nie sprzęt trwały (×10 dawało
+  // 1000 ed za strzał Stymu); id z `CPRED_PHARMACEUTICALS` (`pharma.ts`).
+  ['gear.turbo-uzdrawiacz', CPRED_PRICE_SCALE_CONSUMABLE], // 300 ed
+  ['gear.stym', CPRED_PRICE_SCALE_CONSUMABLE], // 300 ed
+  ['gear.zryw', CPRED_PRICE_SCALE_CONSUMABLE], // 300 ed
 ]);
 
 /**

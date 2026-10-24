@@ -55,6 +55,14 @@ export interface CpredPharmaceutical {
    * w `decyzje-i-uproszczenia.md`.
    */
   limit?: string;
+  /**
+   * Wpis kompendium, pod którym środek stoi na półce „Używki i leki” (zasada
+   * domowa MG z 24.10: farmaceutyki są też do kupienia, nie tylko od Medyka).
+   */
+  compendiumId: string;
+  /** Cena dawki w ed podręcznika i jej pasmo — przelicza je `pricing.ts`. */
+  cost: number;
+  costCategory: 'costly' | 'premium';
 }
 
 /**
@@ -67,6 +75,9 @@ export interface CpredPharmaceutical {
 export const CPRED_PHARMACEUTICALS: readonly CpredPharmaceutical[] = [
   {
     id: 'pharma.antybiotyk',
+    compendiumId: 'gear.antybiotyk',
+    cost: 50,
+    costCategory: 'costly',
     name: 'Antybiotyk',
     effect:
       'Osoba, która rozpoczęła naturalny powrót do zdrowia, przez tydzień odzyskuje codziennie ' +
@@ -75,12 +86,18 @@ export const CPRED_PHARMACEUTICALS: readonly CpredPharmaceutical[] = [
   },
   {
     id: 'pharma.dynadetoks',
+    compendiumId: 'gear.dynadetoks',
+    cost: 50,
+    costCategory: 'costly',
     name: 'Dynadetoks',
     effect: 'Organizm błyskawicznie oczyszcza się z narkotyków, trucizn i alkoholu.',
     applies: 'cleanse',
   },
   {
     id: 'pharma.turbo-uzdrawiacz',
+    compendiumId: 'gear.turbo-uzdrawiacz',
+    cost: 100,
+    costCategory: 'premium',
     name: 'Turbo uzdrawiacz',
     effect:
       'O ile cel nie jest Śmiertelnie Ranny, natychmiast leczy PW równe sumie BUDOWY CIAŁA ' +
@@ -90,6 +107,9 @@ export const CPRED_PHARMACEUTICALS: readonly CpredPharmaceutical[] = [
   },
   {
     id: 'pharma.stym',
+    compendiumId: 'gear.stym',
+    cost: 100,
+    costCategory: 'premium',
     name: 'Stym',
     effect: 'Przez godzinę cel ignoruje kary wynikające z bycia Poważnie Rannym.',
     applies: 'ignoreSeriousWound',
@@ -97,6 +117,9 @@ export const CPRED_PHARMACEUTICALS: readonly CpredPharmaceutical[] = [
   },
   {
     id: 'pharma.zryw',
+    compendiumId: 'gear.zryw',
+    cost: 100,
+    costCategory: 'premium',
     name: 'Zryw',
     effect: 'Cel przez 24 godziny funkcjonuje w pełni sprawnie bez snu.',
     applies: 'narrative',
@@ -113,6 +136,46 @@ export function cpredPharmaceutical(id: string | undefined): CpredPharmaceutical
 export function isPharmaceuticalId(id: string): id is CpredPharmaceuticalId {
   return BY_ID.has(id);
 }
+
+const BY_ENTRY = new Map(CPRED_PHARMACEUTICALS.map((row) => [row.compendiumId, row]));
+
+/** Farmaceutyk, którym jest ten wpis kompendium. */
+export function cpredPharmaOfEntryId(id: string): CpredPharmaceutical | null {
+  return BY_ENTRY.get(id) ?? null;
+}
+
+/**
+ * Farmaceutyk, którym jest ten wiersz ekwipunku — po `consumable`, a bez niego
+ * po wpisie kompendium (dawka z półki handlarza czy skrzyni). **Nie po nazwie**:
+ * wpisany ręką „Antybiotyk” bez wpisu zostaje notatką (`addDoses` na serwerze).
+ */
+export function cpredPharmaOfRow(row: {
+  consumable?: string;
+  compendiumId?: string;
+}): CpredPharmaceutical | null {
+  if (row.consumable) return cpredPharmaceutical(row.consumable);
+  return row.compendiumId ? cpredPharmaOfEntryId(row.compendiumId) : null;
+}
+
+/**
+ * Plik kompendium z pięcioma farmaceutykami, dokładany przez serwer do plików
+ * z dysku (zasada domowa MG z 24.10). Proza jest już w repo, więc wpisy nie
+ * czekają na importer i nie mieszkają w `data/private`. Ceny są cenami
+ * podręcznika — cennik domowy nakłada się przy wczytaniu jak wszędzie.
+ */
+export const CPRED_PHARMA_COMPENDIUM_FILE = {
+  source: 'Farmaceutyki Medyka (s. 150) — do kupienia z zasady domowej MG',
+  entries: CPRED_PHARMACEUTICALS.map((row) => ({
+    id: row.compendiumId,
+    category: 'gear',
+    name: row.name,
+    cost: row.cost,
+    costCategory: row.costCategory,
+    description:
+      `${row.effect}${row.limit ? ` ${row.limit}` : ''} Podać dawkę umie tylko Medyk ` +
+      `z punktem w Farmaceutykach; Medyk może też wytworzyć ją sam z karty.`,
+  })),
+};
 
 /** PT wytworzenia dawki — „udany Test Technologii Medycznej o PT 13" (s. 150). */
 export const CPRED_PHARMA_CRAFT_DV = 13;

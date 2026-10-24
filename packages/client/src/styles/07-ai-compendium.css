@@ -702,23 +702,6 @@
   text-align: left;
 }
 
-.compendium-pharma {
-  margin-top: 0.5rem;
-}
-
-.compendium-pharma-title {
-  margin-bottom: 0.3rem;
-  font-size: 0.72rem;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--text-dim);
-}
-
-/* Zdanie z tabeli zamiast liczby — jeden środek na wiersz. */
-.compendium-pharma .compendium-stats {
-  grid-template-columns: 1fr;
-}
-
 .compendium-row-name {
   display: flex;
   align-items: baseline;

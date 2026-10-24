@@ -311,6 +311,13 @@ to jest ten akapit do przeczytania na nowo.
 - **Kto widzi chemię: właściciel karty i MG (decyzja MG).** Karta zażycia `gmrecovery`, rzut na
   uzależnienie `gmroll` z adresatem, pasek figury tylko u tych, którzy mają kartę. Publiczny
   dziennik walki i karta ataku strzykawką piszą „dawka”, bez nazwy narkotyku.
+- **Farmaceutyki też do kupienia (zasada domowa MG z 24.10).** Podręcznik daje je tylko Medykowi
+  (s. 150); przy tym stole stoją też na półce „Używki i leki” jako zwykłe wpisy
+  (`CPRED_PHARMA_COMPENDIUM_FILE` w `pharma.ts`, serwer dokłada je obok danych grupy, nie do
+  próbki). Ceny wymyślone: Antybiotyk i Dynadetoks 50 ed podręcznika (Drogie, ×3 = 150 ed),
+  Turbo uzdrawiacz, Stym i Zryw 100 ed (Premium, wyjątek ×3 = 300 ed) — drożej od dawki
+  Medyka (partia 600 ed na kilka dawek). Bramka „podaje tylko Medyk” zostaje: kupić i nosić
+  może każdy, wbić — Medyk z punktem w Farmaceutykach.
 - **Narkotyki na zwykłej półce (decyzja MG)** — wg ceny i poziomu sklepu; dobór handlarzy to
   wybór MG. Boty same nie zażywają (propozycja z planu przyjęta).
 - **Alkohol — zasada domowa MG:** dawka to na godzinę REF −1 i SW +1, najwyżej trzy dawki naraz

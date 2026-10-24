@@ -43,6 +43,7 @@
 
 import type { CpredAmmoCheck, CpredAmmoProfile } from './ammo.js';
 import { normalizeChromeName } from './chromestats.js';
+import { cpredPharmaOfEntryId } from './pharma.js';
 import { CPRED_STAT_LABELS, type CpredStatId } from './stats.js';
 import { CPRED_MINUTE_S, CPRED_ROUND_SECONDS } from './timed.js';
 
@@ -251,13 +252,17 @@ export function cpredDrugOfRow(row: ChemGearRow): CpredDrug | null {
 }
 
 /**
- * Wpis kompendium, który jest używką — narkotyk, alkohol albo fiolka trucizny.
- * Kompendium trzyma je w „Sprzęcie” (`parse-gear.py`), a panel zbiera je na
- * osobną półkę „Używki i leki” (24.10).
+ * Wpis kompendium, który jest używką — narkotyk, alkohol, fiolka trucizny albo
+ * farmaceutyk. Kompendium trzyma je w „Sprzęcie” (`parse-gear.py`, farmaceutyki
+ * `CPRED_PHARMA_COMPENDIUM_FILE`), a panel zbiera je na półkę „Używki i leki”.
  */
 export function cpredIsChemEntry(entry: { id: string; name: string }): boolean {
   const row = { name: entry.name, compendiumId: entry.id };
-  return cpredDrugOfRow(row) !== null || cpredBladeToxinOfRow(row) !== null;
+  return (
+    cpredDrugOfRow(row) !== null ||
+    cpredBladeToxinOfRow(row) !== null ||
+    cpredPharmaOfEntryId(entry.id) !== null
+  );
 }
 
 /* ------------------------------------------------------------------ *

@@ -3,6 +3,7 @@ import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import type { FastifyBaseLogger } from 'fastify';
 import { describe, expect, it } from 'vitest';
+import { cpredPharmaOfEntryId } from '@vtt/shared';
 import { loadCompendium } from './compendium.js';
 
 /**
@@ -61,7 +62,11 @@ describe('loadCompendium', () => {
 
     warnings.length = 0;
     const registry = await loadCompendium(PUBLIC_DIR, privateDir, silent);
-    expect(registry.entries.map((e) => e.id)).toEqual(['gear.wlasny-wpis']);
+    // Obok danych grupy stoją jeszcze farmaceutyki z `shared` (24.10).
+    expect(registry.entries.map((e) => e.id).filter((id) => !cpredPharmaOfEntryId(id))).toEqual([
+      'gear.wlasny-wpis',
+    ]);
+    expect(registry.entries.filter((e) => cpredPharmaOfEntryId(e.id))).toHaveLength(5);
     expect(onSample()).toEqual([]);
     expect(registry.weaponTypes).toEqual([]);
   });

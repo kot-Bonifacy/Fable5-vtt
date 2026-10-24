@@ -52,6 +52,7 @@ import {
   cpredCoatableWeapon,
   cpredDrug,
   cpredDrugOfRow,
+  cpredPharmaOfRow,
   describeCpredDrugEffect,
   type CpredActiveDose,
   cpredSheetDeathSaveTarget,
@@ -3936,7 +3937,9 @@ function DosesSection({
   const [targetId, setTargetId] = useState('');
   const [busy, setBusy] = useState(false);
   const [bladeFor, setBladeFor] = useState<Record<string, string>>({});
-  const doses = data.gear.filter((row) => row.consumable || cpredDrugOfRow(row));
+  const doses = data.gear.filter(
+    (row) => row.consumable || cpredDrugOfRow(row) || cpredPharmaOfRow(row),
+  );
   const vials = data.gear.filter((row) => !row.consumable && cpredBladeToxinOfRow(row));
   if (doses.length === 0 && vials.length === 0) return null;
 

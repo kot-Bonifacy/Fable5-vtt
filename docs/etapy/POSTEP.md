@@ -67,8 +67,8 @@ Szprycy, terapia guzikiem MG). Wszystko widzi tylko właściciel karty i MG (`gm
 zamiast obrażeń), limity „raz dziennie” farmaceutyków z zegara, Zryw z odliczaniem, Dynadetoks
 zdejmuje narkotyki, termin rundowy efektów z 3 s. Stan karty: pole `chems` (`drugs.ts`).
 Chrom z 59a: `CPRED_CHROME_MODS` (`chromestats.ts`). Umowy na górze `czas`, `ekwipunek`, `atak`,
-`czat`; rozstrzygnięcia w `decyzje-i-uproszczenia.md`. **Do wdrożenia:** nowe `gear.json`
-i `ammo.json` z `data/private/` na VPS (`zaleglosci.md`).
+`czat`; rozstrzygnięcia w `decyzje-i-uproszczenia.md`. Nowe `gear.json` i `ammo.json` są na
+VPS od 24.10; farmaceutyki od 24.10 też do kupienia na półce „Używki i leki” (zasada domowa).
 
 **Ciała leżą otworem jak otwarte skrzynie (zlecenie MG z 24.10) — dalej etap 28, potem T10.**
 Martwą, leżącą, Ogłuszoną, Unieruchomioną albo Pochwyconą figurę — NPC-a **i postać gracza** —

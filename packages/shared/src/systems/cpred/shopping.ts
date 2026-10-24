@@ -1,5 +1,6 @@
 import type { CompendiumEntry, ResolvedWeapon } from './compendium.js';
 import type { CpredArmorRow, CpredGearRow, CpredWeaponRow } from './character.js';
+import { cpredPharmaOfEntryId } from './pharma.js';
 
 /**
  * Turning a catalogue entry into a sheet row (stage 13, moved here in 23b).
@@ -69,8 +70,18 @@ export function purchasedSheetRow(
           ...(entry.penalty ? { penalty: entry.penalty } : {}),
         },
       };
-    case 'gear':
+    case 'gear': {
+      // 24.10: farmaceutyk z półki to ta sama dawka z licznikiem, co wytworzona
+      // przez Medyka — z `consumable`, więc dokłada się do jej stosu na karcie.
+      const pharma = cpredPharmaOfEntryId(entry.id);
+      if (pharma) {
+        return {
+          list: 'gear',
+          row: { ...base, notes: pharma.effect, qty: 1, consumable: pharma.id },
+        };
+      }
       return { list: 'gear', row: { ...base, notes: '', qty: 1 } };
+    }
     // Etap 48b (decyzja MG z 10.10): Program jest towarem jak sprzęt — w plecaku
     // to zwykły wiersz wyposażenia, do gniazda deku wkłada go `cpredInstallFromGear`.
     case 'program':

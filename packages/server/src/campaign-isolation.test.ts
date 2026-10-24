@@ -502,6 +502,8 @@ const CASES: Record<string, Case> = {
   // chat
   'chat:send': own('pisze w kampanii gniazda', () => ({ text: 'hej' })),
   'chat:history': own('kartkuje czat kampanii gniazda', (a) => ({ beforeId: a.messageId + 1 })),
+  // Bez `confirm` serwer odmawia — przebieg nie czyści czatu gniazda innym testom.
+  'chat:clear': own('czyści czat kampanii gniazda, bez identyfikatora w ładunku'),
   // checks
   'check:call': foreign((a) => ({
     characterId: a.characterId,

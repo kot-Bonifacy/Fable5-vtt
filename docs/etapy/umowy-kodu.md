@@ -3288,9 +3288,12 @@ doklejenie `stale: false` do kopii sprzed zapisu wysyła wiersz z `indexedAt: nu
 i fiolki trucizny zostają w danych wpisami `gear` (importer, sklep, kreator, skrzynie i serwer
 czytają je jak dotąd), a panel odkłada je na półkę „Używki i leki” przez `shelfOf` →
 `cpredIsChemEntry` (`drugs.ts`: wpis z `compendiumIds` albo nazwa). Nowy narkotyk czy fiolka
-trafia na półkę sam, gdy ma wiersz w `CPRED_DRUGS` / `CPRED_BLADE_TOXINS`. Farmaceutyki nie są
-wpisami — półka drukuje `CPRED_PHARMACEUTICALS` pod listą, do czytania (licznik zakładki je
-wlicza). Nowa kategoria w `COMPENDIUM_CATEGORIES` dostaje półkę automatycznie.
+trafia na półkę sam, gdy ma wiersz w `CPRED_DRUGS` / `CPRED_BLADE_TOXINS`. Farmaceutyki są
+wpisami od 24.10 (zasada domowa): `CPRED_PHARMA_COMPENDIUM_FILE` z `pharma.ts` dokłada
+`loadCompendium` obok danych z `data/private` (nie do próbki), a `purchasedSheetRow` daje z nich
+wiersz z `consumable` — tę samą dawkę, którą wytwarza Medyk. Dawkę bez `consumable` (półka
+handlarza) rozpoznaje `cpredPharmaOfRow` po wpisie, nigdy po nazwie. Nowa kategoria
+w `COMPENDIUM_CATEGORIES` dostaje półkę automatycznie.
 
 **Nowe pole typu broni dopisuje się w TRZECH miejscach, nie w dwóch (04.09).** Do
 `CpredWeaponTypeInput`, do wpisu w `manual-overrides.json` — **i do białej listy `schema_fields`

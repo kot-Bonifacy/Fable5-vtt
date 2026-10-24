@@ -2,6 +2,7 @@ import { readFile, readdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import type { FastifyBaseLogger } from 'fastify';
 import {
+  CPRED_PHARMA_COMPENDIUM_FILE,
   EMPTY_COMPENDIUM,
   buildCompendium,
   cpredScaleCatalogPrices,
@@ -36,6 +37,9 @@ export async function loadCompendium(
   for (const [index, dir] of dirs.entries()) {
     files = await readCompendiumDir(dir, log);
     if (files.length === 0) continue;
+    // 24.10: farmaceutyki Medyka z `shared` — do kupienia z zasady domowej MG.
+    // Tylko obok danych grupy: próbka z repo zostaje w całości wymyślona.
+    if (index === 0) files.push(CPRED_PHARMA_COMPENDIUM_FILE);
     // Z1 (26.09.2026, kryterium etapu 28): on production the sample is a quiet
     // slide into invented gear, so the fallback is said out loud, once.
     if (index > 0) {

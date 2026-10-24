@@ -12,7 +12,6 @@ import type {
 import {
   COMPENDIUM_CATEGORIES,
   COMPENDIUM_CATEGORY_LABELS,
-  CPRED_PHARMACEUTICALS,
   SHOP_TIER_MIN,
   cpredIsChemEntry,
   searchCompendium,
@@ -30,7 +29,7 @@ const NO_ENTRIES: CompendiumEntry[] = [];
 /**
  * A tab of the panel. Mostly a category, plus „Używki i leki” (24.10): drugs,
  * alcohol and toxin vials are `gear` entries in the data, the pharmaceuticals
- * are not entries at all (the Medic crafts them), and the GM wanted all of it
+ * come from `CPRED_PHARMA_COMPENDIUM_FILE` (server, 24.10), and the GM wanted all of it
  * on one shelf instead of lost among „Sprzęt”.
  */
 export type CompendiumShelf = CompendiumCategory | 'chems';
@@ -205,8 +204,7 @@ export function visibleEntries(
 }
 
 /**
- * How many entries each shelf holds, for the badges on the tabs. „Używki
- * i leki” also counts the pharmaceuticals listed under its entries.
+ * How many entries each shelf holds, for the badges on the tabs.
  */
 export function countByCategory(
   entries: Record<string, CompendiumEntry>,
@@ -216,7 +214,6 @@ export function countByCategory(
     CompendiumShelf,
     number
   >;
-  counts.chems = CPRED_PHARMACEUTICALS.length;
   for (const id of order) {
     const entry = entries[id];
     if (entry) counts[shelfOf(entry)] += 1;

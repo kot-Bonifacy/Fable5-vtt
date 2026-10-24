@@ -40,6 +40,7 @@ import {
   cpredHasAirhypo,
   cpredHealRate,
   cpredDrugOfRow,
+  cpredPharmaOfRow,
   cpredPharmaceutical,
   cpredRestDay,
   cpredSheetMedicine,
@@ -334,7 +335,8 @@ function addDoses(
   drug: CpredPharmaceutical,
   doses: number,
 ): CpredGearRow[] {
-  const existing = gear.find((row) => row.consumable === drug.id);
+  // Dawka kupiona bywa bez `consumable` (półka handlarza) — liczy się wpis.
+  const existing = gear.find((row) => cpredPharmaOfRow(row)?.id === drug.id);
   if (existing) {
     return gear.map((row) =>
       row.id === existing.id ? { ...row, qty: row.qty + doses } : { ...row },
@@ -382,9 +384,12 @@ export const characterUseDoseEvent = defineEvent<
     // Etap 59b: narkotyk i alkohol rozpoznaje się także po wpisie kompendium
     // i po nazwie — z półki handlarza przychodzą bez `consumable`.
     const street = row ? cpredDrugOfRow(row) : null;
-    if (!row || (!row.consumable && !street)) throw new RealtimeError('NOT_A_CONSUMABLE');
+    // 24.10: farmaceutyk z półki rozpoznaje się też po wpisie kompendium.
+    const pharma = !row || street ? null : cpredPharmaOfRow(row);
+    if (!row || (!row.consumable && !street && !pharma)) {
+      throw new RealtimeError('NOT_A_CONSUMABLE');
+    }
     if (row.qty < 1) throw new RealtimeError('NO_DOSES_LEFT');
-    const pharma = street ? null : cpredPharmaceutical(row.consumable);
     if (!street && !pharma) throw new RealtimeError('UNKNOWN_PHARMA');
     // Bramka Medyka tylko przy farmaceutykach: „Nie są to narkotyki uliczne”.
     if (pharma && cpredSheetMedicine(medicData, deps.ctx.cpred).pharma < 1) {

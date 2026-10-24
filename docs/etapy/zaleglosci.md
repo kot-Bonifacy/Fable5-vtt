@@ -6,9 +6,8 @@ w `POMYSLY.md` („Do sprawdzenia przy stole”), decyzje MG — w `decyzje-i-up
 
 ## Otwarte
 
-**24.10.2026 (etap 59b/59c) — do wdrożenia i do obejrzenia.** (1) `data/private/cpred/compendium/
-gear.json` (nowe wpisy narkotyków i alkoholu — `parse-gear.py`) i `ammo.json` (zdjęty dopisek
-„rozegraj go ręcznie”) trzeba przenieść na VPS razem z kompendium. (2) W przeglądarce nie
+**24.10.2026 (etap 59b/59c) — do obejrzenia.** (1) `gear.json` i `ammo.json` wgrane na VPS
+24.10 wieczorem (zrobione). (2) W przeglądarce nie
 oglądano rzutu na uzależnienie po skoku zegara ani ciosu zatrutym nożem na mapie — oba są
 w testach serwera (`chems.test.ts`); oględziny wymagają przestawienia zegara kampanii.
 
