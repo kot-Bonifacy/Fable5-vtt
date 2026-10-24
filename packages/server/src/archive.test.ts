@@ -298,6 +298,79 @@ describe('import karty', () => {
     expect(original.name).toBe('Do powrotu');
   });
 
+  it('niesie w rejestrze PD, co wiersz zmienił i czy MG go cofnął (24.10)', async () => {
+    const original = await makeCharacter('Z rejestrem');
+    const { campaignId } = await built.prisma.character.findUniqueOrThrow({
+      where: { id: original.id },
+    });
+    const revert = {
+      type: 'advance',
+      kind: 'skill',
+      skillId: 'perception',
+      roleId: null,
+      from: 4,
+      to: 5,
+    };
+    const undoneAt = new Date('2026-10-24T10:00:00.000Z');
+    await built.prisma.advancementEntry.createMany({
+      data: [
+        {
+          campaignId,
+          characterId: original.id,
+          kind: 'spend',
+          amount: -50,
+          balance: 10,
+          label: 'Percepcja 4 → 5',
+          revert: JSON.stringify(revert),
+        },
+        {
+          campaignId,
+          characterId: original.id,
+          kind: 'award',
+          amount: 20,
+          balance: 30,
+          label: 'po sesji',
+          undoneAt,
+        },
+      ],
+    });
+    const file = await download<CharacterArchive>(
+      `/api/archive/character/${original.id}`,
+      gmCookie,
+    );
+    // W pliku zmiana jest obiektem, nie tekstem z bazy.
+    expect(file.payload.advancement.map((row) => [row.revert, row.undoneAt])).toEqual([
+      [revert, null],
+      [null, undoneAt.toISOString()],
+    ]);
+
+    const result = dataOf(await load(asJson(file)));
+    const rows = await built.prisma.advancementEntry.findMany({
+      where: { characterId: result.id },
+      orderBy: { id: 'asc' },
+    });
+    expect(
+      rows.map((row) => [row.label, row.revert && JSON.parse(row.revert), row.undoneAt]),
+    ).toEqual([
+      ['Percepcja 4 → 5', revert, null],
+      ['po sesji', null, undoneAt],
+    ]);
+
+    // Plik sprzed cofania nie ma tych pól — wiersze wchodzą jako „nie pamięta”.
+    const old = asJson(file);
+    old.payload.advancement = old.payload.advancement.map(
+      ({ revert: _r, undoneAt: _u, ...row }) => row,
+    );
+    const legacy = dataOf(await load(old));
+    const legacyRows = await built.prisma.advancementEntry.findMany({
+      where: { characterId: legacy.id },
+    });
+    expect(legacyRows.map((row) => [row.revert, row.undoneAt])).toEqual([
+      [null, null],
+      [null, null],
+    ]);
+  });
+
   /**
    * Round-trip NIE jest bajt w bajt i to jest zamierzone (oględziny 05.09).
    *

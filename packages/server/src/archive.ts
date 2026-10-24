@@ -105,6 +105,30 @@ export interface CharacterLedgerRow {
   balance: number;
   label: string;
   createdAt: string;
+  /**
+   * Tylko rejestr PD (24.10.2026): co wiersz zmienił na karcie (`AdvancementRevert`
+   * jako obiekt) i kiedy MG go cofnął. Brak w starszych plikach — wiersz „nie
+   * pamięta” i stoi nietknięty, jak przed cofaniem.
+   */
+  revert?: unknown;
+  undoneAt?: string | null;
+}
+
+/**
+ * Pola cofania wiersza rejestru PD z pliku — wspólne dla karty (57a) i kampanii.
+ * Uszkodzone `revert` zostaje tekstem: `readAdvancementRevert` czyta je jako
+ * wiersz, który nic nie pamięta.
+ */
+export function advancementUndoColumns(row: Partial<CharacterLedgerRow>): {
+  revert: string | null;
+  undoneAt: Date | null;
+} {
+  const revert = row.revert === undefined ? null : stringifyJsonColumn(row.revert, '');
+  const undoneAt = typeof row.undoneAt === 'string' ? new Date(row.undoneAt) : null;
+  return {
+    revert: revert || null,
+    undoneAt: undoneAt && !Number.isNaN(undoneAt.getTime()) ? undoneAt : null,
+  };
 }
 
 export interface CharacterArchive {
@@ -163,7 +187,7 @@ export async function exportCharacter(
     }),
     prisma.advancementEntry.findMany({
       where: { characterId },
-      select: columns,
+      select: { ...columns, revert: true, undoneAt: true },
       orderBy: { id: 'asc' },
     }),
   ]);
@@ -173,6 +197,11 @@ export async function exportCharacter(
     balance: entry.balance,
     label: entry.label,
     createdAt: entry.createdAt.toISOString(),
+  });
+  const toAdvancementRow = (entry: (typeof advancement)[number]): CharacterLedgerRow => ({
+    ...toRow(entry),
+    revert: parseJsonColumn(entry.revert),
+    undoneAt: entry.undoneAt?.toISOString() ?? null,
   });
 
   const payload: CharacterArchive = {
@@ -187,7 +216,7 @@ export async function exportCharacter(
     template: row.template,
     data: parseJsonColumn(row.data),
     ledger: ledger.map(toRow),
-    advancement: advancement.map(toRow),
+    advancement: advancement.map(toAdvancementRow),
   };
   const manifest = buildManifest(
     'character',
@@ -266,26 +295,25 @@ export async function importCharacter(
     select: { id: true },
   });
 
-  const history = (rows: CharacterLedgerRow[] | undefined) =>
-    (Array.isArray(rows) ? rows : []).map((row) => ({
-      campaignId: options.campaignId,
-      characterId: created.id,
-      kind: String(row.kind ?? ''),
-      amount: Number(row.amount ?? 0),
-      balance: Number(row.balance ?? 0),
-      label: String(row.label ?? ''),
-      createdAt: new Date(row.createdAt ?? Date.now()),
-    }));
-  const ledger = history(payload.ledger);
-  const advancement = history(payload.advancement);
-  if (ledger.length) await prisma.ledgerEntry.createMany({ data: ledger });
+  const historyRow = (row: CharacterLedgerRow) => ({
+    campaignId: options.campaignId,
+    characterId: created.id,
+    kind: String(row.kind ?? ''),
+    amount: Number(row.amount ?? 0),
+    balance: Number(row.balance ?? 0),
+    label: String(row.label ?? ''),
+    createdAt: new Date(row.createdAt ?? Date.now()),
+  });
+  const rows = (value: CharacterLedgerRow[] | undefined) => (Array.isArray(value) ? value : []);
+  const ledger = rows(payload.ledger).map(historyRow);
   // An imported award was told about in its own campaign — the player of the
   // copy is not greeted with every session of it again (20.10.2026).
-  if (advancement.length) {
-    await prisma.advancementEntry.createMany({
-      data: advancement.map((row) => ({ ...row, seenAt: row.createdAt })),
-    });
-  }
+  const advancement = rows(payload.advancement).map((row) => {
+    const entry = historyRow(row);
+    return { ...entry, seenAt: entry.createdAt, ...advancementUndoColumns(row) };
+  });
+  if (ledger.length) await prisma.ledgerEntry.createMany({ data: ledger });
+  if (advancement.length) await prisma.advancementEntry.createMany({ data: advancement });
 
   return { id: created.id, ownerId: owner.ownerId, pendingOwner: owner.pending?.name ?? null };
 }

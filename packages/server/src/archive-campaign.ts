@@ -4,6 +4,7 @@ import { archiveRefusal, parseCharacterData } from '@vtt/shared';
 import type { PrismaClient } from './db.js';
 import type { Prisma } from './generated/prisma/client.js';
 import {
+  advancementUndoColumns,
   asRows,
   bool,
   insertScene,
@@ -387,27 +388,29 @@ export async function importCampaign(
         });
         const templateId = mapped(row.templateId);
         if (templateId) templates.push({ id, templateId });
-        const history = (rows: unknown) =>
-          asRows(rows).map((entry) => {
-            const typed = entry as Partial<CharacterLedgerRow>;
-            return {
-              campaignId: options.campaignId,
-              characterId: id,
-              kind: str(typed.kind),
-              amount: num(typed.amount),
-              balance: num(typed.balance),
-              label: str(typed.label),
-              createdAt: date(typed.createdAt) ?? new Date(),
-            };
-          });
-        const ledger = history(row.ledger);
+        const historyRow = (entry: Record<string, unknown>) => {
+          const typed = entry as Partial<CharacterLedgerRow>;
+          return {
+            campaignId: options.campaignId,
+            characterId: id,
+            kind: str(typed.kind),
+            amount: num(typed.amount),
+            balance: num(typed.balance),
+            label: str(typed.label),
+            createdAt: date(typed.createdAt) ?? new Date(),
+          };
+        };
+        const ledger = asRows(row.ledger).map(historyRow);
         if (ledger.length) await tx.ledgerEntry.createMany({ data: ledger });
-        const advancement = history(row.advancement);
-        if (advancement.length) {
-          await tx.advancementEntry.createMany({
-            data: advancement.map((entry) => ({ ...entry, seenAt: entry.createdAt })),
-          });
-        }
+        const advancement = asRows(row.advancement).map((entry) => {
+          const base = historyRow(entry);
+          return {
+            ...base,
+            seenAt: base.createdAt,
+            ...advancementUndoColumns(entry as Partial<CharacterLedgerRow>),
+          };
+        });
+        if (advancement.length) await tx.advancementEntry.createMany({ data: advancement });
       }
       for (const { id, templateId } of templates) {
         await tx.character.update({ where: { id }, data: { templateId } });

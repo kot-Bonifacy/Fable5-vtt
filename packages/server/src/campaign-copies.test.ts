@@ -300,6 +300,39 @@ describe('cofnięcie', () => {
       },
     });
     cardId = card.id;
+    // Rejestr PD z cofaniem (24.10): kupiony szczebel pamięta zmianę, cofnięty
+    // wiersz — chwilę cofnięcia. Oba mają przetrwać cofnięcie kampanii.
+    const revert = {
+      type: 'advance',
+      kind: 'skill',
+      skillId: 'perception',
+      roleId: null,
+      from: 4,
+      to: 5,
+    };
+    const undoneAt = new Date('2026-10-24T10:00:00.000Z');
+    await built.prisma.advancementEntry.createMany({
+      data: [
+        {
+          campaignId,
+          characterId: cardId,
+          kind: 'spend',
+          amount: -50,
+          balance: 10,
+          label: 'Percepcja 4 → 5',
+          revert: JSON.stringify(revert),
+        },
+        {
+          campaignId,
+          characterId: cardId,
+          kind: 'award',
+          amount: 20,
+          balance: 30,
+          label: 'po sesji',
+          undoneAt,
+        },
+      ],
+    });
     const scene = await built.prisma.scene.create({
       data: { campaignId, name: 'Bar Watson', active: true },
     });
@@ -361,6 +394,16 @@ describe('cofnięcie', () => {
     expect(back.ownerId).toBe(playerId);
     expect((JSON.parse(back.data) as { notes: string }).notes).toBe('przed sesją');
     expect(back.portraitUrl).toBe(portrait);
+    const ledger = await built.prisma.advancementEntry.findMany({
+      where: { characterId: cardId },
+      orderBy: { id: 'asc' },
+    });
+    expect(
+      ledger.map((row) => [row.label, row.revert && JSON.parse(row.revert), row.undoneAt]),
+    ).toEqual([
+      ['Percepcja 4 → 5', revert, null],
+      ['po sesji', null, undoneAt],
+    ]);
     // Rewizja rośnie — klient z kartą sprzed cofnięcia przyjmie tę z kopii (#49).
     expect(back.revision).toBeGreaterThan(revisionBefore);
     const portraitRes = await built.app.inject({
