@@ -2,6 +2,7 @@ import { io, type Socket } from 'socket.io-client';
 import type { AuthEndedPush, MusicCommand, MusicState, TokenJumpOptionsView } from '@vtt/shared';
 import { useMusicStore } from './stores/musicStore.js';
 import { chatNotification, notifyGame, startsOwnTurn } from './game-notifications.js';
+import { loadOwedDeathSave } from './death-save.js';
 import type {
   AiAccessView,
   AiAskPayload,
@@ -3472,9 +3473,11 @@ export const reorderCombat = (combatantIds: string[]) =>
 export const nextCombatTurn = () =>
   emitSceneAck<CombatView>('combat:next', {}).then((ack) => {
     // Kończę turę bez Testu Przeżywalności (17.10): powód musi dojść do gracza,
-    // bo przycisk sam z siebie tylko się odblokowuje.
+    // bo przycisk sam z siebie tylko się odblokowuje. Kubek od razu trzyma
+    // ten Test (24.10) — następnym krokiem jest rzut, nie szukanie przycisku.
     if (!ack.ok && ack.error === 'DEATH_SAVE_PENDING') {
       notifyRefusal('action', combatErrorText(ack.error));
+      loadOwedDeathSave();
     }
     return ack;
   });

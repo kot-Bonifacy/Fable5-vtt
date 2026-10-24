@@ -25,7 +25,7 @@ import { useSceneStore } from '../stores/sceneStore.js';
 import { useSelectionStore } from '../stores/selectionStore.js';
 import { useTokenStore } from '../stores/tokenStore.js';
 import { useCharacterStore } from '../stores/characterStore.js';
-import { useDeathSavePrompt } from '../death-save.js';
+import { useDeathSaveAutoLoad, useDeathSavePrompt } from '../death-save.js';
 import { usePortraitFrameStyle } from '../portrait-banner.js';
 import { takeFigure } from '../hud.js';
 import { askEndCombat } from '../foes-defeated.js';
@@ -297,6 +297,7 @@ export function CombatBar() {
   );
   // RAW: a Mortally Wounded character rolls at the start of each of their turns.
   const deathSave = useDeathSavePrompt();
+  useDeathSaveAutoLoad(deathSave);
 
   // „Rozpocznij walkę” bez NPC-a w kolejce (etap 50a): pierwszy klik tylko
   // ostrzega, drugi zaczyna. Ostrzeżenie gaśnie samo po chwili i przy każdej
