@@ -152,3 +152,7 @@ a w `POSTEP.md` popraw tylko wiersz stanu.
 | 59a    | Chrom i sprzęt zmieniające liczby: BC z przeszczepu i ramownic, egzoszkielet, premie do Umiejętności, Kerenzikov, Celownik/Teleskop, czip | ✅     | 2026-10-24          |
 | 59b    | Narkotyki uliczne i alkohol: katalog, zakup, „Zażyj”, wydłużanie, Cechy i Umiejętności; fiolki trucizny na ostrze; limity farmaceutyków, Zryw | ✅     | 2026-10-24          |
 | 59c    | Koniec działania i uzależnienie: rzut serwera, kary, Człowieczeństwo Szprycy, terapia MG, Dynadetoks | ✅     | 2026-10-24          |
+| 60     | Czytelny czat: „to dotyczy mnie”, filtr „Ja”, ikony rodzaju, grupowanie, kolor gracza (60a–60c) | ⬜     |                     |
+| 60a    | „To dotyczy mnie” (moje / do mnie / czeka na mnie) i filtr „Ja” | ⬜     |                     |
+| 60b    | Ikona rodzaju na karcie i grupowanie kolejnych wierszy autora | ⬜     |                     |
+| 60c    | Kolor gracza: kolumna w kampanii, paleta, `authorColor` w widoku czatu | ⬜     |                     |
