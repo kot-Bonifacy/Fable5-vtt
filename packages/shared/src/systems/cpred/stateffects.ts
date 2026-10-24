@@ -18,7 +18,7 @@
  *
  * 2. **Dwa zegary, koniunkcja OR.** Efekt kończy się, gdy **którykolwiek**
  *    z terminów minie: runda walki (16h) albo minuta zegara świata (37). Godzina
- *    to 360 rund, więc w starciu praktycznie zawsze zamyka ją zegar świata,
+ *    to 1200 rund, więc w starciu praktycznie zawsze zamyka ją zegar świata,
  *    a efekt „na trzy rundy" zamyka licznik rund. Termin świata stawia się
  *    **zawsze**, bo tylko on przeżywa koniec walki: efekt z samym terminem
  *    rundowym, nałożony w rundzie 8 walki, która się skończyła, wisiałby do
@@ -46,6 +46,7 @@ import {
 } from './chromestats.js';
 import { effectiveCpredStats } from './cyberware.js';
 import { deathSaveTarget } from './derived.js';
+import { cpredChemStatEffects, type CpredChemSheet } from './drugs.js';
 import {
   CPRED_STAT_LABELS,
   CPRED_STAT_MAX,
@@ -54,7 +55,7 @@ import {
   type CpredStatId,
   type CpredStats,
 } from './stats.js';
-import { CPRED_MINUTE_S, describeCpredDuration } from './timed.js';
+import { CPRED_MINUTE_S, CPRED_ROUND_SECONDS, describeCpredDuration } from './timed.js';
 
 /** „Na godzinę" — jedyna długość, jakiej podręcznik używa dla tych efektów. */
 export const CPRED_HOUR_S = 60 * CPRED_MINUTE_S;
@@ -107,7 +108,7 @@ export interface CpredStatEffect {
  * stronę zamknąłby cykl. To ten sam zabieg, którym `cyberware.ts` trzyma się
  * z dala od karty.
  */
-export interface CpredStatSheet extends CpredChromeSheet {
+export interface CpredStatSheet extends CpredChromeSheet, CpredChemSheet {
   stats: CpredStats;
   humanityCurrent: number;
   statEffects: readonly CpredStatEffect[];
@@ -148,19 +149,22 @@ function clampStat(base: number, value: number): number {
   return Math.max(floor, Math.min(ceiling, value));
 }
 
+/** Wiersz efektu oczami arytmetyki — tyle mają też dawki narkotyków (59b). */
+type StatEffectLike = Pick<CpredStatEffect, 'stat' | 'value' | 'source'>;
+
 /** Suma zmian tej Cechy, **bez** podłogi i sufitu. */
 export function cpredStatEffectSum(
-  effects: readonly CpredStatEffect[],
+  effects: readonly StatEffectLike[],
   statId: CpredStatId,
 ): number {
   return effects.reduce((sum, effect) => (effect.stat === statId ? sum + effect.value : sum), 0);
 }
 
 /** Efekty siedzące na tej Cesze, w kolejności nałożenia. */
-export function cpredStatEffectsFor(
-  effects: readonly CpredStatEffect[],
+export function cpredStatEffectsFor<T extends StatEffectLike>(
+  effects: readonly T[],
   statId: CpredStatId,
-): CpredStatEffect[] {
+): T[] {
   return effects.filter((effect) => effect.stat === statId);
 }
 
@@ -191,14 +195,25 @@ function statsBeforeEffects(sheet: CpredStatSheet): CpredStats {
   return effectiveCpredStats(cpredChromeStats(sheet.stats, sheet), sheet.humanityCurrent);
 }
 
+/**
+ * Efekty czasowe razem z dawkami i uzależnieniami (etap 59b/59c) — narkotyk
+ * jest efektem czasowym, który przyszedł strzykawką, więc liczy się tą samą
+ * arytmetyką: ta sama podłoga, ten sam sufit i te same wiersze rozbicia.
+ */
+function allStatEffects(sheet: CpredStatSheet): readonly StatEffectLike[] {
+  const chems = cpredChemStatEffects(sheet);
+  return chems.length === 0 ? sheet.statEffects : [...sheet.statEffects, ...chems];
+}
+
 /** Wszczepy, Człowieczeństwo i efekty czasowe — bez podłączonego sprzętu. */
 function statsWithEffects(sheet: CpredStatSheet): CpredStats {
   const withHumanity = statsBeforeEffects(sheet);
-  if (sheet.statEffects.length === 0) return withHumanity;
+  const effects = allStatEffects(sheet);
+  if (effects.length === 0) return withHumanity;
   let changed = false;
   const result = { ...withHumanity };
   for (const statId of Object.keys(result) as CpredStatId[]) {
-    const sum = cpredStatEffectSum(sheet.statEffects, statId);
+    const sum = cpredStatEffectSum(effects, statId);
     if (sum === 0) continue;
     const next = clampStat(withHumanity[statId], withHumanity[statId] + sum);
     if (next !== result[statId]) {
@@ -273,11 +288,12 @@ export function cpredStatEffectRows(
   sheet: CpredStatSheet,
   statId: CpredStatId,
 ): { label: string; value: number }[] {
-  const rows = cpredStatEffectsFor(sheet.statEffects, statId);
+  const effects = allStatEffects(sheet);
+  const rows = cpredStatEffectsFor(effects, statId);
   if (rows.length === 0) return [];
   const delta = cpredStatEffectDelta(sheet, statId);
   if (delta === 0) return [];
-  const raw = cpredStatEffectSum(sheet.statEffects, statId);
+  const raw = cpredStatEffectSum(effects, statId);
   if (raw === delta) return rows.map((effect) => ({ label: effect.source, value: effect.value }));
   return [{ label: rows.map((effect) => effect.source).join(', '), value: delta }];
 }
@@ -334,7 +350,9 @@ export function cpredStatEffectDeadlines(
   clock: CpredEffectClock,
   durationS: number,
 ): Pick<CpredStatEffect, 'expiresAtRound' | 'expiresAtMinute'> {
-  const rounds = Math.max(1, Math.ceil(durationS / 10));
+  // Runda to 3 s (17.10) — do etapu 59b stało tu 10 i godzina wychodziła
+  // 360 rund zamiast 1200 (umowa `czas`: termin rundowy liczy się ze stałej).
+  const rounds = Math.max(1, Math.ceil(durationS / CPRED_ROUND_SECONDS));
   const minutes = Math.max(1, Math.ceil(durationS / CPRED_MINUTE_S));
   return {
     ...(clock.round !== null && clock.round >= 1

@@ -6,6 +6,18 @@ wyłącznie wtedy, gdy ktoś wraca do świeżo zamkniętego etapu. **To, co z ni
 w kodzie, mieszka w sekcjach obszarów `umowy-kodu.md` i `pulapki-dev.md`** — tu leży kontekst:
 po co to powstało, co było przed, czego świadomie nie zrobiono.
 
+## Etap 59a (wyprowadzone 24.10.2026)
+
+**Chrom i sprzęt zmieniają liczby karty (etap 59a, 24.10) — dalej 59b/59c po odpowiedziach MG,
+etap 28, potem T10.** Przeszczep splotu daje BC +2 (do 10), ramownica wszczepiana BC 12/14 — z PW,
+Progiem Ran i Przeżywalnością; egzoszkielet z „Podłącz” w „Ekwipunku” daje BC 12/14 tylko do
+rzutów. Do tego stałe +2 do Umiejętności z chromu i sprzętu (największa premia, nie suma),
+Kerenzikov +2 Inicjatywy, Celownik optyczny i Teleskop w ataku, Czip Umiejętności (poziom 3,
+Umiejętność wybierana raz). Wszystko to wiersze `CPRED_CHROME_MODS` (`chromestats.ts`); poziom
+Umiejętności w regułach czyta się `cpredSkillLevel`. Umowy na górze `postac` i `ekwipunek`,
+rozstrzygnięcia w `decyzje-i-uproszczenia.md` („Chrom zmieniający liczby”), reszta chromu
+w `POMYSLY.md`.
+
 ## Etap 57a i 57b (wyprowadzone 22.10.2026)
 
 **Etap 57b „Automatyczne kopie i cofnięcie” zamknięty 22.10 — dalej 57c.** Serwer sam odkłada

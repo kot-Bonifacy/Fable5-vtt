@@ -148,5 +148,7 @@ a w `POSTEP.md` popraw tylko wiersz stanu.
 | 58b    | Rozbrajanie pułapki przez gracza: Test Elektroniki i zabezpieczeń, porażka o 5+ odpala, zegar świata | ✅     | 2026-10-23          |
 | 58c    | Zamek drzwi, okna i bramy jak pojemnik: wytrych, klucz, jedna próba na postać | ✅     | 2026-10-23          |
 | 58d    | Ukryta figura przeciw Skradaniu: rzut przeciwstawny, odsłonięcie na konto | ✅     | 2026-10-23          |
-| 59     | Cechy z chromu i narkotyków ulicznych (59a–59c) | 🟨     | 2026-10-24          |
+| 59     | Cechy z chromu i narkotyków ulicznych (59a–59c) | ✅     | 2026-10-24          |
 | 59a    | Chrom i sprzęt zmieniające liczby: BC z przeszczepu i ramownic, egzoszkielet, premie do Umiejętności, Kerenzikov, Celownik/Teleskop, czip | ✅     | 2026-10-24          |
+| 59b    | Narkotyki uliczne i alkohol: katalog, zakup, „Zażyj”, wydłużanie, Cechy i Umiejętności; fiolki trucizny na ostrze; limity farmaceutyków, Zryw | ✅     | 2026-10-24          |
+| 59c    | Koniec działania i uzależnienie: rzut serwera, kary, Człowieczeństwo Szprycy, terapia MG, Dynadetoks | ✅     | 2026-10-24          |

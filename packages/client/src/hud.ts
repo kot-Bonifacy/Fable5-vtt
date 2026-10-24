@@ -11,6 +11,7 @@ import type {
   TurnBudgetView,
 } from '@vtt/shared';
 import {
+  cpredDrug,
   CPRED_ACTION_GRAPPLE,
   CPRED_ACTION_HOLD,
   CPRED_ACTION_JUMP,
@@ -356,8 +357,29 @@ export function hudContextFor(tokenId: string | null): HudContext {
       !isGm && token.characterId !== null && token.characterId !== undefined && !character,
     injuries: token.characterId ? [] : sanitizeCriticalInjuryRows(token.injuries),
     figureSkills: character ? [] : figureSkillsOf(token),
-    statEffects: character?.data.statEffects ?? [],
+    statEffects: character ? hudStatEffects(character.data) : [],
   };
+}
+
+/**
+ * Chipy efektów na pasku figury: efekty czasowe i — od etapu 59b — Cechy
+ * z działających dawek (Dopalacz, Syntkoka, alkohol), w kształcie efektu, żeby
+ * chip i odliczanie rysowały się jedną drogą. Pasek widzi tylko ten, kto ma
+ * kartę (właściciel i MG), więc narkotyk nie wychodzi poza nich.
+ */
+function hudStatEffects(data: CpredCharacterData): CpredStatEffect[] {
+  const fromDoses = data.chems.doses.flatMap((dose) =>
+    (cpredDrug(dose.substanceId)?.stats ?? []).map((mod) => ({
+      id: `${dose.id}-${mod.stat}`,
+      stat: mod.stat,
+      value: mod.value,
+      source: dose.source,
+      durationS: dose.durationS,
+      ...(dose.expiresAtRound !== undefined ? { expiresAtRound: dose.expiresAtRound } : {}),
+      ...(dose.expiresAtMinute !== undefined ? { expiresAtMinute: dose.expiresAtMinute } : {}),
+    })),
+  );
+  return fromDoses.length === 0 ? data.statEffects : [...data.statEffects, ...fromDoses];
 }
 
 /**

@@ -49,6 +49,7 @@ import type {
   CharacterPatch,
   CharacterRoleChangePayload,
   CharacterRollPayload,
+  CharacterChemsPayload,
   CharacterStatEffectPayload,
   CharacterUpsertBroadcast,
   CharacterView,
@@ -364,11 +365,7 @@ import { newGmAttention } from './gm-attention.js';
 import { useCombatStore } from './stores/combatStore.js';
 import { useRulerStore } from './stores/rulerStore.js';
 import { receiveMapPing, showLocalPing } from './map-ping.js';
-import {
-  COMBAT_PENDING_NOTE,
-  receiveHiddenSpotted,
-  receiveWalkHalt,
-} from './walk-halt.js';
+import { COMBAT_PENDING_NOTE, receiveHiddenSpotted, receiveWalkHalt } from './walk-halt.js';
 import { receiveTokenAim } from './map-aim.js';
 import { useDrawingStore } from './stores/drawingStore.js';
 import { useFogStore } from './stores/fogStore.js';
@@ -4146,6 +4143,26 @@ export async function useDose(
   noteAck('character', ack, recoveryErrorText);
 }
 
+/**
+ * Fiolka trucizny albo biotoksyny na lekką broń białą (etap 59b, s. 353) —
+ * Akcja w walce, trucizna działa 30 minut.
+ */
+export async function coatWeapon(
+  characterId: string,
+  gearRowId: string,
+  weaponRowId: string,
+): Promise<void> {
+  const ack = await emitSceneAck('character:coat-weapon', { characterId, gearRowId, weaponRowId });
+  noteAck('character', ack, recoveryErrorText);
+}
+
+/** Ręka MG na chemii karty (etap 59b/59c): dawka, trucizna, terapia, uzależnienie. */
+export function setChems(payload: CharacterChemsPayload): void {
+  socket?.emit('character:chems', payload, (ack: SocketAck) => {
+    noteAck('character', ack, statEffectAckErrorText);
+  });
+}
+
 /** Polskie zdania dla odmów z trzech zdarzeń powrotu do zdrowia. */
 export function recoveryErrorText(code: string): string {
   if (code === 'CHARACTER_AWAITING_GM') return CHARACTER_AWAITING_GM_TEXT;
@@ -4160,6 +4177,12 @@ export function recoveryErrorText(code: string): string {
       return 'Za mało eurodolców na surowce (200 ed za partię).';
     case 'NOT_A_CONSUMABLE':
       return 'Ten wiersz ekwipunku nie jest dawką, którą da się podać.';
+    case 'NOT_A_TOXIN':
+      return 'Ten wiersz nie jest fiolką trucizny ani biotoksyny.';
+    case 'NOT_A_LIGHT_BLADE':
+      return 'Fiolkę rozsmarowuje się wyłącznie na lekkiej broni białej (1k6).';
+    case 'UNKNOWN_WEAPON':
+      return 'Tej broni nie ma już na karcie.';
     case 'NO_DOSES_LEFT':
       return 'Nie ma już ani jednej dawki.';
     case 'NOT_A_MEDIC':

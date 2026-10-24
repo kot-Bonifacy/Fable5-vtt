@@ -19,6 +19,7 @@ import { isHousingOption, isLifestyleLevel, type CpredLifestyle } from './econom
 import { isPharmaceuticalId } from './pharma.js';
 import { CPRED_AMMO_PATTERNS, cpredAmmoPatternCounted, type CpredAmmoPattern } from './ammo.js';
 import { readCpredWoundSuspension, type CpredWoundSuspension } from './woundsuspension.js';
+import { cpredEmptyChems, isCpredDrugId, readCpredChems, type CpredChems } from './drugs.js';
 // Type-only the other way round: `roleability.ts` reads this file's sheet type,
 // so only its values travel here — the same bargain `creation.ts` makes above.
 import {
@@ -1164,6 +1165,16 @@ export interface CpredCharacterData {
    */
   woundSuspension: CpredWoundSuspension | null;
   /**
+   * Chemia na karcie (etap 59b/59c): działające dawki narkotyków, alkoholu
+   * i Zrywu, uzależnienia, ostatnie skuteczne dawki farmaceutyków z limitem
+   * i trucizna na ostrzach. Pisane **wyłącznie przez silnik** — `character:use-dose`,
+   * `character:coat-weapon`, przemiatania zegarów i `character:chems` u MG —
+   * i z tego samego powodu co `statEffects` wypada z `character:update`
+   * u wszystkich: narkotyk wpisany łatą nie miałby terminu ani rzutu na
+   * uzależnienie. Moduł: `drugs.ts`.
+   */
+  chems: CpredChems;
+  /**
    * Death Saves already taken since going Mortally Wounded. Each one makes the
    * next harder (+1); regaining a single HP resets the counter (RAW:
    * modifiers accumulate „dopóki nie zostaniesz ustabilizowany").
@@ -1371,6 +1382,7 @@ export function createDefaultCharacterData(): CpredCharacterData {
     criticalInjuries: [],
     statEffects: [],
     woundSuspension: null,
+    chems: cpredEmptyChems(),
     deathSaves: 0,
     deathSaveHits: 0,
     recovery: { stabilized: false, antibioticDays: 0 },
@@ -2232,6 +2244,9 @@ function collectCharacterDataPatch(
       else issues.push(issue('woundSuspension', 'Nieprawidłowy zapis zawieszenia kar.'));
     }
   }
+  // Etap 59b. Ten sam czytnik co przy odczycie z bazy; prawo do zapisu
+  // rozstrzyga `character:update` (odmowa dla wszystkich), nie walidator.
+  if ('chems' in input) patch.chems = readCpredChems(input.chems);
   if ('deathSaves' in input) {
     const value = input.deathSaves;
     if (!isInteger(value) || value < 0 || value > DEATH_SAVES_MAX) {
@@ -2266,7 +2281,8 @@ function collectCharacterDataPatch(
       // zwykłym ekwipunkiem i karta nadal się zapisuje. Ten sam kompromis co
       // przy polach cyborgizacji niżej — kartę psuje się raz, a czyta stale.
       const consumable =
-        typeof row.consumable === 'string' && isPharmaceuticalId(row.consumable)
+        typeof row.consumable === 'string' &&
+        (isPharmaceuticalId(row.consumable) || isCpredDrugId(row.consumable))
           ? row.consumable
           : undefined;
       // Pudełko z zepsutym opisem zostaje zwykłym wierszem — jak `consumable`.
@@ -2609,6 +2625,15 @@ export function normalizeCharacterData(data: CpredCharacterData): CpredCharacter
     // ustabilizowany" — a single regained HP wipes the counter.
     deathSaves: hpCurrent >= 1 ? 0 : Math.min(data.deathSaves, DEATH_SAVES_MAX),
     deathSaveHits: hpCurrent >= 1 ? 0 : Math.min(data.deathSaveHits, DEATH_SAVES_MAX),
+    // Etap 59b: trucizna schodzi z ostrza, którego już nie ma (oddane, sprzedane).
+    chems: data.chems.coatings.every((row) => data.weapons.some((w) => w.id === row.weaponRowId))
+      ? data.chems
+      : {
+          ...data.chems,
+          coatings: data.chems.coatings.filter((row) =>
+            data.weapons.some((w) => w.id === row.weaponRowId),
+          ),
+        },
   };
 }
 

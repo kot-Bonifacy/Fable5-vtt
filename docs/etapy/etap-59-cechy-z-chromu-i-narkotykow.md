@@ -4,8 +4,9 @@
 i Człowieczeństwo), 37 (zegar świata), 39 (efekty czasowe na Cechach), 30c/31 (farmaceutyki
 i `character:use-dose`), 38a (blok statystyk, `cpredSheetHpMax`)
 
-**Status: 59a ✅ (24.10, rozszerzone o resztę chromu i sprzętu z premią — sekcja „59a — jak
-zrobiono”); 59b i 59c — PROJEKT, czekają na akceptację MG (pytania 1–3, 5, 6).**
+**Status: ✅ zamknięty 24.10.2026.** 59a (chrom i sprzęt z premią — sekcja „59a — jak zrobiono”),
+59b i 59c zrobione w jednej sesji razem z rozszerzeniami (fiolki trucizny, alkohol, limity
+farmaceutyków, Zryw) — sekcja „59b i 59c — jak zrobiono”. Odpowiedzi MG na pytania niżej.
 
 ## Skąd ten etap
 
@@ -164,13 +165,65 @@ zewnętrzne ramownice **w tym etapie**.
    Technologii Medycznej — to robi stół; rozliczenie w eurodolcach zostaje ręczne).
 6. **Dynadetoks** (farmaceutyk „oczyszcza z narkotyków”) kończy aktywne dawki celu — patrz pytanie 3.
 
+### 59b i 59c — jak zrobiono (24.10)
+
+Zlecenie MG: „wykonaj teraz etap 59b; jeżeli znajdziesz więcej przypadków, gdzie można użyć tej
+mechaniki, to tam też ją zastosuj”. Odpowiedzi MG z tej sesji: sufit 10, **59b razem z całym
+59c**, wszystkie cztery rozszerzenia (fiolki trucizny/biotoksyny, amunicja chemiczna,
+farmaceutyki z czasem, alkohol z Nocnego targu), Dynadetoks kończy dawkę bez rzutu, alkohol jako
+„upojenie: −1 REF i +1 SW na godzinę”, widoczność tylko właściciel + MG, uzależnienie od
+Dopalacza zawsze −2, zwykła półka sklepów. Boty — propozycja z planu (nie zażywają same).
+
+- **Silnik `shared/systems/cpred/drugs.ts`:** `CPRED_DRUGS` (pięć narkotyków + alkohol —
+  liczby i parafrazy, `compendiumIds`, `maxStacks`, `addiction`), `CPRED_BLADE_TOXINS` (fiolki),
+  pole karty **`chems`** (`doses`, `addictions`, `lastTaken`, `coatings`) — pisze wyłącznie
+  silnik, `character:update` odmawia `FORBIDDEN` u wszystkich. Wiersz ekwipunku rozpoznaje
+  `cpredDrugOfRow` / `cpredBladeToxinOfRow` (consumable, wpis kompendium, nazwa).
+- **Skutki:** Cechy z dawek i uzależnień wchodzą do listy efektów w `stateffects.ts`
+  (`cpredChemStatEffects` — ta sama podłoga, sufit 10 i wiersze rozbicia „Dopalacz +2”,
+  „Uzależnienie (Syntkoka) −2”); pule bez zmian. Umiejętności (Grzmot ±2) —
+  `cpredChemSkillRows` w `skillBreakdown`, `cpredCheckBase`, kubku ręcznym i kolumnie „Baza”.
+  Czarna szpryca zawiesza kary Poważnie Rannego przez `cpredWoundSuspensionSource` (dawka, nie
+  `woundSuspension`) i zabiera 2k6 Człowieczeństwa przy każdej dawce (`humanityLost`).
+- **Zażycie:** `character:use-dose` rozpoznaje narkotyk bez bramki Medyka; Akcja, cel, „Siłą”
+  strzykawką bez zmian (w dzienniku walki i na publicznej karcie ataku narkotyk to „dawka”).
+  Druga dawka wydłuża oba terminy o pełny czas (`cpredTakeDose`), alkohol — osobne dawki, do
+  trzech (czwarta wypycha najstarszą). Karta czatu: nowy rodzaj **`gmrecovery`** (podający,
+  właściciel celu, MG).
+- **Koniec działania (59c):** oba przemiatania (`expireSheetStatEffects`) zdejmują dawki
+  i trucizny, `settleExpiredChems` (`realtime/chems-expiry.ts`) rzuca SW + Odporność + 1k10
+  (`planCpredRoll`, z Detoksykatorem i karami) — `gmroll` z adresatem, prywatne podsumowanie
+  „Koniec działania”; porażka dopisuje uzależnienie, sukces oddaje Człowieczeństwo Szprycy.
+  Rzut należy się, gdy postać nie jest uzależniona albo Szpryca trzyma jej Człowieczeństwo.
+  Publiczny wiersz „Efekty wygasły” narkotyków nie wymienia.
+- **Ręka MG:** `character:chems` — zdjęcie dawki (bez rzutu, Człowieczeństwo wraca), zatarcie
+  trucizny, terapia (zdjęcie uzależnienia) i dopisanie uzależnienia.
+- **Rozszerzenia:** fiolka trucizny/biotoksyny — `character:coat-weapon` (Akcja
+  `coat-blade`, lekka broń biała = typ `light-melee` albo broń biała 1k6), 30 min; atak tym
+  ostrzem dostaje profil „naboju bez obrażeń” (`cpredCoatingAmmoProfile`, `weapon.coating`
+  w planerze) i trafienie rozlicza `resolveAmmoChecks` z 16h. **Amunicja chemiczna** była już
+  automatyczna od 16h — w `ammo.json` zdjęty nieaktualny dopisek „rozegraj go ręcznie”.
+  **Farmaceutyki:** „raz dziennie” Turbo uzdrawiacza i Stymu, „raz na tydzień” Zrywu
+  egzekwowane zegarem świata (`chems.lastTaken`, fiolka pustoszeje), Zryw jako dawka 24 h
+  z odliczaniem; Dynadetoks zdejmuje narkotyki i alkohol. **Alkohol** (zasada domowa).
+- **Dane:** `parse-gear.py` dopisuje pięć narkotyków (ceny z tabeli s. 357) i trzy alkohole
+  z Nocnego targu z opisami własnymi słowami; cennik domowy: fiolki ×1 (jak amunicja zatruta),
+  dobry alkohol ×3.
+- **Karta:** sekcja „Dawki” w „Ekwipunku” („Zażyj” / „Wypij” / „Podaj”, „Nałóż na: …”),
+  panel „Używki i trucizny” pod efektami czasowymi, „Uzależnienia z kartą” nad notatką,
+  chipy Cech z dawek na pasku figury.
+
 ### Poprawka przy okazji
 
 `cpredStatEffectDeadlines` liczy rundy jako `durationS / 10`, a runda od 17.10 trwa 3 s
 (`CPRED_ROUND_SECONDS`) — godzina wychodzi 360 rund zamiast 1200. W praktyce kończy ją zegar
-świata, ale umowa `czas` mówi, że termin rundowy liczy się ze stałej. Poprawić razem z 59b.
+świata, ale umowa `czas` mówi, że termin rundowy liczy się ze stałej. **Poprawione w 59b**
+(liczy ze stałej; dwa testy przepięte na 1200 rund / `cpredRoundsFor(60)`).
 
-## Pytania do MG przed startem
+## Pytania do MG przed startem (odpowiedzi 24.10.2026)
+
+Odpowiedzi: 1 — sufit 10; 2 — zawsze −2; 3 — bez rzutu; 5 — zwykła półka; 6 — nie (przyjęta
+propozycja z planu).
 
 1. **Sufit Cechy z narkotyku:** podręcznik mówi „może wynosić ponad 8”, nie podaje górnej
    granicy. Proponuję zostawić sufit 10 (`CPRED_STAT_MAX`) — Dopalacz na INT 9 daje 10, nie 11.
@@ -184,7 +237,7 @@ zewnętrzne ramownice **w tym etapie**.
 6. **Boty:** czy boty mają same zażywać narkotyki? Proponuję **nie** w tym etapie — ich karty
    po prostu liczą skutki, jeśli MG im poda.
 
-## Poza zakresem (do `POMYSLY.md` po akceptacji)
+## Poza zakresem (przeniesione do `POMYSLY.md` 24.10)
 
 - Koszt i Test terapii uzależnienia (s. 229) jako mechanika zamiast guzika MG.
 - Losowe „fleszowanie” i „głód” podpowiadane MG przez zegar.
@@ -193,13 +246,13 @@ zewnętrzne ramownice **w tym etapie**.
 
 - [x] Karta z przeszczepem splotu ma BC +2 (do 10), z ramownicą 12/14; PW, próg Poważnej Rany
       i Rzut na Śmierć liczą się z nowej BC; wyjęcie wszczepu oddaje stan. (59a, 24.10)
-- [ ] Gracz kupuje i zażywa narkotyk z karty (Akcja w walce), sobie albo komuś; skutek główny
-      widać na karcie, w rozbiciu rzutu i na czacie; druga dawka wydłuża czas.
-- [ ] Dopalacz podnosi INT 8 → 10, Syntkoka REF 8 → 9 na czas działania; pule bez zmian.
-- [ ] Po wygaśnięciu (zegar świata albo rundy) serwer rzuca na uzależnienie; porażka zapisuje
-      uzależnienie z karami wg tabeli, MG je zdejmuje.
-- [ ] Testy vitest w `shared` (chrom, modyfikatory, wydłużanie, kary uzależnienia) i testy dymne
-      serwera (`use-dose` z narkotykiem, przemiatanie z rzutem). — część 59a zrobiona
-      (`chromestats.test.ts`, 39 testów; `cyberware.test.ts` +4).
-- [ ] Oględziny karty w Firefoksie (Playwright); umowy w sekcjach `postac`, `czas`, `ekwipunek`;
-      wpisy w `decyzje-i-uproszczenia.md` dla rozstrzygnięć z pytań 1–4.
+- [x] Gracz kupuje i zażywa narkotyk z karty (Akcja w walce), sobie albo komuś; skutek główny
+      widać na karcie, w rozbiciu rzutu i na czacie; druga dawka wydłuża czas. (24.10)
+- [x] Dopalacz podnosi INT 8 → 10, Syntkoka REF 8 → 9 na czas działania; pule bez zmian. (24.10)
+- [x] Po wygaśnięciu (zegar świata albo rundy) serwer rzuca na uzależnienie; porażka zapisuje
+      uzależnienie z karami wg tabeli, MG je zdejmuje. (24.10)
+- [x] Testy vitest w `shared` (chrom, modyfikatory, wydłużanie, kary uzależnienia) i testy dymne
+      serwera (`use-dose` z narkotykiem, przemiatanie z rzutem). — 59a: `chromestats.test.ts`
+      (39), `cyberware.test.ts` (+4); 59b/59c: `drugs.test.ts` (28), `chems.test.ts` (11).
+- [x] Oględziny karty w Firefoksie (Playwright); umowy w sekcjach `czas`, `ekwipunek`, `atak`,
+      `czat`; wpisy w `decyzje-i-uproszczenia.md` dla rozstrzygnięć z pytań. (24.10)

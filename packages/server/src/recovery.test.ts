@@ -598,6 +598,24 @@ describe('naturalne leczenie i farmaceutyki', () => {
     expect(removed.removedSuspension?.source).toBe('Stym');
     expect((await sheetOf(patientId)).woundSuspension).toBeNull();
 
+    // Etap 59b: „Skuteczny tylko raz dziennie” — druga dawka tej doby nie
+    // działa (fiolka i tak pustoszeje), po dobie świata znowu tak.
+    const againCard = waitFor<ChatMessageBroadcast>(gm, 'chat:message');
+    await emitAck(gm, 'character:use-dose', {
+      characterId: medicId,
+      gearRowId: stymRow.id,
+      targetTokenId: patientTokenId,
+    });
+    const again = (await againCard).message.recovery;
+    expect(again?.tone).toBe('warn');
+    expect(again?.note).toContain('raz dziennie');
+    expect((await sheetOf(patientId)).woundSuspension).toBeNull();
+    await emitAck(gm, 'character:update', {
+      characterId: medicId,
+      patch: { data: { gear: [...medic.gear, { ...stymRow, qty: 1 }] } },
+    });
+    await emitAck(gm, 'time:set', { step: 'day' });
+
     // Śmiertelnie Rannemu Stym nie zdejmuje −4, ale zapis zostaje — zadziała,
     // gdy Medyk wyciągnie go w ciągu godziny do Poważnie Rannego.
     await emitAck(gm, 'character:update', {

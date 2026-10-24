@@ -373,6 +373,34 @@ export interface CharacterUseDosePayload {
   gesture?: RollGesture;
 }
 
+/**
+ * Klient → serwer: `character:coat-weapon` — fiolka trucizny albo biotoksyny
+ * rozsmarowana po lekkiej broni białej (etap 59b, s. 353). Akcja w walce.
+ */
+export interface CharacterCoatWeaponPayload {
+  characterId: string;
+  /** Wiersz `data.gear` z fiolką. */
+  gearRowId: string;
+  /** Wiersz `data.weapons` — lekka broń biała. */
+  weaponRowId: string;
+}
+
+/**
+ * Klient (MG) → serwer: `character:chems` — ręka MG na chemii karty (etap
+ * 59b/59c). Dokładnie jedno pole poza `characterId`.
+ */
+export interface CharacterChemsPayload {
+  characterId: string;
+  /** Zdejmuje działającą dawkę — bez rzutu na uzależnienie. */
+  removeDoseId?: string;
+  /** Zdejmuje truciznę z ostrza. */
+  removeCoatingId?: string;
+  /** Terapia (s. 229): zdejmuje uzależnienie. */
+  removeAddiction?: string;
+  /** Dopisuje uzależnienie (np. z historii postaci). */
+  addAddiction?: string;
+}
+
 /** Client → server payload of `character:delete` (owner or GM). */
 export interface CharacterIdPayload {
   characterId: string;

@@ -270,7 +270,7 @@ describe('wygasanie', () => {
 describe('cpredStatEffectDeadlines', () => {
   it('stawia oba terminy naraz, gdy trwa walka', () => {
     expect(cpredStatEffectDeadlines({ round: 3, minutes: 1000 }, CPRED_HOUR_S)).toEqual({
-      expiresAtRound: 363,
+      expiresAtRound: 1203, // godzina = 1200 rund po 3 s (poprawka z etapu 59b)
       expiresAtMinute: 1060,
     });
   });

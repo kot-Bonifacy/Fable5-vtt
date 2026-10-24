@@ -20,6 +20,7 @@ import {
   CPRED_STAT_EFFECTS_MAX,
   GAME_TIME_DEFAULT,
   cpredEffectiveStats,
+  cpredRoundsFor,
 } from '@vtt/shared';
 import type { ServerConfig } from './config.js';
 import { buildApp, type BuiltApp } from './app.js';
@@ -411,13 +412,14 @@ describe('efekty czasowe na Cechach (etap 39)', () => {
       }),
       'character:stat-effect',
     ).effect;
-    // Sześć rund na minutę — i termin świata obok, na wypadek końca walki.
-    // Runda czyta się ze sceny **celu**, a nie z tej, którą ogląda MG.
-    expect(short.expiresAtRound).toBe(1 + 6);
+    // Dwadzieścia rund na minutę (runda 3 s, poprawka z 59b) — i termin
+    // świata obok, na wypadek końca walki. Runda czyta się ze sceny **celu**,
+    // a nie z tej, którą ogląda MG.
+    expect(short.expiresAtRound).toBe(1 + cpredRoundsFor(60));
     expect(short.expiresAtMinute).toBeGreaterThan(0);
 
     // Minuta świata nie ruszyła się ani o krok, a efekt i tak schodzi.
-    for (let step = 0; step < 6; step += 1) await emitAck(gm, 'combat:next');
+    for (let step = 0; step < cpredRoundsFor(60); step += 1) await emitAck(gm, 'combat:next');
     expect((await sync(gm)).combat?.round).toBe(short.expiresAtRound);
     expect(await effects()).toEqual([]);
     await emitAck(gm, 'combat:end', { sceneId });

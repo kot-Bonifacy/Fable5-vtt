@@ -53,6 +53,12 @@ export type ChatKind =
   | 'request'
   /** Dzień odpoczynku albo podana dawka — ciało zmienia stan poza walką. */
   | 'recovery'
+  /**
+   * Ta sama karta, ale prywatna (etap 59b): narkotyk, alkohol, trucizna na
+   * ostrzu. Widzi ją podający (`authorId`), właściciel celu (`recipientId`)
+   * i MG — decyzja MG z 24.10.2026: reszta stołu nie wie, kto jest pod wpływem.
+   */
+  | 'gmrecovery'
   /** Skok zegara świata (etap 37) — „Minęła noc, 15 marca 2045". */
   | 'time'
   /** Przedmiot zmieniający kartę (etap 38b) — przekazanie albo łup. */
@@ -597,6 +603,7 @@ export function chatCategoryOf(kind: ChatKind): ChatCategory {
     // Skok zegara jest cezurą tej samej przerwy — „minęła noc" czyta się
     // dokładnie wtedy, co „Vex odzyskał 7 PW".
     case 'recovery':
+    case 'gmrecovery':
     case 'time':
       return 'table';
     // Przekazanie i łup (38b) czyta się razem z pieniędzmi: to ta sama

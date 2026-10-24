@@ -53,6 +53,7 @@ import { createMixedRng } from './dice-rng.js';
 import { campaignGameTime } from './gametime.js';
 import { RealtimeError, defineEvent, type RealtimeDeps } from './registry.js';
 import { emitTokensOfCharacter } from './tokens.js';
+import { settleExpiredChems } from './chems-expiry.js';
 
 /** Krótkie id wiersza — ta sama długość co `newRowId` u klienta. */
 function newEffectId(): string {
@@ -204,7 +205,8 @@ export async function sweepStatEffects(
     const result = await expireOne(deps, campaignId, character, clock);
     if (result) swept.push(result);
   }
-  if (swept.length > 0) await logStatEffects(deps, campaignId, 'Efekty wygasły', swept);
+  const visible = swept.filter(isPublicSweep);
+  if (visible.length > 0) await logStatEffects(deps, campaignId, 'Efekty wygasły', visible);
   return swept;
 }
 
@@ -226,7 +228,7 @@ export async function expireStatEffectsOfCharacter(
   if (!character || character.campaignId !== campaignId) return [];
   const result = await expireOne(deps, campaignId, character, clock);
   if (!result) return [];
-  await logStatEffects(deps, campaignId, 'Efekty wygasły', [result]);
+  if (isPublicSweep(result)) await logStatEffects(deps, campaignId, 'Efekty wygasły', [result]);
   return result.expired;
 }
 
@@ -239,13 +241,21 @@ async function expireOne(
 ): Promise<SweptSheet | null> {
   const result = expireSheetStatEffects(character, deps.ctx.cpred, clock);
   if (!result) return null;
-  const saved = await deps.ctx.prisma.character.update({
+  let saved = await deps.ctx.prisma.character.update({
     where: { id: character.id },
     data: { data: result.data },
   });
   await emitCharacterUpsert(deps, campaignId, toCharacterView(saved, deps.ctx.cpred));
   await emitTokensOfCharacter(deps, campaignId, saved);
+  // Etap 59c: koniec dawki to rzut na uzależnienie — prywatnie, nie w wierszu
+  // „Efekty wygasły”, który czyta cały stół.
+  saved = await settleExpiredChems(deps, campaignId, saved, result.doses, result.coatings);
   return { character: saved, expired: result.expired, suspension: result.suspension };
+}
+
+/** Czy przemiatanie zdjęło coś, o czym mówi publiczny wiersz (efekt albo Stym). */
+function isPublicSweep(row: SweptSheet): boolean {
+  return row.expired.length > 0 || row.suspension !== null;
 }
 
 /** Karta, z której przemiatanie coś zdjęło. */

@@ -87,6 +87,7 @@ import {
   cpredSkillChipLevel,
   cpredSkillLevel,
 } from './chromestats.js';
+import { cpredChemSkillBonus } from './drugs.js';
 
 /** How the attack is being made. Melee follows from the weapon, not from here. */
 export const CPRED_ATTACK_MODES = ['single', 'autofire', 'suppressive'] as const;
@@ -661,6 +662,13 @@ export function planCpredAttack(
      */
     ammo?: CpredAmmoProfile | null;
     /**
+     * Trucizna rozsmarowana na ostrzu (etap 59b), już przebrana za nabój
+     * (`cpredCoatingAmmoProfile`) i już sprawdzona z zegarem przez wołającego.
+     * Wygrywa z `ammo` przy ciosie samą bronią i nie pyta o dopasowanie do
+     * magazynka — fiolka do żadnego nie pasuje i pasować nie musi.
+     */
+    coating?: CpredAmmoProfile | null;
+    /**
      * Attachments bolted to this row, resolved from the catalogue (stage 31).
      * The planner reads what they change; it never goes looking for them.
      */
@@ -750,7 +758,8 @@ export function planCpredAttack(
   // grenade the rifle's flags. Its own magazine therefore has its own load
   // (02.09) — without which a launcher could only ever fire ordinary rounds, and
   // „Amunicja dymna" had nothing to come out of.
-  const ammo = firedWith ? (weapon.secondaryAmmo ?? null) : (weapon.ammo ?? null);
+  const coating = firedWith ? null : (weapon.coating ?? null);
+  const ammo = firedWith ? (weapon.secondaryAmmo ?? null) : (coating ?? weapon.ammo ?? null);
   const spread = ammo?.spread;
   // What the range table is read from, and how far the arm reaches at all. A
   // spread of shot has neither table nor arm — it simply stops at the cone's
@@ -817,7 +826,9 @@ export function planCpredAttack(
   // What is *in* the gun outranks what is in front of it: „naboje … należy
   // dopasować do rodzaju używanej broni" (s. 344), and a round that does not fit
   // never leaves the barrel, wall or no wall.
-  if (ammo && !ammoFitsWeapon(ammo, resolved)) return { ok: false, error: 'AMMO_MISMATCH' };
+  if (ammo && !coating && !ammoFitsWeapon(ammo, resolved)) {
+    return { ok: false, error: 'AMMO_MISMATCH' };
+  }
 
   // „Jeśli próbuje jej użyć osoba bez tej cyborgizacji, z powodów bezpieczeństwa
   // amunicja inteligentna nie wystrzeli po pociągnięciu za spust" (s. 347).
@@ -1297,8 +1308,10 @@ export function cpredCheckBase(
   // Etap 59a: Detoksykator +2 do Odporności na tortury/narkotyki działa też
   // przeciw biotoksynie w magazynku — ta liczba nie ma rozbicia, więc wchodzi w sumę.
   const chrome = skill ? (cpredChromeSkillBonus(data, check.skillId)?.value ?? 0) : 0;
+  // Etap 59b: Grzmot i uzależnienie od niego też — ta sama suma bez rozbicia.
+  const chems = skill ? cpredChemSkillBonus(data, check.skillId) : 0;
   return {
-    total: cpredEffectiveStats(data)[statId] + skillLevel + chrome,
+    total: cpredEffectiveStats(data)[statId] + skillLevel + chrome + chems,
     statId,
     label: skill?.name ?? check.skillLabel ?? check.skillId,
     skillLevel,

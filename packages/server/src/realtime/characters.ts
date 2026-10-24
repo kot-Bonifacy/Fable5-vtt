@@ -331,6 +331,10 @@ export const characterUpdateEvent = defineEvent<CharacterUpdatePayload, Characte
       // 12.09.2026: Stym z tego samego powodu — zawieszenie kar wpisane łatą nie
       // miałoby terminu, a zdejmuje je MG tym samym `character:stat-effect`.
       if (sheet.woundSuspension !== undefined) throw new RealtimeError('FORBIDDEN');
+      // Etap 59b: chemię (dawki, uzależnienia, limity farmaceutyków, trucizna na
+      // ostrzu) z tego samego powodu — narkotyk wpisany łatą nie miałby terminu
+      // ani rzutu na uzależnienie. MG ma na to `character:chems`.
+      if (sheet.chems !== undefined) throw new RealtimeError('FORBIDDEN');
       // Etap 41: co postać trzyma w rękach, zmienia wyłącznie `weapon:draw`.
       // Schowanie broni kosztuje Akcję (s. 168), a łata karty nie ma czym jej
       // zapłacić — ta sama umowa, co przy Zmyśle Walki. Odmowa jest **dla

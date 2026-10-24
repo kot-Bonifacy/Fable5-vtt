@@ -1,5 +1,25 @@
 # Dziennik sesji — archiwum
 
+### Sesja 24.10, piąta (po `2c42c8b`) — zlecenie MG: ciała leżą otworem jak skrzynie
+
+**Zlecenie:** „postaci martwe, ogłuszone stają się czymś w rodzaju otwartych skrzynek, które
+można swobodnie otworzyć i zabrać z nich ich wyposażenie”, potem: „ogłuszony i unieruchomiony,
+itp.”.
+
+**Zmiana.** Łup z leżących i martwych NPC-ów był od 38b; teraz to samo dotyczy **postaci graczy**
+(dotąd z karty gracza przenosił tylko MG — decyzja z 06.09 odwołana) i figur z naklejką
+`"searchable": true` w rejestrze statusów: Ogłuszony, Unieruchomiony, Pochwycony (dobrane na „itp.”
+— Powalony, Oślepiony, Spowolniony i reszta zostają bez flagi; zmiana listy to jedna linia JSON-u).
+Reguła w `bodySearchable` (`shared/src/exchange.ts`), serwer pyta `searchableBody`; leżący kolega
+na liście „Wymiany” to łup, nie handel, a `inventory:take` stojącego gracza odmawia
+`STILL_STANDING` zamiast `NOT_YOURS`. Okno („Weź”, „Zabierz wszystko”) i zasięg ramienia bez
+zmian. Umowa na górze `ekwipunek`.
+
+**Sprawdzone:** `tsc` (shared, server, client) i ESLint czyste, Prettier czysty w zmienionych
+plikach; vitest `shared` 2613/2613 (+3), serwera 1629/1629 (+1: ogłuszony Rico — łup na liście,
+„Weź”, po wstaniu `STILL_STANDING`). **W przeglądarce nie oglądano** — klient nie zmieniony, ale
+zachowanie okna „Wymiana” tak; zaległość w `zaleglosci.md`.
+
 ### Sesja 24.10, czwarta (po `bb6eb39`) — zlecenie MG: pytanie przy usuwaniu przedmiotu
 
 **Zlecenie:** „przy usunięciu przedmiotu z ekwipunku niech pojawia się pytanie o potwierdzenie

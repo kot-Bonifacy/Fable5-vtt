@@ -1281,6 +1281,11 @@
   color: var(--ok-ink);
 }
 
+/* Etap 59c: BAZA obniżona uzależnieniem — kolor błędu, dymek mówi, skąd. */
+.cp-skill-base--down {
+  color: var(--err);
+}
+
 /* ===== Pas „Broń i pancerz" i tabele arkusza (etap 27b) ===== */
 
 /* Pas stoi od 22.10.2026 na górze zakładki „Ekwipunek" (wcześniej dół strony
@@ -2093,6 +2098,33 @@
   min-height: 2.4rem;
 }
 
+/* Etap 59c: uzależnienia od narkotyków z karty — chipy nad notatką. Kolor kary,
+   bo każde coś odejmuje; dymek mówi co. */
+.cp-addiction-chips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.cp-addiction-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  color: var(--cp-red);
+  font-weight: 700;
+  font-size: 0.78rem;
+}
+
+.cp-addiction-none {
+  font-size: 0.75rem;
+  color: var(--cp-ink-dim);
+}
+
+.cp-addiction-chips select {
+  font-size: 0.72rem;
+}
+
 /* --- rekonwalescencja: tempo powrotu do zdrowia i dzień odpoczynku --- */
 
 /* Pole rozkłada się w pion, jak Uzależnienia obok: etykieta u góry, zdanie pod
@@ -2186,6 +2218,12 @@
 
 .cp-doses-target select {
   flex: 1;
+}
+
+/* Etap 59b: wybór lekkiego ostrza przy fiolce — wąski, guzik zostaje obok. */
+.cp-doses-list select {
+  max-width: 9rem;
+  font-size: 0.72rem;
 }
 
 /* --- sklep NPC-a (etap 46a, tylko MG): ustawienia i oznaczenia towaru --- */

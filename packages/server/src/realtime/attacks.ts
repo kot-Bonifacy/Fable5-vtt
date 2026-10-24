@@ -75,6 +75,8 @@ import {
   cpredWeaponFx,
   distanceToCover,
   loadedAmmoFor,
+  cpredCoatingAmmoProfile,
+  cpredCoatingOf,
   formatMetres,
   metresPerPixel,
   isWeaponEntry,
@@ -225,6 +227,8 @@ interface ResolvedWeaponRow {
   secondary: ResolvedWeapon | null;
   /** The round in *that* weapon's own magazine (02.09). */
   secondaryAmmo: CpredAmmoProfile | null;
+  /** Trucizna rozsmarowana na tym ostrzu (etap 59b), przebrana za nabój. */
+  coating: CpredAmmoProfile | null;
 }
 
 async function resolveWeaponRow(
@@ -250,6 +254,7 @@ async function resolveWeaponRow(
     attachments: [],
     secondary: null,
     secondaryAmmo: null,
+    coating: null,
   };
   if (!row.compendiumId) return bare;
 
@@ -285,7 +290,16 @@ async function resolveWeaponRow(
       firedWith && secondary
         ? loadedAmmoFor({ ...(attachmentAmmoIdOf(row, firedWith.id) ?? {}) }, secondary, lookup)
         : null,
+    // Etap 59b: fiolka na ostrzu działa, dopóki przemiatanie jej nie zdejmie —
+    // ta sama umowa, co efekt na Cesze (czytany bez zegara, zdejmowany zegarem).
+    coating: coatingProfileOf(data, row.id),
   };
+}
+
+/** Profil trucizny z ostrza albo `null` (etap 59b). */
+function coatingProfileOf(data: CpredCharacterData, rowId: string): CpredAmmoProfile | null {
+  const coated = cpredCoatingOf(data, rowId);
+  return coated ? cpredCoatingAmmoProfile(coated.toxin) : null;
 }
 
 /** The round loaded in one bolted-on weapon, as `loadedAmmoFor` wants it. */

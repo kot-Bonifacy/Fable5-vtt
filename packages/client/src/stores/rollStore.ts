@@ -15,6 +15,7 @@ import type {
 } from '@vtt/shared';
 import {
   cpredChromeSkillBonus,
+  cpredChemSkillBonus,
   cpredEffectiveStats,
   cpredSkillLevel,
   CPRED_CARE_MODE_LABELS,
@@ -469,6 +470,7 @@ export function loadStabilizeCup(
     cpredEffectiveStats(data)[skill.stat] +
     cpredSkillLevel(data, skill.id) +
     (cpredChromeSkillBonus(data, skill.id)?.value ?? 0) +
+    cpredChemSkillBonus(data, skill.id) +
     cpredSheetWoundCheckPenalty(data);
 
   store.loadCup({
@@ -512,7 +514,8 @@ export function loadTreatInjuryCup(
   const level = isCpredMedicineSkillId(option.skillId)
     ? cpredMedicineSkillLevel(data, registry, option.skillId)
     : cpredSkillLevel(data, option.skillId) +
-      (cpredChromeSkillBonus(data, option.skillId)?.value ?? 0);
+      (cpredChromeSkillBonus(data, option.skillId)?.value ?? 0) +
+      cpredChemSkillBonus(data, option.skillId);
   // Both Medyk-only Skills are TECH-based (s. 149), so the fallback is theirs.
   const stat = registry.skills.find((skill) => skill.id === option.skillId)?.stat ?? 'tech';
   const modifierTotal = cpredEffectiveStats(data)[stat] + level + cpredSheetWoundCheckPenalty(data);

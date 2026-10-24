@@ -1,5 +1,7 @@
 import type {
   CpredEffectClock,
+  CpredActiveDose,
+  CpredBladeCoating,
   CpredStatEffect,
   CpredCombatAwarenessEffects,
   CpredRoundOnceId,
@@ -872,7 +874,15 @@ export function expireSheetStatEffects(
   character: Pick<Character, 'data'>,
   registry: SheetRegistry,
   clock: CpredEffectClock,
-): { data: string; expired: CpredStatEffect[]; suspension: CpredWoundSuspension | null } | null {
+): {
+  data: string;
+  expired: CpredStatEffect[];
+  suspension: CpredWoundSuspension | null;
+  /** Dawki narkotyków, alkoholu i Zrywu, którym minął czas (etap 59b). */
+  doses: CpredActiveDose[];
+  /** Ostrza, z których zeszła trucizna (etap 59b). */
+  coatings: CpredBladeCoating[];
+} | null {
   const data = parseCharacterData(character.data, registry);
   // Stym (12.09.2026) schodzi tym samym przemiataniem i tą samą funkcją terminu
   // co efekty na Cechach — inaczej jeden z dwóch zegarów by go pomijał.
@@ -880,14 +890,27 @@ export function expireSheetStatEffects(
     data.woundSuspension !== null && cpredStatEffectExpired(data.woundSuspension, clock)
       ? data.woundSuspension
       : null;
-  if (data.statEffects.length === 0 && suspension === null) return null;
+  // Etap 59b: dawki i trucizna na ostrzu — te same terminy, ta sama funkcja.
+  const doses = data.chems.doses.filter((dose) => cpredStatEffectExpired(dose, clock));
+  const coatings = data.chems.coatings.filter((row) => cpredStatEffectExpired(row, clock));
   const { kept, expired } = cpredExpireStatEffects(data.statEffects, clock);
-  if (expired.length === 0 && suspension === null) return null;
+  if (expired.length === 0 && suspension === null && doses.length === 0 && coatings.length === 0) {
+    return null;
+  }
   const merged = mergeCharacterData(data, {
     statEffects: kept,
     ...(suspension !== null ? { woundSuspension: null } : {}),
+    ...(doses.length > 0 || coatings.length > 0
+      ? {
+          chems: {
+            ...data.chems,
+            doses: data.chems.doses.filter((dose) => !doses.includes(dose)),
+            coatings: data.chems.coatings.filter((row) => !coatings.includes(row)),
+          },
+        }
+      : {}),
   });
-  return { data: JSON.stringify(merged), expired, suspension };
+  return { data: JSON.stringify(merged), expired, suspension, doses, coatings };
 }
 
 /**

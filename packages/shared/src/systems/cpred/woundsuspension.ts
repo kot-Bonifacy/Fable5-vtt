@@ -32,6 +32,7 @@
  * zamknąłby cykl, ten sam, przed którym broni się `stateffects.ts`.
  */
 
+import { cpredChemWoundSuspension, type CpredChemSheet } from './drugs.js';
 import { CPRED_STAT_EFFECT_DURATION_MAX_S } from './stateffects.js';
 
 /**
@@ -56,7 +57,7 @@ export interface CpredWoundSuspension {
 }
 
 /** Karta oczami tego modułu — dwa pola, nie cały arkusz. */
-export interface CpredWoundSuspensionSheet {
+export interface CpredWoundSuspensionSheet extends CpredChemSheet {
   cyberware: readonly { name: string }[];
   woundSuspension: CpredWoundSuspension | null;
 }
@@ -75,7 +76,8 @@ export function cpredWoundSuspensionSource(sheet: CpredWoundSuspensionSheet): st
   if (sheet.cyberware.some((row) => sameName(row.name, CPRED_PAIN_EDITOR_CYBERWARE))) {
     return CPRED_PAIN_EDITOR_CYBERWARE;
   }
-  return sheet.woundSuspension?.source ?? null;
+  // Etap 59b: Czarna szpryca zawiesza je przez dobę — dawka, nie osobne pole.
+  return sheet.woundSuspension?.source ?? cpredChemWoundSuspension(sheet);
 }
 
 /** „Stym (bez kar Poważnie Rannego)" — jedno zdanie na kartę czatu i listę. */

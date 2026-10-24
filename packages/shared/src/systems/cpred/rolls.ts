@@ -33,6 +33,7 @@ import {
   cpredStatModifierRows,
 } from './stateffects.js';
 import { cpredChromeSkillBonus, cpredSkillChipLevel, cpredSkillLevel } from './chromestats.js';
+import { cpredChemSkillRows } from './drugs.js';
 import { hpMax } from './derived.js';
 import { cpredSheetHpMax, type CpredStatBlockCarrier } from './statblock.js';
 import { cpredWoundSuspensionSource, type CpredWoundSuspensionSheet } from './woundsuspension.js';
@@ -892,6 +893,8 @@ function skillBreakdown(
     // Etap 59a: stała premia z chromu albo sprzętu („Techskaner +2”) —
     // osobnym wierszem, bo to nie poziom, który postać kupiła.
     ...(chrome ? [{ label: chrome.label, value: chrome.value, kind: 'situational' as const }] : []),
+    // Etap 59b/59c: Grzmot +2 i uzależnienie −2 — czasowe, więc też osobno.
+    ...cpredChemSkillRows(data, skill.id).map((row) => ({ ...row, kind: 'situational' as const })),
   ];
 }
 

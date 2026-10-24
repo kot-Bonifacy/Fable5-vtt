@@ -69,6 +69,11 @@ const PRICE_SCALE_BY_ID: ReadonlyMap<string, number> = new Map([
   ['weapon.bow', 3], // 300 ed
   ['weapon.crossbow', 4], // 400 ed
   ['weapon.palka-ogluszajaca', 2], // 200 ed
+  // Etap 59b: fiolki trucizny to nabój do ostrza — cena jak amunicja zatruta
+  // i biotoksyczna (×1), a nie jak sprzęt trwały; dobry alkohol to drobiazg (×3).
+  ['gear.fiolka-trucizny', CPRED_PRICE_SCALE_AMMO], // 100 ed
+  ['gear.fiolka-biotoksyny', CPRED_PRICE_SCALE_AMMO], // 500 ed
+  ['gear.alkohol-doskonalej-jakosci', CPRED_PRICE_SCALE_CONSUMABLE], // 300 ed
 ]);
 
 /**

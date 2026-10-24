@@ -39,6 +39,7 @@ import {
   cpredCanCraftPharma,
   cpredHasAirhypo,
   cpredHealRate,
+  cpredDrugOfRow,
   cpredPharmaceutical,
   cpredRestDay,
   cpredSheetMedicine,
@@ -80,6 +81,13 @@ import { sanitizeGesture } from './chat.js';
 import { createMixedRng } from './dice-rng.js';
 import { applyWoundSuspension, effectClockForCharacter } from './stat-effects.js';
 import { readTokenStatuses } from './combat.js';
+import {
+  applyDrugDose,
+  cleanseDrugs,
+  markPharmaTaken,
+  pharmaLimitRefusal,
+  postPrivateRecoveryCard,
+} from './chems.js';
 import { sheetDodgeBlock, sheetForRoll } from '../sheets.js';
 
 /** Umiejętność ataku strzykawką — „Atak bronią białą" (s. 150). */
@@ -371,13 +379,18 @@ export const characterUseDoseEvent = defineEvent<
     const medicData = parseCharacterData(medic.data, deps.ctx.cpred);
 
     const row = medicData.gear.find((entry) => entry.id === payload?.gearRowId);
-    if (!row || !row.consumable) throw new RealtimeError('NOT_A_CONSUMABLE');
+    // Etap 59b: narkotyk i alkohol rozpoznaje się także po wpisie kompendium
+    // i po nazwie — z półki handlarza przychodzą bez `consumable`.
+    const street = row ? cpredDrugOfRow(row) : null;
+    if (!row || (!row.consumable && !street)) throw new RealtimeError('NOT_A_CONSUMABLE');
     if (row.qty < 1) throw new RealtimeError('NO_DOSES_LEFT');
-    const drug = cpredPharmaceutical(row.consumable);
-    if (!drug) throw new RealtimeError('UNKNOWN_PHARMA');
-    if (cpredSheetMedicine(medicData, deps.ctx.cpred).pharma < 1) {
+    const pharma = street ? null : cpredPharmaceutical(row.consumable);
+    if (!street && !pharma) throw new RealtimeError('UNKNOWN_PHARMA');
+    // Bramka Medyka tylko przy farmaceutykach: „Nie są to narkotyki uliczne”.
+    if (pharma && cpredSheetMedicine(medicData, deps.ctx.cpred).pharma < 1) {
       throw new RealtimeError('NOT_A_MEDIC');
     }
+    const drug = (pharma ?? street)!;
     const hostile = payload?.hostile === true;
     if (hostile && !cpredHasAirhypo(medicData.gear)) throw new RealtimeError('NO_AIRHYPO');
 
@@ -407,7 +420,8 @@ export const characterUseDoseEvent = defineEvent<
           CPRED_ACTION_DOSE,
           {
             silent: true,
-            note: `${hostile ? `${CPRED_AIRHYPO_NAME}: ` : ''}${drug.name} → ${tokenTableName(target.token, target.token.name)}`,
+            // Narkotyk nie ma nazwy w dzienniku walki — ten czyta cały stół.
+            note: `${hostile ? `${CPRED_AIRHYPO_NAME}: ` : ''}${street ? 'dawka' : drug.name} → ${tokenTableName(target.token, target.token.name)}`,
           },
         );
       }
@@ -422,7 +436,7 @@ export const characterUseDoseEvent = defineEvent<
         user,
         medic,
         medicData,
-        drug,
+        street ? { name: 'dawka' } : drug,
         target,
         payload?.gesture,
         socket.data.viewedSceneId,
@@ -454,20 +468,43 @@ export const characterUseDoseEvent = defineEvent<
     // (znalezione w oględzinach 03.09).
     const effectTarget: DoseTarget =
       target.character?.id === medic.id ? { ...target, character: medicSaved } : target;
-    const applied = await applyDose(deps, campaignId, drug, effectTarget);
+    // „Antybiotyk — od: Frank" ma sens tylko wtedy, gdy podaje ktoś inny.
+    // Medyk kłujący sam siebie dostawał kartę „Frank / Antybiotyk — od:
+    // Frank", co przy stole czytało się jak pomyłka.
+    const title =
+      effectTarget.character?.id === medic.id ? drug.name : `${drug.name} — od: ${medic.name}`;
+
+    // Etap 59b: narkotyk i alkohol — karta prywatna (decyzja MG z 24.10.2026).
+    if (street) {
+      const applied = await applyDrugDose(deps, campaignId, street, effectTarget);
+      await postPrivateRecoveryCard(
+        deps,
+        campaignId,
+        user.id,
+        effectTarget.character?.ownerId ?? null,
+        {
+          actor: effectTarget.name,
+          title,
+          hp: 0,
+          lines: [street.effect, ...(street.narrative ? [street.narrative] : [])],
+          ...(applied.note ? { note: applied.note } : {}),
+          tone: applied.tone ?? 'success',
+        },
+        effectTarget.scene?.id ?? socket.data.viewedSceneId,
+      );
+      return { qtyLeft, healed: 0, ...(hostile ? { hit: true } : {}) };
+    }
+
+    const applied = await applyDose(deps, campaignId, pharma!, effectTarget);
     await postRecoveryCard(
       deps,
       campaignId,
       user,
       {
         actor: effectTarget.name,
-        // „Antybiotyk — od: Frank" ma sens tylko wtedy, gdy podaje ktoś inny.
-        // Medyk kłujący sam siebie dostawał kartę „Frank / Antybiotyk — od:
-        // Frank", co przy stole czytało się jak pomyłka.
-        title:
-          effectTarget.character?.id === medic.id ? drug.name : `${drug.name} — od: ${medic.name}`,
+        title,
         hp: applied.healed,
-        lines: [drug.effect, ...(drug.limit ? [drug.limit] : [])],
+        lines: [pharma!.effect, ...(pharma!.limit ? [pharma!.limit] : [])],
         ...(applied.note ? { note: applied.note } : {}),
         // Zabarwienie mówi `applyDose`, a nie „czy jest przypis": Antybiotyk
         // działa **i** ma co powiedzieć, a karta pomarańczowa przy udanym
@@ -502,7 +539,8 @@ async function rollHostileDose(
   user: SessionUser,
   medic: Character,
   medicData: CpredCharacterData,
-  drug: CpredPharmaceutical,
+  /** Nazwa na karcie ataku — przy narkotyku „dawka” (karta jest publiczna). */
+  drug: { name: string },
   target: DoseTarget,
   rawGesture: unknown,
   viewedSceneId: string | null | undefined,
@@ -525,7 +563,7 @@ async function rollHostileDose(
   roll.breakdown = planned.plan.breakdown;
   roll.outcome = {
     success: outcome.hit,
-    label: outcome.hit ? `Trafienie — ${drug.name} wstrzyknięty` : 'Pudło — dawka zostaje',
+    label: outcome.hit ? `Trafienie — wstrzyknięto: ${drug.name}` : 'Pudło — dawka zostaje',
     detail: `${roll.total} vs ${defence.label}`,
   };
   if (gesture && gesture.strength > 0) roll.tossStrength = gesture.strength;
@@ -632,20 +670,42 @@ async function applyDose(
   target: DoseTarget,
 ): Promise<{ healed: number; note?: string; tone?: 'success' | 'warn' }> {
   if (drug.applies === 'cleanse') {
+    // Etap 59b: „oczyszcza z narkotyków … i alkoholu” — bez rzutu na
+    // uzależnienie (decyzja MG z 24.10.2026).
+    const cleansed = target.character ? await cleanseDrugs(deps, campaignId, target.character) : [];
+    const gone =
+      cleansed.length > 0
+        ? ` Zeszło: ${[...new Set(cleansed.map((dose) => dose.source))].join(', ')}.`
+        : '';
     if (!target.token) {
       return {
         healed: 0,
-        note: 'Nie ma figury na mapie — status zdejmuje MG.',
+        note: `Nie ma figury na mapie — status zdejmuje MG.${gone}`,
         tone: 'warn',
       };
     }
     await removeTokenStatus(deps, campaignId, target.token.id, CPRED_POISONED_STATUS_ID);
-    return { healed: 0, note: 'Zatrucie zeszło.' };
+    return { healed: 0, note: `Zatrucie zeszło.${gone}` };
   }
+  // Etap 59b: „Skuteczny tylko raz dziennie” — od zegara świata (etap 37)
+  // egzekwowane. Fiolka i tak pustoszeje.
+  const limit = await pharmaLimitRefusal(deps, campaignId, drug, target);
+  if (limit.refusal) return { healed: 0, note: limit.refusal, tone: 'warn' };
+  const mark = async (zrywS?: number) => {
+    if (target.character && limit.clock) {
+      await markPharmaTaken(deps, campaignId, target.character.id, drug, limit.clock, zrywS);
+    }
+  };
   if (drug.applies === 'narrative') {
+    // Zryw: doba bez snu — chip z odliczaniem na karcie (etap 59b).
+    await mark(drug.id === 'pharma.zryw' ? 24 * CPRED_HOUR_S : undefined);
     return { healed: 0, note: 'Bez skutku w mechanice — reszta należy do stołu.' };
   }
-  if (drug.applies === 'ignoreSeriousWound') return applyStym(deps, campaignId, drug, target);
+  if (drug.applies === 'ignoreSeriousWound') {
+    const result = await applyStym(deps, campaignId, drug, target);
+    await mark();
+    return result;
+  }
   if (!target.character) {
     return {
       healed: 0,
@@ -691,6 +751,7 @@ async function applyDose(
   await emitCharacterUpsert(deps, campaignId, toCharacterView(saved, deps.ctx.cpred));
   await emitTokensOfCharacter(deps, campaignId, saved);
   if (target.token) await emitTokensById(deps, campaignId, [target.token.id]);
+  await mark();
   return { healed: hpAfter - data.hpCurrent };
 }
 

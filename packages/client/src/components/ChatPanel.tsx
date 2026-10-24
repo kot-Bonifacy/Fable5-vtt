@@ -760,7 +760,7 @@ function FullMessageRow({
   if (message.kind === 'cardsubmission' && message.cardSubmission) {
     return <CardSubmissionRow message={message} entry={message.cardSubmission} />;
   }
-  if (message.kind === 'recovery' && message.recovery) {
+  if ((message.kind === 'recovery' || message.kind === 'gmrecovery') && message.recovery) {
     return <RecoveryRow message={message} entry={message.recovery} />;
   }
   if (message.kind === 'time' && message.time) {

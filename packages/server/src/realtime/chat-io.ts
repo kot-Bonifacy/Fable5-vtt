@@ -135,7 +135,7 @@ export function toChatMessageView(message: StoredMessage): ChatMessageView {
     view.check = JSON.parse(message.payload) as CheckCallEntry;
   } else if (message.kind === 'request' && message.payload) {
     view.request = JSON.parse(message.payload) as CheckRequestEntry;
-  } else if (message.kind === 'recovery' && message.payload) {
+  } else if ((message.kind === 'recovery' || message.kind === 'gmrecovery') && message.payload) {
     view.recovery = JSON.parse(message.payload) as RecoveryLogEntry;
   } else if (message.kind === 'time' && message.payload) {
     view.time = JSON.parse(message.payload) as TimeLogEntry;
@@ -300,6 +300,9 @@ export function visibleTo(user: SessionUser) {
               // pierwszym przeładowaniu, choć to on prowadzi tę przerwę.
               'time',
               'recovery',
+              // `gmrecovery` (59b) wzorem `inventory`: karta narkotyku jest
+              // prywatna, ale MG prowadzi stół i ma wiedzieć, kto jest na czym.
+              'gmrecovery',
               // `inventory` (38b) jest tu z powodu, dla którego jest `economy`:
               // karta przekazania jest prywatna, ale MG rozlicza każde
               // przeniesienie — także takie, które gracze zrobili między sobą,

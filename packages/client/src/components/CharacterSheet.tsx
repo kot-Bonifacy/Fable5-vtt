@@ -45,6 +45,15 @@ import {
   cpredChromeModOf,
   cpredChromeRequirementNote,
   cpredChromeSkillBonus,
+  cpredChemSkillRows,
+  CPRED_DRUGS,
+  cpredBladeToxin,
+  cpredBladeToxinOfRow,
+  cpredCoatableWeapon,
+  cpredDrug,
+  cpredDrugOfRow,
+  describeCpredDrugEffect,
+  type CpredActiveDose,
   cpredSheetDeathSaveTarget,
   cpredSkillLevel,
   cpredStatModifierRows,
@@ -204,6 +213,8 @@ import {
   queueCharacterSave,
   restForADay,
   useDose,
+  coatWeapon,
+  setChems,
   clearWeaponJam,
   downloadArchive,
   drawWeapon,
@@ -1217,12 +1228,15 @@ function IdentityColumn({
 
       <StatEffects data={data} characterId={character.id} />
 
+      <ChemsPanel data={data} characterId={character.id} />
+
       <CriticalInjuries data={data} saveData={saveData} characterId={character.id} />
 
       <div className="cp-panel">
+        <Addictions data={data} characterId={character.id} />
         <div
           className="cp-field cp-notes cp-addictions"
-          title="Na czym postać siedzi — dorph, black lace, karta kredytowa. Przy stole to fabuła, nie modyfikator."
+          title="Notatki o nałogach — dorph, karta kredytowa. Uzależnienia od narkotyków z karty (z karą) stoją wyżej i pisze je serwer."
         >
           <span className="cp-label">Uzależnienia</span>
           <textarea
@@ -1444,9 +1458,15 @@ function SkillColumns({
                 // i stałą premią z chromu; poziom obok zostaje kupionym za PD.
                 const playedLevel = cpredSkillLevel(data, skill.id);
                 const chromeBonus = cpredChromeSkillBonus(data, skill.id);
+                // Etap 59b/59c: Grzmot +2 i uzależnienie −2 — w tej samej liczbie.
+                const chemRows = cpredChemSkillRows(data, skill.id);
+                const chemBonus = chemRows.reduce((sum, row) => sum + row.value, 0);
                 const baseExtras = [
                   ...(playedLevel > level ? [`czip — poziom ${playedLevel}`] : []),
                   ...(chromeBonus ? [`${chromeBonus.label} +${chromeBonus.value}`] : []),
+                  ...chemRows.map(
+                    (row) => `${row.label} ${row.value > 0 ? '+' : '−'}${Math.abs(row.value)}`,
+                  ),
                 ];
                 const abbr = CPRED_STAT_LABELS[skill.stat].abbr;
                 const rollTitle = `Rzut: ${cpredSkillLabel(skill, data)} (${abbr})${rollHint}`;
@@ -1511,7 +1531,13 @@ ${rollTitle}`
                     <div className="cp-field cp-skill-cell">
                       <button
                         type="button"
-                        className={`cp-skill-base${baseExtras.length > 0 ? ' cp-skill-base--chrome' : ''}`}
+                        className={`cp-skill-base${
+                          chemBonus < 0
+                            ? ' cp-skill-base--down'
+                            : baseExtras.length > 0
+                              ? ' cp-skill-base--chrome'
+                              : ''
+                        }`}
                         onClick={(e: MouseEvent) =>
                           startRoll({ kind: 'skill', skillId: skill.id }, e.shiftKey)
                         }
@@ -1523,7 +1549,9 @@ ${rollTitle}`
                             : rollTitle
                         }
                       >
-                        {skillBase(effective[skill.stat], playedLevel) + (chromeBonus?.value ?? 0)}
+                        {skillBase(effective[skill.stat], playedLevel) +
+                          (chromeBonus?.value ?? 0) +
+                          chemBonus}
                       </button>
                     </div>
                   </Fragment>
@@ -3883,14 +3911,17 @@ function GearTab({ character, data, saveData }: TabProps & { character: Characte
 }
 
 /**
- * Dawki farmaceutyków, które ta postać nosi (s. 150).
+ * Dawki, które ta postać nosi: farmaceutyki (s. 150), od etapu 59b także
+ * narkotyki uliczne i alkohol, oraz fiolki trucizny na ostrze.
  *
  * Osobna sekcja pod tabelą wyposażenia, a nie kolumna w niej: wiersz z dawką
  * **jest** zwykłym wyposażeniem (ma nazwę, ilość i uwagi, i tak się go edytuje),
  * a różni się jedną rzeczą — da się go zużyć. Guzik przy tabeli ogólnej
  * kazałby jej wiedzieć o farmaceutykach; tutaj wie o nich tylko ta lista.
  *
- * Znika, kiedy nie ma czego podawać — a to jest stan każdej karty poza Medykiem.
+ * Narkotyk rozpoznaje się po wpisie kompendium i nazwie (`cpredDrugOfRow`) —
+ * z półki handlarza przychodzi bez `consumable`. Znika, kiedy nie ma czego
+ * podawać.
  */
 function DosesSection({
   character,
@@ -3900,69 +3931,308 @@ function DosesSection({
   data: CpredCharacterData;
 }) {
   const tokens = useTokenStore((s) => s.tokens);
+  const entries = useCompendiumStore((s) => s.entries);
+  const weaponTypeById = useCompendiumStore((s) => s.weaponTypeById);
   const [targetId, setTargetId] = useState('');
   const [busy, setBusy] = useState(false);
-  const doses = data.gear.filter((row) => row.consumable);
-  if (doses.length === 0) return null;
+  const [bladeFor, setBladeFor] = useState<Record<string, string>>({});
+  const doses = data.gear.filter((row) => row.consumable || cpredDrugOfRow(row));
+  const vials = data.gear.filter((row) => !row.consumable && cpredBladeToxinOfRow(row));
+  if (doses.length === 0 && vials.length === 0) return null;
+
+  // „Lekka broń biała” (s. 353) — to samo pytanie, które zada serwer.
+  const types = new Map(Object.entries(weaponTypeById));
+  const blades = data.weapons.filter((weapon) => {
+    const entry = weapon.compendiumId ? entries[weapon.compendiumId] : undefined;
+    return (
+      entry !== undefined &&
+      isWeaponEntry(entry) &&
+      cpredCoatableWeapon(entry.weaponTypeId, resolveWeapon(entry, { weaponTypeById: types }))
+    );
+  });
 
   const figures = Object.values(tokens).filter((token) => token.name.length > 0);
   // „Siłą" (s. 150) ma sens wyłącznie przy cudzej figurze i ze strzykawką
   // bezigłową w plecaku — samemu sobie nikt się nie opiera.
   const target = targetId ? tokens[targetId] : undefined;
-  const mayForce =
-    cpredHasAirhypo(data.gear) && target !== undefined && target.characterId !== character.id;
+  const toSelf = target === undefined || target.characterId === character.id;
+  const mayForce = cpredHasAirhypo(data.gear) && !toSelf;
 
   function give(rowId: string, hostile: boolean) {
     setBusy(true);
     void useDose(character.id, rowId, targetId || undefined, hostile).finally(() => setBusy(false));
   }
 
+  function coat(rowId: string) {
+    const weaponRowId = bladeFor[rowId] ?? blades[0]?.id;
+    if (!weaponRowId) return;
+    setBusy(true);
+    void coatWeapon(character.id, rowId, weaponRowId).finally(() => setBusy(false));
+  }
+
   return (
     <div className="cp-panel cp-doses">
-      <div className="cp-field cp-field--notch cp-doses-target-field">
-        <span className="cp-label">Farmaceutyki</span>
-        <label className="cp-doses-target">
-          Komu:
-          <select value={targetId} onChange={(e) => setTargetId(e.target.value)}>
-            <option value="">sobie</option>
-            {figures.map((token) => (
-              <option key={token.id} value={token.id}>
-                {token.name}
-              </option>
-            ))}
-          </select>
-        </label>
-      </div>
+      {doses.length > 0 && (
+        <div className="cp-field cp-field--notch cp-doses-target-field">
+          <span className="cp-label">Dawki</span>
+          <label className="cp-doses-target">
+            Komu:
+            <select value={targetId} onChange={(e) => setTargetId(e.target.value)}>
+              <option value="">sobie</option>
+              {figures.map((token) => (
+                <option key={token.id} value={token.id}>
+                  {token.name}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+      )}
       <ul className="cp-doses-list">
-        {doses.map((row) => (
-          <li key={row.id}>
-            <span className="cp-doses-name">{row.name}</span>
-            <span className="cp-doses-qty">× {row.qty}</span>
-            <button
-              type="button"
-              disabled={busy || row.qty < 1}
-              title={
-                row.qty < 1
-                  ? 'Nie ma już ani jednej dawki.'
-                  : `Wstrzyknięcie jednej dawki zajmuje Akcję. ${row.notes}`
-              }
-              onClick={() => give(row.id, false)}
-            >
-              Podaj
-            </button>
-            {mayForce && (
+        {doses.map((row) => {
+          const drug = cpredDrugOfRow(row);
+          const verb = !drug
+            ? 'Podaj'
+            : !toSelf
+              ? 'Podaj'
+              : drug.id === 'drug.alkohol'
+                ? 'Wypij'
+                : 'Zażyj';
+          return (
+            <li key={row.id}>
+              <span className="cp-doses-name">{row.name}</span>
+              <span className="cp-doses-qty">× {row.qty}</span>
               <button
                 type="button"
                 disabled={busy || row.qty < 1}
-                title={`Cel się broni: Atak bronią białą strzykawką bezigłową (ZW + Broń biała) przeciw jego ZW + Unik — Akcja. Trafienie wstrzykuje dawkę, pudło ją zostawia (s. 150).`}
-                onClick={() => give(row.id, true)}
+                title={
+                  row.qty < 1
+                    ? 'Nie ma już ani jednej dawki.'
+                    : drug
+                      ? `${drug.effect} W walce zajmuje Akcję.`
+                      : `Wstrzyknięcie jednej dawki zajmuje Akcję. ${row.notes}`
+                }
+                onClick={() => give(row.id, false)}
               >
-                Siłą
+                {verb}
+              </button>
+              {mayForce && (
+                <button
+                  type="button"
+                  disabled={busy || row.qty < 1}
+                  title={`Cel się broni: Atak bronią białą strzykawką bezigłową (ZW + Broń biała) przeciw jego ZW + Unik — Akcja. Trafienie wstrzykuje dawkę, pudło ją zostawia (s. 150).`}
+                  onClick={() => give(row.id, true)}
+                >
+                  Siłą
+                </button>
+              )}
+            </li>
+          );
+        })}
+        {vials.map((row) => {
+          const toxin = cpredBladeToxinOfRow(row)!;
+          return (
+            <li key={row.id}>
+              <span className="cp-doses-name">{row.name}</span>
+              <span className="cp-doses-qty">× {row.qty}</span>
+              {blades.length > 1 && (
+                <select
+                  value={bladeFor[row.id] ?? blades[0]!.id}
+                  onChange={(e) => setBladeFor({ ...bladeFor, [row.id]: e.target.value })}
+                  aria-label={`Na którą broń: ${row.name}`}
+                >
+                  {blades.map((weapon) => (
+                    <option key={weapon.id} value={weapon.id}>
+                      {weapon.name}
+                    </option>
+                  ))}
+                </select>
+              )}
+              <button
+                type="button"
+                disabled={busy || row.qty < 1 || blades.length === 0}
+                title={
+                  blades.length === 0
+                    ? 'Na karcie nie ma lekkiej broni białej (1k6), na którą dałoby się ją rozsmarować.'
+                    : `Akcja: ${toxin.name.toLowerCase()} na ${blades.length === 1 ? blades[0]!.name : 'wybraną broń'}. Przez 30 minut trafienie to Test Odporności na tortury/narkotyki PT ${toxin.check.dv} zamiast obrażeń; porażka — ${toxin.check.failure.damage} bezpośrednich.`
+                }
+                onClick={() => coat(row.id)}
+              >
+                {blades.length === 1 ? `Nałóż na: ${blades[0]!.name}` : 'Nałóż'}
+              </button>
+            </li>
+          );
+        })}
+      </ul>
+    </div>
+  );
+}
+
+/** Skrót skutku dawki na chip — liczby, a gdy ich nie ma, to, co robi. */
+function doseValueLabel(dose: CpredActiveDose): { text: string; tone: 'up' | 'down' | 'flat' } {
+  if (dose.substanceId === 'pharma.zryw') return { text: 'bez snu', tone: 'up' };
+  const drug = cpredDrug(dose.substanceId);
+  if (!drug) return { text: '—', tone: 'flat' };
+  if (drug.ignoreSeriousWound) return { text: 'bez kary −2', tone: 'up' };
+  const text = describeCpredDrugEffect(drug);
+  if (!text) return { text: 'halucynacje', tone: 'flat' };
+  const values = [...(drug.stats ?? []).map((mod) => mod.value), drug.skills?.value ?? 0];
+  const tone = values.every((v) => v >= 0) ? 'up' : values.every((v) => v <= 0) ? 'down' : 'flat';
+  return { text, tone };
+}
+
+/**
+ * Używki i trucizny działające teraz (etap 59b): narkotyki, alkohol, Zryw
+ * i trucizna na ostrzach. Liczy czas tym samym zegarem co efekty czasowe obok;
+ * MG zdejmuje je guzikiem bez rzutu na uzależnienie (to poprawka, nie koniec
+ * działania). Karta dociera wyłącznie do właściciela i MG, więc reszta stołu
+ * tego panelu nie widzi nigdy.
+ */
+function ChemsPanel({ data, characterId }: { data: CpredCharacterData; characterId: string }) {
+  const isGm = useAuthStore((s) => s.user?.role === ROLE_GM);
+  const minutes = useGameTimeStore((s) => s.minutes);
+  const { doses, coatings } = data.chems;
+  if (doses.length === 0 && coatings.length === 0) return null;
+  const clock = { round: null, minutes };
+
+  return (
+    <div className="cp-panel cp-stat-effects cp-chems">
+      <div className="cp-bar">Używki i trucizny</div>
+      <ul className="stat-effect-list">
+        {doses.map((dose) => {
+          const drug = cpredDrug(dose.substanceId);
+          const value = doseValueLabel(dose);
+          return (
+            <li key={dose.id} className="cp-field stat-effect-row">
+              <span
+                className={`stat-effect-value${
+                  value.tone === 'up'
+                    ? ' stat-effect-value--up'
+                    : value.tone === 'down'
+                      ? ' stat-effect-value--down'
+                      : ''
+                }`}
+                title={drug?.effect ?? 'Doba bez snu (s. 150).'}
+              >
+                {value.text}
+              </span>
+              <span
+                className="stat-effect-source"
+                title={
+                  dose.humanityLost
+                    ? `Zabrała ${dose.humanityLost} Człowieczeństwa — wraca, jeśli rzut na uzależnienie po końcu działania się uda.`
+                    : undefined
+                }
+              >
+                {dose.source}
+                {dose.humanityLost ? ` · CZŁ −${dose.humanityLost}` : ''}
+              </span>
+              <span className="stat-effect-timer">{describeCpredStatEffectTimer(dose, clock)}</span>
+              {isGm && (
+                <button
+                  type="button"
+                  className="cp-mini-button"
+                  title="Zdejmij tę dawkę — bez rzutu na uzależnienie; Człowieczeństwo Czarnej szprycy wraca"
+                  aria-label={`Zdejmij dawkę: ${dose.source}`}
+                  onClick={() => setChems({ characterId, removeDoseId: dose.id })}
+                >
+                  ⌫
+                </button>
+              )}
+            </li>
+          );
+        })}
+        {coatings.map((coating) => {
+          const toxin = cpredBladeToxin(coating.toxinId);
+          const weapon = data.weapons.find((row) => row.id === coating.weaponRowId);
+          return (
+            <li key={coating.id} className="cp-field stat-effect-row">
+              <span
+                className="stat-effect-value stat-effect-value--up"
+                title={
+                  toxin
+                    ? `Trafienie tą bronią to Test Odporności na tortury/narkotyki PT ${toxin.check.dv} zamiast obrażeń; porażka — ${toxin.check.failure.damage} bezpośrednich.`
+                    : undefined
+                }
+              >
+                {toxin ? `PT ${toxin.check.dv}` : 'trucizna'}
+              </span>
+              <span className="stat-effect-source">
+                {toxin?.name ?? 'Trucizna'} → {weapon?.name ?? 'broń'}
+              </span>
+              <span className="stat-effect-timer">
+                {describeCpredStatEffectTimer(coating, clock)}
+              </span>
+              {isGm && (
+                <button
+                  type="button"
+                  className="cp-mini-button"
+                  title="Zetrzyj truciznę z ostrza"
+                  aria-label={`Zetrzyj truciznę: ${weapon?.name ?? 'broń'}`}
+                  onClick={() => setChems({ characterId, removeCoatingId: coating.id })}
+                >
+                  ⌫
+                </button>
+              )}
+            </li>
+          );
+        })}
+      </ul>
+    </div>
+  );
+}
+
+/**
+ * Uzależnienia od narkotyków z kartą (etap 59c) — pisze je serwer po rzucie,
+ * zdejmuje MG (terapia, s. 229: koszt i Test rozlicza stół). Dymek mówi, co
+ * kara robi; liczby i tak wchodzą do Cech i rozbicia rzutu.
+ */
+function Addictions({ data, characterId }: { data: CpredCharacterData; characterId: string }) {
+  const isGm = useAuthStore((s) => s.user?.role === ROLE_GM);
+  const hooked = data.chems.addictions;
+  if (hooked.length === 0 && !isGm) return null;
+  const free = CPRED_DRUGS.filter((drug) => drug.addiction && !hooked.some((id) => id === drug.id));
+
+  return (
+    <div className="cp-field cp-addiction-chips">
+      <span className="cp-label">Uzależnienia z kartą</span>
+      {hooked.length === 0 && <span className="cp-addiction-none">brak</span>}
+      {hooked.map((id) => {
+        const drug = cpredDrug(id);
+        return (
+          <span key={id} className="cp-addiction-chip" title={drug?.addiction?.effect}>
+            {drug?.name ?? id}
+            {isGm && (
+              <button
+                type="button"
+                className="cp-mini-button"
+                title="Terapia (s. 229) — zdejmij uzależnienie; koszt i Test rozlicza stół"
+                aria-label={`Zdejmij uzależnienie: ${drug?.name ?? id}`}
+                onClick={() => setChems({ characterId, removeAddiction: id })}
+              >
+                ⌫
               </button>
             )}
-          </li>
-        ))}
-      </ul>
+          </span>
+        );
+      })}
+      {isGm && free.length > 0 && (
+        <select
+          value=""
+          aria-label="Dopisz uzależnienie"
+          title="Dopisz uzależnienie (np. z historii postaci)"
+          onChange={(e) => {
+            if (e.target.value) setChems({ characterId, addAddiction: e.target.value });
+          }}
+        >
+          <option value="">＋ dopisz…</option>
+          {free.map((drug) => (
+            <option key={drug.id} value={drug.id}>
+              {drug.name}
+            </option>
+          ))}
+        </select>
+      )}
     </div>
   );
 }

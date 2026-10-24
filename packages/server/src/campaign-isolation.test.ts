@@ -809,6 +809,16 @@ const CASES: Record<string, Case> = {
   'sighting:look': foreign((a) => ({ tokenId: a.tokenId })),
   'smoke:clear': foreign((a) => ({ sceneId: a.sceneId, smokeId: a.smokeId })),
   'character:stat-effect': foreign((a) => ({ characterId: a.characterId, stat: 'ref', value: -1 })),
+  // chems (etap 59b)
+  'character:coat-weapon': foreign((a) => ({
+    characterId: a.characterId,
+    gearRowId: 'x',
+    weaponRowId: 'y',
+  })),
+  'character:chems': foreign((a) => ({
+    characterId: a.characterId,
+    addAddiction: 'drug.dopalacz',
+  })),
   // surgery
   'cyberware:surgeons': own('lista Medyków kampanii gniazda'),
   'cyberware:request': foreign(

@@ -139,6 +139,7 @@ import {
 } from './economy.js';
 import { characterInjuryEvent, damageApplyEvent, damageUndoEvent } from './damage.js';
 import { characterStatEffectEvent } from './stat-effects.js';
+import { characterChemsEvent, characterCoatWeaponEvent } from './chems.js';
 import {
   attackEvadeEvent,
   attackNoEvadeEvent,
@@ -470,6 +471,8 @@ export const EVENTS: RealtimeEvent<never, unknown>[] = [
   damageUndoEvent,
   characterInjuryEvent,
   characterStatEffectEvent,
+  characterChemsEvent,
+  characterCoatWeaponEvent,
   attackRollEvent,
   attackEvadeEvent,
   attackNoEvadeEvent,

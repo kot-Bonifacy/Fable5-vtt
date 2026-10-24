@@ -15,6 +15,7 @@ export * from './timed.js';
 export * from './stateffects.js';
 export * from './chromestats.js';
 export * from './woundsuspension.js';
+export * from './drugs.js';
 export * from './environment.js';
 export * from './ammo.js';
 export * from './ammostock.js';

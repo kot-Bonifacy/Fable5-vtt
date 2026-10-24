@@ -85,6 +85,49 @@ HOUSE_DESCRIPTIONS = {
     ),
 }
 
+# Street drugs (s. 357, etap 59b) live in their own table below the gear list:
+# `Nazwa N godzin PT CENA ed (Pasmo)` glued into one line. The mechanics are in
+# `shared/systems/cpred/drugs.ts`; the entry carries name, price and a short
+# description in our own words (house text, safe for the public repo).
+DRUGS_SECTION = "NARKOTYKI ULICZNE"
+DRUG_DESCRIPTIONS = {
+    "Czarna szpryca": (
+        "Narkotyk bojowy: przez dobę kary Poważnie Rannego nie działają, ale każda dawka"
+        " zabiera 2k6 Człowieczeństwa (wraca, jeśli rzut na uzależnienie się uda)."
+        " Uzależnienie PT 17: REF −2 bez dawki."
+    ),
+    "Błękitne szkło": (
+        "Halucynogen: przez cztery godziny postać „fleszuje” — MG może odebrać jej Akcje."
+        " Uzależnienie PT 15: fleszuje także bez narkotyku."
+    ),
+    "Dopalacz": (
+        "Wspomagacz umysłu: INT +2 na dobę, także ponad 8. Uzależnienie PT 17: INT −2."
+    ),
+    "Grzmot": (
+        "Imprezowy narkotyk w puszce: przez cztery godziny +2 do Tańca, Człowieka gumy,"
+        " Konwersacji, Odczytywania emocji, Perswazji i Aktorstwa."
+        " Uzależnienie PT 15: −2 do tych Umiejętności."
+    ),
+    "Syntkoka": (
+        "Stymulant: REF +1 na cztery godziny, także ponad 8, do tego paranoja."
+        " Uzależnienie PT 15: REF −2 bez dawki."
+    ),
+}
+DRUG_ROW_RE = re.compile(
+    r"(Czarna szpryca|Błękitne szkło|Dopalacz|Grzmot|Syntkoka)\s+\d+\s+godzin\w*\s+\d+\s+"
+    r"(\d+)\s*ed\s*\(([^)]+)\)"
+)
+
+# Alcohol is sold at the Night Market (s. 375) and the book gives it no rules;
+# the table's house rule („upojenie”, 24.10.2026) is in `drugs.ts`.
+ALCOHOL_RE = re.compile(
+    r"(Alkohol niskiej jakości|Alkohol doskonałej jakości|Alkohol)\s+(\d+)\s*ed\s*\(([^)]+)\)"
+)
+ALCOHOL_DESCRIPTION = (
+    "Butelka na jeden wieczór. Upojenie (zasada domowa): każda dawka to na godzinę"
+    " REF −1 i SW +1, najwyżej trzy dawki naraz; bez uzależnienia."
+)
+
 # The running head of the chapter, left in the middle of a sentence where a
 # page breaks („w tym małe : NOWA EKONOMIA ULICZNA ostrze użytkowe").
 RUNNING_HEAD_RE = re.compile(r"\s*:\s*NOWA EKONOMIA ULICZNA\b")
@@ -273,11 +316,59 @@ def descriptions(section: str, names: list[str]) -> dict[str, str]:
     return found
 
 
+# ───────────────────────── narkotyki i alkohol (etap 59b) ─────────────────────────
+
+
+def drug_entries(chapter: str) -> list[dict]:
+    """Five street drugs from the s. 357 table and the three alcohols of the market."""
+    entries: list[dict] = []
+    start = chapter.find(DRUGS_SECTION)
+    if start == -1:
+        warn(f"Nie znalazłem sekcji „{DRUGS_SECTION}” — narkotyki pominięte")
+    else:
+        table = clean(chapter[start : start + 1200])
+        for match in DRUG_ROW_RE.finditer(table):
+            name, price, label = match.group(1), int(match.group(2)), match.group(3)
+            if any(entry["name"] == name for entry in entries):
+                continue
+            band = band_of(label)
+            if band is None:
+                warn(f"{name}: nieznane pasmo ceny „{label}”")
+                continue
+            entries.append(item(name, price, band, DRUG_DESCRIPTIONS[name]))
+        for name in sorted(set(DRUG_DESCRIPTIONS) - {entry["name"] for entry in entries}):
+            warn(f"{name}: brak w tabeli narkotyków ulicznych")
+
+    found: set[str] = set()
+    for match in ALCOHOL_RE.finditer(clean(chapter)):
+        name, price, label = match.group(1), int(match.group(2)), match.group(3)
+        band = band_of(label)
+        if name in found or band is None:
+            continue
+        found.add(name)
+        entries.append(item(name, price, band, ALCOHOL_DESCRIPTION))
+    if len(found) < 3:
+        warn(f"Alkohol: znalazłem {len(found)} z 3 jakości na Nocnym targu")
+    return entries
+
+
+def item(name: str, price: int, band: str, description: str) -> dict:
+    return {
+        "id": f"gear.{slugify(name)}",
+        "category": "gear",
+        "name": name,
+        "cost": price,
+        "costCategory": band,
+        "description": description,
+    }
+
+
 # ──────────────────────────────────── main ────────────────────────────────────
 
 
 def main() -> int:
-    section = section_of(load_chapter())
+    chapter = load_chapter()
+    section = section_of(chapter)
     rows = price_table(section)
     if not rows:
         raise SystemExit("Tabela cen jest pusta — sprawdź zrzut rozdziału 17.")
@@ -308,6 +399,13 @@ def main() -> int:
                 **({"description": description} if description else {}),
             }
         )
+
+    for entry in drug_entries(chapter):
+        if entry["id"] in seen:
+            warn(f"{entry['name']}: powtórzony identyfikator {entry['id']} — pominięty")
+            continue
+        seen.add(entry["id"])
+        entries.append(entry)
 
     for name in sorted(ELECTRONICS - {name for name, _, _ in rows}):
         warn(f"{name}: na liście ELECTRONICS, ale nie ma go w tabeli cen")

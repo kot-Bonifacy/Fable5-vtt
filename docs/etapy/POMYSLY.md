@@ -1,5 +1,14 @@
 # Pomysły poza zakresem etapów
 
+**24.10.2026 (etap 59b/59c) — narkotyki, czego VTT jeszcze nie robi.** (1) **Terapia (s. 229)
+jako mechanika:** tydzień, Test Technologii Medycznej Medyka, koszt materiałów Biotechniki — dziś
+guzik MG „zdejmij uzależnienie”. (2) **Fleszowanie i głód podpowiadane przez zegar:** Błękitne
+szkło „zwykle raz na godzinę”, głód Grzmota i Syntkoki „co pewien czas” — pasek MG po skoku
+zegara. (3) **Boty zażywające narkotyki** w swojej turze. (4) **Unik przed zatrutym ciosem:**
+dziś Test Odporności leci od razu przy trafieniu (jak strzała zatruta z 16h). (5) **Wampirki:**
+schowek na fiolkę trucizny w podniebieniu — „Nałóż” bez wyciągania fiolki. (6) **Jakości
+alkoholu** z różnym skutkiem albo „kac” rano.
+
 **24.10.2026 (etap 59a) — chrom, którego VTT jeszcze nie liczy.** (1) **Sandevistan:** „Po
 uruchomieniu, co zajmuje Akcję, … +3 do wszystkich rzutów na Inicjatywę w ciągu następnej minuty”,
 potem godzina przerwy — guzik na karcie zakładający efekt z terminem (jak Stym) i premię w

@@ -300,6 +300,37 @@ to jest ten akapit do przeczytania na nowo.
   przy których tabela drukuje „Łatanie trwale usuwa Efekt tej Rany", schodzą z karty naprawdę —
   o tym rozstrzyga `cpredCarePermanent`, nie tryb guzika.
 
+## Narkotyki, alkohol i trucizna na ostrzu (etap 59b/59c, 24.10.2026)
+
+- **Sufit Cechy z narkotyku to 10 (decyzja MG).** „Może wynosić ponad 8” bez górnej granicy —
+  Dopalacz na INT 9 daje 10, nie 11 (ten sam `clampStat` co efekty czasowe).
+- **Uzależnienie od Dopalacza: INT −2 zawsze (decyzja MG)** — także pod dawką (wychodzi na zero).
+  Czarna szpryca i Syntkoka karzą tylko bez dawki, bo tak mówi podręcznik.
+- **Dynadetoks kończy dawki bez rzutu na uzależnienie (decyzja MG)** i oddaje Człowieczeństwo
+  Czarnej szprycy — efekt dodatkowy nie zdążył zadziałać. Zrywu nie rusza (to farmaceutyk).
+- **Kto widzi chemię: właściciel karty i MG (decyzja MG).** Karta zażycia `gmrecovery`, rzut na
+  uzależnienie `gmroll` z adresatem, pasek figury tylko u tych, którzy mają kartę. Publiczny
+  dziennik walki i karta ataku strzykawką piszą „dawka”, bez nazwy narkotyku.
+- **Narkotyki na zwykłej półce (decyzja MG)** — wg ceny i poziomu sklepu; dobór handlarzy to
+  wybór MG. Boty same nie zażywają (propozycja z planu przyjęta).
+- **Alkohol — zasada domowa MG:** dawka to na godzinę REF −1 i SW +1, najwyżej trzy dawki naraz
+  (czwarta wypycha najstarszą), bez uzależnienia; trzy jakości różnią się tylko ceną.
+- **Rzut na uzależnienie należy się dwóm osobom:** nieuzależnionej i uzależnionej, której Czarna
+  szpryca trzyma Człowieczeństwo (udany rzut je oddaje). Uzależniony od Dopalacza po kolejnej
+  dawce nie rzuca — nie ma o co.
+- **Druga dawka narkotyku przesuwa oba terminy o pełny czas;** dawka sprzed walki dostaje termin
+  rundowy od chwili wydłużenia. Człowieczeństwo z kolejnych dawek Szprycy sumuje się na dawce.
+- **Fiolka trucizny: „lekka broń biała” to typ Lekka broń biała albo broń biała 1k6** (nóż markowy,
+  broń z Kompendium MG). Druga fiolka na tym samym ostrzu zastępuje pierwszą.
+- **Trafienie zatrutym ostrzem rozlicza Test od razu, bez okna Uniku przed nim** — tak jak
+  strzała zatruta od 16h (atak bez obrażeń nie czeka na Unik). Do zmiany przy stole, jeśli zgrzyta
+  (`POMYSLY.md`).
+- **„Raz dziennie” / „raz na tydzień” farmaceutyków mierzy zegar świata** od ostatniej
+  **skutecznej** dawki; dawka ponad limit pustoszy fiolkę i nic nie robi (jak Turbo uzdrawiacz
+  podany Śmiertelnie Rannemu). Bez zegara (`minutes === null`) limit nie obowiązuje.
+- **Ceny:** fiolki trucizny i biotoksyny ×1 (jak amunicja zatruta, nie ×10 sprzętu trwałego), dobry
+  alkohol ×3; narkotyki z pasm Tanie–Drogie ×3 jak każdy drobiazg. Do korekty przez MG.
+
 ## Chrom zmieniający liczby (etap 59a, 24.10.2026)
 
 - **Wymagania z opisu wszczepu to notka, nie odmowa (decyzja MG).** „Wymaga BC 6 i przeszczepu

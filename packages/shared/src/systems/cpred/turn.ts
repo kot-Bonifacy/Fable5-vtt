@@ -147,6 +147,12 @@ export const CPRED_ACTION_BACKUP = 'backup-call';
 export const CPRED_ACTION_DOSE = 'dose';
 
 /**
+ * „Fiolka … którą w ramach Akcji można rozsmarować po ostrzu” (s. 353, etap 59b).
+ * Akcją jest samo rozsmarowanie; trucizna działa potem przez 30 minut.
+ */
+export const CPRED_ACTION_COAT_BLADE = 'coat-blade';
+
+/**
  * The catalogue itself (s. 168–169). Mechanics, not rulebook prose: the costs
  * and conditions are the game's arithmetic, which the engine needs to run at
  * all — the flavour text stays in the private data, like every other stage.
@@ -342,9 +348,18 @@ export const CPRED_ACTIONS: readonly CpredActionDefinition[] = [
   },
   {
     id: CPRED_ACTION_DOSE,
-    name: 'Podanie farmaceutyku',
+    name: 'Podanie dawki',
     cost: 'action',
-    hint: 'Medyk wstrzykuje jedną dawkę ze swojego ekwipunku sobie albo komuś w zasięgu ramienia.',
+    hint:
+      'Jedna dawka z ekwipunku — farmaceutyk (tylko Medyk), narkotyk albo alkohol — sobie ' +
+      'albo komuś w zasięgu ramienia.',
+    handledElsewhere: true,
+  },
+  {
+    id: CPRED_ACTION_COAT_BLADE,
+    name: 'Zatrucie ostrza',
+    cost: 'action',
+    hint: 'Fiolka trucizny albo biotoksyny na lekką broń białą — działa 30 minut.',
     handledElsewhere: true,
   },
   {
