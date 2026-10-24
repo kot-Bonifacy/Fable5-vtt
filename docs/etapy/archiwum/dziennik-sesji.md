@@ -1,5 +1,17 @@
 # Dziennik sesji — archiwum
 
+### Sesja 24.10, trzynasta (po `18d65fd`) — półka „Używki i leki” w Kompendium (zlecenie MG)
+
+**Zlecenie:** „nie widzę w kompendium leków i dragów, które powinny mieć swoją zakładkę”.
+Narkotyki, alkohol i fiolki trucizny są w danych wpisami `gear` (`gear.json`), a farmaceutyki
+Medyka w ogóle nie są wpisami. **Bez zmiany danych:** zakładka jest półką klienta —
+`CompendiumShelf` i `shelfOf` w `compendiumStore.ts`, rozpoznanie przez `cpredIsChemEntry`
+(`drugs.ts`, po wpisie albo nazwie). Pod wpisami pięć farmaceutyków do czytania („wytwarza
+Medyk”), karta narkotyku i fiolki niesie działanie, czas i uzależnienie z `CPRED_DRUGS` /
+`CPRED_BLADE_TOXINS`. Umowa na górze `dane`. Testy: `drugs.test.ts` +1, klient 440 zielone,
+`tsc`/ESLint/Prettier czyste. Oglądane w Firefoksie tymczasowym specem `t99-uzywki` (MCP Firefox
+nie wstał — znana pułapka `ogledziny`).
+
 ### Sesja 24.10, dwunasta (po `0b1fc7f`) — Eksploracja bez „Złap oddech” (zlecenie MG)
 
 **Zlecenie:** „zmień tryb eksploracji tak, aby nie następowały w nim co chwilę przerwy

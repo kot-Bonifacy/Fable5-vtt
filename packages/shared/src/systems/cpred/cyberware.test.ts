@@ -12,6 +12,7 @@ import {
   cyberwareInstallationFrom,
   cyberwareInstallRefusal,
   cyberwareAllowsSelfInstall,
+  cyberwareNeedsSurgeon,
   effectiveCpredStats,
   empFromHumanity,
   humanityMaxWith,
@@ -486,5 +487,13 @@ describe('odmowa montażu (s. 111, s. 226)', () => {
     expect(cyberwareAllowsSelfInstall(undefined)).toBe(true);
     expect(cyberwareAllowsSelfInstall('clinic')).toBe(false);
     expect(cyberwareAllowsSelfInstall('hospital')).toBe(false);
+  });
+
+  it('gracz montuje z Testem wszystko poza chipem bez operacji (24.10)', () => {
+    expect(cyberwareNeedsSurgeon('gallery')).toBe(true);
+    expect(cyberwareNeedsSurgeon('clinic')).toBe(true);
+    expect(cyberwareNeedsSurgeon('hospital')).toBe(true);
+    expect(cyberwareNeedsSurgeon('none')).toBe(false);
+    expect(cyberwareNeedsSurgeon(undefined)).toBe(false);
   });
 });

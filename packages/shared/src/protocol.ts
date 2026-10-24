@@ -1057,7 +1057,7 @@ export interface CharacterCyberwarePayload {
    * and nothing else; `none` is the GM's gift and is refused for players.
    */
   payment?: 'full' | 'installOnly' | 'none';
-  /** `install`: kto operuje. Brak znaczy `none` — montaż bez Testu. */
+  /** `install`: kto operuje. Brak znaczy `none` — montaż bez Testu, od 24.10 tylko u MG. */
   surgeon?: CyberwareSurgeon;
   /** Present when the roll was thrown with the dice cup. */
   gesture?: RollGesture;

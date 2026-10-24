@@ -232,7 +232,8 @@ describe('cyborgizacje i człowieczeństwo', () => {
 
   it('instaluje wszczep: rzut na czacie, wiersz na karcie, Człowieczeństwo w dół', async () => {
     const card = waitFor<ChatMessageBroadcast>(gm, 'chat:message');
-    const ack = await emitAck<{ messageId: number }>(vex, 'character:cyberware', {
+    // MG montuje bez Testu — gracz od 24.10 tylko z Testem (osobny test niżej).
+    const ack = await emitAck<{ messageId: number }>(gm, 'character:cyberware', {
       characterId,
       action: 'install',
       entryId: 'cyberware.oko-przykladowe',
@@ -290,7 +291,7 @@ describe('cyborgizacje i człowieczeństwo', () => {
   it('połowi utratę w górę, gdy wpis tak każe', async () => {
     const before = await sheetOf(vex, characterId);
     const card = waitFor<ChatMessageBroadcast>(gm, 'chat:message');
-    const ack = await emitAck<{ messageId: number }>(vex, 'character:cyberware', {
+    const ack = await emitAck<{ messageId: number }>(gm, 'character:cyberware', {
       characterId,
       action: 'install',
       entryId: 'cyberware.wkladka-teleoptyczna',
@@ -314,7 +315,7 @@ describe('cyborgizacje i człowieczeństwo', () => {
 
   it('ozdoba bez UC nie rusza ani puli, ani sufitu', async () => {
     const before = await sheetOf(vex, characterId);
-    const ack = await emitAck<{ messageId: number }>(vex, 'character:cyberware', {
+    const ack = await emitAck<{ messageId: number }>(gm, 'character:cyberware', {
       characterId,
       action: 'install',
       entryId: 'cyberware.tatuaz-przykladowy',
@@ -327,7 +328,7 @@ describe('cyborgizacje i człowieczeństwo', () => {
 
   it('etap 48c: „Znaleziony” montuje tylko wszczep z Wyposażenia i go zdejmuje', async () => {
     const install = () =>
-      emitAck<{ messageId: number }>(vex, 'character:cyberware', {
+      emitAck<{ messageId: number }>(gm, 'character:cyberware', {
         characterId,
         action: 'install',
         entryId: 'cyberware.tatuaz-przykladowy',
@@ -373,7 +374,7 @@ describe('cyborgizacje i człowieczeństwo', () => {
     const before = await sheetOf(vex, characterId);
     const beforeCeiling =
       60 - before.cyberware.reduce((s, r) => s + (r.humanityMaxPenalty ?? 0), 0);
-    const ack = await emitAck<{ messageId: number }>(vex, 'character:cyberware', {
+    const ack = await emitAck<{ messageId: number }>(gm, 'character:cyberware', {
       characterId,
       action: 'install',
       entryId: 'cyberware.ramownica-przykladowa',
@@ -569,13 +570,15 @@ describe('montaż: gniazda i Test operacji', () => {
   });
 
   it('liczy wolne gniazda: dwie wkładki po 2 nie mieszczą się w oku o 3', async () => {
-    const eye = await emitAck<{ messageId: number }>(vex, 'character:cyberware', {
+    // Oko i pierwsza wkładka od MG bez Testu — nieudany Test montażu zostawiłby
+    // gniazda wolne i odmowa niżej nie miałaby czego liczyć.
+    const eye = await emitAck<{ messageId: number }>(gm, 'character:cyberware', {
       characterId: patientId,
       action: 'install',
       entryId: 'cyberware.oko-przykladowe',
     });
     expect(eye.ok).toBe(true);
-    const first = await emitAck<{ messageId: number }>(vex, 'character:cyberware', {
+    const first = await emitAck<{ messageId: number }>(gm, 'character:cyberware', {
       characterId: patientId,
       action: 'install',
       entryId: 'cyberware.wkladka-teleoptyczna',
@@ -586,15 +589,18 @@ describe('montaż: gniazda i Test operacji', () => {
       characterId: patientId,
       action: 'install',
       entryId: 'cyberware.wkladka-teleoptyczna',
+      surgeon: { kind: 'character', characterId: medicId },
     });
     expect(second).toEqual({ ok: false, error: 'NO_SLOTS' });
   });
 
   it('borgizacja wchodzi bez podstawy — ramownica jest podstawą sama dla siebie', async () => {
+    // Odpowiedź `ok` przychodzi i po nieudanym Teście — liczy się brak odmowy.
     const ack = await emitAck<{ messageId: number }>(vex, 'character:cyberware', {
       characterId: patientId,
       action: 'install',
       entryId: 'cyberware.ramownica-przykladowa',
+      surgeon: { kind: 'character', characterId: medicId },
     });
     expect(ack.ok).toBe(true);
   });
@@ -678,6 +684,24 @@ describe('montaż: gniazda i Test operacji', () => {
       surgeon: { kind: 'character', characterId: patientId },
     });
     expect(ack).toEqual({ ok: false, error: 'NO_SURGERY_SKILL' });
+  });
+
+  it('gracz nie wszczepia bez Testu montażu — to zostaje MG (24.10)', async () => {
+    const before = await sheetOf(gm, patientId);
+    for (const payment of ['full', 'installOnly'] as const) {
+      const ack = await emitAck(vex, 'character:cyberware', {
+        characterId: patientId,
+        action: 'install',
+        entryId: 'cyberware.tatuaz-przykladowy',
+        payment,
+        ...(payment === 'full' ? { surgeon: { kind: 'none' } } : {}),
+      });
+      expect(ack).toEqual({ ok: false, error: 'SURGEON_REQUIRED' });
+    }
+    // Odmowa przed rzutem i przed pieniędzmi — karta nietknięta.
+    const after = await sheetOf(gm, patientId);
+    expect(after.cyberware).toHaveLength(before.cyberware.length);
+    expect(after.eddies).toBe(before.eddies);
   });
 
   it('gracz nie rzuca ripperdokiem MG', async () => {

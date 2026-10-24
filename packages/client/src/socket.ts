@@ -4657,6 +4657,9 @@ function cyberwareErrorText(code: string | undefined): string {
       return 'Sam sobie tego nie wszczepisz — poza galerią potrzebny jest ktoś drugi (s. 226).';
     case 'NO_SURGERY_SKILL':
       return 'Ta postać nie ma Chirurgii — montaż wykonuje Medyk albo ripperdoc MG (s. 226).';
+    // 24.10.2026: gracz wszczepia tylko z Testem montażu.
+    case 'SURGEON_REQUIRED':
+      return 'Bez Testu montażu wszczepia tylko MG — wybierz Medyka albo poproś MG o ripperdoca (s. 226).';
     case 'BAD_SURGEON':
       return 'Poziom chirurga musi być liczbą z zakresu 0–20.';
     case 'FORBIDDEN':

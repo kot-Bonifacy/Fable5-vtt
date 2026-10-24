@@ -701,6 +701,18 @@ export function cyberwareAllowsSelfInstall(install: CyberwareInstall | undefined
 }
 
 /**
+ * Czy montaż tego wpisu wymaga Testu montażu, gdy zleca go gracz (decyzja MG
+ * z 24.10.2026). Gracz wszczepia wyłącznie z Testem — Medykiem z karty albo
+ * prośbą do Medyka drużyny; montaż bez Testu (i ripperdoc MG) zostaje MG.
+ * Chip „Bez operacji" nie ma PT, więc nie ma czego zdawać, a wpis bez miejsca
+ * montażu to wiersz sprzed etapu 23a — odmowa na brakującym polu blokowałaby
+ * import zamiast pilnować zasady.
+ */
+export function cyberwareNeedsSurgeon(install: CyberwareInstall | undefined): boolean {
+  return install !== undefined && CYBERWARE_INSTALL_DV[install] !== null;
+}
+
+/**
  * Sufit liczby, którą MG wpisuje za ripperdoca. Najlepszy chirurg podręcznika
  * ma TECHNIKĘ 8 i Chirurgię 10, więc osiemnaście jest granicą tego, co da się
  * uzasadnić kartą; dwadzieścia zostawia MG margines na modyfikatory sceny.

@@ -29,6 +29,10 @@ Pełna tabela z nazwami i datami: `archiwum/tabela-etapow.md`.
 
 ## Od czego zacząć
 
+**Wszczep gracza tylko z Testem montażu (zlecenie MG z 25.10) — dalej etap 28, potem T10.**
+Gracz montuje chrom z PT wyłącznie z Medykiem z Chirurgią (własnym albo prośbą do Medyka
+innego gracza); bez Testu i ripperdokiem — tylko MG (`SURGEON_REQUIRED`). Umowa na górze `postac`.
+
 **Eksploracja bez „Złap oddech” (zlecenie MG z 24.10):** marsz klikiem idzie do celu jednym
 ciągiem, pula Eksploracji płaci już tylko lądowanie bez trasy i Skok. Czeka na oględziny
 w przeglądarce (notatka sesji). Umowa na górze `tura`.
@@ -470,7 +474,7 @@ a nie do tego pliku.
 | `atak`      | broń i dodatki, amunicja, obrażenia, pancerz, rany krytyczne, trucizna na ostrzu | 49   | 8       |
 | `statysta`  | figura z kartą, `statBlock`, Wartość bojowa, `token:stat`, wzorce | 17   | 3       |
 | `karta`     | strony i zakładki, panele, `sheet.css`, walidacja list, usuwanie przedmiotu | 11   | 12      |
-| `postac`    | kreator, PD i awanse, koszyk i cofanie awansów, Role i Zdolności, cyborgizacje, chrom zmieniający liczby, ekonomia | 55   | 3       |
+| `postac`    | kreator, PD i awanse, koszyk i cofanie awansów, Role i Zdolności, cyborgizacje, chrom zmieniający liczby, ekonomia, Test montażu gracza | 56   | 3       |
 | `ekwipunek` | wiersze wyposażenia, przekazanie, łup (także ciała graczy), handel, sklepy, zasięg, amunicja bez dna, egzoszkielet, narkotyki i fiolki | 37   | 3       |
 | `czas`      | zegar świata, kalendarz, `statEffects`, leczenie po dobie, dawki i uzależnienia (`chems`) | 19   | 2       |
 | `siec`      | Programy, LOD, demony, piętra architektury, dek jako towar, strefy bronione, kamery, rozbrajanie | 12   | 4       |
@@ -485,6 +489,26 @@ a nie do tego pliku.
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
 
+### Sesja 25.10, piętnasta (po `be08289`) — wszczep gracza tylko z Testem montażu (zlecenie MG)
+
+**Zlecenie:** „cyborgizacje dla graczy zawsze z testem montażu, bez testu niech może to robić
+tylko MG. Zweryfikuj tę mechanikę”. **Weryfikacja:** jedyną dziurą był `character:cyberware`
+z `surgeon` pustym albo `none` — serwer traktował to jak „montaż bez Testu” także u gracza,
+a klient miał to jako domyślną opcję. Pozostałe drogi były szczelne: łata karty nie dopisze
+wszczepu (`ITEM_LOCKED`), sklep i kreator chromu nie wydają (`NOT_PURCHASABLE`, „poza kartą”),
+ripperdoc MG jest dla gracza `FORBIDDEN`, prośba do Medyka zawsze rzuca Test, a Medyk sam sobie
+wszczepi tylko galerię (s. 226). **Zmiana:** `cyberwareNeedsSurgeon` w `shared`, odmowa
+`SURGEON_REQUIRED` w `installCyberware` (także „Znaleziony”), u gracza w Kompendium placeholder
+„Kto operuje?” i wyszarzone guziki do wyboru Medyka. Chip „Bez operacji” dalej bez Testu.
+**Skutek do wiedzy MG:** drużyna bez Medyka z Chirurgią nie wszczepi sobie nic sama — montaż
+robi MG z Kompendium na karcie gracza (ripperdoc MG z liczbą). Prośba gracza do ripperdoca MG
+(panel decyzji) — w `POMYSLY.md`. Umowa na górze `postac`. Testy: `cyberware.test.ts` (nowy:
+odmowa `full` i `installOnly`, karta nietknięta; testy mechaniki Człowieczeństwa montuje MG),
+`surgery`, `campaign-isolation`, shared `cyberware.test.ts` zielone; `tsc` shared/server/client
+czyste. Oglądane w **Firefoksie** skryptem `playwright` na instancji E2E z punktu `po-T6`
+(Marek/Kowal → Cyberoko: „Kto operuje?”, guzik wyłączony; po „Iskra · poproś” włączony). MCP
+Firefox nie wstał — znana pułapka `ogledziny`.
+
 ### Sesja 24.10, czternasta (po `b99de68`) — „Wyczyść czat” dla MG (zlecenie MG)
 
 **Zlecenie:** „dodaj opcję (dla MG) czyszczenia czata. ma to czyścić całkowicie czat ze
@@ -495,15 +519,3 @@ streszczenie „Zakończ sesję” nie ma czego streszczać — okno to mówi. U
 Testy: `chat-clear.test.ts` (odmowa gracza, odmowa bez `confirm`, push i pusta historia), klient
 440, `tsc` shared/server/client czyste. Oglądane tymczasowym specem E2E: MG w Firefoksie, gracz
 w Chromium (MCP Firefox nie wstał — znana pułapka `ogledziny`).
-
-### Sesja 24.10, trzynasta (po `18d65fd`) — półka „Używki i leki” w Kompendium (zlecenie MG)
-
-**Zlecenie:** „nie widzę w kompendium leków i dragów, które powinny mieć swoją zakładkę”.
-Narkotyki, alkohol i fiolki trucizny są w danych wpisami `gear` (`gear.json`), a farmaceutyki
-Medyka w ogóle nie są wpisami. **Bez zmiany danych:** zakładka jest półką klienta —
-`CompendiumShelf` i `shelfOf` w `compendiumStore.ts`, rozpoznanie przez `cpredIsChemEntry`
-(`drugs.ts`, po wpisie albo nazwie). Pod wpisami pięć farmaceutyków do czytania („wytwarza
-Medyk”), karta narkotyku i fiolki niesie działanie, czas i uzależnienie z `CPRED_DRUGS` /
-`CPRED_BLADE_TOXINS`. Umowa na górze `dane`. Testy: `drugs.test.ts` +1, klient 440 zielone,
-`tsc`/ESLint/Prettier czyste. Oglądane w Firefoksie tymczasowym specem `t99-uzywki` (MCP Firefox
-nie wstał — znana pułapka `ogledziny`).

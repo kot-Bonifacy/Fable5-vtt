@@ -412,8 +412,8 @@ function EntryCard({
   const inCombat = useCombatLocked();
   const [targetId, setTargetId] = useState('');
   const [confirming, setConfirming] = useState(false);
-  // Kto operuje (s. 226). „—" zostaje domyślne: cena montażu jest wliczona
-  // w cenę wszczepu, więc klinika bez Testu to nadal najczęstsza droga.
+  // Kto operuje (s. 226). Puste to u MG „Bez Testu montażu", a u gracza
+  // „jeszcze nie wybrano" — od 24.10 gracz wszczepia tylko z Testem.
   const [surgeonId, setSurgeonId] = useState('');
   const [ripperdocSkill, setRipperdocSkill] = useState(CYBERWARE_SURGEON_SKILL_DEFAULT);
 
@@ -493,6 +493,14 @@ function EntryCard({
     };
   }, [asksOthers, target]);
   const askable = asksOthers ? remoteSurgeons : [];
+  // 24.10.2026 (decyzja MG): gracz nie wszczepi niczego z PT bez Testu
+  // montażu — serwer odpowiada `SURGEON_REQUIRED`, a guziki czekają na chirurga.
+  const surgeonMissing =
+    !isGm && installDv !== null && (surgeonId === '' || surgeonIsPatient(surgeonId));
+  const surgeonMissingHint =
+    askable.length + surgeons.length > 0
+      ? `Wybierz, kto operuje — gracz wszczepia tylko z Testem montażu (PT ${installDv}, s. 226).`
+      : `Nikt w drużynie nie ma Chirurgii — montaż z Testem (PT ${installDv}, s. 226) zleca MG ripperdokiem.`;
 
   // Etap 46c: amunicja — kaliber (rodzina z pola „Amunicja” typu broni)
   // i liczba paczek (s. 344: 10 naboi albo 1 granat). Domyślny kaliber to
@@ -1057,10 +1065,20 @@ function EntryCard({
                 <>
                   <select
                     value={surgeonIsPatient(surgeonId) ? '' : surgeonId}
-                    title={`Kto operuje. Bez wyboru montaż wchodzi bez Testu — PT ${installDv} (s. 226).`}
+                    title={
+                      isGm
+                        ? `Kto operuje. Bez wyboru montaż wchodzi bez Testu — PT ${installDv} (s. 226).`
+                        : surgeonMissingHint
+                    }
                     onChange={(event) => setSurgeonId(event.target.value)}
                   >
-                    <option value="">Bez Testu montażu</option>
+                    {isGm ? (
+                      <option value="">Bez Testu montażu</option>
+                    ) : (
+                      <option value="" disabled>
+                        Kto operuje?
+                      </option>
+                    )}
                     {isGm ? <option value="gm">Ripperdoc MG — PT {installDv}</option> : null}
                     {askable.map((row) => (
                       <option
@@ -1116,9 +1134,11 @@ function EntryCard({
                     ? COMBAT_LOCKED_HINT
                     : price === null
                       ? 'Ten wpis nie ma ceny — uzupełnij ją w kompendium.'
-                      : `Wszczep ${formatEd(price)} — koszt operacji jest wliczony w cenę (s. 111).`
+                      : surgeonMissing
+                        ? surgeonMissingHint
+                        : `Wszczep ${formatEd(price)} — koszt operacji jest wliczony w cenę (s. 111).`
                 }
-                disabled={price === null || inCombat}
+                disabled={price === null || inCombat || surgeonMissing}
                 onClick={() => void install('full')}
               >
                 Zainstaluj{price === null ? '' : ` — ${formatEd(price)}`}
@@ -1132,11 +1152,13 @@ function EntryCard({
                 title={
                   inCombat
                     ? COMBAT_LOCKED_HINT
-                    : foundInGear
-                      ? 'Wszczep leży w Wyposażeniu — płacisz tylko za montaż (s. 375), a wiersz schodzi z plecaka.'
-                      : 'Znaleziony wszczep musi leżeć w Wyposażeniu postaci (łup, wymiana albo od MG).'
+                    : foundInGear && surgeonMissing
+                      ? surgeonMissingHint
+                      : foundInGear
+                        ? 'Wszczep leży w Wyposażeniu — płacisz tylko za montaż (s. 375), a wiersz schodzi z plecaka.'
+                        : 'Znaleziony wszczep musi leżeć w Wyposażeniu postaci (łup, wymiana albo od MG).'
                 }
-                disabled={!foundInGear || inCombat}
+                disabled={!foundInGear || inCombat || surgeonMissing}
                 onClick={() => void install('installOnly')}
               >
                 Znaleziony — montaż {formatEd(fitting)}

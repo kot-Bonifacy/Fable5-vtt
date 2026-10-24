@@ -7,7 +7,10 @@ nie konta (imiona kont nie pojawiają się w rozgrywce).
 **24.10.2026 (panel decyzji MG) — kolejne sprawy do panelu.** Panel z prośby o Test ma być
 wzorcem (decyzja MG). Kandydaci z szybką decyzją: (1) **karta zgłoszona z pliku** (57c) —
 „Przyjmij” / „Odrzuć”; (2) **propozycja bota** bez sterującego gracza — „Zatwierdź” / „Odrzuć”;
-(3) **odłożona sprawa z powrotem do panelu** — przycisk przy wierszu listy „Czeka na MG”.
+(3) **odłożona sprawa z powrotem do panelu** — przycisk przy wierszu listy „Czeka na MG”;
+(4) **prośba gracza o ripperdoca MG** (25.10) — gracz bez Medyka w drużynie nie wszczepi sobie
+nic sam (`SURGEON_REQUIRED`), więc prosi przy stole; panel dałby „Operuję” z liczbą chirurga
+i ceną, a montaż poszedłby przez `performInstall` jak prośba do Medyka (#41).
 Każdy to wpis w `GM_DECISION_KINDS` i `GM_DECISION_BODIES` (umowa na górze `ui`).
 
 **24.10.2026 (etap 59b/59c) — narkotyki, czego VTT jeszcze nie robi.** (1) **Terapia (s. 229)

@@ -30,6 +30,7 @@ import {
   cyberwareAllowsSelfInstall,
   cyberwareInstallRefusal,
   cyberwareInstallationFrom,
+  cyberwareNeedsSurgeon,
   entryPrice,
   formatEddies,
   humanityMaxWith,
@@ -280,7 +281,7 @@ async function resolveSurgeon(
 ): Promise<CyberwareSurgeonRoll | null> {
   if (!surgeon || surgeon.kind === 'none') return null;
   // „Bez operacji" nie ma PT, bo nie ma czego oblać — chip wchodzi w gniazdo.
-  if (!entry.install || CYBERWARE_INSTALL_DV[entry.install] === null) return null;
+  if (!cyberwareNeedsSurgeon(entry.install)) return null;
 
   if (surgeon.kind === 'gm') {
     if (user.role !== ROLE_GM) throw new RealtimeError('FORBIDDEN');
@@ -444,6 +445,12 @@ async function installCyberware(
   if (refusal && user.role !== ROLE_GM) throw new RealtimeError(refusal);
 
   const surgeon = await resolveSurgeon(deps, campaignId, user, character, entry, payload.surgeon);
+  // 24.10.2026 (decyzja MG): gracz wszczepia wyłącznie z Testem montażu.
+  // Do tej pory brak chirurga znaczył „bez Testu" także u gracza, więc każdy
+  // wszczep wchodził bez ryzyka, że przepadnie (s. 226). Bez Testu — MG.
+  if (!surgeon && user.role !== ROLE_GM && cyberwareNeedsSurgeon(entry.install)) {
+    throw new RealtimeError('SURGEON_REQUIRED');
+  }
 
   // Money is checked before the dice: a refusal after the roll would mean the
   // table watched somebody lose Humanity to an operation that never happened.
