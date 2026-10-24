@@ -1,6 +1,6 @@
 # Etap 60 — Czytelny czat: „to dotyczy mnie”, ikony rodzaju, kolor gracza
 
-**Faza:** przed betą (zlecenie MG z 24.10 spoza planu) · **Wymaga etapów:** 55 · **Stan:** 🟨 (60a ✅ 24.10)
+**Faza:** przed betą (zlecenie MG z 24.10 spoza planu) · **Wymaga etapów:** 55 · **Stan:** 🟨 (60a ✅ 24.10, 60b ✅ 24.10)
 Trzy podetapy po jednej sesji: 60a → 60b → 60c (60b i 60c niezależne od siebie, oba po 60a).
 
 ## Skąd ten etap
@@ -92,15 +92,43 @@ zgłoszona karta, propozycja bota).
 
 ## 60b — ikona rodzaju i grupowanie kolejnych wierszy
 
-- [ ] Mała ikona na początku nagłówka każdej karty, ta sama co w pasku filtrów (`HudIcon`:
+- [x] Mała ikona na początku nagłówka każdej karty, ta sama co w pasku filtrów (`HudIcon`:
       `chat-bubble`, `d10`, `crossed-swords`, `notebook`), wybrana przez `chatCategoryOf(kind)` —
-      jedno źródło prawdy z filtrem.
-- [ ] Grupowanie: kolejne wiersze **tego samego autora i tej samej kategorii** w odstępie do 2 min
+      jedno źródło prawdy z filtrem. *`FeedRow` podaje plik z `CATEGORY_BUTTONS` zmienną
+      `--chat-kind-icon`, a rysuje ją `::after` nagłówka (`order: -1`, przed „▶ Ty”).*
+- [x] Grupowanie: kolejne wiersze **tego samego autora i tej samej kategorii** w odstępie do 2 min
       tracą powtórzony nagłówek (nick, portret, godzina w dymku `title`). Karta rzutu, karta
       czekająca na decyzję i każdy wiersz `forMe` cudzego autora zawsze przerywają grupę.
-- [ ] Grupowanie liczy się po filtrach (na `feed`), więc rozwinięcie ukrytej grupy go nie psuje.
-- [ ] Oględziny jak w 60a; dodatkowo długa historia (doładowanie starszych wiadomości u góry nie
-      rozrywa ani nie skleja grup błędnie).
+      *`chatContinuations` / `chatHeaderKey` w `client/src/chat-grouping.ts` (+ testy); „ten sam
+      autor” to tożsamość nagłówka — niżej.*
+- [x] Grupowanie liczy się po filtrach (na `feed`), więc rozwinięcie ukrytej grupy go nie psuje.
+      *Separator przerywa grupę, a rozwinięta grupa skleja się sama w sobie.*
+- [x] Oględziny jak w 60a; dodatkowo długa historia (doładowanie starszych wiadomości u góry nie
+      rozrywa ani nie skleja grup błędnie). *Ola w Firefoksie: 174 wiersze w czterech stronach,
+      doklejone z pierwszej strony zostają, dwa przybywają w starszej historii, powtórka od zera
+      daje ten sam zestaw.*
+
+**Rozstrzygnięcia 60b (24.10, bez pytań — do potwierdzenia przez MG przy oględzinach):**
+
+- **„Ten sam autor” to ten sam nagłówek, nie ten sam `authorId`.** Serwer wystawia kontem MG
+  obrażenia, akcje, zegar i strefy, a nagłówek tych kart mówi co innego niż autor (cel z miejscem
+  trafienia, tytuł handoutu, nazwa tabeli). Sklejają się więc tylko rodzaje z białej listy
+  `chatHeaderKey`: wypowiedź i szept (konto + podpis + NPC + adresat — `/jako` za dwóch NPC-ów
+  albo gracz z dwiema postaciami to dwa nagłówki), akcja tury (działający), odpoczynek i zastrzyk
+  (czyje ciało) i zegar świata. Reszta — obrażenia, handouty, dziennik, wezwania, prośby,
+  przekazania, oględziny, operacje, zgłoszone karty, losowania i rzuty — zawsze z nagłówkiem.
+  Nowy rodzaj bez wpisu zostaje przy pełnym nagłówku, więc to **nie jest** ósme obowiązkowe
+  miejsce z umowy `czat`.
+- **Rodzaj w kluczu:** wypowiedź po szepcie (i szept po wypowiedzi) dostaje nagłówek z etykietą
+  „szept do: …”, choć rubryka filtra ta sama.
+- **Okno 2 min liczy się od poprzedniej karty grupy, nie od pierwszej** — ciąg rozmowy co minutę
+  zostaje jedną grupą.
+- **Karta przerywająca stoi osobno po obu stronach** — rzut, sprawa czekająca na kogokolwiek
+  (`isPending`) i wiersz „do mnie” / „czeka na mnie” ani się nie doklejają, ani nic nie dokleja
+  się do nich. Notatka lokalna też przerywa.
+- **Wygląd:** doklejona karta traci nagłówek i szczelinę feedu (`margin-top: -0.5rem`), więc
+  paski „moje” kolejnych kart zlewają się w jeden; godzina w dymku całej karty. Ikona — maska
+  0,8 rem w kolorze `--text-dim`.
 
 ## 60c — kolor gracza
 

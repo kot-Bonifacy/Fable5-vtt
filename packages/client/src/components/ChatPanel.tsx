@@ -3,6 +3,7 @@ import {
   useMemo,
   useRef,
   useState,
+  type CSSProperties,
   type FormEvent,
   type ReactNode,
   type UIEvent,
@@ -55,6 +56,7 @@ import { CardSubmissionRow } from './CardSubmission.js';
 import { SightingRow } from './SightingRow.js';
 import { RollTableRow } from './RollTableCard.js';
 import { useAuthStore } from '../stores/authStore.js';
+import { chatContinuations } from '../chat-grouping.js';
 import { gmAttentionKey } from '../gm-attention.js';
 import { useChatFilterStore } from '../stores/chatFilterStore.js';
 import { useChatStore, type ChatItem } from '../stores/chatStore.js';
@@ -790,10 +792,18 @@ const INVOLVEMENT_CLASS: Record<ChatInvolvement, string> = {
   awaitingMe: 'chat-row chat-row--for-me chat-row--awaiting-me',
 };
 
-/** Jeden wiersz feedu: notatka systemowa albo pełna karta wiadomości. */
+/**
+ * Jeden wiersz feedu: notatka systemowa albo pełna karta wiadomości.
+ *
+ * Opakowanie niesie też ikonę rubryki (etap 60b) — ten sam plik, co przycisk
+ * filtra, podany zmienną CSS. Rysuje ją `::after` nagłówka karty, więc żaden
+ * z ~20 komponentów kart nie musi o niej wiedzieć. Karta `continued` dokleja
+ * się do poprzedniej: CSS chowa jej nagłówek, godzina zostaje w dymku.
+ */
 function FeedRow({
   item,
   involvement,
+  continued,
   isGm,
   myUserId,
   trace,
@@ -801,14 +811,23 @@ function FeedRow({
 }: {
   item: ChatItem;
   involvement: ChatInvolvement | null;
+  continued: boolean;
   isGm: boolean;
   myUserId: string;
   trace?: BotTraceBroadcast;
   canResolveProposal: boolean;
 }) {
   if (item.type === 'note') return <NoteRow item={item} />;
+  const base = involvement ? INVOLVEMENT_CLASS[involvement] : 'chat-row';
+  const style = {
+    '--chat-kind-icon': `url("/icons/hud/${CATEGORY_ICON[chatCategoryOf(item.message.kind)]}.svg")`,
+  } as CSSProperties;
   return (
-    <div className={involvement ? INVOLVEMENT_CLASS[involvement] : 'chat-row'}>
+    <div
+      className={continued ? `${base} chat-row--cont` : base}
+      style={style}
+      title={continued ? formatTime(item.message.createdAt) : undefined}
+    >
       <FullMessageRow
         message={item.message}
         isGm={isGm}
@@ -841,6 +860,11 @@ const CATEGORY_BUTTONS: { id: ChatCategory; icon: string; label: string; title: 
     title: 'Eurodolce, handouty, dziennik, propozycje botów i notatki systemowe',
   },
 ];
+
+/** Ikona rubryki na karcie (etap 60b) — ta sama, co na przycisku filtra. */
+const CATEGORY_ICON = Object.fromEntries(
+  CATEGORY_BUTTONS.map((category) => [category.id, category.icon]),
+) as Record<ChatCategory, string>;
 
 /**
  * Piąty przycisk paska (etap 60a). Stoi osobno od kategorii, bo działa
@@ -995,6 +1019,29 @@ export function ChatPanel() {
     return out;
   }, [items, categories, mineOnly, involvements, openRuns, myUserId, isGm]);
 
+  /**
+   * Karty doklejone do poprzedniej (etap 60b). Liczone na `feed`, czyli po
+   * filtrach: separator przerywa grupę, a rozwinięta grupa ukrytych wierszy
+   * sklei się sama w sobie i nie rusza wierszy wokół. Osobno stoi to, co czeka
+   * na decyzję, i to, co jest „do mnie” — ma być widać, od kogo przyszło.
+   */
+  const continuations = useMemo(() => {
+    const breaksGroup = (item: ChatItem) => {
+      if (isPending(item, myUserId, isGm)) return true;
+      const involvement = item.type === 'message' ? involvements.get(item.message.id) : null;
+      return involvement === 'forMe' || involvement === 'awaitingMe';
+    };
+    const out = chatContinuations(
+      feed.map((entry) => (entry.kind === 'item' ? entry.item : null)),
+      breaksGroup,
+    );
+    for (const entry of feed) {
+      if (entry.kind !== 'hidden') continue;
+      for (const id of chatContinuations(entry.items, breaksGroup)) out.add(id);
+    }
+    return out;
+  }, [feed, involvements, myUserId, isGm]);
+
   useLayoutEffect(() => {
     const feedEl = feedRef.current;
     if (!feedEl) return;
@@ -1042,6 +1089,7 @@ export function ChatPanel() {
         key={key}
         item={item}
         involvement={item.type === 'message' ? (involvements.get(item.message.id) ?? null) : null}
+        continued={item.type === 'message' && continuations.has(item.message.id)}
         isGm={isGm}
         myUserId={myUserId}
         canResolveProposal={

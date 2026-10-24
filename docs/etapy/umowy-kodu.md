@@ -648,6 +648,7 @@ droga do usunięcia paczki prowadzi przez guzik z pytaniem niosącym liczbę.
 
 ## czat — Rodzaje wierszy, widoczność, filtr
 
+- **Grupy kart i ikona rubryki liczy `chat-grouping.ts` i opakowanie, nie karta (24.10, etap 60b)** — karta doklejona do poprzedniej dostaje `.chat-row--cont` (CSS chowa jej `.chat-message-meta`, godzina w `title`), a sklejają się tylko rodzaje z białej listy `chatHeaderKey` (klucz = wszystko, co pokazuje nagłówek). Nowy rodzaj, którego nagłówek to sam mówiący, dopisuje się tam; bez wpisu zostaje przy pełnym nagłówku. Ikonę rubryki podaje `FeedRow` zmienną `--chat-kind-icon` z `CATEGORY_BUTTONS`, a rysuje `.chat-message-meta::after` — **karta ma dalej dokładnie jeden nagłówek `.chat-message-meta`**, inaczej dostanie dwie ikony i schowa niewłaściwy.
 - **„To dotyczy mnie” liczy `chatInvolvement` w `shared/src/chat.ts`, nie karta (24.10, etap 60a)** — `'mine' | 'forMe' | 'awaitingMe' | null` z pól, które wiersz już niesie, porównanych z własnym id (+ figury gracza z `tokenStore`; u MG pusto). Klasę `.chat-row--mine` / `--for-me` / `--awaiting-me` daje opakowanie w `FeedRow` (`ChatPanel.tsx`), a pasek, podkład i „▶ Ty” rysuje CSS (`02-chat-dice.css`, tokeny `--self*`) — karta nie wie, kto na nią patrzy. Nowe pole z właścicielem albo adresatem → gałąź w `awaitsMe`/`concernsMe` i wiersz w `chat-involvement.test.ts`. Filtr „Ja” to `mineOnly` w `chatFilterStore` (klucz `vtt.chat.mineOnly`); `isPending` **i** `awaitingMe` wygrywają z każdym filtrem.
 - **`gmrecovery` — prywatna karta „zastrzyku” (24.10, etap 59b)** — ten sam `RecoveryLogEntry` co `recovery`, ale tylko autor, `recipientId` (właściciel celu) i każdy MG (`visibleTo` MG; gracz przez `authorId`/`recipientId`); doręcza `postPrivateRecoveryCard` (`realtime/chems.ts`) przez `deliverChatMessageTo`. Rysuje `RecoveryRow`, rubryka „Stół”. Narkotyk, alkohol, trucizna, koniec działania — zawsze tym rodzajem.
 - **Notka lokalna pamięta swoje miejsce w kanale — `afterId` (18.10, #81 z T9b)** — `addNote` zapisuje id najnowszego wiersza serwera (`null` przy pustym czacie), a `applySync` odbudowuje kanał przez `mergeNotes` (`stores/chatStore.ts`): każda notka staje za ostatnim wierszem o id ≤ kotwicy, więc po restarcie serwera albo zerwanym gnieździe nie zjeżdża pod nowsze wiadomości. Nowe miejsce, które wkłada do `items` coś lokalnego, idzie przez `addNote`, nie przez ręczne `{ type: 'note' }`.
@@ -661,6 +662,15 @@ droga do usunięcia paczki prowadzi przez guzik z pytaniem niosącym liczbę.
 - **Nowy rodzaj wiersza czatu ma SIEDEM miejsc (od 60a, 24.10)** — `ChatKind`, `chatCategoryOf`, `toChatMessageView`, **`visibleTo` w `chat-io.ts`** (biała lista rodzajów: wiersz spoza niej znika z historii i widzi go tylko autor; rodzaj publiczny do **obu** gałęzi, gracza i MG), `FullMessageRow`, `isPending` (gdy czeka na decyzję) i **wpis w `BY_KIND` w `chat-involvement.test.ts`** — `satisfies Record<ChatKind, …>` nie skompiluje się bez niego, a gałąź w `chatInvolvement` dopisuje się, gdy wiersz ma właściciela albo adresata.
 
 ---
+
+**Grupy kart czatu (24.10, etap 60b).** Kolejna karta tego samego nagłówka w 2 min od
+poprzedniej traci nagłówek — rozstrzyga `chatContinuations(rows, breaksGroup)` w
+`client/src/chat-grouping.ts`, liczone w `ChatPanel` na `feed` (po filtrach; `null` za separatorem)
+i osobno w każdej grupie ukrytych wierszy. „Ten sam nagłówek” to `chatHeaderKey` — biała lista, bo
+karty serwera mają autora MG, a nagłówek o kimś innym (obrażenia celu, akcja działającego). Przerywa
+`isPending` i `forMe`/`awaitingMe` po obu stronach. Ikonę rubryki rysuje
+`.chat-row .chat-message-meta::after` z maską `--chat-kind-icon` (`order: -1`, przed „▶ Ty”
+z `::before`); token jest na liście lokalnych w `theme.test.ts`.
 
 **Podpis wypowiedzi gracza i licznik streszczenia (01.10, #45 i #43).** `speakerName` jest
 jednocześnie autorem na czacie, podpisem w historii bota i w transkrypcie kronikarza

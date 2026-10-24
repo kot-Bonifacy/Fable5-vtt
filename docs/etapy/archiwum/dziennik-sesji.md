@@ -1,5 +1,32 @@
 # Dziennik sesji — archiwum
 
+### Sesja 24.10, ósma (po `fcee88b`) — zlecenie MG: panel decyzji MG dla prośby o Test
+
+**Zlecenie:** „dodaj automatyczne okienko u MG przy testach z karty, np. przesłuchiwania; w razie
+wątpliwości zadawaj pytania”. Pytania (dwie tury): pływający panel bez przyciemnienia, kolejka
+po jednej, zakres Testy z karty + oględziny, „✕” odkłada bez powrotu; „niech to okno będzie
+wzorcem dla innych” → wspólny komponent teraz, kolejne sprawy w `POMYSLY.md`; prawy górny róg
+w miejscu kafla; bez szybkiego rzutu przeciwstawnego (jest „Ustaw…”); szczebel = wezwanie jawne.
+
+**Zmiana (tylko klient).** `GmDecisionQueue.tsx` (rama `GmDecisionPanel` + kolejka +
+`GM_DECISION_BODIES`), `gm-attention.ts` (`GM_DECISION_KINDS`, `gmDecisionQueue`, `messageId`
+przy sprawie z czatu), `gmAttentionStore` (`decisions`, `setAside`; `announce` dzieli
+sprawy na kafle i panel, `goTo` zdejmuje z kolejki). `CheckRequest.tsx` pocięty na
+`CheckRequestSummary` i `CheckRequestDecision`, których używa karta czatu i panel. Style
+`.gm-decision*` w `19-figures-exchange.css` (stała szerokość 22 rem, tusz mapy zamiast
+przygaszonego pergaminu).
+
+**Testy.** Klient 427/427 (nowe: `gm-attention-store.test.ts`, kolejka w
+`gm-attention.test.ts`), `tsc --noEmit` i ESLint czyste. Pełnej suity E2E nie puszczano;
+t4a 4.3 klika drabinkę na karcie czatu (`.chat-message.chat-request`), której panel nie dotyka.
+
+**Oględziny:** tymczasowy spec `99-ogledziny/t99-panel-decyzji` (nie commitowany) — MG
+w **Firefoksie**, Ola w Chromium: panel z prośbą o Przesłuchiwanie, „+1 czeka”, zgoda
+„Codzienny 13” wpuszcza następną i daje Oli wezwanie, „Odłóż” zostawia sprawę na czacie
+i w znaczniku, odmowa z panelu dochodzi do gracza. Poprawione po oglądaniu: szerokość zależna
+od treści (drabinka w jednej kolumnie) i słaby kontrast zdania gracza. Prośby o oględziny
+w przeglądarce nie oglądano (ta sama gałąź `request`, bez „Ustaw…” i „Odmów” jak na czacie).
+
 ### Sesja 24.10, siódma (po `a7ccf57`) — etap 59b i 59c: narkotyki, alkohol, trucizna na ostrzu
 
 **Zlecenie:** „wykonaj teraz etap 59b; jeżeli znajdziesz więcej przypadków, gdzie można użyć tej
