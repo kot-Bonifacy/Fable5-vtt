@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useId, useState } from 'react';
 import type { ChatMessageView, CheckRequestEntry, CpredRollRequest, SocketAck } from '@vtt/shared';
 import {
   CHECK_CALL_PROMPT_MAX,
@@ -40,56 +40,14 @@ export function CheckRequestRow({
   const userId = useAuthStore((s) => s.user?.id ?? '');
   const isGm = useAuthStore((s) => s.user?.role === ROLE_GM);
   const [busy, setBusy] = useState(false);
-  const [refusing, setRefusing] = useState(false);
-  const [note, setNote] = useState('');
-
-  // Prośba o oględziny (etap 41) ma cel na mapie. MG wybiera przy niej tylko
-  // Poziom Trudności — bez „Ustaw…” i bez odmowy (uwaga MG z 23.10). Nazwa
-  // celu z własnej listy żetonów, więc gracz widzi alias, a MG prawdziwe imię.
-  const sightingTokenId =
-    typeof entry.system.sightingTokenId === 'string' ? entry.system.sightingTokenId : null;
-  const sightingName = useTokenStore((s) =>
-    sightingTokenId ? (s.tokens[sightingTokenId]?.name ?? null) : null,
-  );
   const open = isCheckRequestOpen(entry);
   const mine = mayCancelCheckRequest(entry, userId);
 
-  async function run(action: () => Promise<SocketAck<unknown>>) {
+  async function withdraw() {
     setBusy(true);
-    const ack = await action();
+    const ack = await cancelCheckRequest(message.id);
     setBusy(false);
     noteAck('check', ack, checkRequestErrorText);
-  }
-
-  function approveAt(dv: number) {
-    void run(() =>
-      resolveCheckRequest({ messageId: message.id, approve: true, dv, visibility: 'public' }),
-    );
-  }
-
-  function refuse() {
-    void run(async () => {
-      const ack = await resolveCheckRequest({
-        messageId: message.id,
-        approve: false,
-        ...(note.trim().length > 0 ? { note: note.trim() } : {}),
-      });
-      if (ack.ok) {
-        setRefusing(false);
-        setNote('');
-      }
-      return ack;
-    });
-  }
-
-  function openFullCall() {
-    useCheckStore.getState().openCall({
-      characterId: entry.characterId,
-      characterName: entry.characterName,
-      requestMessageId: message.id,
-      request: entry.system as unknown as CpredRollRequest,
-      ...(entry.reason !== undefined ? { prompt: entry.reason } : {}),
-    });
   }
 
   const resolution = entry.resolution;
@@ -105,13 +63,7 @@ export function CheckRequestRow({
         <span className="chat-message-author">Prośba o Test</span>
         <span className="chat-roll-gm-label">{entry.askedByName}</span>
       </div>
-      <div className="chat-action-body">
-        <span className="chat-action-name">
-          {entry.characterName} — {entry.rollLabel}
-          {sightingTokenId && ` · oględziny: ${sightingName ?? 'figura'}`}
-        </span>
-      </div>
-      {entry.reason && <p className="chat-proposal-reason">„{entry.reason}"</p>}
+      <CheckRequestSummary entry={entry} />
 
       {resolution && (
         <div className="chat-roll-badges">
@@ -132,74 +84,7 @@ export function CheckRequestRow({
       )}
       {resolution?.note && <p className="chat-request-note">„{resolution.note}"</p>}
 
-      {open && isGm && !refusing && (
-        <>
-          <div className="chat-request-ladder">
-            {CPRED_DIFFICULTY_LADDER.map((rung) => (
-              <button
-                key={rung.id}
-                type="button"
-                className="small-button"
-                disabled={busy}
-                title={`${rung.note} — zgoda wystawia wezwanie na PT ${rung.dv}`}
-                onClick={() => approveAt(rung.dv)}
-              >
-                {rung.label} <b>{rung.dv}</b>
-              </button>
-            ))}
-          </div>
-          {!sightingTokenId && (
-            <div className="chat-note-actions">
-              <button
-                type="button"
-                className="small-button"
-                disabled={busy}
-                title="Pełne okno wezwania — inna Umiejętność, modyfikator, widoczność, rzut przeciwstawny"
-                onClick={openFullCall}
-              >
-                Ustaw…
-              </button>
-              <button
-                type="button"
-                className="small-button"
-                disabled={busy}
-                onClick={() => setRefusing(true)}
-              >
-                Odmów
-              </button>
-            </div>
-          )}
-        </>
-      )}
-
-      {open && isGm && refusing && (
-        <div className="chat-request-refusal">
-          <label className="auth-label" htmlFor={`check-request-note-${message.id}`}>
-            Dlaczego nie ma rzutu (opcjonalnie)
-          </label>
-          <input
-            id={`check-request-note-${message.id}`}
-            type="text"
-            maxLength={CHECK_CALL_PROMPT_MAX}
-            value={note}
-            placeholder="Nie ma na to rzutu — po prostu widzisz, że jest zdenerwowany."
-            onChange={(e) => setNote(e.target.value)}
-          />
-          <div className="chat-note-actions">
-            <button type="button" className="small-button" disabled={busy} onClick={refuse}>
-              Wyślij odmowę
-            </button>
-            <button
-              type="button"
-              className="small-button"
-              disabled={busy}
-              onClick={() => setRefusing(false)}
-            >
-              Wróć
-            </button>
-          </div>
-        </div>
-      )}
+      {open && isGm && <CheckRequestDecision messageId={message.id} entry={entry} />}
 
       {open && !isGm && (
         <div className="chat-note-actions">
@@ -209,7 +94,7 @@ export function CheckRequestRow({
               type="button"
               className="small-button"
               disabled={busy}
-              onClick={() => void run(() => cancelCheckRequest(message.id))}
+              onClick={() => void withdraw()}
             >
               Wycofaj
             </button>
@@ -217,5 +102,163 @@ export function CheckRequestRow({
         </div>
       )}
     </div>
+  );
+}
+
+/** Prośba o oględziny (etap 41) ma cel na mapie; poza nią — `null`. */
+function sightingTokenIdOf(entry: CheckRequestEntry): string | null {
+  return typeof entry.system.sightingTokenId === 'string' ? entry.system.sightingTokenId : null;
+}
+
+/**
+ * Kto, czym i po co — wspólne dla karty czatu i panelu decyzji MG (24.10).
+ * Nazwa celu oględzin z własnej listy żetonów, więc gracz widzi alias, a MG
+ * prawdziwe imię.
+ */
+export function CheckRequestSummary({ entry }: { entry: CheckRequestEntry }) {
+  const sightingTokenId = sightingTokenIdOf(entry);
+  const sightingName = useTokenStore((s) =>
+    sightingTokenId ? (s.tokens[sightingTokenId]?.name ?? null) : null,
+  );
+  return (
+    <>
+      <div className="chat-action-body">
+        <span className="chat-action-name">
+          {entry.characterName} — {entry.rollLabel}
+          {sightingTokenId && ` · oględziny: ${sightingName ?? 'figura'}`}
+        </span>
+      </div>
+      {entry.reason && <p className="chat-proposal-reason">„{entry.reason}"</p>}
+    </>
+  );
+}
+
+/**
+ * Odpowiedź MG na otwartą prośbę: drabinka PT, „Ustaw…” i „Odmów”. Jedna
+ * kopia dla karty czatu i panelu decyzji (24.10) — oba miejsca rozstrzygają
+ * tę samą prośbę tym samym żądaniem.
+ *
+ * Prośba o oględziny (etap 41): MG wybiera przy niej tylko Poziom Trudności —
+ * bez „Ustaw…” i bez odmowy (uwaga MG z 23.10).
+ */
+export function CheckRequestDecision({
+  messageId,
+  entry,
+}: {
+  messageId: number;
+  entry: CheckRequestEntry;
+}) {
+  const [busy, setBusy] = useState(false);
+  const [refusing, setRefusing] = useState(false);
+  const [note, setNote] = useState('');
+  // Ta sama prośba może stać naraz na czacie i w panelu decyzji.
+  const noteId = useId();
+  const sighting = sightingTokenIdOf(entry) !== null;
+
+  async function run(action: () => Promise<SocketAck<unknown>>) {
+    setBusy(true);
+    const ack = await action();
+    setBusy(false);
+    noteAck('check', ack, checkRequestErrorText);
+  }
+
+  function approveAt(dv: number) {
+    void run(() => resolveCheckRequest({ messageId, approve: true, dv, visibility: 'public' }));
+  }
+
+  function refuse() {
+    void run(async () => {
+      const ack = await resolveCheckRequest({
+        messageId,
+        approve: false,
+        ...(note.trim().length > 0 ? { note: note.trim() } : {}),
+      });
+      if (ack.ok) {
+        setRefusing(false);
+        setNote('');
+      }
+      return ack;
+    });
+  }
+
+  function openFullCall() {
+    useCheckStore.getState().openCall({
+      characterId: entry.characterId,
+      characterName: entry.characterName,
+      requestMessageId: messageId,
+      request: entry.system as unknown as CpredRollRequest,
+      ...(entry.reason !== undefined ? { prompt: entry.reason } : {}),
+    });
+  }
+
+  if (refusing) {
+    return (
+      <div className="chat-request-refusal">
+        <label className="auth-label" htmlFor={noteId}>
+          Dlaczego nie ma rzutu (opcjonalnie)
+        </label>
+        <input
+          id={noteId}
+          type="text"
+          maxLength={CHECK_CALL_PROMPT_MAX}
+          value={note}
+          placeholder="Nie ma na to rzutu — po prostu widzisz, że jest zdenerwowany."
+          onChange={(e) => setNote(e.target.value)}
+        />
+        <div className="chat-note-actions">
+          <button type="button" className="small-button" disabled={busy} onClick={refuse}>
+            Wyślij odmowę
+          </button>
+          <button
+            type="button"
+            className="small-button"
+            disabled={busy}
+            onClick={() => setRefusing(false)}
+          >
+            Wróć
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <>
+      <div className="chat-request-ladder">
+        {CPRED_DIFFICULTY_LADDER.map((rung) => (
+          <button
+            key={rung.id}
+            type="button"
+            className="small-button"
+            disabled={busy}
+            title={`${rung.note} — zgoda wystawia wezwanie na PT ${rung.dv}`}
+            onClick={() => approveAt(rung.dv)}
+          >
+            {rung.label} <b>{rung.dv}</b>
+          </button>
+        ))}
+      </div>
+      {!sighting && (
+        <div className="chat-note-actions">
+          <button
+            type="button"
+            className="small-button"
+            disabled={busy}
+            title="Pełne okno wezwania — inna Umiejętność, modyfikator, widoczność, rzut przeciwstawny"
+            onClick={openFullCall}
+          >
+            Ustaw…
+          </button>
+          <button
+            type="button"
+            className="small-button"
+            disabled={busy}
+            onClick={() => setRefusing(true)}
+          >
+            Odmów
+          </button>
+        </div>
+      )}
+    </>
   );
 }

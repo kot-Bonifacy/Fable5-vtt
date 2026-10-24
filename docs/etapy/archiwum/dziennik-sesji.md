@@ -1,5 +1,33 @@
 # Dziennik sesji — archiwum
 
+### Sesja 24.10, szósta (po `dc222d4`) — etap 59a: chrom i sprzęt zmieniające liczby
+
+**Zlecenie:** „wykonaj teraz etap 59a; jeżeli znajdziesz więcej przypadków, gdzie można użyć tej
+mechaniki, to tam też ją zastosuj”. Pytania zadane na starcie; MG wybrał wszystkie cztery
+rozszerzenia (stałe +2 do Umiejętności, Kerenzikov, Celownik/Teleskop, czip), „obraz zawsze,
+słuch i śpiew — MG”, wymagania ramownic jako notkę i egzoszkielety w tym etapie.
+
+**Shared.** Nowy `chromestats.ts` (tabela `CPRED_CHROME_MODS`, 21 wierszy) i jego testy.
+`cpredEffectiveStats`: wszczepy → Człowieczeństwo → efekty → egzoszkielet (`{ gear: false }` go
+pomija), `cpredStatModifierRows` dla rozbicia Testu i ataku, `cpredSheetDeathSaveTarget`.
+`cpredSheetHpMax` i przycinanie PW w `normalizeCharacterData` z BC po wszczepach. `cpredSkillLevel`
+zamiast `data.skills[id]` w regułach (Test, atak, Unik, Koncentracja, Zwarcie, Sztuki walki,
+operator wieżyczki, targowanie, boty, kubek). Pola `CpredCyberwareRow.skillId`
+i `CpredGearRow.connected` z walidacją i regułą łaty gracza; egzoszkielet oddany jedzie odłączony.
+Teleskop wyłącza `conflictsWith` lunety (decyzja z 01.09 przestała być martwa).
+
+**Klient.** BC „z 12” z dymkiem źródeł, Przeżywalność bez egzoszkieletu, kolumna „Baza”
+z czipem i premią (zielona, dymek), skutek i notka pod nazwą wszczepu, wybór Umiejętności czipu,
+sekcja „Sprzęt z premią” z „Podłącz” / „Odłącz”.
+
+**Sprawdzone:** `tsc` (shared, server, client), ESLint i Prettier czyste; vitest `shared`
+2652/2652 (+39), serwera 1633/1633 (+4: PW z przeszczepem, podłączenie egzoszkieletu, czip raz),
+klienta 423/423. **Oglądano w Firefoksie** (Playwright MCP, `dev.db`, kampania Test_1, postać
+„Test chromu 59a” założona gniazdem i usunięta po oględzinach): BC 6 z 12 → z 14 po podłączeniu
+Bety, PW 35 z 55, próg 28, Przeżywalność 12 bez zmian, Bijatyka 4k6, Baza Odporności 10
+i Techskanera 7/9, tabela cyborgizacji z linijkami skutku, czip zapisany, konsola bez błędów.
+E2E nie puszczano.
+
 ### Sesja 24.10, piąta (po `2c42c8b`) — zlecenie MG: ciała leżą otworem jak skrzynie
 
 **Zlecenie:** „postaci martwe, ogłuszone stają się czymś w rodzaju otwartych skrzynek, które

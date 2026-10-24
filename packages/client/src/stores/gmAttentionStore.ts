@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { create } from 'zustand';
 import { ROLE_GM } from '@vtt/shared';
 import {
+  GM_DECISION_KINDS,
   gmAttentionItems,
   type GmAttentionItem,
   type GmAttentionSources,
@@ -23,13 +24,21 @@ import { useSceneStore } from './sceneStore.js';
  * źródłowych. Tu są tylko dwie rzeczy, których w nich nie ma: kafle świeżych
  * spraw (zapowiadane przez gniazdo, nie przez wczytanie stanu, żeby F5 nie
  * dzwoniło historią) i prośba „przejdź do sprawy” dla panelu bocznego.
+ *
+ * Od 24.10 sprawa z `GM_DECISION_KINDS` nie wyskakuje kaflem, tylko staje
+ * w kolejce panelu decyzji (`decisions`). „✕” ją odkłada, nie odmawia: zostaje
+ * na czacie i na liście, ale panel już sam jej nie pokaże.
  */
 export type GmAttentionToast = GmAttentionItem & { at: number };
 
 interface GmAttentionState {
   toasts: GmAttentionToast[];
+  /** Klucze spraw czekających w panelu decyzji, w kolejności przyjścia. */
+  decisions: string[];
   announce: (items: readonly GmAttentionItem[]) => void;
   dismiss: (key: string) => void;
+  /** „✕” na panelu decyzji: sprawa schodzi z kolejki, ale dalej czeka. */
+  setAside: (key: string) => void;
   /** Ostatnie „Przejdź”; `nonce` odróżnia drugie kliknięcie w tę samą sprawę. */
   focus: { key: string; tab: GmAttentionTab; nonce: number } | null;
   goTo: (item: GmAttentionItem) => void;
@@ -38,27 +47,37 @@ interface GmAttentionState {
 
 export const useGmAttentionStore = create<GmAttentionState>((set) => ({
   toasts: [],
+  decisions: [],
   announce: (items) =>
     set((state) => {
+      const decided = items.filter((item) => GM_DECISION_KINDS.has(item.kind));
+      const toasted = items.filter((item) => !GM_DECISION_KINDS.has(item.kind));
       // Sprawa, która wraca pod tym samym kluczem (gracz poprosił drugi raz),
       // wyskakuje od nowa, a nie dziedziczy czasu po poprzednim kaflu.
-      const keys = new Set(items.map((item) => item.key));
+      const keys = new Set(toasted.map((item) => item.key));
+      const queued = new Set(state.decisions);
       const at = Date.now();
       return {
         toasts: [
           ...state.toasts.filter((t) => !keys.has(t.key)),
-          ...items.map((item) => ({ ...item, at })),
+          ...toasted.map((item) => ({ ...item, at })),
+        ],
+        decisions: [
+          ...state.decisions,
+          ...decided.map((item) => item.key).filter((key) => !queued.has(key)),
         ],
       };
     }),
   dismiss: (key) => set((state) => ({ toasts: state.toasts.filter((t) => t.key !== key) })),
+  setAside: (key) => set((state) => ({ decisions: state.decisions.filter((k) => k !== key) })),
   focus: null,
   goTo: (item) =>
     set((state) => ({
       toasts: state.toasts.filter((t) => t.key !== item.key),
+      decisions: state.decisions.filter((k) => k !== item.key),
       focus: { key: item.key, tab: item.tab, nonce: (state.focus?.nonce ?? 0) + 1 },
     })),
-  clear: () => set({ toasts: [], focus: null }),
+  clear: () => set({ toasts: [], decisions: [], focus: null }),
 }));
 
 function sourcesNow(): GmAttentionSources {

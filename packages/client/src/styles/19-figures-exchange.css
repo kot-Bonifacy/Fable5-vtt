@@ -828,6 +828,64 @@
   min-width: 0;
 }
 
+/* Panel decyzji MG (24.10): sprawa do rozstrzygnięcia na miejscu stoi
+   w kolumnie kafli, ale nie znika sama. Tło i tusz mapy jak lista spraw,
+   bursztynowa krawędź karty prośby z czatu — to ta sama sprawa. Treść bierze
+   klasy karty czatu (`.chat-request-ladder` i reszta), więc wygląda jak ona. */
+.gm-decision {
+  /* Stała szerokość: krótka prośba nie może zwęzić drabinki do jednej kolumny. */
+  width: 22rem;
+  max-width: 100%;
+  padding: 0.4rem 0.6rem 0.5rem;
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--warn);
+  border-radius: 8px;
+  background: var(--map-panel);
+  color: var(--map-ink);
+  box-shadow: var(--map-shadow-panel);
+  font-size: 0.85rem;
+  animation: notice-in 220ms ease-out;
+}
+
+.gm-decision-head {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding-bottom: 0.15rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.gm-decision-title {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  font-size: 0.64rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  color: var(--warn);
+}
+
+.gm-decision-waiting {
+  flex: none;
+  font-size: 0.72rem;
+  color: var(--map-ink);
+  opacity: 0.8;
+}
+
+/* Klasy karty czatu mają przygaszony tusz pergaminu — na tle mapy ginie. */
+.gm-decision .chat-proposal-reason,
+.gm-decision .auth-label {
+  color: var(--map-ink);
+  opacity: 0.85;
+}
+
+.gm-decision-who {
+  margin: 0.3rem 0 0;
+  font-size: 0.72rem;
+  opacity: 0.8;
+}
+
 /* Wiersz, do którego prowadzi „Przejdź”, błyska raz obwódką ostrzeżenia. */
 .attention-flash {
   animation: attention-flash 1.8s ease-out;

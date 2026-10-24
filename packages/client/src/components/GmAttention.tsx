@@ -4,6 +4,7 @@ import { viewScene } from '../socket.js';
 import { useGmAttention, useGmAttentionStore } from '../stores/gmAttentionStore.js';
 import { useMapToolStore } from '../stores/mapToolStore.js';
 import { useSceneStore } from '../stores/sceneStore.js';
+import { GmDecisionQueue } from './GmDecisionQueue.js';
 
 /** Jak długo świeża sprawa wisi kaflem, zanim zostanie sam znacznik. */
 const TOAST_MS = 9000;
@@ -25,7 +26,9 @@ const KIND_ICON: Record<GmAttentionKind, string> = {
  * „Czeka na MG” w prawym górnym rogu mapy (25.09, zlecenie MG).
  *
  * Znacznik z liczbą stoi, dopóki cokolwiek czeka, i rozwija listę spraw;
- * świeża sprawa wyskakuje pod nim kaflem na kilka sekund. „Przejdź” niczego nie
+ * świeża sprawa wyskakuje pod nim kaflem na kilka sekund — a ta, którą MG
+ * rozstrzyga jednym kliknięciem, panelem decyzji (`GmDecisionQueue`, 24.10),
+ * który sam nie znika. „Przejdź” niczego nie
  * rozstrzyga — przenosi na zakładkę, gdzie decyzja już ma swój formularz (zgoda
  * na postać niesie warunki, prośba o Test — próg), i podświetla ten wiersz.
  * Licznik trafia też do tytułu karty przeglądarki, bo MG bywa w Discordzie.
@@ -109,6 +112,8 @@ export function GmAttention() {
         </ul>
       ) : (
         <div className="gm-attention-toasts" aria-live="polite">
+          {/* Sprawa do rozstrzygnięcia na miejscu (24.10) stoi nad kaflami. */}
+          <GmDecisionQueue items={items} />
           {live.map((item) => (
             // Skóra paska kanału (etap 55b): sprawa do decyzji to bursztyn.
             <div key={item.key} className="notice notice--warn gm-attention-toast">

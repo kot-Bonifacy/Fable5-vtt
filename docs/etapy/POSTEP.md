@@ -29,6 +29,12 @@ Pełna tabela z nazwami i datami: `archiwum/tabela-etapow.md`.
 
 ## Od czego zacząć
 
+**Prośba o Test wyskakuje MG panelem decyzji (zlecenie MG z 24.10) — dalej etap 28, potem T10.**
+Prośba gracza o Test z karty (i o oględziny) nie jest już kaflem na 9 s: w prawym górnym rogu
+mapy staje niemodalny panel z drabinką PT, „Ustaw…” i „Odmów”, po jednej sprawie z „+N czeka”;
+„✕” odkłada (zostaje na czacie i w „Czeka na MG”). Panel jest wzorcem dla innych szybkich decyzji
+MG — kandydaci w `POMYSLY.md`, umowa na górze `ui`.
+
 **Etap 59 „Cechy z chromu i narkotyków” zamknięty 24.10 (59a–59c) — dalej etap 28, potem T10.**
 Od 59b/59c narkotyki uliczne (Czarna szpryca, Błękitne szkło, Dopalacz, Grzmot, Syntkoka)
 i alkohol (zasada domowa: −1 REF i +1 SW na godzinę, do trzech dawek) leżą na półkach
@@ -437,7 +443,7 @@ a nie do tego pliku.
 | `mapa`      | figury, zaznaczanie, narzędzia, obiekty sceny, ściany, efekty, zamek drzwi, ukryta figura zauważona | 69   | 27      |
 | `czat`      | rodzaje wierszy, `visibleTo`, filtr, `seq`, `gmrecovery`       | 9    | 3       |
 | `serwer`    | Prisma i migracje, zdarzenia gniazda, zapisy karty, uploady    | 26   | 21      |
-| `ui`        | okna pływające, `z-index`, motyw, skróty, dostępność, wejście  | 36   | 15      |
+| `ui`        | okna pływające, `z-index`, motyw, skróty, dostępność, wejście, panel decyzji MG | 37   | 15      |
 | `kosci`     | kubek, `rollFormula`, wezwania i prośby o Test, tabele losowe, PT od MG | 24   | 2       |
 | `tura`      | budżet Akcji i metrów, kolejka, trasa, ruch przez ściany, skok, walka z zauważenia, pytanie MG o przekroczenie, Percepcja w drodze, ukryte figury | 30   | 7       |
 | `atak`      | broń i dodatki, amunicja, obrażenia, pancerz, rany krytyczne, trucizna na ostrzu | 49   | 8       |
@@ -457,6 +463,33 @@ a nie do tego pliku.
 ## Notatki z dwóch ostatnich sesji
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
+
+### Sesja 24.10, ósma (po `fcee88b`) — zlecenie MG: panel decyzji MG dla prośby o Test
+
+**Zlecenie:** „dodaj automatyczne okienko u MG przy testach z karty, np. przesłuchiwania; w razie
+wątpliwości zadawaj pytania”. Pytania (dwie tury): pływający panel bez przyciemnienia, kolejka
+po jednej, zakres Testy z karty + oględziny, „✕” odkłada bez powrotu; „niech to okno będzie
+wzorcem dla innych” → wspólny komponent teraz, kolejne sprawy w `POMYSLY.md`; prawy górny róg
+w miejscu kafla; bez szybkiego rzutu przeciwstawnego (jest „Ustaw…”); szczebel = wezwanie jawne.
+
+**Zmiana (tylko klient).** `GmDecisionQueue.tsx` (rama `GmDecisionPanel` + kolejka +
+`GM_DECISION_BODIES`), `gm-attention.ts` (`GM_DECISION_KINDS`, `gmDecisionQueue`, `messageId`
+przy sprawie z czatu), `gmAttentionStore` (`decisions`, `setAside`; `announce` dzieli
+sprawy na kafle i panel, `goTo` zdejmuje z kolejki). `CheckRequest.tsx` pocięty na
+`CheckRequestSummary` i `CheckRequestDecision`, których używa karta czatu i panel. Style
+`.gm-decision*` w `19-figures-exchange.css` (stała szerokość 22 rem, tusz mapy zamiast
+przygaszonego pergaminu).
+
+**Testy.** Klient 427/427 (nowe: `gm-attention-store.test.ts`, kolejka w
+`gm-attention.test.ts`), `tsc --noEmit` i ESLint czyste. Pełnej suity E2E nie puszczano;
+t4a 4.3 klika drabinkę na karcie czatu (`.chat-message.chat-request`), której panel nie dotyka.
+
+**Oględziny:** tymczasowy spec `99-ogledziny/t99-panel-decyzji` (nie commitowany) — MG
+w **Firefoksie**, Ola w Chromium: panel z prośbą o Przesłuchiwanie, „+1 czeka”, zgoda
+„Codzienny 13” wpuszcza następną i daje Oli wezwanie, „Odłóż” zostawia sprawę na czacie
+i w znaczniku, odmowa z panelu dochodzi do gracza. Poprawione po oglądaniu: szerokość zależna
+od treści (drabinka w jednej kolumnie) i słaby kontrast zdania gracza. Prośby o oględziny
+w przeglądarce nie oglądano (ta sama gałąź `request`, bez „Ustaw…” i „Odmów” jak na czacie).
 
 ### Sesja 24.10, siódma (po `a7ccf57`) — etap 59b i 59c: narkotyki, alkohol, trucizna na ostrzu
 
@@ -494,30 +527,3 @@ prywatne karty na czacie (rubryka „Stół”); konsola bez błędów. W czacie
 z oględzin. Zegara kampanii nie przestawiano — rzut na uzależnienie i cios zatrutym nożem tylko
 w testach serwera (`zaleglosci.md`). E2E nie puszczano.
 
-### Sesja 24.10, szósta (po `dc222d4`) — etap 59a: chrom i sprzęt zmieniające liczby
-
-**Zlecenie:** „wykonaj teraz etap 59a; jeżeli znajdziesz więcej przypadków, gdzie można użyć tej
-mechaniki, to tam też ją zastosuj”. Pytania zadane na starcie; MG wybrał wszystkie cztery
-rozszerzenia (stałe +2 do Umiejętności, Kerenzikov, Celownik/Teleskop, czip), „obraz zawsze,
-słuch i śpiew — MG”, wymagania ramownic jako notkę i egzoszkielety w tym etapie.
-
-**Shared.** Nowy `chromestats.ts` (tabela `CPRED_CHROME_MODS`, 21 wierszy) i jego testy.
-`cpredEffectiveStats`: wszczepy → Człowieczeństwo → efekty → egzoszkielet (`{ gear: false }` go
-pomija), `cpredStatModifierRows` dla rozbicia Testu i ataku, `cpredSheetDeathSaveTarget`.
-`cpredSheetHpMax` i przycinanie PW w `normalizeCharacterData` z BC po wszczepach. `cpredSkillLevel`
-zamiast `data.skills[id]` w regułach (Test, atak, Unik, Koncentracja, Zwarcie, Sztuki walki,
-operator wieżyczki, targowanie, boty, kubek). Pola `CpredCyberwareRow.skillId`
-i `CpredGearRow.connected` z walidacją i regułą łaty gracza; egzoszkielet oddany jedzie odłączony.
-Teleskop wyłącza `conflictsWith` lunety (decyzja z 01.09 przestała być martwa).
-
-**Klient.** BC „z 12” z dymkiem źródeł, Przeżywalność bez egzoszkieletu, kolumna „Baza”
-z czipem i premią (zielona, dymek), skutek i notka pod nazwą wszczepu, wybór Umiejętności czipu,
-sekcja „Sprzęt z premią” z „Podłącz” / „Odłącz”.
-
-**Sprawdzone:** `tsc` (shared, server, client), ESLint i Prettier czyste; vitest `shared`
-2652/2652 (+39), serwera 1633/1633 (+4: PW z przeszczepem, podłączenie egzoszkieletu, czip raz),
-klienta 423/423. **Oglądano w Firefoksie** (Playwright MCP, `dev.db`, kampania Test_1, postać
-„Test chromu 59a” założona gniazdem i usunięta po oględzinach): BC 6 z 12 → z 14 po podłączeniu
-Bety, PW 35 z 55, próg 28, Przeżywalność 12 bez zmian, Bijatyka 4k6, Baza Odporności 10
-i Techskanera 7/9, tabela cyborgizacji z linijkami skutku, czip zapisany, konsola bez błędów.
-E2E nie puszczano.

@@ -947,6 +947,7 @@ sąsiadach. Nowe rozgłoszenie z `seq` w typie zaczyna się od tych trzech linii
 
 ## ui — Okna, motyw, style, dostępność
 
+- **Szybka decyzja MG wyskakuje panelem decyzji, nie kaflem (24.10, zlecenie MG)** — `GmDecisionQueue` (`GmDecisionQueue.tsx`) w kolumnie „Czeka na MG” w `.map-corner`: niemodalny, jedna sprawa naraz z „+N czeka”, „✕” odkłada (`gmAttentionStore.setAside`; sprawa zostaje na czacie i na liście, panel już jej sam nie pokaże), leży pod `.dialog-backdrop`. Kolejkę karmi ten sam push co kafle (`announce` dzieli po `GM_DECISION_KINDS`), więc F5 nie wyskakuje historią. Nowy rodzaj: wpis w `GM_DECISION_KINDS` (`gm-attention.ts`) i w `GM_DECISION_BODIES`, a treść **z tych samych komponentów, co karta czatu** (wzór: `CheckRequestSummary` + `CheckRequestDecision` w `CheckRequest.tsx`) — bez drugiej kopii logiki zgody.
 - **Plansza „Wszyscy zginęli” (17.10, zlecenie MG)** — `PartyWipe` (montaż w `GameView`, poza „Między sesjami”) pyta wyłącznie `partyWiped` (`shared/figures.ts`): każda figura z `ownerId` na scenie ma stan `dead` (towarzysze-boty i NPC-e się nie liczą, 0 PW to jeszcze nie śmierć). Liczy klient z jawnych stanów figur, bez zdarzenia serwera — zdjęcie „Martwego” chowa planszę samo. Przycisk „Teraz możesz bezpiecznie wyłączyć komputer” gracza wylogowuje, MG tylko zamyka planszę do następnego pogromu. Leży na plakacie logowania (`.auth-screen.party-wipe`, `z-index: 2000`), więc kotwica ramki celownika z `03-entry.css` obowiązuje i tu.
 - **Budżet tury w lewym panelu: świeci = masz (17.10, zlecenie MG, wzorem BG3)** — `TurnBudget` (`variant="rail"`) rysuje każdy zasób jako kolumnę ściętych żetonów: pełny złoty to jednostka do wydania, wydana gaśnie do `--veil` (klasa `--spent` dalej znaczy „wydane”, odwrócona jest tylko skóra). Belka metrów to **zapas** (wypełnienie maleje z krokiem, liczba pogrubiona to „zostało”), po przekroczeniu (NPC MG) czerwona i pełna z „przebyte / maks.”. Zasób z `blocked` ma przekreślony napis i powód w `title`. Panel budżetu stoi na liście „Belki” w `theme.css` (nocne tokeny w obu skórach). Kolor żetonu nie zależy od `id` zasobu — rdzeń nie zna znaczenia „move”/„action”. Pasek PW na banerze ma liczbę **w** pasku (`.hud-hp-value` wewnątrz `.hud-hp-track`), różnicę PW w czarnej plakietce; `IdentityCard` ma `key={token.id}`, żeby przełączenie figury nie udawało leczenia.
 - **Odmowa po kliknięciu w oknie idzie do kanału, błąd pola i stan zostają na miejscu w skórze kanału (17.10, etap 55b)** — nowe okno przy stole nie trzyma własnego `useState` na komunikat: `noteAck(temat, ack, tekst)` zamyka albo podmienia odmowę, wynik to `notifyInfo`. Na miejscu zostaje tylko (1) błąd **formularza z polami** albo **dialogu** — akapit z klasą `.auth-error` (nagłówek „Błąd” i czerwony pasek daje `21-notices.css`; nowa klasa błędu pola dopisuje się do tej listy i do listy pęknięć w `chrome.css`, nie dostaje własnego koloru) — i (2) **stan** w oknie — `InlineNotice` (`NoticeColumn.tsx`, `tone` + `title`, bez ✕). Funkcja, która zwraca zdanie i na sukces, i na odmowę, zwraca `{ ok, text }` (wzór: `ItemNote` w `compendium-items.ts`). Nowa nakładka-wezwanie (jak Unik, „Czeka na MG”) bierze klasy `.notice notice--warn` + `.notice-title`/`.notice-text`/`.notice-action`, nie własną ramkę. Granica kanał / miejsce i lista przepiętych okien — `etap-55-komunikaty.md`, „Rozstrzygnięcia 55b”.
@@ -1018,6 +1019,18 @@ serwera potrzebuje tego samego. Odmowa „Zapłać” (`QUOTE_CHANGED`, `MERCHAN
 `OUT_OF_STOCK`) zawsze pobiera półkę od nowa.
 
 ---
+**Panel decyzji MG zamiast kafla (24.10.2026, zlecenie MG).**
+Prośba gracza o Test (od 19.10 jedyna droga do Testu z karty) dzwoniła kaflem „Czeka na MG”,
+który po 9 s znikał i miał tylko „Przejdź” — MG szedł na czat, żeby ustalić PT. Teraz prośba
+(także o oględziny) wyskakuje panelem z drabinką PT, „Ustaw…” i „Odmów” w miejscu kafla.
+Decyzje MG: niemodalny panel w prawym górnym rogu (mapa i czat dalej działają), kolejka po
+jednej z licznikiem, „✕” odkłada bez odmowy i bez powrotu, szczebel drabinki = wezwanie jawne,
+rzut przeciwstawny tylko przez „Ustaw…”, a panel ma być **wzorcem dla innych szybkich decyzji**
+(kandydaci w `POMYSLY.md`). Logika zgody wyszła z `CheckRequestRow` do `CheckRequestDecision`,
+którego używają karta czatu i panel — obie drogi rozstrzygają tę samą prośbę tym samym
+żądaniem. Pole odmowy ma `useId`, bo prośba stoi naraz w dwóch miejscach. Testy:
+`gm-attention-store.test.ts`, `gm-attention.test.ts` › „decision queue”.
+
 
 **Hak testów `window.__vttE2E` — tylko build `--mode e2e`, tylko odczyt (26.09.2026, T1 testów bety).**
 Zgoda MG z 26.09 (`testy.md` 4.3). `installE2EHook()` z `main.tsx` wystawia magazyny, a `MapArea`

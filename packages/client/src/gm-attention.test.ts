@@ -3,7 +3,9 @@ import type { ChatMessageView, CreationPermitRow, CreationRankDraft } from '@vtt
 import {
   gmAttentionItems,
   gmAttentionTitle,
+  gmDecisionQueue,
   newGmAttention,
+  type GmAttentionItem,
   type GmAttentionSources,
 } from './gm-attention.js';
 
@@ -128,6 +130,7 @@ it('lists open Test requests and proposals only the GM can answer', () => {
       { type: 'note', id: 'n', text: 'notatka' },
     ],
   });
+  expect(items[0]?.messageId).toBe(1);
   expect(items.map((item) => [item.key, item.kind, item.tab, item.text])).toEqual([
     ['msg:1', 'request', 'chat', 'Marek prosi o Test: Percepcja (INT)'],
     ['msg:3', 'proposal', 'chat', 'Rico czeka na zatwierdzenie: Percepcja'],
@@ -210,4 +213,10 @@ it('lists a card a player submitted from a file until the GM decides or it expir
       tab: 'chat',
     },
   ]);
+});
+
+it('keeps the decision queue in announce order, without matters already settled (24.10)', () => {
+  const item = (key: string): GmAttentionItem => ({ key, kind: 'request', text: key, tab: 'chat' });
+  const queue = gmDecisionQueue(['msg:3', 'msg:1', 'msg:9'], [item('msg:1'), item('msg:3')]);
+  expect(queue.map((row) => row.key)).toEqual(['msg:3', 'msg:1']);
 });

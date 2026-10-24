@@ -43,6 +43,29 @@ export interface GmAttentionItem {
   tab: GmAttentionTab;
   /** Brak miejsca startu: „Przejdź” pokazuje tę scenę i bierze narzędzie chorągiewki. */
   sceneId?: string;
+  /** Sprawa z karty czatu — panel decyzji czyta z niej treść (24.10). */
+  messageId?: number;
+}
+
+/**
+ * Sprawy, które zamiast kafla wyskakują panelem decyzji (24.10, zlecenie MG):
+ * MG rozstrzyga je na miejscu, bez przechodzenia na czat. Nowy rodzaj
+ * dopisuje się tutaj i w `GM_DECISION_BODIES` (`GmDecisionQueue.tsx`).
+ */
+export const GM_DECISION_KINDS: ReadonlySet<GmAttentionKind> = new Set<GmAttentionKind>([
+  'request',
+]);
+
+/**
+ * Kolejka panelu decyzji: klucze w kolejności zapowiedzi, ale tylko te, które
+ * wciąż czekają — sprawa rozstrzygnięta gdzie indziej wypada sama.
+ */
+export function gmDecisionQueue(
+  keys: readonly string[],
+  items: readonly GmAttentionItem[],
+): GmAttentionItem[] {
+  const byKey = new Map(items.map((item) => [item.key, item]));
+  return keys.flatMap((key) => byKey.get(key) ?? []);
 }
 
 export interface GmAttentionSources {
@@ -108,6 +131,7 @@ export function gmAttentionItems(sources: GmAttentionSources): GmAttentionItem[]
         kind: 'request',
         text: `${message.request.askedByName} prosi o Test: ${message.request.rollLabel}`,
         tab: 'chat',
+        messageId: message.id,
       });
     }
     // Etap 57c: karta zgłoszona przez gracza z pliku czeka na „Przyjmij”.
