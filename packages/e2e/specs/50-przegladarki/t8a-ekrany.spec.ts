@@ -4,6 +4,7 @@ import { KNAJPA } from '../../fixtures/maps.ts';
 import { campaignId } from '../../fixtures/nocna-zmiana.ts';
 import { fitCamera } from '../../fixtures/scene.ts';
 import { DEAD_GATEWAY } from '../../fixtures/security.ts';
+import { emitAck } from '../../fixtures/socket.ts';
 import { createInvitation, goToGmAttention } from '../../fixtures/table.ts';
 import { reachabilityProblems, survey } from '../../fixtures/uklad.ts';
 import {
@@ -190,6 +191,15 @@ for (const screen of SCREENS) {
 
       test('kreator Kuby (Na skróty): wszystkie kroki w nocy i w dzień', async ({ cast }) => {
         test.setTimeout(4 * 60_000);
+        // Od 21.10 trwająca walka blokuje nową postać gracza (`COMBAT_LOCKED`).
+        // Zrzuty walki są już zrobione — MG kończy starcie, zanim Kuba poprosi.
+        const gmSocket = await mg.socket();
+        try {
+          expect((await emitAck(gmSocket, 'combat:end', {})).ok).toBe(true);
+        } finally {
+          gmSocket.disconnect();
+        }
+        await expect.poll(() => combatRow() ?? null).toBeNull();
         kuba = await cast.gracz(
           'Kuba',
           layout.gracz,

@@ -6,8 +6,8 @@ import { KNAJPA } from '../../fixtures/maps.ts';
 import { canariesInDatabase, ONLY_FROM } from '../../fixtures/nocna-zmiana.ts';
 import { clickOnMap, fitCamera, tokenCentre, walkOnMap } from '../../fixtures/scene.ts';
 import { Canaries } from '../../fixtures/sniffer.ts';
-import { emitAck } from '../../fixtures/socket.ts';
-import { createInvitation, shakeCup } from '../../fixtures/table.ts';
+import { emitAck, emitAckOverBudget } from '../../fixtures/socket.ts';
+import { closeNotices, createInvitation, shakeCup } from '../../fixtures/table.ts';
 import {
   activeName,
   aim,
@@ -187,13 +187,13 @@ test.describe.serial('T4b: walka pierwsza w „Knajpie” — rany, granat, zwar
       Math.round(token('Rzeźnik').x) !== Math.round(door.x) ||
       Math.round(token('Rzeźnik').y) !== Math.round(door.y)
     ) {
-      expect(
-        await emitAck(await mg.socket(), 'token:move', {
-          tokenId: token('Rzeźnik').id,
-          ...door,
-          final: true,
-        }),
-      ).toMatchObject({ ok: true });
+      // MG stawia NPC-a poza turą — serwer pyta o budżet, test odpowiada „Wykonaj”.
+      const moved = await emitAckOverBudget(await mg.socket(), 'token:move', {
+        tokenId: token('Rzeźnik').id,
+        ...door,
+        final: true,
+      });
+      expect(moved, JSON.stringify(moved)).toMatchObject({ ok: true });
     }
     await expect
       .poll(() => [Math.round(token('Rzeźnik').x / cell), Math.round(token('Rzeźnik').y / cell)])
@@ -618,7 +618,18 @@ test.describe.serial('T4b: walka pierwsza w „Knajpie” — rany, granat, zwar
 
   test('4.8 runda 3: Ochroniarz chwyta Iskrę, Ola broni się ze swojej karty', async () => {
     test.setTimeout(3 * 60_000);
-    await ola.page.keyboard.press('Escape');
+    // Cios z #24 leży w kubku, a nad nim okno Celowania. `Esc` to drabinka:
+    // pierwszy zdejmuje okno, następny dopiero odkłada kubek, który inaczej
+    // zasłania „Kończę turę”.
+    await expect
+      .poll(
+        async () => {
+          await ola.page.keyboard.press('Escape');
+          return (await ola.store<{ attack: unknown }>('roll'))?.attack ?? null;
+        },
+        { intervals: [300], timeout: 10_000 },
+      )
+      .toBeNull();
     await endPlayerTurn(ola);
     // Rzeźnik i Cień czekają, martwy Zbir też ma swoje miejsce w kolejce.
     while (!/^Szrama/.test(activeName() ?? '')) await nextTurn(mg);
@@ -806,7 +817,38 @@ test.describe.serial('T4b: walka pierwsza w „Knajpie” — rany, granat, zwar
     // zaprasza do handlu, a „Wyślij bez czekania” wysyła pole jako propozycję
     // z „Przyjmij” (46a, decyzja MG 6) — Ola przyjmuje z czatu.
     await fitCamera(ola.page, KNAJPA.width, KNAJPA.height).catch(() => undefined);
-    await walk(ola, 'Iskra', floorOf(8, 9));
+    // Od 24.10 droga obok ukrytej rzeczy rzuca Percepcję w ukryciu: zdany Test
+    // zatrzymuje Iskrę przed nią (kość nieskryptowana — raz tak, raz nie), a karta
+    // rzutu do Oli powstaje dopiero po zatrzymaniu. Na tej drodze leżą co najmniej
+    // dwie takie rzeczy; każdy kolejny marsz rzuca tylko o te, których Iskra
+    // jeszcze nie sprawdzała.
+    const there = () =>
+      Math.round(token('Iskra').x / cell) === 8 && Math.round(token('Iskra').y / cell) === 9;
+    for (let attempt = 0; attempt < 4 && !there(); attempt += 1) {
+      const beforeWalk = lastMessageId();
+      const spotted = () =>
+        queryOne<{ id: number }>(
+          `SELECT id FROM ChatMessage WHERE id > ? AND kind = 'gmroll' AND recipientId IS NOT NULL
+             AND text LIKE '%Percepcja%'`,
+          beforeWalk,
+        );
+      if (attempt > 0) {
+        await closeNotices(ola.page);
+        await fitCamera(ola.page, KNAJPA.width, KNAJPA.height).catch(() => undefined);
+      }
+      await walk(ola, 'Iskra', floorOf(8, 9));
+      await expect
+        .poll(() => (there() ? 'na miejscu' : spotted() ? 'przystanęła' : 'w drodze'), {
+          timeout: 30_000,
+        })
+        .not.toBe('w drodze');
+      if (!there()) {
+        test.info().annotations.push({
+          type: 'Iskra przystanęła',
+          description: `ukryta rzecz po drodze, figura w ${Math.round(token('Iskra').x / cell)},${Math.round(token('Iskra').y / cell)}`,
+        });
+      }
+    }
     await waitAt('Iskra', 8, 9);
     await pick('🤝 Iskra');
     await expect(exchange).toHaveAttribute('data-exchange-mode', 'trade');
@@ -864,6 +906,8 @@ test.describe.serial('T4b: walka pierwsza w „Knajpie” — rany, granat, zwar
     });
     await expect.poll(() => grenadeBoxes().map((row) => row.qty)).toEqual([1]);
     await openSheet(marek, 'Kowal');
+    // Karta otwiera się na pierwszej stronie, nie na ostatnio oglądanej.
+    await page.getByRole('button', { name: 'Ekwipunek', exact: true }).click();
     await reload.click();
     await expect.poll(() => grenade().ammoCurrent).toBe(2);
     expect(grenadeBoxes()).toEqual([]);

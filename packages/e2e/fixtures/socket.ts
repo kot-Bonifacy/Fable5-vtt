@@ -42,3 +42,27 @@ function emitOnce<T>(
     });
   });
 }
+
+/**
+ * Intencja MG, która przechodzi także poza budżetem tury — jak „Wykonaj poza
+ * budżetem” na pasku nad mapą (19.10.2026). Serwer odpowiada wtedy
+ * `GM_OVER_BUDGET` i wysyła **temu samemu gniazdu** `combat:overspend-ask`;
+ * `combat:overspend { askId }` powtarza zapamiętaną intencję. Do kroków
+ * przygotowania stanu (MG stawia figurę tam, gdzie scenariusz jej potrzebuje).
+ */
+export async function emitAckOverBudget<T = unknown>(
+  socket: Socket,
+  event: string,
+  payload: unknown,
+): Promise<Ack<T>> {
+  let onAsk!: (ask: { askId: string }) => void;
+  const asked = new Promise<{ askId: string }>((resolve) => (onAsk = resolve));
+  socket.once('combat:overspend-ask', onAsk);
+  try {
+    const ack = await emitAck<T>(socket, event, payload);
+    if (ack.ok || ack.error !== 'GM_OVER_BUDGET') return ack;
+    return await emitAck<T>(socket, 'combat:overspend', { askId: (await asked).askId });
+  } finally {
+    socket.off('combat:overspend-ask', onAsk);
+  }
+}

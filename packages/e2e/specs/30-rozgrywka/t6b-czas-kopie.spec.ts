@@ -815,16 +815,20 @@ test.describe.serial('T6b: czas, kronika, eksport, kopie', () => {
     expect(scene.manifest.files.some((f) => f.includes('/uploads/'))).toBe(true);
     expect(scene.files.some((f) => f.startsWith('files/maps/'))).toBe(true);
 
-    // Gracz zrzutu nie dostanie — kontrola pozytywna MG obok.
+    // Gracz zrzutu nie dostanie — kontrola pozytywna MG obok. Kopię karty od 57c
+    // pobiera też jej właściciel (Marek — Kowal), a cudza wygląda jak nieistniejąca.
     const gmResponse = await mg.page.request.get('/api/archive/campaign?chat=0');
     expect(gmResponse.status()).toBe(200);
-    for (const player of [marek, ola]) {
+    for (const [player, own] of [
+      [marek, 200],
+      [ola, 404],
+    ] as const) {
       const response = await player.page.request.get('/api/archive/campaign?chat=0');
       expect(response.status(), player.name).toBe(403);
       const character = await player.page.request.get(
         `/api/archive/character/${characterRow('Kowal').id}`,
       );
-      expect(character.status(), player.name).toBe(403);
+      expect(character.status(), player.name).toBe(own);
     }
   });
 
