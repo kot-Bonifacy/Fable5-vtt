@@ -8,6 +8,7 @@ import {
   cpredWeaponModeSlot,
   cpredWeaponOptions,
   cpredActionRefusal,
+  cpredTurnExhausted,
   cpredTurnRefusalInput,
   hotbarSlotsFor,
   CPRED_SNEAK_GM_REFUSAL,
@@ -30,7 +31,13 @@ import {
   CPRED_ACTION_SCANNER,
   CPRED_ACTION_SNEAK,
   CPRED_ACTION_STABILIZE,
+  CPRED_ACTION_RELOAD,
   CPRED_ACTION_STAND_UP,
+  cpredTurnBudget,
+  freshCpredTurn,
+  spendCpredTurn,
+  type CpredTurnSpend,
+  type CpredTurnState,
 } from './turn.js';
 
 /**
@@ -382,6 +389,28 @@ describe('hotbarSlotsFor — what a status and a spent turn forbid', () => {
     // Status mówi „nie” niezależnie od budżetu.
     const stunned = weaponSlots(hotbarSlotsFor(input({ turn, statuses: ['unconscious'] })));
     expect(stunned[0]!.disabled).not.toBeNull();
+  });
+
+  it('counts the attacks left in the Action on every weapon slot (etap 63a)', () => {
+    const attacksOf = (turn: CpredHotbarInput['turn'], rof = 2) =>
+      weaponSlots(hotbarSlotsFor(input({ turn, resolve: () => ({ ...pistol, rof }) }))).map(
+        (slot) => [slot.mode, slot.attacks],
+      );
+    // Poza walką nikt nie liczy.
+    expect(attacksOf(null)[0]![1]).toBeNull();
+    const fresh = { actionSpent: false, moveSpent: false };
+    expect(attacksOf(fresh)[0]).toEqual(['single', { left: 2, max: 2 }]);
+    expect(attacksOf(fresh, 1)[0]).toEqual(['single', { left: 1, max: 1 }]);
+    // Pierwszy strzał z SS 2: zostaje jeden.
+    const open = { actionSpent: true, moveSpent: false, attackOpen: true };
+    expect(attacksOf(open)[0]).toEqual(['single', { left: 1, max: 2 }]);
+    expect(attacksOf(open, 1)[0]).toEqual(['single', { left: 0, max: 1 }]);
+    expect(attacksOf({ actionSpent: true, moveSpent: false })[0]).toEqual([
+      'single',
+      { left: 0, max: 2 },
+    ]);
+    // Rana, która zabrała Akcję, zeruje licznik od początku tury.
+    expect(attacksOf({ ...fresh, blockedAction: 'Uraz' })[0]![1]).toEqual({ left: 0, max: 2 });
   });
 
   it('never refuses the GM, whose overspend is logged rather than blocked', () => {
@@ -1127,5 +1156,39 @@ describe('Skradanie na pasku (etap 61)', () => {
       sneakSlot(hotbarSlotsFor(input({ sneak: { active: false }, statuses: ['unconscious'] })))
         ?.disabled,
     ).toBeTruthy();
+  });
+});
+
+describe('cpredTurnExhausted — kiedy „Kończę turę” pulsuje (etap 63a)', () => {
+  const spend = (state: CpredTurnState, what: CpredTurnSpend) => {
+    const result = spendCpredTurn(state, what);
+    if (!result.ok) throw new Error(result.error);
+    return result.state;
+  };
+  const shot = (rof: number): CpredTurnSpend => ({
+    kind: 'attack',
+    weaponRowId: 'w',
+    weaponName: 'Pistolet',
+    rof,
+  });
+
+  it('waits for the second attack of an LA 2 weapon, not for the metres', () => {
+    const fresh = freshCpredTurn({ metresPerMove: 12 });
+    expect(cpredTurnExhausted(null)).toBe(false);
+    expect(cpredTurnExhausted(cpredTurnBudget(fresh))).toBe(false);
+    const once = spend(fresh, shot(2));
+    expect(cpredTurnExhausted(cpredTurnBudget(once))).toBe(false);
+    expect(cpredTurnExhausted(cpredTurnBudget(spend(once, shot(2))))).toBe(true);
+    expect(cpredTurnExhausted(cpredTurnBudget(spend(fresh, shot(1))))).toBe(true);
+  });
+
+  it('counts an Action spent on anything else, a wound and a pending Death Save', () => {
+    const fresh = freshCpredTurn({ metresPerMove: 12 });
+    const reload = spend(fresh, { kind: 'action', actionId: CPRED_ACTION_RELOAD });
+    expect(cpredTurnExhausted(cpredTurnBudget(reload))).toBe(true);
+    const wounded = freshCpredTurn({ metresPerMove: 12 }, { noAction: 'Uraz' });
+    expect(cpredTurnExhausted(cpredTurnBudget(wounded))).toBe(true);
+    const dying = freshCpredTurn({ metresPerMove: 12 }, { noAction: 'Uraz', deathSave: true });
+    expect(cpredTurnExhausted(cpredTurnBudget(dying))).toBe(false);
   });
 });

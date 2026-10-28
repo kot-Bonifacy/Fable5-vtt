@@ -34,6 +34,7 @@ function slot(patch: Partial<CpredHotbarWeaponSlot> = {}): CpredHotbarWeaponSlot
     coneRangeM: null,
     outOfHand: false,
     disabled: null,
+    attacks: null,
     key: '1',
     ...patch,
   };
@@ -76,6 +77,12 @@ describe('sygnatura paska akcji (błąd #5)', () => {
     const bullet = hudSignature(context([slot({ ammoLabel: 'Amunicja śrutowa' })]));
     const cone = hudSignature(context([slot({ ammoLabel: 'Amunicja śrutowa', coneRangeM: 6 })]));
     expect(cone).not.toBe(bullet);
+  });
+
+  it('widzi kropki ataków w Akcji (etap 63a)', () => {
+    const fresh = hudSignature(context([slot({ attacks: { left: 2, max: 2 } })]));
+    const once = hudSignature(context([slot({ attacks: { left: 1, max: 2 } })]));
+    expect(once).not.toBe(fresh);
   });
 
   it('nie zmienia się, gdy nic widocznego się nie zmieniło', () => {

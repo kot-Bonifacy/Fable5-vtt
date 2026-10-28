@@ -301,6 +301,7 @@ function HotbarSlot({
             )}
           </span>
           <span className="hud-slot-line hud-slot-line--sub">
+            {slot.kind === 'weapon' && slot.attacks && <AttackPips attacks={slot.attacks} />}
             {ammo && <Magazine ammo={ammo} />}
             {stock !== null && (
               <span
@@ -334,6 +335,27 @@ function HotbarSlot({
         </button>
       )}
     </div>
+  );
+}
+
+/**
+ * Ile ataków tej broni zostało w Akcji tury (etap 63a): ●● przy SS 2,
+ * ● przy SS 1 i serii — zgaszona kropka to atak już wydany.
+ */
+function AttackPips({ attacks }: { attacks: { left: number; max: number } }) {
+  const label =
+    attacks.left === 0
+      ? 'Ta broń nie ma już ataku w tej turze'
+      : `Ataki w tej turze: ${attacks.left} z ${attacks.max}`;
+  return (
+    <span className="hud-attacks" title={label} aria-label={label}>
+      {Array.from({ length: attacks.max }, (_, index) => (
+        <span
+          key={index}
+          className={`hud-attacks-pip${index >= attacks.left ? ' hud-attacks-pip--spent' : ''}`}
+        />
+      ))}
+    </span>
   );
 }
 

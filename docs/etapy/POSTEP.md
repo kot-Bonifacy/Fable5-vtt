@@ -21,13 +21,20 @@ w plikach obok — czytaj je **na żądanie, nigdy rutynowo**:
 
 | stan         | etapy                                                                                          |
 | ------------ | ---------------------------------------------------------------------------------------------- |
-| ⬜ otwarty   | **62** Sieć ze sceny (🟨 zrobione, czeka na oględziny MG na VPS po wdrożeniu); **61** Skradanie się (🟨 zrobione, czeka na słowo MG o rozstrzygnięciach); **28** Wdrożenie na VPS (🟨 działa na `https://vtt.tatanga.eu` z botami od 18.10; zostały off-site, utwardzenie, monitoring); **43b**, **43c** (UI walki); **60** Czytelny czat (zlecenie MG z 24.10; 🟨 60a–60c ✅, czeka na oględziny MG z pierwszego kryterium); T10; refaktoryzacja odłożona (MG 18.10) |
+| ⬜ otwarty   | **63** Płynna walka gracza (zlecenie MG z 28.10; 🟨 63a zrobione bez nowego dźwięku tury, dalej 63b auto-unik, 63c karta ataku z krokami); **62** Sieć ze sceny (🟨 zrobione, czeka na oględziny MG na VPS po wdrożeniu); **61** Skradanie się (🟨 zrobione, czeka na słowo MG o rozstrzygnięciach); **28** Wdrożenie na VPS (🟨 działa na `https://vtt.tatanga.eu` z botami od 18.10; zostały off-site, utwardzenie, monitoring); **43b**, **43c** (UI walki); **60** Czytelny czat (zlecenie MG z 24.10; 🟨 60a–60c ✅, czeka na oględziny MG z pierwszego kryterium); T10; refaktoryzacja odłożona (MG 18.10) |
 | ✅ ukończone | 01–11, 13–20b, 23a–27f, 27h–27l, 29a–30d, 31–35, 37–42c, 43a, 44a–44d, 45, 46a1, 46a2, 46c1, 46c2, 46b1, 46b2, 47a, 47b, 48a, 48b, 48c, 49a, 49b, 50a, 50b, 50c, 51, 52, 53, 54, 55, 56, 57 (57a–57c), 58 (58a–58d), 59 (59a–59c) (ostatni zamknięty: 59, 2026-10-24) |
 | ⛔ wycofane  | 12, 21, 22 (głos), 27g (wydajność), 36 (makra); 27, 29, 30, 38 rozdzielone na etapy literowane |
 
 Pełna tabela z nazwami i datami: `archiwum/tabela-etapow.md`.
 
 ## Od czego zacząć
+
+**Etap 63 „Płynna walka gracza” (zlecenie MG z 28.10) — 63a zrobione, dalej 63b (auto-unik),
+potem 63c (jedna karta ataku z krokami).** Slot broni ma kropki ataków w Akcji (●● przy SS 2),
+„Kończę turę” pulsuje, gdy z tury został najwyżej ruch, a pipsy „Ataki” gasną z Akcją. **Otwarte
+w 63a: dźwięk tury** — MG odrzucił wszystkie kandydatury CC0 z 28.10 (OpenGameArt, Kenney), więc
+`turn.wav` jest stary. Decyzje MG 1–8 dla całego etapu w `etap-63-plynna-walka.md`, umowa na
+górze `tura`.
 
 **Etap 62 „Sieć ze sceny” (zlecenie MG z 28.10) zrobiony — czeka na oględziny MG na VPS
 (najpierw wdrożenie ikon urządzeń i tego etapu).** Figura z ikoną urządzenia (kamera, wieżyczka,
@@ -491,7 +498,7 @@ a nie do tego pliku.
 | `serwer`    | Prisma i migracje, zdarzenia gniazda, zapisy karty, uploady    | 26   | 21      |
 | `ui`        | okna pływające, `z-index`, motyw, skróty, dostępność, wejście, panel decyzji MG | 37   | 15      |
 | `kosci`     | kubek, `rollFormula`, wezwania i prośby o Test, tabele losowe, PT od MG | 24   | 2       |
-| `tura`      | budżet Akcji i metrów, kolejka, trasa, ruch przez ściany, skok, walka z zauważenia, pytanie MG o przekroczenie, Percepcja w drodze, ukryte figury, skradanie | 32   | 7       |
+| `tura`      | budżet Akcji i metrów, kolejka, trasa, ruch przez ściany, skok, walka z zauważenia, pytanie MG o przekroczenie, Percepcja w drodze, ukryte figury, skradanie, kropki ataków | 33   | 7       |
 | `atak`      | broń i dodatki, amunicja, obrażenia, pancerz, rany krytyczne, trucizna na ostrzu | 49   | 8       |
 | `statysta`  | figura z kartą, `statBlock`, Wartość bojowa, `token:stat`, wzorce | 17   | 3       |
 | `karta`     | strony i zakładki, panele, `sheet.css`, walidacja list, usuwanie przedmiotu | 11   | 12      |
@@ -509,6 +516,22 @@ a nie do tego pliku.
 ## Notatki z dwóch ostatnich sesji
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
+
+### Sesja 28.10, czwarta — etap 63a „Płynna walka gracza” (zlecenie MG)
+
+**Zlecenie:** dźwięk „twoja tura” myli się z innym, komunikaty trafienie/Unik/obrażenia zlewają
+się, nie wiadomo, czy został atak, Unik ma być automatyczny z checkboksem (domyślnie
+zaznaczonym). Dwie rundy pytań, decyzje MG 1–8 w `etap-63-plynna-walka.md`; MG przyjął podział
+63a → 63b → 63c. **Diagnoza dźwięku:** `turn.wav` i `request.wav` to to samo nagranie drewna.
+**Zmiana (63a):** `CpredHotbarWeaponSlot.attacks` + `weaponAttacksLeft`, `cpredTurnExhausted`
+(`hotbar.ts`), kropki `AttackPips` w `CombatHud.tsx`, `useTurnDone` i klasa
+`hud-end-turn--done` w `HudEndTurn.tsx`, CSS w `12-hud.css`, `attacks` w `hudSignature`;
+`cpredTurnBudget` gasi „Ataki” przy Akcji wydanej na co innego. **Dźwięk nie zmieniony:** MG
+odsłuchał 31 próbek z OpenGameArt (bart, HaelDB) i 52 Kenneya (przez OpenGameArt) — żadna nie
+pasuje; kenney.nl odmawia pobierania spoza przeglądarki (nie obchodzone). **Testy:** shared 2759,
+serwer 1669, klient 441 — zielone; `tsc` trzech pakietów, ESLint, Prettier. **Oglądane:** Ola
+w **Firefoksie** tymczasowym specem `99-ogledziny/t99-plynna-walka.spec.ts` (niecommitowany):
+kropki na pistolecie i Bijatyce, zgaszone po „Użyciu przedmiotu”, animacja `hud-end-turn-done`.
 
 ### Sesja 28.10, trzecia — etap 62 „Sieć ze sceny” (zlecenie MG)
 
@@ -530,21 +553,3 @@ zielone. Iskra w `po-T6` ma Interfejs 4, nie 2 (scenariusz nie zależy od rangi 
 **Oglądane:** Ola w **Firefoksie** (zrzuty okna Sieci po podłączeniu i po Kontroli z widokiem
 kamery za ścianą). Na VPS nic nie zmieniano.
 
-### Sesja 28.10, druga — ikony urządzeń na mapie (zlecenie MG)
-
-**Zlecenie:** „dodaj ikony do kamery, wieżyczki, drona itp.” i dopisek: „powinny być one
-stawiane na mapie jako ikony”. **Decyzje MG z pytań:** ikona to pole figury wybierane przez MG
-(nie automat z Architektury Sieci), sylwetka na krążku figury (z obwódką, PW, grotem
-i podpisem), rodzaje: kamera, wieżyczka, dron + mina, czujnik, robot, terminal; gracze widzą
-ikonę jak każdą figurę. **Zmiana:** `Token.glyph` (migracja `token_glyph`), `TOKEN_GLYPHS`
-/ `TOKEN_GLYPH_LABELS` / `sanitizeTokenGlyph` w `shared/tokens.ts`, `token:create`
-i `token:update` z `glyph`, duplikat i paczka kampanii. Na mapie `TokenNode.updateGlyph`;
-w „Grafikach” sekcja „Urządzenia” (klik i klik albo przeciągnięcie na mapę), w „🖼 Zmień
-grafikę…” te same kafelki pod biblioteką (obrazek i ikona się wykluczają). Sylwetki
-z game-icons (CC BY 3.0): cctv-camera, turret (sbed), delivery-drone, land-mine, radar-sweep,
-robot-golem, pc (skoll) — `public/icons/devices/`. **Poza zakresem:** chipy Kolejki Inicjatywy
-i HUD walki pokazują dalej inicjał zamiast ikony (`POMYSLY.md`). Umowa na górze `mapa`.
-Testy: shared `tokens.test.ts` (+1), serwer `tokens.test.ts` (+1: publiczna ikona, zdjęcie,
-odmowa nieznanej). Oglądane tymczasowym specem E2E: **Ola w Firefoksie** (siedem ikon, figura
-2×2, zmiana Robota na Terminal na żywo), MG w Chromium (sekcja „Urządzenia”, postawienie drona
-klikiem, „Zmień grafikę…”).

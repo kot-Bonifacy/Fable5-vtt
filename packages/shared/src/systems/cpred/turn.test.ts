@@ -227,6 +227,21 @@ describe('turn state round-trip and projection', () => {
     expect(budget.note).toBe('Atak: Strzelba');
   });
 
+  it('darkens the attacks once the Action went to something else (etap 63a)', () => {
+    const reload = spendCpredTurn(freshCpredTurn(), {
+      kind: 'action',
+      actionId: CPRED_ACTION_RELOAD,
+    });
+    if (!reload.ok) throw new Error(reload.error);
+    const attacks = cpredTurnBudget(reload.state).resources.find((r) => r.id === 'attacks');
+    expect(attacks).toMatchObject({
+      used: CPRED_ATTACKS_PER_ACTION,
+      max: CPRED_ATTACKS_PER_ACTION,
+    });
+    const wounded = cpredTurnBudget(freshCpredTurn(null, { noAction: 'Uraz' }));
+    expect(wounded.resources.find((r) => r.id === 'attacks')?.used).toBe(CPRED_ATTACKS_PER_ACTION);
+  });
+
   it('names both weapons of a split Attack Action', () => {
     const budget = cpredTurnBudget(
       spendAll(freshCpredTurn(), [fast('a', 'Zgrzyt'), fast('b', 'Maczeta')]),

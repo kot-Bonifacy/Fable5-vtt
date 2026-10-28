@@ -561,6 +561,13 @@ export interface CpredHotbarWeaponSlot {
   outOfHand: boolean;
   /** Why it cannot be used right now, or null. */
   disabled: string | null;
+  /**
+   * Ataki tej broni, które jeszcze mieszczą się w Akcji tej tury (etap 63a,
+   * zlecenie MG z 28.10: „nie wiadomo, czy ma się jeszcze jakiś atak”). `max`
+   * to SS w tym trybie — 2 dla pojedynczego strzału z broni SS 2, inaczej 1,
+   * bo seria i ogień zaporowy zabierają całą Akcję. Null poza walką.
+   */
+  attacks: { left: number; max: number } | null;
   /** `'1'`–`'9'`, or null past the ninth slot. */
   key: string | null;
 }
@@ -759,6 +766,24 @@ function weaponSlotBase(option: CpredWeaponOption): string {
 }
 
 /**
+ * Ile ataków tej broni zostało w Akcji (etap 63a). Liczone z budżetu tury
+ * także u MG — pipsy mówią, co zostało, nawet gdy MG wolno przekroczyć budżet.
+ * Status i rana, które zabrały Akcję, dają 0; pusty magazynek nie (to odmowa
+ * slotu, nie budżetu — Przeładowanie go oddaje).
+ */
+function weaponAttacksLeft(
+  input: CpredHotbarInput,
+  max: number,
+  statusActionBlock: string | null,
+): { left: number; max: number } | null {
+  const turn = input.turn;
+  if (!turn) return null;
+  if (statusActionBlock || turn.blockedAction) return { left: 0, max };
+  if (!turn.actionSpent) return { left: max, max };
+  return { left: turn.attackOpen === true && max >= 2 ? 1 : 0, max };
+}
+
+/**
  * The sentence a spent budget leaves on a slot — the only one of the three that
  * is about *spending*, which is why it comes last in the order of truth.
  */
@@ -805,6 +830,7 @@ export function hotbarSlotsFor(input: CpredHotbarInput): CpredHotbarSlot[] {
     const thrown = option.resolved?.thrown === true;
     const spread = option.ammoProfile?.spread;
     for (const mode of cpredFireModes(option.resolved)) {
+      const attacksMax = mode === 'single' && (option.resolved?.rof ?? 1) >= 2 ? 2 : 1;
       slots.push({
         kind: 'weapon',
         icon: cpredWeaponIcon(option.resolved),
@@ -834,6 +860,7 @@ export function hotbarSlotsFor(input: CpredHotbarInput): CpredHotbarSlot[] {
           mode,
           secondAttackFits && (option.resolved?.rof ?? 1) >= 2 ? null : actionRefusal,
         ),
+        attacks: weaponAttacksLeft(input, attacksMax, statusActionBlock),
         key: null,
       });
     }
@@ -980,6 +1007,20 @@ export function cpredTurnRefusalInput(
     blockedAction: action?.blocked ?? null,
     blockedMove: move?.blocked ?? null,
   };
+}
+
+/**
+ * Z tury nie zostało nic poza ruchem (etap 63a, zlecenie MG z 28.10) — wtedy
+ * „Kończę turę” pulsuje. Akcja wydana albo zabrana, Akcja Ataku bez miejsca
+ * na drugi strzał, Akcje Sieci wyczerpane i żaden rzut (Test Przeżywalności)
+ * nie czeka. Metry się nie liczą: dochodzenie do osłony to wybór, nie zaległość.
+ */
+export function cpredTurnExhausted(turn: TurnBudgetView | null | undefined): boolean {
+  if (!turn || turn.pendingRoll) return false;
+  const input = cpredTurnRefusalInput(turn)!;
+  if (!(input.actionSpent || input.blockedAction) || input.attackOpen) return false;
+  const net = turn.resources.find((row) => row.id === 'net');
+  return !net || net.used >= net.max;
 }
 
 /**

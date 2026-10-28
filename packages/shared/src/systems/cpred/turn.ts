@@ -1252,7 +1252,9 @@ export function cpredTurnBudget(
       {
         id: 'attacks',
         label: 'Ataki',
-        used: attack?.count ?? 0,
+        // Akcja wydana na co innego (Przeładowanie, przedmiot) albo zabrana
+        // raną nie zostawia ataku — kropki gasną razem z Akcją (etap 63a).
+        used: attack?.count ?? (state.action || state.blockedAction ? CPRED_ATTACKS_PER_ACTION : 0),
         // A closed Attack Action shows its real ceiling: an LA 1 shot reads
         // „1/1", not „1/2", so nobody waits for a second swing that RAW says
         // is not coming.

@@ -568,6 +568,8 @@ export function hudSignature(context: HudContext): string {
       // Etap 46c: zapas w ekwipunku stoi przy liczniku magazynka.
       slot.kind === 'weapon' || slot.kind === 'reload' ? slot.stock : null,
       slot.kind === 'weapon' ? slot.coneRangeM : null,
+      // Etap 63a: kropki ataków w Akcji — ta sama lekcja „co widać”.
+      slot.kind === 'weapon' ? slot.attacks : null,
       // Schowanie broni przy wydanej Akcji nie zmienia zdania odmowy, a zmienia
       // to, co kursor ma trzymać (25.09).
       slot.kind === 'weapon' ? slot.outOfHand : null,

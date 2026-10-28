@@ -1,5 +1,24 @@
 # Dziennik sesji — archiwum
 
+### Sesja 28.10, druga — ikony urządzeń na mapie (zlecenie MG)
+
+**Zlecenie:** „dodaj ikony do kamery, wieżyczki, drona itp.” i dopisek: „powinny być one
+stawiane na mapie jako ikony”. **Decyzje MG z pytań:** ikona to pole figury wybierane przez MG
+(nie automat z Architektury Sieci), sylwetka na krążku figury (z obwódką, PW, grotem
+i podpisem), rodzaje: kamera, wieżyczka, dron + mina, czujnik, robot, terminal; gracze widzą
+ikonę jak każdą figurę. **Zmiana:** `Token.glyph` (migracja `token_glyph`), `TOKEN_GLYPHS`
+/ `TOKEN_GLYPH_LABELS` / `sanitizeTokenGlyph` w `shared/tokens.ts`, `token:create`
+i `token:update` z `glyph`, duplikat i paczka kampanii. Na mapie `TokenNode.updateGlyph`;
+w „Grafikach” sekcja „Urządzenia” (klik i klik albo przeciągnięcie na mapę), w „🖼 Zmień
+grafikę…” te same kafelki pod biblioteką (obrazek i ikona się wykluczają). Sylwetki
+z game-icons (CC BY 3.0): cctv-camera, turret (sbed), delivery-drone, land-mine, radar-sweep,
+robot-golem, pc (skoll) — `public/icons/devices/`. **Poza zakresem:** chipy Kolejki Inicjatywy
+i HUD walki pokazują dalej inicjał zamiast ikony (`POMYSLY.md`). Umowa na górze `mapa`.
+Testy: shared `tokens.test.ts` (+1), serwer `tokens.test.ts` (+1: publiczna ikona, zdjęcie,
+odmowa nieznanej). Oglądane tymczasowym specem E2E: **Ola w Firefoksie** (siedem ikon, figura
+2×2, zmiana Robota na Terminal na żywo), MG w Chromium (sekcja „Urządzenia”, postawienie drona
+klikiem, „Zmień grafikę…”).
+
 ### Sesja 28.10 (po `ae79375`) — etap 61 „Skradanie się” (zlecenie MG)
 
 **Zlecenie:** „dodaj mechanikę skradania się (dostępną w lewym panelu pod przyciskiem),

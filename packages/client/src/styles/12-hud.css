@@ -281,6 +281,31 @@
   clip-path: polygon(0 0, 100% 0, 100% calc(100% - 0.4rem), calc(100% - 0.4rem) 100%, 0 100%);
 }
 
+/* Etap 63a: z tury zostało najwyżej przejście — przycisk pulsuje jasnością,
+   bo clip-path ścina każdą poświatę z box-shadow. */
+.hud-end-turn--done .hud-end-turn-button,
+.hud-end-turn-compact.hud-end-turn--done {
+  animation: hud-end-turn-done 1.3s ease-in-out infinite;
+}
+
+@keyframes hud-end-turn-done {
+  0%,
+  100% {
+    filter: brightness(1);
+  }
+  50% {
+    filter: brightness(1.45) saturate(1.2);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hud-end-turn--done .hud-end-turn-button,
+  .hud-end-turn-compact.hud-end-turn--done {
+    animation: none;
+    filter: brightness(1.3);
+  }
+}
+
 .hud-end-turn-compact:hover:not(:disabled) {
   background: var(--cp-red-deep);
 }
@@ -1039,6 +1064,29 @@
 
 /* Etap 46c: zapas w ekwipunku obok licznika magazynka — „12/30 · zapas 40”.
    Pusty dostaje kolor pustego magazynka: to ta sama odmowa, tylko o krok dalej. */
+/* Etap 63a: ataki tej broni, które jeszcze mieszczą się w Akcji — zapalona
+   kropka to atak do wydania (jak pipsy budżetu tury od 17.10). */
+.hud-attacks {
+  display: inline-flex;
+  gap: 0.18rem;
+  margin-right: 0.4rem;
+  vertical-align: middle;
+}
+
+.hud-attacks-pip {
+  width: 0.45rem;
+  height: 0.45rem;
+  border: 1px solid var(--accent);
+  background: var(--accent);
+  transform: rotate(45deg);
+}
+
+.hud-attacks-pip--spent {
+  background: transparent;
+  border-color: var(--text-dim);
+  opacity: 0.6;
+}
+
 .hud-stock {
   margin-left: 0.35rem;
   font-variant-numeric: tabular-nums;
