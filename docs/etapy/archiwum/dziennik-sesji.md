@@ -1,5 +1,25 @@
 # Dziennik sesji — archiwum
 
+### Sesja 25.10, piętnasta (po `be08289`) — wszczep gracza tylko z Testem montażu (zlecenie MG)
+
+**Zlecenie:** „cyborgizacje dla graczy zawsze z testem montażu, bez testu niech może to robić
+tylko MG. Zweryfikuj tę mechanikę”. **Weryfikacja:** jedyną dziurą był `character:cyberware`
+z `surgeon` pustym albo `none` — serwer traktował to jak „montaż bez Testu” także u gracza,
+a klient miał to jako domyślną opcję. Pozostałe drogi były szczelne: łata karty nie dopisze
+wszczepu (`ITEM_LOCKED`), sklep i kreator chromu nie wydają (`NOT_PURCHASABLE`, „poza kartą”),
+ripperdoc MG jest dla gracza `FORBIDDEN`, prośba do Medyka zawsze rzuca Test, a Medyk sam sobie
+wszczepi tylko galerię (s. 226). **Zmiana:** `cyberwareNeedsSurgeon` w `shared`, odmowa
+`SURGEON_REQUIRED` w `installCyberware` (także „Znaleziony”), u gracza w Kompendium placeholder
+„Kto operuje?” i wyszarzone guziki do wyboru Medyka. Chip „Bez operacji” dalej bez Testu.
+**Skutek do wiedzy MG:** drużyna bez Medyka z Chirurgią nie wszczepi sobie nic sama — montaż
+robi MG z Kompendium na karcie gracza (ripperdoc MG z liczbą). Prośba gracza do ripperdoca MG
+(panel decyzji) — w `POMYSLY.md`. Umowa na górze `postac`. Testy: `cyberware.test.ts` (nowy:
+odmowa `full` i `installOnly`, karta nietknięta; testy mechaniki Człowieczeństwa montuje MG),
+`surgery`, `campaign-isolation`, shared `cyberware.test.ts` zielone; `tsc` shared/server/client
+czyste. Oglądane w **Firefoksie** skryptem `playwright` na instancji E2E z punktu `po-T6`
+(Marek/Kowal → Cyberoko: „Kto operuje?”, guzik wyłączony; po „Iskra · poproś” włączony). MCP
+Firefox nie wstał — znana pułapka `ogledziny`.
+
 ### Sesja 24.10, czternasta (po `b99de68`) — „Wyczyść czat” dla MG (zlecenie MG)
 
 **Zlecenie:** „dodaj opcję (dla MG) czyszczenia czata. ma to czyścić całkowicie czat ze

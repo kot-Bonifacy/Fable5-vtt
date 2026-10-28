@@ -76,7 +76,8 @@ describe('przechylenie portretu leżącej figury', () => {
   it('przechyla wyłącznie portret, nie podpis ani naklejki', () => {
     const body = blockAfter('private tiltPortrait(');
     const turned = [...body.matchAll(/this\.(\w+)\.rotation/g)].map((match) => match[1]);
-    expect(new Set(turned)).toEqual(new Set(['image', 'initial']));
+    // Ikona urządzenia (28.10) stoi w miejscu portretu, więc leży razem z nim.
+    expect(new Set(turned)).toEqual(new Set(['image', 'initial', 'glyph']));
   });
 
   it('kąt zakłada się przy każdym odrysowaniu, nie tylko przy wczytaniu obrazka', () => {

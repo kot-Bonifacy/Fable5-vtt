@@ -429,6 +429,10 @@
   /* Informacja na czerni dostaje czerwony brzeg, żeby nie wtopiła się w mapę nocą. */
   --notice-info-edge: #e0301f;
   --notice-shadow: drop-shadow(0 6px 14px rgb(0 0 0 / 55%));
+  /* Kafelek ikony urządzenia (28.10) zapowiada figurę z mapy, a mapa nie ma
+     motywu — grafit krążka i barwa sylwetki to stałe z `TokenNode.ts`. */
+  --device-glyph-disc: #0f172a;
+  --device-glyph-mark: #e2e8f0;
 }
 
 /* ============================================================================

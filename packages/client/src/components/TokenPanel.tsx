@@ -1,5 +1,10 @@
 import { useEffect, useState, type ChangeEvent } from 'react';
-import type { TokenAssetView } from '@vtt/shared';
+import {
+  TOKEN_GLYPHS,
+  TOKEN_GLYPH_LABELS,
+  type TokenAssetView,
+  type TokenGlyph,
+} from '@vtt/shared';
 import { apiGet, apiUpload } from '../api.js';
 import { UPLOAD_ACCEPT_ATTRIBUTE, uploadRequirementText } from '@vtt/shared';
 import { fileRejectionText, uploadErrorText } from '../uploads.js';
@@ -8,6 +13,7 @@ import { noteAck, notifyInfo } from '../notices.js';
 import { deleteTokenAsset } from '../socket.js';
 import { useMapToolStore } from '../stores/mapToolStore.js';
 import { startTokenDrag } from '../map/token-drag.js';
+import { DeviceGlyph } from './DeviceGlyph.js';
 
 /**
  * GM tab „Grafiki” (until 15.10 „Tokeny”): the campaign's token image library.
@@ -83,6 +89,12 @@ export function TokenPanel() {
     else setPlacement({ name: asset.name, imageUrl: asset.url });
   }
 
+  /** Urządzenie (28.10): figura bez obrazka, z sylwetką i nazwą rodzaju. */
+  function toggleGlyph(glyph: TokenGlyph) {
+    if (placement?.glyph === glyph) setPlacement(null);
+    else setPlacement({ name: TOKEN_GLYPH_LABELS[glyph], imageUrl: null, glyph });
+  }
+
   function placeBlank() {
     const name = blankName.trim() || 'Token';
     setPlacement({ name, imageUrl: null });
@@ -156,6 +168,27 @@ export function TokenPanel() {
           ))}
         </div>
       )}
+
+      <h4 className="settings-group-title token-panel-subtitle">Urządzenia</h4>
+      <div className="token-asset-grid">
+        {TOKEN_GLYPHS.map((glyph) => (
+          <button
+            key={glyph}
+            type="button"
+            className={`token-asset ${placement?.glyph === glyph ? 'token-asset--armed' : ''}`}
+            title={`${TOKEN_GLYPH_LABELS[glyph]} — kliknij i kliknij na mapie albo przeciągnij na mapę`}
+            aria-pressed={placement?.glyph === glyph}
+            draggable
+            onDragStart={(event) =>
+              startTokenDrag(event, { name: TOKEN_GLYPH_LABELS[glyph], imageUrl: null, glyph })
+            }
+            onClick={() => toggleGlyph(glyph)}
+          >
+            <DeviceGlyph glyph={glyph} />
+            <span className="token-asset-name">{TOKEN_GLYPH_LABELS[glyph]}</span>
+          </button>
+        ))}
+      </div>
 
       <div className="scene-editor-row">
         <input

@@ -44,6 +44,7 @@ import {
   tokenSharesVision,
   isTokenDisposition,
   sanitizeTokenHp,
+  sanitizeTokenGlyph,
   sanitizeTokenImageUrl,
   sanitizeTokenName,
   sanitizeTokenPatch,
@@ -150,6 +151,8 @@ export function toTokenView(
     // secret. Null — the overwhelming majority — means the two are the same.
     name: includePrivate ? token.name : (token.publicName ?? token.name),
     imageUrl: token.imageUrl,
+    // Ikona urządzenia jest publiczna jak obrazek — kto widzi figurę, widzi kamerę.
+    glyph: sanitizeTokenGlyph(token.glyph) ?? null,
     x: token.x,
     y: token.y,
     size: token.size,
@@ -954,6 +957,8 @@ export const tokenCreateEvent = defineEvent<TokenCreatePayload, TokenView>({
     const imageUrl = sanitizeTokenImageUrl(payload?.imageUrl ?? null);
     if (imageUrl === undefined) throw new RealtimeError('BAD_REQUEST');
     requireOwnUploadUrl(imageUrl, campaignId);
+    const glyph = sanitizeTokenGlyph(payload?.glyph ?? null);
+    if (glyph === undefined) throw new RealtimeError('BAD_REQUEST');
     const size = sanitizeTokenSize(payload?.size ?? 1);
     if (size === null) throw new RealtimeError('BAD_REQUEST');
     const hp = sanitizeTokenHp(payload?.hp ?? null);
@@ -982,6 +987,7 @@ export const tokenCreateEvent = defineEvent<TokenCreatePayload, TokenView>({
         sceneId: scene.id,
         name: character !== picked && character ? character.name : name,
         imageUrl,
+        glyph,
         x,
         y,
         size,
@@ -1148,6 +1154,7 @@ export const tokenDuplicateEvent = defineEvent<TokenDuplicatePayload, TokenView>
         name,
         publicName: token.publicName,
         imageUrl: token.imageUrl,
+        glyph: token.glyph,
         x,
         y,
         size: token.size,
@@ -1200,6 +1207,7 @@ export const tokenUpdateEvent = defineEvent<TokenUpdatePayload, TokenView>({
       requireOwnUploadUrl(patch.imageUrl, campaignId);
       data.imageUrl = patch.imageUrl;
     }
+    if (patch.glyph !== undefined) data.glyph = patch.glyph;
     if (patch.ownerId !== undefined) data.ownerId = patch.ownerId;
     if (patch.hidden !== undefined) data.hidden = patch.hidden;
     if (patch.statuses !== undefined) data.statuses = JSON.stringify(patch.statuses);

@@ -4,6 +4,7 @@ import {
   TOKEN_UNLABELLED_TABLE_NAME,
   clampTokenPosition,
   nextTokenCopyName,
+  sanitizeTokenGlyph,
   sanitizeTokenHp,
   sanitizeTokenImageUrl,
   sanitizeTokenPatch,
@@ -135,6 +136,15 @@ describe('sanitizeTokenPatch', () => {
     expect(sanitizeTokenPatch({ statuses: 'stunned' })).toBeNull();
     expect(sanitizeTokenPatch({ imageUrl: 'http://x/y.png' })).toBeNull();
     expect(sanitizeTokenPatch('nope')).toBeNull();
+  });
+
+  it('takes a known device icon or null, and refuses anything else', () => {
+    expect(sanitizeTokenPatch({ glyph: 'camera' })).toEqual({ glyph: 'camera' });
+    expect(sanitizeTokenPatch({ glyph: null })).toEqual({ glyph: null });
+    expect(sanitizeTokenPatch({ glyph: 'toaster' })).toBeNull();
+    expect(sanitizeTokenGlyph('turret')).toBe('turret');
+    expect(sanitizeTokenGlyph(undefined)).toBeUndefined();
+    expect(sanitizeTokenGlyph('../hud/ammo')).toBeUndefined();
   });
 
   it('takes all three states of the alias, and only those', () => {

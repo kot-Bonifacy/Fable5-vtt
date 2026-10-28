@@ -15,6 +15,7 @@ import {
   parseCharacterData,
   sanitizeWallArmor,
   sanitizeConcealPenalty,
+  sanitizeTokenGlyph,
   UPLOAD_URL_PATTERN,
 } from '@vtt/shared';
 import type { PrismaClient } from './db.js';
@@ -435,6 +436,7 @@ export async function exportScene(
           name: true,
           publicName: true,
           imageUrl: true,
+          glyph: true,
           x: true,
           y: true,
           size: true,
@@ -724,6 +726,7 @@ export async function insertScene(
           name: str(row.name, 'Figura'),
           publicName: maybeStr(row.publicName),
           imageUrl: maybeStr(row.imageUrl),
+          glyph: sanitizeTokenGlyph(row.glyph) ?? null,
           x: num(row.x),
           y: num(row.y),
           size: num(row.size, 1),

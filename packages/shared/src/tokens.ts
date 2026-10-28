@@ -50,6 +50,12 @@ export interface TokenView {
   publicName?: string;
   /** `/uploads/...` image; null renders as a colored placeholder disc. */
   imageUrl: string | null;
+  /**
+   * Ikona urządzenia zamiast portretu (28.10, zlecenie MG) — kamera, wieżyczka,
+   * dron… na krążku figury. Publiczna jak obrazek: kto widzi figurę, widzi, czym
+   * jest. Zawsze, także `null` — klient scala widoki spreadem.
+   */
+  glyph?: TokenGlyph | null;
   /** Top-left corner in scene (world) pixels. */
   x: number;
   y: number;
@@ -262,6 +268,8 @@ export interface TokenCreatePayload {
   sceneId: string;
   name: string;
   imageUrl?: string | null;
+  /** Ikona urządzenia (28.10); z obrazkiem się wyklucza — wygrywa ikona. */
+  glyph?: TokenGlyph | null;
   x: number;
   y: number;
   size?: number;
@@ -281,6 +289,8 @@ export interface TokenPatch {
    */
   publicName?: string | null;
   imageUrl?: string | null;
+  /** Ikona urządzenia; null wraca do obrazka albo krążka z inicjałem. */
+  glyph?: TokenGlyph | null;
   size?: number;
   ownerId?: string | null;
   hidden?: boolean;
@@ -613,6 +623,42 @@ export function tokenTableName(token: { publicName?: string | null }, realName: 
   return alias.length > 0 ? alias : TOKEN_UNLABELLED_TABLE_NAME;
 }
 
+/**
+ * Ikony urządzeń stawianych na mapie jako figury (28.10, zlecenie MG).
+ *
+ * Kamera, wieżyczka i dron to od etapu 26 zwykłe figury przypięte do węzła
+ * Architektury, a bez portretu rysowały się krążkiem z inicjałem — „K” nie mówi
+ * przy stole, że to kamera. Ikona jest polem figury, nie pochodną Architektury:
+ * działa bez Sieci i nie zdradza graczom, co jest do niej podpięte. Sylwetki
+ * leżą w `client/public/icons/devices/<id>.svg` (atrybucja obok).
+ */
+export const TOKEN_GLYPHS = [
+  'camera',
+  'turret',
+  'drone',
+  'mine',
+  'sensor',
+  'robot',
+  'terminal',
+] as const;
+export type TokenGlyph = (typeof TOKEN_GLYPHS)[number];
+
+export const TOKEN_GLYPH_LABELS: Record<TokenGlyph, string> = {
+  camera: 'Kamera',
+  turret: 'Wieżyczka',
+  drone: 'Dron',
+  mine: 'Mina',
+  sensor: 'Czujnik',
+  robot: 'Robot',
+  terminal: 'Terminal',
+};
+
+/** Ikona figury: znana nazwa, null (bez ikony) albo undefined (odrzucona). */
+export function sanitizeTokenGlyph(raw: unknown): TokenGlyph | null | undefined {
+  if (raw === null) return null;
+  return (TOKEN_GLYPHS as readonly unknown[]).includes(raw) ? (raw as TokenGlyph) : undefined;
+}
+
 // Only same-origin asset paths — no external URLs, no path traversal.
 const TOKEN_IMAGE_URL_RE = /^\/(uploads|public)\/[A-Za-z0-9_\-./]+$/;
 
@@ -697,6 +743,11 @@ export function sanitizeTokenPatch(
     const imageUrl = sanitizeTokenImageUrl(input.imageUrl);
     if (imageUrl === undefined) return null;
     patch.imageUrl = imageUrl;
+  }
+  if ('glyph' in input) {
+    const glyph = sanitizeTokenGlyph(input.glyph);
+    if (glyph === undefined) return null;
+    patch.glyph = glyph;
   }
   if ('size' in input) {
     const size = sanitizeTokenSize(input.size);

@@ -581,3 +581,29 @@
   border-radius: 6px;
   padding: 0.25rem;
 }
+
+/* Ikona urządzenia na krążku (28.10) — kafelek „Grafik” i „Zmień grafikę…”.
+   Grafit krążka to `PORTRAIT_BACKDROP` z `TokenNode.ts`, sylwetka to jej tint. */
+.device-glyph {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 3.2rem;
+  height: 3.2rem;
+  border-radius: 50%;
+  background: var(--device-glyph-disc);
+}
+
+.device-glyph-mark {
+  width: 62%;
+  height: 62%;
+  background: var(--device-glyph-mark);
+  -webkit-mask: var(--device-glyph) center / contain no-repeat;
+  mask: var(--device-glyph) center / contain no-repeat;
+}
+
+.token-panel-subtitle {
+  margin: 0.6rem 0 0.3rem;
+  font-size: 0.8rem;
+  color: var(--text-dim);
+}

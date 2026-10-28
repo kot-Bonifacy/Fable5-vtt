@@ -646,6 +646,11 @@ model Token {
   publicName String?
   /** Local asset path (/uploads/... or /public/...); null renders a placeholder disc. */
   imageUrl String?
+  /**
+   * Device icon drawn on the disc instead of a portrait (28.10) — one of
+   * `TOKEN_GLYPHS` in shared (camera, turret, drone…). Null = image or initial.
+   */
+  glyph String?
   /** Top-left corner in scene (world) pixels. */
   x       Float
   y       Float

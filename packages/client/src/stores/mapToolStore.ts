@@ -16,6 +16,7 @@ import {
   WALL_ARMOR_MAX,
   isBarrier,
   type ContainerPreset,
+  type TokenGlyph,
   type DrawingStyle,
   type FogMode,
   type WallKind,
@@ -60,6 +61,8 @@ export type MapTool = (typeof MAP_TOOLS)[number];
 export interface TokenPlacement {
   name: string;
   imageUrl: string | null;
+  /** Ikona urządzenia z „Grafik” (28.10) — figura bez obrazka, z sylwetką. */
+  glyph?: TokenGlyph;
   /**
    * Karta, do której nowy żeton ma być przywiązany (etap 28.08, „Postaw na
    * scenie" przy wierszu postaci). Bez niej powstaje pusty żeton z biblioteki.

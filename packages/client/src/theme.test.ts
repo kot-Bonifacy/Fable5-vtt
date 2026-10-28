@@ -74,9 +74,11 @@ describe('motyw (etap 27e)', () => {
      * to wysokość kafla górnego paska, ustawiana na `.top-bar` — wymiar, nie kolor.
      * `--chat-kind-icon` (60b) to adres ikony rubryki, podawany przez `FeedRow`,
      * a `--player` (60c) wybiera z motywu barwę autora karty po `data-author-color`.
+     * `--device-glyph` (28.10) to adres sylwetki urządzenia z `DeviceGlyph`.
      */
     const local = new Set([
       '--chat-kind-icon',
+      '--device-glyph',
       '--hud-hp-color',
       '--hud-icon',
       '--hud-mag-color',

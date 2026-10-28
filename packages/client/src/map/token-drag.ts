@@ -1,5 +1,5 @@
 import type { DragEvent } from 'react';
-import { DEFAULT_PORTRAIT_CROP, portraitCropPlacement } from '@vtt/shared';
+import { DEFAULT_PORTRAIT_CROP, portraitCropPlacement, sanitizeTokenGlyph } from '@vtt/shared';
 import type { TokenPlacement } from '../stores/mapToolStore.js';
 import { usePortraitStore } from '../stores/portraitStore.js';
 
@@ -100,6 +100,7 @@ export function readTokenDrag(event: DragEvent<HTMLElement>): TokenPlacement | n
     return {
       name: value.name,
       imageUrl: typeof value.imageUrl === 'string' ? value.imageUrl : null,
+      ...(sanitizeTokenGlyph(value.glyph) ? { glyph: value.glyph } : {}),
       ...(typeof value.characterId === 'string' ? { characterId: value.characterId } : {}),
       ...(typeof value.ownerId === 'string' ? { ownerId: value.ownerId } : {}),
     };

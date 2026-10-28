@@ -7,6 +7,7 @@ import {
   tokenHpShare,
   type PortraitCrop,
   type TokenCondition,
+  type TokenGlyph,
   type TokenHpRung,
   type TokenView,
 } from '@vtt/shared';
@@ -170,6 +171,18 @@ const BASE_COLORS: Readonly<Record<TokenCondition, number>> = {
  */
 const PORTRAIT_BACKDROP = 0x0f172a;
 
+/**
+ * Ikona urządzenia na krążku (28.10): sylwetka z `public/icons/devices/`,
+ * biała w pliku, barwiona `tint`-em. Zajmuje środek krążka z oddechem od
+ * obwódki — przy zoomie stołu kamera ma się czytać jako kamera, nie jako plama.
+ */
+const GLYPH_SCALE = 0.62;
+const GLYPH_TINT = 0xe2e8f0;
+
+function glyphUrl(glyph: TokenGlyph): string {
+  return `/icons/devices/${glyph}.svg`;
+}
+
 const CONDITION_TINT: Readonly<Record<TokenCondition, number>> = {
   ok: 0xffffff,
   wounded: 0xffffff,
@@ -265,6 +278,8 @@ export class TokenNode extends Container {
   private readonly imageMask = new Graphics();
   private readonly placeholder = new Graphics();
   private readonly initial: Text;
+  private readonly glyph = new Sprite();
+  private glyphKey: TokenGlyph | null = null;
   private readonly ring = new Graphics();
   private readonly turnRing = new Graphics();
   private readonly hpArc = new Graphics();
@@ -320,6 +335,8 @@ export class TokenNode extends Container {
       style: { fill: 0xffffff, fontWeight: 'bold', fontSize: 40 },
       anchor: 0.5,
     });
+    this.glyph.anchor.set(0.5);
+    this.glyph.visible = false;
     this.nameText = new Text({
       text: '',
       style: {
@@ -347,6 +364,7 @@ export class TokenNode extends Container {
       this.turnRing,
       this.placeholder,
       this.initial,
+      this.glyph,
       this.image,
       this.imageMask,
       this.ring,
@@ -378,6 +396,7 @@ export class TokenNode extends Container {
     const signature = JSON.stringify([
       token.name,
       token.imageUrl,
+      token.glyph ?? null,
       token.size,
       token.ownerId,
       token.hidden,
@@ -454,13 +473,16 @@ export class TokenNode extends Container {
 
     this.imageMask.clear().circle(center, center, portraitRadius(extent)).fill(0xffffff);
 
-    const hasImage = token.imageUrl !== null;
+    // Ikona urządzenia wygrywa z obrazkiem (28.10): serwer i tak trzyma tylko
+    // jedno z dwóch, ale stary widok w trakcie scalania mógłby nieść oba.
+    const glyph = token.glyph ?? null;
+    const hasImage = token.imageUrl !== null && glyph === null;
     // Krążek pod portretem jest teraz rysowany **zawsze** (12.09): od kiedy kadr
     // wolno wywieźć poza obraz, jego brzeg bywa pusty — a pustka pod maską to
     // dziura, przez którą widać mapę pod figurą. Bez obrazka to dalej dawny
     // kolorowy placeholder z inicjałem; pod obrazkiem — ciemne tło żetonu.
-    this.paintPlaceholder(hasImage ? PORTRAIT_BACKDROP : placeholderColor(token.name));
-    this.initial.visible = !hasImage;
+    this.paintPlaceholder(hasImage || glyph ? PORTRAIT_BACKDROP : placeholderColor(token.name));
+    this.initial.visible = !hasImage && !glyph;
     this.initial.text = token.name.trim().charAt(0).toUpperCase() || '?';
     this.initial.style.fontSize = extent * 0.4;
     this.initial.position.set(center, center);
@@ -469,7 +491,8 @@ export class TokenNode extends Container {
     this.tiltPortrait(condition);
 
     this.imageCrop = cropFor(token.imageUrl, ctx);
-    this.updateImage(token.imageUrl, extent);
+    this.updateImage(hasImage ? token.imageUrl : null, extent);
+    this.updateGlyph(glyph, extent, condition);
     this.drawHpArc(token, extent, condition);
     this.drawNose(extent, this.ringTint);
     this.drawDownMark(center, radius, condition);
@@ -645,6 +668,31 @@ export class TokenNode extends Container {
       });
   }
 
+  /** Sylwetka urządzenia na środku krążka; tekstury trzyma cache `Assets`. */
+  private updateGlyph(glyph: TokenGlyph | null, extent: number, condition: TokenCondition): void {
+    const side = portraitRadius(extent) * 2 * GLYPH_SCALE;
+    this.glyph.position.set(extent / 2, extent / 2);
+    this.glyph.setSize(side, side);
+    this.glyph.tint = condition === 'dead' ? CONDITION_TINT.dead : GLYPH_TINT;
+    if (glyph === this.glyphKey) return;
+    this.glyphKey = glyph;
+    this.glyph.texture = Texture.EMPTY;
+    this.glyph.visible = false;
+    if (!glyph) return;
+    Assets.load<Texture>(glyphUrl(glyph))
+      .then((texture) => {
+        if (this.destroyed || this.glyphKey !== glyph) return;
+        this.glyph.texture = texture;
+        this.glyph.setSize(side, side);
+        this.glyph.visible = true;
+      })
+      .catch(() => {
+        if (this.destroyed || this.glyphKey !== glyph) return;
+        // Brak pliku: wraca inicjał, żeby figura nie stała pustym krążkiem.
+        this.initial.visible = true;
+      });
+  }
+
   /** Krążek pod portretem — tło obrazka albo placeholder, zależnie od koloru. */
   private paintPlaceholder(color: number): void {
     const centre = this.extentPx / 2;
@@ -790,6 +838,7 @@ export class TokenNode extends Container {
     const radians = (CONDITION_TILT_DEG[condition] * Math.PI) / 180;
     this.image.rotation = radians;
     this.initial.rotation = radians;
+    this.glyph.rotation = radians;
   }
 
   /** The cross over a figure that is out of the fight — dead only. */

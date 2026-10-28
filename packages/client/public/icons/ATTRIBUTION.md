@@ -14,6 +14,22 @@ kwadracie) — została sama sylwetka w bieli, którą klient barwi `tint`-em al
 
 Źródło: <https://github.com/game-icons/icons> (gałąź `master`).
 
+## Ikony urządzeń (`devices/`, 28.10.2026)
+
+Sylwetka na krążku figury zamiast portretu — urządzenia stawiane na mapie jako figury
+(kamera, wieżyczka, dron, Architektura Sieci z etapu 26). Nazwę pliku wyznacza
+`TOKEN_GLYPHS` w `shared/src/tokens.ts`. Czarne tło usunięte jak wyżej; barwi je `tint`.
+
+| Plik           | Oryginalna ikona | Autor      | Rodzaj    |
+| -------------- | ---------------- | ---------- | --------- |
+| `camera.svg`   | CCTV camera      | Delapouite | Kamera    |
+| `turret.svg`   | Turret           | sbed       | Wieżyczka |
+| `drone.svg`    | Delivery drone   | Delapouite | Dron      |
+| `mine.svg`     | Land mine        | Lorc       | Mina      |
+| `sensor.svg`   | Radar sweep      | Lorc       | Czujnik   |
+| `robot.svg`    | Robot golem      | Lorc       | Robot     |
+| `terminal.svg` | PC               | Skoll      | Terminal  |
+
 ## Ikony panelu postaci (`hud/`, etap 27h)
 
 Broń, akcje i statystyki na kaflach lewego panelu. Rysowane **maską CSS**

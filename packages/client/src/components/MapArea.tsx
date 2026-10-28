@@ -604,6 +604,7 @@ function createPlacedToken(pending: TokenPlacement, worldX: number, worldY: numb
     sceneId: current.id,
     name: pending.name,
     imageUrl: pending.imageUrl,
+    ...(pending.glyph ? { glyph: pending.glyph } : {}),
     // Center the new token on the clicked point; the server snaps it.
     x: worldX - extent / 2,
     y: worldY - extent / 2,

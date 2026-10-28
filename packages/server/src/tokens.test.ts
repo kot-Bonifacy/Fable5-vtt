@@ -991,6 +991,35 @@ describe('tokens', () => {
     expect(ack.ok).toBe(false);
   });
 
+  // Ikona urządzenia (28.10): publiczna jak obrazek, a nieznana nazwa odpada.
+  it('shows a device icon to the table and refuses an unknown one', async () => {
+    const created = await emitAck<TokenView>(gm, 'token:create', {
+      sceneId,
+      name: 'Kamera',
+      glyph: 'camera',
+      x: 400,
+      y: 400,
+    });
+    expect(created.ok && created.data?.glyph).toBe('camera');
+    const cameraId = created.ok ? created.data!.id : '';
+    expect((await roundTrip(player)).tokens.find((t) => t.id === cameraId)?.glyph).toBe('camera');
+
+    const cleared = await emitAck<TokenView>(gm, 'token:update', {
+      tokenId: cameraId,
+      patch: { glyph: null },
+    });
+    expect(cleared.ok && cleared.data?.glyph).toBeNull();
+    const bad = await emitAck(gm, 'token:create', {
+      sceneId,
+      name: 'X',
+      glyph: 'toaster',
+      x: 0,
+      y: 0,
+    });
+    expect(bad.ok).toBe(false);
+    await emitAck(gm, 'token:delete', { tokenId: cameraId });
+  });
+
   it('validates statuses against the data registry', async () => {
     const updated = await emitAck<TokenView>(gm, 'token:update', {
       tokenId: npcTokenId,

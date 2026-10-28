@@ -1,9 +1,16 @@
 import { useEffect, useState } from 'react';
-import type { TokenAssetView, TokenView } from '@vtt/shared';
+import {
+  TOKEN_GLYPHS,
+  TOKEN_GLYPH_LABELS,
+  type TokenAssetView,
+  type TokenGlyph,
+  type TokenView,
+} from '@vtt/shared';
 import { apiGet } from '../api.js';
 import { updateToken } from '../socket.js';
 import { useCharacterStore } from '../stores/characterStore.js';
 import { tokenErrorText } from '../mapErrors.js';
+import { DeviceGlyph } from './DeviceGlyph.js';
 
 /**
  * „🖼 Zmień grafikę…” z menu figury (15.10, zlecenie MG) — wybór z biblioteki
@@ -33,12 +40,13 @@ export function TokenImagePicker({ token, onDone }: { token: TokenView; onDone: 
     };
   }, []);
 
-  async function pick(imageUrl: string | null) {
-    if (imageUrl === token.imageUrl) {
+  // Obrazek i ikona urządzenia (28.10) wykluczają się: wybór jednego zdejmuje drugie.
+  async function pick(imageUrl: string | null, glyph: TokenGlyph | null = null) {
+    if (imageUrl === token.imageUrl && glyph === (token.glyph ?? null)) {
       onDone();
       return;
     }
-    const ack = await updateToken(token.id, { imageUrl });
+    const ack = await updateToken(token.id, { imageUrl, glyph });
     if (!ack.ok) {
       setError(tokenErrorText(ack.error));
       return;
@@ -67,9 +75,9 @@ export function TokenImagePicker({ token, onDone }: { token: TokenView; onDone: 
             <button
               key={choice.key}
               type="button"
-              className={`token-asset ${choice.url === token.imageUrl ? 'token-asset--armed' : ''}`}
+              className={`token-asset ${choice.url === token.imageUrl && !token.glyph ? 'token-asset--armed' : ''}`}
               title={choice.name}
-              aria-pressed={choice.url === token.imageUrl}
+              aria-pressed={choice.url === token.imageUrl && !token.glyph}
               onClick={() => void pick(choice.url)}
             >
               <img src={choice.url} alt="" loading="lazy" />
@@ -78,7 +86,22 @@ export function TokenImagePicker({ token, onDone }: { token: TokenView; onDone: 
           ))}
         </div>
       )}
-      {token.imageUrl !== null && (
+      <div className="token-asset-grid token-image-picker-grid">
+        {TOKEN_GLYPHS.map((glyph) => (
+          <button
+            key={glyph}
+            type="button"
+            className={`token-asset ${token.glyph === glyph ? 'token-asset--armed' : ''}`}
+            title={`Ikona urządzenia: ${TOKEN_GLYPH_LABELS[glyph]}`}
+            aria-pressed={token.glyph === glyph}
+            onClick={() => void pick(null, glyph)}
+          >
+            <DeviceGlyph glyph={glyph} />
+            <span className="token-asset-name">{TOKEN_GLYPH_LABELS[glyph]}</span>
+          </button>
+        ))}
+      </div>
+      {(token.imageUrl !== null || token.glyph) && (
         <button
           type="button"
           className="small-button"

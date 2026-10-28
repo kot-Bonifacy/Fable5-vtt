@@ -29,6 +29,10 @@ Pełna tabela z nazwami i datami: `archiwum/tabela-etapow.md`.
 
 ## Od czego zacząć
 
+**Ikony urządzeń na mapie (zlecenie MG z 28.10):** kamera, wieżyczka, dron, mina, czujnik, robot
+i terminal stoją jako figury z sylwetką na krążku (`Token.glyph`). MG stawia je z sekcji
+„Urządzenia” w „Grafikach” i zmienia w „🖼 Zmień grafikę…”. Umowa na górze `mapa`.
+
 **Etap 61 „Skradanie się” (zlecenie MG z 28.10) zrobiony — czeka na słowo MG o rozstrzygnięciach
 bez pytań (plik etapu); dalej etap 28, potem T10.** Gracz klika „Skradanie” w lewym pasku, MG
 w panelu decyzji wybiera modyfikator (−4…+4) albo odmawia, gracz rzuca Skradanie kubkiem (w walce
@@ -474,7 +478,7 @@ a nie do tego pliku.
 
 | obszar      | co obejmuje                                                    | umów | pułapek |
 | ----------- | -------------------------------------------------------------- | ---- | ------- |
-| `mapa`      | figury, zaznaczanie, narzędzia, obiekty sceny, ściany, efekty, zamek drzwi, ukryta figura zauważona | 69   | 27      |
+| `mapa`      | figury, zaznaczanie, narzędzia, obiekty sceny, ściany, efekty, zamek drzwi, ukryta figura zauważona, ikony urządzeń | 70   | 27      |
 | `czat`      | rodzaje wierszy, `visibleTo`, filtr, `seq`, `gmrecovery`, „to dotyczy mnie”, grupy kart, kolor gracza, czyszczenie | 13   | 3       |
 | `serwer`    | Prisma i migracje, zdarzenia gniazda, zapisy karty, uploady    | 26   | 21      |
 | `ui`        | okna pływające, `z-index`, motyw, skróty, dostępność, wejście, panel decyzji MG | 37   | 15      |
@@ -498,6 +502,25 @@ a nie do tego pliku.
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
 
+### Sesja 28.10, druga — ikony urządzeń na mapie (zlecenie MG)
+
+**Zlecenie:** „dodaj ikony do kamery, wieżyczki, drona itp.” i dopisek: „powinny być one
+stawiane na mapie jako ikony”. **Decyzje MG z pytań:** ikona to pole figury wybierane przez MG
+(nie automat z Architektury Sieci), sylwetka na krążku figury (z obwódką, PW, grotem
+i podpisem), rodzaje: kamera, wieżyczka, dron + mina, czujnik, robot, terminal; gracze widzą
+ikonę jak każdą figurę. **Zmiana:** `Token.glyph` (migracja `token_glyph`), `TOKEN_GLYPHS`
+/ `TOKEN_GLYPH_LABELS` / `sanitizeTokenGlyph` w `shared/tokens.ts`, `token:create`
+i `token:update` z `glyph`, duplikat i paczka kampanii. Na mapie `TokenNode.updateGlyph`;
+w „Grafikach” sekcja „Urządzenia” (klik i klik albo przeciągnięcie na mapę), w „🖼 Zmień
+grafikę…” te same kafelki pod biblioteką (obrazek i ikona się wykluczają). Sylwetki
+z game-icons (CC BY 3.0): cctv-camera, turret (sbed), delivery-drone, land-mine, radar-sweep,
+robot-golem, pc (skoll) — `public/icons/devices/`. **Poza zakresem:** chipy Kolejki Inicjatywy
+i HUD walki pokazują dalej inicjał zamiast ikony (`POMYSLY.md`). Umowa na górze `mapa`.
+Testy: shared `tokens.test.ts` (+1), serwer `tokens.test.ts` (+1: publiczna ikona, zdjęcie,
+odmowa nieznanej). Oglądane tymczasowym specem E2E: **Ola w Firefoksie** (siedem ikon, figura
+2×2, zmiana Robota na Terminal na żywo), MG w Chromium (sekcja „Urządzenia”, postawienie drona
+klikiem, „Zmień grafikę…”).
+
 ### Sesja 28.10 (po `ae79375`) — etap 61 „Skradanie się” (zlecenie MG)
 
 **Zlecenie:** „dodaj mechanikę skradania się (dostępną w lewym panelu pod przyciskiem),
@@ -516,23 +539,3 @@ zielony poza tym przypadkiem przed poprawką; shared 2743, klient 440; `tsc`/ESL
 czyste. Oglądane tymczasowym specem `t99-skradanie`: **Ola w Firefoksie**, MG w Chromium —
 slot, panel, okno rzutu, półprzezroczysta Iskra, wiersz MG „nie zauważa”, „Przerwij skradanie”
 i starcie z 56 po nim.
-
-### Sesja 25.10, piętnasta (po `be08289`) — wszczep gracza tylko z Testem montażu (zlecenie MG)
-
-**Zlecenie:** „cyborgizacje dla graczy zawsze z testem montażu, bez testu niech może to robić
-tylko MG. Zweryfikuj tę mechanikę”. **Weryfikacja:** jedyną dziurą był `character:cyberware`
-z `surgeon` pustym albo `none` — serwer traktował to jak „montaż bez Testu” także u gracza,
-a klient miał to jako domyślną opcję. Pozostałe drogi były szczelne: łata karty nie dopisze
-wszczepu (`ITEM_LOCKED`), sklep i kreator chromu nie wydają (`NOT_PURCHASABLE`, „poza kartą”),
-ripperdoc MG jest dla gracza `FORBIDDEN`, prośba do Medyka zawsze rzuca Test, a Medyk sam sobie
-wszczepi tylko galerię (s. 226). **Zmiana:** `cyberwareNeedsSurgeon` w `shared`, odmowa
-`SURGEON_REQUIRED` w `installCyberware` (także „Znaleziony”), u gracza w Kompendium placeholder
-„Kto operuje?” i wyszarzone guziki do wyboru Medyka. Chip „Bez operacji” dalej bez Testu.
-**Skutek do wiedzy MG:** drużyna bez Medyka z Chirurgią nie wszczepi sobie nic sama — montaż
-robi MG z Kompendium na karcie gracza (ripperdoc MG z liczbą). Prośba gracza do ripperdoca MG
-(panel decyzji) — w `POMYSLY.md`. Umowa na górze `postac`. Testy: `cyberware.test.ts` (nowy:
-odmowa `full` i `installOnly`, karta nietknięta; testy mechaniki Człowieczeństwa montuje MG),
-`surgery`, `campaign-isolation`, shared `cyberware.test.ts` zielone; `tsc` shared/server/client
-czyste. Oglądane w **Firefoksie** skryptem `playwright` na instancji E2E z punktu `po-T6`
-(Marek/Kowal → Cyberoko: „Kto operuje?”, guzik wyłączony; po „Iskra · poproś” włączony). MCP
-Firefox nie wstał — znana pułapka `ogledziny`.
