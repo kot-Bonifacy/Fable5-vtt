@@ -58,6 +58,7 @@ const ICON_FX: Readonly<Record<CpredSlotIcon, CpredWeaponFx>> = {
   scanner: { style: 'melee', sound: null },
   'combat-awareness': { style: 'melee', sound: null },
   backup: { style: 'melee', sound: null },
+  sneak: { style: 'melee', sound: null },
 };
 
 /**

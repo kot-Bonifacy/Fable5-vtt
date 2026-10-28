@@ -1,5 +1,12 @@
 # Pomysły poza zakresem etapów
 
+**28.10.2026 (etap 61) — skradanie, czego VTT jeszcze nie robi.** (1) **Towarzysze-boty się
+nie skradają** — slot jest tylko na pasku gracza, bot nie ma go w narzędziach. (2) **NPC MG
+w trybie skradania** — dziś kryje się „Ukryj” (58d), bez rzutu przy każdym kroku. (3) **Światło
+i odległość jako automatyczny modyfikator** Percepcji patrzącego (dziś mówi to MG przy zgodzie).
+(4) **Ponowny rzut patrzącego** po dłuższym czasie albo przy zbliżeniu — dziś raz na skradanie.
+(5) **Pochwycenie ze skradania** jako atak z zaskoczenia.
+
 **24.10.2026 (etap 60c) — kolor gracza poza czatem.** Ten sam kolor (`PLAYER_COLORS`, tokeny
 `--player-*`) na liście obecnych, na obwódce figury gracza i przy pingu mapy — z nazwą postaci,
 nie konta (imiona kont nie pojawiają się w rozgrywce).

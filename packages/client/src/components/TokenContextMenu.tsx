@@ -51,6 +51,8 @@ import {
   configMerchant,
   merchantErrorText,
   updateToken,
+  sneakErrorText,
+  stopSneak,
 } from '../socket.js';
 import { useTokenStore } from '../stores/tokenStore.js';
 import { noteAck } from '../notices.js';
@@ -1309,6 +1311,22 @@ export function TokenContextMenu({ menu, onClose }: { menu: TokenMenuState; onCl
           {token.hidden ? '👁 Pokaż graczom' : '🚫 Ukryj przed graczami'}
           {token.hidden && token.spottedBy ? ` (zauważona: ${token.spottedBy})` : ''}
         </button>
+        {/* Skradanie figury gracza (etap 61): MG przerywa tryb jak gracz swoim slotem. */}
+        {token.sneaking && (
+          <button
+            type="button"
+            className="context-menu-item"
+            title="Postać wychodzi z trybu skradania; gracz dostaje pasek „MG przerywa skradanie”."
+            onClick={() =>
+              void stopSneak(token.id).then((ack) => {
+                noteAck('sneak', ack, sneakErrorText);
+                onClose();
+              })
+            }
+          >
+            🥷 Przerwij skradanie{typeof token.sneakDv === 'number' ? ` (PT ${token.sneakDv})` : ''}
+          </button>
+        )}
         {token.light && (
           <button
             type="button"

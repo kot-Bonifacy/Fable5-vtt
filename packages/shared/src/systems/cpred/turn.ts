@@ -77,6 +77,13 @@ export const CPRED_ACTION_STABILIZE = 'stabilize';
  * przycisk katalogu: koszt idzie z dystansu tury jak marsz.
  */
 export const CPRED_ACTION_JUMP = 'jump';
+/**
+ * Skradanie (etap 61, zlecenie MG z 28.10) — tryb, w który figura gracza
+ * wchodzi po zgodzie MG i Teście Skradania. W trwającej rundzie wejście
+ * kosztuje Akcję (decyzja MG 4), wyjście nic. Rozstrzyga je `sneak:request`
+ * i rozliczenie rzutu, nie przycisk katalogu.
+ */
+export const CPRED_ACTION_SNEAK = 'sneak';
 
 /** `TurnBudgetView.pendingRoll.id` of the Death Save a turn opens owing. */
 export const CPRED_DEATH_SAVE_ROLL_ID = 'deathSave';
@@ -202,6 +209,13 @@ export const CPRED_ACTIONS: readonly CpredActionDefinition[] = [
     name: 'Skok',
     cost: 'move',
     hint: `Przeskakujesz o dwie kratki — także ponad barierą i osłoną, nie przez ścianę, drzwi ani okno. Kosztuje ${JUMP_COST_M} m ruchu.`,
+    handledElsewhere: true,
+  },
+  {
+    id: CPRED_ACTION_SNEAK,
+    name: 'Skradanie',
+    cost: 'action',
+    hint: 'Prosisz MG o Test Skradania. Wynik to próg Percepcji tych, którzy cię zobaczą; zauważenie, atak i Bieg kończą tryb. W walce wejście kosztuje Akcję.',
     handledElsewhere: true,
   },
   {

@@ -40,7 +40,9 @@ export type NoticeTopic =
   | 'handout'
   | 'journal'
   /** Pobranie i wczytanie kopii (etap 57a). */
-  | 'archive';
+  | 'archive'
+  /** Tryb skradania (etap 61): prośba, koniec trybu, zauważenie przez Neutralnego. */
+  | 'sneak';
 
 export interface NoticeAction {
   label: string;

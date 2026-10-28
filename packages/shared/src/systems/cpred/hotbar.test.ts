@@ -10,6 +10,8 @@ import {
   cpredActionRefusal,
   cpredTurnRefusalInput,
   hotbarSlotsFor,
+  CPRED_SNEAK_GM_REFUSAL,
+  CPRED_SNEAK_STOP_LABEL,
   type CpredHotbarInput,
   type CpredHotbarWeaponSlot,
 } from './hotbar.js';
@@ -26,6 +28,7 @@ import {
   CPRED_ACTION_MOVE,
   CPRED_ACTION_RUN,
   CPRED_ACTION_SCANNER,
+  CPRED_ACTION_SNEAK,
   CPRED_ACTION_STABILIZE,
   CPRED_ACTION_STAND_UP,
 } from './turn.js';
@@ -1091,5 +1094,38 @@ describe('etap 46c — zapas amunicji na pasku', () => {
     // Figura bez karty (bez ekwipunku) rzuca „bez dna”.
     const npc = hotbarSlotsFor(input({ sheet, resolve: () => grenade }));
     expect(weaponSlots(npc)[0]!.disabled).toBeNull();
+  });
+});
+
+describe('Skradanie na pasku (etap 61)', () => {
+  const sneakSlot = (slots: ReturnType<typeof hotbarSlotsFor>) =>
+    slots.find((slot) => slot.kind === 'action' && slot.actionId === CPRED_ACTION_SNEAK);
+
+  it('stoi tylko na pasku figury, która może się skradać', () => {
+    expect(sneakSlot(hotbarSlotsFor(input()))).toBeUndefined();
+    const slot = sneakSlot(hotbarSlotsFor(input({ sneak: { active: false } })));
+    expect(slot).toMatchObject({ label: 'Skradanie', icon: 'sneak', disabled: null });
+  });
+
+  it('w trybie ten sam slot go kończy — także przy wydanej Akcji i dla MG', () => {
+    const spent = { actionSpent: true, moveSpent: true };
+    const slot = sneakSlot(hotbarSlotsFor(input({ sneak: { active: true }, turn: spent })));
+    expect(slot).toMatchObject({ label: CPRED_SNEAK_STOP_LABEL, disabled: null });
+    const gm = sneakSlot(hotbarSlotsFor(input({ sneak: { active: true }, isGm: true })));
+    expect(gm?.disabled).toBeNull();
+  });
+
+  it('wejście w walce kosztuje Akcję, a MG nie prosi sam siebie', () => {
+    const spent = { actionSpent: true, moveSpent: false };
+    expect(
+      sneakSlot(hotbarSlotsFor(input({ sneak: { active: false }, turn: spent })))?.disabled,
+    ).toBeTruthy();
+    expect(
+      sneakSlot(hotbarSlotsFor(input({ sneak: { active: false }, isGm: true })))?.disabled,
+    ).toBe(CPRED_SNEAK_GM_REFUSAL);
+    expect(
+      sneakSlot(hotbarSlotsFor(input({ sneak: { active: false }, statuses: ['unconscious'] })))
+        ?.disabled,
+    ).toBeTruthy();
   });
 });

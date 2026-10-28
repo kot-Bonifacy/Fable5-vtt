@@ -21,13 +21,22 @@ w plikach obok — czytaj je **na żądanie, nigdy rutynowo**:
 
 | stan         | etapy                                                                                          |
 | ------------ | ---------------------------------------------------------------------------------------------- |
-| ⬜ otwarty   | **28** Wdrożenie na VPS (🟨 działa na `https://vtt.tatanga.eu` z botami od 18.10; zostały off-site, utwardzenie, monitoring); **43b**, **43c** (UI walki); **60** Czytelny czat (zlecenie MG z 24.10; 🟨 60a–60c ✅, czeka na oględziny MG z pierwszego kryterium); T10; refaktoryzacja odłożona (MG 18.10) |
+| ⬜ otwarty   | **61** Skradanie się (🟨 zrobione, czeka na słowo MG o rozstrzygnięciach); **28** Wdrożenie na VPS (🟨 działa na `https://vtt.tatanga.eu` z botami od 18.10; zostały off-site, utwardzenie, monitoring); **43b**, **43c** (UI walki); **60** Czytelny czat (zlecenie MG z 24.10; 🟨 60a–60c ✅, czeka na oględziny MG z pierwszego kryterium); T10; refaktoryzacja odłożona (MG 18.10) |
 | ✅ ukończone | 01–11, 13–20b, 23a–27f, 27h–27l, 29a–30d, 31–35, 37–42c, 43a, 44a–44d, 45, 46a1, 46a2, 46c1, 46c2, 46b1, 46b2, 47a, 47b, 48a, 48b, 48c, 49a, 49b, 50a, 50b, 50c, 51, 52, 53, 54, 55, 56, 57 (57a–57c), 58 (58a–58d), 59 (59a–59c) (ostatni zamknięty: 59, 2026-10-24) |
 | ⛔ wycofane  | 12, 21, 22 (głos), 27g (wydajność), 36 (makra); 27, 29, 30, 38 rozdzielone na etapy literowane |
 
 Pełna tabela z nazwami i datami: `archiwum/tabela-etapow.md`.
 
 ## Od czego zacząć
+
+**Etap 61 „Skradanie się” (zlecenie MG z 28.10) zrobiony — czeka na słowo MG o rozstrzygnięciach
+bez pytań (plik etapu); dalej etap 28, potem T10.** Gracz klika „Skradanie” w lewym pasku, MG
+w panelu decyzji wybiera modyfikator (−4…+4) albo odmawia, gracz rzuca Skradanie kubkiem (w walce
+za Akcję), a wynik to PT dla Percepcji NPC-ów. Figura w trybie jest półprzezroczysta. NPC-e
+(poza Przyjaznymi) patrzą **własnymi oczami** (`tokenSightFor`) i rzucają raz na jedno skradanie;
+zauważenie kończy tryb — Wrogi zakłada walkę z 56, Neutralny daje MG pasek. Póki ktoś się skrada,
+walkę z 56 wyzwala wróg, który sam widzi figurę spoza trybu. Atak (cel bez Uniku), Bieg, zmiana
+sceny i koniec sesji kończą tryb. Umowa na górze `tura`.
 
 **Wszczep gracza tylko z Testem montażu (zlecenie MG z 25.10) — dalej etap 28, potem T10.**
 Gracz montuje chrom z PT wyłącznie z Medykiem z Chirurgią (własnym albo prośbą do Medyka
@@ -470,7 +479,7 @@ a nie do tego pliku.
 | `serwer`    | Prisma i migracje, zdarzenia gniazda, zapisy karty, uploady    | 26   | 21      |
 | `ui`        | okna pływające, `z-index`, motyw, skróty, dostępność, wejście, panel decyzji MG | 37   | 15      |
 | `kosci`     | kubek, `rollFormula`, wezwania i prośby o Test, tabele losowe, PT od MG | 24   | 2       |
-| `tura`      | budżet Akcji i metrów, kolejka, trasa, ruch przez ściany, skok, walka z zauważenia, pytanie MG o przekroczenie, Percepcja w drodze, ukryte figury | 31   | 7       |
+| `tura`      | budżet Akcji i metrów, kolejka, trasa, ruch przez ściany, skok, walka z zauważenia, pytanie MG o przekroczenie, Percepcja w drodze, ukryte figury, skradanie | 32   | 7       |
 | `atak`      | broń i dodatki, amunicja, obrażenia, pancerz, rany krytyczne, trucizna na ostrzu | 49   | 8       |
 | `statysta`  | figura z kartą, `statBlock`, Wartość bojowa, `token:stat`, wzorce | 17   | 3       |
 | `karta`     | strony i zakładki, panele, `sheet.css`, walidacja list, usuwanie przedmiotu | 11   | 12      |
@@ -488,6 +497,25 @@ a nie do tego pliku.
 ## Notatki z dwóch ostatnich sesji
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
+
+### Sesja 28.10 (po `ae79375`) — etap 61 „Skradanie się” (zlecenie MG)
+
+**Zlecenie:** „dodaj mechanikę skradania się (dostępną w lewym panelu pod przyciskiem),
+połączoną z modyfikatorem sytuacji/trudności MG”. Dwie rundy pytań — decyzje MG 1–8 i dopisek
+o półprzezroczystej figurze w `etap-61-skradanie.md`. **Droga:** slot „Skradanie” (kaptur, Lorc,
+CC BY 3.0) → `sneak:request` (prośba o Test z adresem figury, `insertCheckRequest` wspólne
+z `check:request`) → panel decyzji MG z drabinką modyfikatora (bez „Ustaw…”) → wezwanie bez PT
+(„MG i ty”), okno rzutu otwiera się graczowi samo (`watchSneakApproval`) → rzut zapisuje
+`Token.sneak` (`{ dv, modifier, tried }`, migracja `token_sneak`). Rzuty Percepcji NPC-ów
+(`runSneakSpotting`) padają na wejściu `checkSighting`; `foesAwareOfParty` zmienia wyzwalacz 56
+tylko wtedy, gdy ktoś się skrada. **Rozstrzygnięcia bez pytań** (Neutralny też kończy tryb,
+NPC bez karty nie patrzy, Unik wręcz, Pochwycenie, bot-NPC, towarzysze-boty) — w pliku etapu.
+Testy: `sneak.test.ts` (11: prośby, zgoda, rzut, Percepcja nie/tak, Neutralny, Wrogi, atak bez
+Uniku, Akcja w rundzie, zmiana sceny), `campaign-isolation` (+2 zdarzenia), pełny serwer
+zielony poza tym przypadkiem przed poprawką; shared 2743, klient 440; `tsc`/ESLint/Prettier
+czyste. Oglądane tymczasowym specem `t99-skradanie`: **Ola w Firefoksie**, MG w Chromium —
+slot, panel, okno rzutu, półprzezroczysta Iskra, wiersz MG „nie zauważa”, „Przerwij skradanie”
+i starcie z 56 po nim.
 
 ### Sesja 25.10, piętnasta (po `be08289`) — wszczep gracza tylko z Testem montażu (zlecenie MG)
 
@@ -508,14 +536,3 @@ odmowa `full` i `installOnly`, karta nietknięta; testy mechaniki Człowieczeńs
 czyste. Oglądane w **Firefoksie** skryptem `playwright` na instancji E2E z punktu `po-T6`
 (Marek/Kowal → Cyberoko: „Kto operuje?”, guzik wyłączony; po „Iskra · poproś” włączony). MCP
 Firefox nie wstał — znana pułapka `ogledziny`.
-
-### Sesja 24.10, czternasta (po `b99de68`) — „Wyczyść czat” dla MG (zlecenie MG)
-
-**Zlecenie:** „dodaj opcję (dla MG) czyszczenia czata. ma to czyścić całkowicie czat ze
-wszystkich wpisów”. Kosz na końcu paska filtrów czatu (tylko MG) → okno „Wyczyścić czat?” →
-`chat:clear` kasuje wszystkie wiersze kampanii (szepty, rzuty do MG, przygotowanie, karty
-czekające na decyzję) i czyści kanał u wszystkich na żywo. Boty tracą krótką pamięć rozmowy,
-streszczenie „Zakończ sesję” nie ma czego streszczać — okno to mówi. Umowa na górze `czat`.
-Testy: `chat-clear.test.ts` (odmowa gracza, odmowa bez `confirm`, push i pusta historia), klient
-440, `tsc` shared/server/client czyste. Oglądane tymczasowym specem E2E: MG w Firefoksie, gracz
-w Chromium (MCP Firefox nie wstał — znana pułapka `ogledziny`).

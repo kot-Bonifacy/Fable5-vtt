@@ -52,6 +52,7 @@ import {
   snapTokenPosition,
   EMPTY_TOKEN_SIGHTINGS,
   readTokenSightings,
+  readTokenSneak,
   tokenHiddenFrom,
   type TokenSnapScene,
 } from '@vtt/shared';
@@ -161,6 +162,9 @@ export function toTokenView(
     // „Oczy drużyny" (etap 45) jadą do wszystkich: każdy gracz ma tę figurę
     // widzieć zawsze i rysować wokół niej okienko w mgle.
     partyVision: sharesVision(token, linked),
+    // Skradanie (etap 61) jedzie do wszystkich: figurę w trybie każdy rysuje
+    // półprzezroczystą. Zawsze, także `false` — klient scala widoki spreadem.
+    sneaking: readTokenSneak(token.sneak) !== null,
   };
   // Rany figury prowadzonej przez MG jadą **publicznie** (31.08): przy stole
   // widać, że ktoś ma odciętą dłoń, a Medyk gracza ma mieć co załatać. Do 38a
@@ -205,6 +209,8 @@ export function toTokenView(
     // Zawsze, także 0: klient scala widoki spreadem, więc brak klucza zostawiłby
     // u MG stare „zauważona” po ruchu figury.
     view.spottedBy = token.hidden ? readTokenSightings(token.sightings).users.length : 0;
+    // Próg skradania (etap 61) — właściciel zna go z karty rzutu.
+    view.sneakDv = readTokenSneak(token.sneak)?.dv ?? null;
   } else {
     // Etap 43a, decyzja MG z 26.09: ile figurze zostało, widzi cały stół —
     // ułamek i szczebel, nigdy same liczby.

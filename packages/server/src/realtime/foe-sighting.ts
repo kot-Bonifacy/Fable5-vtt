@@ -42,6 +42,7 @@ import {
   toSnapScene,
 } from './tokens.js';
 import { endWalk, walksOnScene } from './walks.js';
+import { foesAwareOfParty, runSneakSpotting } from './sneak.js';
 
 /**
  * Walka z zauważenia wroga (etap 56, zlecenie MG z 19.10, wzór: Disposition
@@ -128,8 +129,12 @@ async function sightOnce(
   live: LivePosition | undefined,
 ): Promise<HaltedTokens> {
   const halted: HaltedTokens = new Map();
+  // Skradanie (etap 61): najpierw NPC-e patrzą na skradających się — kto
+  // zauważy, kończy tryb, a wrogi zauważający zakłada walkę jak zauważony.
+  const spotting = await runSneakSpotting(deps, campaignId, scene, live);
   const foes = await eligibleFoes(deps, scene.id);
   const seen = await seenFoes(deps, scene, foes, live);
+  await applySneaking(deps, scene, foes, live, seen, spotting.noticedBy);
   if (seen.byFoe.size === 0) return halted;
   const session = await deps.ctx.prisma.campaign.findUnique({
     where: { id: campaignId },
@@ -252,6 +257,38 @@ async function seenFoes(
     }
   }
   return seen;
+}
+
+/**
+ * Póki ktoś na scenie się skrada (etap 61), walkę zakłada wróg, który sam widzi
+ * figurę drużyny spoza trybu, albo który zauważył skradającego się — nie to,
+ * że drużyna widzi wroga. Zauważający wchodzą też wtedy, gdy drużyna ich nie
+ * widzi (strażnik w ciemności, skradający się w świetle).
+ */
+async function applySneaking(
+  deps: RealtimeDeps,
+  scene: Scene,
+  foes: Token[],
+  live: LivePosition | undefined,
+  seen: Seen,
+  noticedBy: ReadonlyMap<string, string>,
+): Promise<void> {
+  const aware = await foesAwareOfParty(deps, scene, foes, live);
+  if (aware) {
+    for (const foeId of [...seen.byFoe.keys()]) {
+      if (!aware.has(foeId) && !noticedBy.has(foeId)) seen.byFoe.delete(foeId);
+    }
+  }
+  if (noticedBy.size === 0) return;
+  const eligible = new Set(foes.map((foe) => foe.id));
+  for (const [foeId, sneakerId] of noticedBy) {
+    if (!eligible.has(foeId)) continue;
+    const owner = [...seen.figuresOf].find(([, figures]) => figures.includes(sneakerId))?.[0];
+    if (!owner) continue;
+    const users = seen.byFoe.get(foeId) ?? new Set<string>();
+    users.add(owner);
+    seen.byFoe.set(foeId, users);
+  }
 }
 
 /**

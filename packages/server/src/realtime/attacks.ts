@@ -156,6 +156,7 @@ import {
 } from './chat-io.js';
 import { createMixedRng } from './dice-rng.js';
 import { sanitizeGesture } from './chat.js';
+import { attackFromSneak, endSneak } from './sneak.js';
 
 /**
  * Attacks from the map (stage 16).
@@ -1352,6 +1353,14 @@ export async function performAttackRoll(
       if (await jamPoorWeapon(deps, campaignId, source, meta, weapon.resolved, result)) {
         result.attack.detail = `${result.attack.detail} · ${CPRED_JAM_DETAIL}`;
       }
+      // Atak ze skradania (etap 61, decyzja MG 6 — zasada domowa): w trybie
+      // nikt atakującego nie zauważył, więc cel nie dostaje Uniku. Wybuch
+      // zostaje przy swoich odskokach — liczy się jeden cel, w który mierzono.
+      const sneakAttack = attackFromSneak(attacker);
+      if (sneakAttack && target && !result.attack.area) {
+        result.attack.noEvade = true;
+        result.attack.detail = `${result.attack.detail} · atak z ukrycia — bez Uniku`;
+      }
       const evasionPending = await evasionPendingOf(
         deps,
         campaignId,
@@ -1390,6 +1399,8 @@ export async function performAttackRoll(
         attackMapFx(meta, result.attack, weapon.resolved, origin, aimPoint),
         view.id,
       );
+      // Atak zdradza skradającego się (decyzja MG 5) — po karcie, jak huk.
+      if (sneakAttack) await endSneak(deps, campaignId, scene, attacker, 'attack');
       return { messageId: view.id };
     }
   }

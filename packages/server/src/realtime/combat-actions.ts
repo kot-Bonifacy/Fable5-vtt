@@ -17,6 +17,7 @@ import {
   COMBAT_INITIATIVE_MAX,
   COMBAT_INITIATIVE_MIN,
   CPRED_ACTION_EXTINGUISH,
+  CPRED_ACTION_RUN,
   CPRED_ACTION_STAND_UP,
   ROLE_GM,
   nextTurn,
@@ -72,6 +73,7 @@ import { advanceTurn, runTurnEnd } from './turn-effects.js';
 import { requireCampaignScene } from './scenes.js';
 import { releaseSceneTargets } from './target.js';
 import { calmFoe, calmVisibleFoes } from './foe-sighting.js';
+import { endSneak } from './sneak.js';
 
 /**
  * The action economy (stage 14b).
@@ -310,6 +312,10 @@ export const combatActionEvent = defineEvent<CombatActionPayload, CombatView>({
     // change would be the worst of both.
     if (outcome.kind === 'spent') {
       await clearStatusAfterAction(deps, campaignId, scene, combatant, actionId);
+      // Bieg zdradza skradającego się (etap 61, decyzja MG 5).
+      if (actionId === CPRED_ACTION_RUN) {
+        await endSneak(deps, campaignId, scene, combatant.token, 'run');
+      }
     }
     // `settleSpend` already emitted the fresh tracker — re-emitting it here
     // would burn a second seq for one action.

@@ -156,3 +156,4 @@ a w `POSTEP.md` popraw tylko wiersz stanu.
 | 60a    | „To dotyczy mnie” (moje / do mnie / czeka na mnie) i filtr „Ja” | ✅     | 2026-10-24          |
 | 60b    | Ikona rodzaju na karcie i grupowanie kolejnych wierszy autora | ⬜     |                     |
 | 60c    | Kolor gracza: kolumna w kampanii, paleta, `authorColor` w widoku czatu | ⬜     |                     |
+| 61     | Skradanie się: tryb z paska, modyfikator MG, Percepcja NPC-ów, atak bez Uniku | 🟨     |                     |

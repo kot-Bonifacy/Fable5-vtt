@@ -63,6 +63,7 @@ Obowiązuje na nie ta sama licencja co na kod repozytorium, a nie CC BY 3.0; w t
 | `hud/scanner.svg`           | Radar sweep          | Lorc          | akcja „Skaner” (26b) w panelu postaci    |
 | `hud/run.svg`               | Run                  | Lorc          | akcja „Bieg”                             |
 | `hud/shotgun.svg`           | Sawed off shotgun    | Delapouite    | slot broni: strzelba, też podwieszana    |
+| `hud/sneak.svg`             | Hood                 | Lorc          | akcja „Skradanie” (etap 61)              |
 | `hud/smg.svg`               | Uzi                  | Delapouite    | slot broni: pistolet maszynowy           |
 | `hud/smg-heavy.svg`         | Spectre m4           | Skoll         | slot broni: ciężki pistolet maszynowy    |
 | `hud/sniper.svg`            | rysunek własny       | projekt (VTT) | slot broni: karabin snajperski           |

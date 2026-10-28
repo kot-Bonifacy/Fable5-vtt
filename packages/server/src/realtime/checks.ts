@@ -11,6 +11,7 @@ import type {
   CpredRollRequest,
   SessionUser,
 } from '@vtt/shared';
+import type { Character } from '../generated/prisma/client.js';
 import { refuseAwaitingGm } from './character-io.js';
 import {
   CHECK_CALL_DV_MAX,
@@ -23,6 +24,7 @@ import {
   ROLE_GM,
   checkCallTargetText,
   cpredDifficultyRungAt,
+  cpredSneakModifierLabel,
   isCheckCallOpen,
   isCheckRequestOpen,
   mayAnswerCheckCall,
@@ -85,20 +87,20 @@ export interface CheckFrame {
   visibility: CheckCallVisibility;
 }
 
+/** Modyfikator sytuacyjny MG — brak to 0, poza widełkami odmowa. */
+function parseCheckFrameModifier(raw: unknown): number {
+  return raw === undefined
+    ? 0
+    : requireInteger(raw, -CPRED_SITUATIONAL_MODIFIER_LIMIT, CPRED_SITUATIONAL_MODIFIER_LIMIT);
+}
+
 function parseCheckFrame(payload: {
   dv?: unknown;
   opponentBonus?: unknown;
   modifier?: unknown;
   visibility?: unknown;
 }): CheckFrame {
-  const modifier =
-    payload.modifier === undefined
-      ? 0
-      : requireInteger(
-          payload.modifier,
-          -CPRED_SITUATIONAL_MODIFIER_LIMIT,
-          CPRED_SITUATIONAL_MODIFIER_LIMIT,
-        );
+  const modifier = parseCheckFrameModifier(payload.modifier);
   // Próg albo przeciwnik — nigdy oba. „PT 15 i jeszcze rzut drugiej strony"
   // nie jest testem, o którym mówi s. 130, tylko dwoma testami naraz.
   const hasDv = payload.dv !== undefined;
@@ -230,6 +232,12 @@ export async function createCheckCall(
      * wystawia je tylko `opening:pick`.
      */
     lockWallId?: number;
+    /**
+     * Wejście w tryb skradania (etap 61) — tak samo po białej liście: wystawia
+     * je tylko zgoda MG na prośbę z `sneak:request`, a adres figury pochodzi
+     * z zapisanej prośby, nie z żądania MG.
+     */
+    sneakTokenId?: string;
     /** Kto „wzywa” na karcie, gdy nie MG — przy zamku to nazwa pojemnika. */
     calledByName?: string;
   },
@@ -254,6 +262,7 @@ export async function createCheckCall(
       ? { disarmZoneId: input.disarmZone.zoneId, disarmTokenId: input.disarmZone.tokenId }
       : {}),
     ...(input.lockWallId !== undefined ? { lockWallId: input.lockWallId } : {}),
+    ...(input.sneakTokenId ? { sneakTokenId: input.sneakTokenId } : {}),
   };
   const prompt = typeof input.prompt === 'string' ? input.prompt.trim() : '';
   if (prompt.length > CHECK_CALL_PROMPT_MAX) throw new RealtimeError('BAD_REQUEST');
@@ -312,6 +321,11 @@ export const checkCallEvent = defineEvent<
       requestMessageId === undefined
         ? null
         : await requireOpenCheckRequest(deps.ctx.prisma, campaignId, requestMessageId);
+    // Prośba o skradanie (etap 61) nie ma „Ustaw…”: pełne okno wezwania nie
+    // niesie adresu figury, więc zgoda przez nie dałaby Test bez trybu.
+    if (pendingRequest && sneakTokenIdOf(pendingRequest.entry)) {
+      throw new RealtimeError('BAD_REQUEST');
+    }
 
     const created = await createCheckCall(deps, {
       campaignId,
@@ -447,6 +461,62 @@ async function countOpenRequests(
   return open;
 }
 
+/** Adres figury prośby o skradanie (etap 61); `null` — zwykła prośba o Test. */
+export function sneakTokenIdOf(entry: CheckRequestEntry): string | null {
+  const id = (entry.system as { sneakTokenId?: unknown }).sneakTokenId;
+  return typeof id === 'string' && id.length > 0 ? id : null;
+}
+
+/**
+ * Zapisuje prośbę gracza o Test i dostarcza ją MG i proszącemu — wspólne dla
+ * `check:request` (etap 40) i `sneak:request` (etap 61), żeby limit otwartych
+ * próśb i planer liczyły się w jednym miejscu. Prawo do karty sprawdza
+ * wołający.
+ */
+export async function insertCheckRequest(
+  deps: RealtimeDeps,
+  input: {
+    campaignId: string;
+    user: SessionUser;
+    character: Character;
+    request: CpredRollRequest;
+    reason: string;
+  },
+): Promise<{ messageId: number }> {
+  const { campaignId, user, character, request, reason } = input;
+  if ((await countOpenRequests(deps.ctx.prisma, campaignId, user.id)) >= CHECK_REQUEST_OPEN_MAX) {
+    throw new RealtimeError('REQUEST_LIMIT');
+  }
+
+  // Ten sam planer, który rzuci — nieznana Umiejętność ma paść tutaj,
+  // u proszącego, a nie MG w ręce przy klikaniu szczebla.
+  const data = parseCharacterData(character.data, deps.ctx.cpred);
+  const planned = planCpredRoll(data, deps.ctx.cpred, request);
+  if (!planned.ok) throw new RealtimeError(planned.error);
+
+  const entry: CheckRequestEntry = {
+    characterId: character.id,
+    characterName: character.name,
+    askedById: user.id,
+    askedByName: user.name,
+    rollLabel: planned.plan.title,
+    ...(reason.length > 0 ? { reason } : {}),
+    system: request as unknown as Record<string, unknown>,
+  };
+
+  const message = await insertChatMessage(deps.ctx.prisma, {
+    campaignId,
+    authorId: user.id,
+    kind: 'request',
+    text: reason.length > 0 ? reason : planned.plan.title,
+    payload: JSON.stringify(entry),
+  });
+  // Wzorem szeptu: MG i proszący. Stół zobaczy dopiero wynik, a o jego
+  // widoczności zdecyduje MG przy zgodzie.
+  await deliverChatMessageTo(deps, campaignId, message, [user.id], true);
+  return { messageId: message.id };
+}
+
 export const checkRequestEvent = defineEvent<
   CheckRequestPayload<CpredRollRequest>,
   { messageId: number }
@@ -454,7 +524,6 @@ export const checkRequestEvent = defineEvent<
   name: 'check:request',
   handler: async ({ deps, socket, user, payload }) => {
     const campaignId = requireCampaignId(socket.data);
-    const registry = deps.ctx.cpred;
 
     const characterId = payload?.characterId;
     if (typeof characterId !== 'string' || characterId.length === 0) {
@@ -475,37 +544,7 @@ export const checkRequestEvent = defineEvent<
     const reason = typeof payload?.reason === 'string' ? payload.reason.trim() : '';
     if (reason.length > CHECK_CALL_PROMPT_MAX) throw new RealtimeError('BAD_REQUEST');
 
-    if ((await countOpenRequests(deps.ctx.prisma, campaignId, user.id)) >= CHECK_REQUEST_OPEN_MAX) {
-      throw new RealtimeError('REQUEST_LIMIT');
-    }
-
-    // Ten sam planer, który rzuci — nieznana Umiejętność ma paść tutaj,
-    // u proszącego, a nie MG w ręce przy klikaniu szczebla.
-    const data = parseCharacterData(character.data, registry);
-    const planned = planCpredRoll(data, registry, request);
-    if (!planned.ok) throw new RealtimeError(planned.error);
-
-    const entry: CheckRequestEntry = {
-      characterId: character.id,
-      characterName: character.name,
-      askedById: user.id,
-      askedByName: user.name,
-      rollLabel: planned.plan.title,
-      ...(reason.length > 0 ? { reason } : {}),
-      system: request as unknown as Record<string, unknown>,
-    };
-
-    const message = await insertChatMessage(deps.ctx.prisma, {
-      campaignId,
-      authorId: user.id,
-      kind: 'request',
-      text: reason.length > 0 ? reason : planned.plan.title,
-      payload: JSON.stringify(entry),
-    });
-    // Wzorem szeptu: MG i proszący. Stół zobaczy dopiero wynik, a o jego
-    // widoczności zdecyduje MG przy zgodzie.
-    await deliverChatMessageTo(deps, campaignId, message, [user.id], true);
-    return { messageId: message.id };
+    return insertCheckRequest(deps, { campaignId, user, character, request, reason });
   },
 });
 
@@ -549,7 +588,12 @@ export const checkRequestResolveEvent = defineEvent<
       return {};
     }
 
-    const frame = parseCheckFrame(payload);
+    // Prośba o skradanie (etap 61): MG daje sam modyfikator — wynik Testu jest
+    // progiem dla patrzących, więc PT nie ma. Kartę rzutu widzą MG i gracz.
+    const sneakTokenId = sneakTokenIdOf(entry);
+    const frame: CheckFrame = sneakTokenId
+      ? { modifier: parseCheckFrameModifier(payload.modifier), visibility: 'gm' }
+      : parseCheckFrame(payload);
     let created: { messageId: number; entry: CheckCallEntry };
     try {
       created = await createCheckCall(deps, {
@@ -561,6 +605,7 @@ export const checkRequestResolveEvent = defineEvent<
         request: entry.system,
         frame,
         ...(entry.reason !== undefined ? { prompt: entry.reason } : {}),
+        ...(sneakTokenId ? { sneakTokenId } : {}),
       });
     } catch (error) {
       // Karta mogła w międzyczasie zniknąć albo zmienić właściciela. Zgoda
@@ -581,7 +626,9 @@ export const checkRequestResolveEvent = defineEvent<
       kind: 'approved',
       byName: user.name,
       callMessageId: created.messageId,
-      targetText: checkCallTargetText(created.entry),
+      targetText: sneakTokenId
+        ? `modyfikator ${cpredSneakModifierLabel(frame.modifier)}`
+        : checkCallTargetText(created.entry),
     };
     await emitCheckRequestUpdate(deps, campaignId, messageId as number, entry);
     return { callMessageId: created.messageId };

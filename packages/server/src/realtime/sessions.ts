@@ -26,6 +26,7 @@ import { broadcastChatMessage, deliverChatMessageTo, insertChatMessage } from '.
 import { refreshLuckForSession } from './characters.js';
 import { recordSessionEnd, recordSessionPlayer, recordSessionStart } from '../session-log.js';
 import { notifyAdmins } from './admin-room.js';
+import { endCampaignSneaks } from './sneak.js';
 
 /**
  * Sesje i sloty (etap 44c).
@@ -346,6 +347,8 @@ export async function endSession(
     before?.sessionStartedAt ?? null,
     endedAt.getTime(),
   );
+  // Skradanie (etap 61, decyzja MG 5) kończy się z sesją.
+  await endCampaignSneaks(deps, campaignId);
   // Koniec sesji przekazuje AI następnej uprawnionej (44d).
   await deps.ctx.ai.refresh();
   const campaign = await prisma.campaign.findUniqueOrThrow({ where: { id: campaignId } });

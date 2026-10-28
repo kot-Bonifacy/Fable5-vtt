@@ -42,6 +42,7 @@ export * from './lock.js';
 export * from './container.js';
 export * from './trapdisarm.js';
 export * from './hiding.js';
+export * from './sneak.js';
 export * from './containercard.js';
 export * from './sighting.js';
 export * from './statist.js';

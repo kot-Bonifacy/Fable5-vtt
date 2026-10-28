@@ -53,6 +53,7 @@ import {
   woundStateFromHp,
   type BotCombatParseError,
   type BotProfileData,
+  readTokenSneak,
 } from '@vtt/shared';
 import type { AiChatRequest } from '../ai/gateway.js';
 import type { BotProfile, Character, Scene, Token } from '../generated/prisma/client.js';
@@ -310,6 +311,13 @@ async function buildTacticalStep(
   const usedLabels = new Set<string>();
   for (const other of others) {
     if (other.id === actor.id || containers.has(other.id)) continue;
+    // Skradającego się (etap 61) wróg-bot nie widzi: w trybie nikt go jeszcze
+    // nie zauważył, a zauważenie kończy tryb. Towarzysz widzi kolegę zawsze.
+    if (
+      readTokenSneak(other.sneak) &&
+      sideOf(ctx.bot.data.type, other, playerCharacterIds) === 'enemy'
+    )
+      continue;
     const centre = tokenCentre(toTokenView(other, true), sceneView);
     // Widoczność figury bota, nie konta MG. Bez tego NPC strzelałby przez mur.
     if (

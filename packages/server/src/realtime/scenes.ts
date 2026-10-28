@@ -27,6 +27,7 @@ import { requireOwnUploadUrl } from '../campaign-uploads.js';
 import { forgetScene } from './undo-buffer.js';
 import { placeOwedCreationTokens } from './creation.js';
 import { releaseTargetsOffScene } from './target.js';
+import { endCampaignSneaks } from './sneak.js';
 import { campaignRoom, gmRoom, sceneRoom } from './state.js';
 
 export function toSceneView(scene: Scene): SceneView {
@@ -293,6 +294,8 @@ export const sceneActivateEvent = defineEvent<SceneIdPayload>({
     // Trwałe cele (etap 50c) schodzą ze zmianą sceny — na nowej mapie stary
     // cel nie ma znaczenia, a po powrocie wskazywałby zeszłą sytuację.
     releaseTargetsOffScene(deps, campaignId, activated.id);
+    // Skradanie (etap 61, decyzja MG 5) kończy się ze zmianą sceny.
+    await endCampaignSneaks(deps, campaignId);
     // #9 (26.09): postać przyjęta do gry bez aktywnej sceny czekała na żeton.
     // Po rozgłoszeniu, żeby gracze stali już na tej scenie, gdy figura wejdzie.
     await placeOwedCreationTokens(deps, campaignId, activated);

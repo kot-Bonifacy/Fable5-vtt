@@ -9,6 +9,19 @@ czytany na starcie każdej sesji został listą zadań, a nie archiwum ustaleń.
 inaczej, niż mówi podręcznik, albo gdy dotykasz wymienionego tu kodu. Jeśli któraś z tych decyzji
 przestanie się bronić, przenieś ją stąd do `POMYSLY.md` jako zadanie — nie odwrotnie.
 
+## Skradanie się (etap 61, 28.10.2026)
+
+- **Tryb, nie pojedynczy Test.** Podręcznik mówi tylko „Skradanie się (ZW) przeciw Percepcji”
+  (s. 130); VTT robi z tego tryb z jednym rzutem gracza (wynik = PT dla każdego NPC-a, który go
+  zobaczy) i jednym rzutem każdego patrzącego na jedno skradanie (decyzje MG 1 i 3).
+- **Modyfikator MG przy zgodzie** to cała „trudność” — VTT sam nie dolicza ciemności, hałasu ani
+  odległości. NPC na scenie bez ścian widzi całą mapę; zasięg ogranicza mu `visionRange` figury.
+- **Atak z ukrycia bez Uniku celu** — zasada domowa (decyzja MG 6). Przy walce wręcz zostaje
+  bierne PT z ZW + Unik celu; znika tylko rzut Uniku. Wybuch zostaje przy odskokach.
+- **W walce wejście kosztuje Akcję** (decyzja MG 4) — podręcznik nie ma takiej Akcji; ruch bez
+  kary.
+- **NPC bez karty nie patrzy** — nie ma czym rzucić Percepcji (jak ukryta figura bez PT w 58d).
+
 ## Sieć i walka — czytanie RAW
 
 - **Szczęście: nie do Inicjatywy, a pula wraca sama na starcie sesji (22.10.2026, decyzje MG).**

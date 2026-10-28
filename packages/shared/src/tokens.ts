@@ -167,6 +167,19 @@ export interface TokenView {
    * jest na tej liście, i wtedy jako zwykłą.
    */
   spottedBy?: number;
+  /**
+   * Figura gracza jest w trybie skradania (etap 61) — **publicznie**, bo
+   * figurę w trybie rysuje się półprzezroczystą każdemu, kto ją widzi, a NPC-e,
+   * przed którymi się kryje, prowadzi MG. Zawsze, także `false`: klient scala
+   * widoki spreadem, więc brak klucza zostawiłby stary tryb po jego końcu.
+   */
+  sneaking?: boolean;
+  /**
+   * Wynik Testu Skradania, który musi przebić Percepcja patrzących (etap 61);
+   * `null` poza trybem. Prywatne — właściciel zna go z karty rzutu, a MG
+   * z wiersza rzutu i menu figury.
+   */
+  sneakDv?: number | null;
 }
 
 /**

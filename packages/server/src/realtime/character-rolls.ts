@@ -32,6 +32,7 @@ import {
   cpredCareOptions,
   cpredCarePermanent,
   cpredCheckOutcome,
+  cpredSneakOutcome,
   createDefaultCharacterData,
   hitLocationLabel,
   cpredSheetHpMax,
@@ -90,6 +91,7 @@ import { emitCheckCallUpdate, resolveAnsweredCall } from './checks.js';
 import { revealSighting } from './sighting.js';
 import { settleLockTest } from './containers.js';
 import { settleOpeningLockTest } from './opening-locks.js';
+import { requireSneakStart, settleSneakTest } from './sneak.js';
 import { settleDisarmTest } from './zones.js';
 import { sanitizeGesture } from './chat.js';
 import { rewriteAttackCard, settleDamageRoll } from './damage.js';
@@ -1203,6 +1205,15 @@ async function performScopedRoll(
       await requireStabilizeReach(deps, campaignId, source.character, plan.stabilize.targetTokenId);
       await spendStabilizeAction(deps, campaignId, sceneId, source.character, user);
     }
+    // Etap 61: wejście w tryb skradania. Adres figury tylko z zapisanego
+    // wezwania (wystawia je zgoda na `sneak:request`); w walce Akcja idzie
+    // przed kośćmi, jak przy Ustabilizowaniu.
+    const sneakTokenId = call
+      ? (call.entry.system as { sneakTokenId?: unknown }).sneakTokenId
+      : undefined;
+    if (call && typeof sneakTokenId === 'string') {
+      await requireSneakStart(deps, campaignId, user, sneakTokenId);
+    }
     const deathSaveTurn =
       plan.deathSave && source.kind === 'character'
         ? await requireDeathSaveDue(deps, user, source.character, data)
@@ -1428,6 +1439,8 @@ async function performScopedRoll(
       });
       result.outcome = outcome;
       result.title = `Wezwanie: ${plan.title}`;
+      // Test Skradania nie ma progu — jego wynik jest progiem dla patrzących.
+      if (typeof sneakTokenId === 'string') result.outcome = cpredSneakOutcome(result.total);
     }
 
     const kind = visibility === 'gm' ? 'gmroll' : 'roll';
@@ -1514,6 +1527,11 @@ async function performScopedRoll(
         call.entry.characterId,
         result.outcome.success,
       );
+    }
+    // Etap 61: wynik Testu Skradania staje się progiem na figurze. Po karcie,
+    // żeby rzuty Percepcji, które zaraz padną, szły za nią w dzienniku MG.
+    if (call && typeof sneakTokenId === 'string') {
+      await settleSneakTest(deps, campaignId, sneakTokenId, result.total, call.entry.modifier ?? 0);
     }
     // Etap 58b: Test rozbrajania strefy. Adres strefy i figury — jak przy
     // zamku — tylko z zapisanego wezwania; PT też z wezwania, bo od niego

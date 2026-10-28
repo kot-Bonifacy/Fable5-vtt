@@ -16,6 +16,7 @@ import {
   CPRED_ACTION_HOLD,
   CPRED_ACTION_JUMP,
   CPRED_ACTION_SCANNER,
+  CPRED_ACTION_SNEAK,
   CPRED_ACTION_STABILIZE,
   CPRED_ACTION_COMBAT_AWARENESS,
   ROLE_GM,
@@ -48,10 +49,14 @@ import {
   clearWeaponJam,
   combatErrorText,
   reloadWeapon,
+  requestSneak,
   runNetScan,
   setTokenTarget,
+  sneakErrorText,
   spendCombatAction,
+  stopSneak,
 } from './socket.js';
+import { watchSneakApproval } from './sneak.js';
 import { tokenErrorText } from './mapErrors.js';
 import { useAimMenuStore } from './stores/aimMenuStore.js';
 import { nextTarget, targetOf, useTargetStore } from './stores/targetStore.js';
@@ -59,7 +64,7 @@ import { netErrorText } from './netErrors.js';
 import { useAttackStore } from './stores/attackStore.js';
 import { useAuthStore } from './stores/authStore.js';
 import { useCharacterStore } from './stores/characterStore.js';
-import { noteAck, notifyRefusal } from './notices.js';
+import { noteAck, notifyInfo, notifyRefusal } from './notices.js';
 import { useCombatStore } from './stores/combatStore.js';
 import { useCompendiumStore } from './stores/compendiumStore.js';
 import { fireModeKey, useHudStore, type HudActiveWeapon } from './stores/hudStore.js';
@@ -335,9 +340,14 @@ export function hudContextFor(tokenId: string | null): HudContext {
     combatAwareness: hasCombatAwareness(character?.data ?? null),
     // Stage 30c: and the radio is on a Stróż Prawa's bar and on nobody else's.
     backup: hasAbility(character?.data ?? null, CPRED_BACKUP_ABILITY),
+    // Etap 61: skrada się figura gracza z kartą; NPC MG kryje się „Ukryj”.
+    sneak: token.ownerId && token.characterId ? { active: token.sneaking === true } : null,
   });
 
-  const shown = refusal ? slots.map((slot) => ({ ...slot, disabled: refusal })) : slots;
+  // Wyjście ze skradania jest darmowe zawsze (etap 61) — także w cudzej turze.
+  const shown = refusal
+    ? slots.map((slot) => (isSneakStop(slot, token) ? slot : { ...slot, disabled: refusal }))
+    : slots;
 
   return {
     token,
@@ -359,6 +369,11 @@ export function hudContextFor(tokenId: string | null): HudContext {
     figureSkills: character ? [] : figureSkillsOf(token),
     statEffects: character ? hudStatEffects(character.data) : [],
   };
+}
+
+/** Slot „Przestań się skradać” — tryb trwa, więc ten sam przycisk go kończy. */
+function isSneakStop(slot: CpredHotbarSlot, token: TokenView): boolean {
+  return slot.kind === 'action' && slot.actionId === CPRED_ACTION_SNEAK && token.sneaking === true;
 }
 
 /**
@@ -668,6 +683,22 @@ function steerToken(tokenId: string): void {
   else useSelectionStore.getState().select(tokenId);
 }
 
+async function toggleSneak(tokenId: string): Promise<void> {
+  const token = useTokenStore.getState().tokens[tokenId];
+  if (token?.sneaking) {
+    noteAck('sneak', await stopSneak(tokenId), sneakErrorText);
+    return;
+  }
+  const ack = await requestSneak(tokenId);
+  noteAck('sneak', ack, sneakErrorText);
+  if (!ack.ok || !ack.data) return;
+  notifyInfo('Prośba o skradanie poszła do MG — po zgodzie rzucisz Skradanie kubkiem.', {
+    title: 'Skradanie',
+    topic: 'sneak',
+  });
+  watchSneakApproval(ack.data.messageId);
+}
+
 /**
  * Runs a slot.
  *
@@ -693,6 +724,13 @@ export function activateSlot(slot: CpredHotbarSlot, tokenId: string): void {
     return;
   }
   disarmJump();
+
+  // Skradanie (etap 61): w trybie slot go kończy, poza nim prosi MG o Test —
+  // po zgodzie kubek otwiera się sam (`watchSneakApproval`).
+  if (slot.kind === 'action' && slot.actionId === CPRED_ACTION_SNEAK) {
+    void toggleSneak(tokenId);
+    return;
+  }
 
   if (slot.kind === 'weapon') {
     const active = hud.activeWeapon;

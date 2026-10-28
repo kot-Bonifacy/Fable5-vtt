@@ -725,6 +725,13 @@ model Token {
    * z kartą rzuca Skradanie; bez karty i bez PT nikt jej sam nie zauważy.
    */
   spotDv Int?
+  /**
+   * Tryb skradania figury gracza (etap 61): JSON `{ dv, modifier, tried }`
+   * (`readTokenSneak` w `shared/sneak.ts`) — `dv` to wynik Testu Skradania,
+   * który musi przebić Percepcja patrzącego NPC-a, `tried` — NPC-e, które już
+   * rzucały. Null — figura się nie skrada.
+   */
+  sneak String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

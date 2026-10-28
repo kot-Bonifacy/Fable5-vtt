@@ -176,6 +176,9 @@ const CONDITION_TINT: Readonly<Record<TokenCondition, number>> = {
   down: 0xffffff,
   dead: 0x5b6270,
 };
+/** Ukryta figura u MG i figura w trybie skradania (etap 61) — ta sama poświata. */
+const SNEAK_ALPHA = 0.5;
+
 const CONDITION_ALPHA: Readonly<Record<TokenCondition, number>> = {
   ok: 1,
   wounded: 1,
@@ -378,6 +381,7 @@ export class TokenNode extends Container {
       token.size,
       token.ownerId,
       token.hidden,
+      token.sneaking === true,
       token.disposition ?? null,
       token.statuses,
       token.hp ?? null,
@@ -412,8 +416,9 @@ export class TokenNode extends Container {
     const radius = ownerRingRadius(extent, this.hasHp);
     this.furniture = furnitureRadius(extent, this.hasHp);
 
-    // Only the GM ever receives hidden tokens — render them ghosted.
-    this.alpha = token.hidden ? 0.5 : CONDITION_ALPHA[condition];
+    // Only the GM ever receives hidden tokens — render them ghosted. A figure
+    // in sneak mode (stage 61) is ghosted the same way, for everyone who sees it.
+    this.alpha = token.hidden || token.sneaking ? SNEAK_ALPHA : CONDITION_ALPHA[condition];
 
     // Podstawka i cień liczone od brzegu portretu, jak przed #71 — obwódka
     // wyjechała dalej, ale figura stoi na tej samej podstawce.

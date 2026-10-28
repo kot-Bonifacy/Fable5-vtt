@@ -129,7 +129,10 @@ export function gmAttentionItems(sources: GmAttentionSources): GmAttentionItem[]
       items.push({
         key: gmAttentionKey.message(message.id),
         kind: 'request',
-        text: `${message.request.askedByName} prosi o Test: ${message.request.rollLabel}`,
+        text:
+          typeof message.request.system.sneakTokenId === 'string'
+            ? `${message.request.askedByName} prosi o skradanie: ${message.request.characterName}`
+            : `${message.request.askedByName} prosi o Test: ${message.request.rollLabel}`,
         tab: 'chat',
         messageId: message.id,
       });

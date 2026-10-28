@@ -38,6 +38,7 @@ import { fetchSceneCovers } from './covers-io.js';
 import { fetchFogState } from './fog-io.js';
 import { chargePace, checkPace } from './pace.js';
 import { fetchSceneTokensFor } from './tokens.js';
+import { endSneak } from './sneak.js';
 
 /**
  * The one place a move is judged (stage 14c).
@@ -322,6 +323,11 @@ async function settleMovementSpend(
       user,
       actionEntry(outcome.combatant, CPRED_ACTION_RUN, sheetActionName(CPRED_ACTION_RUN), distance),
     );
+    // Bieg zdradza skradającego się (etap 61). Bez ponownego sprawdzenia —
+    // lądowanie, które tu płaci, i tak woła `checkSighting`.
+    if (outcome.combatant.token) {
+      await endSneak(deps, campaignId, scene, outcome.combatant.token, 'run', { recheck: false });
+    }
   }
   if (!outcome.forced && !outcome.bypassed) return;
   await logSpentAction(deps, campaignId, user, {

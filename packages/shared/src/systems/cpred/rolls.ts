@@ -457,6 +457,13 @@ export interface CpredRollRequest {
    * wezwania, nigdy z żądania klienta — jak `containerTokenId` pojemnika.
    */
   lockWallId?: number;
+  /**
+   * Etap 61 — figura gracza, która tym Testem Skradania wchodzi w tryb
+   * skradania. Wpisuje je wyłącznie serwer w `sneak:request`, a rzut czyta je
+   * z zapisanego wezwania — zgoda MG na zwykłą prośbę o Test Skradania niczego
+   * nie ukrywa.
+   */
+  sneakTokenId?: string;
   /** Server-filled: DV read off the target's wound threshold (10/13/15). */
   stabilizeDv?: number;
   /** Server-filled: whose name the card names. */

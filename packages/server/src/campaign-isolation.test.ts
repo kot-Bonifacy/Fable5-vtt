@@ -873,6 +873,9 @@ const CASES: Record<string, Case> = {
   'opening:toggle': foreign((a) => ({ wallId: a.wallId })),
   'opening:pick': foreign((a) => ({ wallId: a.wallId })),
   'opening:lock-config': foreign((a) => ({ wallId: a.wallId, dv: 10 })),
+  // Etap 61: skradanie cudzą figurą.
+  'sneak:request': foreign((a) => ({ tokenId: a.tokenId })),
+  'sneak:stop': foreign((a) => ({ tokenId: a.tokenId })),
   // zones
   'zone:create': foreign((a) => ({
     sceneId: a.sceneId,

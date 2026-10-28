@@ -1,5 +1,16 @@
 # Dziennik sesji — archiwum
 
+### Sesja 24.10, czternasta (po `b99de68`) — „Wyczyść czat” dla MG (zlecenie MG)
+
+**Zlecenie:** „dodaj opcję (dla MG) czyszczenia czata. ma to czyścić całkowicie czat ze
+wszystkich wpisów”. Kosz na końcu paska filtrów czatu (tylko MG) → okno „Wyczyścić czat?” →
+`chat:clear` kasuje wszystkie wiersze kampanii (szepty, rzuty do MG, przygotowanie, karty
+czekające na decyzję) i czyści kanał u wszystkich na żywo. Boty tracą krótką pamięć rozmowy,
+streszczenie „Zakończ sesję” nie ma czego streszczać — okno to mówi. Umowa na górze `czat`.
+Testy: `chat-clear.test.ts` (odmowa gracza, odmowa bez `confirm`, push i pusta historia), klient
+440, `tsc` shared/server/client czyste. Oglądane tymczasowym specem E2E: MG w Firefoksie, gracz
+w Chromium (MCP Firefox nie wstał — znana pułapka `ogledziny`).
+
 ### Sesja 24.10, trzynasta (po `18d65fd`) — półka „Używki i leki” w Kompendium (zlecenie MG)
 
 **Zlecenie:** „nie widzę w kompendium leków i dragów, które powinny mieć swoją zakładkę”.

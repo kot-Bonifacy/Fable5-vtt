@@ -3,7 +3,9 @@ import type { ChatMessageView, CheckRequestEntry, CpredRollRequest, SocketAck } 
 import {
   CHECK_CALL_PROMPT_MAX,
   CPRED_DIFFICULTY_LADDER,
+  CPRED_SNEAK_MODIFIER_LADDER,
   ROLE_GM,
+  cpredSneakModifierLabel,
   checkRequestResolutionLabel,
   isCheckRequestOpen,
   mayCancelCheckRequest,
@@ -60,7 +62,9 @@ export function CheckRequestRow({
       data-attention={gmAttentionKey.message(message.id)}
     >
       <div className="chat-message-meta">
-        <span className="chat-message-author">Prośba o Test</span>
+        <span className="chat-message-author">
+          {sneakTokenIdOf(entry) ? 'Prośba o skradanie' : 'Prośba o Test'}
+        </span>
         <span className="chat-roll-gm-label">{entry.askedByName}</span>
       </div>
       <CheckRequestSummary entry={entry} />
@@ -110,6 +114,11 @@ function sightingTokenIdOf(entry: CheckRequestEntry): string | null {
   return typeof entry.system.sightingTokenId === 'string' ? entry.system.sightingTokenId : null;
 }
 
+/** Prośba o wejście w tryb skradania (etap 61) — figura gracza; poza nią `null`. */
+export function sneakTokenIdOf(entry: CheckRequestEntry): string | null {
+  return typeof entry.system.sneakTokenId === 'string' ? entry.system.sneakTokenId : null;
+}
+
 /**
  * Kto, czym i po co — wspólne dla karty czatu i panelu decyzji MG (24.10).
  * Nazwa celu oględzin z własnej listy żetonów, więc gracz widzi alias, a MG
@@ -154,6 +163,8 @@ export function CheckRequestDecision({
   // Ta sama prośba może stać naraz na czacie i w panelu decyzji.
   const noteId = useId();
   const sighting = sightingTokenIdOf(entry) !== null;
+  // Skradanie (etap 61): MG daje modyfikator, nie PT — wynik Testu jest progiem.
+  const sneak = sneakTokenIdOf(entry) !== null;
 
   async function run(action: () => Promise<SocketAck<unknown>>) {
     setBusy(true);
@@ -164,6 +175,10 @@ export function CheckRequestDecision({
 
   function approveAt(dv: number) {
     void run(() => resolveCheckRequest({ messageId, approve: true, dv, visibility: 'public' }));
+  }
+
+  function approveSneak(modifier: number) {
+    void run(() => resolveCheckRequest({ messageId, approve: true, modifier }));
   }
 
   function refuse() {
@@ -219,6 +234,38 @@ export function CheckRequestDecision({
           </button>
         </div>
       </div>
+    );
+  }
+
+  if (sneak) {
+    return (
+      <>
+        <p className="chat-action-note">Modyfikator do Skradania — zgoda od razu:</p>
+        <div className="chat-request-ladder" data-testid="sneak-ladder">
+          {CPRED_SNEAK_MODIFIER_LADDER.map((rung) => (
+            <button
+              key={rung.value}
+              type="button"
+              className="small-button"
+              disabled={busy}
+              title={`${rung.note} — gracz rzuca Skradanie z modyfikatorem ${cpredSneakModifierLabel(rung.value)}`}
+              onClick={() => approveSneak(rung.value)}
+            >
+              <b>{cpredSneakModifierLabel(rung.value)}</b>
+            </button>
+          ))}
+        </div>
+        <div className="chat-note-actions">
+          <button
+            type="button"
+            className="small-button"
+            disabled={busy}
+            onClick={() => setRefusing(true)}
+          >
+            Odmów
+          </button>
+        </div>
+      </>
     );
   }
 

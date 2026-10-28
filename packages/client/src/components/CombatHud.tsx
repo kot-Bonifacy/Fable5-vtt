@@ -14,6 +14,7 @@ import {
   CONTAINER_LOCK_LABELS,
   CPRED_ATTACK_MODE_LABELS,
   CPRED_ACTION_JUMP,
+  CPRED_ACTION_SNEAK,
   CPRED_BURST_AMMO_COST,
   CPRED_WOUND_LABELS,
   JUMP_COST_M,
@@ -852,9 +853,10 @@ export function CombatHud() {
                     slot={group.slot}
                     keyLabel={group.key}
                     armed={
-                      jumping &&
                       group.slot.kind === 'action' &&
-                      group.slot.actionId === CPRED_ACTION_JUMP
+                      ((jumping && group.slot.actionId === CPRED_ACTION_JUMP) ||
+                        // Etap 61: slot trybu świeci, póki figura się skrada.
+                        (token.sneaking === true && group.slot.actionId === CPRED_ACTION_SNEAK))
                     }
                     modeCount={1}
                     drawerOpen={false}
@@ -865,6 +867,16 @@ export function CombatHud() {
             </section>
           )}
 
+          {token.sneaking && (
+            <p className="hud-armed" data-testid="hud-sneaking">
+              <span className="hud-armed-mark" aria-hidden />
+              <span>
+                <strong>Skradasz się</strong>
+                {typeof token.sneakDv === 'number' ? ` — wynik ${token.sneakDv}.` : '.'}
+                <span className="hud-armed-hint"> Atak i Bieg kończą tryb.</span>
+              </span>
+            </p>
+          )}
           {jumping ? (
             <p className="hud-armed">
               <span className="hud-armed-mark" aria-hidden />

@@ -271,6 +271,10 @@ import type {
   StateSyncPayload,
   TokenAimBroadcast,
   HiddenSpottedBroadcast,
+  SneakEndedBroadcast,
+  SneakNoticedBroadcast,
+  SneakRequestPayload,
+  SneakStopPayload,
   TokenHaltBroadcast,
   CombatJoinedBroadcast,
   CombatOverspendAsk,
@@ -1411,6 +1415,14 @@ export function connectSocket(userId: string): Socket {
   onPresented('token:halt', (broadcast: TokenHaltBroadcast) => receiveWalkHalt(broadcast));
   // Etap 58a: udany rzut na Percepcję przy ukrytej rzeczy (tylko u właściciela).
   onPresented('hidden:spotted', (spotted: HiddenSpottedBroadcast) => receiveHiddenSpotted(spotted));
+  // Etap 61: tryb skradania skończył się nie ręką gracza (u właściciela figury)
+  // i Neutralny NPC zauważył skradającego się (u MG).
+  onPresented('sneak:ended', (ended: SneakEndedBroadcast) =>
+    notifyInfo(ended.text, { title: 'Skradanie', topic: 'sneak' }),
+  );
+  onPresented('sneak:noticed', (noticed: SneakNoticedBroadcast) =>
+    notifyInfo(noticed.text, { title: 'Skradanie', topic: 'sneak' }),
+  );
   // Etap 56: wróg zauważony w trwającej walce dołączył sam (tylko MG).
   // Wydatek MG poza budżetem tury czeka na potwierdzenie (19.10.2026).
   onPresented('combat:overspend-ask', (ask: CombatOverspendAsk) => {
@@ -1768,6 +1780,41 @@ export const cancelCheckRequest = (messageId: number) =>
 /** Klik w szczebel drabinki albo „Odmów" na karcie prośby — MG only. */
 export const resolveCheckRequest = (payload: CheckRequestResolvePayload) =>
   emitSceneAck<{ callMessageId?: number }>('check:request-resolve', payload);
+
+/** „Skradanie” na pasku (etap 61) — prośba do MG o Test Skradania tą figurą. */
+export const requestSneak = (tokenId: string) =>
+  emitSceneAck<{ messageId: number }>('sneak:request', { tokenId } satisfies SneakRequestPayload);
+
+/** „Przestań się skradać” (gracz) albo „Przerwij skradanie” (MG). */
+export const stopSneak = (tokenId: string) =>
+  emitSceneAck('sneak:stop', { tokenId } satisfies SneakStopPayload);
+
+/** Odmowy drogi skradania — prośba, rzut i wyjście z trybu. */
+export function sneakErrorText(code: string): string {
+  if (code === 'CHARACTER_AWAITING_GM') return CHARACTER_AWAITING_GM_TEXT;
+  switch (code) {
+    case 'SNEAK_ACTIVE':
+      return 'Ta postać już się skrada.';
+    case 'SNEAK_PENDING':
+      return 'Prośba o skradanie już czeka na MG.';
+    case 'SNEAK_NO_SHEET':
+      return 'Skradać się może tylko figura z kartą postaci.';
+    case 'SNEAK_NOT_ACTIVE':
+      return 'Ta figura się nie skrada.';
+    case 'STATUS_BLOCKED':
+      return 'W tym stanie postać się nie skrada.';
+    case 'NOT_YOUR_TURN':
+      return 'W walce skradasz się w swojej turze.';
+    case 'NO_ACTION_LEFT':
+      return 'W walce wejście w skradanie kosztuje Akcję — tej tury już jej nie masz.';
+    case 'FORBIDDEN':
+      return 'Skradasz się tylko własną figurą.';
+    case 'TOKEN_NOT_FOUND':
+      return 'Tej figury już nie ma na mapie.';
+    default:
+      return checkRequestErrorText(code);
+  }
+}
 
 /* ------------------------------------------------------------------ *
  * Przedmioty między kartami (etap 38b)

@@ -70,6 +70,7 @@ import {
   CPRED_ACTION_BACKUP,
   CPRED_ACTION_COMBAT_AWARENESS,
   CPRED_ACTION_SCANNER,
+  CPRED_ACTION_SNEAK,
   CPRED_ACTION_STABILIZE,
   CPRED_ACTION_STAND_UP,
   cpredAction,
@@ -336,7 +337,8 @@ export type CpredSlotIcon =
   | 'jump'
   | 'scanner'
   | 'combat-awareness'
-  | 'backup';
+  | 'backup'
+  | 'sneak';
 
 /**
  * Weapon type id (last segment) → picture.
@@ -439,6 +441,7 @@ const ACTION_ICONS: Readonly<Record<string, CpredSlotIcon>> = {
   [CPRED_ACTION_SCANNER]: 'scanner',
   [CPRED_ACTION_COMBAT_AWARENESS]: 'combat-awareness',
   [CPRED_ACTION_BACKUP]: 'backup',
+  [CPRED_ACTION_SNEAK]: 'sneak',
 };
 
 /** Catalogue actions worth a key, in the order they appear on the bar. */
@@ -477,6 +480,23 @@ export const CPRED_HOTBAR_SOLO_ACTION_IDS: readonly string[] = [CPRED_ACTION_COM
  * windows away is a panel nobody opens with a cybergang closing in.
  */
 export const CPRED_HOTBAR_LAWMAN_ACTION_IDS: readonly string[] = [CPRED_ACTION_BACKUP];
+
+/**
+ * Skradanie (etap 61) — tylko na pasku figury gracza z kartą: NPC MG kryje
+ * się przez „Ukryj” (58d), a figura bez karty nie ma czym rzucić Testu.
+ */
+export const CPRED_HOTBAR_SNEAK_ACTION_IDS: readonly string[] = [CPRED_ACTION_SNEAK];
+
+/** Etykieta slotu w trybie — ten sam przycisk kończy skradanie. */
+export const CPRED_SNEAK_STOP_LABEL = 'Przestań się skradać';
+
+/** Podpowiedź slotu w trybie. */
+export const CPRED_SNEAK_STOP_HINT =
+  'Wychodzisz z trybu skradania — za darmo, także w walce. Ponowne wejście to nowa prośba do MG i nowy Test.';
+
+/** MG nie prosi sam siebie — skradanie zaczyna gracz swoją figurą. */
+export const CPRED_SNEAK_GM_REFUSAL =
+  'Skradanie zaczyna gracz ze swojego paska — prośbą, na którą odpowiadasz modyfikatorem.';
 
 /** Slots that get a `1`–`9` key; the rest of the bar is mouse-only. */
 export const CPRED_HOTBAR_KEYED_SLOTS = 9;
@@ -679,6 +699,11 @@ export interface CpredHotbarInput {
    * box that opens the call panel; everything else on the bar is unaffected.
    */
   backup?: boolean;
+  /**
+   * Figura gracza może się skradać (etap 61) — dokłada slot „Skradanie”.
+   * `active` — tryb trwa, slot go kończy. Brak — figura MG albo bez karty.
+   */
+  sneak?: { active: boolean } | null;
 }
 
 /** Etap 46c: granat ręczny bez sztuk w ekwipunku. */
@@ -870,10 +895,31 @@ export function hotbarSlotsFor(input: CpredHotbarInput): CpredHotbarSlot[] {
     ...(input.netrunner ? CPRED_HOTBAR_NETRUNNER_ACTION_IDS : []),
     ...(input.combatAwareness ? CPRED_HOTBAR_SOLO_ACTION_IDS : []),
     ...(input.backup ? CPRED_HOTBAR_LAWMAN_ACTION_IDS : []),
+    ...(input.sneak ? CPRED_HOTBAR_SNEAK_ACTION_IDS : []),
   ];
   for (const actionId of actionIds) {
     const definition = cpredAction(actionId);
     if (!definition) continue;
+    // Skradanie w trybie to ten sam slot z drugą twarzą: wyjście jest darmowe
+    // i nic go nie blokuje — ani wydana Akcja, ani stan figury.
+    if (actionId === CPRED_ACTION_SNEAK && input.sneak) {
+      slots.push({
+        kind: 'action',
+        icon: 'sneak',
+        id: `action:${actionId}`,
+        label: input.sneak.active ? CPRED_SNEAK_STOP_LABEL : definition.name,
+        hint: input.sneak.active ? CPRED_SNEAK_STOP_HINT : definition.hint,
+        actionId,
+        needsForm: false,
+        disabled: input.sneak.active
+          ? null
+          : input.isGm
+            ? CPRED_SNEAK_GM_REFUSAL
+            : actionSlotRefusal(actionId, input, actionRefusal, moveRefusal),
+        key: null,
+      });
+      continue;
+    }
     slots.push({
       kind: 'action',
       icon: ACTION_ICONS[actionId] ?? 'hourglass',

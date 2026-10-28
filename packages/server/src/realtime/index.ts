@@ -162,6 +162,7 @@ import {
   wallUpdateEvent,
 } from './walls.js';
 import { openingLockConfigEvent, openingPickEvent } from './opening-locks.js';
+import { sneakRequestEvent, sneakStopEvent } from './sneak.js';
 import { coverClearEvent, coverCreateEvent, coverDeleteEvent, coverUpdateEvent } from './covers.js';
 import { smokeClearEvent } from './smoke.js';
 import {
@@ -497,6 +498,8 @@ export const EVENTS: RealtimeEvent<never, unknown>[] = [
   openingToggleEvent,
   openingPickEvent,
   openingLockConfigEvent,
+  sneakRequestEvent,
+  sneakStopEvent,
   coverCreateEvent,
   coverUpdateEvent,
   coverDeleteEvent,
