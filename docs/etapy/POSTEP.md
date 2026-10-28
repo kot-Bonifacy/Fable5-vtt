@@ -21,13 +21,21 @@ w plikach obok — czytaj je **na żądanie, nigdy rutynowo**:
 
 | stan         | etapy                                                                                          |
 | ------------ | ---------------------------------------------------------------------------------------------- |
-| ⬜ otwarty   | **61** Skradanie się (🟨 zrobione, czeka na słowo MG o rozstrzygnięciach); **28** Wdrożenie na VPS (🟨 działa na `https://vtt.tatanga.eu` z botami od 18.10; zostały off-site, utwardzenie, monitoring); **43b**, **43c** (UI walki); **60** Czytelny czat (zlecenie MG z 24.10; 🟨 60a–60c ✅, czeka na oględziny MG z pierwszego kryterium); T10; refaktoryzacja odłożona (MG 18.10) |
+| ⬜ otwarty   | **62** Sieć ze sceny (🟨 zrobione, czeka na oględziny MG na VPS po wdrożeniu); **61** Skradanie się (🟨 zrobione, czeka na słowo MG o rozstrzygnięciach); **28** Wdrożenie na VPS (🟨 działa na `https://vtt.tatanga.eu` z botami od 18.10; zostały off-site, utwardzenie, monitoring); **43b**, **43c** (UI walki); **60** Czytelny czat (zlecenie MG z 24.10; 🟨 60a–60c ✅, czeka na oględziny MG z pierwszego kryterium); T10; refaktoryzacja odłożona (MG 18.10) |
 | ✅ ukończone | 01–11, 13–20b, 23a–27f, 27h–27l, 29a–30d, 31–35, 37–42c, 43a, 44a–44d, 45, 46a1, 46a2, 46c1, 46c2, 46b1, 46b2, 47a, 47b, 48a, 48b, 48c, 49a, 49b, 50a, 50b, 50c, 51, 52, 53, 54, 55, 56, 57 (57a–57c), 58 (58a–58d), 59 (59a–59c) (ostatni zamknięty: 59, 2026-10-24) |
 | ⛔ wycofane  | 12, 21, 22 (głos), 27g (wydajność), 36 (makra); 27, 29, 30, 38 rozdzielone na etapy literowane |
 
 Pełna tabela z nazwami i datami: `archiwum/tabela-etapow.md`.
 
 ## Od czego zacząć
+
+**Etap 62 „Sieć ze sceny” (zlecenie MG z 28.10) zrobiony — czeka na oględziny MG na VPS
+(najpierw wdrożenie ikon urządzeń i tego etapu).** Figura z ikoną urządzenia (kamera, wieżyczka,
+dron, robot, czujnik, terminal — nie mina) sama jest urządzeniem Sieci. Gniazdo bez Architektury
+przy pierwszym podłączeniu składa „Sieć: <scena>” (wejście i węzeł kontrolny, PT „Standardowy”
+albo 8) i zostaje do niej podpięte; do Architektury MG niepodpięte figury dochodzą w pierwszym
+węźle z miejscem. Netrunner od podłączenia widzi „Urządzenia w tej Sieci” (nazwa stołu i rodzaj),
+władzę daje dalej Kontrola. Umowa na górze `siec`.
 
 **Ikony urządzeń na mapie (zlecenie MG z 28.10):** kamera, wieżyczka, dron, mina, czujnik, robot
 i terminal stoją jako figury z sylwetką na krążku (`Token.glyph`). MG stawia je z sekcji
@@ -490,7 +498,7 @@ a nie do tego pliku.
 | `postac`    | kreator, PD i awanse, koszyk i cofanie awansów, Role i Zdolności, cyborgizacje, chrom zmieniający liczby, ekonomia, Test montażu gracza | 56   | 3       |
 | `ekwipunek` | wiersze wyposażenia, przekazanie, łup (także ciała graczy), handel, sklepy, zasięg, amunicja bez dna, egzoszkielet, narkotyki i fiolki | 37   | 3       |
 | `czas`      | zegar świata, kalendarz, `statEffects`, leczenie po dobie, dawki i uzależnienia (`chems`) | 19   | 2       |
-| `siec`      | Programy, LOD, demony, piętra architektury, dek jako towar, strefy bronione, kamery, rozbrajanie | 12   | 4       |
+| `siec`      | Programy, LOD, demony, piętra architektury, dek jako towar, strefy bronione, kamery, rozbrajanie, Sieć ze sceny | 13   | 4       |
 | `boty`      | llama-server, RAG, reindeks, dziennik i baza wiedzy, brama AI  | 10   | 10      |
 | `dane`      | `parse-manual.py`, kompendium poza repo, tabele z podręcznika  | 9    | 12      |
 | `kopie`     | `snapshot`, `archive`, paczki ZIP, wczytanie kampanii, „czeka na gracza”, kopie kampanii i cofnięcie, sklep i bot w paczce, zgłoszenie karty gracza | 19   | 6       |
@@ -501,6 +509,26 @@ a nie do tego pliku.
 ## Notatki z dwóch ostatnich sesji
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
+
+### Sesja 28.10, trzecia — etap 62 „Sieć ze sceny” (zlecenie MG)
+
+**Zlecenie:** „zrobić kilka nowych testów netrunnera E2E, bo w grze zauważyłem, że mimo tego, że
+gracz (netrunner na 1 poziomie) widział punkt dostępowy i mógł się z nim połączyć, to nie widział
+żadnych elementów na scenie, np. kamer”. **Diagnoza** (odczyt bazy VPS, tylko odczyt): kampanie
+`mg_primo` bez ani jednej Architektury, oba gniazda „restauracji Mariana” niepodpięte, `NetRun`
+pusty — serwer odmawiał podłączenia, a kamery jako same figury nigdy nie były urządzeniami
+Sieci. MG: „nie wiem, jak mogłem dopiąć kamery”. **Decyzje MG z pytań:** figura z ikoną sama
+trafia do Sieci (bez miny), gniazdo bez Architektury składa prostą Sieć ze sceny, do Architektury
+MG figury dochodzą w pierwszym węźle, lista „nazwa i rodzaj” od podłączenia; testy i poprawka
+w tej sesji. **Zmiana:** `shared/systems/cpred/netscene.ts`, `NetRunView.sightedDevices`,
+serwer `realtime/net-scene.ts` w `netrun:start` (po odmowach), `sightedDevicesOf`; klient: sekcja
+„Urządzenia w tej Sieci”, karta gniazda bez blokady („— Sieć ze sceny —”, podpowiedź dla MG),
+mapa bez szarego „martwego gniazda”. Rozstrzygnięcia bez pytań — w pliku etapu. **Testy:**
+shared `netscene.test.ts` (11, pełny shared 2755), serwer `net-scene.test.ts` (5) i pełny serwer,
+klient; E2E `47-siec/t62-siec-sceny.spec.ts` (5, punkt `po-T6`, `scriptDice` na Kontrolę) —
+zielone. Iskra w `po-T6` ma Interfejs 4, nie 2 (scenariusz nie zależy od rangi poza PT).
+**Oglądane:** Ola w **Firefoksie** (zrzuty okna Sieci po podłączeniu i po Kontroli z widokiem
+kamery za ścianą). Na VPS nic nie zmieniano.
 
 ### Sesja 28.10, druga — ikony urządzeń na mapie (zlecenie MG)
 
@@ -520,22 +548,3 @@ Testy: shared `tokens.test.ts` (+1), serwer `tokens.test.ts` (+1: publiczna ikon
 odmowa nieznanej). Oglądane tymczasowym specem E2E: **Ola w Firefoksie** (siedem ikon, figura
 2×2, zmiana Robota na Terminal na żywo), MG w Chromium (sekcja „Urządzenia”, postawienie drona
 klikiem, „Zmień grafikę…”).
-
-### Sesja 28.10 (po `ae79375`) — etap 61 „Skradanie się” (zlecenie MG)
-
-**Zlecenie:** „dodaj mechanikę skradania się (dostępną w lewym panelu pod przyciskiem),
-połączoną z modyfikatorem sytuacji/trudności MG”. Dwie rundy pytań — decyzje MG 1–8 i dopisek
-o półprzezroczystej figurze w `etap-61-skradanie.md`. **Droga:** slot „Skradanie” (kaptur, Lorc,
-CC BY 3.0) → `sneak:request` (prośba o Test z adresem figury, `insertCheckRequest` wspólne
-z `check:request`) → panel decyzji MG z drabinką modyfikatora (bez „Ustaw…”) → wezwanie bez PT
-(„MG i ty”), okno rzutu otwiera się graczowi samo (`watchSneakApproval`) → rzut zapisuje
-`Token.sneak` (`{ dv, modifier, tried }`, migracja `token_sneak`). Rzuty Percepcji NPC-ów
-(`runSneakSpotting`) padają na wejściu `checkSighting`; `foesAwareOfParty` zmienia wyzwalacz 56
-tylko wtedy, gdy ktoś się skrada. **Rozstrzygnięcia bez pytań** (Neutralny też kończy tryb,
-NPC bez karty nie patrzy, Unik wręcz, Pochwycenie, bot-NPC, towarzysze-boty) — w pliku etapu.
-Testy: `sneak.test.ts` (11: prośby, zgoda, rzut, Percepcja nie/tak, Neutralny, Wrogi, atak bez
-Uniku, Akcja w rundzie, zmiana sceny), `campaign-isolation` (+2 zdarzenia), pełny serwer
-zielony poza tym przypadkiem przed poprawką; shared 2743, klient 440; `tsc`/ESLint/Prettier
-czyste. Oglądane tymczasowym specem `t99-skradanie`: **Ola w Firefoksie**, MG w Chromium —
-slot, panel, okno rzutu, półprzezroczysta Iskra, wiersz MG „nie zauważa”, „Przerwij skradanie”
-i starcie z 56 po nim.

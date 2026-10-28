@@ -260,8 +260,6 @@ export interface AccessPointMarker {
   name: string;
   /** GM only: still hidden from the players, so it is drawn ghosted. */
   hidden: boolean;
-  /** No architecture behind it yet — a dead socket the GM has not wired. */
-  dead: boolean;
 }
 
 export interface AccessPointSettings {
@@ -7524,7 +7522,7 @@ export class MapRenderer {
       ring
         .clear()
         .circle(0, 0, radiusPx)
-        .stroke({ color: point.dead ? 0x8b93a1 : 0x35e0ff, width: 2 * k, alpha: 0.6 });
+        .stroke({ color: 0x35e0ff, width: 2 * k, alpha: 0.6 });
       // A socket the players cannot see yet is the GM's own preview.
       node.alpha = point.hidden ? 0.45 : 1;
     }

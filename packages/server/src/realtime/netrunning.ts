@@ -110,7 +110,7 @@ async function fetchArchitectures(
   return rows.map(toView);
 }
 
-async function emitList(deps: RealtimeDeps, campaignId: string): Promise<void> {
+export async function emitList(deps: RealtimeDeps, campaignId: string): Promise<void> {
   const architectures = (await fetchArchitectures(deps.ctx.prisma, campaignId)).map(toSummary);
   const payload: NetArchitectureListPayload = { architectures };
   deps.io.to(gmRoom(campaignId)).emit('net:architectures', payload);

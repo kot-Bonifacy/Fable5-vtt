@@ -24,6 +24,7 @@ export * from './netrunning.js';
 export * from './netrun.js';
 export * from './netcombat.js';
 export * from './netdevices.js';
+export * from './netscene.js';
 export * from './netdemons.js';
 export * from './compendium.js';
 export * from './covers.js';

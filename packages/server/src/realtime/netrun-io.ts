@@ -11,11 +11,13 @@ import type {
   NetDeckRow,
   NetDeviceView,
   NetRunPayload,
+  NetSightedDevice,
   SessionUser,
 } from '@vtt/shared';
 import {
   CPRED_ACTION_NET,
   NET_ACCESS_RANGE_M,
+  NET_DEVICE_KIND_LABELS,
   ROLE_GM,
   cpredInterfaceRank,
   describeNetDefense,
@@ -38,6 +40,7 @@ import {
   readNetRunState,
   readNetRuntime,
   tokenCentre,
+  tokenTableName,
   validateNetArchitecture,
 } from '@vtt/shared';
 import type { PrismaClient } from '../db.js';
@@ -312,6 +315,7 @@ export async function runPayloadFor(
       combat,
       demons: netDemonViews(defence, { gm }),
       devicesOf: (floor) => devices.get(floor.id) ?? [],
+      sightedDevices: await sightedDevicesOf(deps.ctx.prisma, architecture),
       round: combatRow && combatRow.round > 0 ? combatRow.round : null,
     }),
   };
@@ -356,6 +360,37 @@ async function deviceViewsOf(
     }
   }
   return byFloor;
+}
+
+/**
+ * Etap 62: every device of the Architecture as the table names it (#37) — the
+ * figure under its table name, a hidden or missing figure by its kind. The
+ * editor's own device name is content and stays behind Control.
+ */
+async function sightedDevicesOf(
+  prisma: PrismaClient,
+  architecture: CpredNetArchitecture,
+): Promise<NetSightedDevice[]> {
+  const devices = architecture.branches
+    .flatMap((branch) => branch.floors)
+    .flatMap((floor) => floor.devices ?? []);
+  const ids = devices.map((device) => device.tokenId).filter((id): id is string => !!id);
+  const tokens = new Map(
+    (ids.length ? await prisma.token.findMany({ where: { id: { in: ids } } }) : []).map((token) => [
+      token.id,
+      token,
+    ]),
+  );
+  return devices.map((device) => {
+    const token = device.tokenId ? tokens.get(device.tokenId) : undefined;
+    return {
+      name:
+        token && !token.hidden
+          ? tokenTableName(token, token.name)
+          : NET_DEVICE_KIND_LABELS[device.deviceKind],
+      deviceKind: device.deviceKind,
+    };
+  });
 }
 
 /**

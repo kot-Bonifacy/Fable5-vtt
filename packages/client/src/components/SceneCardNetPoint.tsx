@@ -117,7 +117,7 @@ export function SceneCardNetPoint({
                 void patch({ id: point.id, architectureId: event.target.value || null })
               }
             >
-              <option value="">— martwe gniazdo —</option>
+              <option value="">— Sieć ze sceny —</option>
               {architectures.map((entry) => (
                 <option key={entry.id} value={entry.id}>
                   {entry.name}
@@ -182,7 +182,7 @@ export function SceneCardNetPoint({
                 type="button"
                 className="small-button"
                 title="Podłączenie zabiera Akcję Sieciową; ściana między tobą a gniazdem blokuje"
-                disabled={busy || tooFar || point.architectureId === null}
+                disabled={busy || tooFar}
                 onClick={() => void jackIn()}
               >
                 Podłącz się
@@ -197,9 +197,9 @@ export function SceneCardNetPoint({
                 🛰 Skaner
               </button>
             </div>
-            {point.architectureId === null && (
+            {isGm && point.architectureId === null && (
               <p className="placeholder-text">
-                To gniazdo nie prowadzi jeszcze do żadnej Architektury.
+                Bez Architektury: pierwsze podłączenie złoży prostą Sieć z urządzeń tej sceny.
               </p>
             )}
           </>

@@ -57,6 +57,7 @@ import { requireTurnSpend } from './combat-actions.js';
 import { sheetSituationModifiers } from '../sheets.js';
 import { createMixedRng } from './dice-rng.js';
 import { sanitizeGesture } from './chat.js';
+import { sceneNetArchitecture } from './net-scene.js';
 import { INCLUDE_CHAT_NAMES, deliverRollMessage, toChatMessageView } from './chat-io.js';
 import {
   architectureOf,
@@ -300,7 +301,6 @@ export const netRunStartEvent = defineEvent<NetRunStartPayload, NetRunPayload>({
     if (point.sceneId !== scene.id) throw new RealtimeError('ACCESS_POINT_NOT_FOUND');
     // A player must not confirm a socket they have not found by naming its id.
     if (point.hidden && user.role !== ROLE_GM) throw new RealtimeError('ACCESS_POINT_NOT_FOUND');
-    if (!point.architectureId) throw new RealtimeError('NET_NO_ACCESS_POINT');
 
     const existing = await loadRunForToken(deps.ctx.prisma, token.id);
     if (existing) throw new RealtimeError('NET_ALREADY_JACKED');
@@ -310,11 +310,9 @@ export const netRunStartEvent = defineEvent<NetRunStartPayload, NetRunPayload>({
       throw new RealtimeError(verdict.reason === 'wall' ? 'NET_WALL_BLOCKS' : 'NET_OUT_OF_RANGE');
     }
 
-    const architectureRow = await deps.ctx.prisma.netArchitecture.findUnique({
-      where: { id: point.architectureId },
-    });
-    const architecture = architectureRow ? architectureOf(architectureRow) : null;
-    if (!architecture) throw new RealtimeError('ARCHITECTURE_NOT_FOUND');
+    // Etap 62: figury z ikoną urządzenia są urządzeniami Sieci — gniazdo bez
+    // Architektury składa Sieć ze sceny, a do gotowej dochodzą niepodpięte.
+    const architecture = await sceneNetArchitecture(deps, campaignId, scene, point);
     const entry = netEntryPosition(architecture);
     if (!entry) throw new RealtimeError('NET_ARCHITECTURE_EMPTY');
 

@@ -1086,6 +1086,27 @@ function NetRunWindowBody() {
           ))}
         </div>
 
+        {run.run.sightedDevices.length > 0 && (
+          <div className="net-sighted">
+            <h4 className="net-run-column-title">
+              Urządzenia w tej Sieci
+              <span className="net-entry-meta"> · władzę daje Kontrola węzła</span>
+            </h4>
+            <ul className="net-node-list">
+              {run.run.sightedDevices.map((device, index) => (
+                <li key={index} className="net-sighted-device">
+                  <span className="net-node-name">{device.name}</span>
+                  {device.name !== NET_DEVICE_KIND_LABELS[device.deviceKind] && (
+                    <span className="net-node-kind">
+                      {NET_DEVICE_KIND_LABELS[device.deviceKind]}
+                    </span>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
         {virusPending && (
           <InlineNotice tone="info" title="Wirus w budowie" role="status">
             {virusPending.actionsSpent} / {virusPending.actionsNeeded} Akcji Sieciowych · PT{' '}

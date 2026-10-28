@@ -157,3 +157,4 @@ a w `POSTEP.md` popraw tylko wiersz stanu.
 | 60b    | Ikona rodzaju na karcie i grupowanie kolejnych wierszy autora | ⬜     |                     |
 | 60c    | Kolor gracza: kolumna w kampanii, paleta, `authorColor` w widoku czatu | ⬜     |                     |
 | 61     | Skradanie się: tryb z paska, modyfikator MG, Percepcja NPC-ów, atak bez Uniku | 🟨     |                     |
+| 62     | Sieć ze sceny: figury z ikoną urządzenia w Sieci, gniazdo bez Architektury, lista urządzeń od podłączenia | 🟨     |                     |

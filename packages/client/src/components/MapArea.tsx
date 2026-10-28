@@ -2163,7 +2163,6 @@ export function MapArea() {
               y: point.y,
               name: point.name,
               hidden: point.hidden,
-              dead: point.architectureId === null,
             }))
         : [],
     );

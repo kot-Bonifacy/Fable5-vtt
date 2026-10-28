@@ -45,6 +45,7 @@ import type { NetCombatView } from './netcombat.js';
 import type { NetDemonView } from './netdemons.js';
 import type { CpredNetDeviceState, CpredNetNodeUse, NetDeviceView } from './netdevices.js';
 import { readNetDeviceStates, readNetNodeUses } from './netdevices.js';
+import type { NetSightedDevice } from './netscene.js';
 
 // ─────────────────────────── Interfejs jako zdolność ───────────────────────────
 
@@ -727,6 +728,12 @@ export interface NetRunView {
    * one that has not started hunting is absent from a player's copy entirely.
    */
   demons: NetDemonView[];
+  /**
+   * Every device of this Architecture as the table names it (etap 62) — seen
+   * from the moment of jacking in, before any node is taken. Name and kind only:
+   * the figure's place, state and buttons still wait for Control.
+   */
+  sightedDevices: NetSightedDevice[];
 }
 
 /**
@@ -755,6 +762,8 @@ export function netRunView(
     devicesOf?: (floor: CpredNetFloor) => NetDeviceView[];
     /** Round the fight is in, for the „raz na Turę" flag on a node. */
     round?: number | null;
+    /** Etap 62: the whole device list, already named for this pair of eyes. */
+    sightedDevices?: NetSightedDevice[];
   },
 ): NetRunView {
   const entered = new Set(state.entered);
@@ -842,6 +851,7 @@ export function netRunView(
     viruses: options.runtime?.viruses ?? [],
     combat: options.combat,
     demons: options.demons ?? [],
+    sightedDevices: options.sightedDevices ?? [],
   };
 }
 

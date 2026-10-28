@@ -1,5 +1,24 @@
 # Dziennik sesji — archiwum
 
+### Sesja 28.10 (po `ae79375`) — etap 61 „Skradanie się” (zlecenie MG)
+
+**Zlecenie:** „dodaj mechanikę skradania się (dostępną w lewym panelu pod przyciskiem),
+połączoną z modyfikatorem sytuacji/trudności MG”. Dwie rundy pytań — decyzje MG 1–8 i dopisek
+o półprzezroczystej figurze w `etap-61-skradanie.md`. **Droga:** slot „Skradanie” (kaptur, Lorc,
+CC BY 3.0) → `sneak:request` (prośba o Test z adresem figury, `insertCheckRequest` wspólne
+z `check:request`) → panel decyzji MG z drabinką modyfikatora (bez „Ustaw…”) → wezwanie bez PT
+(„MG i ty”), okno rzutu otwiera się graczowi samo (`watchSneakApproval`) → rzut zapisuje
+`Token.sneak` (`{ dv, modifier, tried }`, migracja `token_sneak`). Rzuty Percepcji NPC-ów
+(`runSneakSpotting`) padają na wejściu `checkSighting`; `foesAwareOfParty` zmienia wyzwalacz 56
+tylko wtedy, gdy ktoś się skrada. **Rozstrzygnięcia bez pytań** (Neutralny też kończy tryb,
+NPC bez karty nie patrzy, Unik wręcz, Pochwycenie, bot-NPC, towarzysze-boty) — w pliku etapu.
+Testy: `sneak.test.ts` (11: prośby, zgoda, rzut, Percepcja nie/tak, Neutralny, Wrogi, atak bez
+Uniku, Akcja w rundzie, zmiana sceny), `campaign-isolation` (+2 zdarzenia), pełny serwer
+zielony poza tym przypadkiem przed poprawką; shared 2743, klient 440; `tsc`/ESLint/Prettier
+czyste. Oglądane tymczasowym specem `t99-skradanie`: **Ola w Firefoksie**, MG w Chromium —
+slot, panel, okno rzutu, półprzezroczysta Iskra, wiersz MG „nie zauważa”, „Przerwij skradanie”
+i starcie z 56 po nim.
+
 ### Sesja 25.10, piętnasta (po `be08289`) — wszczep gracza tylko z Testem montażu (zlecenie MG)
 
 **Zlecenie:** „cyborgizacje dla graczy zawsze z testem montażu, bez testu niech może to robić

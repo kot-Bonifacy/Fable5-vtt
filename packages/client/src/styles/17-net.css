@@ -468,6 +468,7 @@
    Obie znikają, gdy nie ma z czym walczyć, więc okno netrunnera bez deku
    wygląda dokładnie tak, jak w 26b. */
 .net-ice-list-wrap,
+.net-sighted,
 .net-deck {
   border-top: 1px solid var(--net-line-dim);
   padding-top: 0.5rem;
@@ -685,6 +686,16 @@
 
 .net-node-name {
   font-weight: 600;
+}
+
+/* Etap 62: urządzenia Sieci widziane od podłączenia — sama nazwa i rodzaj,
+   bez obwódki przejętego urządzenia, bo jeszcze nic nie da się z nimi zrobić. */
+.net-sighted-device {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.35rem;
+  padding: 0 0.4rem;
 }
 
 /* Nazwa urządzenia z figurą na oglądanej scenie — klik przewozi kadr (20.10). */
