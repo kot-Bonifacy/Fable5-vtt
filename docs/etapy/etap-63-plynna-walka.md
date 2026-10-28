@@ -36,7 +36,7 @@ broni nie mówił nic o drugim strzale z SS 2.
 7. **Miejsce checkboksa: pod banerem portretu** w lewym panelu.
 8. **Podział: 63a → 63b → 63c**, jedna część na sesję.
 
-## 63a — dźwięk tury, kropki ataków, pulsujące „Kończę turę” 🟨
+## 63a — dźwięk tury, kropki ataków, pulsujące „Kończę turę” ✅
 
 - [x] Slot broni ma `attacks: { left, max }` (`hotbarSlotsFor`, `weaponAttacksLeft`): `max` to 2
       dla pojedynczego strzału z broni SS 2, inaczej 1 (seria, ogień zaporowy, SS 1); `left`
@@ -51,7 +51,12 @@ broni nie mówił nic o drugim strzale z SS 2.
       trafienie, Unik, załadowany atak albo Test). Bez animacji przy `prefers-reduced-motion`.
 - [x] Przy okazji: pipsy „Ataki” w budżecie gasną, gdy Akcja poszła na co innego albo zabrała
       ją rana (wcześniej świeciły 2/2 obok wydanej Akcji).
-- [ ] **Nowy dźwięk tury** — dwa zestawy CC0 z OpenGameArt (bart „Interface beeps”, HaelDB „UI
+- [x] **Nowy dźwięk tury (28.10, druga część sesji)** — MG dostarczył własny plik: krótką
+      zapowiedź głosową z ttsMP3.com (`tools/audio/turn-voice.mp3`, `prepare-natural.py
+      --turn-only` → `turn.wav`, 0,62 s). FAQ serwisu pozwala na użycie bez podawania źródła;
+      uznanie i tak w `ATTRIBUTION.md`. To nagranie w pliku, nie TTS w aplikacji — decyzja
+      z 09.08 o głosie dotyczy mowy botów i poleceń, nie stałej próbki.
+- [x] ~~Dźwięk z banków CC0~~ — dwa zestawy CC0 z OpenGameArt (bart „Interface beeps”, HaelDB „UI
       sounds”) i dwa pakiety Kenneya (Interface Sounds, Sci-fi Sounds, przez OpenGameArt)
       odsłuchane przez MG 28.10: **żaden nie pasuje**. Strona kenney.nl blokuje pobieranie
       spoza przeglądarki. Następny krok: MG wskazuje własny plik albo dalsze źródło; podmiana
@@ -63,7 +68,7 @@ broni nie mówił nic o drugim strzale z SS 2.
 
 ## Kryteria ukończenia
 
-- [ ] Gracz słyszy przy swojej turze sygnał, którego nie myli z prośbą ani kubkiem.
+- [x] Gracz słyszy przy swojej turze sygnał, którego nie myli z prośbą ani kubkiem.
 - [x] Slot broni pokazuje, ile ataków zostało w tej turze; „Kończę turę” pulsuje, gdy nic poza
       ruchem nie zostało.
 - [ ] Unik i Odskok rzucają się same przy zaznaczonym (domyślnie) checkboksie pod portretem.

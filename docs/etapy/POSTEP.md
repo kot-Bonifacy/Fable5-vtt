@@ -21,7 +21,7 @@ w plikach obok — czytaj je **na żądanie, nigdy rutynowo**:
 
 | stan         | etapy                                                                                          |
 | ------------ | ---------------------------------------------------------------------------------------------- |
-| ⬜ otwarty   | **63** Płynna walka gracza (zlecenie MG z 28.10; 🟨 63a zrobione bez nowego dźwięku tury, dalej 63b auto-unik, 63c karta ataku z krokami); **62** Sieć ze sceny (🟨 zrobione, czeka na oględziny MG na VPS po wdrożeniu); **61** Skradanie się (🟨 zrobione, czeka na słowo MG o rozstrzygnięciach); **28** Wdrożenie na VPS (🟨 działa na `https://vtt.tatanga.eu` z botami od 18.10; zostały off-site, utwardzenie, monitoring); **43b**, **43c** (UI walki); **60** Czytelny czat (zlecenie MG z 24.10; 🟨 60a–60c ✅, czeka na oględziny MG z pierwszego kryterium); T10; refaktoryzacja odłożona (MG 18.10) |
+| ⬜ otwarty   | **63** Płynna walka gracza (zlecenie MG z 28.10; 63a ✅, dalej 63b auto-unik, 63c karta ataku z krokami); **62** Sieć ze sceny (🟨 zrobione, czeka na oględziny MG na VPS po wdrożeniu); **61** Skradanie się (🟨 zrobione, czeka na słowo MG o rozstrzygnięciach); **28** Wdrożenie na VPS (🟨 działa na `https://vtt.tatanga.eu` z botami od 18.10; zostały off-site, utwardzenie, monitoring); **43b**, **43c** (UI walki); **60** Czytelny czat (zlecenie MG z 24.10; 🟨 60a–60c ✅, czeka na oględziny MG z pierwszego kryterium); T10; refaktoryzacja odłożona (MG 18.10) |
 | ✅ ukończone | 01–11, 13–20b, 23a–27f, 27h–27l, 29a–30d, 31–35, 37–42c, 43a, 44a–44d, 45, 46a1, 46a2, 46c1, 46c2, 46b1, 46b2, 47a, 47b, 48a, 48b, 48c, 49a, 49b, 50a, 50b, 50c, 51, 52, 53, 54, 55, 56, 57 (57a–57c), 58 (58a–58d), 59 (59a–59c) (ostatni zamknięty: 59, 2026-10-24) |
 | ⛔ wycofane  | 12, 21, 22 (głos), 27g (wydajność), 36 (makra); 27, 29, 30, 38 rozdzielone na etapy literowane |
 
@@ -31,9 +31,9 @@ Pełna tabela z nazwami i datami: `archiwum/tabela-etapow.md`.
 
 **Etap 63 „Płynna walka gracza” (zlecenie MG z 28.10) — 63a zrobione, dalej 63b (auto-unik),
 potem 63c (jedna karta ataku z krokami).** Slot broni ma kropki ataków w Akcji (●● przy SS 2),
-„Kończę turę” pulsuje, gdy z tury został najwyżej ruch, a pipsy „Ataki” gasną z Akcją. **Otwarte
-w 63a: dźwięk tury** — MG odrzucił wszystkie kandydatury CC0 z 28.10 (OpenGameArt, Kenney), więc
-`turn.wav` jest stary. Decyzje MG 1–8 dla całego etapu w `etap-63-plynna-walka.md`, umowa na
+„Kończę turę” pulsuje, gdy z tury został najwyżej ruch, a pipsy „Ataki” gasną z Akcją. Sygnał
+tury to od 28.10 krótka zapowiedź głosowa od MG (ttsMP3.com, `tools/audio/turn-voice.mp3`) —
+jedyny wyjątek od naturalnych odgłosów. Decyzje MG 1–8 dla całego etapu w `etap-63-plynna-walka.md`, umowa na
 górze `tura`.
 
 **Etap 62 „Sieć ze sceny” (zlecenie MG z 28.10) zrobiony — czeka na oględziny MG na VPS
@@ -528,7 +528,8 @@ zaznaczonym). Dwie rundy pytań, decyzje MG 1–8 w `etap-63-plynna-walka.md`; M
 `hud-end-turn--done` w `HudEndTurn.tsx`, CSS w `12-hud.css`, `attacks` w `hudSignature`;
 `cpredTurnBudget` gasi „Ataki” przy Akcji wydanej na co innego. **Dźwięk nie zmieniony:** MG
 odsłuchał 31 próbek z OpenGameArt (bart, HaelDB) i 52 Kenneya (przez OpenGameArt) — żadna nie
-pasuje; kenney.nl odmawia pobierania spoza przeglądarki (nie obchodzone). **Testy:** shared 2759,
+pasuje; kenney.nl odmawia pobierania spoza przeglądarki (nie obchodzone). Na koniec MG dał
+własny plik z ttsMP3.com — `turn.wav` z niego (`prepare-natural.py --turn-only`). **Testy:** shared 2759,
 serwer 1669, klient 441 — zielone; `tsc` trzech pakietów, ESLint, Prettier. **Oglądane:** Ola
 w **Firefoksie** tymczasowym specem `99-ogledziny/t99-plynna-walka.spec.ts` (niecommitowany):
 kropki na pistolecie i Bijatyce, zgaszone po „Użyciu przedmiotu”, animacja `hud-end-turn-done`.

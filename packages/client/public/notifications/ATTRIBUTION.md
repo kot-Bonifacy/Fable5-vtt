@@ -14,7 +14,11 @@ autor **2BACH**, Freesound, 24.04.2013.
 
 # Dodatkowe powiadomienia
 
-`turn.wav` i `request.wav`: naturalne stukanie w drewno (JohnsonBrandEditing).
+`turn.wav` (od 28.10.2026, etap 63a): krótka zapowiedź głosowa wygenerowana przez MG w
+https://ttsmp3.com (pobrana 28.10.2026). Według FAQ serwisu pliki MP3 wolno używać w projektach
+komercyjnych i niekomercyjnych, a podanie źródła nie jest wymagane. Źródło w repo:
+`tools/audio/turn-voice.mp3`; wycinek 0,03–0,65 s, szczyt 0,8, wejście 5 ms, wyjście 30 ms.
+`request.wav`: naturalne stukanie w drewno (JohnsonBrandEditing).
 `whisper.wav` i `handout.wav`: szelest prawdziwego papieru (keweldog).
 `inventory.wav`: upuszczane monety (kbnevel).
 `refusal.wav`: szarpnięcie zamkniętej klamki — `LockedDoorHandleJiggle.wav` z zestawu

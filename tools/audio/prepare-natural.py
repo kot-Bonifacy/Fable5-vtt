@@ -12,7 +12,7 @@ import numpy as np
 import soundfile as sf
 
 root = pathlib.Path(__file__).resolve().parents[2]
-cache = pathlib.Path(sys.argv[1])
+cache = pathlib.Path(sys.argv[1]) if sys.argv[1:] != ["--turn-only"] else None
 public = root / "packages/client/public"
 
 
@@ -40,9 +40,26 @@ def cue(source, start, end):
     return data, rate
 
 
+def turn_voice():
+    # Sygnał tury od 28.10 (etap 63a, decyzja MG): nagranie z ttsMP3.com, które
+    # MG dostarczył sam; trzymane w repo, bo nie ma publicznego adresu.
+    data, rate = sf.read(pathlib.Path(__file__).parent / "turn-voice.mp3", always_2d=True)
+    data = data[int(0.03 * rate):int(0.65 * rate)].mean(axis=1)
+    attack, tail = int(rate * 0.005), int(rate * 0.03)
+    data[:attack] *= np.linspace(0, 1, attack)
+    data[-tail:] *= np.linspace(1, 0, tail)
+    return data, rate
+
+
+if __name__ == "__main__" and sys.argv[1:] == ["--turn-only"]:
+    save("notifications", "turn", *turn_voice(), 0.8)
+    sys.exit(0)
+
+
 wood, rate = cue("wood", 0.20, 0.49)
 save("notifications", "request", wood, rate, 0.55)
-save("notifications", "turn", np.concatenate([wood, np.zeros(int(rate * 0.075)), wood * 0.8]), rate, 0.55)
+data, rate = turn_voice()
+save("notifications", "turn", data, rate, 0.8)
 for name, source, start, end, peak in [
     ("whisper", "paper", 1.0, 1.53, 0.55),
     ("handout", "paper", 1.67, 2.39, 0.55),

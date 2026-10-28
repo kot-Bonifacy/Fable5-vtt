@@ -47,7 +47,9 @@ Nie kopiujemy plików dźwiękowych Foundry.
 
 ## Dodatkowe dźwięki — wszystkie zatwierdzone i wdrożone 20.09
 
-1. **Początek własnej tury** — dwa miękkie stuknięcia drewna; największa korzyść
+1. **Początek własnej tury** — **od 28.10 (etap 63a, decyzja MG) krótka zapowiedź głosowa
+   z ttsMP3.com dostarczona przez MG, jedyny wyjątek od „naturalnych odgłosów”**: drewno
+   myliło się z prośbą o Test. Do 28.10 — dwa miękkie stuknięcia drewna; największa korzyść
    przy graczach patrzących poza mapę. Foundry ma tematy dźwiękowe początku walki,
    kolejnej i własnej tury: https://foundryvtt.com/article/settings/.
 2. **Szept do gracza** — krótki szelest papieru, tylko u odbiorcy.

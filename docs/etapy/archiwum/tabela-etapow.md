@@ -158,6 +158,6 @@ a w `POSTEP.md` popraw tylko wiersz stanu.
 | 60c    | Kolor gracza: kolumna w kampanii, paleta, `authorColor` w widoku czatu | ⬜     |                     |
 | 61     | Skradanie się: tryb z paska, modyfikator MG, Percepcja NPC-ów, atak bez Uniku | 🟨     |                     |
 | 62     | Sieć ze sceny: figury z ikoną urządzenia w Sieci, gniazdo bez Architektury, lista urządzeń od podłączenia | 🟨     |                     |
-| 63a    | Płynna walka: kropki ataków na slocie broni, pulsujące „Kończę turę”, dźwięk tury (czeka) | 🟨     |                     |
+| 63a    | Płynna walka: kropki ataków na slocie broni, pulsujące „Kończę turę”, głosowy sygnał tury | ✅     | 2026-10-28          |
 | 63b    | Płynna walka: auto-unik i Odskok z checkboksem pod portretem | ⬜     |                     |
 | 63c    | Płynna walka: jedna karta ataku z krokami i pasek „Krok X/3” nad kubkiem | ⬜     |                     |
