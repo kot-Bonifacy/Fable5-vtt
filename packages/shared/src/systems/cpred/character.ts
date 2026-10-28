@@ -827,6 +827,11 @@ export function cpredWeaponInHands(
   return hands === undefined || hands.includes(rowId);
 }
 
+/** Czy serwer rzuca za tę kartę Unik i Odskok sam (etap 63b) — brak pola to tak. */
+export function cpredAutoDodge(data: Pick<CpredCharacterData, 'autoDodge'>): boolean {
+  return data.autoDodge !== false;
+}
+
 /**
  * Broń, którą ta karta trzyma — tak, jak pokazują ją oględziny.
  *
@@ -1137,6 +1142,14 @@ export interface CpredCharacterData {
    * `combatAwareness` zawarło w 30a, a `eddies` w 23b.
    */
   drawnWeaponRowIds?: string[];
+  /**
+   * „Unik i Odskok automatycznie” (etap 63b, decyzja MG z 28.10) — checkbox pod
+   * banerem portretu. **Brak pola znaczy tak**: domyślnie zaznaczony, więc
+   * karty sprzed etapu unikają same bez migracji. `false` — gracz rzuca Unik
+   * kubkiem sam (np. żeby dorzucić Szczęście). Czytaj przez `cpredAutoDodge`.
+   * Liczy się tylko na karcie gracza; bot-towarzysz unika zawsze, NPC MG nigdy.
+   */
+  autoDodge?: boolean;
   armor: CpredArmorRow[];
   gear: CpredGearRow[];
   cyberware: CpredCyberwareRow[];
@@ -2167,6 +2180,10 @@ function collectCharacterDataPatch(
     if (Array.isArray(value) && value.every((row) => typeof row === 'string' && row.length > 0)) {
       patch.drawnWeaponRowIds = value.slice(0, CPRED_HANDS) as string[];
     }
+  }
+  // Etap 63b: tylko prawdziwa wartość logiczna; śmieć zostawia domyślne „tak”.
+  if ('autoDodge' in input && typeof input.autoDodge === 'boolean') {
+    patch.autoDodge = input.autoDodge;
   }
   if ('armor' in input) {
     const armor = validateRows<CpredArmorRow>(input.armor, 'armor', issues, (base, row) => {

@@ -125,6 +125,8 @@ export function AttackRow({
    * na kogo czeka, żeby przycisk nie wyglądał na zepsuty.
    */
   const pending = attack.evasionPending ?? [];
+  /** Unik, który serwer rzuca sam (etap 63b) — bez guzików, kości już lecą. */
+  const autoEvasion = attack.autoEvasion ?? [];
   const damageRolled = attack.damageRollId !== undefined;
   const pendingNames = pending.map(
     (tokenId) =>
@@ -156,7 +158,10 @@ export function AttackRow({
    * a known hit costs nothing, so a player always rolls it.
    */
   const mayAnswerDodge =
-    isGm && attack.targetTokenId !== undefined && pending.includes(attack.targetTokenId);
+    isGm &&
+    attack.targetTokenId !== undefined &&
+    pending.includes(attack.targetTokenId) &&
+    !autoEvasion.includes(attack.targetTokenId);
 
   const verdict =
     attack.hit === undefined
@@ -219,29 +224,34 @@ export function AttackRow({
               {target.spared === 'cover' && ` · zasłonięty: ${target.sparedBy ?? 'osłona'}`}
               {target.spared === 'evaded' && ' · odskoczył poza obszar'}
               {target.canEvade && !evadeableBy(target.tokenId) && ' · REF 8+ może Unikać'}
-              {target.canEvade && evadeableBy(target.tokenId) && (
-                <button
-                  type="button"
-                  className="small-button"
-                  title="REF 8+ pozwala się uchylić: rzut ZW + Unik musi przebić rzut atakującego"
-                  onClick={() => jumpClear(target.tokenId!)}
-                >
-                  {attack.area?.shape === 'cone' ? 'Unik' : 'Odskocz'}
-                </button>
-              )}
+              {target.canEvade &&
+                evadeableBy(target.tokenId) &&
+                !autoEvasion.includes(target.tokenId!) && (
+                  <button
+                    type="button"
+                    className="small-button"
+                    title="REF 8+ pozwala się uchylić: rzut ZW + Unik musi przebić rzut atakującego"
+                    onClick={() => jumpClear(target.tokenId!)}
+                  >
+                    {attack.area?.shape === 'cone' ? 'Unik' : 'Odskocz'}
+                  </button>
+                )}
               {/* „Bez uniku” mówi tylko MG (17.10): gracz zawsze rzuca. */}
-              {target.tokenId && pending.includes(target.tokenId) && isGm && (
-                <button
-                  type="button"
-                  className="small-button"
-                  title="Zostaje w obszarze — obrażenia przestają na niego czekać"
-                  onClick={() =>
-                    declineEvasion({ messageId: message.id, tokenId: target.tokenId! })
-                  }
-                >
-                  Bez uniku
-                </button>
-              )}
+              {target.tokenId &&
+                pending.includes(target.tokenId) &&
+                !autoEvasion.includes(target.tokenId) &&
+                isGm && (
+                  <button
+                    type="button"
+                    className="small-button"
+                    title="Zostaje w obszarze — obrażenia przestają na niego czekać"
+                    onClick={() =>
+                      declineEvasion({ messageId: message.id, tokenId: target.tokenId! })
+                    }
+                  >
+                    Bez uniku
+                  </button>
+                )}
             </li>
           ))}
         </ul>
@@ -253,6 +263,7 @@ export function AttackRow({
           !damageRolled &&
           attack.hit !== undefined &&
           (defender ?? statistDefender) &&
+          !(attack.targetTokenId !== undefined && autoEvasion.includes(attack.targetTokenId)) &&
           // Gracz dostaje Unik tylko tam, gdzie serwer na niego czeka (17.10):
           // guzik bez wstrzymanych obrażeń (REF poniżej 8 przy strzale, pudło)
           // znikał po rzucie strzelca i wyglądał na przegapioną szansę. MG

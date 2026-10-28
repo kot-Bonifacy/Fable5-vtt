@@ -1,5 +1,10 @@
 # Pomysły poza zakresem etapów
 
+**28.10.2026 (etap 63b) — auto-unik, czego VTT jeszcze nie robi.** (1) **Auto-unik NPC-ów MG**
+— przełącznik w Ustawieniach albo na karcie NPC-a, żeby MG nie rzucał Uniku każdemu gangerowi.
+(2) **Auto-unik ze Szczęściem** — próg („dorzuć do N punktów, gdy brakuje do przebicia”), dziś
+kto chce Szczęścia, odznacza i rzuca ręką.
+
 **28.10.2026 (etap 61) — skradanie, czego VTT jeszcze nie robi.** (1) **Towarzysze-boty się
 nie skradają** — slot jest tylko na pasku gracza, bot nie ma go w narzędziach. (2) **NPC MG
 w trybie skradania** — dziś kryje się „Ukryj” (58d), bez rzutu przy każdym kroku. (3) **Światło

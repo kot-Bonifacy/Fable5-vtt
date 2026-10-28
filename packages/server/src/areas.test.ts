@@ -473,6 +473,8 @@ describe('cover, throwing objects and jumping clear', () => {
     system: Record<string, unknown>;
     /** Who the damage waits on before it may be rolled (03.10). */
     evasionPending?: string[];
+    /** Ta część, za którą Odskok rzuca serwer sam (etap 63b). */
+    autoEvasion?: string[];
   }
 
   const AIM = { x: 550, y: 450 };
@@ -556,6 +558,8 @@ describe('cover, throwing objects and jumping clear', () => {
         data: {
           stats: { ...(nimble.data as CpredCharacterData).stats, ref: 8, dex: 8 },
           skills: { evasion: 6 },
+          // Ręczny Odskok — auto-unik z 63b ma własny test niżej.
+          autoDodge: false,
         },
       },
     });
@@ -715,6 +719,36 @@ describe('cover, throwing objects and jumping clear', () => {
     expect(settled.has(nimbleTokenId)).toBe(true);
     // …and on nobody the car saved.
     expect(settled.has(hiderTokenId)).toBe(false);
+  });
+
+  // Etap 63b: przy zaznaczonym „Unik i Odskok automatycznie” Odskok rzuca serwer
+  // sam, zaraz po karcie — nikt nie wysyła `attack:evade`, obrażenia nie czekają.
+  it('jumps clear by itself when the auto-dodge box is ticked (63b)', async () => {
+    await emitAck(player, 'character:update', {
+      characterId: nimbleCharacterId,
+      patch: { data: { autoDodge: true } },
+    });
+    try {
+      const updated = waitFor<ChatMessageBroadcast>(gm, 'chat:update');
+      const { card, messageId } = await lob({ targetPoint: AIM });
+      expect(card.evasionPending).toEqual([nimbleTokenId]);
+      expect(card.autoEvasion).toEqual([nimbleTokenId]);
+      const broadcast = await updated;
+      expect(broadcast.message.id).toBe(messageId);
+      // Kości 3D Odskoku lecą jak z kubka.
+      expect(broadcast.dice?.title).toBe('Odskok: Zwinny');
+      const rewritten = broadcast.message.roll?.attack as AttackCard | undefined;
+      expect(rewritten?.evasionPending).toBeUndefined();
+      expect(rewritten?.autoEvasion).toBeUndefined();
+      expect(rewritten?.detail).toMatch(/Odskok Zwinny/);
+      const row = rewritten?.area?.targets.find((entry) => entry.tokenId === nimbleTokenId);
+      expect(row?.canEvade).toBe(false);
+    } finally {
+      await emitAck(player, 'character:update', {
+        characterId: nimbleCharacterId,
+        patch: { data: { autoDodge: false } },
+      });
+    }
   });
 
   it('throws an ordinary object down the same path, without an area', async () => {

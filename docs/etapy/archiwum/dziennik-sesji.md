@@ -1,5 +1,25 @@
 # Dziennik sesji — archiwum
 
+### Sesja 28.10, trzecia — etap 62 „Sieć ze sceny” (zlecenie MG)
+
+**Zlecenie:** „zrobić kilka nowych testów netrunnera E2E, bo w grze zauważyłem, że mimo tego, że
+gracz (netrunner na 1 poziomie) widział punkt dostępowy i mógł się z nim połączyć, to nie widział
+żadnych elementów na scenie, np. kamer”. **Diagnoza** (odczyt bazy VPS, tylko odczyt): kampanie
+`mg_primo` bez ani jednej Architektury, oba gniazda „restauracji Mariana” niepodpięte, `NetRun`
+pusty — serwer odmawiał podłączenia, a kamery jako same figury nigdy nie były urządzeniami
+Sieci. MG: „nie wiem, jak mogłem dopiąć kamery”. **Decyzje MG z pytań:** figura z ikoną sama
+trafia do Sieci (bez miny), gniazdo bez Architektury składa prostą Sieć ze sceny, do Architektury
+MG figury dochodzą w pierwszym węźle, lista „nazwa i rodzaj” od podłączenia; testy i poprawka
+w tej sesji. **Zmiana:** `shared/systems/cpred/netscene.ts`, `NetRunView.sightedDevices`,
+serwer `realtime/net-scene.ts` w `netrun:start` (po odmowach), `sightedDevicesOf`; klient: sekcja
+„Urządzenia w tej Sieci”, karta gniazda bez blokady („— Sieć ze sceny —”, podpowiedź dla MG),
+mapa bez szarego „martwego gniazda”. Rozstrzygnięcia bez pytań — w pliku etapu. **Testy:**
+shared `netscene.test.ts` (11, pełny shared 2755), serwer `net-scene.test.ts` (5) i pełny serwer,
+klient; E2E `47-siec/t62-siec-sceny.spec.ts` (5, punkt `po-T6`, `scriptDice` na Kontrolę) —
+zielone. Iskra w `po-T6` ma Interfejs 4, nie 2 (scenariusz nie zależy od rangi poza PT).
+**Oglądane:** Ola w **Firefoksie** (zrzuty okna Sieci po podłączeniu i po Kontroli z widokiem
+kamery za ścianą). Na VPS nic nie zmieniano.
+
 ### Sesja 28.10, druga — ikony urządzeń na mapie (zlecenie MG)
 
 **Zlecenie:** „dodaj ikony do kamery, wieżyczki, drona itp.” i dopisek: „powinny być one

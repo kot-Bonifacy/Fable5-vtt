@@ -62,7 +62,28 @@ broni nie mówił nic o drugim strzale z SS 2.
       spoza przeglądarki. Następny krok: MG wskazuje własny plik albo dalsze źródło; podmiana
       to `turn.wav` + wpis w `ATTRIBUTION.md` i `tools/audio` (skrypt, `sources.json`).
 
-## 63b — auto-unik z checkboksem ⬜
+## 63b — auto-unik z checkboksem ✅
+
+- [x] Karta ma `autoDodge?: boolean` — **brak pola znaczy „tak”** (domyślnie zaznaczony,
+      karty sprzed etapu bez migracji); czyta `cpredAutoDodge`. Zwykła łata karty, także
+      w walce (to nie rozwój postaci).
+- [x] Checkbox „Unik i Odskok automatycznie” pod banerem portretu w lewym panelu
+      (`AutoDodgeToggle` w `CombatHud.tsx`): tylko przy karcie z właścicielem i tylko dla
+      właściciela albo MG. Bot-towarzysz i NPC go nie mają.
+- [x] Serwer po karcie ataku sam rzuca Unik (pojedynczy cel) albo Odskok (wiersz wybuchu,
+      stożka) za postać gracza z zaznaczonym polem i za bota-towarzysza (zawsze), bez
+      Szczęścia, tą samą drogą co `attack:evade`; kości 3D lecą w kolorze kości właściciela
+      (bot — MG). Także po „Popraw strzał” (`attack:smart`), gdy poprawka trafiła.
+- [x] Karta niesie `autoEvasion` od zapisu, więc kubek, pasek wezwania, guziki „Unik” /
+      „Odskocz” / „Bez uniku” i pulsowanie „czeka na mnie” nie mrugają przez sekundę lotu kości.
+- [x] Nieudany rzut serwera (np. karta „czeka na gracza”) zdejmuje figurę z `autoEvasion`
+      i woła obrońcę jak dawniej — obrażenia nie czekają bez końca.
+
+**Rozstrzygnięcia bez pytań (63b):** checkbox widzi i zmienia też MG (sędzia zmienia każdą
+kartę gracza); bot unika zawsze, także w trybie kontrolowanym (decyzja 5: „boty zawsze”);
+NPC MG z kartą — bez zmian, mimo że MG mógłby chcieć auto-uniku i dla nich (do `POMYSLY.md`);
+dopisek na karcie ataku jest ten sam co przy ręcznym Uniku („Unik X: 14 vs 16 → …”) — wygląd
+kroków karty to 63c.
 
 ## 63c — jedna karta ataku i pasek kroku ⬜
 

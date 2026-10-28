@@ -21,7 +21,7 @@ w plikach obok — czytaj je **na żądanie, nigdy rutynowo**:
 
 | stan         | etapy                                                                                          |
 | ------------ | ---------------------------------------------------------------------------------------------- |
-| ⬜ otwarty   | **63** Płynna walka gracza (zlecenie MG z 28.10; 63a ✅, dalej 63b auto-unik, 63c karta ataku z krokami); **62** Sieć ze sceny (🟨 zrobione, czeka na oględziny MG na VPS po wdrożeniu); **61** Skradanie się (🟨 zrobione, czeka na słowo MG o rozstrzygnięciach); **28** Wdrożenie na VPS (🟨 działa na `https://vtt.tatanga.eu` z botami od 18.10; zostały off-site, utwardzenie, monitoring); **43b**, **43c** (UI walki); **60** Czytelny czat (zlecenie MG z 24.10; 🟨 60a–60c ✅, czeka na oględziny MG z pierwszego kryterium); T10; refaktoryzacja odłożona (MG 18.10) |
+| ⬜ otwarty   | **63** Płynna walka gracza (zlecenie MG z 28.10; 63a ✅, 63b ✅, dalej 63c karta ataku z krokami); **62** Sieć ze sceny (🟨 zrobione, czeka na oględziny MG na VPS po wdrożeniu); **61** Skradanie się (🟨 zrobione, czeka na słowo MG o rozstrzygnięciach); **28** Wdrożenie na VPS (🟨 działa na `https://vtt.tatanga.eu` z botami od 18.10; zostały off-site, utwardzenie, monitoring); **43b**, **43c** (UI walki); **60** Czytelny czat (zlecenie MG z 24.10; 🟨 60a–60c ✅, czeka na oględziny MG z pierwszego kryterium); T10; refaktoryzacja odłożona (MG 18.10) |
 | ✅ ukończone | 01–11, 13–20b, 23a–27f, 27h–27l, 29a–30d, 31–35, 37–42c, 43a, 44a–44d, 45, 46a1, 46a2, 46c1, 46c2, 46b1, 46b2, 47a, 47b, 48a, 48b, 48c, 49a, 49b, 50a, 50b, 50c, 51, 52, 53, 54, 55, 56, 57 (57a–57c), 58 (58a–58d), 59 (59a–59c) (ostatni zamknięty: 59, 2026-10-24) |
 | ⛔ wycofane  | 12, 21, 22 (głos), 27g (wydajność), 36 (makra); 27, 29, 30, 38 rozdzielone na etapy literowane |
 
@@ -29,8 +29,12 @@ Pełna tabela z nazwami i datami: `archiwum/tabela-etapow.md`.
 
 ## Od czego zacząć
 
-**Etap 63 „Płynna walka gracza” (zlecenie MG z 28.10) — 63a zrobione, dalej 63b (auto-unik),
-potem 63c (jedna karta ataku z krokami).** Slot broni ma kropki ataków w Akcji (●● przy SS 2),
+**Etap 63 „Płynna walka gracza” (zlecenie MG z 28.10) — 63a i 63b zrobione, dalej 63c (jedna
+karta ataku z krokami i pasek „Krok X/3” nad kubkiem).** Od 63b Unik i Odskok postaci gracza
+rzuca serwer sam zaraz po karcie ataku (bez Szczęścia, kości 3D lecą), póki pod banerem
+portretu zaznaczone jest „Unik i Odskok automatycznie” (domyślnie tak, `autoDodge` na karcie);
+bot-towarzysz unika zawsze, NPC-e MG bez zmian. Karta niesie `autoEvasion`, więc nikt nie jest
+o taki Unik wołany. Slot broni ma kropki ataków w Akcji (●● przy SS 2),
 „Kończę turę” pulsuje, gdy z tury został najwyżej ruch, a pipsy „Ataki” gasną z Akcją. Sygnał
 tury to od 28.10 krótka zapowiedź głosowa od MG (ttsMP3.com, `tools/audio/turn-voice.mp3`) —
 jedyny wyjątek od naturalnych odgłosów. Decyzje MG 1–8 dla całego etapu w `etap-63-plynna-walka.md`, umowa na
@@ -499,7 +503,7 @@ a nie do tego pliku.
 | `ui`        | okna pływające, `z-index`, motyw, skróty, dostępność, wejście, panel decyzji MG | 37   | 15      |
 | `kosci`     | kubek, `rollFormula`, wezwania i prośby o Test, tabele losowe, PT od MG | 24   | 2       |
 | `tura`      | budżet Akcji i metrów, kolejka, trasa, ruch przez ściany, skok, walka z zauważenia, pytanie MG o przekroczenie, Percepcja w drodze, ukryte figury, skradanie, kropki ataków | 33   | 7       |
-| `atak`      | broń i dodatki, amunicja, obrażenia, pancerz, rany krytyczne, trucizna na ostrzu | 49   | 8       |
+| `atak`      | broń i dodatki, amunicja, obrażenia, pancerz, rany krytyczne, trucizna na ostrzu, auto-unik | 50   | 8       |
 | `statysta`  | figura z kartą, `statBlock`, Wartość bojowa, `token:stat`, wzorce | 17   | 3       |
 | `karta`     | strony i zakładki, panele, `sheet.css`, walidacja list, usuwanie przedmiotu | 11   | 12      |
 | `postac`    | kreator, PD i awanse, koszyk i cofanie awansów, Role i Zdolności, cyborgizacje, chrom zmieniający liczby, ekonomia, Test montażu gracza | 56   | 3       |
@@ -517,6 +521,23 @@ a nie do tego pliku.
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
 
+### Sesja 28.10, piąta — etap 63b „Płynna walka gracza” (zlecenie MG)
+
+**Zakres:** auto-unik z decyzji MG 4–7 (bez pytań w tej sesji — rozstrzygnięcia w pliku etapu).
+**Diagnoza:** serwer nie rzucał Uniku sam nigdzie; trafienie w bota-towarzysza czekało na
+„Bez uniku” MG. **Zmiana:** `CpredCharacterData.autoDodge` + `cpredAutoDodge` (brak pola = tak),
+`RollAttackMeta.autoEvasion`; serwer `realtime/auto-evasion.ts` (`autoEvasionHandsOf`: bot
+zawsze ręką MG, gracz ręką właściciela), w `attacks.ts` `performEvasion` wydzielone
+z `attack:evade`, `markAutoEvasions` przed zapisem karty i `runAutoEvasions` po huku (także
+w `attack:smart`), odmowa → `dropAutoEvasion`. Klient: `AutoDodgeToggle` pod banerem
+w `CombatHud`; `evasionCallsOf`, guziki `AttackRow` i `chatInvolvement` pomijają
+`autoEvasion`. **Testy:** shared 2760, serwer 1671 (nowe: gracz / odznaczony / NPC / bot
+w `attacks.test.ts`, Odskok w `areas.test.ts`), klient 442 — zielone; `tsc` trzech pakietów,
+ESLint, Prettier kodu. **Oglądane:** Ola w **Firefoksie** tymczasowym specem
+`99-ogledziny/t99-auto-unik.spec.ts` (niecommitowany): checkbox zaznaczony pod banerem, cios
+Bandziora → Unik sam, zero wezwań przez 3 s; odznaczenie przetrwało F5, następny cios woła
+„Wezwanie — Unik” i kubek. Na VPS nic nie zmieniano.
+
 ### Sesja 28.10, czwarta — etap 63a „Płynna walka gracza” (zlecenie MG)
 
 **Zlecenie:** dźwięk „twoja tura” myli się z innym, komunikaty trafienie/Unik/obrażenia zlewają
@@ -533,24 +554,3 @@ własny plik z ttsMP3.com — `turn.wav` z niego (`prepare-natural.py --turn-onl
 serwer 1669, klient 441 — zielone; `tsc` trzech pakietów, ESLint, Prettier. **Oglądane:** Ola
 w **Firefoksie** tymczasowym specem `99-ogledziny/t99-plynna-walka.spec.ts` (niecommitowany):
 kropki na pistolecie i Bijatyce, zgaszone po „Użyciu przedmiotu”, animacja `hud-end-turn-done`.
-
-### Sesja 28.10, trzecia — etap 62 „Sieć ze sceny” (zlecenie MG)
-
-**Zlecenie:** „zrobić kilka nowych testów netrunnera E2E, bo w grze zauważyłem, że mimo tego, że
-gracz (netrunner na 1 poziomie) widział punkt dostępowy i mógł się z nim połączyć, to nie widział
-żadnych elementów na scenie, np. kamer”. **Diagnoza** (odczyt bazy VPS, tylko odczyt): kampanie
-`mg_primo` bez ani jednej Architektury, oba gniazda „restauracji Mariana” niepodpięte, `NetRun`
-pusty — serwer odmawiał podłączenia, a kamery jako same figury nigdy nie były urządzeniami
-Sieci. MG: „nie wiem, jak mogłem dopiąć kamery”. **Decyzje MG z pytań:** figura z ikoną sama
-trafia do Sieci (bez miny), gniazdo bez Architektury składa prostą Sieć ze sceny, do Architektury
-MG figury dochodzą w pierwszym węźle, lista „nazwa i rodzaj” od podłączenia; testy i poprawka
-w tej sesji. **Zmiana:** `shared/systems/cpred/netscene.ts`, `NetRunView.sightedDevices`,
-serwer `realtime/net-scene.ts` w `netrun:start` (po odmowach), `sightedDevicesOf`; klient: sekcja
-„Urządzenia w tej Sieci”, karta gniazda bez blokady („— Sieć ze sceny —”, podpowiedź dla MG),
-mapa bez szarego „martwego gniazda”. Rozstrzygnięcia bez pytań — w pliku etapu. **Testy:**
-shared `netscene.test.ts` (11, pełny shared 2755), serwer `net-scene.test.ts` (5) i pełny serwer,
-klient; E2E `47-siec/t62-siec-sceny.spec.ts` (5, punkt `po-T6`, `scriptDice` na Kontrolę) —
-zielone. Iskra w `po-T6` ma Interfejs 4, nie 2 (scenariusz nie zależy od rangi poza PT).
-**Oglądane:** Ola w **Firefoksie** (zrzuty okna Sieci po podłączeniu i po Kontroli z widokiem
-kamery za ścianą). Na VPS nic nie zmieniano.
-

@@ -644,6 +644,30 @@
   color: var(--warn);
 }
 
+/* „Unik i Odskok automatycznie” pod banerem (etap 63b) — jeden wiersz, cicho:
+   zaznaczony jest stanem domyślnym, więc nie może krzyczeć jak naklejka. */
+.hud-auto-dodge {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin: 0;
+  padding: 0 0.15rem;
+  font-size: 0.72rem;
+  color: var(--text-dim);
+  cursor: pointer;
+  user-select: none;
+}
+
+.hud-auto-dodge input {
+  margin: 0;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+.hud-auto-dodge:hover {
+  color: var(--text);
+}
+
 /* ---- Statusy ---- */
 
 /* Chips with names since 27h: seventeen registry icons at 15 px are a rebus,

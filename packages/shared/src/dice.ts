@@ -342,6 +342,14 @@ export interface RollAttackMeta {
    */
   evasionPending?: string[];
   /**
+   * Ta część `evasionPending`, za którą Unik albo Odskok rzuca serwer sam,
+   * zaraz po karcie (etap 63b): postać gracza z „Unik i Odskok automatycznie”
+   * i bot-towarzysz. Klient nie woła o te Uniki i nie daje na nie guzików.
+   * Rzut, który serwerowi się nie uda, schodzi z tej listy i woła obrońcę jak
+   * dawniej.
+   */
+  autoEvasion?: string[];
+  /**
    * Chat message id of the damage roll made for this attack (#56) — one hit,
    * one damage roll. Cleared only when every application of that roll was
    * taken back, which is the one way a damage roll may be made again.

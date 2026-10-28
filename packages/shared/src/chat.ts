@@ -742,8 +742,16 @@ function awaitsMe(
         : surgery.surgeonOwnerId === userId;
     case 'roll':
     case 'gmroll': {
-      // Unik albo odskok mojej figury, na który czekają obrażenia.
-      if (roll?.attack?.evasionPending?.some((tokenId) => tokenIds.has(tokenId))) return true;
+      // Unik albo odskok mojej figury, na który czekają obrażenia — chyba że
+      // rzuca go serwer sam (etap 63b).
+      const autoEvasion = roll?.attack?.autoEvasion ?? [];
+      if (
+        roll?.attack?.evasionPending?.some(
+          (tokenId) => tokenIds.has(tokenId) && !autoEvasion.includes(tokenId),
+        )
+      ) {
+        return true;
+      }
       const opposed = roll?.opposed;
       if (!opposed) return false;
       // „Broń się” — ten sam warunek, co przycisk na karcie (`OpposedRow`).

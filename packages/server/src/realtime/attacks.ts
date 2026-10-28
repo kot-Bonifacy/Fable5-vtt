@@ -157,6 +157,7 @@ import {
 import { createMixedRng } from './dice-rng.js';
 import { sanitizeGesture } from './chat.js';
 import { attackFromSneak, endSneak } from './sneak.js';
+import { autoEvasionHandsOf, type AutoEvasionHand } from './auto-evasion.js';
 
 /**
  * Attacks from the map (stage 16).
@@ -1369,6 +1370,7 @@ export async function performAttackRoll(
         result.attack.system as unknown as CpredAttackMeta,
       );
       if (evasionPending.length > 0) result.attack.evasionPending = evasionPending;
+      const autoEvasions = await markAutoEvasions(deps, campaignId, result.attack);
 
       const stored = await deps.ctx.prisma.chatMessage.create({
         data: {
@@ -1401,6 +1403,8 @@ export async function performAttackRoll(
       );
       // Atak zdradza skradającego się (decyzja MG 5) — po karcie, jak huk.
       if (sneakAttack) await endSneak(deps, campaignId, scene, attacker, 'attack');
+      // Unik obrońcy po huku — kości lecą, gdy kości ataku już leżą (etap 63b).
+      await runAutoEvasions(deps, campaignId, view.id, autoEvasions);
       return { messageId: view.id };
     }
   }
@@ -1710,8 +1714,23 @@ function luckNote(luckSpent: number): string {
 
 export const attackEvadeEvent = defineEvent<AttackEvadePayload, { total: number; hit: boolean }>({
   name: 'attack:evade',
-  handler: async ({ deps, socket, user, payload }) => {
-    const campaignId = requireCampaignId(socket.data);
+  handler: async ({ deps, socket, user, payload }) =>
+    performEvasion(deps, { campaignId: requireCampaignId(socket.data), user, payload }),
+});
+
+/**
+ * One dodge or jump clear, from the request to the rewritten card — split out
+ * of the handler in stage 63b, because the server now rolls it itself for a
+ * player who ticked „Unik i Odskok automatycznie” and for a bot companion
+ * (`runAutoEvasions`). Same reason `performAttackRoll` was split out in 20b:
+ * one copy of the rule, whoever pulls the trigger.
+ */
+async function performEvasion(
+  deps: RealtimeDeps,
+  options: { campaignId: string; user: SessionUser; payload: AttackEvadePayload | undefined },
+): Promise<{ total: number; hit: boolean }> {
+  {
+    const { campaignId, user, payload } = options;
     if (typeof payload?.messageId !== 'number' || !Number.isInteger(payload.messageId)) {
       throw new RealtimeError('BAD_REQUEST');
     }
@@ -1828,6 +1847,7 @@ export const attackEvadeEvent = defineEvent<AttackEvadePayload, { total: number;
         evaded: true,
         // The defender has answered — the damage stops waiting (03.10).
         evasionPending: undefined,
+        autoEvasion: undefined,
         // Obie liczby obok siebie (14.10): samo „Unik: 14 → pudło" nie mówiło,
         // z czym 14 przegrało, a „pudło" brzmiało jak chybienie strzelca.
         detail: `${roll.attack.detail} · Unik ${defenderName}: ${evasion.total}${luckNote(
@@ -1856,8 +1876,69 @@ export const attackEvadeEvent = defineEvent<AttackEvadePayload, { total: number;
       inPlaceDice(evasion, `Unik: ${defenderName}`, defenderName, user, gesture),
     );
     return { total: evasion.total, hit: outcome.hit };
-  },
-});
+  }
+}
+
+/**
+ * Unik i Odskok rzucane przez serwer (etap 63b) — po kolei, bo każdy przepisuje
+ * tę samą kartę. Rzut, który się nie uda (blokada, która przyszła w międzyczasie,
+ * karta „czeka na gracza”), zdejmuje figurę z `autoEvasion`: wtedy kubek obrońcy
+ * woła o Unik jak przed etapem, zamiast zostawić obrażenia czekające bez końca.
+ */
+async function runAutoEvasions(
+  deps: RealtimeDeps,
+  campaignId: string,
+  messageId: number,
+  hands: readonly AutoEvasionHand[],
+): Promise<void> {
+  for (const hand of hands) {
+    try {
+      await performEvasion(deps, {
+        campaignId,
+        user: hand.user,
+        payload: { messageId, characterId: hand.characterId, tokenId: hand.tokenId },
+      });
+    } catch (error) {
+      deps.log.warn({ err: error, tokenId: hand.tokenId }, 'auto evasion refused');
+      await dropAutoEvasion(deps, campaignId, messageId, hand.tokenId);
+    }
+  }
+}
+
+/** Figura wraca do zwykłego wezwania: serwer jej Uniku nie rzucił. */
+async function dropAutoEvasion(
+  deps: RealtimeDeps,
+  campaignId: string,
+  messageId: number,
+  tokenId: string,
+): Promise<void> {
+  const message = await deps.ctx.prisma.chatMessage.findUnique({ where: { id: messageId } });
+  if (!message?.payload || message.campaignId !== campaignId) return;
+  const roll = JSON.parse(message.payload) as RollResult;
+  if (!roll.attack?.autoEvasion?.includes(tokenId)) return;
+  const attack = { ...roll.attack, autoEvasion: withoutPending(roll.attack.autoEvasion, tokenId) };
+  const saved = await deps.ctx.prisma.chatMessage.update({
+    where: { id: message.id },
+    data: { payload: JSON.stringify({ ...roll, attack }) },
+    include: INCLUDE_CHAT_NAMES,
+  });
+  await broadcastRedactedChatMessage(deps, campaignId, toChatMessageView(saved), 'chat:update');
+}
+
+/**
+ * Who of the figures the damage waits on gets the dodge from the server, put on
+ * the card before it is stored (etap 63b) — so no client calls them for the
+ * second the dice of the dodge are still in the air.
+ */
+async function markAutoEvasions(
+  deps: RealtimeDeps,
+  campaignId: string,
+  attack: RollAttackMeta,
+): Promise<AutoEvasionHand[]> {
+  const hands = await autoEvasionHandsOf(deps, campaignId, attack.evasionPending ?? []);
+  attack.autoEvasion = hands.length > 0 ? hands.map((hand) => hand.tokenId) : undefined;
+  return hands;
+}
 
 /**
  * The round corrects a near miss (stage 16h, „Amunicja inteligentna").
@@ -1958,6 +2039,7 @@ export const attackSmartEvent = defineEvent<AttackSmartPayload, { total: number;
     // Unikać dalej może Unikać", and now the damage holds still while they do.
     const pending = await evasionPendingOf(deps, campaignId, registry, updated.attack!, meta);
     updated.attack!.evasionPending = pending.length > 0 ? pending : undefined;
+    const autoEvasions = await markAutoEvasions(deps, campaignId, updated.attack!);
     const saved = await deps.ctx.prisma.chatMessage.update({
       where: { id: message.id },
       data: { payload: JSON.stringify(updated) },
@@ -1970,6 +2052,7 @@ export const attackSmartEvent = defineEvent<AttackSmartPayload, { total: number;
       'chat:update',
       inPlaceDice(second, 'Poprawka naboju', character.name, user, gesture),
     );
+    await runAutoEvasions(deps, campaignId, message.id, autoEvasions);
     return { total: second.total, hit: outcome.hit };
   },
 });
@@ -2030,12 +2113,14 @@ export const attackNoEvadeEvent = defineEvent<AttackNoEvadePayload, void>({
             ),
           },
           evasionPending: withoutPending(roll.attack.evasionPending, tokenId),
+          autoEvasion: withoutPending(roll.attack.autoEvasion, tokenId),
           detail: `${roll.attack.detail} · ${name}: bez uniku`,
         }
       : {
           ...roll.attack,
           noEvade: true,
           evasionPending: undefined,
+          autoEvasion: undefined,
           detail: `${roll.attack.detail} · ${name}: bez uniku`,
         };
     const saved = await deps.ctx.prisma.chatMessage.update({
@@ -2118,6 +2203,7 @@ async function evadeArea(
       area: { ...area, targets },
       // One answer fewer for the grenade's damage to wait on (03.10).
       evasionPending: withoutPending(roll.attack!.evasionPending, entry.tokenId!),
+      autoEvasion: withoutPending(roll.attack!.autoEvasion, entry.tokenId!),
       detail: `${roll.attack!.detail} · Odskok ${dodgerName}: ${evasion.total}${luckNote(
         planned.plan.luckSpent,
       )} vs ${roll.total} → ${cleared ? 'poza obszarem' : 'nie zdążył'}`,

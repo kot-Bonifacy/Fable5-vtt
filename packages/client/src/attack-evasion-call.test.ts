@@ -131,6 +131,18 @@ describe('openEvasionCallsFor', () => {
     expect(calls([card], gm).map((call) => call.tokenId)).toEqual(['tok-ganger']);
   });
 
+  it('nie woła o Unik, który serwer rzuca sam (etap 63b)', () => {
+    expect(calls([attackCard(7, { autoEvasion: ['tok-vex'] })], player)).toEqual([]);
+    const card = attackCard(8, { targetTokenId: 'tok-ganger', evasionPending: ['tok-ganger'] });
+    expect(calls([card], gm)).toHaveLength(1);
+    const bot = attackCard(8, {
+      targetTokenId: 'tok-ganger',
+      evasionPending: ['tok-ganger'],
+      autoEvasion: ['tok-ganger'],
+    });
+    expect(calls([bot], gm)).toEqual([]);
+  });
+
   it('kilka czekających trafień — od najnowszego', () => {
     const found = calls([attackCard(7, {}), attackCard(8, {})], player);
     expect(found.map((call) => call.messageId)).toEqual([8, 7]);

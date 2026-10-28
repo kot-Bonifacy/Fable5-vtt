@@ -860,6 +860,119 @@ describe('ranged combat from the map', () => {
     expect(denied).toEqual({ ok: false, error: 'NOT_THE_TARGET' });
   });
 
+  /**
+   * Etap 63b (decyzje MG 4–5 z 28.10): trafienie w postać gracza z zaznaczonym
+   * „Unik i Odskok automatycznie” (domyślnie) i w bota-towarzysza rzuca Unik
+   * serwer — po karcie, bez Szczęścia, z kośćmi; odznaczony checkbox i NPC MG
+   * czekają jak dawniej.
+   */
+  it('dodges by itself for a player’s figure and a bot companion (63b)', async () => {
+    async function figure(name: string, ownerId: string | null) {
+      const sheet = data(
+        await emitAck<CharacterView>(gm, 'character:create', {
+          name,
+          ...(ownerId ? { ownerId } : {}),
+        }),
+        'character:create',
+      );
+      await emitAck(gm, 'character:update', {
+        characterId: sheet.id,
+        patch: {
+          data: {
+            stats: { ...(sheet.data as CpredCharacterData).stats, dex: 6 },
+            skills: { evasion: 4 },
+          },
+        },
+      });
+      const token = data(
+        await emitAck<TokenView>(gm, 'token:create', {
+          sceneId,
+          name,
+          x: 2 * PX_PER_M,
+          y: 0,
+          characterId: sheet.id,
+          ...(ownerId ? { ownerId } : {}),
+        }),
+        'token:create',
+      );
+      return { sheet, token };
+    }
+    /** Cios, który trafił — Krytyczna Porażka zdarza się i przy +10, a pudło nie czeka na Unik. */
+    async function swing(tokenId: string) {
+      for (let tries = 0; ; tries++) {
+        const swung = await swingOnce(tokenId);
+        if (swung.card.hit === true || tries >= 5) return swung;
+      }
+    }
+    async function swingOnce(tokenId: string) {
+      const message = waitFor<ChatMessageBroadcast>(gm, 'chat:message');
+      const updates: ChatMessageBroadcast[] = [];
+      const collect = (payload: ChatMessageBroadcast) => updates.push(payload);
+      gm.on('chat:update', collect);
+      const ack = data(
+        await emitAck<{ messageId: number }>(player, 'attack:roll', {
+          characterId,
+          targetTokenId: tokenId,
+          attackerTokenId: shooterTokenId,
+          request: { weaponRowId: 'w-blade', mode: 'single', modifier: 10 },
+        }),
+        'attack:roll',
+      );
+      const card = requireAttackCard(await message);
+      // Aktualizacja jedzie w tym samym handlerze — przed potwierdzeniem albo tuż po.
+      for (let tries = 0; tries < 20 && updates.length === 0; tries++) {
+        await new Promise((resolve) => setTimeout(resolve, 25));
+      }
+      gm.off('chat:update', collect);
+      return {
+        card,
+        update: updates.find((entry) => entry.message.id === ack.messageId),
+        messageId: ack.messageId,
+      };
+    }
+
+    // Postać gracza: checkbox domyślnie zaznaczony.
+    const ally = await figure('Kumpel', playerId);
+    const auto = await swing(ally.token.id);
+    expect(auto.card.hit).toBe(true);
+    expect((auto.card as { autoEvasion?: string[] }).autoEvasion).toEqual([ally.token.id]);
+    expect(auto.update?.dice?.title).toBe('Unik: Kumpel');
+    const dodged = auto.update && requireAttackCard(auto.update);
+    expect(dodged?.detail).toContain('Unik Kumpel');
+    expect(dodged?.evasionPending).toBeUndefined();
+
+    // Odznaczony — wezwanie jak przed etapem.
+    await emitAck(player, 'character:update', {
+      characterId: ally.sheet.id,
+      patch: { data: { autoDodge: false } },
+    });
+    const manual = await swing(ally.token.id);
+    expect(manual.card.evasionPending).toEqual([ally.token.id]);
+    expect((manual.card as { autoEvasion?: string[] }).autoEvasion).toBeUndefined();
+    expect(manual.update).toBeUndefined();
+    await declineDodge(manual.card, manual.messageId);
+
+    // NPC MG — bez zmian.
+    const npc = await figure('Ochroniarz', null);
+    const held = await swing(npc.token.id);
+    expect(held.card.evasionPending).toEqual([npc.token.id]);
+    expect(held.update).toBeUndefined();
+    await emitAck(gm, 'attack:no-evade', { messageId: held.messageId });
+
+    // Ta sama karta przypięta do bota — bot unika zawsze.
+    const stored = await built.prisma.character.findUniqueOrThrow({ where: { id: npc.sheet.id } });
+    await built.prisma.botProfile.create({
+      data: { campaignId: stored.campaignId, name: 'Ochroniarz', characterId: npc.sheet.id },
+    });
+    const bot = await swing(npc.token.id);
+    expect(bot.update?.dice?.title).toBe('Unik: Ochroniarz');
+    expect(bot.update && requireAttackCard(bot.update).evasionPending).toBeUndefined();
+
+    for (const id of [ally.token.id, npc.token.id]) {
+      await emitAck(gm, 'token:delete', { tokenId: id });
+    }
+  });
+
   it('shares a ruler with the other viewers of the scene, but not with its author', async () => {
     const seen = waitFor<RulerBroadcast>(gm, 'ruler:update');
     const ack = await emitAck(player, 'ruler:update', {

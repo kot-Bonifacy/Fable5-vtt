@@ -301,6 +301,21 @@ describe('chatInvolvement — atak i starcie w moją figurę', () => {
     });
     expect(kuba(waiting)).toBe('awaitingMe');
     expect(ola(waiting)).toBe('mine');
+    // Etap 63b: Unik, który serwer rzuca sam, na nikogo nie czeka.
+    const auto = message('roll', {
+      authorId: OLA,
+      roll: roll({
+        attack: {
+          system: {},
+          label: '',
+          detail: '',
+          targetTokenId: 'tok-kuba',
+          evasionPending: ['tok-kuba'],
+          autoEvasion: ['tok-kuba'],
+        },
+      }),
+    });
+    expect(kuba(auto)).toBe('forMe');
   });
 
   it('granat, który mnie objął, i ogień zaporowy z moim Testem', () => {

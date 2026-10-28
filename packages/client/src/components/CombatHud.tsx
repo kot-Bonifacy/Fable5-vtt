@@ -19,6 +19,7 @@ import {
   CPRED_WOUND_LABELS,
   JUMP_COST_M,
   ROLE_GM,
+  cpredAutoDodge,
   cpredStatusSeverity,
   cpredWeaponModeSlot,
   tokenHpShareOf,
@@ -45,6 +46,7 @@ import { useSelectionStore } from '../stores/selectionStore.js';
 import { useTokenStore } from '../stores/tokenStore.js';
 import { useGameTimeStore } from '../stores/gameTimeStore.js';
 import { usePortraitFrameStyle } from '../portrait-banner.js';
+import { queueCharacterSave } from '../socket.js';
 import { CombatAwarenessPanel } from './CombatAwarenessPanel.js';
 import { BackupPanel } from './BackupPanel.js';
 import { FigureInjuries } from './FigureInjuries.js';
@@ -469,6 +471,37 @@ function IdentityCard({
   );
 }
 
+/**
+ * „Unik i Odskok automatycznie” pod banerem (etap 63b, decyzje MG 4–7 z 28.10).
+ *
+ * Tylko przy postaci gracza i tylko dla tego, kto może zmienić jej kartę
+ * (właściciel albo MG): bot-towarzysz unika zawsze, NPC MG nigdy, więc tam nie
+ * ma czego przełączać. Zaznaczony domyślnie — brak pola na karcie znaczy „tak”.
+ * Odznaczony oddaje Unik kubkowi gracza, np. żeby dorzucić Szczęście.
+ */
+function AutoDodgeToggle({ characterId }: { characterId: string | null }) {
+  const character = useCharacterStore((s) => (characterId ? s.characters[characterId] : undefined));
+  const user = useAuthStore((s) => s.user);
+  if (!character || !character.ownerId || !user) return null;
+  if (user.role !== ROLE_GM && character.ownerId !== user.id) return null;
+  const checked = cpredAutoDodge(character.data);
+  return (
+    <label
+      className="hud-auto-dodge"
+      title="Po trafieniu serwer sam rzuca ZW + Unik (bez Szczęścia), a przy wybuchu Odskok. Odznacz, żeby rzucać kubkiem i dorzucić Szczęście."
+    >
+      <input
+        type="checkbox"
+        checked={checked}
+        onChange={(event) =>
+          queueCharacterSave(character.id, { data: { autoDodge: event.target.checked } })
+        }
+      />
+      <span>Unik i Odskok automatycznie</span>
+    </label>
+  );
+}
+
 /** SP · RUCH · EMP — the numbers that decide a fight and never used to show. */
 function Vitals({ vitals }: { vitals: HudVitals }) {
   const armor = vitals.armor;
@@ -746,6 +779,7 @@ export function CombatHud() {
             vitals={context.vitals}
             container={token.container}
           />
+          <AutoDodgeToggle characterId={token.characterId ?? null} />
 
           <StatusChips statuses={token.statuses} />
           <StatEffectChips effects={context.statEffects} />

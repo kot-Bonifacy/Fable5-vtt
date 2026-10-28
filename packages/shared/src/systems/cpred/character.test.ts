@@ -4,6 +4,7 @@ import {
   SHEET_LINE_MAX_LENGTH,
   SKILL_SPECIALTY_MAX_LENGTH,
   buildCpredRegistry,
+  cpredAutoDodge,
   cpredSkillLabel,
   cpredSkillNeedsSpecialty,
   cpredSkillSpecialty,
@@ -271,6 +272,19 @@ describe('parseCharacterData', () => {
     expect(data.aliases).toBe('');
     expect(data.improvementPoints).toBe(0);
     expect(data.lifepath.culture).toBe('');
+  });
+
+  // Etap 63b: checkbox „Unik i Odskok automatycznie” jest domyślnie zaznaczony,
+  // więc karta bez pola unika sama, a tylko jawne `false` oddaje Unik graczowi.
+  it('reads the auto-dodge box as ticked unless it says false', () => {
+    expect(cpredAutoDodge(parseCharacterData(JSON.stringify({ eddies: 10 }), registry))).toBe(true);
+    const off = parseCharacterData(JSON.stringify({ autoDodge: false }), registry);
+    expect(off.autoDodge).toBe(false);
+    expect(cpredAutoDodge(off)).toBe(false);
+    expect(cpredAutoDodge(mergeCharacterData(off, { autoDodge: true }))).toBe(true);
+    const junk = parseCharacterData(JSON.stringify({ autoDodge: 'nie' }), registry);
+    expect(junk.autoDodge).toBeUndefined();
+    expect(cpredAutoDodge(junk)).toBe(true);
   });
 });
 

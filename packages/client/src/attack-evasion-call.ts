@@ -70,7 +70,10 @@ export function evasionCallsOf(
   const attackTotal = message.roll.total;
   const attackerName = message.roll.actor ?? 'Atakujący';
   const area = attack.area ? (attack.area.shape === 'cone' ? 'cone' : 'blast') : null;
+  // Etap 63b: Unik, który serwer rzuca sam, nie woła nikogo — kości już lecą.
+  const auto = attack.autoEvasion ?? [];
   return (attack.evasionPending ?? []).flatMap((tokenId): EvasionCall[] => {
+    if (auto.includes(tokenId)) return [];
     // Pojedynczy cel czeka tylko jako cel tej karty; wiersz wybuchu — jako
     // wiersz z `canEvade`. Cokolwiek innego to lista sprzed zmiany karty.
     if (!area && attack.targetTokenId !== tokenId) return [];
