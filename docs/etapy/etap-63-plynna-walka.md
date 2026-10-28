@@ -85,13 +85,37 @@ NPC MG z kartą — bez zmian, mimo że MG mógłby chcieć auto-uniku i dla nic
 dopisek na karcie ataku jest ten sam co przy ręcznym Uniku („Unik X: 14 vs 16 → …”) — wygląd
 kroków karty to 63c.
 
-## 63c — jedna karta ataku i pasek kroku ⬜
+## 63c — jedna karta ataku i pasek kroku ✅
+
+- [x] Karta ataku ma trzy kroki z numerem w kółku (`attackStepStates`, `attack-steps.ts`):
+      ① trafienie (rzut strzelca przeciw PT), ② Unik albo Odskok celu, ③ obrażenia. Stany:
+      zrobione, nieudane, „teraz”, czeka, nie dotyczy. Po pudle (bez obszaru) karta kończy się
+      na ①; chybiony ładunek obszarowy idzie dalej. Ogień zaporowy kroków nie ma.
+- [x] Odpowiedź obrońcy to pole karty, nie dopisek w `detail`: `RollAttackMeta.dodge`
+      (pojedynczy cel) i `RollAreaTarget.jump` (wiersz wybuchu, stożka) — `{ name, total,
+      luckSpent?, auto?, declined?, hit }`. „Bez uniku” MG to `declined`. Karty sprzed 63c
+      zostają ze słowami w `detail`.
+- [x] Rzut obrażeń i rozliczenia na celach wchodzą w krok ③ karty ataku w kanale klienta
+      (`foldAttackCards`): serwer zapisuje je dalej osobno, filtr idzie za kartą ataku, a karta
+      ataku dziedziczy „do mnie” z rozliczenia na mojej figurze. Rzut, którego atak nie doszedł
+      do kanału, stoi sam.
+- [x] Nad kubkiem pasek „Krok X/3 · …”: 1/3 „Rzuć na trafienie” (załadowany atak, poprawka
+      naboju), 2/3 „Rzuć Unik: X (przebij N)” u obrońcy, 2/3 „Czeka na Unik: X” u strzelca,
+      którego obrażenia czekają, 3/3 „Rzuć obrażenia 3k6”. Pasek i licznik Szczęścia stoją
+      w jednej kolumnie, a lewy panel podnosi rezerwę, żeby „Kończę turę” nie chowało się pod
+      nimi.
+
+**Rozstrzygnięcia bez pytań (63c):** krok ② zawsze ma numer 2, także gdy cel nie może unikać
+(„Cel nie unika”) — pasek zawsze liczy do 3, zgodnie z decyzją 2; pasek strzelca czeka także na
+Unik rzucany przez serwer (sekunda lotu kości) zamiast znikać; rzut obrażeń w kroku ③ pokazuje
+kości, sumę i plakietkę rany, bez osobnego nagłówka i godziny; dopisek „· sam” przy Uniku
+rzuconym przez serwer.
 
 ## Kryteria ukończenia
 
 - [x] Gracz słyszy przy swojej turze sygnał, którego nie myli z prośbą ani kubkiem.
 - [x] Slot broni pokazuje, ile ataków zostało w tej turze; „Kończę turę” pulsuje, gdy nic poza
       ruchem nie zostało.
-- [ ] Unik i Odskok rzucają się same przy zaznaczonym (domyślnie) checkboksie pod portretem.
-- [ ] Atak to jedna karta na czacie z krokami, a nad kubkiem stoi „Krok X/3”.
-- [ ] Oględziny gracza w Firefoksie, testy zielone.
+- [x] Unik i Odskok rzucają się same przy zaznaczonym (domyślnie) checkboksie pod portretem.
+- [x] Atak to jedna karta na czacie z krokami, a nad kubkiem stoi „Krok X/3”.
+- [x] Oględziny gracza w Firefoksie, testy zielone.

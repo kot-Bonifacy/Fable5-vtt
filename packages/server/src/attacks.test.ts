@@ -13,6 +13,7 @@ import type {
   CpredAttackMeta,
   CpredCharacterData,
   DamageLogEntry,
+  RollEvasionAnswer,
   RulerBroadcast,
   SceneView,
   SocketAck,
@@ -227,6 +228,8 @@ describe('ranged combat from the map', () => {
     evasionPending?: string[];
     /** The damage roll made for this card (#56). */
     damageRollId?: number;
+    /** Odpowiedź celu na trafienie — krok ② karty (etap 63c). */
+    dodge?: RollEvasionAnswer;
   }
 
   /** „Bez uniku" za obrońcę, na którego decyzję czekają obrażenia (03.10). */
@@ -768,8 +771,14 @@ describe('ranged combat from the map', () => {
     );
     const broadcast = await update;
     const rewritten = requireAttackCard(broadcast);
-    expect(rewritten.detail).toContain('Unik Ganger');
-    expect(rewritten.detail).toContain('(Szczęście 2)');
+    // Krok ② karty to pole, nie słowa w `detail` (etap 63c).
+    expect(rewritten.dodge).toEqual({
+      name: 'Ganger',
+      total: evaded.total,
+      luckSpent: 2,
+      hit: evaded.hit,
+    });
+    expect(rewritten.detail).not.toContain('Unik Ganger');
     const sheet = await built.prisma.character.findUniqueOrThrow({ where: { id: defender.id } });
     expect((JSON.parse(sheet.data) as CpredCharacterData).luckCurrent).toBe(3);
     expect(rewritten.hit).toBe(evaded.hit);
@@ -938,7 +947,7 @@ describe('ranged combat from the map', () => {
     expect((auto.card as { autoEvasion?: string[] }).autoEvasion).toEqual([ally.token.id]);
     expect(auto.update?.dice?.title).toBe('Unik: Kumpel');
     const dodged = auto.update && requireAttackCard(auto.update);
-    expect(dodged?.detail).toContain('Unik Kumpel');
+    expect(dodged?.dodge).toMatchObject({ name: 'Kumpel', auto: true });
     expect(dodged?.evasionPending).toBeUndefined();
 
     // Odznaczony — wezwanie jak przed etapem.
@@ -1449,7 +1458,7 @@ describe('ranged combat from the map', () => {
       );
       const rewritten = requireAttackCard(await update);
       // Karta nazywa figurę, a nie kartę, której nie ma.
-      expect(rewritten.detail).toContain('Unik Ochroniarz');
+      expect(rewritten.dodge?.name).toBe('Ochroniarz');
       expect(rewritten.hit).toBe(evaded.hit);
       // Rzut jest rzutem: k10 w CP RED wybucha i pęka, więc żadnego przedziału
       // nie da się tu obiecać — liczy się to, że **jakiś** rzut padł i że kartę
@@ -2602,7 +2611,7 @@ describe('ranged combat from the map', () => {
       expect((await emitAck(gm, 'attack:no-evade', { messageId })).ok).toBe(true);
       const after = attackCard(await updated);
       expect(after?.evasionPending).toBeUndefined();
-      expect(after?.detail).toContain('bez uniku');
+      expect(after?.dodge).toEqual({ name: 'Szybki', declined: true, hit: true });
 
       const logged = waitForDamageOn(gm, quickTokenId);
       expect((await rollDamageFor(messageId)).ok).toBe(true);

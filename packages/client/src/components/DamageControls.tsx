@@ -182,23 +182,35 @@ export function DamageRow({
   message,
   entry,
   isGm,
+  nested = false,
 }: {
   message: ChatMessageView;
   entry: DamageLogEntry;
   isGm: boolean;
+  /**
+   * W kroku ③ karty ataku (etap 63c): bez skóry osobnej karty i bez godziny —
+   * nagłówek jest jeden — karty ataku (`.chat-message-meta` niesie ikonę rubryki).
+   */
+  nested?: boolean;
 }) {
   const stopped = entry.damageThrough === 0 && entry.bonusDamage === 0;
   return (
-    <div className={`chat-message chat-damage${entry.undone ? ' chat-damage--undone' : ''}`}>
-      <div className="chat-message-meta">
+    <div
+      className={`${nested ? 'chat-damage chat-damage--nested' : 'chat-message chat-damage'}${
+        entry.undone ? ' chat-damage--undone' : ''
+      }`}
+    >
+      <div className={nested ? 'chat-damage-meta' : 'chat-message-meta'}>
         <span className="chat-message-author">{entry.targetName}</span>
         <span className="chat-damage-location">{entry.locationLabel}</span>
-        <span className="chat-message-time">
-          {new Date(message.createdAt).toLocaleTimeString('pl-PL', {
-            hour: '2-digit',
-            minute: '2-digit',
-          })}
-        </span>
+        {!nested && (
+          <span className="chat-message-time">
+            {new Date(message.createdAt).toLocaleTimeString('pl-PL', {
+              hour: '2-digit',
+              minute: '2-digit',
+            })}
+          </span>
+        )}
         {isGm && !entry.undone && (
           <button
             type="button"

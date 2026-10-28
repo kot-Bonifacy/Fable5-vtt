@@ -101,6 +101,14 @@ export function attackShooterFor(
   };
 }
 
+/** Kości obrażeń z karty: „3k6”, a przy serii „2k6 ×3” (karta, kubek, pasek kroku). */
+export function attackDamageDice(attack: RollAttackMeta): string | undefined {
+  if (attack.damageNotation === undefined) return undefined;
+  return attack.damageMultiplier && attack.damageMultiplier > 1
+    ? `${attack.damageNotation} ×${attack.damageMultiplier}`
+    : attack.damageNotation;
+}
+
 /** Rzut obrażeń za tę kartę ataku, gotowy do włożenia w kubek. */
 export function damageRollFor(
   messageId: number,
@@ -108,11 +116,8 @@ export function damageRollFor(
   shooter: AttackShooter,
 ): PendingRoll | null {
   const system = attack.system as AttackSystem;
-  if (!system.weaponRowId || attack.damageNotation === undefined) return null;
-  const dice =
-    attack.damageMultiplier && attack.damageMultiplier > 1
-      ? `${attack.damageNotation} ×${attack.damageMultiplier}`
-      : attack.damageNotation;
+  const dice = attackDamageDice(attack);
+  if (!system.weaponRowId || dice === undefined) return null;
   return {
     ...shooter.address,
     characterName: shooter.name,
@@ -152,7 +157,7 @@ export function openDamageCallFor(
   skip: ReadonlySet<number>,
   now: number = Date.now(),
   maxAgeMs: number = 2 * 60 * 60 * 1000,
-): { messageId: number; pending: PendingRoll } | null {
+): { messageId: number; pending: PendingRoll; dice: string } | null {
   if (!user) return null;
   for (let i = items.length - 1; i >= 0; i--) {
     const item = items[i]!;
@@ -165,7 +170,7 @@ export function openDamageCallFor(
     const { shooter, leads } = attackShooterFor(message, attack, characters, tokens, user);
     if (!shooter || !leads) continue;
     const pending = damageRollFor(message.id, attack, shooter);
-    if (pending) return { messageId: message.id, pending };
+    if (pending) return { messageId: message.id, pending, dice: attackDamageDice(attack)! };
   }
   return null;
 }

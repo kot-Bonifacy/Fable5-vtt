@@ -40,6 +40,7 @@ import {
 import { useBetweenSessions } from '../session-view.js';
 import { openDamageCallFor } from '../attack-damage-call.js';
 import { evasionCallKey, openEvasionCallsFor, type EvasionCall } from '../attack-evasion-call.js';
+import { awaitedDodgeStepFor, cupStepLabel, type CupStep } from '../attack-steps.js';
 import { useCharacterStore } from '../stores/characterStore.js';
 import { useTokenStore } from '../stores/tokenStore.js';
 import { NumberStepper } from './NumberStepper.js';
@@ -177,7 +178,7 @@ type CupMode =
    * Szczęścia ani modyfikatora, więc chwyt od razu potrząsa kubkiem, a `Esc`
    * odkłada wezwanie (wraca guzikiem „Na kubek" na karcie ataku).
    */
-  | { kind: 'damage'; messageId: number; pending: PendingRoll }
+  | { kind: 'damage'; messageId: number; pending: PendingRoll; dice: string }
   /**
    * Trafienie czeka na Unik obrońcy (17.10, MG) — kubek obrońcy woła sam,
    * jak kubek strzelca przy obrażeniach. Chwyt od razu potrząsa (Unik nie ma
@@ -185,6 +186,33 @@ type CupMode =
    * dopóki serwer czeka.
    */
   | { kind: 'dodge'; call: EvasionCall };
+
+/**
+ * Krok ataku, który kubek właśnie trzyma (etap 63c, decyzja MG 2): ① strzał,
+ * ② Unik obrońcy, ③ obrażenia — ten sam numer, co na karcie ataku. Ogień
+ * zaporowy kroków nie ma: ustala PT dla innych i niczego nie rani wprost.
+ */
+function attackStepOf(mode: CupMode): CupStep | null {
+  switch (mode.kind) {
+    case 'attack':
+      return mode.pending.request.mode === 'suppressive'
+        ? null
+        : { step: 1, text: 'Rzuć na trafienie' };
+    case 'evasion':
+      return mode.pending.kind === 'smart'
+        ? { step: 1, text: 'Popraw strzał' }
+        : { step: 2, text: `Rzuć ${mode.pending.title}` };
+    case 'dodge':
+      return {
+        step: 2,
+        text: `Rzuć ${mode.call.pending.title} (przebij ${mode.call.attackTotal})`,
+      };
+    case 'damage':
+      return { step: 3, text: `Rzuć obrażenia ${mode.dice}` };
+    default:
+      return null;
+  }
+}
 
 /**
  * Karta, której Szczęście ten rzut może wydać — albo null, gdy rzut go nie
@@ -347,7 +375,14 @@ export function DiceCup() {
     // Obrażenia za własne trafienie: walka trwa, więc wygrywają z wezwaniem MG,
     // ale nie z rzutem już wziętym do ręki (ten sam szczebel co wezwanie).
     const damage = openDamageCallFor(items, user, characters, tokens, skippedDamageCalls);
-    if (damage) return { kind: 'damage', messageId: damage.messageId, pending: damage.pending };
+    if (damage) {
+      return {
+        kind: 'damage',
+        messageId: damage.messageId,
+        pending: damage.pending,
+        dice: damage.dice,
+      };
+    }
     // Wezwanie wygrywa z formułą w polu czatu, ale przegrywa z każdym rzutem
     // już wziętym do ręki: kto trzyma załadowany kubek, ten go najpierw rzuci.
     const call = openCheckCallFor(items, myUserId);
@@ -385,6 +420,12 @@ export function DiceCup() {
     skippedEvasionCalls,
   ]);
   modeRef.current = mode;
+  /** Kubek strzelca stoi pusty, bo obrażenia czekają na Unik celu (etap 63c). */
+  const awaitedDodge = useMemo(
+    () => (mode.kind === 'fun' ? awaitedDodgeStepFor(items, user, characters, tokens) : null),
+    [mode.kind, items, user, characters, tokens],
+  );
+  const step = attackStepOf(mode) ?? awaitedDodge;
   const luckSheet = luckSheetOf(mode);
   const luckPool = luckSheet ? (characters[luckSheet]?.data.luckCurrent ?? 0) : 0;
   const luck = Math.min(cupLuck, luckPool);
@@ -806,21 +847,35 @@ export function DiceCup() {
       Znika w ręce: w trakcie potrząsania nic już się nie deklaruje. Nie ma go
       też przy Teście z okna rzutu — tam gracz już raz wybrał Szczęście.
     */}
-      {luckSheet && luckPool > 0 && !shaking && !luckDeclaredIn(mode) && (
-        <div
-          className={`dice-cup-luck${luck > 0 ? ' dice-cup-luck--spent' : ''}`}
-          title="Punkty Szczęścia dodane do tego rzutu (+1 za punkt). Wydane przepadają, nawet gdy rzut się nie uda."
-        >
-          <span className="dice-cup-luck-label">Szczęście</span>
-          <NumberStepper
-            min={0}
-            max={luckPool}
-            value={luck}
-            onChange={(next) => useRollStore.getState().setCupLuck(next)}
-            label="Szczęście do tego rzutu"
-            format={(value) => (value > 0 ? `+${value}` : '0')}
-          />
-          <span className="dice-cup-luck-pool">z {luckPool}</span>
+      {!shaking && (step || (luckSheet && luckPool > 0 && !luckDeclaredIn(mode))) && (
+        <div className="dice-cup-stack">
+          {/* Krok ataku (etap 63c): ten sam numer, co na karcie ataku na czacie. */}
+          {step && (
+            <p
+              className={`dice-cup-step dice-cup-step--${step.step}`}
+              role="status"
+              aria-live="polite"
+            >
+              {cupStepLabel(step)}
+            </p>
+          )}
+          {luckSheet && luckPool > 0 && !luckDeclaredIn(mode) && (
+            <div
+              className={`dice-cup-luck${luck > 0 ? ' dice-cup-luck--spent' : ''}`}
+              title="Punkty Szczęścia dodane do tego rzutu (+1 za punkt). Wydane przepadają, nawet gdy rzut się nie uda."
+            >
+              <span className="dice-cup-luck-label">Szczęście</span>
+              <NumberStepper
+                min={0}
+                max={luckPool}
+                value={luck}
+                onChange={(next) => useRollStore.getState().setCupLuck(next)}
+                label="Szczęście do tego rzutu"
+                format={(value) => (value > 0 ? `+${value}` : '0')}
+              />
+              <span className="dice-cup-luck-pool">z {luckPool}</span>
+            </div>
+          )}
         </div>
       )}
     </>

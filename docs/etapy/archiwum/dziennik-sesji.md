@@ -1,5 +1,22 @@
 # Dziennik sesji — archiwum
 
+### Sesja 28.10, czwarta — etap 63a „Płynna walka gracza” (zlecenie MG)
+
+**Zlecenie:** dźwięk „twoja tura” myli się z innym, komunikaty trafienie/Unik/obrażenia zlewają
+się, nie wiadomo, czy został atak, Unik ma być automatyczny z checkboksem (domyślnie
+zaznaczonym). Dwie rundy pytań, decyzje MG 1–8 w `etap-63-plynna-walka.md`; MG przyjął podział
+63a → 63b → 63c. **Diagnoza dźwięku:** `turn.wav` i `request.wav` to to samo nagranie drewna.
+**Zmiana (63a):** `CpredHotbarWeaponSlot.attacks` + `weaponAttacksLeft`, `cpredTurnExhausted`
+(`hotbar.ts`), kropki `AttackPips` w `CombatHud.tsx`, `useTurnDone` i klasa
+`hud-end-turn--done` w `HudEndTurn.tsx`, CSS w `12-hud.css`, `attacks` w `hudSignature`;
+`cpredTurnBudget` gasi „Ataki” przy Akcji wydanej na co innego. **Dźwięk nie zmieniony:** MG
+odsłuchał 31 próbek z OpenGameArt (bart, HaelDB) i 52 Kenneya (przez OpenGameArt) — żadna nie
+pasuje; kenney.nl odmawia pobierania spoza przeglądarki (nie obchodzone). Na koniec MG dał
+własny plik z ttsMP3.com — `turn.wav` z niego (`prepare-natural.py --turn-only`). **Testy:** shared 2759,
+serwer 1669, klient 441 — zielone; `tsc` trzech pakietów, ESLint, Prettier. **Oglądane:** Ola
+w **Firefoksie** tymczasowym specem `99-ogledziny/t99-plynna-walka.spec.ts` (niecommitowany):
+kropki na pistolecie i Bijatyce, zgaszone po „Użyciu przedmiotu”, animacja `hud-end-turn-done`.
+
 ### Sesja 28.10, trzecia — etap 62 „Sieć ze sceny” (zlecenie MG)
 
 **Zlecenie:** „zrobić kilka nowych testów netrunnera E2E, bo w grze zauważyłem, że mimo tego, że

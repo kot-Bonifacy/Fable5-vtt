@@ -60,6 +60,7 @@ import { SightingRow } from './SightingRow.js';
 import { RollTableRow } from './RollTableCard.js';
 import { useAuthStore } from '../stores/authStore.js';
 import { chatContinuations } from '../chat-grouping.js';
+import { foldAttackCards } from '../attack-steps.js';
 import { gmAttentionKey } from '../gm-attention.js';
 import { useChatFilterStore } from '../stores/chatFilterStore.js';
 import { useChatStore, type ChatItem } from '../stores/chatStore.js';
@@ -154,8 +155,54 @@ function RollBreakdown({ roll }: { roll: RollResult }) {
   );
 }
 
+/**
+ * Krok ③ karty ataku (etap 63c): rzut obrażeń i jego rozliczenia na celach,
+ * wciągnięte z kanału (`foldAttackCards`). Rzut bez nagłówka osobnej karty —
+ * kości, suma i plakietka rany; „Zastosuj” MG zostaje przy nim jak na
+ * osobnej karcie, bo po „Cofnij” wraca.
+ */
+function AttackDamageParts({ parts, isGm }: { parts: ChatMessageView[]; isGm: boolean }) {
+  return (
+    <div className="chat-attack-damage">
+      {parts.map((part) => {
+        if (part.kind === 'damage' && part.damage) {
+          return <DamageRow key={part.id} message={part} entry={part.damage} isGm={isGm} nested />;
+        }
+        const roll = part.roll;
+        if (!roll) return null;
+        return (
+          <div key={part.id} className="chat-attack-damage-roll">
+            <div className="chat-roll-header">
+              <span className="chat-roll-notation">
+                {roll.title ?? displayDiceNotation(roll.notation)}
+              </span>
+              <span className="chat-roll-total">{roll.total}</span>
+            </div>
+            <RollDice roll={roll} />
+            {roll.criticalDamage && (
+              <div className="chat-roll-badges">
+                <span className="chat-roll-badge chat-roll-badge--injury">Rana krytyczna!</span>
+              </div>
+            )}
+            {isGm && roll.damage && <DamageApplyControls message={part} roll={roll} />}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 /** A roll result card — visually distinct from plain chat messages. */
-function RollRow({ message, isGm }: { message: ChatMessageView; isGm: boolean }) {
+function RollRow({
+  message,
+  isGm,
+  attackParts,
+}: {
+  message: ChatMessageView;
+  isGm: boolean;
+  /** Wiersze kroku ③ tej karty ataku (etap 63c). */
+  attackParts?: ChatMessageView[];
+}) {
   const roll = message.roll;
   if (!roll) return null;
   const isGmRoll = message.kind === 'gmroll';
@@ -228,7 +275,17 @@ function RollRow({ message, isGm }: { message: ChatMessageView; isGm: boolean })
             </span>
           </div>
         )}
-        {roll.attack && <AttackRow message={message} attack={roll.attack} />}
+        {roll.attack && (
+          <AttackRow
+            message={message}
+            attack={roll.attack}
+            damageParts={
+              attackParts && attackParts.length > 0 ? (
+                <AttackDamageParts parts={attackParts} isGm={isGm} />
+              ) : undefined
+            }
+          />
+        )}
         {roll.opposed && <OpposedRow message={message} opposed={roll.opposed} />}
         {/* Damage is applied by the GM only — players never see the button. */}
         {isGm && roll.damage && <DamageApplyControls message={message} roll={roll} />}
@@ -720,15 +777,17 @@ function FullMessageRow({
   myUserId,
   trace,
   canResolveProposal,
+  attackParts,
 }: {
   message: ChatMessageView;
   isGm: boolean;
   myUserId: string;
   trace?: BotTraceBroadcast;
   canResolveProposal: boolean;
+  attackParts?: ChatMessageView[];
 }) {
   if (message.kind === 'roll' || message.kind === 'gmroll') {
-    return <RollRow message={message} isGm={isGm} />;
+    return <RollRow message={message} isGm={isGm} {...(attackParts ? { attackParts } : {})} />;
   }
   if (message.kind === 'damage' && message.damage) {
     return <DamageRow message={message} entry={message.damage} isGm={isGm} />;
@@ -815,6 +874,7 @@ function FeedRow({
   myUserId,
   trace,
   canResolveProposal,
+  attackParts,
 }: {
   item: ChatItem;
   involvement: ChatInvolvement | null;
@@ -823,6 +883,7 @@ function FeedRow({
   myUserId: string;
   trace?: BotTraceBroadcast;
   canResolveProposal: boolean;
+  attackParts?: ChatMessageView[];
 }) {
   if (item.type === 'note') return <NoteRow item={item} />;
   const base = involvement ? INVOLVEMENT_CLASS[involvement] : 'chat-row';
@@ -842,6 +903,7 @@ function FeedRow({
         myUserId={myUserId}
         canResolveProposal={canResolveProposal}
         {...(trace ? { trace } : {})}
+        {...(attackParts ? { attackParts } : {})}
       />
     </div>
   );
@@ -990,15 +1052,27 @@ export function ChatPanel() {
     [myTokenKey],
   );
 
-  /** Stan każdej wiadomości względem patrzącego — dla filtra „Ja” i dla opakowania. */
+  /** Rzuty obrażeń i rozliczenia wciągnięte do kart ataku (etap 63c). */
+  const attackFold = useMemo(() => foldAttackCards(items), [items]);
+
+  /**
+   * Stan każdej wiadomości względem patrzącego — dla filtra „Ja” i dla
+   * opakowania. Karta ataku bez własnego stanu bierze go z wciągniętych
+   * wierszy: rozliczenie na mojej figurze jest „do mnie” także w kroku ③.
+   */
   const involvements = useMemo(() => {
     const out = new Map<number, ChatInvolvement | null>();
     for (const item of items) {
       if (item.type !== 'message') continue;
       out.set(item.message.id, chatInvolvement(item.message, myUserId, isGm, myTokenIds));
     }
+    for (const [attackId, parts] of attackFold.children) {
+      if (out.get(attackId)) continue;
+      const inherited = parts.map((part) => out.get(part.id)).find(Boolean);
+      if (inherited) out.set(attackId, inherited);
+    }
     return out;
-  }, [items, myUserId, isGm, myTokenIds]);
+  }, [items, myUserId, isGm, myTokenIds, attackFold]);
 
   const feed = useMemo<FeedEntry[]>(() => {
     const out: FeedEntry[] = [];
@@ -1010,6 +1084,8 @@ export function ChatPanel() {
       run = [];
     };
     for (const item of items) {
+      // Wiersz kroku ③ stoi w swojej karcie ataku, a filtr idzie za nią.
+      if (item.type === 'message' && attackFold.folded.has(item.message.id)) continue;
       const category = item.type === 'note' ? 'table' : chatCategoryOf(item.message.kind);
       const involvement = item.type === 'note' ? null : involvements.get(item.message.id);
       // Notatka lokalna powstała wyłącznie na tym ekranie, więc z definicji jest
@@ -1027,7 +1103,7 @@ export function ChatPanel() {
     }
     flush();
     return out;
-  }, [items, categories, mineOnly, involvements, openRuns, myUserId, isGm]);
+  }, [items, categories, mineOnly, involvements, openRuns, myUserId, isGm, attackFold]);
 
   /**
    * Karty doklejone do poprzedniej (etap 60b). Liczone na `feed`, czyli po
@@ -1094,6 +1170,8 @@ export function ChatPanel() {
 
   function renderItem(item: ChatItem, key: string) {
     const trace = item.type === 'message' ? botTraces[item.message.id] : undefined;
+    const attackParts =
+      item.type === 'message' ? attackFold.children.get(item.message.id) : undefined;
     return (
       <FeedRow
         key={key}
@@ -1106,6 +1184,7 @@ export function ChatPanel() {
           item.type === 'message' && (isGm || item.message.proposal?.controllerUserId === myUserId)
         }
         {...(trace ? { trace } : {})}
+        {...(attackParts ? { attackParts } : {})}
       />
     );
   }

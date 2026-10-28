@@ -655,7 +655,10 @@ describe('cover, throwing objects and jumping clear', () => {
     // Whether the dodge landed is up to the dice; either way the attempt is
     // spent and the card says what happened.
     expect(row?.canEvade).toBe(false);
-    expect(rewritten?.detail).toMatch(/Odskok Zwinny/);
+    // Wynik siedzi w wierszu (etap 63c), więc przycięty widok gracza zabiera go razem z nim.
+    expect(row?.jump).toMatchObject({ name: 'Zwinny', total: ack.data?.total });
+    expect(row?.jump?.hit).toBe(ack.data?.hit);
+    expect(rewritten?.detail).not.toMatch(/Odskok Zwinny/);
     if (ack.data && !ack.data.hit) expect(row?.spared).toBe('evaded');
 
     expect(
@@ -740,9 +743,9 @@ describe('cover, throwing objects and jumping clear', () => {
       const rewritten = broadcast.message.roll?.attack as AttackCard | undefined;
       expect(rewritten?.evasionPending).toBeUndefined();
       expect(rewritten?.autoEvasion).toBeUndefined();
-      expect(rewritten?.detail).toMatch(/Odskok Zwinny/);
       const row = rewritten?.area?.targets.find((entry) => entry.tokenId === nimbleTokenId);
       expect(row?.canEvade).toBe(false);
+      expect(row?.jump).toMatchObject({ name: 'Zwinny', auto: true });
     } finally {
       await emitAck(player, 'character:update', {
         characterId: nimbleCharacterId,

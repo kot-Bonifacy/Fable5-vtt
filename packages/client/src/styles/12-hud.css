@@ -34,6 +34,17 @@
   user-select: none;
 }
 
+/* Pasek kroku ataku i licznik Szczęścia (`.dice-cup-stack`) stoją nad kubkiem
+   — rezerwa rośnie o każdy z nich, żeby „Kończę turę” (przyklejone nad
+   rezerwą) nie chowało się pod nimi (etap 63c). */
+body:has(.dice-cup-stack > :only-child) .hud-rail {
+  padding-bottom: 6.7rem;
+}
+
+body:has(.dice-cup-stack > :nth-child(2)) .hud-rail {
+  padding-bottom: 8.6rem;
+}
+
 /* Collapsed keeps the portrait and a sliver of health: „give me back the map"
    must not also mean „forget how hurt I am". */
 .hud-rail--collapsed {

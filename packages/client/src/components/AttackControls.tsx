@@ -1,11 +1,18 @@
-import type { ChatMessageView, RollAttackMeta } from '@vtt/shared';
+import type { ReactNode } from 'react';
+import type { ChatMessageView, RollAttackMeta, RollEvasionAnswer } from '@vtt/shared';
 import { ROLE_GM, formatMetres } from '@vtt/shared';
 import { useAuthStore } from '../stores/authStore.js';
 import { useCharacterStore } from '../stores/characterStore.js';
 import { useRollStore } from '../stores/rollStore.js';
 import { useTokenStore } from '../stores/tokenStore.js';
 import { declineEvasion } from '../socket.js';
-import { attackAwaitsDamage, attackShooterFor, damageRollFor } from '../attack-damage-call.js';
+import {
+  attackAwaitsDamage,
+  attackDamageDice,
+  attackShooterFor,
+  damageRollFor,
+} from '../attack-damage-call.js';
+import { attackPendingNames, attackStepStates, type AttackStepState } from '../attack-steps.js';
 
 /**
  * The attack card on the chat (stage 16).
@@ -17,13 +24,20 @@ import { attackAwaitsDamage, attackShooterFor, damageRollFor } from '../attack-d
  * The damage roll has no button here since 14.10 (MG): once nobody is left to
  * dodge, the shooter's cup calls for it by itself (`attack-damage-call.ts`).
  * The card only says that, and offers „Na kubek" when the call was put away.
+ *
+ * Since etap 63c the card is three steps (`attack-steps.ts`), and the damage
+ * roll with its settlements comes in as `damageParts` — drawn by the chat
+ * panel, which owns the roll and damage cards.
  */
 export function AttackRow({
   message,
   attack,
+  damageParts,
 }: {
   message: ChatMessageView;
   attack: RollAttackMeta;
+  /** Rzut obrażeń i rozliczenia wciągnięte do kroku ③ (etap 63c). */
+  damageParts?: ReactNode;
 }) {
   const characters = useCharacterStore((s) => s.characters);
   const tokens = useTokenStore((s) => s.tokens);
@@ -119,21 +133,11 @@ export function AttackRow({
     });
   }
 
-  /**
-   * Obrażenia czekają na decyzję o Uniku (03.10, decyzja MG po T8b) i padają
-   * raz na trafienie (#56). Obie rzeczy rozstrzyga serwer; karta mówi tylko,
-   * na kogo czeka, żeby przycisk nie wyglądał na zepsuty.
-   */
   const pending = attack.evasionPending ?? [];
   /** Unik, który serwer rzuca sam (etap 63b) — bez guzików, kości już lecą. */
   const autoEvasion = attack.autoEvasion ?? [];
   const damageRolled = attack.damageRollId !== undefined;
-  const pendingNames = pending.map(
-    (tokenId) =>
-      attack.area?.targets.find((target) => target.tokenId === tokenId)?.name ??
-      tokens[tokenId]?.name ??
-      'cel',
-  );
+  const pendingNames = attackPendingNames(attack, tokens);
   /** Ten widz może rzucić obrażenia za tę kartę i jeszcze nikt ich nie rzucił. */
   const awaitsMyDamage = shooter !== undefined && attackAwaitsDamage(attack);
   /** Kubek tego widza sam o nie woła — chyba że wezwanie odłożył `Esc`. */
@@ -149,10 +153,7 @@ export function AttackRow({
     const pendingRoll = damageRollFor(message.id, attack, shooter);
     if (pendingRoll) store.loadCup(pendingRoll);
   }
-  const damageDice =
-    attack.damageMultiplier && attack.damageMultiplier > 1
-      ? `${attack.damageNotation} ×${attack.damageMultiplier}`
-      : attack.damageNotation;
+  const damageDice = attackDamageDice(attack);
   /**
    * „Bez uniku" for a single target — the GM's alone since 17.10: a dodge after
    * a known hit costs nothing, so a player always rolls it.
@@ -162,6 +163,22 @@ export function AttackRow({
     attack.targetTokenId !== undefined &&
     pending.includes(attack.targetTokenId) &&
     !autoEvasion.includes(attack.targetTokenId);
+  /** „Unik: X" na karcie — cel, za który ten widz może rzucić, i serwer na niego czeka. */
+  const mayDodge =
+    !attack.evaded &&
+    !attack.noEvade &&
+    !damageRolled &&
+    attack.hit !== undefined &&
+    (defender ?? statistDefender) !== undefined &&
+    !(attack.targetTokenId !== undefined && autoEvasion.includes(attack.targetTokenId)) &&
+    // Gracz dostaje Unik tylko tam, gdzie serwer na niego czeka (17.10):
+    // guzik bez wstrzymanych obrażeń (REF poniżej 8 przy strzale, pudło)
+    // znikał po rzucie strzelca i wyglądał na przegapioną szansę. MG
+    // zostaje przy swoim — to on orzeka, że cel widział strzał.
+    (isGm || (attack.targetTokenId !== undefined && pending.includes(attack.targetTokenId)));
+  const steps = attackStepStates(attack);
+  const rollTotal = message.roll?.total ?? 0;
+  const evasionVerb = attack.area && attack.area.shape !== 'cone' ? 'Odskok' : 'Unik';
 
   const verdict =
     attack.hit === undefined
@@ -257,92 +274,101 @@ export function AttackRow({
         </ul>
       )}
 
-      <div className="chat-attack-actions">
-        {!attack.evaded &&
-          !attack.noEvade &&
-          !damageRolled &&
-          attack.hit !== undefined &&
-          (defender ?? statistDefender) &&
-          !(attack.targetTokenId !== undefined && autoEvasion.includes(attack.targetTokenId)) &&
-          // Gracz dostaje Unik tylko tam, gdzie serwer na niego czeka (17.10):
-          // guzik bez wstrzymanych obrażeń (REF poniżej 8 przy strzale, pudło)
-          // znikał po rzucie strzelca i wyglądał na przegapioną szansę. MG
-          // zostaje przy swoim — to on orzeka, że cel widział strzał.
-          (isGm ||
-            (attack.targetTokenId !== undefined && pending.includes(attack.targetTokenId))) && (
-            <button
-              type="button"
-              className="small-button"
-              title="Zamiast PT z tabeli — rzut ZW + Unik obrońcy (ładuje kubek)"
-              onClick={rollEvasion}
-            >
-              Unik: {defender?.name ?? statistDefender?.name}
-            </button>
-          )}
-        {mayAnswerDodge && (
-          <button
-            type="button"
-            className="small-button"
-            title="Obrońca nie unika — obrażenia przestają czekać"
-            onClick={() => declineEvasion({ messageId: message.id })}
-          >
-            Bez uniku
-          </button>
-        )}
-        {/*
-          „Amunicja inteligentna": the round offers to correct a near miss
-          (stage 16h). Only the shooter sees it, because only their sheet may
-          spend the Luck the second roll allows.
-        */}
-        {attack.smart && attackerSheet && (
-          <button
-            type="button"
-            className="small-button"
-            title={`Nabój naprowadza się po chybieniu o ${attack.smart.missedBy}: 1k10 + ${
-              attack.smart.bonus
-            } przeciw temu samemu PT${
-              attack.smart.requires ? ` · wymaga: ${attack.smart.requires}` : ''
-            }`}
-            onClick={rollSmart}
-          >
-            Popraw strzał 1k10+{attack.smart.bonus}
-          </button>
-        )}
-      </div>
-      {/* Widać nie tylko w podpowiedzi: wyszarzony guzik bez słowa wyglądał
-          na zepsuty (T8b, 03.10). */}
-      {attack.damageNotation !== undefined && pending.length > 0 && !damageRolled && (
-        <p className="chat-attack-detail">
-          Obrażenia czekają na decyzję o uniku: {pendingNames.join(', ')}.
-        </p>
-      )}
       {/*
-        Rzut obrażeń woła kubek strzelca (14.10). Guzik `damageNotation` —
-        nie `hit`, nie `area` — bo o tym, czy jest co rzucać, rozstrzyga serwer
-        (`ammoDealsDamage`): dym czy gaz trafia, a obrażeń nie ma.
+        Kroki ataku (etap 63c): ① trafienie → ② Unik celu → ③ obrażenia. Karta
+        rośnie na żywo, a rzut obrażeń i rozliczenia na celach wchodzą w krok ③
+        (`foldAttackCards`) zamiast stać pod nią osobnymi kartami.
       */}
-      {awaitsMyDamage && (
-        <p className="chat-attack-detail">
-          {cupCalls ? (
-            <>Obrażenia {damageDice} czekają na kubku.</>
-          ) : (
-            <>
-              Obrażenia {damageDice} do rzutu.{' '}
+      {steps && (
+        <ol className="chat-attack-steps">
+          <li className={`chat-attack-step chat-attack-step--${steps.hit}`}>
+            <span className="chat-attack-step-text">
+              {steps.hit === 'done' ? 'Trafienie' : 'Pudło'} — rzut {rollTotal}
+              {steps.hit === 'failed' && attack.area && ' · ładunek spada obok celu'}
+            </span>
+            {/*
+              „Amunicja inteligentna": the round offers to correct a near miss
+              (stage 16h). Only the shooter sees it, because only their sheet may
+              spend the Luck the second roll allows.
+            */}
+            {attack.smart && attackerSheet && (
               <button
                 type="button"
                 className="small-button"
-                title={
-                  leads
-                    ? 'Obrażenia znów czekają na kubku'
-                    : `Rzut za ${shooter?.name ?? 'strzelca'} — ładuje kubek`
-                }
-                onClick={damageToCup}
+                title={`Nabój naprowadza się po chybieniu o ${attack.smart.missedBy}: 1k10 + ${
+                  attack.smart.bonus
+                } przeciw temu samemu PT${
+                  attack.smart.requires ? ` · wymaga: ${attack.smart.requires}` : ''
+                }`}
+                onClick={rollSmart}
               >
-                Na kubek
+                Popraw strzał 1k10+{attack.smart.bonus}
               </button>
-            </>
+            )}
+          </li>
+          {steps.evasion && (
+            <li className={`chat-attack-step chat-attack-step--${steps.evasion}`}>
+              <span className="chat-attack-step-text">
+                {evasionStepText(attack, steps.evasion, pendingNames, rollTotal, evasionVerb)}
+              </span>
+              {mayDodge && (
+                <button
+                  type="button"
+                  className="small-button"
+                  title="Zamiast PT z tabeli — rzut ZW + Unik obrońcy (ładuje kubek)"
+                  onClick={rollEvasion}
+                >
+                  Unik: {defender?.name ?? statistDefender?.name}
+                </button>
+              )}
+              {mayAnswerDodge && (
+                <button
+                  type="button"
+                  className="small-button"
+                  title="Obrońca nie unika — obrażenia przestają czekać"
+                  onClick={() => declineEvasion({ messageId: message.id })}
+                >
+                  Bez uniku
+                </button>
+              )}
+            </li>
           )}
-        </p>
+          {steps.damage && (
+            <li className={`chat-attack-step chat-attack-step--${steps.damage}`}>
+              {steps.damage === 'done' ? (
+                (damageParts ?? <span className="chat-attack-step-text">Obrażenia rzucone.</span>)
+              ) : (
+                <span className="chat-attack-step-text">
+                  {steps.damage === 'skipped' ? (
+                    'Bez obrażeń'
+                  ) : steps.damage === 'waiting' ? (
+                    <>Obrażenia {damageDice} czekają na Unik</>
+                  ) : !awaitsMyDamage ? (
+                    <>Obrażenia {damageDice} — rzuca strzelec</>
+                  ) : cupCalls ? (
+                    <>Obrażenia {damageDice} czekają na kubku</>
+                  ) : (
+                    <>
+                      Obrażenia {damageDice} do rzutu{' '}
+                      <button
+                        type="button"
+                        className="small-button"
+                        title={
+                          leads
+                            ? 'Obrażenia znów czekają na kubku'
+                            : `Rzut za ${shooter?.name ?? 'strzelca'} — ładuje kubek`
+                        }
+                        onClick={damageToCup}
+                      >
+                        Na kubek
+                      </button>
+                    </>
+                  )}
+                </span>
+              )}
+            </li>
+          )}
+        </ol>
       )}
       {attack.smart?.requires && (
         <p className="chat-attack-detail">
@@ -351,4 +377,49 @@ export function AttackRow({
       )}
     </div>
   );
+}
+
+/** „Unik Iskra: 14 vs 19 → unik udany” — jedna odpowiedź obrońcy. */
+function answerText(answer: RollEvasionAnswer, rollTotal: number, verb: string): string {
+  if (answer.declined) return `${answer.name}: bez uniku`;
+  const luck = answer.luckSpent ? ` (Szczęście ${answer.luckSpent})` : '';
+  const outcome =
+    verb === 'Odskok'
+      ? answer.hit
+        ? 'nie zdążył'
+        : 'poza obszarem'
+      : answer.hit
+        ? 'trafienie mimo uniku'
+        : 'unik udany';
+  return `${verb} ${answer.name}: ${answer.total ?? '?'}${luck} vs ${rollTotal} → ${outcome}${
+    answer.auto ? ' · sam' : ''
+  }`;
+}
+
+/** Zdanie kroku ② — na kogo czeka albo jak odpowiedział. */
+function evasionStepText(
+  attack: RollAttackMeta,
+  state: AttackStepState,
+  pendingNames: string[],
+  rollTotal: number,
+  verb: string,
+): string {
+  if (state === 'waiting') {
+    const auto = attack.autoEvasion ?? [];
+    const allAuto = (attack.evasionPending ?? []).every((tokenId) => auto.includes(tokenId));
+    return allAuto
+      ? `${verb}: ${pendingNames.join(', ')} — kości w drodze`
+      : `Czeka na ${verb}: ${pendingNames.join(', ')}`;
+  }
+  if (state === 'skipped') return attack.area ? 'Nikt nie może odskoczyć' : 'Cel nie unika';
+  if (attack.area) {
+    const answers = attack.area.targets.flatMap((row) => (row.jump ? [row.jump] : []));
+    return answers.length > 0
+      ? answers.map((answer) => answerText(answer, rollTotal, verb)).join(' · ')
+      : `${verb} rozstrzygnięty`;
+  }
+  if (attack.dodge) return answerText(attack.dodge, rollTotal, verb);
+  // Karty sprzed 63c niosą Unik tylko słowami w `detail`, który stoi wyżej.
+  if (attack.noEvade) return 'Bez uniku';
+  return attack.hit ? 'Trafienie mimo uniku' : 'Unik udany';
 }

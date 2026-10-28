@@ -534,13 +534,38 @@ body:has(.creator-window) .dice-overlay {
   padding-right: 0.25rem;
 }
 
-/* Licznik Szczęścia nad kubkiem (22.10.2026). Osobny element, nie dziecko
-   kubka: chwyt kubka potrząsa, a strzałki licznika mają tylko liczyć. */
-.dice-cup-luck {
+/* Nad kubkiem stoją pasek kroku ataku (etap 63c) i licznik Szczęścia
+   (22.10.2026) — jedna kolumna od dołu, więc licznik zostaje tuż przy kubku,
+   a pasek nad nim. Osobne elementy, nie dzieci kubka: chwyt kubka potrząsa,
+   a strzałki licznika mają tylko liczyć. Rezerwę w lewym panelu podnosi
+   `12-hud.css` (`:has(.dice-cup-stack)`). */
+.dice-cup-stack {
   position: fixed;
   bottom: calc(1rem + 3.6rem);
   left: 1rem;
   z-index: 70;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.3rem;
+  max-width: 15.5rem;
+}
+
+/* Czarny pas jak „Kończę turę”: numer kroku czyta się z daleka, tekst mówi,
+   co rzucić. */
+.dice-cup-step {
+  margin: 0;
+  padding: 0.25rem 0.6rem;
+  background: var(--cp-bar);
+  color: var(--cp-bar-ink);
+  font-family: var(--font-ui-head);
+  font-size: 0.74rem;
+  letter-spacing: 0.06em;
+  clip-path: polygon(0 0, 100% 0, 100% calc(100% - 0.45rem), calc(100% - 0.45rem) 100%, 0 100%);
+  animation: notice-in 220ms ease-out;
+}
+
+.dice-cup-luck {
   display: flex;
   align-items: center;
   gap: 0.4rem;
