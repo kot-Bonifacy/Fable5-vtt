@@ -150,6 +150,110 @@
   color: var(--warn-bright);
 }
 
+/* Wybór systemu obronnego z ikonami (29.10) — natywny `<select>` nie pokaże
+   sylwetki drona, więc lista jest własna. Kolory paska narzędzi, sylwetka
+   w masce jak `.device-glyph-mark` kafelka „Grafik”. */
+.zone-picker {
+  position: relative;
+}
+
+.zone-picker-button,
+.zone-picker-option {
+  display: flex;
+  gap: 0.4rem;
+  align-items: center;
+  width: 100%;
+  padding: 0.2rem 0.45rem;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--map-ink-bright);
+  font: inherit;
+  font-size: 0.8rem;
+  text-align: left;
+  cursor: pointer;
+}
+
+.zone-picker-button {
+  min-width: 12rem;
+  max-width: 16rem;
+  background: var(--map-panel);
+  border: 1px solid var(--map-line);
+}
+
+.zone-picker-name {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.zone-picker-caret {
+  color: var(--map-ink);
+}
+
+.zone-picker-list {
+  position: absolute;
+  top: calc(100% + 0.2rem);
+  left: 0;
+  z-index: 30;
+  width: max-content;
+  min-width: 100%;
+  max-width: min(20rem, 80vw);
+  max-height: 22rem;
+  overflow-y: auto;
+  padding: 0.25rem;
+  background: var(--map-panel);
+  border: 1px solid var(--map-line);
+  border-radius: 6px;
+  box-shadow: 0 6px 18px rgb(0 0 0 / 45%);
+}
+
+.zone-picker-group {
+  margin: 0.3rem 0.45rem 0.15rem;
+  color: var(--map-ink);
+  font-size: 0.68rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.zone-picker-option:hover,
+.zone-picker-option:focus-visible {
+  background: rgb(251 191 36 / 16%);
+  outline: none;
+}
+
+.zone-picker-option--active {
+  color: #fbbf24;
+}
+
+.zone-picker-empty {
+  margin: 0.3rem 0.45rem;
+  color: var(--map-ink);
+  font-size: 0.8rem;
+}
+
+/* Bursztyn strefy na mapie (`ZONE_GLYPH_TINT`), żeby lista i prostokąt mówiły
+   tym samym kolorem. */
+.zone-picker-icon {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 1.4rem;
+  height: 1.4rem;
+  color: #ffe2b0;
+}
+
+.zone-picker-icon .device-glyph-mark {
+  width: 100%;
+  height: 100%;
+  background: #ffe2b0;
+}
+
+.zone-picker-icon--hazard {
+  color: #fbbf24;
+}
+
 .map-tool-slider {
   display: flex;
   gap: 0.4rem;

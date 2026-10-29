@@ -35,6 +35,7 @@ import { useLightStore } from '../stores/lightStore.js';
 import { useNetStore } from '../stores/netStore.js';
 import { useNetRunStore } from '../stores/netRunStore.js';
 import { useTokenStore } from '../stores/tokenStore.js';
+import { ZoneSystemPicker } from './ZoneSystemPicker.js';
 import {
   fetchNetArchitectures,
   clearCovers,
@@ -899,23 +900,11 @@ export function MapTools() {
 
       {isGm && tool === 'zone' && (
         <div className="map-tool-options" role="group" aria-label="Ustawienia stref bronionych">
-          <label
-            className="map-tool-select"
-            title="Wpis „Obrona Sieci” z kompendium — z niego serwer czyta PW, Wartość bojową i efekt"
-          >
-            <select
-              value={zoneEntryId}
-              onChange={(event) => setZoneEntryId(event.target.value)}
-              aria-label="System obronny"
-            >
-              <option value="">— wybierz system —</option>
-              {defenseEntries.map((entry) => (
-                <option key={entry.id} value={entry.id}>
-                  {entry.name}
-                </option>
-              ))}
-            </select>
-          </label>
+          <ZoneSystemPicker
+            entries={defenseEntries}
+            value={zoneEntryId}
+            onChange={setZoneEntryId}
+          />
           <button
             type="button"
             className={`map-tool${zoneHidden ? ' map-tool--active' : ''}`}

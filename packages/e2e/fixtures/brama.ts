@@ -254,7 +254,9 @@ export async function drawZone(
 ): Promise<ZoneRow> {
   await pickTool(page, 'Strefy bronione');
   const options = page.getByRole('group', { name: 'Ustawienia stref bronionych' });
-  await options.getByLabel('System obronny').selectOption({ label: system });
+  // Własna lista z ikonami (29.10), nie `<select>`: przycisk otwiera, wiersz wybiera.
+  await options.getByRole('button', { name: 'System obronny', exact: true }).click();
+  await options.getByRole('option', { name: system, exact: true }).click();
   const eye = options.locator('button[aria-pressed]').first();
   if (((await eye.getAttribute('aria-pressed')) === 'true') !== hidden) await eye.click();
   const before = zonesOn(sceneId).length;
