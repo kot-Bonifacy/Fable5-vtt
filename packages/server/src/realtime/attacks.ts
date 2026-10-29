@@ -20,7 +20,6 @@ import type {
   RollAreaMeta,
   RollAttackMeta,
   RollBreakdownEntry,
-  RollEvasionAnswer,
   RollForcedCheck,
   RollGesture,
   RollResult,
@@ -1713,23 +1712,6 @@ function luckNote(luckSpent: number): string {
   return luckSpent > 0 ? ` (Szczęście ${luckSpent})` : '';
 }
 
-/** Odpowiedź obrońcy na trafienie — krok ② karty ataku (etap 63c). */
-function evasionAnswer(
-  name: string,
-  total: number,
-  luckSpent: number,
-  auto: boolean,
-  hit: boolean,
-): RollEvasionAnswer {
-  return {
-    name,
-    total,
-    ...(luckSpent > 0 ? { luckSpent } : {}),
-    ...(auto ? { auto: true } : {}),
-    hit,
-  };
-}
-
 export const attackEvadeEvent = defineEvent<AttackEvadePayload, { total: number; hit: boolean }>({
   name: 'attack:evade',
   handler: async ({ deps, socket, user, payload }) =>
@@ -1866,15 +1848,11 @@ async function performEvasion(
         // The defender has answered — the damage stops waiting (03.10).
         evasionPending: undefined,
         autoEvasion: undefined,
-        // Krok ② karty (etap 63c): obie liczby rysuje karta, nie `detail` —
-        // od 14.10 do 63c stały tam słowami („Unik X: 14 vs 16 → …”).
-        dodge: evasionAnswer(
-          defenderName,
-          evasion.total,
+        // Obie liczby obok siebie (14.10): samo „Unik: 14 → pudło" nie mówiło,
+        // z czym 14 przegrało, a „pudło" brzmiało jak chybienie strzelca.
+        detail: `${roll.attack.detail} · Unik ${defenderName}: ${evasion.total}${luckNote(
           planned.plan.luckSpent,
-          roll.attack.autoEvasion?.includes(meta.targetTokenId) === true,
-          outcome.hit,
-        ),
+        )} vs ${roll.total} → ${outcome.hit ? 'trafienie mimo uniku' : 'unik udany'}`,
         ...(outcome.hit
           ? {
               damageNotation: meta.damage,
@@ -2131,20 +2109,19 @@ export const attackNoEvadeEvent = defineEvent<AttackNoEvadePayload, void>({
           area: {
             ...roll.attack.area,
             targets: roll.attack.area.targets.map((row) =>
-              row.tokenId === tokenId
-                ? { ...row, canEvade: false, jump: { name, declined: true, hit: true } }
-                : row,
+              row.tokenId === tokenId ? { ...row, canEvade: false } : row,
             ),
           },
           evasionPending: withoutPending(roll.attack.evasionPending, tokenId),
           autoEvasion: withoutPending(roll.attack.autoEvasion, tokenId),
+          detail: `${roll.attack.detail} · ${name}: bez uniku`,
         }
       : {
           ...roll.attack,
           noEvade: true,
           evasionPending: undefined,
           autoEvasion: undefined,
-          dodge: { name, declined: true, hit: true },
+          detail: `${roll.attack.detail} · ${name}: bez uniku`,
         };
     const saved = await deps.ctx.prisma.chatMessage.update({
       where: { id: message.id },
@@ -2216,13 +2193,6 @@ async function evadeArea(
           ...candidate,
           ...(cleared ? { spared: 'evaded' as const, sparedBy: dodgerName } : {}),
           canEvade: false,
-          jump: evasionAnswer(
-            dodgerName,
-            evasion.total,
-            planned.plan.luckSpent,
-            roll.attack!.autoEvasion?.includes(entry.tokenId!) === true,
-            !cleared,
-          ),
         }
       : candidate,
   );
@@ -2234,6 +2204,9 @@ async function evadeArea(
       // One answer fewer for the grenade's damage to wait on (03.10).
       evasionPending: withoutPending(roll.attack!.evasionPending, entry.tokenId!),
       autoEvasion: withoutPending(roll.attack!.autoEvasion, entry.tokenId!),
+      detail: `${roll.attack!.detail} · Odskok ${dodgerName}: ${evasion.total}${luckNote(
+        planned.plan.luckSpent,
+      )} vs ${roll.total} → ${cleared ? 'poza obszarem' : 'nie zdążył'}`,
     },
   };
   const saved = await deps.ctx.prisma.chatMessage.update({

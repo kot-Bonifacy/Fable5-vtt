@@ -230,27 +230,6 @@ export interface RollDamageMeta {
   system?: Record<string, unknown>;
 }
 
-/**
- * How a defender answered a hit (etap 63c): a dodge, a jump clear of a blast,
- * or the GM's „Bez uniku”. Kept apart from `detail` so the card can draw it as
- * its own step, and so an area row carries its answer with it — a row cut from
- * a player's view takes the dodger's name along (`redactChatMessage`).
- */
-export interface RollEvasionAnswer {
-  /** The defender, as the table knows them (`tokenTableName`). */
-  name: string;
-  /** ZW + Unik the defender rolled; absent when the GM said „Bez uniku”. */
-  total?: number;
-  /** Luck added to that roll. */
-  luckSpent?: number;
-  /** The server rolled it on its own (etap 63b). */
-  auto?: boolean;
-  /** The GM said „Bez uniku”. */
-  declined?: boolean;
-  /** Did the attack get through anyway? */
-  hit: boolean;
-}
-
 /** One figure — or one car — an area attack found (stage 16d). */
 export interface RollAreaTarget {
   tokenId?: string;
@@ -268,8 +247,6 @@ export interface RollAreaTarget {
   sparedBy?: string;
   /** True when this target may still try to jump clear of the area. */
   canEvade?: boolean;
-  /** Its answer to the blast — the jump or the GM's „Bez uniku” (etap 63c). */
-  jump?: RollEvasionAnswer;
   /**
    * Armour of the barriers between the origin of the area and this target
    * (stage 42b), measured when it went off; absent when there were none. Opaque
@@ -372,12 +349,6 @@ export interface RollAttackMeta {
    * dawniej.
    */
   autoEvasion?: string[];
-  /**
-   * The single target's answer to the hit (etap 63c) — step ② of the card.
-   * Absent until somebody answered, and on cards written before 28.10, which
-   * carry the dodge only as words in `detail`.
-   */
-  dodge?: RollEvasionAnswer;
   /**
    * Chat message id of the damage roll made for this attack (#56) — one hit,
    * one damage roll. Cleared only when every application of that roll was

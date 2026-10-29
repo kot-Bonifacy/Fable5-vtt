@@ -160,4 +160,4 @@ a w `POSTEP.md` popraw tylko wiersz stanu.
 | 62     | Sieć ze sceny: figury z ikoną urządzenia w Sieci, gniazdo bez Architektury, lista urządzeń od podłączenia | 🟨     |                     |
 | 63a    | Płynna walka: kropki ataków na slocie broni, pulsujące „Kończę turę”, głosowy sygnał tury | ✅     | 2026-10-28          |
 | 63b    | Płynna walka: auto-unik i Odskok z checkboksem pod portretem | ✅     | 2026-10-28          |
-| 63c    | Płynna walka: jedna karta ataku z krokami i pasek „Krok X/3” nad kubkiem | ✅     | 2026-10-28          |
+| 63c    | Płynna walka: jedna karta ataku z krokami i pasek „Krok X/3” nad kubkiem | ⛔     | 2026-10-29 (wycofany) |
