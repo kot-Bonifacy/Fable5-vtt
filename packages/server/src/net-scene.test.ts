@@ -366,4 +366,44 @@ describe('Sieć ze sceny (etap 62)', () => {
     expect(nodeDevices(await architecture(ownId))).toEqual([[droneId]]);
     expect(run.run.sightedDevices).toEqual([{ name: 'Dron ochrony', deviceKind: 'drone' }]);
   });
+
+  it('kamera postawiona w trakcie runu dochodzi od razu, bez ponownego podłączenia (29.10)', async () => {
+    const owned = (await architectures()).find((entry) => entry.name === 'Zaplecze')!;
+    const synced = new Promise<NetRunPayload[]>((resolve, reject) => {
+      const timer = setTimeout(() => reject(new Error('netrun:sync timeout')), 4000);
+      const onSync = ({ runs }: { runs: NetRunPayload[] }) => {
+        if (!runs.some((run) => run.run.sightedDevices?.some((d) => d.deviceKind === 'camera')))
+          return;
+        clearTimeout(timer);
+        player.off('netrun:sync', onSync);
+        resolve(runs);
+      };
+      player.on('netrun:sync', onSync);
+    });
+    const lateCamera = data(
+      await emitAck<TokenView>(gm, 'token:create', {
+        sceneId,
+        name: 'Kamera w magazynie',
+        x: 1000,
+        y: 1600,
+        glyph: 'camera',
+      }),
+      'token:create',
+    ).id;
+    expect(nodeDevices(await architecture(owned.id))[0]).toContain(lateCamera);
+    const runs = await synced;
+    expect(runs[0]!.run.sightedDevices).toContainEqual({
+      name: 'Kamera w magazynie',
+      deviceKind: 'camera',
+    });
+
+    // Ikona nadana zwykłej figurze w trakcie runu działa tak samo.
+    const plain = data(
+      await emitAck<TokenView>(gm, 'token:create', { sceneId, name: 'Czujnik', x: 600, y: 600 }),
+      'token:create',
+    ).id;
+    expect(nodeDevices(await architecture(owned.id))[0]).not.toContain(plain);
+    await emitAck(gm, 'token:update', { tokenId: plain, patch: { glyph: 'sensor' } });
+    expect(nodeDevices(await architecture(owned.id))[0]).toContain(plain);
+  });
 });

@@ -114,6 +114,7 @@ import {
 import { releaseTokenTargets } from './target.js';
 import { forgetPace } from './pace.js';
 import { enforceNetRunRange } from './netice.js';
+import { adoptSceneDeviceLive } from './net-scene.js';
 import { runZonesAfterMove } from './zones.js';
 import { runHiddenFiguresAfterMove } from './hidden-figures.js';
 import { createMixedRng } from './dice-rng.js';
@@ -1011,6 +1012,7 @@ export const tokenCreateEvent = defineEvent<TokenCreatePayload, TokenView>({
     // pierwszym zapisie karty (zaległość z 17.10).
     const placed = linked ? await syncWoundStatuses(deps, token, linked.hp) : token;
     await emitTokenUpsert(deps, campaignId, scene, placed, linked);
+    await adoptSceneDeviceLive(deps, campaignId, scene.id, placed.glyph);
     return toTokenView(placed, true, linked);
   },
 });
@@ -1175,6 +1177,7 @@ export const tokenDuplicateEvent = defineEvent<TokenDuplicatePayload, TokenView>
     });
     const copyLinked = copiedCharacter ? toLinkedSheet(copiedCharacter, deps.ctx.cpred) : null;
     await emitTokenUpsert(deps, campaignId, scene, copy, copyLinked);
+    await adoptSceneDeviceLive(deps, campaignId, scene.id, copy.glyph);
     // Kopia wroga postawiona drużynie przed oczami (etap 56).
     await checkSighting(deps, campaignId, scene);
     return toTokenView(copy, true, copyLinked);
@@ -1327,6 +1330,10 @@ export const tokenUpdateEvent = defineEvent<TokenUpdatePayload, TokenView>({
       patch.statuses !== undefined
     ) {
       await checkSighting(deps, campaignId, scene);
+    }
+    // Ikona urządzenia nadana w trakcie runu dopina figurę do Sieci od razu (29.10).
+    if (updated.glyph !== token.glyph) {
+      await adoptSceneDeviceLive(deps, campaignId, scene.id, updated.glyph);
     }
     return toTokenView(updated, true, linked);
   },

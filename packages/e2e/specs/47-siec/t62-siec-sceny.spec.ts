@@ -178,6 +178,32 @@ test.describe.serial('T62 Sieć ze sceny: kamery bez Architektury', () => {
       .toContain('Marian');
   });
 
+  test('MG stawia kamerę w trakcie runu: Iskra patrzy przez nią bez ponownego podłączenia', async () => {
+    // Zgłoszenie MG z 29.10: figury dopinał tylko `netrun:start`, więc kamera
+    // postawiona przy trzymanym węźle nie dawała obrazu aż do odłączenia.
+    await emitAck(gm, 'token:create', { sceneId, name: 'Kucharz', x: 300, y: 1800 });
+    const late = dataOf<{ id: string }>(
+      await emitAck(gm, 'token:create', {
+        sceneId,
+        name: 'Kamera w kuchni',
+        x: 300,
+        y: 1100,
+        glyph: 'camera',
+        hidden: true,
+      }),
+    ).id;
+    await emitAck(gm, 'token:facing', { tokenId: late, facing: 180 });
+    await expect(runWindow().locator('.net-node-device')).toHaveCount(3);
+    await expect.poll(() => polygonsOf(ola)).toBe(basePolygons + 2);
+    await expect
+      .poll(async () =>
+        Object.values(
+          (await ola.store<{ tokens: Record<string, { name: string }> }>('token'))?.tokens ?? {},
+        ).map((token) => token.name),
+      )
+      .toContain('Kucharz');
+  });
+
   test('„Odłącz się”: drugie podłączenie trafia w tę samą Sieć, bez drugiej Architektury', async () => {
     // Kadr na kamerę dojeżdża po animacji kości (pułapka `siec`) — czekamy, aż stanie.
     await ola.page.waitForTimeout(3500);
@@ -191,7 +217,7 @@ test.describe.serial('T62 Sieć ze sceny: kamery bez Architektury', () => {
       .getByLabel(/^Karta obiektu: /)
       .getByRole('button', { name: 'Podłącz się' })
       .click();
-    await expect(runWindow().locator('.net-sighted-device')).toHaveCount(2);
+    await expect(runWindow().locator('.net-sighted-device')).toHaveCount(3);
     const list = dataOf<{ architectures: { name: string }[] }>(
       await emitAck(gm, 'net:list'),
     ).architectures;
