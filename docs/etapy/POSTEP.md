@@ -29,6 +29,13 @@ Pełna tabela z nazwami i datami: `archiwum/tabela-etapow.md`.
 
 ## Od czego zacząć
 
+**„Udostępniam AI” na czas (zgłoszenie MG z 29.10) — czeka na wdrożenie na VPS.** AI innego MG
+gasło 2 min po zamknięciu karty panelu administratora (obecność właściciela z 44d; log VPS
+z 25.10). Teraz przełącznik trzyma 2/4/8/24 h (domyślnie 4 h, „do HH:MM” obok), przeżywa
+zamknięte karty, gaśnie po terminie i po restarcie. Obecność, karencja i `owner-absent` zniknęły.
+Umowa w `serwer` (trasy AI właściciela). Do decyzji MG: flaga właściciela na koncie gracza
+(`owner-link`) daje już tylko diagnostykę gatewaya.
+
 **Etap 63 „Płynna walka gracza” (zlecenie MG z 28.10) zamknięty na 63a i 63b — 63c (karta
 ataku z krokami na czacie, pasek „Krok X/3” nad kubkiem) MG kazał cofnąć 29.10; dalej etap 28,
 potem T10.** Od 63b Unik i Odskok postaci gracza
