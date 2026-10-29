@@ -8,6 +8,8 @@ import {
   blockingSegments,
   figureBarriers,
   computeVisionPolygon,
+  isNetDefenseEntry,
+  netDefenseGlyph,
   conditionRegistry,
   coverMovementSegments,
   cpredActionBlock,
@@ -29,6 +31,7 @@ import {
   type SceneObjectShape,
   type ScenePoint,
   type SceneView,
+  type TokenGlyph,
   type TokenView,
 } from '@vtt/shared';
 import {
@@ -153,6 +156,7 @@ import { useNetRunStore } from '../stores/netRunStore.js';
 import { netErrorText } from '../netErrors.js';
 import { useCoverStore } from '../stores/coverStore.js';
 import { useZoneStore } from '../stores/zoneStore.js';
+import { useCompendiumStore } from '../stores/compendiumStore.js';
 import { useSmokeStore } from '../stores/smokeStore.js';
 import { useTargetStore } from '../stores/targetStore.js';
 import { NoticeColumn, type PinnedNotice } from './NoticeColumn.js';
@@ -1987,14 +1991,31 @@ export function MapArea() {
 
   // Strefy bronione (26f) jadą tą samą drogą co osłony: rozbrojenie systemu ma
   // zgasić szrafirunek od razu, a nie po najbliższym renderze Reacta.
+  // Ikona strefy (29.10) bierze się z wpisu kompendium, więc strefy jadą
+  // ponownie także wtedy, gdy kompendium dojdzie po nich.
   const pushZones = useCallback(() => {
-    rendererRef.current?.setZones(useZoneStore.getState().zones);
+    const { zones } = useZoneStore.getState();
+    const { entries } = useCompendiumStore.getState();
+    const glyphs = new Map<number, TokenGlyph>();
+    for (const zone of zones) {
+      const entry = entries[zone.entryId];
+      const glyph = entry && isNetDefenseEntry(entry) ? netDefenseGlyph(entry) : null;
+      if (glyph) glyphs.set(zone.id, glyph);
+    }
+    rendererRef.current?.setZones(zones, glyphs);
   }, []);
 
   useEffect(() => {
     if (!ready) return;
     pushZones();
-    return useZoneStore.subscribe(pushZones);
+    const offZones = useZoneStore.subscribe(pushZones);
+    const offEntries = useCompendiumStore.subscribe((state, previous) => {
+      if (state.entries !== previous.entries) pushZones();
+    });
+    return () => {
+      offZones();
+      offEntries();
+    };
   }, [ready, pushZones]);
 
   // Smoke rides with the covers (stage 16h): a cloud the GM has just cleared

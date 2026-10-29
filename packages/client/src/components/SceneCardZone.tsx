@@ -198,7 +198,17 @@ export function SceneCardZone({ zone }: { zone: DefenseZoneView }) {
           nie robi.
         </p>
       )}
-      {profile && !netDefenseActs(effects) && (
+      {/* Dron sam nie atakuje (s. 213, decyzja MG z 29.10): „działają tylko, gdy
+          ich węzeł kontrolny jest obsługiwany przez Demona albo jeśli Netrunner
+          steruje nimi bezpośrednio”. */}
+      {profile?.defenseKind === 'drone' && !netDefenseActs(effects) && (
+        <p className="placeholder-text">
+          Dron nie atakuje sam — działa tylko, gdy jego węzeł kontrolny obsługuje Demon albo steruje
+          nim netrunner (s. 213). Postaw figurę z ikoną drona i podepnij ją do węzła kontrolnego
+          Architektury z Demonem; bez tego rozstrzygasz drona ręcznie.
+        </p>
+      )}
+      {profile && profile.defenseKind !== 'drone' && !netDefenseActs(effects) && (
         <p className="placeholder-text">
           Ten wpis nie ma opisanego efektu — uzupełnij go w zakładce „Kompendium”, albo rozstrzygaj
           go ręcznie.

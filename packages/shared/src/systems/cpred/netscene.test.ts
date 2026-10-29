@@ -6,6 +6,7 @@ import {
 } from './netrunning.js';
 import {
   netAdoptSceneDevices,
+  netDefenseGlyph,
   netSceneArchitecture,
   netSceneDevices,
   netWiredTokenIds,
@@ -170,5 +171,24 @@ describe('netAdoptSceneDevices', () => {
     const nodes = nodesOf(full);
     expect(nodes.map((node) => node.devices?.length)).toEqual([NET_DEVICES_PER_NODE_MAX, 1]);
     expect(nodes[1]).toMatchObject({ dv: 10 });
+  });
+});
+
+describe('netDefenseGlyph', () => {
+  it('dron naziemny dostaje gąsienice, latający — wirniki, reszta nic', () => {
+    expect(netDefenseGlyph({ defenseKind: 'drone', name: 'Dron naziemny' })).toBe('ground-drone');
+    expect(netDefenseGlyph({ defenseKind: 'drone', name: 'Pajęczy dron naziemny' })).toBe(
+      'ground-drone',
+    );
+    expect(netDefenseGlyph({ defenseKind: 'drone', name: 'Rój dronów' })).toBe('drone');
+    expect(netDefenseGlyph({ defenseKind: 'emplacement', name: 'Automatyczna wieżyczka' })).toBe(
+      null,
+    );
+  });
+
+  it('figura z ikoną drona naziemnego jest urządzeniem Sieci', () => {
+    expect(netSceneDevices([figure('t1', 'ground-drone')])).toMatchObject([
+      { deviceKind: 'drone', tokenId: 't1' },
+    ]);
   });
 });

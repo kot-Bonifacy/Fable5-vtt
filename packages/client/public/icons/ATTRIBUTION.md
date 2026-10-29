@@ -20,15 +20,16 @@ Sylwetka na krążku figury zamiast portretu — urządzenia stawiane na mapie j
 (kamera, wieżyczka, dron, Architektura Sieci z etapu 26). Nazwę pliku wyznacza
 `TOKEN_GLYPHS` w `shared/src/tokens.ts`. Czarne tło usunięte jak wyżej; barwi je `tint`.
 
-| Plik           | Oryginalna ikona | Autor      | Rodzaj    |
-| -------------- | ---------------- | ---------- | --------- |
-| `camera.svg`   | CCTV camera      | Delapouite | Kamera    |
-| `turret.svg`   | Turret           | sbed       | Wieżyczka |
-| `drone.svg`    | Delivery drone   | Delapouite | Dron      |
-| `mine.svg`     | Land mine        | Lorc       | Mina      |
-| `sensor.svg`   | Radar sweep      | Lorc       | Czujnik   |
-| `robot.svg`    | Robot golem      | Lorc       | Robot     |
-| `terminal.svg` | PC               | Skoll      | Terminal  |
+| Plik               | Oryginalna ikona | Autor      | Rodzaj                |
+| ------------------ | ---------------- | ---------- | --------------------- |
+| `camera.svg`       | CCTV camera      | Delapouite | Kamera                |
+| `turret.svg`       | Turret           | sbed       | Wieżyczka             |
+| `drone.svg`        | Delivery drone   | Delapouite | Dron                  |
+| `ground-drone.svg` | Tracked robot    | Delapouite | Dron naziemny (29.10) |
+| `mine.svg`         | Land mine        | Lorc       | Mina                  |
+| `sensor.svg`       | Radar sweep      | Lorc       | Czujnik               |
+| `robot.svg`        | Robot golem      | Lorc       | Robot                 |
+| `terminal.svg`     | PC               | Skoll      | Terminal              |
 
 ## Ikony panelu postaci (`hud/`, etap 27h)
 

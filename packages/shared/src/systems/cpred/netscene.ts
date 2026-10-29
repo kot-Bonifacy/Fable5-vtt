@@ -17,6 +17,7 @@ import {
   type CpredNetArchitecture,
   type CpredNetDevice,
   type CpredNetFloor,
+  type NetDefenseKind,
   type NetDeviceKind,
 } from './netrunning.js';
 
@@ -29,10 +30,26 @@ export const NET_DEVICE_KIND_BY_GLYPH: Partial<Record<TokenGlyph, NetDeviceKind>
   camera: 'camera',
   turret: 'turret',
   drone: 'drone',
+  'ground-drone': 'drone',
   robot: 'drone',
   sensor: 'environment',
   terminal: 'environment',
 };
+
+/**
+ * Ikona strefy bronionej na mapie (29.10, zlecenie MG) — sylwetka z tego samego
+ * kompletu co ikony figur. Dron jest robotem, a jego strefa bez ikony była
+ * zwykłym prostokątem pułapki; stanowiska i systemy środowiskowe ikony nie
+ * dostają, bo wieżyczka stoi figurą, a podłoga to podłoga. Tabela s. 213 nie
+ * ma kolumny „latający/naziemny”, więc naziemnego rozpoznaje nazwa wpisu.
+ */
+export function netDefenseGlyph(entry: {
+  defenseKind: NetDefenseKind;
+  name: string;
+}): TokenGlyph | null {
+  if (entry.defenseKind !== 'drone') return null;
+  return /naziemn/i.test(entry.name) ? 'ground-drone' : 'drone';
+}
 
 /** PT Kontroli węzła Sieci ze sceny, gdy tabele podręcznika nie podają innego. */
 export const NET_SCENE_CONTROL_DV = 8;

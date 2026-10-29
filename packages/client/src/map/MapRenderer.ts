@@ -41,6 +41,7 @@ import type {
   SceneObjectRef,
   SceneObjectShape,
   ScenePoint,
+  TokenGlyph,
   SceneView,
   TokenSnapScene,
   TokenView,
@@ -322,6 +323,8 @@ const COVER_WRECK_COLOR = 0x94a3b8;
 const ZONE_FILL_COLOR = 0xd97706;
 const ZONE_STROKE_COLOR = 0xfbbf24;
 const ZONE_IDLE_COLOR = 0x9a8866;
+/** Ikona urządzenia w strefie — bursztyn podpisu strefy. */
+const ZONE_GLYPH_TINT = 0xffe2b0;
 
 /** Green while it will hold, amber while it might, red when it is nearly gone. */
 function coverBarColor(ratio: number): number {
@@ -1161,6 +1164,9 @@ export class MapRenderer {
   private readonly zoneLayer = new Container();
   private readonly zoneGraphics = new Graphics();
   private readonly zoneLabels = new Map<number, Text>();
+  /** Ikona urządzenia strefy (29.10) — dron; id strefy → sylwetka. */
+  private readonly zoneGlyphSprites = new Map<number, { glyph: TokenGlyph; sprite: Sprite }>();
+  private zoneGlyphs: ReadonlyMap<number, TokenGlyph> = new Map();
   /** One label per cover („Samochód 18/25"), kept in step with the rows. */
   private readonly coverLabels = new Map<number, Text>();
   private readonly rangeLayer = new Container();
@@ -6429,11 +6435,49 @@ export class MapRenderer {
    * never gets that flag (the server sends `hidden: false`), and reads the name
    * alone: body points and the switch are the GM's.
    */
-  setZones(zones: DefenseZoneView[]): void {
+  setZones(zones: DefenseZoneView[], glyphs: ReadonlyMap<number, TokenGlyph> = new Map()): void {
     if (this.destroyed) return;
     this.lastZones = zones;
+    this.zoneGlyphs = glyphs;
     this.drawZoneLayer();
     this.refreshSceneSelectOutline('zone');
+  }
+
+  /**
+   * Sylwetka urządzenia na środku strefy (29.10, zlecenie MG) — ten sam komplet
+   * `icons/devices/` co ikony figur, w bursztynie podpisu strefy. Bok to kratka
+   * sceny, ale nigdy więcej niż mieści prostokąt. Zwraca bok ikony (0 = brak).
+   */
+  private drawZoneGlyph(zone: DefenseZoneView, centre: ScenePoint, live: boolean): number {
+    const glyph = this.zoneGlyphs.get(zone.id);
+    if (!glyph) return 0;
+    let entry = this.zoneGlyphSprites.get(zone.id);
+    if (!entry || entry.glyph !== glyph) {
+      entry?.sprite.destroy();
+      const sprite = new Sprite(Texture.EMPTY);
+      sprite.anchor.set(0.5);
+      sprite.eventMode = 'none';
+      sprite.visible = false;
+      entry = { glyph, sprite };
+      this.zoneGlyphSprites.set(zone.id, entry);
+      this.zoneLayer.addChild(sprite);
+      const loading = entry;
+      Assets.load<Texture>(`/icons/devices/${glyph}.svg`)
+        .then((texture) => {
+          if (this.destroyed || this.zoneGlyphSprites.get(zone.id) !== loading) return;
+          loading.sprite.texture = texture;
+          loading.sprite.visible = true;
+          this.drawZoneLayer();
+        })
+        .catch(() => undefined);
+    }
+    const square = this.scene?.grid.sizePx ?? 50;
+    const side = Math.max(16, Math.min(square * 0.8, zone.width * 0.8, zone.height * 0.8));
+    entry.sprite.position.set(centre.x, centre.y);
+    if (entry.sprite.texture !== Texture.EMPTY) entry.sprite.setSize(side, side);
+    entry.sprite.tint = ZONE_GLYPH_TINT;
+    entry.sprite.alpha = live ? 0.9 : 0.45;
+    return side;
   }
 
   private drawZoneLayer(): void {
@@ -6501,13 +6545,27 @@ export class MapRenderer {
       label.style.align = 'center';
       label.scale.set(k);
       label.alpha = live ? 0.95 : 0.55;
-      label.position.set(zone.x + zone.width / 2, zone.y + zone.height / 2);
+      const centre = { x: zone.x + zone.width / 2, y: zone.y + zone.height / 2 };
+      const iconSide = this.drawZoneGlyph(zone, centre, live);
+      // Z ikoną podpis schodzi pod nią, żeby jej nie zasłaniać.
+      if (iconSide > 0) {
+        label.anchor.set(0.5, 0);
+        label.position.set(centre.x, centre.y + iconSide / 2 + 2 * k);
+      } else {
+        label.anchor.set(0.5, 0.5);
+        label.position.set(centre.x, centre.y);
+      }
     }
 
     for (const [id, label] of this.zoneLabels) {
       if (seen.has(id)) continue;
       this.zoneLabels.delete(id);
       label.destroy();
+    }
+    for (const [id, entry] of this.zoneGlyphSprites) {
+      if (seen.has(id) && this.zoneGlyphs.has(id)) continue;
+      this.zoneGlyphSprites.delete(id);
+      entry.sprite.destroy();
     }
 
     const pending = this.zoneRectStart && this.zoneRectEnd ? this.zoneGestureRect() : null;
