@@ -570,6 +570,30 @@ def apply_overrides(payload: dict, overrides: dict) -> None:
                 entry["text"] = replacement
 
 
+def merge_repeated_rows(payload: dict) -> None:
+    """Folds neighbouring rows that say the same thing into one range row.
+
+    The book repeats an answer to weight it („Nie wtrącam się" at 1 and 2);
+    two identical options in the wizard's picker read as a bug, and the second
+    could never show as chosen, because the picker keys its options by text.
+    """
+    for table in all_tables(payload):
+        merged: list[dict] = []
+        for entry in table["entries"]:
+            last = merged[-1] if merged else None
+            if (
+                last is not None
+                and last["text"] == entry["text"]
+                and last.get("detail") == entry.get("detail")
+                and last.get("options") == entry.get("options")
+                and last.get("rollMax", last["roll"]) + 1 == entry["roll"]
+            ):
+                last["rollMax"] = entry.get("rollMax", entry["roll"])
+            else:
+                merged.append(entry)
+        table["entries"] = merged
+
+
 def report_suspects(payload: dict) -> None:
     """Names last rows far longer than the rest of their table.
 
@@ -616,6 +640,7 @@ def main() -> int:
         "roles": build_roles(tables, marks),
     }
     apply_overrides(payload, overrides)
+    merge_repeated_rows(payload)
     report_suspects(payload)
     write(CPRED_DIR / "lifepath.json", payload)
 
