@@ -64,8 +64,10 @@ export async function buildOwnerAiState(ctx: AppContext): Promise<OwnerAiState> 
   }
   const holder = ctx.ai.leaseHolder();
   const own = ctx.ai.ownerSession();
+  const sharing = ctx.ai.sharingWindow();
   return {
-    sharing: ctx.ai.sharingOn(),
+    sharingUntil: sharing ? new Date(sharing.until).toISOString() : null,
+    sharingHours: sharing?.hours ?? null,
     requests,
     pending: requests.filter((request) => request.status === 'requested').length,
     lease: holder

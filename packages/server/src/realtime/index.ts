@@ -702,25 +702,21 @@ export function setupRealtime(
     armSessionExpiry(socket);
 
     // Administrator (etap 53) nie siada przy żadnym stole i nie woła zdarzeń
-    // gry: jego gniazdo to obecność właściciela dla „Udostępniam AI” (44d)
-    // i sygnały panelu (`admin:changed`, `ai-access:owner`).
+    // gry: jego gniazdo niesie tylko sygnały panelu (`admin:changed`,
+    // `ai-access:owner`).
     if (user.role === ROLE_ADMIN) {
       socket.data.campaign = null;
       socket.data.atTable = false;
       void socket.join(ADMIN_ROOM);
       sendAiStatus(deps, socket);
-      if (user.owner) ctx.ai.ownerConnected(socket.id);
       socket.on('disconnect', (reason) => {
         app.log.info({ socketId: socket.id, reason }, 'admin socket disconnected');
-        ctx.ai.ownerDisconnected(socket.id);
       });
       return;
     }
 
     registerEvents(deps, socket, EVENTS);
     sendAiStatus(deps, socket);
-    // Obecność właściciela (44d) — gniazdo któregokolwiek konta z flagą.
-    if (user.owner) ctx.ai.ownerConnected(socket.id);
 
     void (async () => {
       try {
@@ -741,7 +737,6 @@ export function setupRealtime(
       releaseSocketAim(deps, socket.id);
       // Półki oglądane przez to gniazdo (etap 46a) — nie ma już komu ich odświeżać.
       forgetMerchantWatcher(socket.id);
-      ctx.ai.ownerDisconnected(socket.id);
       const campaign = socket.data.campaign;
       if (campaign) {
         // The socket already left its rooms — recompute presence for the rest.

@@ -27,6 +27,18 @@ export interface AiAccessView {
   decidedAt: string | null;
 }
 
+/**
+ * Na ile godzin właściciel udostępnia AI (decyzja MG z 29.10) — zamiast
+ * obecności z 2 min karencji, która gasiła AI zaraz po zamknięciu karty panelu.
+ */
+export const AI_SHARING_HOURS = [2, 4, 8, 24] as const;
+export type AiSharingHours = (typeof AI_SHARING_HOURS)[number];
+export const AI_SHARING_DEFAULT_HOURS: AiSharingHours = 4;
+
+export function isAiSharingHours(value: unknown): value is AiSharingHours {
+  return AI_SHARING_HOURS.includes(value as AiSharingHours);
+}
+
 /** Decyzja właściciela w panelu: „Zatwierdź”, „Odrzuć”, „Cofnij”. */
 export type AiAccessDecision = 'grant' | 'reject' | 'revoke';
 
@@ -50,8 +62,10 @@ export interface AiLeaseView {
 
 /** Panel „AI właściciela” (`GET /api/owner/ai`, push `ai-access:owner` do kont z flagą). */
 export interface OwnerAiState {
-  /** „Udostępniam AI” — w pamięci serwera, wyłączony po restarcie i po każdym nowym wejściu. */
-  sharing: boolean;
+  /** „Udostępniam AI” do tej chwili (ISO) albo null — w pamięci serwera, restart wyłącza. */
+  sharingUntil: string | null;
+  /** Okres wybrany przy włączeniu; null — wyłączone. */
+  sharingHours: AiSharingHours | null;
   requests: OwnerAiRequest[];
   /** Ile próśb czeka na decyzję — licznik na znaczku w górnym pasku. */
   pending: number;
@@ -68,7 +82,7 @@ export function aiAccessStatusText(status: AiAccessStatus): string {
     case 'requested':
       return 'Prośba wysłana — czeka na decyzję właściciela.';
     case 'granted':
-      return 'Masz zgodę właściciela. Boty działają, gdy właściciel jest obecny i udostępnia AI.';
+      return 'Masz zgodę właściciela. Boty działają, gdy właściciel udostępnia AI.';
     case 'rejected':
       return 'Właściciel odrzucił prośbę. Możesz poprosić jeszcze raz.';
     case 'revoked':

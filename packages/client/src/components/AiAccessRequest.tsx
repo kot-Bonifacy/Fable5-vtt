@@ -48,7 +48,7 @@ export function AiAccessRequest() {
           className="small-button small-button--primary"
           onClick={() => void request()}
           disabled={busy}
-          title="Boty, asystent zasad i baza wiedzy korzystają z AI na komputerze właściciela serwera. Zgoda obejmuje wszystkie Twoje kampanie; AI działa, gdy właściciel jest obecny i je udostępnia, a obsługuje jedną sesję naraz."
+          title="Boty, asystent zasad i baza wiedzy korzystają z AI na komputerze właściciela serwera. Zgoda obejmuje wszystkie Twoje kampanie; AI działa, gdy właściciel je udostępnia, a obsługuje jedną sesję naraz."
         >
           Poproś o dostęp do AI właściciela
         </button>
@@ -115,7 +115,7 @@ export function OwnerLink() {
           type="button"
           className="settings-action"
           onClick={() => void unlink()}
-          title="Konto gracza przestaje widzieć prośby o AI i nie liczy się jako Twoja obecność."
+          title="Konto gracza przestaje być kontem właściciela serwera."
         >
           Odłącz od właściciela
         </button>

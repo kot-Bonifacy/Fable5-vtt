@@ -30,7 +30,7 @@ export interface AiGpuInfo {
  * Why AI is off for a campaign (stage 44d). `offline` is the gateway itself;
  * the rest come from the owner's AI being shared with other GMs.
  */
-export type AiAccessReason = 'offline' | 'busy' | 'no-consent' | 'sharing-off' | 'owner-absent';
+export type AiAccessReason = 'offline' | 'busy' | 'no-consent' | 'sharing-off';
 
 /** Polish sentence for the GM — bot panel, AI panel, refused requests. */
 export function aiAccessReasonText(reason: AiAccessReason): string {
@@ -43,8 +43,6 @@ export function aiAccessReasonText(reason: AiAccessReason): string {
       return 'Brak zgody właściciela na AI — poproś o dostęp w Panelu MG.';
     case 'sharing-off':
       return 'Właściciel nie udostępnia teraz AI.';
-    case 'owner-absent':
-      return 'Właściciela serwera nie ma przy komputerze — AI wróci, gdy wejdzie i je udostępni.';
   }
 }
 
@@ -54,13 +52,7 @@ export function aiAccessReasonText(reason: AiAccessReason): string {
  */
 export function aiAccessReasonOfText(text: string | undefined): AiAccessReason | null {
   if (!text) return null;
-  const reasons: AiAccessReason[] = [
-    'offline',
-    'busy',
-    'no-consent',
-    'sharing-off',
-    'owner-absent',
-  ];
+  const reasons: AiAccessReason[] = ['offline', 'busy', 'no-consent', 'sharing-off'];
   return reasons.find((reason) => aiAccessReasonText(reason) === text) ?? null;
 }
 
@@ -76,11 +68,7 @@ export function aiUnavailableText(status: AiStatus): string {
 
 export function isAiAccessReason(value: unknown): value is AiAccessReason {
   return (
-    value === 'offline' ||
-    value === 'busy' ||
-    value === 'no-consent' ||
-    value === 'sharing-off' ||
-    value === 'owner-absent'
+    value === 'offline' || value === 'busy' || value === 'no-consent' || value === 'sharing-off'
   );
 }
 

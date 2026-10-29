@@ -3,11 +3,12 @@ import { randomBytes } from 'node:crypto';
 import { mkdtempSync, readdirSync, readFileSync, unlinkSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { io as ioClient, type Socket as ClientSocket } from 'socket.io-client';
 import type {
   AiAccessView,
   AiErrorBroadcast,
+  AiSharingHours,
   AiStatus,
   AiStatusBroadcast,
   CampaignSummary,
@@ -26,8 +27,8 @@ import type { PrismaClient } from './db.js';
 import { botFailureText } from './realtime/bot-runtime.js';
 
 /**
- * Etap 44d — AI właściciela: prawo kampanii do AI (zgoda, przełącznik,
- * obecność), karencja 2 min (tu skrócona), dzierżawa jednej sesji naraz i jej
+ * Etap 44d — AI właściciela: prawo kampanii do AI (zgoda, przełącznik na
+ * 2–24 h — od 29.10 bez obecności właściciela), dzierżawa jednej sesji naraz i jej
  * przekazanie, „Przejmij AI”, cofnięcie bez restartu, przerwanie strumienia po
  * utracie prawa i licznik żądań na atrapie gatewaya. Kanarek: prośby nie
  * słyszy nikt poza administratorem (etap 53; do 53 — kontami właściciela).
@@ -35,7 +36,6 @@ import { botFailureText } from './realtime/bot-runtime.js';
 
 const TEST_DB = `./.test-${randomBytes(6).toString('hex')}.db`;
 const GM_PASSWORD = 'test-haslo';
-const GRACE_MS = 400;
 
 const config: ServerConfig = {
   port: 0,
@@ -54,7 +54,6 @@ const config: ServerConfig = {
   aiGatewayApiKey: '',
   aiHealthIntervalMs: 200,
   aiRequestTimeoutMs: 5000,
-  aiOwnerGraceMs: GRACE_MS,
   sessions: { maxSessions: 2, emptyMinutes: 15, idleMinutes: 180 },
 };
 
@@ -252,8 +251,8 @@ async function joinPlayer(campaignId: string, name: string): Promise<string> {
   return cookieOf(res.headers['set-cookie']);
 }
 
-async function setSharing(on: boolean): Promise<OwnerAiState> {
-  const res = await rest<OwnerAiState>(admin, 'POST', '/api/admin/ai/sharing', { on });
+async function setSharing(hours: AiSharingHours | null): Promise<OwnerAiState> {
+  const res = await rest<OwnerAiState>(admin, 'POST', '/api/admin/ai/sharing', { hours });
   expect(res.status).toBe(200);
   return res.body;
 }
@@ -274,7 +273,7 @@ async function grantAndShare(): Promise<void> {
   await rest(mgB, 'POST', '/api/ai-access/request');
   const status = (await built.prisma.user.findUniqueOrThrow({ where: { id: mgBUserId } })).aiAccess;
   if (status !== 'granted') expect(await decide('grant')).toBe(200);
-  await setSharing(true);
+  await setSharing(4);
 }
 
 /* ------------------------------ przebieg ---------------------------- */
@@ -332,9 +331,7 @@ beforeEach(async () => {
   });
   const ai = built.realtime.deps.ctx.ai;
   await ai.refresh();
-  // Karta właściciela z poprzedniego przypadku jest zamknięta — bez czekania karencji.
-  ai.expireGrace();
-  ai.setSharing(false);
+  ai.setSharing(null);
 });
 
 afterAll(async () => {
@@ -361,23 +358,56 @@ function entry(patch: Partial<AiCampaignEntry> & { id: string }): AiCampaignEntr
 }
 
 describe('prawo do AI — wszystkie kombinacje warunków', () => {
-  it('kampania właściciela ma prawo zawsze, inna tylko przy zgodzie, obecności i przełączniku', () => {
+  it('kampania właściciela ma prawo zawsze, inna tylko przy zgodzie i przełączniku', () => {
     const own = entry({ id: 'a', ownerCampaign: true });
     for (const sharing of [false, true]) {
-      for (const ownerPresent of [false, true]) {
-        expect(aiEntitlement(own, { sharing, ownerPresent })).toBeNull();
-        for (const granted of [false, true]) {
-          const other = entry({ id: 'b', granted });
-          const expected = !granted
-            ? 'no-consent'
-            : !ownerPresent
-              ? 'owner-absent'
-              : !sharing
-                ? 'sharing-off'
-                : null;
-          expect(aiEntitlement(other, { sharing, ownerPresent })).toBe(expected);
-        }
+      expect(aiEntitlement(own, { sharing })).toBeNull();
+      for (const granted of [false, true]) {
+        const other = entry({ id: 'b', granted });
+        const expected = !granted ? 'no-consent' : !sharing ? 'sharing-off' : null;
+        expect(aiEntitlement(other, { sharing })).toBe(expected);
       }
+    }
+  });
+
+  it('„Udostępniam AI” gaśnie samo po wybranym okresie, ponowne włączenie liczy od nowa', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] });
+    try {
+      const prisma = {
+        campaign: {
+          findMany: async () => [
+            {
+              id: 'B',
+              name: 'B',
+              sessionStartedAt: new Date(),
+              gm: { login: 'b', name: 'B', owner: false, aiAccess: 'granted', blockedAt: null },
+            },
+          ],
+        },
+      } as unknown as PrismaClient;
+      const fake = { getStatus: () => ({ available: true }) } as unknown as AiGateway;
+      const access = new AiAccess(prisma, fake, { requestTimeoutMs: 1000 });
+      await access.refresh();
+      let changes = 0;
+      access.onChange(() => (changes += 1));
+      const hour = 3_600_000;
+
+      access.setSharing(2);
+      expect(access.verdict('B')).toBeNull();
+      expect(access.sharingWindow()).toEqual({ until: Date.now() + 2 * hour, hours: 2 });
+      vi.advanceTimersByTime(hour);
+      // Zmiana okresu po godzinie: 4 h od teraz, nie od pierwszego włączenia.
+      access.setSharing(4);
+      vi.advanceTimersByTime(3 * hour);
+      expect(access.verdict('B')).toBeNull();
+      changes = 0;
+      vi.advanceTimersByTime(hour);
+      expect(access.verdict('B')).toBe('sharing-off');
+      expect(access.sharingWindow()).toBeNull();
+      expect(changes).toBe(1);
+      access.stop();
+    } finally {
+      vi.useRealTimers();
     }
   });
 
@@ -458,7 +488,7 @@ describe('RAG — kolekcje per kampania', () => {
         ],
       },
     } as unknown as PrismaClient;
-    const access = new AiAccess(prisma, fake, { ownerGraceMs: 1000, requestTimeoutMs: 1000 });
+    const access = new AiAccess(prisma, fake, { requestTimeoutMs: 1000 });
     await access.refresh();
     const ai = access.forCampaign('A');
 
@@ -485,7 +515,7 @@ describe('bez prawa do AI nic nie wychodzi do gatewaya', () => {
   it('bez zgody: boty MG-B niedostępne z powodem, gracz wie tylko „niedostępne”, licznik zero', async () => {
     // Właściciel obecny i udostępnia — brakuje wyłącznie zgody.
     await seated(ownerGm);
-    await setSharing(true);
+    await setSharing(4);
     const b = await seated(mgB);
     expect(b.sync.ai.available).toBe(false);
     expect(b.sync.ai.reason).toBe('no-consent');
@@ -589,7 +619,7 @@ describe('prośba i panel administratora', () => {
     // Panelu AI nie dostaje nikt poza administratorem — także konto MG właściciela.
     for (const cookie of [mgB, kuba, ownerGm, ownerPlayer]) {
       expect((await rest(cookie, 'GET', '/api/admin/ai')).status).toBe(403);
-      expect((await rest(cookie, 'POST', '/api/admin/ai/sharing', { on: true })).status).toBe(403);
+      expect((await rest(cookie, 'POST', '/api/admin/ai/sharing', { hours: 4 })).status).toBe(403);
       expect(
         (await rest(cookie, 'POST', `/api/admin/ai/requests/${mgBUserId}`, { decision: 'grant' }))
           .status,
@@ -646,16 +676,15 @@ describe('prośba i panel administratora', () => {
     expect((await rest<AiAccessView>(mgB, 'GET', '/api/ai-access')).body.status).toBe('granted');
   });
 
-  it('gniazdo administratora to obecność właściciela, ale nie siada przy stole', async () => {
+  it('gniazdo administratora nie siada przy stole', async () => {
     expect(await decide('grant')).toBe(200);
     const b = await seated(mgB);
     const status = trackStatus(b.socket, b.sync.ai);
-    expect(status().reason).toBe('owner-absent');
+    expect(status().reason).toBe('sharing-off');
 
     const adminLive = await adminSocket();
     const heard = recordAll(adminLive);
-    await until(() => status().reason === 'sharing-off');
-    await setSharing(true);
+    await setSharing(4);
     await until(() => status().available);
     await settle();
     // Żadnego stanu gry: ani `state:sync`, ani zdarzeń stołu.
@@ -664,39 +693,32 @@ describe('prośba i panel administratora', () => {
   });
 });
 
-describe('zgoda, przełącznik i obecność właściciela', () => {
-  it('zgoda + przełącznik + obecność = boty MG-B odpowiadają; karencja wyłącza przełącznik', async () => {
+describe('zgoda i przełącznik na czas', () => {
+  it('zgoda + przełącznik = boty MG-B odpowiadają bez żadnej karty właściciela; wyłączenie gasi', async () => {
     await rest(mgB, 'POST', '/api/ai-access/request');
     expect(await decide('grant')).toBe(200);
-    // Właściciel nieobecny (nikt z flagą nie siedzi).
+    // Nikt z kont właściciela nie siedzi — przed 29.10 to było „owner-absent”.
     const b = await seated(mgB);
     const status = trackStatus(b.socket, b.sync.ai);
-    expect(status().reason).toBe('owner-absent');
+    expect(status().reason).toBe('sharing-off');
 
-    // Wchodzi kontem gracza — obecny, ale przełącznik wyłączony.
-    const ownerAsPlayer = await seated(ownerPlayer);
-    await until(() => status().reason === 'sharing-off');
-    await setSharing(true);
+    for (const body of [{ on: true }, { hours: 3 }, { hours: '4' }, {}]) {
+      const res = await rest(admin, 'POST', '/api/admin/ai/sharing', body);
+      expect(res.status, JSON.stringify(body)).toBe(400);
+    }
+    const before = Date.now();
+    const owner = await setSharing(8);
+    expect(owner.sharingHours).toBe(8);
+    const end = Date.parse(owner.sharingUntil!);
+    expect(end - before).toBeGreaterThanOrEqual(8 * 3_600_000 - 1000);
+    expect(end - Date.now()).toBeLessThanOrEqual(8 * 3_600_000);
     await until(() => status().available);
     expect(status().reason).toBeNull();
     expect((await emitAck(b.socket, 'ai:ask', { prompt: 'Teraz?' })).ok).toBe(true);
     await until(() => gateway.requests.includes('/chat'));
 
-    // F5 w karencji: przełącznik zostaje.
-    ownerAsPlayer.socket.disconnect();
-    await new Promise((resolvePromise) => setTimeout(resolvePromise, GRACE_MS / 3));
-    await seated(ownerPlayer);
-    await new Promise((resolvePromise) => setTimeout(resolvePromise, GRACE_MS));
-    expect(status().available).toBe(true);
-
-    // Zamknięcie ostatniej karty: po karencji boty gasną, przełącznik wyłączony.
-    disconnectAllExcept(b.socket);
-    await settle();
-    expect(status().available).toBe(true);
-    await until(() => status().reason === 'owner-absent', GRACE_MS * 5);
-    expect(built.realtime.deps.ctx.ai.sharingOn()).toBe(false);
-    // Nowe wejście zaczyna od „nie udostępniam”.
-    await seated(ownerGm);
+    const off = await setSharing(null);
+    expect(off).toMatchObject({ sharingUntil: null, sharingHours: null });
     await until(() => status().reason === 'sharing-off');
     gateway.requests = [];
     expect(await emitAck(b.socket, 'ai:ask', { prompt: 'A teraz?' })).toEqual({
@@ -707,13 +729,6 @@ describe('zgoda, przełącznik i obecność właściciela', () => {
     expect(gateway.requests).toEqual([]);
   });
 });
-
-function disconnectAllExcept(keep: ClientSocket): void {
-  for (const socket of openSockets.splice(0)) {
-    if (socket === keep) openSockets.push(socket);
-    else socket.disconnect();
-  }
-}
 
 describe('dzierżawa AI', () => {
   it('pierwsza sesja trzyma AI, koniec przekazuje drugiej, „Przejmij” odbiera bez cofania zgody', async () => {
@@ -805,7 +820,7 @@ describe('dzierżawa AI', () => {
     const b = await seated(mgB);
     const status = trackStatus(b.socket, b.sync.ai);
     await until(() => status().available);
-    await setSharing(false);
+    await setSharing(null);
     await until(() => status().reason === 'sharing-off');
     const a = await seated(ownerGm);
     expect(a.sync.ai.available).toBe(true);

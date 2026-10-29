@@ -734,7 +734,15 @@
 
 .owner-ai-sharing {
   justify-content: flex-start;
+  flex-wrap: wrap;
   gap: 0.5rem;
+}
+
+.owner-ai-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
 }
 
 .owner-ai-lease {

@@ -3,6 +3,10 @@
 **Faza:** przed betą · **Wymaga etapów:** 44c · Decyzje i kontekst: `etap-44-konta-mg.md`
 (decyzje 9–11)
 
+> **Zmiana 29.10.2026 (MG):** obecność właściciela i 2 min karencji wycofane — gasiły AI innego MG
+> zaraz po zamknięciu karty panelu. „Udostępniam AI” działa teraz na wybrany czas (2/4/8/24 h,
+> domyślnie 4 h), po terminie gaśnie od razu, restart serwera dalej wyłącza.
+
 ## Zakres
 
 - [x] **Model:** prośba o AI per konto MG (`requested`, `granted`, `rejected`, `revoked` i daty).

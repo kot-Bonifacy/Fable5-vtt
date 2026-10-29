@@ -1,7 +1,13 @@
 import type { FastifyInstance } from 'fastify';
 import type { Server as SocketIOServer } from 'socket.io';
 import type { AiAccessDecision, AiAccessStatus, SessionUser } from '@vtt/shared';
-import { isAiAccessStatus, normalizeGmLogin, ROLE_GM, ROLE_PLAYER } from '@vtt/shared';
+import {
+  isAiAccessStatus,
+  isAiSharingHours,
+  normalizeGmLogin,
+  ROLE_GM,
+  ROLE_PLAYER,
+} from '@vtt/shared';
 import type { AppContext } from '../context.js';
 import { requireAdmin, requireAuth, requireGm } from '../auth/guards.js';
 import { verifyPassword } from '../auth/passwords.js';
@@ -22,7 +28,8 @@ import { notifyAdmins } from '../realtime/admin-room.js';
  *   `GET /api/admin/ai`, decyzja o prośbie, „Udostępniam AI”, „Przejmij AI”.
  * - Gracz: `POST`/`DELETE /api/auth/owner-link` — „To konto właściciela”
  *   z loginem i hasłem konta MG właściciela (decyzja MG z 04.10). Od etapu 53
- *   flaga daje już tylko obecność właściciela — panel AI ma administrator.
+ *   panel AI ma administrator, a od 29.10 obecność właściciela nie gra roli
+ *   („Udostępniam AI” na czas) — flaga daje już tylko diagnostykę gatewaya.
  */
 
 /**
@@ -106,12 +113,14 @@ export function registerAiAccessRoutes(
     },
   );
 
-  /** „Udostępniam AI” — w pamięci serwera; po restarcie i nowym wejściu wyłączony. */
+  /** „Udostępniam AI” na `hours` godzin albo wyłączenie (`null`) — w pamięci serwera. */
   app.post('/api/admin/ai/sharing', { preHandler: requireAdmin }, async (request, reply) => {
-    const { on } = (request.body ?? {}) as { on?: unknown };
-    if (typeof on !== 'boolean') return reply.code(400).send({ error: 'BAD_REQUEST' });
-    ctx.ai.setSharing(on);
-    request.log.info({ on }, 'owner AI sharing changed');
+    const { hours } = (request.body ?? {}) as { hours?: unknown };
+    if (hours !== null && !isAiSharingHours(hours)) {
+      return reply.code(400).send({ error: 'BAD_REQUEST' });
+    }
+    ctx.ai.setSharing(hours);
+    request.log.info({ hours }, 'owner AI sharing changed');
     return buildOwnerAiState(ctx);
   });
 
@@ -123,14 +132,12 @@ export function registerAiAccessRoutes(
     return buildOwnerAiState(ctx);
   });
 
-  /** Gniazda konta dostają nową flagę od razu — obecność właściciela i panel. */
+  /** Gniazda konta dostają nową flagę od razu. */
   function setLiveOwnerFlag(userId: string, owner: boolean): void {
     for (const socket of io.sockets.sockets.values()) {
       const user = socket.data.user as SessionUser | undefined;
       if (user?.id !== userId) continue;
       socket.data.user = { ...user, owner };
-      if (owner) ctx.ai.ownerConnected(socket.id);
-      else ctx.ai.ownerDisconnected(socket.id);
     }
   }
 

@@ -195,7 +195,7 @@ function AccountRow({ account, onChanged }: { account: GmAccountView; onChanged:
               className="small-button"
               onClick={() => void setAi(true)}
               disabled={busy}
-              title="Zgoda na AI właściciela dla wszystkich kampanii tego MG, także przyszłych. Działa, gdy jesteś obecny i udostępniasz AI."
+              title="Zgoda na AI właściciela dla wszystkich kampanii tego MG, także przyszłych. Działa, gdy udostępniasz AI."
             >
               Nadaj AI
             </button>

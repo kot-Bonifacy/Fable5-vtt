@@ -27,17 +27,17 @@ import { E2E_DIR, GM_LOGIN } from '../../instance/paths.ts';
  *   „Knajpie” — sesja A trwa od punktu kontrolnego;
  * - **MG-B** = Bartek (Firefox) z Kubą (Chromium); kampania B w przygotowaniu;
  * - **Właściciel jako gracz** (Firefox) — nowe konto z imiennego linku u MG-B,
- *   flaga właściciela hasłem konta MG w „Ustawienia → Konto” (od etapu 53 to
- *   już tylko obecność właściciela);
+ *   flaga właściciela hasłem konta MG w „Ustawienia → Konto” (od etapu 53 bez
+ *   panelu AI, od 29.10 także bez obecności — „Udostępniam AI” działa na czas);
  * - **Administrator** (Chromium, etap 53) — panel AI: prośba, zgoda,
  *   „Udostępniam AI”, „Przejmij AI”;
  * - **MG-C** (Firefox) z rejestracji, tylko do limitu sesji.
  *
  * AI to **atrapa gatewaya** w trybie „odpowiada” — jej dziennik żądań jest
  * „logiem gatewaya”, z którego liczymy, czy żądanie kampanii bez prawa w ogóle
- * dotarło. Progi czasowe skrócone przez env: karencja właściciela 20 s,
- * a w ostatnim kroku pusty slot 1 min i bezczynność 3 min (decyzje MG z 04.10,
- * sesja T9b). Dokładne progi pilnują testy serwera na sztucznym zegarze.
+ * dotarło. Progi czasowe skrócone przez env: w ostatnim kroku pusty slot 1 min
+ * i bezczynność 3 min (decyzje MG z 04.10, sesja T9b). Dokładne progi i termin
+ * „Udostępniam AI” pilnują testy serwera na sztucznym zegarze.
  *
  * Wagi (decyzja MG z 04.10, sesja T9b): **B1** — przeciek ruchu, rzutu, czatu
  * albo kanarka między grupami; żądanie AI bez prawa, które dociera do gatewaya;
@@ -59,7 +59,6 @@ const BOT_B = 'Wykidajło';
 const STATIST_B = 'Ochroniarz Rezydencji';
 const OWNER_PLAYER = 'Właściciel';
 const FAKE_PORT = 3109;
-const GRACE_SECONDS = 20;
 const EMPTY_MINUTES = 1;
 const IDLE_MINUTES = 3;
 /** Wiadomość dochodzi do swojej grupy po ponad 5 s = B1 (próg zalewu z 26.09). */
@@ -247,10 +246,7 @@ test.describe.serial('T9b dwie grupy naraz, AI właściciela, limit sesji', () =
     fake.replyText = `Spadaj stąd, chłopcze. Kod bramy to ${REPLY_CODE}, ale nie dla ciebie.`;
     await fake.start();
     await restoreCheckpoint('po-T9a');
-    await startInstance({
-      AI_GATEWAY_URL: fake.url,
-      VTT_AI_OWNER_GRACE_SECONDS: String(GRACE_SECONDS),
-    });
+    await startInstance({ AI_GATEWAY_URL: fake.url });
   });
 
   test.afterAll(async ({ cast }) => {
@@ -718,38 +714,36 @@ test.describe.serial('T9b dwie grupy naraz, AI właściciela, limit sesji', () =
     }
   });
 
-  test(`8. karencja: właściciel zamyka ostatnią kartę → boty B działają jeszcze ${GRACE_SECONDS} s, potem gasną; po powrocie przełącznik wyłączony`, async () => {
-    // Wszystkie karty właściciela (konto MG, konto gracza, panel administratora) znikają.
+  test('8. udostępnienie na czas: właściciel zamyka wszystkie karty → boty B działają dalej, panel pokazuje termin', async () => {
+    // Wszystkie karty właściciela (konto MG, konto gracza, panel administratora)
+    // znikają. Do 29.10 po 2 min karencji AI gasło — od tego MG poprosił o czas.
     await mg.page.goto('about:blank');
     await owner.page.goto('about:blank');
     await admin.page.goto('about:blank');
-    const closedAt = Date.now();
-    const inGrace = await botChatB('Jeszcze tu jesteś?');
-    expect(inGrace.outcome?.event, 'w karencji AI jeszcze działa').toBe('bot:reply');
-    await expect
-      .poll(() => aiReason(bartek), { timeout: (GRACE_SECONDS + 20) * 1000 })
-      .toBe('owner-absent');
-    const after = Date.now() - closedAt;
-    test
-      .info()
-      .annotations.push({ type: 'karencja', description: `${Math.round(after / 1000)} s` });
-    expect(after, 'nie przed końcem karencji').toBeGreaterThanOrEqual((GRACE_SECONDS - 2) * 1000);
-    await expectBRefused('właściciel nieobecny');
+    await new Promise((resolve) => setTimeout(resolve, 5_000));
+    const alone = await botChatB('Jeszcze tu jesteś?');
+    expect(alone.outcome?.event, 'bez kart właściciela AI dalej działa').toBe('bot:reply');
+    expect(await aiReason(bartek)).toBe('available');
 
-    // Powrót konta gracza i panelu: przełącznik wyłączony, powód „nie udostępnia”.
-    await owner.page.goto('/');
-    await expect.poll(async () => (await authOf(owner))?.status).toBe('authenticated');
     await admin.page.goto('/');
     const window = await ownerWindow();
-    await expect(window.getByLabel('Udostępniam AI')).not.toBeChecked();
-    await shot(admin, '08-po-powrocie');
+    await expect(window.getByLabel('Udostępniam AI')).toBeChecked();
+    await expect(window.getByLabel('Okres udostępniania AI')).toHaveValue('4');
+    await expect(window.locator('.owner-ai-sharing')).toContainText(/do \d{2}:\d{2}/);
+    await shot(admin, '08-termin');
+
+    // Wyłączenie gasi od razu, ponowne włączenie (na 2 h) przywraca.
+    await window.getByLabel('Udostępniam AI').uncheck();
     await expect.poll(() => aiReason(bartek)).toBe('sharing-off');
-    await expectBRefused('po powrocie bez przełącznika');
+    await expectBRefused('przełącznik wyłączony');
+    await window.getByLabel('Okres udostępniania AI').selectOption('2');
     await window.getByLabel('Udostępniam AI').check();
     await expect.poll(() => aiReason(bartek)).toBe('available');
 
-    await mg.page.goto('/');
-    await expect.poll(async () => (await authOf(mg))?.status).toBe('authenticated');
+    for (const actor of [owner, mg]) {
+      await actor.page.goto('/');
+      await expect.poll(async () => (await authOf(actor))?.status).toBe('authenticated');
+    }
   });
 
   test('8. „Przejmij AI”: sesja właściciela odbiera AI bez cofania zgody', async () => {
@@ -839,7 +833,6 @@ test.describe.serial('T9b dwie grupy naraz, AI właściciela, limit sesji', () =
     await stopServer();
     await startServer({
       AI_GATEWAY_URL: fake.url,
-      VTT_AI_OWNER_GRACE_SECONDS: String(GRACE_SECONDS),
       VTT_SESSION_EMPTY_MINUTES: String(EMPTY_MINUTES),
       VTT_SESSION_IDLE_MINUTES: String(IDLE_MINUTES),
     });

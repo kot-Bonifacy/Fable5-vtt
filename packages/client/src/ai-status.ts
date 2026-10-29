@@ -29,7 +29,6 @@ export function aiBadgeText(status: AiStatus): string {
       return 'AI zajęte';
     case 'no-consent':
     case 'sharing-off':
-    case 'owner-absent':
       return 'AI niedostępne';
     default:
       return 'boty offline';

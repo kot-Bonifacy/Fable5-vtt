@@ -1,4 +1,4 @@
-import type { AiAccessReason, AiStatus, RulesIndexStatus } from '@vtt/shared';
+import type { AiAccessReason, AiSharingHours, AiStatus, RulesIndexStatus } from '@vtt/shared';
 import {
   aiAccessReasonText,
   emptyRulesIndexStatus,
@@ -23,15 +23,15 @@ import type {
  *
  * Gateway stoi na PC właściciela serwera i obsługuje jedną kampanię naraz.
  * **Prawo do AI** ma kampania z konta MG właściciela (zawsze) albo kampania MG,
- * który spełnia trzy warunki naraz: zgoda właściciela (`User.aiAccess`),
- * włączony przełącznik „Udostępniam AI” i obecny właściciel (gniazdo któregoś
- * konta z flagą albo karencja po ostatnim). **Dzierżawę** trzyma jedna
+ * który ma zgodę właściciela (`User.aiAccess`), póki trwa „Udostępniam AI”
+ * (2–24 h od włączenia, decyzja MG z 29.10 — wcześniej obecność właściciela
+ * z 2 min karencji gasiła AI zaraz po zamknięciu karty). **Dzierżawę** trzyma jedna
  * trwająca sesja: pierwsza uprawniona, aż do końca albo utraty prawa; potem
  * następna. Kampania w przygotowaniu (bez sesji) dostaje pojedyncze żądania
  * tylko wtedy, gdy AI nikt nie trzyma (decyzja MG z 04.10).
  *
- * Przełącznik, obecność i dzierżawa są w pamięci procesu: restart i każde nowe
- * wejście właściciela po karencji zaczynają od „nie udostępniam”.
+ * Przełącznik i dzierżawa są w pamięci procesu: restart zaczyna od
+ * „nie udostępniam”.
  *
  * Każde żądanie do gatewaya idzie przez `forCampaign(id)` — kod gry nie ma
  * dostępu do `AiGateway` inaczej niż przez tę bramę.
@@ -51,8 +51,6 @@ export interface AiCampaignEntry {
 }
 
 export interface AiAccessOptions {
-  /** Karencja po zniknięciu ostatniego gniazda właściciela (decyzja MG: 2 min). */
-  ownerGraceMs: number;
   /** Własny limit generacji, gdy wołający nie podał sygnału (`AI_TIMEOUT`, #46). */
   requestTimeoutMs: number;
 }
@@ -60,11 +58,10 @@ export interface AiAccessOptions {
 /** Warunki prawa do AI poza dzierżawą; null — kampania ma prawo. */
 export function aiEntitlement(
   entry: AiCampaignEntry,
-  state: { sharing: boolean; ownerPresent: boolean },
+  state: { sharing: boolean },
 ): AiAccessReason | null {
   if (entry.ownerCampaign) return null;
   if (!entry.granted) return 'no-consent';
-  if (!state.ownerPresent) return 'owner-absent';
   if (!state.sharing) return 'sharing-off';
   return null;
 }
@@ -93,9 +90,8 @@ export interface AiStatusViewer {
 
 export class AiAccess {
   private campaigns = new Map<string, AiCampaignEntry>();
-  private sharing = false;
-  private readonly ownerSockets = new Set<string>();
-  private graceTimer: NodeJS.Timeout | null = null;
+  private sharing: { until: number; hours: AiSharingHours } | null = null;
+  private sharingTimer: NodeJS.Timeout | null = null;
   private holder: string | null = null;
   private readonly streams = new Map<string, Set<AbortController>>();
   private readonly listeners = new Set<() => void>();
@@ -144,11 +140,12 @@ export class AiAccess {
     this.missing.clear();
   }
 
-  ownerPresent(): boolean {
-    return this.ownerSockets.size > 0 || this.graceTimer !== null;
+  sharingOn(): boolean {
+    return this.sharing !== null;
   }
 
-  sharingOn(): boolean {
+  /** Do kiedy (ms) i na ile godzin włączono „Udostępniam AI”; null — wyłączone. */
+  sharingWindow(): { until: number; hours: AiSharingHours } | null {
     return this.sharing;
   }
 
@@ -175,10 +172,7 @@ export class AiAccess {
       }
       return 'no-consent';
     }
-    const denied = aiEntitlement(entry, {
-      sharing: this.sharing,
-      ownerPresent: this.ownerPresent(),
-    });
+    const denied = aiEntitlement(entry, { sharing: this.sharingOn() });
     if (denied) return denied;
     if (entry.sessionStartedAt !== null) return this.holder === entry.id ? null : 'busy';
     return this.holder === null ? null : 'busy';
@@ -204,36 +198,21 @@ export class AiAccess {
     return () => this.listeners.delete(listener);
   }
 
-  /** Gniazdo konta z flagą właściciela (dowolna rola) — obecność. */
-  ownerConnected(socketId: string): void {
-    const wasPresent = this.ownerPresent();
-    this.ownerSockets.add(socketId);
-    if (this.graceTimer) {
-      // F5 w karencji: przełącznik zostaje, jak był.
-      clearTimeout(this.graceTimer);
-      this.graceTimer = null;
+  /**
+   * „Udostępniam AI” na `hours` godzin od teraz (ponowne włączenie liczy od
+   * nowa) albo wyłączenie (null). Po terminie AI gaśnie od razu, także
+   * w trakcie sesji — jak wyłączenie ręką.
+   */
+  setSharing(hours: AiSharingHours | null): void {
+    if (this.sharingTimer) clearTimeout(this.sharingTimer);
+    this.sharingTimer = null;
+    this.sharing = null;
+    if (hours !== null) {
+      const ms = hours * 3_600_000;
+      this.sharing = { until: Date.now() + ms, hours };
+      this.sharingTimer = setTimeout(() => this.setSharing(null), ms);
+      this.sharingTimer.unref?.();
     }
-    if (!wasPresent) this.recompute();
-  }
-
-  ownerDisconnected(socketId: string): void {
-    if (!this.ownerSockets.delete(socketId)) return;
-    if (this.ownerSockets.size > 0 || this.graceTimer) return;
-    this.graceTimer = setTimeout(() => this.expireGrace(), this.options.ownerGraceMs);
-    this.graceTimer.unref?.();
-  }
-
-  /** Koniec karencji: właściciel zniknął na dobre, przełącznik gaśnie. */
-  expireGrace(): void {
-    if (this.graceTimer) clearTimeout(this.graceTimer);
-    this.graceTimer = null;
-    if (this.ownerSockets.size > 0) return;
-    this.sharing = false;
-    this.recompute();
-  }
-
-  setSharing(on: boolean): void {
-    this.sharing = on;
     this.recompute();
   }
 
@@ -251,7 +230,7 @@ export class AiAccess {
   }
 
   private recompute(): void {
-    const state = { sharing: this.sharing, ownerPresent: this.ownerPresent() };
+    const state = { sharing: this.sharingOn() };
     this.holder = pickLeaseHolder(
       this.campaigns.values(),
       this.holder,
@@ -268,8 +247,8 @@ export class AiAccess {
   }
 
   stop(): void {
-    if (this.graceTimer) clearTimeout(this.graceTimer);
-    this.graceTimer = null;
+    if (this.sharingTimer) clearTimeout(this.sharingTimer);
+    this.sharingTimer = null;
     this.listeners.clear();
   }
 

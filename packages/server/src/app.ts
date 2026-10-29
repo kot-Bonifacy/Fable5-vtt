@@ -183,7 +183,6 @@ export async function buildApp(
     fetchImpl: options.aiFetch,
   });
   const ai = new AiAccess(prisma, gateway, {
-    ownerGraceMs: config.aiOwnerGraceMs ?? 120_000,
     requestTimeoutMs: config.aiRequestTimeoutMs,
   });
 

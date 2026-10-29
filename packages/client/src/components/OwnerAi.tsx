@@ -1,13 +1,18 @@
 import { useEffect, useState } from 'react';
-import type { AiAccessDecision, OwnerAiRequest, OwnerAiState } from '@vtt/shared';
-import { aiAccessErrorText } from '@vtt/shared';
+import type { AiAccessDecision, AiSharingHours, OwnerAiRequest, OwnerAiState } from '@vtt/shared';
+import {
+  AI_SHARING_DEFAULT_HOURS,
+  AI_SHARING_HOURS,
+  aiAccessErrorText,
+  isAiSharingHours,
+} from '@vtt/shared';
 import { ApiError, apiPost } from '../api.js';
 import { useOwnerAiStore } from '../stores/ownerAiStore.js';
 
 /**
  * AI właściciela (etap 44d) — panel w panelu administratora (etap 53; do 53
  * w Panelu MG właściciela i w oknie ze znaczka „AI” w górnym pasku). Prośby,
- * „Udostępniam AI”, kto trzyma AI i „Przejmij AI”.
+ * „Udostępniam AI” na wybrany okres (od 29.10), kto trzyma AI i „Przejmij AI”.
  */
 
 function when(iso: string | null): string {
@@ -18,6 +23,14 @@ function when(iso: string | null): string {
     hour: '2-digit',
     minute: '2-digit',
   });
+}
+
+/** Koniec udostępniania: dziś sama godzina, inny dzień — z datą. */
+function until(iso: string): string {
+  const end = new Date(iso);
+  return end.toDateString() === new Date().toDateString()
+    ? end.toLocaleTimeString('pl-PL', { hour: '2-digit', minute: '2-digit' })
+    : when(iso);
 }
 
 const STATUS_LABEL: Record<OwnerAiRequest['status'], string> = {
@@ -103,6 +116,12 @@ function RequestRow({
 export function OwnerAiPanel() {
   const state = useOwnerAiStore((s) => s.state);
   const [error, setError] = useState<string | null>(null);
+  const [hours, setHours] = useState<AiSharingHours>(AI_SHARING_DEFAULT_HOURS);
+  const sharingHours = state?.sharingHours ?? null;
+
+  useEffect(() => {
+    if (sharingHours !== null) setHours(sharingHours);
+  }, [sharingHours]);
 
   useEffect(() => {
     void useOwnerAiStore.getState().load();
@@ -122,24 +141,53 @@ export function OwnerAiPanel() {
   if (!state) return <p className="placeholder-text">Ładowanie…</p>;
 
   const lease = state.lease;
+  const sharing = state.sharingUntil !== null;
+
+  /** Włącza na `next` godzin od teraz albo wyłącza (null). */
+  function share(next: AiSharingHours | null) {
+    // Od razu w oknie — odpowiedź serwera z terminem i tak przyjdzie za chwilę.
+    useOwnerAiStore.getState().setState({
+      ...state!,
+      sharingUntil: next === null ? null : new Date(Date.now() + next * 3_600_000).toISOString(),
+      sharingHours: next,
+    });
+    void post('/api/admin/ai/sharing', { hours: next });
+  }
+
   return (
     <div className="owner-ai">
-      <label
+      <div
         className="settings-row owner-ai-sharing"
-        title="Bez tego MG ze zgodą nie dostaną AI. Wyłącza się samo 2 min po zamknięciu ostatniej karty Twoich kont (ten panel, konto MG właściciela) i po restarcie serwera. Kampanie konta MG właściciela mają AI zawsze."
+        title="Bez tego MG ze zgodą nie dostaną AI. Działa przez wybrany czas, także po zamknięciu tej karty; potem wyłącza się samo, a boty trwającej sesji milkną. Zmiana okresu liczy go od teraz. Restart serwera też wyłącza. Kampanie konta MG właściciela mają AI zawsze."
       >
-        <input
-          type="checkbox"
-          checked={state.sharing}
+        <label className="owner-ai-switch">
+          <input
+            type="checkbox"
+            checked={sharing}
+            onChange={(event) => share(event.target.checked ? hours : null)}
+          />
+          <span className="settings-label">Udostępniam AI</span>
+        </label>
+        <select
+          aria-label="Okres udostępniania AI"
+          value={hours}
           onChange={(event) => {
-            // Od razu w oknie — odpowiedź serwera i tak przyjdzie za chwilę.
-            const on = event.target.checked;
-            useOwnerAiStore.getState().setState({ ...state, sharing: on });
-            void post('/api/admin/ai/sharing', { on });
+            const next = Number(event.target.value);
+            if (!isAiSharingHours(next)) return;
+            setHours(next);
+            if (sharing) share(next);
           }}
-        />
-        <span className="settings-label">Udostępniam AI</span>
-      </label>
+        >
+          {AI_SHARING_HOURS.map((option) => (
+            <option key={option} value={option}>
+              na {option} h
+            </option>
+          ))}
+        </select>
+        {state.sharingUntil && (
+          <span className="invite-expiry">do {until(state.sharingUntil)}</span>
+        )}
+      </div>
 
       <p className="owner-ai-lease">
         {lease ? (
