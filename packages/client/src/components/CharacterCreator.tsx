@@ -1860,9 +1860,9 @@ function LifepathFieldRow({
   return (
     <>
       <div className="creator-lifepath-row">
-        <span className="creator-lifepath-label" title={table.question ?? table.label}>
-          {table.label}
-        </span>
+        {/* A Role table's label is the book's column heading — „Kto?" three
+            times over for the Netrunner — so the row shows its question. */}
+        <span className="creator-lifepath-label">{table.question ?? table.label}</span>
         {typing ? (
           <LifepathTextInput
             className="creator-lifepath-input"

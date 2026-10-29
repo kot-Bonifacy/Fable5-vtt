@@ -542,7 +542,8 @@ def apply_overrides(payload: dict, overrides: dict) -> None:
     The dump loses a seam here and there and the trimming heuristics cannot see
     everything; this is where the operator repairs it by hand, exactly as
     `roleSkills` repairs the creation tables of stage 25a. A string replaces the
-    row's text; an object is merged into the row.
+    row's text; an object is merged into the row. The keys `label` and
+    `question` replace the table's own heading and prompt instead of a row.
     """
     fixes = (overrides.get("lifepath") or {}) if isinstance(overrides, dict) else {}
     if not fixes:
@@ -556,6 +557,9 @@ def apply_overrides(payload: dict, overrides: dict) -> None:
             warn(f"Nadpisanie dla nieznanej tabeli {table_id!r}")
             continue
         for roll, replacement in rows.items():
+            if roll in ("label", "question"):
+                table[roll] = replacement
+                continue
             entry = next((e for e in table["entries"] if str(e["roll"]) == str(roll)), None)
             if entry is None:
                 warn(f"Nadpisanie {table_id}/{roll}: nie ma takiego wiersza")
