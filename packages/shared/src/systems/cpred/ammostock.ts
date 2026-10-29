@@ -31,7 +31,13 @@ import {
   type CpredAmmoProfile,
 } from './ammo.js';
 import { ITEM_QTY_MAX } from './character.js';
-import type { CpredCharacterData, CpredGearAmmo, CpredGearRow } from './character.js';
+import type {
+  CpredCharacterData,
+  CpredGearAmmo,
+  CpredGearRow,
+  CpredOutsideHands,
+  CpredWeaponRow,
+} from './character.js';
 import type { ResolvedWeapon, WeaponTypeDefinition } from './compendium.js';
 
 /**
@@ -428,6 +434,17 @@ export function cpredThrowsFromStock(
   resolved: Pick<ResolvedWeapon, 'thrown' | 'ammoPatterns'> | null | undefined,
 ): boolean {
   return resolved?.thrown === true && (resolved.ammoPatterns?.length ?? 0) > 0 && row.ammoMax <= 0;
+}
+
+/**
+ * Granat ręczny stoi poza limitem jednej broni w rękach (decyzja MG
+ * z 29.10.2026): rzut bierze sztukę z zapasu bez dobywania. Wołający daje
+ * swój katalog, bo silnik zasad katalogu nie trzyma.
+ */
+export function cpredGrenadesOutsideHands(
+  resolve: (row: CpredWeaponRow) => ResolvedWeapon | null,
+): CpredOutsideHands {
+  return (row) => cpredThrowsFromStock(row, resolve(row));
 }
 
 /**

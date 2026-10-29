@@ -35,18 +35,17 @@ import { ammoFitsWeapon, type CpredAmmoCheck, type CpredAmmoProfile } from './am
 import { CPRED_BLAST_SIDE_M, CPRED_THROW_RANGE_M } from './areas.js';
 import {
   cpredArmorStatPenalty,
-  cpredDrawFits,
   cpredDrawnWeapons,
-  cpredShieldHands,
   cpredShieldInHand,
   cpredWeaponInHands,
   CPRED_ARMOR_PENALTY_LABEL,
-  CPRED_HANDS,
   CPRED_SHIELD_TWO_HANDED_REFUSAL,
   type CpredCharacterData,
+  type CpredOutsideHands,
   type CpredRegistry,
   type CpredWeaponRow,
 } from './character.js';
+import { cpredThrowsFromStock } from './ammostock.js';
 import {
   CPRED_RANGE_BANDS,
   dvForRange,
@@ -133,16 +132,13 @@ export const CPRED_JAM_REFUSAL = 'Broń się zacięła — usuń usterkę (Akcja
  * To samo dla „tego nie masz w rękach" (etap 41), i z tego samego powodu: zdanie
  * pada w odmowie planera i na wyszarzonym slocie paska.
  *
- * Zdania są **dwa**, bo są dwie sytuacje (13.09). Broń, która mieści się
- * w wolnych rękach, wystarczy dobyć — za darmo (s. 168). Dopiero przy zajętych
- * rękach trzeba najpierw coś odłożyć, a obie drogi różnią się ceną: schowanie
- * kosztuje Akcję, upuszczenie nic. Do 13.09 zdanie było jedno, więc postać
- * z pustymi rękami słyszała „schowaj tamto (Akcja)" o broni, której nie trzyma.
- * Która sytuacja zachodzi, rozstrzyga `cpredDrawFits`.
+ * Zdania są **dwa**, bo są dwie sytuacje (13.09). Przy pustych rękach broń
+ * wystarczy dobyć — za darmo (s. 168). Przy innej broni w ręku dobycie jest
+ * zamianą i kosztuje Akcję (limit jednej broni, decyzja MG z 29.10.2026).
  */
 export const CPRED_NOT_DRAWN_REFUSAL =
-  'Masz w rękach co innego — schowaj tamto (Akcja) albo upuść, a potem dobądź tę broń.';
-export const CPRED_HOLSTERED_REFUSAL = 'Broń jest w kaburze — dobądź ją (bez Akcji).';
+  'W ręku masz inną broń — dobądź tę z ekwipunku (zamiana kosztuje Akcję).';
+export const CPRED_HOLSTERED_REFUSAL = 'Broń leży w ekwipunku — dobądź ją (bez Akcji).';
 
 /** A burst and a suppressive volley each cost an Action and ten rounds. */
 export const CPRED_BURST_AMMO_COST = 10;
@@ -688,13 +684,11 @@ export function planCpredAttack(
      */
     secondaryAmmo?: CpredAmmoProfile | null;
     /**
-     * Ile rąk zajmuje to, co strzelec już trzyma (13.09) — policzone przez
-     * wołającego z katalogu, jak `resolved`. Rozstrzyga wyłącznie o **zdaniu**
-     * odmowy broni spoza rąk: „dobądź ją" czy „najpierw schowaj tamto". Brak pola
-     * przy czymkolwiek w rękach znaczy „nie wiadomo" i daje to drugie — zdanie
-     * ostrożniejsze, bo nie obiecuje dobycia, którego serwer mógłby odmówić.
+     * Granaty na karcie strzelca (29.10.2026) — z katalogu wołającego, jak
+     * `resolved`. Stoją poza limitem rąk, więc bez tego pola pierwszy na liście
+     * granat „trzymałby” w rękach miejsce broni domyślnej.
      */
-    handsHeld?: number;
+    outsideHands?: CpredOutsideHands;
   },
   target: CpredAttackTarget & { tokenId?: string; coverId?: number },
   /**
@@ -786,15 +780,11 @@ export function planCpredAttack(
    * i granatnik podwieszany są częścią broni, którą figura trzyma, więc trzymanie
    * karabinu jest trzymaniem obu.
    *
-   * Odmowa obowiązuje **wyłącznie figury z zadeklarowanymi rękami** — decyzja MG
-   * z 10.09.2026. Karta, przy której nikt nigdy nie dobył ani nie schował broni,
-   * nie ma zadeklarowanych rąk, a to, co pokazują jej oględziny („pierwsza broń
-   * z karty"), jest domysłem VTT na użytek obrazu. Domysł nie zabrania: zakaz
-   * z niego wyprowadzony byłby regułą, której nie ustalił nikt przy stole.
-   *
-   * Od pierwszego dobycia albo schowania odmowa jest pełna i mówi, co zrobić:
-   * dobyć tę broń, gdy mieści się w wolnych rękach (za darmo, s. 168), a inaczej
-   * najpierw schować tamtą (Akcja) albo ją upuścić (za darmo).
+   * Od 29.10.2026 (decyzja MG) w rękach jest najwyżej jedna broń, a karta, przy
+   * której nikt niczego nie dobywał, trzyma pierwszą z listy — reszta czeka
+   * w ekwipunku. Bijatyka, Sztuki walki i granat ręczny są zawsze pod ręką.
+   * Odmowa mówi, co zrobić: dobyć (za darmo przy pustych rękach) albo zamienić
+   * (Akcja).
    */
   // Tarcza zajmuje rękę (s. 183), więc broń dwuręczna odpada — niezależnie od
   // tego, czy ręce są zadeklarowane: tarczę ktoś świadomie założył na karcie.
@@ -805,15 +795,14 @@ export function planCpredAttack(
     return { ok: false, error: 'SHIELD_TWO_HANDED' };
   }
 
-  if (!cpredWeaponInHands(data, hostRow.id)) {
-    const handsHeld =
-      weapon.handsHeld ??
-      (cpredDrawnWeapons(data).length === 0 ? cpredShieldHands(data) : CPRED_HANDS);
+  const grenade = !firedWith && cpredThrowsFromStock(hostRow, weapon.resolved);
+  if (!grenade && !cpredWeaponInHands(data, hostRow.id, weapon.outsideHands)) {
     return {
       ok: false,
-      error: cpredDrawFits(handsHeld, weapon.resolved?.hands ?? 1)
-        ? 'WEAPON_HOLSTERED'
-        : 'WEAPON_NOT_DRAWN',
+      error:
+        cpredDrawnWeapons(data, weapon.outsideHands).length === 0
+          ? 'WEAPON_HOLSTERED'
+          : 'WEAPON_NOT_DRAWN',
     };
   }
 

@@ -433,16 +433,17 @@ describe('ręce: co postać trzyma', () => {
     expect(sceneId).toBeTruthy();
   });
 
-  it('niezadeklarowane ręce niczego nie zabraniają — domysł nie jest deklaracją', async () => {
-    // Decyzja MG z 10.09.2026. Vex nigdy nie dobywał broni, a strzela z karabinu,
-    // czyli **nie** z pierwszego wiersza karty. Ma mu wyjść.
+  it('karta, której nikt nie pytał, trzyma pierwszą broń — resztę trzeba dobyć', async () => {
+    // Decyzja MG z 29.10.2026 (odwraca tę z 10.09). Vex nigdy nie dobywał broni,
+    // więc w ręku ma pistolet z pierwszego wiersza, a karabin leży w ekwipunku.
     const ack = await emitAck(vex, 'attack:roll', {
       characterId: vexCharacterId,
       attackerTokenId: vexTokenId,
       targetTokenId: gangerTokenId,
       request: { weaponRowId: 'v-rifle', mode: 'single' },
     });
-    expect(ack.ok).toBe(true);
+    expect(ack.ok).toBe(false);
+    if (!ack.ok) expect(ack.error).toBe('WEAPON_NOT_DRAWN');
   });
 
   it('schowanie broni deklaruje ręce i zamyka strzał z tego, co schowane', async () => {
@@ -462,8 +463,7 @@ describe('ręce: co postać trzyma', () => {
       request: { weaponRowId: 'v-rifle', mode: 'single' },
     });
     expect(ack.ok).toBe(false);
-    // Puste ręce, a karabin mieści się w dwóch wolnych: odmowa każe go dobyć,
-    // a nie „schować tamto" — czyli broń, której nikt nie trzyma (13.09).
+    // Puste ręce: odmowa każe go dobyć za darmo, a nie zamieniać (13.09).
     if (!ack.ok) expect(ack.error).toBe('WEAPON_HOLSTERED');
   });
 
@@ -483,19 +483,16 @@ describe('ręce: co postać trzyma', () => {
     expect(ack.ok).toBe(true);
   });
 
-  it('karabin zajmuje obie ręce, więc noża już się nie dobierze', async () => {
-    const ack = await emitAck(vex, 'weapon:draw', {
+  it('dobycie noża przy karabinie w ręku jest zamianą — w rękach jedna broń', async () => {
+    // Poza walką zamiana nie ma czego obciążyć; Akcję bierze w walce (29.10.2026).
+    const swap = await emitAck<{ hands: string[] }>(vex, 'weapon:draw', {
       characterId: vexCharacterId,
       weaponRowId: 'v-blade',
     });
-    expect(ack.ok).toBe(false);
-    if (!ack.ok) expect(ack.error).toBe('HANDS_FULL');
+    expect(data(swap, 'weapon:draw').hands).toEqual(['v-blade']);
   });
 
-  it('strzał bronią spoza rąk przy pełnych rękach każe najpierw coś odłożyć', async () => {
-    // Karabin w obu rękach, pistolet w kaburze: dobyć go się nie da, więc odmowa
-    // nie może obiecywać dobycia — ta sama miara, którą `weapon:draw` odmówił
-    // noża linijkę wyżej (13.09).
+  it('strzał bronią spoza rąk przy innej w ręku każe zamienić', async () => {
     const ack = await emitAck(vex, 'attack:roll', {
       characterId: vexCharacterId,
       attackerTokenId: vexTokenId,
@@ -506,30 +503,21 @@ describe('ręce: co postać trzyma', () => {
     if (!ack.ok) expect(ack.error).toBe('WEAPON_NOT_DRAWN');
   });
 
-  it('ale pistolet i nóż mieszczą się naraz — ręce są dwie', async () => {
-    await emitAck(vex, 'weapon:draw', {
+  it('pistolet i nóż nie mieszczą się już naraz — dobycie pistoletu odkłada nóż', async () => {
+    const swap = await emitAck<{ hands: string[] }>(vex, 'weapon:draw', {
       characterId: vexCharacterId,
-      weaponRowId: 'v-rifle',
-      mode: 'drop',
+      weaponRowId: 'v-pistol',
     });
-    await emitAck(vex, 'weapon:draw', { characterId: vexCharacterId, weaponRowId: 'v-pistol' });
-    const both = await emitAck<{ hands: string[] }>(vex, 'weapon:draw', {
-      characterId: vexCharacterId,
-      weaponRowId: 'v-blade',
-    });
-    expect(data(both, 'weapon:draw').hands).toEqual(['v-pistol', 'v-blade']);
+    expect(data(swap, 'weapon:draw').hands).toEqual(['v-pistol']);
   });
 
-  it('rzut oka pokazuje obie bronie w rękach', async () => {
+  it('rzut oka pokazuje jedną broń w rękach', async () => {
     const result = data(
       await emitAck<SightingLookResult>(gm, 'sighting:look', { tokenId: vexTokenId }),
       'sighting:look',
     );
     const sighting = result.sighting as unknown as CpredSighting;
-    expect(sighting.weapons.map((row) => row.name)).toEqual([
-      'Pistolet przykładowy',
-      'Ostrze przykładowe',
-    ]);
+    expect(sighting.weapons.map((row) => row.name)).toEqual(['Pistolet przykładowy']);
   });
 
   it('rąk nie da się przestawić łatą karty — także MG', async () => {
@@ -567,9 +555,11 @@ describe('ręce: co postać trzyma', () => {
         })
       ).ok,
     ).toBe(true);
-    for (const weaponRowId of ['v-pistol', 'v-blade']) {
-      await emitAck(vex, 'weapon:draw', { characterId: vexCharacterId, weaponRowId, mode: 'drop' });
-    }
+    await emitAck(vex, 'weapon:draw', {
+      characterId: vexCharacterId,
+      weaponRowId: 'v-pistol',
+      mode: 'drop',
+    });
 
     const rifleDraw = await emitAck(vex, 'weapon:draw', {
       characterId: vexCharacterId,
@@ -592,12 +582,12 @@ describe('ręce: co postać trzyma', () => {
       weaponRowId: 'v-pistol',
     });
     expect(data(pistolDraw, 'weapon:draw').hands).toEqual(['v-pistol']);
-    const blade = await emitAck(vex, 'weapon:draw', {
+    // Nóż obok tarczy się mieści, ale broń w rękach jest jedna — to zamiana.
+    const blade = await emitAck<{ hands: string[] }>(vex, 'weapon:draw', {
       characterId: vexCharacterId,
       weaponRowId: 'v-blade',
     });
-    expect(blade.ok).toBe(false);
-    if (!blade.ok) expect(blade.error).toBe('HANDS_FULL');
+    expect(data(blade, 'weapon:draw').hands).toEqual(['v-blade']);
 
     await emitAck(gm, 'character:update', {
       characterId: vexCharacterId,
@@ -625,7 +615,7 @@ describe('ręce: co postać trzyma', () => {
       'sighting:look',
     );
     const sighting = result.sighting as unknown as CpredSighting;
-    // Ręce trzymały pistolet i nóż; oba zeszły z karty, więc nie ma w nich nic —
+    // Ręce trzymały nóż; zszedł z karty razem z pistoletem, więc nie ma w nich nic —
     // karabin, który został, nie wskakuje do rąk sam.
     expect(sighting.weapons).toEqual([]);
   });

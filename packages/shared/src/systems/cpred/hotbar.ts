@@ -24,6 +24,7 @@ import {
   CPRED_ORDINARY_AMMO_LABEL,
   cpredAmmoStockByKind,
   cpredAmmoStockCount,
+  cpredGrenadesOutsideHands,
   cpredStockAmmoId,
   cpredThrowsFromStock,
 } from './ammostock.js';
@@ -34,9 +35,7 @@ import type {
   CpredWeaponRow,
 } from './character.js';
 import {
-  cpredDrawFits,
-  cpredHandsAreDeclared,
-  cpredHandsHeld,
+  cpredDrawnWeapons,
   cpredShieldInHand,
   cpredWeaponInHands,
   CPRED_SHIELD_TWO_HANDED_REFUSAL,
@@ -101,18 +100,15 @@ export interface CpredWeaponOption {
    */
   jammed?: boolean;
   /**
-   * Etap 41: ta broń nie jest w rękach, więc slot jest wyszarzony — i dlaczego
-   * (13.09): `holstered`, gdy mieści się w wolnych rękach i wystarczy ją dobyć,
-   * `handsFull`, gdy najpierw trzeba coś odłożyć. Od tego zależy zdanie odmowy.
+   * Etap 41: ta broń nie jest w rękach, więc slot jest wyszarzony — i dlaczego:
+   * `holstered`, gdy ręce są puste i wystarczy ją dobyć (bez Akcji), `swap`,
+   * gdy w ręku jest inna broń, a zamiana kosztuje Akcję (limit jednej broni,
+   * 29.10.2026). Od tego zależy zdanie odmowy. Bijatyka, Sztuki walki i granaty
+   * są zawsze pod ręką i tego pola nie dostają.
    *
-   * Nieobecne przy figurze, której rąk **nikt nie zadeklarował** — a takich jest
-   * większość. Domysł „pierwsza broń z karty" służy oględzinom i nie ma prawa
-   * gasić slotów na pasku (decyzja MG z 10.09.2026).
-   *
-   * `shield` (10.10.2026): broń dwuręczna przy tarczy w ręce — także przy
-   * niezadeklarowanych rękach, bo tarczę ktoś świadomie założył na karcie.
+   * `shield` (10.10.2026): broń dwuręczna przy tarczy w ręce.
    */
-  notDrawn?: 'holstered' | 'handsFull' | 'shield';
+  notDrawn?: 'holstered' | 'swap' | 'shield';
   /**
    * Etap 46c: naboje rodzaju z magazynka leżące w ekwipunku — `null`, gdy
    * karta nie liczy amunicji („bez dna”) albo broń nie ma kalibru.
@@ -231,26 +227,22 @@ function weaponOptionsOf(
 ): CpredWeaponOption[] {
   const lookup: CpredAmmoResolver = resolveAmmo ?? (() => null);
   if (sheet) {
-    // Etap 41: pytanie zadaje się **raz na kartę**, a nie raz na wiersz — i tylko
-    // wtedy, gdy ręce są zadeklarowane. Bagnet i granatnik dziedziczą odpowiedź
-    // nosiciela, bo trzymanie karabinu jest trzymaniem obu.
-    const handsDeclared = cpredHandsAreDeclared(sheet);
-    // Zajęte ręce liczy się raz na kartę — tym samym katalogiem, którym pasek
-    // rozwiązuje bronie, i tą samą miarą, którą serwer odmawia dobycia (13.09).
-    const handsHeld = handsDeclared
-      ? cpredHandsHeld(sheet, (held) => resolve(held.compendiumId)?.hands ?? 1)
-      : 0;
+    // Etap 41: bagnet i granatnik dziedziczą odpowiedź nosiciela, bo trzymanie
+    // karabinu jest trzymaniem obu. Granaty poza limitem rąk rozpoznaje ten sam
+    // katalog, którym pasek rozwiązuje bronie (29.10.2026).
+    const outside = cpredGrenadesOutsideHands((row) => resolve(row.compendiumId));
+    const handsEmpty = cpredDrawnWeapons(sheet, outside).length === 0;
     const shieldInHand = cpredShieldInHand(sheet);
     return sheet.weapons.flatMap((row: CpredWeaponRow) => {
       const resolved = resolve(row.compendiumId);
       const notDrawn: CpredWeaponOption['notDrawn'] =
         resolved?.hands === 2 && shieldInHand
           ? 'shield'
-          : !handsDeclared || cpredWeaponInHands(sheet, row.id)
+          : cpredWeaponInHands(sheet, row.id, outside)
             ? undefined
-            : cpredDrawFits(handsHeld, resolved?.hands ?? 1)
+            : handsEmpty
               ? 'holstered'
-              : 'handsFull';
+              : 'swap';
       const primary: CpredWeaponOption = {
         rowId: row.id,
         attachmentId: null,
@@ -733,7 +725,7 @@ function weaponRefusal(
   // Etap 41. Nad pustym magazynkiem, bo przeładowanie broni leżącej w kaburze
   // byłoby Akcją wydaną nie na to, co blokuje strzał.
   if (option.notDrawn === 'holstered') return CPRED_HOLSTERED_REFUSAL;
-  if (option.notDrawn === 'handsFull') return CPRED_NOT_DRAWN_REFUSAL;
+  if (option.notDrawn === 'swap') return CPRED_NOT_DRAWN_REFUSAL;
   if (option.notDrawn === 'shield') return CPRED_SHIELD_TWO_HANDED_REFUSAL;
   if (option.throwsFromStock && (option.stock ?? 0) < 1) return CPRED_NO_THROWABLE_REFUSAL;
   const ammo = option.ammo;

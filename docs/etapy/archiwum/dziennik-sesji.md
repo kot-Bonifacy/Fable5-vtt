@@ -1,5 +1,22 @@
 # Dziennik sesji — archiwum
 
+### Sesja 28.10, piąta — etap 63b „Płynna walka gracza” (zlecenie MG)
+
+**Zakres:** auto-unik z decyzji MG 4–7 (bez pytań w tej sesji — rozstrzygnięcia w pliku etapu).
+**Diagnoza:** serwer nie rzucał Uniku sam nigdzie; trafienie w bota-towarzysza czekało na
+„Bez uniku” MG. **Zmiana:** `CpredCharacterData.autoDodge` + `cpredAutoDodge` (brak pola = tak),
+`RollAttackMeta.autoEvasion`; serwer `realtime/auto-evasion.ts` (`autoEvasionHandsOf`: bot
+zawsze ręką MG, gracz ręką właściciela), w `attacks.ts` `performEvasion` wydzielone
+z `attack:evade`, `markAutoEvasions` przed zapisem karty i `runAutoEvasions` po huku (także
+w `attack:smart`), odmowa → `dropAutoEvasion`. Klient: `AutoDodgeToggle` pod banerem
+w `CombatHud`; `evasionCallsOf`, guziki `AttackRow` i `chatInvolvement` pomijają
+`autoEvasion`. **Testy:** shared 2760, serwer 1671 (nowe: gracz / odznaczony / NPC / bot
+w `attacks.test.ts`, Odskok w `areas.test.ts`), klient 442 — zielone; `tsc` trzech pakietów,
+ESLint, Prettier kodu. **Oglądane:** Ola w **Firefoksie** tymczasowym specem
+`99-ogledziny/t99-auto-unik.spec.ts` (niecommitowany): checkbox zaznaczony pod banerem, cios
+Bandziora → Unik sam, zero wezwań przez 3 s; odznaczenie przetrwało F5, następny cios woła
+„Wezwanie — Unik” i kubek. Na VPS nic nie zmieniano.
+
 ### Sesja 28.10, czwarta — etap 63a „Płynna walka gracza” (zlecenie MG)
 
 **Zlecenie:** dźwięk „twoja tura” myli się z innym, komunikaty trafienie/Unik/obrażenia zlewają

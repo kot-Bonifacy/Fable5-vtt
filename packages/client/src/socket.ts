@@ -2253,10 +2253,9 @@ function attackAckErrorText(code: string): string {
       return 'Ten wpis nie jest atakiem.';
     case 'WEAPON_HAS_NO_MAGAZINE':
       return 'Ta broń nie ma magazynka do przeładowania.';
-    // Etap 41. Ręce są dwie, a karabin zajmuje obie — zdanie mówi, co zrobić,
-    // bo obie drogi są jednym kliknięciem i różnią się wyłącznie ceną.
+    // Etap 41. Od 29.10 pada już tylko przy broni dwuręcznej i tarczy w ręce.
     case 'HANDS_FULL':
-      return 'Nie masz wolnej ręki — schowaj (Akcja) albo upuść to, co trzymasz.';
+      return 'Tarcza zajmuje ci rękę — odłóż ją, zanim dobędziesz broni dwuręcznej.';
     // Stage 31 — the four ways an attachment can be refused. The engine's own
     // messages are reused so the greyed-out button and the refusal say the same
     // sentence, which is the umowa the ammunition codes already follow.

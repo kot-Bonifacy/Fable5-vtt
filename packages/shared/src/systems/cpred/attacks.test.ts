@@ -27,12 +27,7 @@ import { unarmedDamage } from './barehands.js';
 import type { CpredAmmoProfile } from './ammo.js';
 import type { CpredAttachmentProfile } from './attachments.js';
 import { CPRED_OBSCUREMENT_KIND } from './environment.js';
-import {
-  buildCpredRegistry,
-  cpredHandsHeld,
-  createDefaultCharacterData,
-  type CpredRegistry,
-} from './character.js';
+import { buildCpredRegistry, createDefaultCharacterData, type CpredRegistry } from './character.js';
 import { hasCyberarm } from './cyberware.js';
 import { dvForRange, type ResolvedWeapon } from './compendium.js';
 
@@ -118,7 +113,6 @@ function plan(
     typeId,
     context,
     ammo,
-    handsHeld,
   }: {
     data?: ReturnType<typeof sheet>;
     resolved?: ResolvedWeapon | null;
@@ -129,11 +123,14 @@ function plan(
     typeId?: string;
     context?: CpredAttackContext;
     ammo?: CpredAmmoProfile | null;
-    handsHeld?: number;
   } = {},
 ) {
+  // Wiersz, którym się strzela, leży na karcie — inaczej nie byłoby go w rękach.
+  const onSheet = data.weapons.some((weapon) => weapon.id === row.id)
+    ? data
+    : { ...data, weapons: [row, ...data.weapons] };
   return planCpredAttack(
-    data,
+    onSheet,
     registry,
     { weaponRowId: row.id, mode: 'single', ...request },
     {
@@ -141,7 +138,6 @@ function plan(
       resolved,
       ...(typeId ? { typeId } : {}),
       ...(ammo ? { ammo } : {}),
-      ...(handsHeld !== undefined ? { handsHeld } : {}),
     },
     {
       name: 'Ganger',
@@ -1545,51 +1541,56 @@ describe('jakość broni i modyfikator pancerza w ataku (s. 185, 244)', () => {
   });
 });
 
-describe('broń spoza rąk — dwa zdania odmowy (etap 41, poprawka 13.09)', () => {
+describe('broń spoza rąk — jedna broń w rękach (etap 41, decyzja MG z 29.10.2026)', () => {
   const holstered = weaponRow({ id: 'w1' });
   const held = weaponRow({ id: 'w2', name: 'Karabin' });
-  const hands = (drawnWeaponRowIds: string[]) =>
-    sheet({ weapons: [holstered, held], skills: { handgun: 6 }, drawnWeaponRowIds });
+  const hands = (drawnWeaponRowIds?: string[]) =>
+    sheet({
+      weapons: [holstered, held],
+      skills: { handgun: 6 },
+      ...(drawnWeaponRowIds ? { drawnWeaponRowIds } : {}),
+    });
 
-  it('przy pustych rękach każe dobyć — bez Akcji i bez chowania czegokolwiek', () => {
+  it('przy pustych rękach każe dobyć — bez Akcji', () => {
     expect(plan({}, { data: hands([]), row: holstered })).toEqual({
       ok: false,
       error: 'WEAPON_HOLSTERED',
     });
   });
 
-  it('jednoręczną broń przy jednej wolnej ręce też wystarczy dobyć', () => {
-    expect(plan({}, { data: hands(['w2']), row: holstered, handsHeld: 1 })).toEqual({
-      ok: false,
-      error: 'WEAPON_HOLSTERED',
-    });
-  });
-
-  it('przy zajętych rękach każe najpierw coś odłożyć', () => {
-    expect(plan({}, { data: hands(['w2']), row: holstered, handsHeld: 2 })).toEqual({
-      ok: false,
-      error: 'WEAPON_NOT_DRAWN',
-    });
-    // Dwuręczna broń nie mieści się obok czegokolwiek w drugiej ręce.
-    expect(
-      plan(
-        {},
-        { data: hands(['w2']), row: holstered, resolved: { ...rifle, hands: 2 }, handsHeld: 1 },
-      ),
-    ).toEqual({ ok: false, error: 'WEAPON_NOT_DRAWN' });
-  });
-
-  it('bez policzonych rąk nie obiecuje dobycia, gdy coś w nich jest', () => {
+  it('przy innej broni w ręku każe zamienić (Akcja)', () => {
     expect(plan({}, { data: hands(['w2']), row: holstered })).toEqual({
       ok: false,
       error: 'WEAPON_NOT_DRAWN',
     });
   });
 
+  it('karta, której nikt nie pytał, strzela tylko pierwszą bronią', () => {
+    expect(plan({}, { data: hands(), row: holstered }).ok).toBe(true);
+    expect(plan({}, { data: hands(), row: held })).toEqual({
+      ok: false,
+      error: 'WEAPON_NOT_DRAWN',
+    });
+  });
+
+  it('granatem rzuca się bez dobywania i bez wypuszczania broni z ręki', () => {
+    const grenade = weaponRow({ id: 'g1', name: 'Granat', ammoMax: 0, ammoCurrent: 0 });
+    const data = sheet({
+      weapons: [holstered, grenade],
+      skills: { athletics: 6 },
+      drawnWeaponRowIds: ['w1'],
+    });
+    const thrown: ResolvedWeapon = { ...rifle, thrown: true, ammoPatterns: ['grenade'] };
+    const result = plan({}, { data, row: grenade, resolved: thrown });
+    expect(result.ok || result.error).not.toBe('WEAPON_NOT_DRAWN');
+    expect(result.ok || result.error).not.toBe('WEAPON_HOLSTERED');
+  });
+
   it('ma dla obu sytuacji zdanie, które gracz zobaczy', () => {
     expect(CPRED_ATTACK_PROBLEM_MESSAGES.WEAPON_HOLSTERED).toBe(CPRED_HOLSTERED_REFUSAL);
     expect(CPRED_HOLSTERED_REFUSAL).toContain('bez Akcji');
     expect(CPRED_ATTACK_PROBLEM_MESSAGES.WEAPON_NOT_DRAWN).toBe(CPRED_NOT_DRAWN_REFUSAL);
+    expect(CPRED_NOT_DRAWN_REFUSAL).toContain('Akcję');
   });
 });
 
@@ -1640,13 +1641,6 @@ describe('tarcza w ręce zajmuje rękę (s. 183, 10.10.2026)', () => {
       drawnWeaponRowIds: [],
     });
     expect(plan({}, { data, row: gun })).toEqual({ ok: false, error: 'WEAPON_HOLSTERED' });
-  });
-
-  it('liczy tarczę do zajętych rąk', () => {
-    const pistolRow = weaponRow({ id: 'w2' });
-    const data = sheet({ weapons: [pistolRow], armor: [shield()], drawnWeaponRowIds: ['w2'] });
-    expect(cpredHandsHeld(data, () => 1)).toBe(2);
-    expect(cpredHandsHeld({ ...data, armor: [shield(false)] }, () => 1)).toBe(1);
   });
 
   it('ma zdanie, które gracz zobaczy', () => {

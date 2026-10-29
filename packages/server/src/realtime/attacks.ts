@@ -33,12 +33,14 @@ import type {
 } from '@vtt/shared';
 import {
   tokenHiddenFrom,
-  cpredDrawFits,
-  cpredShieldHands,
+  cpredGrenadesOutsideHands,
+  cpredShieldInHand,
   cpredThrowsFromStock,
   cpredDrawnWeapons,
   cpredEffectiveStats,
-  cpredWeaponInHands,
+  cpredWeaponOutsideHands,
+  CPRED_DRAWN_WEAPONS_MAX,
+  type CpredOutsideHands,
   CPRED_ACTION_ATTACK,
   CPRED_EVADE_AREA_MIN_REF,
   CPRED_ACTION_CLEAR_JAM,
@@ -1183,20 +1185,9 @@ export async function performAttackRoll(
         registry,
         payload?.request ?? ({} as CpredAttackRequest),
         // The row, its catalogue entry and the round in the magazine — the three
-        // things that decide what leaves the barrel (stage 16g). A gun that is not
-        // in hand also carries how full the hands are (13.09): that decides
-        // whether the refusal says „dobądź ją" or „schowaj tamto".
-        cpredWeaponInHands(data, weapon.row.id)
-          ? weapon
-          : {
-              ...weapon,
-              handsHeld: await handsInUse(
-                deps,
-                campaignId,
-                data,
-                cpredDrawnWeapons(data).map((held) => held.id),
-              ),
-            },
+        // things that decide what leaves the barrel (stage 16g) — plus which rows
+        // are grenades, which stand outside the one-weapon limit (29.10.2026).
+        { ...weapon, outsideHands: await outsideHandsOf(deps, campaignId, data) },
         target
           ? {
               name: tokenTableName(target, target.name),
@@ -2322,10 +2313,13 @@ export const weaponClearJamEvent = defineEvent<WeaponClearJamPayload, { jammed: 
  * której nie starczyło tury, nie ma prawa skończyć z pustą kaburą i niezapłaconą
  * Akcją.
  *
- * **Pierwsze wywołanie deklaruje ręce.** Punktem wyjścia jest to, co do tej pory
- * *pokazywały* oględziny (`cpredDrawnWeapons` — czyli pierwsza broń z karty),
- * a nie pustka: co stół widział, to postać miała. Bez tego pierwsze „schowaj
- * pistolet" zostawiałoby w rękach karabin, którego nikt nie dobywał.
+ * Od 29.10.2026 (decyzja MG) w rękach jest najwyżej jedna broń. Dobycie innej
+ * przy pełnej ręce jest **zamianą**: poprzednia wraca do ekwipunku, a za jej
+ * schowanie idzie Akcja. Bijatyki, Sztuk walki i granatów się nie dobywa —
+ * są zawsze pod ręką, więc gest na nich niczego nie zmienia.
+ *
+ * Punktem wyjścia jest `cpredDrawnWeapons` — przy karcie, której nikt nie
+ * pytał, pierwsza broń z karty: co stół widział, to postać miała.
  */
 export const weaponDrawEvent = defineEvent<WeaponDrawPayload, { hands: string[] }>({
   name: 'weapon:draw',
@@ -2340,19 +2334,31 @@ export const weaponDrawEvent = defineEvent<WeaponDrawPayload, { hands: string[] 
       throw new RealtimeError('BAD_REQUEST');
     }
 
-    const before: string[] = cpredDrawnWeapons(data).map((weapon) => weapon.id);
+    const outside = await outsideHandsOf(deps, campaignId, data);
+    const before: string[] = cpredDrawnWeapons(data, outside).map((weapon) => weapon.id);
+    // Pięść i granat są zawsze pod ręką — nie ma czego dobywać ani chować.
+    if (cpredWeaponOutsideHands(row, outside)) return { hands: before };
     let hands: string[];
     if (mode === 'draw') {
       // Już w rękach — gest był omyłkowy, nie Akcją. Ta sama odpowiedź, którą
       // pełny magazynek daje przeładowaniu i sprawna broń usuwaniu usterki.
       if (before.includes(row.id)) return { hands: before };
-      // „Sięgnięcie **wolną ręką**" (s. 168): miejsce w rękach jest warunkiem,
-      // nie formalnością. Ile rąk zajmuje broń, wie katalog — a katalog należy
-      // do serwera, więc pytamy go tutaj, a nie w silniku zasad.
+      // Tarcza zajmuje rękę (s. 183): broni dwuręcznej przy niej się nie dobywa.
+      // Ile rąk zajmuje broń, wie katalog — a katalog należy do serwera.
       const needed = (await resolveWeaponRow(deps, campaignId, data, row.id)).resolved?.hands ?? 1;
-      const held = await handsInUse(deps, campaignId, data, before);
-      if (!cpredDrawFits(held, needed)) throw new RealtimeError('HANDS_FULL');
-      hands = [...before, row.id];
+      if (needed === 2 && cpredShieldInHand(data)) throw new RealtimeError('HANDS_FULL');
+      // Zamiana: poprzednia broń idzie do ekwipunku, a schowanie kosztuje Akcję.
+      if (before.length >= CPRED_DRAWN_WEAPONS_MAX) {
+        await spendCharacterAction(
+          deps,
+          campaignId,
+          socket.data.viewedSceneId,
+          character,
+          user,
+          CPRED_ACTION_HOLSTER,
+        );
+      }
+      hands = [row.id];
     } else {
       if (!before.includes(row.id)) return { hands: before };
       if (mode === 'holster') {
@@ -2377,20 +2383,22 @@ export const weaponDrawEvent = defineEvent<WeaponDrawPayload, { hands: string[] 
   },
 });
 
-/** Ile rąk zajmuje to, co figura już trzyma — tarcza i broń po broni, po katalogu. */
-async function handsInUse(
+/**
+ * Które wiersze karty stoją poza limitem rąk (29.10.2026) — granaty ręczne,
+ * rozpoznane katalogiem kampanii. Gołe ręce `shared` rozpoznaje sam.
+ */
+export async function outsideHandsOf(
   deps: RealtimeDeps,
   campaignId: string,
   data: CpredCharacterData,
-  rowIds: readonly string[],
-): Promise<number> {
-  // Tarcza w ręce zajmuje rękę jak broń (s. 183).
-  let used = cpredShieldHands(data);
-  for (const rowId of rowIds) {
-    const resolved = await resolveWeaponRow(deps, campaignId, data, rowId);
-    used += resolved.resolved?.hands ?? 1;
-  }
-  return used;
+): Promise<CpredOutsideHands> {
+  if (!data.weapons.some((row) => row.compendiumId)) return () => false;
+  const compendium = await buildCompendiumSync(deps, campaignId);
+  const weaponTypeById = new Map(compendium.weaponTypes.map((type) => [type.id, type]));
+  return cpredGrenadesOutsideHands((row) => {
+    const entry = compendium.entries.find((candidate) => candidate.id === row.compendiumId);
+    return entry && isWeaponEntry(entry) ? resolveWeapon(entry, { weaponTypeById }) : null;
+  });
 }
 
 /** One reload, socket-free — see `performAttackRoll` for why it is split out. */

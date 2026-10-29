@@ -585,6 +585,15 @@ export const WEAPON_ATTACHMENTS_MAX = 3;
  */
 export const CPRED_HANDS = 2;
 
+/**
+ * Ile broni postać trzyma naraz — jedną (decyzja MG z 29.10.2026), choć rąk
+ * jest dwie. Pozostałe leżą w ekwipunku i trzeba je dobyć, a dobycie przy
+ * pełnej ręce jest zamianą za Akcję (`weapon:draw`). Poza limitem stoją
+ * Bijatyka, Sztuki walki i granaty ręczne (`cpredWeaponOutsideHands`): są
+ * zawsze pod ręką i nigdy nie trafiają do rąk.
+ */
+export const CPRED_DRAWN_WEAPONS_MAX = 1;
+
 export interface CpredArmorRow extends CpredItemRow {
   /** Stopping Power the piece has when undamaged ("OB" on the Polish sheet). */
   sp: number;
@@ -799,32 +808,34 @@ export function cpredArmorPenalty(armor: readonly CpredArmorRow[] | undefined): 
 }
 
 /**
- * Czy ktokolwiek powiedział, co ta figura trzyma w rękach (etap 41).
+ * Broń spoza limitu rąk (decyzja MG z 29.10.2026): Bijatyka, Sztuki walki
+ * i granat ręczny. Nigdy nie jest w rękach i nigdy nie trzeba jej dobywać.
  *
- * Pytanie zadaje **planer ataku**, i tylko on: dopóki odpowiedź brzmi „nie",
- * żadna broń z karty nie jest zakazana, bo zakaz opierałby się wtedy na domyśle
- * VTT, a nie na czyjejkolwiek decyzji. Oględziny tego nie pytają — im wolno
- * zgadywać, bo zgadują **na głos** i nikomu niczego nie zabraniają.
+ * Gołe ręce rozpoznaje sam wiersz; granat — tylko katalog, a katalog należy do
+ * wołającego, stąd `outside` (zwykle `cpredGrenadesOutsideHands` z rozwiązywacza
+ * broni). Bez niego granat liczy się jak każda inna broń.
  */
-export function cpredHandsAreDeclared(
-  data: Pick<CpredCharacterData, 'drawnWeaponRowIds'>,
-): boolean {
-  return data.drawnWeaponRowIds !== undefined;
+export type CpredOutsideHands = (row: CpredWeaponRow) => boolean;
+
+export function cpredWeaponOutsideHands(row: CpredWeaponRow, outside?: CpredOutsideHands): boolean {
+  return cpredIsBareHandsRow(row) || outside?.(row) === true;
 }
 
 /**
- * Czy ta konkretna broń jest w rękach.
+ * Czy ta konkretna broń jest pod ręką: w rękach albo spoza limitu.
  *
- * Sensowne wyłącznie przy zadeklarowanych rękach — przy niezadeklarowanych
- * odpowiada `true` na wszystko, i to jest właściwa odpowiedź na „czy mogę tym
- * strzelić", a nie ukrywanie niewiedzy.
+ * Id wiersza, którego na karcie nie ma, w rękach nie jest — chyba że to stały
+ * wiersz gołych rąk.
  */
 export function cpredWeaponInHands(
-  data: Pick<CpredCharacterData, 'drawnWeaponRowIds'>,
+  data: Pick<CpredCharacterData, 'weapons' | 'drawnWeaponRowIds'>,
   rowId: string,
+  outside?: CpredOutsideHands,
 ): boolean {
-  const hands = data.drawnWeaponRowIds;
-  return hands === undefined || hands.includes(rowId);
+  if (cpredIsBareHandsRow(rowId)) return true;
+  const row = data.weapons.find((weapon) => weapon.id === rowId);
+  if (row && cpredWeaponOutsideHands(row, outside)) return true;
+  return cpredDrawnWeapons(data, outside).some((weapon) => weapon.id === rowId);
 }
 
 /** Czy serwer rzuca za tę kartę Unik i Odskok sam (etap 63b) — brak pola to tak. */
@@ -833,45 +844,31 @@ export function cpredAutoDodge(data: Pick<CpredCharacterData, 'autoDodge'>): boo
 }
 
 /**
- * Broń, którą ta karta trzyma — tak, jak pokazują ją oględziny.
+ * Broń, którą ta karta trzyma w rękach — najwyżej jedna (29.10.2026).
  *
  * Tu mieszka reguła domyślna („karta, której nikt nie pytał, trzyma swoją
- * pierwszą broń"), bo pytających o obraz jest wielu (dymek, okno oględzin,
- * pasek akcji) i rozjechaliby się na niej co do jednego.
+ * pierwszą broń"), bo pytających jest wielu (planer ataku, pasek akcji,
+ * oględziny, `weapon:draw`) i rozjechaliby się na niej co do jednego.
  *
  * Id wskazujące wiersz, którego już nie ma (broń oddana, sprzedana, zabrana
  * z ciała), **wypada** z listy: broń, która zeszła z karty, nie jest w niczyich
- * rękach.
+ * rękach. Broń spoza limitu też wypada — nawet zapisana przed 29.10.
  */
 export function cpredDrawnWeapons(
   data: Pick<CpredCharacterData, 'weapons' | 'drawnWeaponRowIds'>,
+  outside?: CpredOutsideHands,
 ): CpredWeaponRow[] {
   const hands = data.drawnWeaponRowIds;
   if (hands === undefined) {
-    // Gołe ręce z urzędu (47b) nie są „pierwszą bronią” — karta bez broni
-    // nie pokazuje w oględzinach, że trzyma Bijatykę.
-    const first = data.weapons.find((row) => !cpredIsBareHandsRow(row));
+    const first = data.weapons.find((row) => !cpredWeaponOutsideHands(row, outside));
     return first ? [first] : [];
   }
   return hands
     .map((rowId) => data.weapons.find((row) => row.id === rowId))
-    .filter((row): row is CpredWeaponRow => row !== undefined);
-}
-
-/**
- * Ile rąk zajmuje to, co karta trzyma (13.09).
- *
- * Ile rąk zajmuje **jedna** broń, wie katalog, a katalog należy do wołającego —
- * stąd `handsOf`. Serwer liczy to samo asynchronicznie (`handsInUse`), bo jego
- * katalog siedzi w bazie; porównanie z liczbą rąk jest jedno: `cpredDrawFits`.
- */
-export function cpredHandsHeld(
-  data: Pick<CpredCharacterData, 'weapons' | 'drawnWeaponRowIds'> & {
-    armor?: readonly CpredArmorRow[];
-  },
-  handsOf: (row: CpredWeaponRow) => number,
-): number {
-  return cpredDrawnWeapons(data).reduce((used, row) => used + handsOf(row), cpredShieldHands(data));
+    .filter(
+      (row): row is CpredWeaponRow => row !== undefined && !cpredWeaponOutsideHands(row, outside),
+    )
+    .slice(0, CPRED_DRAWN_WEAPONS_MAX);
 }
 
 /**
@@ -895,18 +892,6 @@ export function cpredShieldHands(data: { armor?: readonly CpredArmorRow[] }): nu
 /** Odmowa broni dwuręcznej przy tarczy — jedno zdanie dla planera i paska akcji. */
 export const CPRED_SHIELD_TWO_HANDED_REFUSAL =
   'Tarcza zajmuje ci rękę — broni dwuręcznej nie użyjesz, dopóki jej nie odłożysz (Akcja).';
-
-/**
- * Czy broń zajmująca `handsNeeded` rąk zmieści się obok tego, co figura trzyma.
- *
- * Jedno porównanie na dwa pytania (13.09): `weapon:draw` odmawia `HANDS_FULL`,
- * gdy odpowiedź brzmi „nie", a odmowa strzału bronią spoza rąk mówi „dobądź ją",
- * gdy brzmi „tak". Rozjechać się nie mogą — inaczej odmowa kazałaby dobyć broń,
- * której serwer dobyć nie pozwoli.
- */
-export function cpredDrawFits(handsHeld: number, handsNeeded: number): boolean {
-  return handsHeld + handsNeeded <= CPRED_HANDS;
-}
 
 /** Label the armour penalty carries wherever it is shown — one spelling. */
 export const CPRED_ARMOR_PENALTY_LABEL = 'Pancerz';
@@ -1123,19 +1108,17 @@ export interface CpredCharacterData {
    *
    * Trzy stany, nie dwa, i to jest cała subtelność tego pola:
    *
-   *  - **brak pola** — nikt tej figury nigdy nie pytał. Oględziny pokazują wtedy
-   *    **pierwszą broń z karty** (decyzja MG z 10.09.2026), żeby funkcja działała
-   *    na kartach starszych niż ten etap, ale **planer ataku nie odmawia niczego**:
-   *    to jest domysł VTT, a nie deklaracja stołu, i domysł nie ma prawa zabraniać
-   *    (decyzja MG z 10.09.2026, po zmierzeniu skutków na 39 testach). Ta sama
-   *    ostrożność, którą `conditionalPenalty` stosuje do kar w etapie 29a:
-   *    czego VTT nie wie na pewno, tego nie egzekwuje,
+   *  - **brak pola** — nikt tej figury nigdy nie pytał. W rękach jest wtedy
+   *    **pierwsza broń z karty** (poza Bijatyką, Sztukami walki i granatami),
+   *    a pozostałe trzeba dobyć — od 29.10.2026 to reguła, nie domysł oględzin
+   *    (decyzja MG; do tej pory brak pola niczego nie zabraniał),
    *  - **`[]`** — **puste ręce**, i to świadomie: ktoś schował broń albo ją upuścił,
-   *  - **lista id** — te konkretne bronie. Dwie, bo ręce są dwie: pistolet i nóż
-   *    trzyma się naraz, a karabin zajmuje obie.
+   *  - **lista id** — ta konkretna broń. Najwyżej jedna
+   *    (`CPRED_DRAWN_WEAPONS_MAX`, 29.10.2026); starsze karty z dwiema trzymają
+   *    pierwszą z nich.
    *
-   * Od pierwszego dobycia albo schowania pole **istnieje** i od tej chwili odmowa
-   * jest pełna. Czyta się je wyłącznie przez funkcje niżej, nigdy wprost.
+   * Czyta się je wyłącznie przez `cpredDrawnWeapons` i `cpredWeaponInHands`,
+   * nigdy wprost.
    *
    * Pisane **tylko** przez `weapon:draw`, nigdy łatą karty: schowanie broni kosztuje
    * Akcję (s. 168), a cena z furtką obok jest ozdobą — ta sama umowa, którą

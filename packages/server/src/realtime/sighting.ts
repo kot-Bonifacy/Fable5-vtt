@@ -1,5 +1,6 @@
 import type {
   CpredCharacterData,
+  CpredOutsideHands,
   CpredSightingWeaponFacts,
   SightingLogEntry,
   SightingLookPayload,
@@ -18,6 +19,7 @@ import {
 } from '@vtt/shared';
 import type { Character, Scene, Token } from '../generated/prisma/client.js';
 import { RealtimeError, defineEvent, type RealtimeDeps } from './registry.js';
+import { outsideHandsOf } from './attacks.js';
 import { requireCampaignId } from './combat.js';
 import { requireCampaignToken, concealedFrom, concealmentFor } from './tokens.js';
 import { sheetIsContainer, toLinkedSheet } from '../sheets.js';
@@ -54,8 +56,9 @@ export async function weaponFactsFor(
   deps: RealtimeDeps,
   campaignId: string,
   data: CpredCharacterData,
+  outsideHands?: CpredOutsideHands,
 ): Promise<Record<string, CpredSightingWeaponFacts>> {
-  const drawn = cpredDrawnWeapons(data);
+  const drawn = cpredDrawnWeapons(data, outsideHands);
   const withEntries = drawn.filter((row) => row.compendiumId);
   if (withEntries.length === 0) return {};
   const compendium = await buildCompendiumSync(deps, campaignId);
@@ -84,8 +87,12 @@ export async function buildSighting(
   detailed: boolean,
 ): Promise<Record<string, unknown>> {
   const data = parseCharacterData(character.data, deps.ctx.cpred);
-  const weapons = await weaponFactsFor(deps, campaignId, data);
-  return cpredSighting(data, { detailed, weapons }) as unknown as Record<string, unknown>;
+  const outsideHands = await outsideHandsOf(deps, campaignId, data);
+  const weapons = await weaponFactsFor(deps, campaignId, data, outsideHands);
+  return cpredSighting(data, { detailed, weapons, outsideHands }) as unknown as Record<
+    string,
+    unknown
+  >;
 }
 
 /**

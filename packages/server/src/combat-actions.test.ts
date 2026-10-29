@@ -22,6 +22,7 @@ import { CPRED_TURN_PROBLEM_MESSAGES, GM_OVER_BUDGET } from '@vtt/shared';
 import type { ServerConfig } from './config.js';
 import { buildApp, type BuiltApp } from './app.js';
 import { joinUrl } from './test-join.js';
+import { holdFiredWeapon } from './test-hands.js';
 
 /**
  * Smoke tests of the action economy (stage 14b) on real sockets.
@@ -103,7 +104,17 @@ function waitFor<T>(socket: ClientSocket, event: string, ms = 3000): Promise<T> 
   });
 }
 
-function emitAck<T = undefined>(
+/** `attack:roll` strzela z broni w ręku — `holdFiredWeapon` kładzie ją tam przed rzutem. */
+async function emitAck<T = undefined>(
+  socket: ClientSocket,
+  event: string,
+  payload?: unknown,
+): Promise<SocketAck<T>> {
+  if (event === 'attack:roll') await holdFiredWeapon(built, payload);
+  return emitRawAck<T>(socket, event, payload);
+}
+
+function emitRawAck<T = undefined>(
   socket: ClientSocket,
   event: string,
   payload?: unknown,
@@ -491,6 +502,30 @@ describe('action economy', () => {
     expect(spent(rowOf(await tracker(), vexTokenId), 'action')).toEqual({ used: 1, max: 1 });
   });
 
+  it('charges swapping weapons an Action — one weapon in hand (29.10.2026)', async () => {
+    await giveTurnTo(vexTokenId);
+    // Pistol in hand (first row, or the one the last shot put there).
+    const swap = await emitAck<{ hands: string[] }>(player, 'weapon:draw', {
+      characterId: vexCharacterId,
+      weaponRowId: 'w-blade',
+    });
+    expect(data(swap, 'weapon:draw').hands).toEqual(['w-blade']);
+    expect(spent(rowOf(await tracker(), vexTokenId), 'action')).toEqual({ used: 1, max: 1 });
+
+    // Dropping is free, and drawing into empty hands is free too.
+    await emitAck(player, 'weapon:draw', {
+      characterId: vexCharacterId,
+      weaponRowId: 'w-blade',
+      mode: 'drop',
+    });
+    const draw = await emitAck<{ hands: string[] }>(player, 'weapon:draw', {
+      characterId: vexCharacterId,
+      weaponRowId: 'w-pistol',
+    });
+    expect(data(draw, 'weapon:draw').hands).toEqual(['w-pistol']);
+    expect(spent(rowOf(await tracker(), vexTokenId), 'action')).toEqual({ used: 1, max: 1 });
+  });
+
   it('refuses an action outside your own turn and shows the GM a „przepuść" card', async () => {
     await giveTurnTo(thugTokenId);
     const card = waitFor<ChatMessageBroadcast>(gm, 'chat:message');
@@ -598,9 +633,7 @@ describe('action economy', () => {
   it('slots a held Action in after the running turn on „Działam teraz”, nobody twice', async () => {
     // Round N: Vex (20) holds down to 1, the thug (10) is up.
     await giveTurnTo(vexTokenId);
-    expect(
-      (await emitAck(player, 'combat:hold', { initiative: 1 })).ok,
-    ).toBe(true);
+    expect((await emitAck(player, 'combat:hold', { initiative: 1 })).ok).toBe(true);
     const thugTurn = data(await emitAck<CombatView>(player, 'combat:next', {}), 'combat:next');
     const round = thugTurn.round;
     expect(thugTurn.activeCombatantId).toBe(rowOf(thugTurn, thugTokenId).id);
@@ -639,9 +672,7 @@ describe('action economy', () => {
 
   it('plays a held Action nobody fired last in the round, rather than losing it', async () => {
     await giveTurnTo(vexTokenId);
-    expect(
-      (await emitAck(player, 'combat:hold', { initiative: 1 })).ok,
-    ).toBe(true);
+    expect((await emitAck(player, 'combat:hold', { initiative: 1 })).ok).toBe(true);
     const thugTurn = data(await emitAck<CombatView>(player, 'combat:next', {}), 'combat:next');
     const round = thugTurn.round;
     await emitAck(gm, 'combat:next', {}); // the courier

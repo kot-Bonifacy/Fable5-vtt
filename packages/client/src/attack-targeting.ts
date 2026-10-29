@@ -19,9 +19,8 @@ import {
   barrierArmorAlong,
   barrierConcealPenaltyAlong,
   cpredBarrierModifiers,
-  cpredHandsHeld,
+  cpredGrenadesOutsideHands,
   cpredSheetRollSheet,
-  cpredWeaponInHands,
   coverInLineOfFire,
   distanceToCover,
   formatMetres,
@@ -250,17 +249,14 @@ export function planAttackPreview(
     : undefined;
   const secondaryWeapon = firedWith ? resolveAttachmentWeapon(firedWith, { weaponTypeById }) : null;
 
-  // 13.09: zdanie odmowy broni spoza rąk zależy od tego, ile rąk zajmuje to, co
-  // strzelec już trzyma. Dymek liczy to z tego samego katalogu co serwer, żeby
-  // nie obiecać „dobądź ją" tam, gdzie serwer każe najpierw coś schować.
-  const handsHeld = cpredWeaponInHands(data, row.id)
-    ? undefined
-    : cpredHandsHeld(data, (held) => {
-        const heldEntry = held.compendiumId ? compendium.entries[held.compendiumId] : undefined;
-        return heldEntry && isWeaponEntry(heldEntry)
-          ? (resolveWeapon(heldEntry, { weaponTypeById }).hands ?? 1)
-          : 1;
-      });
+  // 29.10: granaty stoją poza limitem jednej broni w rękach — dymek rozpoznaje
+  // je tym samym katalogiem co serwer, żeby odmowa „dobądź ją” się nie rozjechała.
+  const outsideHands = cpredGrenadesOutsideHands((held) => {
+    const heldEntry = held.compendiumId ? compendium.entries[held.compendiumId] : undefined;
+    return heldEntry && isWeaponEntry(heldEntry)
+      ? resolveWeapon(heldEntry, { weaponTypeById })
+      : null;
+  });
 
   const planned = planCpredAttack(
     data,
@@ -269,7 +265,7 @@ export function planAttackPreview(
     {
       row,
       resolved,
-      ...(handsHeld !== undefined ? { handsHeld } : {}),
+      outsideHands,
       typeId: entry && isWeaponEntry(entry) ? entry.weaponTypeId : null,
       ammo,
       attachments,

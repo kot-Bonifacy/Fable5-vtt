@@ -9,13 +9,13 @@ import {
 import {
   createDefaultCharacterData,
   cpredDrawnWeapons,
-  cpredHandsAreDeclared,
   cpredWeaponInHands,
   type CpredArmorRow,
   type CpredCharacterData,
   type CpredCyberwareRow,
   type CpredWeaponRow,
 } from './character.js';
+import { CPRED_BARE_HANDS_ROW_IDS } from './barehands.js';
 
 /**
  * Etap 41: co jedna figura widzi na drugiej.
@@ -72,18 +72,26 @@ describe('ręce: trzy stany, nie dwa', () => {
     expect(cpredDrawnWeapons(data).map((row) => row.id)).toEqual(['w1']);
   });
 
-  it('ale niepytana karta niczego nie zabrania — domysł nie jest deklaracją', () => {
-    // Decyzja MG z 10.09.2026: pierwsza broń z karty służy do **pokazywania**.
-    // Zakaz wyprowadzony z domysłu byłby regułą, której nie ustalił nikt przy stole.
+  it('niepytana karta trzyma pierwszą broń, a resztę trzeba dobyć (29.10.2026)', () => {
+    // Decyzja MG z 29.10.2026 odwraca tę z 10.09: domysł jest regułą.
     const data = sheet({ weapons: [weapon(), weapon({ id: 'w2' })] });
-    expect(cpredHandsAreDeclared(data)).toBe(false);
-    expect(cpredWeaponInHands(data, 'w2')).toBe(true);
+    expect(cpredWeaponInHands(data, 'w1')).toBe(true);
+    expect(cpredWeaponInHands(data, 'w2')).toBe(false);
+  });
+
+  it('granat i gołe ręce są zawsze pod ręką i nie zajmują miejsca broni', () => {
+    const grenade = weapon({ id: 'g1', name: 'Granat odłamkowy' });
+    const data = sheet({ weapons: [grenade, weapon({ id: 'w2' })] });
+    const outside = (row: { id: string }) => row.id === 'g1';
+    expect(cpredDrawnWeapons(data, outside).map((row) => row.id)).toEqual(['w2']);
+    expect(cpredWeaponInHands(data, 'g1', outside)).toBe(true);
+    const fist = sheet({ weapons: [weapon()], drawnWeaponRowIds: [] });
+    expect(cpredWeaponInHands(fist, CPRED_BARE_HANDS_ROW_IDS.brawling)).toBe(true);
   });
 
   it('pusta lista znaczy puste ręce i zabrania wszystkiego', () => {
     const data = sheet({ weapons: [weapon()], drawnWeaponRowIds: [] });
     expect(cpredDrawnWeapons(data)).toEqual([]);
-    expect(cpredHandsAreDeclared(data)).toBe(true);
     expect(cpredWeaponInHands(data, 'w1')).toBe(false);
   });
 
@@ -96,14 +104,14 @@ describe('ręce: trzy stany, nie dwa', () => {
     expect(cpredWeaponInHands(data, 'w1')).toBe(false);
   });
 
-  it('dwie jednoręczne bronie trzyma się naraz — ręce są dwie', () => {
+  it('w rękach jest najwyżej jedna broń — starsza karta z dwiema trzyma pierwszą', () => {
     const data = sheet({
       weapons: [weapon({ id: 'w1', name: 'Zgrzyt 9' }), weapon({ id: 'w2', name: 'Szpon' })],
       drawnWeaponRowIds: ['w1', 'w2'],
     });
-    expect(cpredDrawnWeapons(data)).toHaveLength(2);
+    expect(cpredDrawnWeapons(data)).toHaveLength(1);
     expect(cpredWeaponInHands(data, 'w1')).toBe(true);
-    expect(cpredWeaponInHands(data, 'w2')).toBe(true);
+    expect(cpredWeaponInHands(data, 'w2')).toBe(false);
   });
 
   it('broń, która zeszła z karty, wypada z rąk — nie podstawia się innej', () => {

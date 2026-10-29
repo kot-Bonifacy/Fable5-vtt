@@ -195,6 +195,13 @@ przestanie się bronić, przenieś ją stąd do `POMYSLY.md` jako zadanie — ni
   i nic nie rusza wierszy broni. To cała reguła, jaką da się dziś uczciwie wyegzekwować; gdy
   powstanie model rąk, ta decyzja wraca jako zadanie.
 
+- **W rękach jedna broń, zamiana za Akcję (29.10.2026, decyzja MG).** RAW zna tylko wolne ręce
+  (s. 168): pistolet i nóż trzyma się naraz, a dobycie jest darmowe, gdy ręka jest wolna. VTT
+  pozwala trzymać **jedną** broń; dobycie innej przy pełnej ręce chowa poprzednią i kosztuje
+  Akcję (cena schowania). Karta, przy której nikt niczego nie dobywał, trzyma pierwszą broń.
+  Bijatyka, Sztuki walki i granat ręczny są poza limitem — zawsze pod ręką. Dotyczy każdej karty
+  (gracze, boty, NPC-e MG).
+
 - **Celowanie w nogę nadaje ranę samo (29.08, decyzja MG).** „cel otrzymuje także Ranę Krytyczną
   Złamanie nogi (jeśli ma niezłamaną nogę)" (s. 170) jest kategoryczne, więc serwer dopisuje ranę
   bez pytania — tak samo, jak sam losuje ranę przy dwóch szóstkach. Warunek RAW („jeśli przez

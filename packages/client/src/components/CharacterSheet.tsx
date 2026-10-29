@@ -158,6 +158,8 @@ import {
   purchasedSheetRow,
   resolveWeapon,
   cpredDrawnWeapons,
+  cpredGrenadesOutsideHands,
+  cpredWeaponOutsideHands,
   searchCompendium,
   cpredSheetSeriousWoundThreshold,
   skillBase,
@@ -2015,22 +2017,23 @@ function WeaponStrip({
    */
   const [picking, setPicking] = useState<{ rowId: string | null } | null>(null);
 
-  /**
-   * Co ta postać ma w rękach (etap 41).
-   *
-   * Czytane przez `cpredDrawnWeapons`, a nie wprost z pola, bo tam mieszka
-   * reguła domyślna: karta, przy której nikt nigdy nie dobył ani nie schował
-   * broni, **pokazuje pierwszą z listy**. Guzik „Schowaj" przy niej nie jest
-   * więc martwy — jest pierwszą deklaracją rąk tej figury.
-   */
-  const inHands = cpredDrawnWeapons(data).map((row) => row.id);
-
   /** Catalogue stats of a row, or null for a hand-typed weapon. */
   function resolvedOf(row: CpredWeaponRow): ResolvedWeapon | null {
     const entry = row.compendiumId ? entries[row.compendiumId] : undefined;
     if (!entry || !isWeaponEntry(entry)) return null;
     return resolveWeapon(entry, { weaponTypeById: new Map(Object.entries(weaponTypeById)) });
   }
+
+  /**
+   * Co ta postać ma w rękach (etap 41) — najwyżej jedną broń (29.10.2026).
+   *
+   * Czytane przez `cpredDrawnWeapons`, a nie wprost z pola, bo tam mieszka
+   * reguła domyślna: karta, przy której nikt nigdy nie dobył ani nie schował
+   * broni, **trzyma pierwszą z listy**. Bijatyka, Sztuki walki i granaty stoją
+   * poza limitem — nie mają guzików rąk wcale.
+   */
+  const outsideHands = cpredGrenadesOutsideHands(resolvedOf);
+  const inHands = cpredDrawnWeapons(data, outsideHands).map((row) => row.id);
 
   function updateRow(rowId: string, patch: Partial<CpredWeaponRow>) {
     saveData(
@@ -2237,14 +2240,13 @@ function WeaponStrip({
                       ⚠ Zacięta — usuń usterkę
                     </button>
                   )}
-                  {/* Etap 41: co jest w rękach, a co w kaburze.
+                  {/* Etap 41: co jest w rękach, a co w ekwipunku.
                       Guzik, a nie plakietka, bo to jest **czynność** z ceną
                       z podręcznika (s. 168): dobycie za darmo, schowanie za
-                      Akcję. Od pierwszego kliknięcia ta figura ma zadeklarowane
-                      ręce i od tej chwili planer ataku odmawia broni, której
-                      w nich nie ma — dopóki nikt nie kliknie, karta pokazuje
-                      pierwszą broń i niczego nie zabrania. */}
-                  {inHands.includes(row.id) ? (
+                      Akcję. Od 29.10.2026 w rękach jest jedna broń, więc
+                      dobycie przy pełnej ręce jest zamianą za Akcję. Pięść
+                      i granat są zawsze pod ręką — bez guzików. */}
+                  {cpredWeaponOutsideHands(row, outsideHands) ? null : inHands.includes(row.id) ? (
                     <span className="weapon-hands">
                       <span className="weapon-hands-badge" title="Ta broń jest w rękach">
                         ✊ W rękach
@@ -2270,10 +2272,14 @@ function WeaponStrip({
                     <button
                       type="button"
                       className="small-button weapon-draw"
-                      title="Sięgnięcie wolną ręką po łatwo dostępną broń nie wymaga Akcji (s. 168)."
+                      title={
+                        inHands.length > 0
+                          ? 'W ręku masz inną broń: wraca do ekwipunku, a zamiana kosztuje Akcję.'
+                          : 'Sięgnięcie wolną ręką po łatwo dostępną broń nie wymaga Akcji (s. 168).'
+                      }
                       onClick={() => drawWeapon(character.id, row.id, 'draw')}
                     >
-                      Dobądź
+                      {inHands.length > 0 ? 'Dobądź (Akcja)' : 'Dobądź'}
                     </button>
                   )}
                   {/* Etap 31: trzy gniazda i to, co w nich siedzi. */}

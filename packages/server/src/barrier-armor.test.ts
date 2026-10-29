@@ -25,6 +25,7 @@ import type {
 import type { ServerConfig } from './config.js';
 import { buildApp, type BuiltApp } from './app.js';
 import { joinUrl } from './test-join.js';
+import { holdFiredWeapon } from './test-hands.js';
 
 /**
  * Smoke tests of stage 42b on real sockets: a barrier's armour takes its share of
@@ -116,7 +117,17 @@ function createSocket(cookie: string): {
   return { socket, firstSync };
 }
 
-function emitAck<T = undefined>(
+/** `attack:roll` strzela z broni w ręku — `holdFiredWeapon` kładzie ją tam przed rzutem. */
+async function emitAck<T = undefined>(
+  socket: ClientSocket,
+  event: string,
+  payload?: unknown,
+): Promise<SocketAck<T>> {
+  if (event === 'attack:roll') await holdFiredWeapon(built, payload);
+  return emitRawAck<T>(socket, event, payload);
+}
+
+function emitRawAck<T = undefined>(
   socket: ClientSocket,
   event: string,
   payload?: unknown,

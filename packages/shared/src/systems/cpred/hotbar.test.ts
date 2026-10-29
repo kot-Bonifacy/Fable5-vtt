@@ -131,17 +131,16 @@ describe('cpredWeaponOptions — jedno ramię od etapu 38a: wiersze karty', () =
     expect(cpredWeaponOptions(null, () => pistol)).toEqual([]);
   });
 
-  it('nie gasi niczego, dopóki nikt nie zadeklarował rąk (etap 41)', () => {
-    // Domysł „pierwsza broń z karty" służy oględzinom. Gdyby gasił sloty, każda
-    // figura w kampanii straciłaby drugą broń z paska bez czyjejkolwiek decyzji.
+  it('niepytana karta trzyma pierwszą broń, resztę gasi do zamiany (29.10.2026)', () => {
     const options = cpredWeaponOptions(
       { weapons: [weaponRow(), weaponRow({ id: 'row-2', name: 'Maczeta', ammoMax: 0 })] },
       () => pistol,
     );
-    expect(options.every((option) => option.notDrawn === undefined)).toBe(true);
+    expect(options[0]!.notDrawn).toBeUndefined();
+    expect(options[1]!.notDrawn).toBe('swap');
   });
 
-  it('gasi broń spoza rąk, gdy ręce są zadeklarowane (etap 41)', () => {
+  it('gasi broń spoza rąk do zamiany, gdy w ręku jest inna (etap 41, 29.10.2026)', () => {
     const options = cpredWeaponOptions(
       {
         weapons: [weaponRow(), weaponRow({ id: 'row-2', name: 'Maczeta', ammoMax: 0 })],
@@ -149,38 +148,25 @@ describe('cpredWeaponOptions — jedno ramię od etapu 38a: wiersze karty', () =
       },
       () => pistol,
     );
-    // Maczeta w jednej ręce, pistolet mieści się w drugiej — wystarczy go dobyć.
-    expect(options[0]!.notDrawn).toBe('holstered');
+    // Jedna broń w rękach: pistolet obok maczety już się nie mieści.
+    expect(options[0]!.notDrawn).toBe('swap');
     expect(options[1]!.notDrawn).toBeUndefined();
   });
 
-  it('każe najpierw odłożyć, gdy broń nie mieści się w wolnych rękach (13.09)', () => {
+  it('granatu nie gasi nigdy — rzuca się nim bez dobywania (29.10.2026)', () => {
+    const grenade = { ...pistol, thrown: true, ammoPatterns: ['grenade' as const] };
     const options = cpredWeaponOptions(
       {
         weapons: [
           weaponRow(),
-          weaponRow({ id: 'row-2', name: 'Karabin', compendiumId: 'weapon.rifle' }),
+          weaponRow({ id: 'row-2', name: 'Granat', compendiumId: 'weapon.grenade', ammoMax: 0 }),
         ],
-        drawnWeaponRowIds: ['row-2'],
+        drawnWeaponRowIds: [],
       },
-      (id) => (id === 'weapon.rifle' ? { ...smg, hands: 2 } : pistol),
+      (id) => (id === 'weapon.grenade' ? grenade : pistol),
     );
-    expect(options[0]!.notDrawn).toBe('handsFull');
+    expect(options[0]!.notDrawn).toBe('holstered');
     expect(options[1]!.notDrawn).toBeUndefined();
-  });
-
-  it('dwuręczna broń przy jednej zajętej ręce też nie mieści się (13.09)', () => {
-    const options = cpredWeaponOptions(
-      {
-        weapons: [
-          weaponRow({ compendiumId: 'weapon.rifle' }),
-          weaponRow({ id: 'row-2', name: 'Maczeta', ammoMax: 0 }),
-        ],
-        drawnWeaponRowIds: ['row-2'],
-      },
-      (id) => (id === 'weapon.rifle' ? { ...smg, hands: 2 } : pistol),
-    );
-    expect(options[0]!.notDrawn).toBe('handsFull');
   });
 });
 
@@ -224,6 +210,7 @@ describe('broń dwuręczna przy tarczy na pasku akcji (10.10.2026)', () => {
       {
         weapons: [weaponRow({ compendiumId: 'weapon.rifle' }), weaponRow({ id: 'row-2' })],
         armor: [shield],
+        drawnWeaponRowIds: ['row-2'],
       },
       (id) => (id === 'weapon.rifle' ? { ...smg, hands: 2 } : pistol),
     );

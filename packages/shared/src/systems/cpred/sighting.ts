@@ -31,7 +31,12 @@
  */
 
 import type { CpredWeaponIcon } from './weaponicons.js';
-import type { CpredArmorRow, CpredCharacterData, CpredWeaponRow } from './character.js';
+import type {
+  CpredArmorRow,
+  CpredCharacterData,
+  CpredOutsideHands,
+  CpredWeaponRow,
+} from './character.js';
 import { cpredDrawnWeapons } from './character.js';
 import {
   CYBERWARE_BODY_SLOT_LABELS,
@@ -150,6 +155,8 @@ export interface CpredSightingOptions {
   detailed?: boolean;
   /** Co katalog mówi o broniach, które figura trzyma; kluczem jest id wiersza. */
   weapons?: CpredSightingWeaponFactsByRow;
+  /** Granaty karty (29.10.2026) — poza rękami, więc w oględzinach ich nie ma. */
+  outsideHands?: CpredOutsideHands;
 }
 
 /** Kolejność, w jakiej czyta się sylwetkę: od góry i od tego, co najważniejsze. */
@@ -208,7 +215,7 @@ export function cpredSighting(
     worn.filter((row) => row.location === location).map((row) => armorSighting(row, detailed)),
   );
 
-  const drawn = cpredDrawnWeapons(data);
+  const drawn = cpredDrawnWeapons(data, options.outsideHands);
 
   const chrome: CpredSightingChrome[] = [];
   const seen = new Set<string>();
