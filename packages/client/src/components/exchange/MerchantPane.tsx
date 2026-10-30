@@ -18,19 +18,20 @@ import { useCharacterStore } from '../../stores/characterStore.js';
 import { COMBAT_LOCKED_HINT, useCombatLocked } from '../../stores/combatStore.js';
 import { useCompendiumStore } from '../../stores/compendiumStore.js';
 import { useExchangeStore } from '../../stores/exchangeStore.js';
-import { ItemViewIcon } from '../ItemIcons.js';
 import { InlineNotice } from '../NoticeColumn.js';
 import { useExchangeDrag } from './drag.js';
-import { formatEd, itemDetail, itemKey } from './items.js';
+import { ItemGrid, countLabel, useGridSelection, useItemTile, type GridTile } from './ItemGrid.js';
+import { formatEd, itemKey } from './items.js';
 
 /**
  * Tryb `merchant` okna „Wymiana” (etap 46a, wzór: *Merchant* z Item Piles).
  *
- * Lewa kolumna: mój ekwipunek z ceną odkupu przy każdym wierszu. Środek: moje
+ * Lewa kolumna: mój ekwipunek z ceną odkupu na każdym kaflu. Środek: moje
  * pole sprzedaży i koszyk. Prawa: półka handlarza — tak, jak przyciął ją
  * serwer dla mnie (bez ukrytego towaru i bez id jego karty). Jedno „Zapłać”
  * robi kupno i sprzedaż w jednej transakcji, od ręki, bez zgody MG
- * (decyzja 4), także w grze solo.
+ * (decyzja 4), także w grze solo. Od 64c każda kolumna to siatka kafli
+ * (`ItemGrid`) z zaznaczaniem wielu.
  *
  * Stopka liczy sumę **tą samą** funkcją co serwer, a „Zapłać” wysyła ją jako
  * `expectTotal`: gdy w międzyczasie MG zmienił cenę albo ktoś wykupił ostatnią
@@ -38,11 +39,7 @@ import { formatEd, itemDetail, itemKey } from './items.js';
  * nigdy nie płaci się po cichu innej ceny.
  */
 
-type DragSource =
-  | { from: 'inventory'; item: CpredItemViewWire }
-  | { from: 'sell'; item: CpredItemViewWire }
-  | { from: 'shelf'; row: MerchantShelfRowView }
-  | { from: 'basket'; row: MerchantShelfRowView };
+type DragSource = { from: 'inventory' | 'sell' | 'shelf' | 'basket'; keys: string[] };
 
 /** Najwięcej kopii z wiersza „∞” w jednym koszyku — tyle przyjmie serwer. */
 const BUY_QTY_MAX = 999;
@@ -222,13 +219,93 @@ export function MerchantPane({ anchorId, merchantId }: { anchorId: string; merch
     );
   }
 
+  const tile = useItemTile();
+  const wallet = data?.eddies ?? 0;
+  const inventory = myItems
+    .map((item) => ({ ...item, qty: item.qty - (selling[itemKey(item)] ?? 0) }))
+    .filter((item) => item.qty > 0);
+  const inventoryTiles: GridTile[] = inventory.map((item) => {
+    const piece = buyBack(item);
+    const sellable = piece !== null && (view?.buyBackPct ?? 0) > 0;
+    return tile(item, {
+      ...(sellable ? { price: formatEd(piece) } : {}),
+      blocked: !sellable,
+      blockedHint:
+        (view?.buyBackPct ?? 0) <= 0
+          ? 'Ten handlarz nic nie skupuje.'
+          : 'Bez ceny w katalogu — handlarz tego nie wyceni.',
+    });
+  });
+  const sellTiles: GridTile[] = Object.entries(selling).flatMap(([key, qty]) => {
+    const item = myByKey.get(key);
+    if (!item) return [];
+    return [
+      tile(item, {
+        ...(item.stackable ? { badge: `×${qty}` } : {}),
+        price: `+${formatEd((buyBack(item) ?? 0) * qty)}`,
+      }),
+    ];
+  });
+  const basketTiles: GridTile[] = Object.entries(basket).flatMap(([key, qty]) => {
+    const row = rowByKey.get(key);
+    if (!row) return [];
+    return [
+      tile(row, {
+        badge: `×${qty}`,
+        qty: maxBuy(row),
+        stackable: row.stackable || row.infinite === true,
+        price: `−${formatEd((row.price ?? 0) * qty)}`,
+      }),
+    ];
+  });
+  const shelfTiles: GridTile[] = shelf.map((row) => {
+    const left = row.infinite ? Infinity : row.qty - (basket[itemKey(row)] ?? 0);
+    return tile(row, {
+      ...(row.infinite ? { badge: '∞' } : {}),
+      price: row.price === null ? '⚠ bez ceny' : formatEd(row.price),
+      blocked: row.price === null || left <= 0,
+      blockedHint:
+        row.price === null ? 'Bez ceny — gracze tego nie widzą' : 'Wszystko już w koszyku',
+    });
+  });
+  const inventorySelection = useGridSelection(inventoryTiles.map((t) => t.key));
+  const sellSelection = useGridSelection(sellTiles.map((t) => t.key));
+  const basketSelection = useGridSelection(basketTiles.map((t) => t.key));
+  const shelfSelection = useGridSelection(shelfTiles.map((t) => t.key));
+
+  // Etap 64c: każda kolumna to siatka z zaznaczaniem wielu — dwuklik, pasek
+  // i przeciągnięcie przenoszą całe zaznaczenie.
+  const sellItems = (keys: string[]) => {
+    for (const key of keys) {
+      const item = myByKey.get(key);
+      if (item) addToSell(item);
+    }
+    inventorySelection.clear();
+  };
+  const unsell = (keys: string[]) => {
+    for (const key of keys) drop(key, 'selling');
+    sellSelection.clear();
+  };
+  const buyRows = (keys: string[]) => {
+    for (const key of keys) {
+      const row = rowByKey.get(key);
+      if (row) addToBasket(row);
+    }
+    shelfSelection.clear();
+  };
+  const unbuy = (keys: string[]) => {
+    for (const key of keys) drop(key, 'basket');
+    basketSelection.clear();
+  };
+
   const closed = view?.closed;
   const { drag, hoverZone, handlers } = useExchangeDrag<DragSource>((source, zone) => {
-    if (source.from === 'inventory' && zone === 'sell') addToSell(source.item);
-    else if (source.from === 'sell' && zone === 'inventory') drop(itemKey(source.item), 'selling');
-    else if (source.from === 'shelf' && zone === 'basket') addToBasket(source.row);
-    else if (source.from === 'basket' && zone === 'shelf') drop(itemKey(source.row), 'basket');
+    if (source.from === 'inventory' && zone === 'sell') sellItems(source.keys);
+    else if (source.from === 'sell' && zone === 'inventory') unsell(source.keys);
+    else if (source.from === 'shelf' && zone === 'basket') buyRows(source.keys);
+    else if (source.from === 'basket' && zone === 'shelf') unbuy(source.keys);
   }, busy);
+  const grab = (from: DragSource['from']) => (keys: string[]) => handlers({ from, keys });
 
   if (!view) {
     return (
@@ -244,10 +321,6 @@ export function MerchantPane({ anchorId, merchantId }: { anchorId: string; merch
     );
   }
 
-  const wallet = data?.eddies ?? 0;
-  const inventory = myItems
-    .map((item) => ({ ...item, qty: item.qty - (selling[itemKey(item)] ?? 0) }))
-    .filter((item) => item.qty > 0);
   const problems = (quote?.problems ?? []).filter((problem) => problem.code !== 'NOTHING_TO_DEAL');
   const problemTexts = [
     ...new Set(problems.map((problem) => CPRED_MERCHANT_PROBLEM_TEXTS[problem.code])),
@@ -268,41 +341,20 @@ export function MerchantPane({ anchorId, merchantId }: { anchorId: string; merch
           data-exchange-drop="inventory"
         >
           <p className="trade-column-title">Mój ekwipunek — {anchor?.name}</p>
-          <ul className="inventory-list">
-            {inventory.map((item) => {
-              const piece = buyBack(item);
-              const sellable = piece !== null && view.buyBackPct > 0;
-              return (
-                <li
-                  key={itemKey(item)}
-                  className={`inventory-row${sellable ? ' trade-draggable' : ' exchange-row--blocked'}`}
-                  title={
-                    sellable
-                      ? 'Przeciągnij do pola sprzedaży'
-                      : view.buyBackPct <= 0
-                        ? 'Ten handlarz nic nie skupuje.'
-                        : 'Bez ceny w katalogu — handlarz tego nie wyceni.'
-                  }
-                  {...(sellable ? handlers({ from: 'inventory', item }) : {})}
-                >
-                  <ItemViewIcon item={item} />
-                  <span className="inventory-row-name">{item.name}</span>
-                  <span className="inventory-row-detail">{itemDetail(item)}</span>
-                  <span className="exchange-price">{sellable ? formatEd(piece) : '—'}</span>
-                  <button
-                    type="button"
-                    className="small-button"
-                    disabled={busy || !sellable}
-                    title="Połóż w polu sprzedaży"
-                    aria-label={`Sprzedaj: ${item.name}`}
-                    onClick={() => addToSell(item)}
-                  >
-                    →
-                  </button>
-                </li>
-              );
-            })}
-          </ul>
+          <ItemGrid
+            tiles={inventoryTiles}
+            selection={inventorySelection}
+            label="Mój ekwipunek"
+            hint="Dwuklik albo przeciągnięcie kładzie w polu sprzedaży · Ctrl/Shift+klik — kilka"
+            action={{
+              label: 'Sprzedaj →',
+              title: 'Połóż zaznaczone w polu sprzedaży',
+              disabled: busy,
+              run: sellItems,
+            }}
+            drag={grab('inventory')}
+            minRows={3}
+          />
           <div className="inventory-money">
             <span className="inventory-row-name">Gotówka</span>
             <span className="inventory-row-detail">{formatEd(wallet)}</span>
@@ -315,102 +367,66 @@ export function MerchantPane({ anchorId, merchantId }: { anchorId: string; merch
             data-exchange-drop="sell"
           >
             <p className="trade-column-title">Sprzedaję</p>
-            {sellRefs.length === 0 && (
-              <p className="inventory-empty">
-                {view.buyBackPct > 0
+            <ItemGrid
+              tiles={sellTiles}
+              selection={sellSelection}
+              label="Sprzedaję"
+              emptyText={
+                view.buyBackPct > 0
                   ? `Handlarz skupuje za ${view.buyBackPct}% ceny katalogowej.`
-                  : 'Ten handlarz nic nie skupuje.'}
-              </p>
-            )}
-            <ul className="inventory-list">
-              {Object.entries(selling).map(([key, qty]) => {
-                const item = myByKey.get(key);
-                if (!item) return null;
-                return (
-                  <li
-                    key={key}
-                    className="inventory-row trade-draggable"
-                    {...handlers({ from: 'sell', item })}
-                  >
-                    <ItemViewIcon item={item} />
-                    <span className="inventory-row-name">{item.name}</span>
-                    {item.stackable ? (
-                      <input
-                        type="number"
-                        className="inventory-row-qty"
-                        min={0}
-                        max={item.qty}
-                        aria-label={`Ile sztuk sprzedajesz: ${item.name}`}
-                        value={qty}
-                        onChange={(e) => setSellQty(item, e.target.value)}
-                      />
-                    ) : (
-                      <span className="inventory-row-detail">{item.detail}</span>
-                    )}
-                    <span className="exchange-price">+{formatEd((buyBack(item) ?? 0) * qty)}</span>
-                    <button
-                      type="button"
-                      className="small-button"
-                      disabled={busy}
-                      title="Zdejmij z pola sprzedaży"
-                      aria-label={`Nie sprzedawaj: ${item.name}`}
-                      onClick={() => drop(key, 'selling')}
-                    >
-                      ←
-                    </button>
-                  </li>
-                );
-              })}
-            </ul>
+                  : 'Ten handlarz nic nie skupuje.'
+              }
+              hint="Dwuklik albo przeciągnięcie z powrotem zdejmuje"
+              action={{
+                label: '← Nie sprzedawaj',
+                title: 'Zdejmij zaznaczone z pola sprzedaży',
+                disabled: busy,
+                run: unsell,
+              }}
+              qty={{
+                label: (t) => `Ile sztuk sprzedajesz: ${t.name}`,
+                value: (t) => String(selling[t.key] ?? ''),
+                min: 0,
+                show: (t) => t.stackable === true,
+                onChange: (t, raw) => {
+                  const item = myByKey.get(t.key);
+                  if (item) setSellQty(item, raw);
+                },
+              }}
+              drag={grab('sell')}
+              minRows={1}
+            />
           </div>
           <div
             className={`trade-zone trade-zone--mine${hoverZone === 'basket' && drag?.source.from === 'shelf' ? ' trade-zone--hover' : ''}`}
             data-exchange-drop="basket"
           >
             <p className="trade-column-title">Kupuję</p>
-            {buyLines.length === 0 && (
-              <p className="inventory-empty">Przeciągnij tu towar z półki.</p>
-            )}
-            <ul className="inventory-list">
-              {Object.entries(basket).map(([key, qty]) => {
-                const row = rowByKey.get(key);
-                if (!row) return null;
-                return (
-                  <li
-                    key={key}
-                    className="inventory-row trade-draggable"
-                    {...handlers({ from: 'basket', row })}
-                  >
-                    <ItemViewIcon item={row} />
-                    <span className="inventory-row-name">{row.name}</span>
-                    {row.stackable || row.infinite ? (
-                      <input
-                        type="number"
-                        className="inventory-row-qty"
-                        min={0}
-                        max={maxBuy(row)}
-                        aria-label={`Ile sztuk kupujesz: ${row.name}`}
-                        value={qty}
-                        onChange={(e) => setBasketQty(row, e.target.value)}
-                      />
-                    ) : (
-                      <span className="inventory-row-detail">{row.detail}</span>
-                    )}
-                    <span className="exchange-price">−{formatEd((row.price ?? 0) * qty)}</span>
-                    <button
-                      type="button"
-                      className="small-button"
-                      disabled={busy}
-                      title="Odłóż na półkę"
-                      aria-label={`Odłóż: ${row.name}`}
-                      onClick={() => drop(key, 'basket')}
-                    >
-                      →
-                    </button>
-                  </li>
-                );
-              })}
-            </ul>
+            <ItemGrid
+              tiles={basketTiles}
+              selection={basketSelection}
+              label="Kupuję"
+              emptyText="Przeciągnij tu towar z półki."
+              hint="Dwuklik albo przeciągnięcie z powrotem odkłada na półkę"
+              action={{
+                label: 'Odłóż →',
+                title: 'Odłóż zaznaczone na półkę',
+                disabled: busy,
+                run: unbuy,
+              }}
+              qty={{
+                label: (t) => `Ile sztuk kupujesz: ${t.name}`,
+                value: (t) => String(basket[t.key] ?? ''),
+                min: 0,
+                show: (t) => t.stackable === true,
+                onChange: (t, raw) => {
+                  const row = rowByKey.get(t.key);
+                  if (row) setBasketQty(row, raw);
+                },
+              }}
+              drag={grab('basket')}
+              minRows={1}
+            />
           </div>
         </div>
 
@@ -419,42 +435,21 @@ export function MerchantPane({ anchorId, merchantId }: { anchorId: string; merch
           data-exchange-drop="shelf"
         >
           <p className="trade-column-title">Towar: {view.name}</p>
-          {shelf.length === 0 && <p className="inventory-empty">Półka jest pusta.</p>}
-          <ul className="inventory-list">
-            {shelf.map((row) => {
-              const key = itemKey(row);
-              const inBasket = basket[key] ?? 0;
-              const left = row.infinite ? Infinity : row.qty - inBasket;
-              const blocked = row.price === null;
-              return (
-                <li
-                  key={key}
-                  className={`inventory-row${blocked ? ' exchange-row--blocked' : ' trade-draggable'}`}
-                  title={blocked ? 'Bez ceny — gracze tego nie widzą' : 'Przeciągnij do koszyka'}
-                  {...(blocked ? {} : handlers({ from: 'shelf', row }))}
-                >
-                  <button
-                    type="button"
-                    className="small-button"
-                    disabled={busy || blocked || left <= 0}
-                    title="Do koszyka"
-                    aria-label={`Do koszyka: ${row.name}`}
-                    onClick={() => addToBasket(row)}
-                  >
-                    ←
-                  </button>
-                  <ItemViewIcon item={row} />
-                  <span className="inventory-row-name">{row.name}</span>
-                  <span className="inventory-row-detail">
-                    {row.infinite ? '∞' : row.stackable ? `× ${row.qty}` : row.detail}
-                  </span>
-                  <span className="exchange-price">
-                    {row.price === null ? '⚠ bez ceny' : formatEd(row.price)}
-                  </span>
-                </li>
-              );
-            })}
-          </ul>
+          <ItemGrid
+            tiles={shelfTiles}
+            selection={shelfSelection}
+            label={`Towar: ${view.name}`}
+            emptyText="Półka jest pusta."
+            hint="Dwuklik albo przeciągnięcie wkłada do koszyka · Ctrl/Shift+klik — kilka"
+            action={{
+              label: '← Do koszyka',
+              title: 'Włóż zaznaczone do koszyka',
+              disabled: busy,
+              run: buyRows,
+            }}
+            drag={grab('shelf')}
+            minRows={3}
+          />
           <div className="inventory-money">
             <span className="inventory-row-name">Kasa handlarza</span>
             <span className="inventory-row-detail">
@@ -492,7 +487,11 @@ export function MerchantPane({ anchorId, merchantId }: { anchorId: string; merch
 
       {drag && (
         <div className="trade-drag-ghost" style={{ left: drag.x + 12, top: drag.y + 8 }}>
-          {'item' in drag.source ? drag.source.item.name : drag.source.row.name}
+          {drag.source.keys.length === 1
+            ? (myByKey.get(drag.source.keys[0]!)?.name ??
+              rowByKey.get(drag.source.keys[0]!)?.name ??
+              '')
+            : countLabel(drag.source.keys.length)}
         </div>
       )}
     </>

@@ -1,6 +1,7 @@
 import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import type { Socket } from 'socket.io-client';
+import type { Locator } from '@playwright/test';
 import { expect, test, type Actor } from '../../fixtures/actors.ts';
 import { worldToClient, type WorldPoint } from '../../fixtures/canvas.ts';
 import { KNAJPA } from '../../fixtures/maps.ts';
@@ -47,6 +48,11 @@ type Row = {
   equipped?: boolean;
 };
 type Card = { eddies: number; hpCurrent: number; gear: Row[]; weapons: Row[]; armor: Row[] };
+
+/** Kafel przedmiotu w siatce okna „Wymiana” (64b) — po dokładnej nazwie. */
+function tileIn(scope: Locator, name: string): Locator {
+  return scope.locator(`.item-tile[data-item-name=${JSON.stringify(name)}]`);
+}
 
 function okData<T>(ack: Ack<T>): T {
   if (!ack.ok) throw new Error(`E2E: ${JSON.stringify(ack)}`);
@@ -266,9 +272,7 @@ test.describe.serial('T46a jedno okno „Wymiana” i handlarze', () => {
     await menuOn(marek, 'Iskra', '🤝 Wymiana…');
     await expect(exchange(marek)).toHaveAttribute('data-exchange-mode', 'trade');
     await expect(exchange(marek)).toContainText('Czekasz, aż Iskra przyjmie zaproszenie');
-    await exchange(marek)
-      .getByRole('button', { name: 'Połóż w polu wymiany: Zestaw wytrychów' })
-      .click();
+    await tileIn(exchange(marek).locator('.trade-inventory'), 'Zestaw wytrychów').dblclick();
     await expect(exchange(marek).locator('.trade-zone--mine')).toContainText('Zestaw wytrychów');
     await shot(marek, '1-zaproszenie');
     await expect(dock(ola).locator('.trade-dock-row--invite')).toContainText('Kowal');
@@ -319,7 +323,9 @@ test.describe.serial('T46a jedno okno „Wymiana” i handlarze', () => {
   test('46a.3 „Wyślij bez czekania”: latarka idzie propozycją z „Przyjmij”', async () => {
     await menuOn(marek, 'Iskra', '🤝 Wymiana…');
     await expect(exchange(marek)).toContainText('Czekasz, aż Iskra przyjmie zaproszenie');
-    await exchange(marek).getByRole('button', { name: 'Połóż w polu wymiany: Latarka' }).click();
+    await tileIn(exchange(marek).locator('.trade-inventory'), 'Latarka').dblclick();
+    // Ilość stosu w polu stoi na pasku pod siatką, gdy kafel jest zaznaczony (64b).
+    await tileIn(exchange(marek).locator('.trade-zone--mine'), 'Latarka').click();
     const qty = exchange(marek).getByLabel('Ile sztuk w polu: Latarka');
     await qty.fill('1');
     await qty.press('Enter');
@@ -368,16 +374,18 @@ test.describe.serial('T46a jedno okno „Wymiana” i handlarze', () => {
     await expect(exchange(mg)).toHaveAttribute('data-exchange-mode', 'gm');
     const window = exchange(mg);
     await window.getByLabel('Dokąd').selectOption({ label: 'Kowal' });
+    await tileIn(window, 'Lina (60 m)').click();
     await window.getByLabel('Ile sztuk: Lina (60 m)').fill('1');
-    await window.getByRole('button', { name: 'Przekaż: Lina (60 m)' }).click();
+    await window.getByRole('button', { name: 'Przekaż →' }).click();
     await expect(
       mg.page.locator('.notice', { hasText: 'Wysłane do: Kowal — czeka na przyjęcie.' }),
     ).toBeVisible();
     await shot(mg, '5-tryb-mg');
     expect(gear('Kowal', 'Lina (60 m)')).toBe(1);
     await window.getByLabel('Dokąd').selectOption({ label: 'Rzeźnik' });
+    await tileIn(window, 'Lina (60 m)').click();
     await window.getByLabel('Ile sztuk: Lina (60 m)').fill('1');
-    await window.getByRole('button', { name: 'Przekaż: Lina (60 m)' }).click();
+    await window.getByRole('button', { name: 'Przekaż →' }).click();
     await expect(mg.page.locator('.notice', { hasText: 'Przekazane: Rzeźnik.' })).toBeVisible();
     await expect.poll(() => gear('Rzeźnik', 'Lina (60 m)')).toBe(1);
     await window.getByRole('button', { name: 'Zamknij okno wymiany' }).click();
@@ -426,15 +434,17 @@ test.describe.serial('T46a jedno okno „Wymiana” i handlarze', () => {
     await expect(window.locator('.exchange-closed')).toHaveCount(0);
     const shelf = window.locator('.trade-zone', { hasText: 'Towar: Spod lady' });
     // Latarka 20 ed z podręcznika × 3 (cennik domowy) × 120% Pasera = 72 ed; kurtka 1000 × 1,2.
-    await expect(shelf.locator('.inventory-row', { hasText: 'Latarka' })).toContainText('72 ed');
-    await expect(shelf.locator('.inventory-row', { hasText: 'Latarka' })).toContainText('∞');
-    await expect(
-      shelf.locator('.inventory-row', { hasText: 'Lekka kurtka kuloodporna' }),
-    ).toContainText('1 200 ed');
+    await expect(tileIn(shelf, 'Latarka')).toContainText('72 ed');
+    await expect(tileIn(shelf, 'Latarka')).toContainText('∞');
+    await expect(tileIn(shelf, 'Lekka kurtka kuloodporna')).toContainText('1 200 ed');
     await expect(shelf).not.toContainText(hiddenName);
-    await window.getByRole('button', { name: 'Do koszyka: Latarka' }).click();
-    await window.getByRole('button', { name: 'Do koszyka: Latarka' }).click();
-    await window.getByRole('button', { name: 'Do koszyka: Lekka kurtka kuloodporna' }).click();
+    // 64c: kurtkę i latarkę do koszyka jednym ruchem (Ctrl+klik, pasek), potem 2 latarki.
+    await tileIn(shelf, 'Latarka').click();
+    await tileIn(shelf, 'Lekka kurtka kuloodporna').click({ modifiers: ['Control'] });
+    await window.getByRole('button', { name: '← Do koszyka (2)' }).click();
+    const basket = window.locator('[data-exchange-drop="basket"]');
+    await tileIn(basket, 'Latarka').click();
+    await window.getByLabel('Ile sztuk kupujesz: Latarka').fill('2');
     await expect(window.getByTestId('exchange-total')).toContainText('Płacisz 1 344 ed');
     await shot(marek, '7-sklep-koszyk');
     const eddies = card('Kowal').eddies;
@@ -455,10 +465,13 @@ test.describe.serial('T46a jedno okno „Wymiana” i handlarze', () => {
     const mark = lastLedgerId();
     const window = exchange(marek);
     await expect(
-      window.locator('.exchange-row--blocked', { hasText: 'Pancerz' }).first(),
-    ).toHaveAttribute('title', 'Bez ceny w katalogu — handlarz tego nie wyceni.');
-    await window.getByRole('button', { name: 'Sprzedaj: Bardzo ciężki pistolet' }).click();
-    await window.getByRole('button', { name: 'Do koszyka: Latarka' }).click();
+      window.locator('.item-tile--blocked', { hasText: 'Pancerz' }).first(),
+    ).toHaveAttribute('title', 'Pancerz — Bez ceny w katalogu — handlarz tego nie wyceni.');
+    await tileIn(window.locator('.trade-inventory'), 'Bardzo ciężki pistolet').dblclick();
+    await tileIn(
+      window.locator('.trade-zone', { hasText: 'Towar: Spod lady' }),
+      'Latarka',
+    ).dblclick();
     const total = await window.getByTestId('exchange-total').innerText();
     const sold = Number(/dostajesz (\d+) ed/.exec(total)![1]);
     expect(sold).toBeGreaterThan(0);
@@ -521,7 +534,10 @@ test.describe.serial('T46a jedno okno „Wymiana” i handlarze', () => {
     await chooseCounterpart(ola, 'Spod lady');
     const window = exchange(ola);
     await expect(window).toHaveAttribute('data-exchange-mode', 'merchant');
-    await window.getByRole('button', { name: 'Do koszyka: Latarka' }).click();
+    await tileIn(
+      window.locator('.trade-zone', { hasText: 'Towar: Spod lady' }),
+      'Latarka',
+    ).dblclick();
     await expect(window.getByTestId('exchange-total')).toContainText('Płacisz 72 ed');
     okData(
       await gm('merchant:config', {
@@ -586,7 +602,7 @@ test.describe.serial('T46a jedno okno „Wymiana” i handlarze', () => {
     await dock(marek).getByRole('button', { name: 'Sieć Militechu' }).click();
     const window = exchange(marek);
     await expect(window).toHaveAttribute('data-exchange-mode', 'merchant');
-    await window.getByRole('button', { name: 'Do koszyka: Agent' }).click();
+    await tileIn(window.locator('[data-exchange-drop="shelf"]'), 'Agent').dblclick();
     await expect(window.getByTestId('exchange-total')).toContainText('Płacisz 1 000 ed');
     await window.getByRole('button', { name: 'Zapłać' }).click();
     await expect.poll(() => gear('Kowal', 'Agent')).toBe(1);
@@ -605,7 +621,7 @@ test.describe.serial('T46a jedno okno „Wymiana” i handlarze', () => {
     await screen.getByRole('button', { name: '🛒 Sieć Militechu' }).click();
     const window = exchange(marek);
     await expect(window).toHaveAttribute('data-exchange-mode', 'merchant');
-    await window.getByRole('button', { name: 'Do koszyka: Agent' }).click();
+    await tileIn(window.locator('[data-exchange-drop="shelf"]'), 'Agent').dblclick();
     await window.getByRole('button', { name: 'Zapłać' }).click();
     await expect.poll(() => gear('Kowal', 'Agent')).toBe(2);
     expect(
@@ -656,7 +672,7 @@ test.describe.serial('T46a jedno okno „Wymiana” i handlarze', () => {
     await exchangeFromSheet(ola, 'Iskra');
     await chooseCounterpart(ola, 'Spod lady');
     await expect(
-      exchange(ola).locator('.inventory-row', { hasText: 'Latarka' }).last(),
+      tileIn(exchange(ola).locator('[data-exchange-drop="shelf"]'), 'Latarka'),
     ).toContainText('90 ed');
 
     await stopServer();
@@ -677,7 +693,7 @@ test.describe.serial('T46a jedno okno „Wymiana” i handlarze', () => {
       }),
     );
     await expect(
-      exchange(ola).locator('.inventory-row', { hasText: 'Latarka' }).last(),
+      tileIn(exchange(ola).locator('[data-exchange-drop="shelf"]'), 'Latarka'),
     ).toContainText('60 ed', { timeout: 30_000 });
     await expect(dock(marek).getByRole('button', { name: '🛒 Sklepy (1)' })).toBeVisible();
     gmSocket = await mg.socket();

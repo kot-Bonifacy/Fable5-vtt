@@ -379,8 +379,9 @@
    sama rodzina okien, więc nie dopisuje się do list chromu osobno. Handel
    i sklep stawiają obok siebie trzy kolumny (mój ekwipunek, moje pola, druga
    strona), łup i tryb MG — dwie. */
+/* 64c: dwie kolumny po cztery kafle siatki — łup, pojemnik, tryb MG. */
 .exchange-window {
-  width: min(640px, calc(100vw - 24px));
+  width: min(800px, calc(100vw - 24px));
 }
 
 .exchange-window--wide {
@@ -913,4 +914,166 @@
   max-width: 22rem;
   font-size: 0.74rem;
   opacity: 0.85;
+}
+
+/* --- Siatka kafelków okna „Wymiana” (etap 64b, wzór: ekwipunek z BG3) ---- */
+
+/* Handel: mój ekwipunek po lewej, oba pola wymiany jedno nad drugim pośrodku. */
+.exchange-columns--trade {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+}
+
+@media (width <= 720px) {
+  .exchange-columns--trade {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.trade-middle {
+  gap: 0.6rem;
+}
+
+/* Szerokość kafla i odstęp stoją też w `ItemGrid.tsx` (TILE_PX, GAP_PX) —
+   po nich liczy się, ile pustych kratek dopełni rząd. */
+.item-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, 76px);
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  outline: none;
+}
+
+.item-tile {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.2rem;
+  height: 76px;
+  padding: 0.45rem 0.2rem 0.25rem;
+  overflow: hidden;
+  border: 1px solid var(--border-soft);
+  border-radius: 4px;
+  background: var(--veil-faint);
+  text-align: center;
+}
+
+.item-tile:not(.item-tile--slot):hover {
+  border-color: var(--border);
+  background: var(--veil-soft);
+}
+
+.item-tile:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.item-tile--selected,
+.item-tile--selected:not(.item-tile--slot):hover {
+  border-color: var(--accent);
+  box-shadow: inset 0 0 0 1px var(--accent);
+  background: var(--veil-soft);
+}
+
+/* Pusta kratka — tylko kształt siatki, jak wolne miejsce w plecaku. */
+.item-tile--slot {
+  border-style: dashed;
+  background: transparent;
+  opacity: 0.45;
+}
+
+.item-tile--blocked {
+  opacity: 0.45;
+}
+
+.item-tile-glyph {
+  width: 1.7rem;
+  height: 1.7rem;
+}
+
+.item-tile-name {
+  display: -webkit-box;
+  max-width: 100%;
+  overflow: hidden;
+  font-size: 0.68rem;
+  line-height: 1.15;
+  overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+}
+
+.item-tile-badge {
+  position: absolute;
+  top: 2px;
+  right: 4px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.item-tile-price {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  padding: 0 0.15rem;
+  background: var(--veil-soft);
+  font-size: 0.62rem;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Kafel z ceną traci dolny wiersz nazwy na rzecz paska ceny. */
+.item-tile:has(.item-tile-price) .item-tile-name {
+  -webkit-line-clamp: 1;
+  line-clamp: 1;
+}
+
+.item-grid-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  min-width: 0;
+}
+
+/* Pasek pod siatką: co wybrane (kafel nie mieści szczegółów), ilość, akcja. */
+.item-grid-strip {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-height: 1.9rem;
+  font-size: 0.75rem;
+}
+
+/* Podpowiedź w wąskiej kolumnie łamie się na dwie linie, zamiast ucinać sedno. */
+.item-grid-strip-text {
+  display: -webkit-box;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+}
+
+.item-grid-strip-hint {
+  color: var(--text-dim);
+}
+
+/* Pusta siatka mówi, co do niej upuścić, na środku pustych kratek. */
+.item-grid-frame {
+  position: relative;
+}
+
+.item-grid-empty {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 1rem;
+  text-align: center;
+  pointer-events: none;
 }

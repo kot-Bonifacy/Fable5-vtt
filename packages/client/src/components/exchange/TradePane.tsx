@@ -7,12 +7,7 @@ import type {
   TradeSideView,
   TradeView,
 } from '@vtt/shared';
-import {
-  CPRED_ITEM_LIST_LABELS,
-  cpredInventoryView,
-  cpredOfferViews,
-  mayEditTradeOffer,
-} from '@vtt/shared';
+import { cpredInventoryView, cpredOfferViews, mayEditTradeOffer } from '@vtt/shared';
 import {
   acceptTrade,
   cancelTrade,
@@ -24,31 +19,33 @@ import {
 } from '../../socket.js';
 import { noteAck, notifyRefusal } from '../../notices.js';
 import { useCharacterStore } from '../../stores/characterStore.js';
-import { ItemViewIcon } from '../ItemIcons.js';
 import { InlineNotice } from '../NoticeColumn.js';
 import { useExchangeDrag } from './drag.js';
-import { formatEd, itemDetail, itemKey, refOf } from './items.js';
+import { ItemGrid, countLabel, useGridSelection, useItemTile } from './ItemGrid.js';
+import { formatEd, itemKey, refOf } from './items.js';
 
 /**
  * Tryb `trade` okna „Wymiana” (38c, w jednym oknie od 46a) — dwa pola, dwie zgody.
  *
- * Lewa kolumna to mój ekwipunek pomniejszony o to, co już leży w polu; środek —
- * moje pole; prawa — pole drugiej strony z jej zgodą. Pole jest stanem
- * **serwera**: każde przeciągnięcie wysyła całą nową zawartość, a okno rysuje
+ * Od 64b układ wzorem BG3: po lewej siatka mojego ekwipunku pomniejszonego
+ * o to, co już leży w polu, na środku moje pole („Daję”) nad polem drugiej
+ * strony z jej zgodą — u obu stron w tej samej kolejności. Kafle zaznacza się
+ * z Ctrl/Shift i przenosi grupą (przeciągnięciem, dwuklikiem albo przyciskiem
+ * na pasku), więc pięć rzeczy to jedno wysłanie, nie pięć. Pole jest stanem
+ * **serwera**: każde przeniesienie wysyła całą nową zawartość, a okno rysuje
  * to, co wróciło w `trade:update` (każda zmiana kasuje obie zgody — 23.09).
  *
  * Zanim druga strona przyjmie zaproszenie, zapraszający już kładzie rzeczy
- * w swoje pole, a koledze z drużyny może je posłać „bez czekania” — jako
- * propozycję z 38b, kartą czatu z „Przyjmij” (decyzja MG 6).
+ * w swoje pole i może się na nie zgodzić (64a) — wtedy jedno „Przyjmij” w doku
+ * drugiej strony kończy wymianę. Koledze z drużyny może je też posłać „bez
+ * czekania” — jako propozycję z 38b, kartą czatu z „Przyjmij” (decyzja MG 6).
  *
  * MG przy handlu dwóch graczy widzi oba pola tylko do odczytu i może handel
  * przerwać — zatwierdzić za gracza nie może.
  */
 
 type DragSource =
-  | { from: 'inventory'; item: CpredItemViewWire }
-  | { from: 'offer'; item: CpredItemViewWire }
-  | { from: 'wallet' };
+  { from: 'inventory'; keys: string[] } | { from: 'offer'; keys: string[] } | { from: 'wallet' };
 
 /**
  * Czy to, co leży w moim polu, nadal zgadza się z kartą. Liczone tą samą
@@ -103,6 +100,20 @@ export function TradePane({ trade }: { trade: TradeView }) {
   const wallet = data?.eddies ?? 0;
   const stale = mine && data ? offerIsStale(data, mine) : false;
 
+  const tile = useItemTile();
+  const invTiles = useMemo(() => inventory.map((item) => tile(item)), [inventory, tile]);
+  const offerTiles = useMemo(() => (mine?.items ?? []).map((item) => tile(item)), [mine, tile]);
+  const otherTiles = useMemo(() => (other?.items ?? []).map((item) => tile(item)), [other, tile]);
+  const invByKey = useMemo(() => byKey(inventory), [inventory]);
+  const offerByKey = useMemo(() => byKey(mine?.items ?? []), [mine]);
+  const invSelection = useGridSelection(useMemo(() => invTiles.map((t) => t.key), [invTiles]));
+  const offerSelection = useGridSelection(
+    useMemo(() => offerTiles.map((t) => t.key), [offerTiles]),
+  );
+  const otherSelection = useGridSelection(
+    useMemo(() => otherTiles.map((t) => t.key), [otherTiles]),
+  );
+
   async function send(items: InventoryItemRefWire[], eddies: number) {
     setBusy(true);
     const ack = await offerTrade({ tradeId: trade.id, items, eddies });
@@ -114,19 +125,25 @@ export function TradePane({ trade }: { trade: TradeView }) {
     return (mine?.items ?? []).map((item) => refOf(item));
   }
 
-  function addToOffer(item: CpredItemViewWire) {
-    if (!mine || !editable) return;
+  /** Kilka rzeczy naraz to jedno wysłanie — i jedno zdjęcie zgód, nie pięć. */
+  function addToOffer(items: CpredItemViewWire[]) {
+    if (!mine || !editable || items.length === 0) return;
     const refs = currentRefs();
-    const index = refs.findIndex((ref) => ref.list === item.list && ref.rowId === item.rowId);
-    if (index === -1) refs.push(refOf(item));
-    else if (item.stackable) refs[index] = refOf(item, (refs[index]!.qty ?? 0) + item.qty);
+    for (const item of items) {
+      const index = refs.findIndex((ref) => ref.list === item.list && ref.rowId === item.rowId);
+      if (index === -1) refs.push(refOf(item));
+      else if (item.stackable) refs[index] = refOf(item, (refs[index]!.qty ?? 0) + item.qty);
+    }
+    invSelection.clear();
     void send(refs, mine.eddies);
   }
 
-  function removeFromOffer(item: CpredItemViewWire) {
-    if (!mine) return;
+  function removeFromOffer(items: CpredItemViewWire[]) {
+    if (!mine || items.length === 0) return;
+    const gone = new Set(items.map((item) => itemKey(item)));
+    offerSelection.clear();
     void send(
-      currentRefs().filter((ref) => !(ref.list === item.list && ref.rowId === item.rowId)),
+      currentRefs().filter((ref) => !gone.has(itemKey(ref))),
       mine.eddies,
     );
   }
@@ -140,7 +157,7 @@ export function TradePane({ trade }: { trade: TradeView }) {
     );
     const want = Math.min(Math.max(raw, 0), onCard?.qty ?? item.qty);
     if (want === 0) {
-      removeFromOffer(item);
+      removeFromOffer([item]);
       return;
     }
     void send(
@@ -205,58 +222,131 @@ export function TradePane({ trade }: { trade: TradeView }) {
   }
 
   const { drag, hoverZone, handlers } = useExchangeDrag<DragSource>((source, zone) => {
-    if (zone === 'offer' && source.from === 'inventory') addToOffer(source.item);
+    if (zone === 'offer' && source.from === 'inventory') addToOffer(pick(invByKey, source.keys));
     else if (zone === 'offer' && source.from === 'wallet') {
       moneyRef.current?.focus();
       moneyRef.current?.select();
-    } else if (zone === 'inventory' && source.from === 'offer') removeFromOffer(source.item);
+    } else if (zone === 'inventory' && source.from === 'offer') {
+      removeFromOffer(pick(offerByKey, source.keys));
+    }
   }, busy || !editable);
 
   const spectator = mine === null;
   const emptyOffer = (mine?.items.length ?? 0) === 0 && (mine?.eddies ?? 0) === 0;
   const emptyTrade = emptyOffer && (other?.items.length ?? 0) === 0 && (other?.eddies ?? 0) === 0;
 
+  const offerZone = (side: TradeSideView, index: number) =>
+    side.mine ? (
+      <OfferZone
+        key={index}
+        side={side}
+        editable={editable}
+        hover={hoverZone === 'offer' && drag !== null && drag.source.from !== 'offer'}
+        stale={stale}
+        invited={invited}
+      >
+        <ItemGrid
+          tiles={offerTiles}
+          selection={offerSelection}
+          label="Moje pole wymiany"
+          {...(editable
+            ? { emptyText: 'Upuść tu rzeczy z ekwipunku albo kliknij je dwa razy.' }
+            : {})}
+          hint="Dwuklik albo przeciągnięcie z powrotem zdejmuje z pola"
+          action={{
+            label: '← Zdejmij',
+            title: 'Zdejmij zaznaczone z pola wymiany',
+            disabled: busy || !editable,
+            run: (keys) => removeFromOffer(pick(offerByKey, keys)),
+          }}
+          qty={{
+            label: (t) => `Ile sztuk w polu: ${t.name}`,
+            value: (t) => qtyDraft[t.key] ?? String(t.qty ?? 0),
+            onChange: (t, raw) => setQtyDraft((current) => ({ ...current, [t.key]: raw })),
+            onCommit: (t) => {
+              const item = offerByKey.get(t.key);
+              if (item) commitQty(item);
+            },
+            min: 0,
+            max: () => null,
+            show: (t) => t.stackable === true,
+          }}
+          drag={(keys) => handlers({ from: 'offer', keys })}
+          minRows={1}
+        />
+        <div className="inventory-money trade-money">
+          <span className="inventory-row-name">Gotówka</span>
+          <input
+            ref={moneyRef}
+            type="number"
+            className="inventory-row-qty"
+            min={0}
+            max={wallet}
+            aria-label="Ile eurodolców w polu wymiany"
+            value={money}
+            disabled={busy || !editable}
+            onChange={(e) => setMoney(e.target.value)}
+            onBlur={commitMoney}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') commitMoney();
+            }}
+          />
+          <span className="inventory-row-detail">z {formatEd(wallet)}</span>
+        </div>
+      </OfferZone>
+    ) : (
+      <OfferZone
+        key={index}
+        side={side}
+        editable={false}
+        hover={false}
+        stale={false}
+        invited={invited}
+      >
+        <ItemGrid
+          tiles={side === other ? otherTiles : side.items.map((item) => tile(item))}
+          selection={otherSelection}
+          label={`Pole wymiany: ${side.name}`}
+          minRows={1}
+          showStrip={false}
+        />
+        {side.eddies > 0 && (
+          <div className="inventory-money">
+            <span className="inventory-row-name">Gotówka</span>
+            <span className="inventory-row-detail">{formatEd(side.eddies)}</span>
+          </div>
+        )}
+      </OfferZone>
+    );
+
   return (
     <>
-      <div
-        className={`exchange-columns${spectator ? ' exchange-columns--two' : ' exchange-columns--three'}`}
-      >
-        {!spectator && (
+      {spectator ? (
+        <div className="exchange-columns exchange-columns--two">
+          {trade.sides.map((side, index) => offerZone(side, index))}
+        </div>
+      ) : (
+        <div className="exchange-columns exchange-columns--trade">
           <div
             className={`trade-column trade-inventory${hoverZone === 'inventory' && drag?.source.from === 'offer' ? ' trade-zone--hover' : ''}`}
             data-exchange-drop="inventory"
           >
             <p className="trade-column-title">Mój ekwipunek — {mine?.name}</p>
-            {inventory.length === 0 && (
-              <p className="inventory-empty">Nie zostało nic, co dałoby się położyć w polu.</p>
-            )}
-            <ul className="inventory-list">
-              {inventory.map((item) => (
-                <li
-                  key={itemKey(item)}
-                  className="inventory-row trade-draggable"
-                  title={`${CPRED_ITEM_LIST_LABELS[item.list]} — przeciągnij do pola wymiany`}
-                  {...handlers({ from: 'inventory', item })}
-                >
-                  <span className="trade-grip" aria-hidden="true">
-                    ⠿
-                  </span>
-                  <ItemViewIcon item={item} />
-                  <span className="inventory-row-name">{item.name}</span>
-                  <span className="inventory-row-detail">{itemDetail(item)}</span>
-                  <button
-                    type="button"
-                    className="small-button"
-                    disabled={busy || !editable}
-                    title="Połóż w polu wymiany"
-                    aria-label={`Połóż w polu wymiany: ${item.name}`}
-                    onClick={() => addToOffer(item)}
-                  >
-                    →
-                  </button>
-                </li>
-              ))}
-            </ul>
+            <ItemGrid
+              tiles={invTiles}
+              selection={invSelection}
+              label="Mój ekwipunek"
+              emptyText="Nie zostało nic, co dałoby się położyć w polu."
+              hint="Dwuklik albo przeciągnięcie kładzie w polu · Ctrl/Shift+klik — kilka naraz"
+              action={{
+                label: 'Połóż w polu →',
+                title: 'Połóż zaznaczone w polu wymiany',
+                disabled: busy || !editable,
+                run: (keys) => addToOffer(pick(invByKey, keys)),
+              }}
+              drag={(keys) => handlers({ from: 'inventory', keys })}
+              minRows={3}
+            />
             {wallet > 0 && (
               <div
                 className="inventory-money trade-draggable"
@@ -271,107 +361,12 @@ export function TradePane({ trade }: { trade: TradeView }) {
               </div>
             )}
           </div>
-        )}
-
-        {trade.sides.map((side, index) =>
-          side.mine ? (
-            <OfferZone
-              key={index}
-              side={side}
-              editable={editable}
-              hover={hoverZone === 'offer' && drag !== null && drag.source.from !== 'offer'}
-              stale={stale}
-              invited={invited}
-            >
-              {side.items.map((item) => (
-                <li
-                  key={itemKey(item)}
-                  className="inventory-row trade-draggable"
-                  title="Przeciągnij z powrotem do ekwipunku, żeby zdjąć z pola"
-                  {...handlers({ from: 'offer', item })}
-                >
-                  <span className="trade-grip" aria-hidden="true">
-                    ⠿
-                  </span>
-                  <ItemViewIcon item={item} />
-                  <span className="inventory-row-name">{item.name}</span>
-                  {item.stackable ? (
-                    <input
-                      type="number"
-                      className="inventory-row-qty"
-                      min={0}
-                      aria-label={`Ile sztuk w polu: ${item.name}`}
-                      value={qtyDraft[itemKey(item)] ?? String(item.qty)}
-                      disabled={busy || !editable}
-                      onChange={(e) =>
-                        setQtyDraft((current) => ({ ...current, [itemKey(item)]: e.target.value }))
-                      }
-                      onBlur={() => commitQty(item)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') commitQty(item);
-                      }}
-                    />
-                  ) : (
-                    <span className="inventory-row-detail">{item.detail}</span>
-                  )}
-                  <button
-                    type="button"
-                    className="small-button"
-                    disabled={busy || !editable}
-                    title="Zdejmij z pola wymiany"
-                    aria-label={`Zdejmij z pola wymiany: ${item.name}`}
-                    onClick={() => removeFromOffer(item)}
-                  >
-                    ←
-                  </button>
-                </li>
-              ))}
-              <li className="inventory-money trade-money">
-                <span className="inventory-row-name">Gotówka</span>
-                <input
-                  ref={moneyRef}
-                  type="number"
-                  className="inventory-row-qty"
-                  min={0}
-                  max={wallet}
-                  aria-label="Ile eurodolców w polu wymiany"
-                  value={money}
-                  disabled={busy || !editable}
-                  onChange={(e) => setMoney(e.target.value)}
-                  onBlur={commitMoney}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') commitMoney();
-                  }}
-                />
-                <span className="inventory-row-detail">z {formatEd(wallet)}</span>
-              </li>
-            </OfferZone>
-          ) : (
-            <OfferZone
-              key={index}
-              side={side}
-              editable={false}
-              hover={false}
-              stale={false}
-              invited={invited}
-            >
-              {side.items.map((item) => (
-                <li key={itemKey(item)} className="inventory-row">
-                  <ItemViewIcon item={item} />
-                  <span className="inventory-row-name">{item.name}</span>
-                  <span className="inventory-row-detail">{itemDetail(item)}</span>
-                </li>
-              ))}
-              {side.eddies > 0 && (
-                <li className="inventory-money">
-                  <span className="inventory-row-name">Gotówka</span>
-                  <span className="inventory-row-detail">{formatEd(side.eddies)}</span>
-                </li>
-              )}
-            </OfferZone>
-          ),
-        )}
-      </div>
+          <div className="trade-column trade-middle">
+            {mine && offerZone(mine, 0)}
+            {other && offerZone(other, 1)}
+          </div>
+        </div>
+      )}
 
       <div className="trade-footer">
         {trade.notice && (
@@ -395,8 +390,8 @@ export function TradePane({ trade }: { trade: TradeView }) {
           <p className="inventory-hint">{other?.name} zaprasza cię do handlu.</p>
         ) : (
           <p className="inventory-hint">
-            Przeciągnij rzeczy do swojego pola. Każda zmiana w którymkolwiek polu zdejmuje obie
-            zgody; wymiana dzieje się, gdy zgodzicie się oboje.
+            Przenieś rzeczy do swojego pola. Każda zmiana w którymkolwiek polu zdejmuje obie zgody;
+            wymiana dzieje się, gdy zgodzicie się oboje.
           </p>
         )}
         <div className="inventory-actions">
@@ -418,7 +413,7 @@ export function TradePane({ trade }: { trade: TradeView }) {
           {mine && invited && mineIndex === 0 && other?.characterId && (
             <button
               type="button"
-              className="small-button small-button--primary"
+              className="small-button"
               disabled={busy || emptyOffer || stale}
               title="Wyślij to, co leży w twoim polu, jako propozycję — kolega przyjmie ją z czatu"
               onClick={() => void sendNow()}
@@ -456,7 +451,9 @@ export function TradePane({ trade }: { trade: TradeView }) {
 
       {drag && (
         <div className="trade-drag-ghost" style={{ left: drag.x + 12, top: drag.y + 8 }}>
-          {drag.source.from === 'wallet' ? 'Portfel' : drag.source.item.name}
+          {drag.source.from === 'wallet'
+            ? 'Portfel'
+            : ghostLabel(drag.source.keys, invByKey, offerByKey)}
         </div>
       )}
     </>
@@ -485,7 +482,7 @@ function OfferZone({
       {...(editable ? { 'data-exchange-drop': 'offer' } : {})}
     >
       <p className="trade-column-title">
-        {side.mine ? 'Moje pole wymiany' : `Pole wymiany: ${side.name}`}
+        {side.mine ? 'Daję' : `${side.name} daje`}
         {(!invited || side.accepted) && (
           <span className={`trade-consent${side.accepted ? ' trade-consent--yes' : ''}`}>
             {side.accepted ? '✔ zgoda' : 'bez zgody'}
@@ -499,8 +496,24 @@ function OfferZone({
       )}
       {invited && !side.mine && <p className="inventory-empty">Czeka na {side.name}…</p>}
       {empty && !side.mine && !invited && <p className="inventory-empty">Na razie pusto.</p>}
-      {empty && editable && <p className="inventory-empty">Upuść tu przedmiot z ekwipunku.</p>}
-      <ul className="inventory-list">{children}</ul>
+      {children}
     </div>
   );
+}
+
+function byKey(items: CpredItemViewWire[]): Map<string, CpredItemViewWire> {
+  return new Map(items.map((item) => [itemKey(item), item]));
+}
+
+/** Wiersze po kluczach kafli — klucz, którego już nie ma, po prostu wypada. */
+function pick(map: Map<string, CpredItemViewWire>, keys: string[]): CpredItemViewWire[] {
+  return keys.flatMap((key) => {
+    const item = map.get(key);
+    return item ? [item] : [];
+  });
+}
+
+function ghostLabel(keys: string[], ...maps: Map<string, CpredItemViewWire>[]): string {
+  if (keys.length !== 1) return countLabel(keys.length);
+  return maps.map((map) => map.get(keys[0]!)?.name).find(Boolean) ?? '';
 }

@@ -111,6 +111,7 @@ czarne tło usunięte jak w reszcie katalogu. Licencja: CC BY 3.0.
 | `hud/scope.svg`        | Crosshair        | Delapouite | dodatek: luneta                                  |
 | `hud/attachment.svg`   | Gear hammer      | Lorc       | dodatek bez rozpoznanego efektu                  |
 | `hud/shield.svg`       | Riot shield      | Lorc       | pancerz: tarcza                                  |
+| `hud/swap-bag.svg`     | Swap bag         | Lorc       | kafel okna „Wymiana” bez sylwetki rodzaju (64b)  |
 
 Magazynki (wydłużony, bębnowy) używają `hud/ammo.svg`, pancerz poza tarczą — `hud/armor.svg`.
 

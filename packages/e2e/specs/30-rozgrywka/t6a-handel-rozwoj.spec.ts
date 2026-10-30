@@ -260,8 +260,8 @@ test.describe.serial('T6a: po walkach — handel, sklep, Paser, PD, Medyk, cybor
     // Marek kładzie chip w polu — od tej chwili Ola widzi łup Zbira (jawny dla niej).
     fromOla.reveal(codes.get('lup-Zbira')!);
     await tradeWindow(marek)
-      .getByRole('button', { name: `Połóż w polu wymiany: ${chip}` })
-      .click();
+      .locator(`.trade-inventory .item-tile[data-item-name=${JSON.stringify(chip)}]`)
+      .dblclick();
     await expect(tradeWindow(ola)).toContainText(chip);
 
     // Odmowa: oferta ponad portfel z surowego gniazda Oli (UI przycina pole do salda).
@@ -454,8 +454,8 @@ test.describe.serial('T6a: po walkach — handel, sklep, Paser, PD, Medyk, cybor
     await invite.getByRole('button', { name: 'Przyjmij' }).click();
     for (const actor of [marek, mg]) await openTradeWindow(actor);
     await tradeWindow(mg)
-      .getByRole('button', { name: 'Połóż w polu wymiany: Militech Ronin' })
-      .click();
+      .locator('.trade-inventory .item-tile[data-item-name="Militech Ronin"]')
+      .dblclick();
     await expect(tradeWindow(marek)).toContainText('Militech Ronin');
     const cash = tradeWindow(marek).getByLabel('Ile eurodolców w polu wymiany');
     await cash.fill('400');

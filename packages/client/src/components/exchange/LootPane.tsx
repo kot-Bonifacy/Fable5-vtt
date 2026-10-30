@@ -1,17 +1,17 @@
 import { useState } from 'react';
-import type { CpredItemViewWire, ExchangeCounterpartView, InventoryItemRefWire } from '@vtt/shared';
-import { CPRED_ITEM_LIST_LABELS } from '@vtt/shared';
+import type { ExchangeCounterpartView, InventoryItemRefWire } from '@vtt/shared';
 import { notifyInfo, notifyRefusal } from '../../notices.js';
 import { inventoryErrorText, takeInventory } from '../../socket.js';
 import { useCharacterStore } from '../../stores/characterStore.js';
-import { ItemViewIcon } from '../ItemIcons.js';
-import { clampQty, formatEd, itemDetail, itemKey, refOf } from './items.js';
-import { OwnInventoryColumn } from './OwnInventoryColumn.js';
+import { clampQty, formatEd, refOf } from './items.js';
+import { OWN_DROP_ZONE, OwnInventoryColumn } from './OwnInventoryColumn.js';
+import { TakeGrid } from './TakeGrid.js';
 
 /**
  * Tryb `loot` okna „Wymiana” (38b, w jednym oknie od 46a) — ciało, które leży
  * albo nie żyje i nie ma właściciela. Bierze się od ręki, bez niczyjej zgody:
- * „Weź” przy wierszu albo „Zabierz wszystko” razem z gotówką.
+ * zaznaczenie z siatki (dwuklik, „← Weź”, przeciągnięcie na mój ekwipunek —
+ * od 64c) albo „Zabierz wszystko” razem z gotówką.
  *
  * Ekwipunek ciała przyszedł z serwera razem z prawem do niego
  * (`exchange:counterparts`) — gracz nie zna karty cudzej figury. Po każdym
@@ -28,9 +28,9 @@ export function LootPane({
   onChanged: () => void;
 }) {
   const anchor = useCharacterStore((s) => s.characters[anchorId]);
-  const [qty, setQty] = useState<Record<string, string>>({});
   const [money, setMoney] = useState('');
   const [busy, setBusy] = useState(false);
+  const [hover, setHover] = useState<string | null>(null);
 
   const items = body.items ?? [];
   const purse = body.eddies ?? 0;
@@ -49,62 +49,27 @@ export function LootPane({
       notifyRefusal('exchange', inventoryErrorText(ack.error));
       return;
     }
-    setQty({});
     setMoney('');
     notifyInfo(`Zabrane na kartę: ${anchor?.name ?? 'twoja karta'}.`, { topic: 'exchange' });
     onChanged();
-  }
-
-  function refFor(item: CpredItemViewWire): InventoryItemRefWire {
-    return refOf(item, item.stackable ? clampQty(qty[itemKey(item)], item.qty) : item.qty);
   }
 
   return (
     <>
       <div className="exchange-columns exchange-columns--two">
         {/* 46b2: mój ekwipunek z przeciąganiem na mapę („Stos”). */}
-        <OwnInventoryColumn anchorId={anchorId} busy={busy} />
+        <OwnInventoryColumn anchorId={anchorId} busy={busy} dropHover={hover === OWN_DROP_ZONE} />
 
         <div className="trade-zone">
           <p className="trade-column-title">Przy ciele: {body.name}</p>
-          {items.length === 0 && purse === 0 && (
-            <p className="inventory-empty">Nic tu już nie zostało.</p>
-          )}
-          <ul className="inventory-list">
-            {items.map((item) => (
-              <li key={itemKey(item)} className="inventory-row">
-                <button
-                  type="button"
-                  className="small-button"
-                  disabled={busy}
-                  title="Weź na swoją kartę"
-                  aria-label={`Weź: ${item.name}`}
-                  onClick={() => void take([refFor(item)], 0)}
-                >
-                  ←
-                </button>
-                <ItemViewIcon item={item} />
-                <span className="inventory-row-name" title={CPRED_ITEM_LIST_LABELS[item.list]}>
-                  {item.name}
-                </span>
-                <span className="inventory-row-detail">{itemDetail(item) || item.detail}</span>
-                {item.stackable && item.qty > 1 && (
-                  <input
-                    type="number"
-                    className="inventory-row-qty"
-                    min={1}
-                    max={item.qty}
-                    placeholder={String(item.qty)}
-                    aria-label={`Ile sztuk: ${item.name}`}
-                    value={qty[itemKey(item)] ?? ''}
-                    onChange={(e) =>
-                      setQty((current) => ({ ...current, [itemKey(item)]: e.target.value }))
-                    }
-                  />
-                )}
-              </li>
-            ))}
-          </ul>
+          <TakeGrid
+            items={items}
+            label={`Przy ciele: ${body.name}`}
+            busy={busy}
+            {...(purse === 0 ? { emptyText: 'Nic tu już nie zostało.' } : {})}
+            onTake={(refs) => void take(refs, 0)}
+            onHoverZone={setHover}
+          />
           {purse > 0 && (
             <div className="inventory-money">
               <button

@@ -147,8 +147,8 @@ test.describe.serial('T7a odporność: handel bez sieci i restart w kreatorze @o
     const offlineAt = Date.now();
     await expect(connectionStatus(ola)).toContainText('Rozłączono', { timeout: 10_000 });
     await tradeWindow(marek)
-      .getByRole('button', { name: `Połóż w polu wymiany: ${picks}` })
-      .click();
+      .locator(`.trade-inventory .item-tile[data-item-name=${JSON.stringify(picks)}]`)
+      .dblclick();
     await tradeWindow(marek).getByRole('button', { name: 'Zgadzam się' }).click();
     await expect(tradeWindow(marek).locator('.trade-zone--mine')).toContainText('✔ zgoda');
     const shot = await marek.page.screenshot();

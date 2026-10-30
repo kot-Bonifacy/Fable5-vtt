@@ -306,9 +306,10 @@ test.describe.serial('T46b pojemniki na scenie', () => {
   test('46b.3 Ola wkłada latarkę, Marek „Zabierz wszystko” — nic nie ginie', async () => {
     await doubleClickOn(ola, cellCentre(cell, 9, 8));
     await expect(exchange(ola)).toHaveAttribute('data-exchange-mode', 'container');
+    await exchange(ola).locator('.trade-inventory .item-tile[data-item-name="Latarka"]').click();
     const qty = exchange(ola).getByLabel('Ile sztuk: Latarka');
     await qty.fill('1');
-    await exchange(ola).getByRole('button', { name: 'Włóż: Latarka' }).click();
+    await exchange(ola).getByRole('button', { name: 'Włóż →' }).click();
     await expect.poll(() => gear('Skrzynia', 'Latarka')).toBe(1);
     expect(gear('Iskra', 'Latarka')).toBe(1);
     await shot(ola, '3-wklada');
@@ -357,12 +358,10 @@ test.describe.serial('T46b pojemniki na scenie', () => {
     const window = exchange(marek);
     await expect(window).toHaveAttribute('data-exchange-mode', 'none');
     await moveAway(marek, window.locator('.inventory-window-header'));
+    const latarka = window.locator('.item-tile[data-item-name="Latarka"]');
+    await latarka.click();
     await window.getByLabel('Ile sztuk: Latarka').fill('1');
-    await dragToMap(
-      marek.page,
-      window.locator('[data-own-item="Latarka"]'),
-      cellCentre(cell, 9, 7),
-    );
+    await dragToMap(marek.page, latarka, cellCentre(cell, 9, 7));
     await expect.poll(() => piles().length).toBe(1);
     expect(gear('Stos', 'Latarka')).toBe(1);
     expect(gear('Kowal', 'Latarka')).toBe(1);

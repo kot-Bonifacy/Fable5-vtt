@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
-import type { CpredItemViewWire, ExchangeCounterpartView, InventoryItemRefWire } from '@vtt/shared';
-import { CONTAINER_LOCK_LABELS, CPRED_ITEM_LIST_LABELS } from '@vtt/shared';
+import type { ExchangeCounterpartView, InventoryItemRefWire } from '@vtt/shared';
+import { CONTAINER_LOCK_LABELS } from '@vtt/shared';
 import {
   inventoryErrorText,
   openContainer,
@@ -11,9 +11,9 @@ import { clearNotices, notifyInfo, notifyRefusal } from '../../notices.js';
 import { useCharacterStore } from '../../stores/characterStore.js';
 import { useTokenStore } from '../../stores/tokenStore.js';
 import { takeCallCup } from '../../call-cup.js';
-import { ItemViewIcon } from '../ItemIcons.js';
-import { clampQty, formatEd, itemDetail, itemKey, refOf } from './items.js';
-import { OwnInventoryColumn } from './OwnInventoryColumn.js';
+import { clampQty, formatEd, refOf } from './items.js';
+import { OWN_DROP_ZONE, OwnInventoryColumn } from './OwnInventoryColumn.js';
+import { TakeGrid } from './TakeGrid.js';
 
 /**
  * Tryb `container` okna „Wymiana” (etap 46b2, wzór: *Container* z Item Piles).
@@ -28,8 +28,9 @@ import { OwnInventoryColumn } from './OwnInventoryColumn.js';
  *    z PT od MG i kubek otwiera się od razu; jedna próba na postać (decyzja MG
  *    z 09.10), potem „spróbować znowu” pozwala tylko MG.
  *
- * Otwarty bierze i wkłada od ręki każdy w zasięgu ręki: „←” / „Zabierz
- * wszystko” z pojemnika, „→” albo przeciągnięcie do pojemnika z mojej karty.
+ * Otwarty bierze i wkłada od ręki każdy w zasięgu ręki: z siatki pojemnika
+ * (dwuklik, „← Weź”, przeciągnięcie na mój ekwipunek — od 64c) albo „Zabierz
+ * wszystko”, a z mojej siatki dwuklikiem, „Włóż →” albo przeciągnięciem.
  * Cudza karta nie jedzie do gracza, więc lista odświeża się po każdej zmianie
  * figury pojemnika (serwer rozsyła ją po każdym zapisie karty pojemnika).
  */
@@ -45,11 +46,11 @@ export function ContainerPane({
   const anchor = useCharacterStore((s) => s.characters[anchorId]);
   const registry = useCharacterStore((s) => s.registry);
   const token = useTokenStore((s) => (container.tokenId ? s.tokens[container.tokenId] : undefined));
-  const [qty, setQty] = useState<Record<string, string>>({});
   const [money, setMoney] = useState('');
   const [busy, setBusy] = useState(false);
   const [skillId, setSkillId] = useState<string>(container.lockSkills?.[0] ?? '');
   const [hover, setHover] = useState<string | null>(null);
+  const [takeHover, setTakeHover] = useState<string | null>(null);
 
   // Każdy zapis karty pojemnika (ktoś coś włożył, zamek puścił po Teście)
   // przychodzi jako nowa figura — wtedy lista ma przyjść od nowa. Pierwsze
@@ -107,7 +108,6 @@ export function ContainerPane({
       notifyRefusal('exchange', inventoryErrorText(ack.error));
       return;
     }
-    setQty({});
     setMoney('');
     notifyInfo(`Zabrane na kartę: ${anchor?.name ?? 'twoja karta'}.`, { topic: 'exchange' });
     onChanged();
@@ -131,10 +131,6 @@ export function ContainerPane({
     onChanged();
   }
 
-  function refFor(item: CpredItemViewWire): InventoryItemRefWire {
-    return refOf(item, item.stackable ? clampQty(qty[itemKey(item)], item.qty) : item.qty);
-  }
-
   return (
     <>
       <div className="exchange-columns exchange-columns--two">
@@ -143,6 +139,7 @@ export function ContainerPane({
           busy={busy}
           {...(isOpen ? { putZone: 'container', onPut: (r, e) => void put(r, e) } : {})}
           onHoverZone={setHover}
+          dropHover={takeHover === OWN_DROP_ZONE}
         />
 
         <div
@@ -217,43 +214,15 @@ export function ContainerPane({
             </div>
           )}
 
-          {isOpen && items.length === 0 && purse === 0 && <p className="inventory-empty">Pusto.</p>}
           {isOpen && (
-            <ul className="inventory-list">
-              {items.map((item) => (
-                <li key={itemKey(item)} className="inventory-row">
-                  <button
-                    type="button"
-                    className="small-button"
-                    disabled={busy}
-                    title="Weź na swoją kartę"
-                    aria-label={`Weź: ${item.name}`}
-                    onClick={() => void take([refFor(item)], 0)}
-                  >
-                    ←
-                  </button>
-                  <ItemViewIcon item={item} />
-                  <span className="inventory-row-name" title={CPRED_ITEM_LIST_LABELS[item.list]}>
-                    {item.name}
-                  </span>
-                  <span className="inventory-row-detail">{itemDetail(item) || item.detail}</span>
-                  {item.stackable && item.qty > 1 && (
-                    <input
-                      type="number"
-                      className="inventory-row-qty"
-                      min={1}
-                      max={item.qty}
-                      placeholder={String(item.qty)}
-                      aria-label={`Ile sztuk wziąć: ${item.name}`}
-                      value={qty[itemKey(item)] ?? ''}
-                      onChange={(e) =>
-                        setQty((current) => ({ ...current, [itemKey(item)]: e.target.value }))
-                      }
-                    />
-                  )}
-                </li>
-              ))}
-            </ul>
+            <TakeGrid
+              items={items}
+              label={container.name}
+              busy={busy}
+              {...(purse === 0 ? { emptyText: 'Pusto.' } : {})}
+              onTake={(refs) => void take(refs, 0)}
+              onHoverZone={setTakeHover}
+            />
           )}
           {isOpen && purse > 0 && (
             <div className="inventory-money">

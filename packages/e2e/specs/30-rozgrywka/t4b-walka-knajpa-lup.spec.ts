@@ -853,8 +853,8 @@ test.describe.serial('T4b: walka pierwsza w „Knajpie” — rany, granat, zwar
     await pick('🤝 Iskra');
     await expect(exchange).toHaveAttribute('data-exchange-mode', 'trade');
     await exchange
-      .getByRole('button', { name: 'Połóż w polu wymiany: Ciężki pistolet', exact: true })
-      .click();
+      .locator('.trade-inventory .item-tile[data-item-name="Ciężki pistolet"]')
+      .dblclick();
     await exchange.getByRole('button', { name: 'Wyślij bez czekania' }).click();
     await ola.page
       .locator('[data-testid="inventory-move"]', { hasText: 'Ciężki pistolet' })

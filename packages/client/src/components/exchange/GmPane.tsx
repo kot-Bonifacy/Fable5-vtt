@@ -1,17 +1,19 @@
-import { useState } from 'react';
-import type { CpredItemViewWire, InventoryItemRefWire } from '@vtt/shared';
-import { CPRED_ITEM_LIST_LABELS, INVENTORY_NOTE_MAX, cpredInventoryView } from '@vtt/shared';
+import { useMemo, useState } from 'react';
+import type { InventoryItemRefWire } from '@vtt/shared';
+import { INVENTORY_NOTE_MAX, cpredInventoryView } from '@vtt/shared';
 import { clearNotices, notifyInfo, notifyRefusal } from '../../notices.js';
 import { giveInventory, inventoryErrorText } from '../../socket.js';
 import { useCharacterStore } from '../../stores/characterStore.js';
-import { ItemViewIcon } from '../ItemIcons.js';
+import { useExchangeDrag } from './drag.js';
+import { ItemGrid, countLabel, useGridSelection, useItemTile } from './ItemGrid.js';
 import { clampQty, formatEd, itemKey, refOf } from './items.js';
+import { DragGhost } from './map-drop-item.js';
 
 /**
  * Tryb `gm` okna „Wymiana” (decyzja MG 8) — narzędzie MG z 38b w nowym oknie.
  *
- * Z karty, na której otwarto okno (lewa kolumna), na dowolną kartę („Dokąd”),
- * bez niczyich zgód. Wyjątkiem jest karta gracza: tam dalej idzie propozycja
+ * Z karty, na której otwarto okno (lewa kolumna, od 64c siatka z zaznaczaniem
+ * wielu), na dowolną kartę („Dokąd”), bez niczyich zgód. Wyjątkiem jest karta gracza: tam dalej idzie propozycja
  * z „Przyjmij”, bo o tym, co ląduje na karcie, decyduje jej właściciel —
  * o tym, czy coś czeka, mówi serwer (`pending`), nie zgadywanie w oknie.
  */
@@ -31,7 +33,11 @@ export function GmPane({
   const [note, setNote] = useState('');
   const [busy, setBusy] = useState(false);
 
-  const items = anchor ? cpredInventoryView(anchor.data) : [];
+  const items = useMemo(() => (anchor ? cpredInventoryView(anchor.data) : []), [anchor]);
+  const tile = useItemTile();
+  const tiles = useMemo(() => items.map((item) => tile(item)), [items, tile]);
+  const byKey = useMemo(() => new Map(items.map((item) => [itemKey(item), item])), [items]);
+  const selection = useGridSelection(useMemo(() => tiles.map((t) => t.key), [tiles]));
   const purse = anchor?.data.eddies ?? 0;
   const targetName = targets.find((row) => row.id === targetId)?.name ?? '';
 
@@ -55,6 +61,7 @@ export function GmPane({
     }
     setMoney('');
     setQty({});
+    selection.clear();
     notifyInfo(
       ack.data?.pending === true
         ? `Wysłane do: ${targetName} — czeka na przyjęcie.`
@@ -63,55 +70,44 @@ export function GmPane({
     );
   }
 
-  function refFor(item: CpredItemViewWire): InventoryItemRefWire {
-    return refOf(item, item.stackable ? clampQty(qty[itemKey(item)], item.qty) : item.qty);
+  function refsFor(keys: string[]): InventoryItemRefWire[] {
+    return keys.flatMap((key) => {
+      const item = byKey.get(key);
+      if (!item) return [];
+      return [refOf(item, item.stackable ? clampQty(qty[key], item.qty) : item.qty)];
+    });
   }
+
+  const { drag, hoverZone, handlers } = useExchangeDrag<{ keys: string[] }>((source, zone) => {
+    if (zone === 'target') void give(refsFor(source.keys), 0);
+  }, busy);
 
   return (
     <>
       <div className="exchange-columns exchange-columns--two">
         <div className="trade-column">
           <p className="trade-column-title">Skąd — {anchor?.name}</p>
-          {items.length === 0 && (
-            <p className="inventory-empty">Ta karta nie ma nic w ekwipunku.</p>
-          )}
-          <ul className="inventory-list">
-            {items.map((item) => (
-              <li key={itemKey(item)} className="inventory-row">
-                <ItemViewIcon item={item} />
-                <span className="inventory-row-name" title={CPRED_ITEM_LIST_LABELS[item.list]}>
-                  {item.name}
-                </span>
-                <span className="inventory-row-detail">
-                  {item.stackable && item.qty > 1 ? `× ${item.qty}` : item.detail}
-                </span>
-                {item.stackable && item.qty > 1 && (
-                  <input
-                    type="number"
-                    className="inventory-row-qty"
-                    min={1}
-                    max={item.qty}
-                    placeholder={String(item.qty)}
-                    aria-label={`Ile sztuk: ${item.name}`}
-                    value={qty[itemKey(item)] ?? ''}
-                    onChange={(e) =>
-                      setQty((current) => ({ ...current, [itemKey(item)]: e.target.value }))
-                    }
-                  />
-                )}
-                <button
-                  type="button"
-                  className="small-button"
-                  disabled={busy}
-                  title="Przekaż"
-                  aria-label={`Przekaż: ${item.name}`}
-                  onClick={() => void give([refFor(item)], 0)}
-                >
-                  →
-                </button>
-              </li>
-            ))}
-          </ul>
+          <ItemGrid
+            tiles={tiles}
+            selection={selection}
+            label={`Skąd — ${anchor?.name ?? ''}`}
+            emptyText="Ta karta nie ma nic w ekwipunku."
+            hint="Dwuklik albo przeciągnięcie na „Dokąd” przekazuje · Ctrl/Shift+klik — kilka naraz"
+            action={{
+              label: 'Przekaż →',
+              title: 'Przekaż zaznaczone na wybraną kartę',
+              disabled: busy,
+              run: (keys) => void give(refsFor(keys), 0),
+            }}
+            qty={{
+              label: (t) => `Ile sztuk: ${t.name}`,
+              value: (t) => qty[t.key] ?? '',
+              placeholder: (t) => String(t.qty ?? ''),
+              onChange: (t, raw) => setQty((current) => ({ ...current, [t.key]: raw })),
+            }}
+            drag={(keys) => handlers({ keys })}
+            minRows={3}
+          />
           {purse > 0 && (
             <div className="inventory-money">
               <span className="inventory-row-name">Gotówka</span>
@@ -140,7 +136,10 @@ export function GmPane({
           )}
         </div>
 
-        <div className="trade-zone">
+        <div
+          className={`trade-zone trade-zone--mine${hoverZone === 'target' ? ' trade-zone--hover' : ''}`}
+          data-exchange-drop="target"
+        >
           <label className="inventory-end">
             Dokąd
             <select
@@ -175,6 +174,16 @@ export function GmPane({
           </p>
         </div>
       </div>
+
+      <DragGhost
+        drag={drag}
+        label={
+          drag && drag.source.keys.length === 1
+            ? (byKey.get(drag.source.keys[0]!)?.name ?? '')
+            : countLabel(drag?.source.keys.length ?? 0)
+        }
+        onMap={false}
+      />
 
       <div className="trade-footer">
         <div className="inventory-actions">
