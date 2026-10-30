@@ -22,12 +22,20 @@ w plikach obok — czytaj je **na żądanie, nigdy rutynowo**:
 | stan         | etapy                                                                                          |
 | ------------ | ---------------------------------------------------------------------------------------------- |
 | ⬜ otwarty   | **62** Sieć ze sceny (🟨 zrobione, czeka na oględziny MG na VPS po wdrożeniu); **61** Skradanie się (🟨 zrobione, czeka na słowo MG o rozstrzygnięciach); **28** Wdrożenie na VPS (🟨 działa na `https://vtt.tatanga.eu` z botami od 18.10; zostały off-site, utwardzenie, monitoring); **43b**, **43c** (UI walki); **60** Czytelny czat (zlecenie MG z 24.10; 🟨 60a–60c ✅, czeka na oględziny MG z pierwszego kryterium); T10; refaktoryzacja odłożona (MG 18.10) |
-| ✅ ukończone | 01–11, 13–20b, 23a–27f, 27h–27l, 29a–30d, 31–35, 37–42c, 43a, 44a–44d, 45, 46a1, 46a2, 46c1, 46c2, 46b1, 46b2, 47a, 47b, 48a, 48b, 48c, 49a, 49b, 50a, 50b, 50c, 51, 52, 53, 54, 55, 56, 57 (57a–57c), 58 (58a–58d), 59 (59a–59c), 63 (63a–63b; 63c wycofane 29.10) (ostatni zamknięty: 59, 2026-10-24) |
+| ✅ ukończone | 01–11, 13–20b, 23a–27f, 27h–27l, 29a–30d, 31–35, 37–42c, 43a, 44a–44d, 45, 46a1, 46a2, 46c1, 46c2, 46b1, 46b2, 47a, 47b, 48a, 48b, 48c, 49a, 49b, 50a, 50b, 50c, 51, 52, 53, 54, 55, 56, 57 (57a–57c), 58 (58a–58d), 59 (59a–59c), 63 (63a–63b; 63c wycofane 29.10), 64 (64a–64c) (ostatni zamknięty: 64, 2026-10-30) |
 | ⛔ wycofane  | 12, 21, 22 (głos), 27g (wydajność), 36 (makra); 27, 29, 30, 38 rozdzielone na etapy literowane |
 
 Pełna tabela z nazwami i datami: `archiwum/tabela-etapow.md`.
 
 ## Od czego zacząć
+
+**Szybka wymiana wzorem BG3 (etap 64, zlecenie MG z 30.10) — czeka na wdrożenie i oględziny
+przy stole.** Każda kolumna okna „Wymiana” to siatka kafli (`ItemGrid`): Ctrl/Shift+klik zaznacza
+kilka rzeczy, przeciągnięcie albo dwuklik przenosi całe zaznaczenie jednym żądaniem, ilość stosu
+stoi na pasku pod siatką. Handel u obu stron: mój ekwipunek | „Daję” nad „X daje”. Zapraszający
+zgadza się z góry, a dok zaproszonego pokazuje „daje: …” i „Przyjmij” razem ze zgodą — prezent
+to jedno kliknięcie po każdej stronie („Negocjuj” przyjmuje bez zgody). Plik etapu
+`etap-64-szybka-wymiana.md`, umowy na górze `ekwipunek`.
 
 **Wspólny widok drużyny to przełącznik sceny (zlecenie MG z 30.10) — czeka na wdrożenie i oględziny
 przy stole.** „Gracze dzielą się widokiem” w Edycja sceny → Widoczność, domyślnie wyłączony
@@ -524,7 +532,7 @@ a nie do tego pliku.
 | `statysta`  | figura z kartą, `statBlock`, Wartość bojowa, `token:stat`, wzorce | 17   | 3       |
 | `karta`     | strony i zakładki, panele, `sheet.css`, walidacja list, usuwanie przedmiotu | 11   | 12      |
 | `postac`    | kreator, PD i awanse, koszyk i cofanie awansów, Role i Zdolności, cyborgizacje, chrom zmieniający liczby, ekonomia, Test montażu gracza | 56   | 3       |
-| `ekwipunek` | wiersze wyposażenia, przekazanie, łup (także ciała graczy), handel, sklepy, zasięg, amunicja bez dna, egzoszkielet, narkotyki i fiolki | 37   | 3       |
+| `ekwipunek` | wiersze wyposażenia, przekazanie, łup (także ciała graczy), handel, sklepy, zasięg, amunicja bez dna, egzoszkielet, narkotyki i fiolki, siatka okna „Wymiana”, zgoda z góry | 39   | 3       |
 | `czas`      | zegar świata, kalendarz, `statEffects`, leczenie po dobie, dawki i uzależnienia (`chems`) | 19   | 2       |
 | `siec`      | Programy, LOD, demony, piętra architektury, dek jako towar, strefy bronione, kamery, rozbrajanie, Sieć ze sceny | 13   | 4       |
 | `boty`      | llama-server, RAG, reindeks, dziennik i baza wiedzy, brama AI  | 10   | 10      |
@@ -537,6 +545,27 @@ a nie do tego pliku.
 ## Notatki z dwóch ostatnich sesji
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
+
+### Sesja 30.10, trzecia — etap 64 „Szybka wymiana wzorem BG3” (zlecenie MG)
+
+**Zlecenie:** szybsze oddawanie wielu rzeczy jednej osobie, wzorem BG3 — w jednym oknie mój
+ekwipunek i to, co druga strona położy w polu wymiany, przeciąganie, zatwierdzenie po uzgodnieniu.
+**Oględziny przed zmianą** (spec E2E z `po-T6`): okno handlu już miało trzy kolumny i dwie zgody,
+ale prezent trzech rzeczy kosztował 7 kroków, a u zaproszonego pola stały zamienione. **Decyzje
+MG z pytań:** boli klikanie zgód i trafianie do okna; Ctrl/Shift + przeciąganie grupy; dalej
+dwie zgody, ale zapraszający z góry i „Przyjmij” w doku ze zgodą; siatka kafli jak w BG3 w całym
+oknie; układ: ekwipunek | dwa pola na środku; nowych wejść do okna nie trzeba. **Zmiana:** 64a —
+`mayAcceptTrade`, `trade:respond` z `agree`/`version`, `settleAccept`, dok z „daje: …”,
+„Przyjmij”/„Negocjuj” (commit `113a8944`); 64b/64c — `ItemGrid.tsx` (`useGridSelection`,
+`useItemTile`), `TakeGrid.tsx`, przepisane `TradePane`, `OwnInventoryColumn`, `LootPane`,
+`ContainerPane`, `GmPane`, `MerchantPane`; ikona `hud/swap-bag.svg` (game-icons, Lorc) z wpisem
+w atrybucji; okno dwukolumnowe 800 px. Rozstrzygnięcia bez pytań — w pliku etapu. **Testy:** shared
+2765, serwer 1677 (nowy przypadek prezentu w `trade.test.ts`), klient 441/442 (dalej tylko znany
+`theme.test.ts` na `10-map-combat.css`); E2E `t46a`+`t46b` 26/26, `t6a` 13/13 bez `@llm`
+(gateway wyłączony; zapisał `po-T6a`), `t7a` 3/3; **`t4b` pada na granacie 4.6** — nie z tej
+zmiany (zaległość). **Oglądane:** Chromium (Marek, MG) i **Firefox** (Ola) na instancji E2E —
+zaznaczenie Ctrl, przeciągnięcie grupy z duchem „3 przedmioty”, zgoda z góry, dok z ofertą,
+prezent jednym „Przyjmij”, „Negocjuj”, sklep, skrzynia, łup. Na VPS nic nie zmieniano.
 
 ### Sesja 30.10, druga — Reputacja bliżej podręcznika (zlecenie MG)
 
@@ -553,25 +582,3 @@ w `facedown:concede`, `ReputationSection`. Wpis w `decyzje-i-uproszczenia.md`, u
 nie puszczana. **Oglądane:** tymczasowy spec E2E z `po-T6` — Ola w **Firefoksie**, MG w Chromium,
 karta Iskry (koncert 6, potem ucieczka 3 jako zła) → „Zła sława 3”, podświetlony drugi wyczyn.
 Na VPS nic nie zmieniano.
-
-### Sesja 30.10 — „Gracze dzielą się widokiem” (zlecenie MG)
-
-**Zlecenie:** w edycji sceny przełącznik, domyślnie „widok tylko z własnych figur”, bo przy
-„oczach drużyny” z etapu 45 drużyna zostawiała zwiedzanie mapy jednemu graczowi (dopisek MG:
-„może być przełącznik, czy gracze dzielą się widokiem”). **Rozstrzygnięcia bez pytań:**
-(1) domyślnie wyłączony także na istniejących scenach (migracja); (2) jawne „Oczy drużyny: Tak”
-od MG na figurze działa dalej na każdej scenie; (3) **pamięć odkrytej mapy też osobno dla gracza**
-(`PlayerExploration`), gdy scena nie dzieli widoku — inaczej zwiad jednego dalej rysowałby plan
-całej drużynie (w Foundry pamięć mgły też jest per gracz); dotychczasową wspólną pamięć migracja
-skopiowała każdemu członkowi kampanii; (4) przełącznik w sekcji „Drużyna” zakładki Widoczność,
-ukryty w trybie „Otwarta”, opis w dymku. **Zmiana:** `Scene.partySight`, `scene:party-sight`
-(`realtime/party-sight.ts`), `sharesVision`/`toTokenView` ze sceną, `fetchVisionTokens`,
-`exploration.ts` (pamięć drużyny + graczy), archiwum sceny; klient `setScenePartySight`,
-przełącznik w `SceneConfigWindow`, etykieta „Samo” w menu figury. Umowa na górze `mapa`.
-**Testy:** shared 2761, serwer 1675 (nowy przypadek w `party-move.test.ts`, macierz izolacji),
-klient 441/442 — pada `theme.test.ts` na `10-map-combat.css` z commita `018a6988` (kolory wprost
-z wyboru systemu obronnego), nie z tej zmiany. **E2E:** `t45-ruch-druzyny` 8/8 (z `po-T6`);
-T3b i T5b nie puszczane (gateway) — zaległość. **Oglądane:** Firefox (Playwright, MG i gracz) na
-instancji E2E z `po-T6`: przełącznik w edytorze „Knajpy”, zapis w bazie, `partyVision` u gracza
-w obie strony. Na VPS nic nie zmieniano — **wdrożenie niesie migrację**.
-

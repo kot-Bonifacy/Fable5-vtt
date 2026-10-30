@@ -1,5 +1,26 @@
 # Dziennik sesji — archiwum
 
+### Sesja 30.10 — „Gracze dzielą się widokiem” (zlecenie MG)
+
+**Zlecenie:** w edycji sceny przełącznik, domyślnie „widok tylko z własnych figur”, bo przy
+„oczach drużyny” z etapu 45 drużyna zostawiała zwiedzanie mapy jednemu graczowi (dopisek MG:
+„może być przełącznik, czy gracze dzielą się widokiem”). **Rozstrzygnięcia bez pytań:**
+(1) domyślnie wyłączony także na istniejących scenach (migracja); (2) jawne „Oczy drużyny: Tak”
+od MG na figurze działa dalej na każdej scenie; (3) **pamięć odkrytej mapy też osobno dla gracza**
+(`PlayerExploration`), gdy scena nie dzieli widoku — inaczej zwiad jednego dalej rysowałby plan
+całej drużynie (w Foundry pamięć mgły też jest per gracz); dotychczasową wspólną pamięć migracja
+skopiowała każdemu członkowi kampanii; (4) przełącznik w sekcji „Drużyna” zakładki Widoczność,
+ukryty w trybie „Otwarta”, opis w dymku. **Zmiana:** `Scene.partySight`, `scene:party-sight`
+(`realtime/party-sight.ts`), `sharesVision`/`toTokenView` ze sceną, `fetchVisionTokens`,
+`exploration.ts` (pamięć drużyny + graczy), archiwum sceny; klient `setScenePartySight`,
+przełącznik w `SceneConfigWindow`, etykieta „Samo” w menu figury. Umowa na górze `mapa`.
+**Testy:** shared 2761, serwer 1675 (nowy przypadek w `party-move.test.ts`, macierz izolacji),
+klient 441/442 — pada `theme.test.ts` na `10-map-combat.css` z commita `018a6988` (kolory wprost
+z wyboru systemu obronnego), nie z tej zmiany. **E2E:** `t45-ruch-druzyny` 8/8 (z `po-T6`);
+T3b i T5b nie puszczane (gateway) — zaległość. **Oglądane:** Firefox (Playwright, MG i gracz) na
+instancji E2E z `po-T6`: przełącznik w edytorze „Knajpy”, zapis w bazie, `partyVision` u gracza
+w obie strony. Na VPS nic nie zmieniano — **wdrożenie niesie migrację**.
+
 ### Sesja 29.10, druga — jedna broń w rękach (zlecenie MG)
 
 **Zlecenie:** „ogranicz ilość aktywnych broni do jednej (nie licząc bijatyki i sztuk walki),

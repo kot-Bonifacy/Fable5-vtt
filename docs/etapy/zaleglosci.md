@@ -6,6 +6,19 @@ w `POMYSLY.md` („Do sprawdzenia przy stole”), decyzje MG — w `decyzje-i-up
 
 ## Otwarte
 
+**30.10.2026 — T4b pada na granacie (4.6), niezależnie od etapu 64.** `E2E_FROM=po-T4a`,
+dwa przebiegi pod rząd: Marek rzuca granat w Zbira i Ochroniarza, a karta „Granat odłamkowy →
+wybrane pole” nie przychodzi w 20 s (`rollAndWait`, `t4b-walka-knajpa-lup.spec.ts:356`). Krok
+dotyka rzutu granatem, nie okna wymiany; podejrzany „jedna broń w rękach” (`6ab9f2c2`, 29.10 —
+granat ręczny poza limitem). Dalszych 15 kroków T4b (w tym przekazanie pistoletu kaflem) nie
+uruchomiono; ten sam przepływ wymiany sprawdza zielone `t46a` 46a.3.
+
+**30.10.2026 — etap 64 „Szybka wymiana”: oględziny przy stole i wdrożenie.** Siatka kafli
+i zgoda z góry oglądane na instancji E2E (Chromium i Firefox), nie na VPS. Do sprawdzenia
+przy stole: dwóch graczy, prezent kilku rzeczy (Ctrl+klik, przeciągnięcie, „Zgadzam się”,
+„Przyjmij” w doku), sklep z koszykiem, łup z ciała. Punkt `po-T6a` przepisał 30.10 przebieg T6a
+**bez kroków `@llm`** (gateway wyłączony).
+
 **30.10.2026 — „Gracze dzielą się widokiem”: T3b i T5b nieuruchomione, oględziny przy stole.**
 T3b włącza przełącznik w `createScene`, a T5b (5.4) — gniazdem MG; obie specyfikacje wymagają
 gatewaya i nie były puszczone. Punkty kontrolne `po-T3`…`po-T6` sprzed 30.10 mają na „Knajpie”

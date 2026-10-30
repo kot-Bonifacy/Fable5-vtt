@@ -161,3 +161,6 @@ a w `POSTEP.md` popraw tylko wiersz stanu.
 | 63a    | Płynna walka: kropki ataków na slocie broni, pulsujące „Kończę turę”, głosowy sygnał tury | ✅     | 2026-10-28          |
 | 63b    | Płynna walka: auto-unik i Odskok z checkboksem pod portretem | ✅     | 2026-10-28          |
 | 63c    | Płynna walka: jedna karta ataku z krokami i pasek „Krok X/3” nad kubkiem | ⛔     | 2026-10-29 (wycofany) |
+| 64a    | Szybka wymiana: zgoda z góry, „Przyjmij” ze zgodą i „daje: …” w doku | ✅     | 2026-10-30          |
+| 64b    | Szybka wymiana: siatka kafelków z Ctrl/Shift, układ handlu wzorem BG3 | ✅     | 2026-10-30          |
+| 64c    | Szybka wymiana: siatka w łupie, pojemniku, sklepie i trybie MG | ✅     | 2026-10-30          |

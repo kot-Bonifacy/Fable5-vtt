@@ -2836,6 +2836,8 @@ inaczej odziedziczy dokładnie ten sam potrzask.
 
 ## ekwipunek — Ekwipunek i przedmioty między kartami
 
+- **Każda kolumna okna „Wymiana” to `ItemGrid` z `useGridSelection` (30.10, etap 64)** — `components/exchange/ItemGrid.tsx`: kafel (`useItemTile`, torba `hud/swap-bag.svg` bez sylwetki), zaznaczanie Ctrl/Shift/Ctrl+A/Esc, dwuklik i Enter = `action.run(keys)`, przeciągnięcie niesie `selection.carry(key)`, pole ilości i przycisk na pasku pod siatką. Kolumna podaje akcję, `qty` i `drag(keys)` — siatka niczego nie wysyła. Nowa kolumna albo tryb okna = ta siatka, nie lista wierszy z „→”; grupa to **jedno** żądanie (`trade:offer`, `inventory:take`, `inventory:drop`…). E2E klikają `.item-tile[data-item-name="…"]`.
+- **Zapraszający zgadza się z góry, a „Przyjmij” w doku niesie zgodę (30.10, etap 64a)** — `mayAcceptTrade` (`shared/trade.ts`); `trade:respond` z `agree` + `version` przyjmuje i zgadza się w jednym kroku przez wspólne `settleAccept` (`realtime/trade.ts`). Nowa droga do zgody idzie przez `setTradeAccept` + `settleAccept`, nigdy przez osobne wykonanie.
 - **Narkotyk, alkohol i fiolka to zwykły wiersz wyposażenia (24.10, etap 59b)** — rozpoznaje go `cpredDrugOfRow` / `cpredBladeToxinOfRow` (`consumable` → wpis kompendium → nazwa przez `normalizeChromeName`), więc z półki, łupu i handlu przychodzi bez nowego pola. Wpisy pisze `parse-gear.py` (`gear.czarna-szpryca`…`gear.alkohol-doskonalej-jakosci`); `consumable` przyjmuje też id `drug.*`. Karta: sekcja „Dawki” (`DosesSection`) — „Zażyj”/„Wypij”/„Podaj” i „Nałóż na: …” (`coatWeapon`); lekką broń białą rozstrzyga **wyłącznie** `cpredCoatableWeapon` (klient i serwer).
 - **Egzoszkielet to wiersz wyposażenia z `connected` (24.10, etap 59a)** — `CpredGearRow.connected` zostaje przy zapisie tylko na wierszu, który `CPRED_CHROME_MODS` zna jako `needsConnected`; gracz przełącza go łatą (`GEAR_FREE`), `cpredTakeRows` zdejmuje flagę z oddawanej sztuki, a `stacksWith` nie skleja podłączonego z odłączonym. Sprzęt z premią (Skaner medyczny, Techskaner) działa z plecaka przy `qty > 0`; karta pokazuje go w sekcji „Sprzęt z premią” (`GearChromeSection`). Czip Umiejętności: `CpredCyberwareRow.skillId`, gracz wpisuje raz (`CYBERWARE_FREE` + warunek w `cpredPlayerItemPatchProblem`), zmienia MG.
 - **Ciało leży otworem jak otwarta skrzynia — `bodySearchable` (`shared/src/exchange.ts`) / `searchableBody` (`realtime/inventory.ts`) (24.10, zlecenie MG)** — martwe, leżące (`down`: Nieprzytomny, Śmiertelnie ranny, zero PW) albo z naklejką, którą rejestr statusów znaczy `"searchable": true` (`StatusDefinition.searchable`; dziś Ogłuszony, Unieruchomiony, Pochwycony w `data/public/cpred/statuses.json`). **Także postać gracza** — `exchangeOptionsFor` daje graczowi łup przed handlem, a `inventory:take` nie zna już `NOT_YOURS` (stojący gracz → `STILL_STANDING`). Zasięg ramienia i scena bez zmian, karta czatu łupu idzie też do okradanego. Nowy bezbronny stan = flaga w JSON-ie, nie gałąź w kodzie; `ExchangeFacts.condition` zastąpiło `searchable`.
@@ -2875,6 +2877,25 @@ inaczej odziedziczy dokładnie ten sam potrzask.
 - **Przedmiot zużywalny** — `CpredGearRow.consumable` + `qty` na wierszu ekwipunku, katalog w `systems/cpred/pharma.ts` (moduł **bez importów**). Nowy środek = wpis w `CPRED_PHARMACEUTICALS` + gałąź w `applyDose`.
 
 ---
+
+**Okno „Wymiana” to siatki kafli (30.10.2026, etap 64).** MG chciał szybciej oddawać wiele rzeczy
+jednej osobie, wzorem BG3. Każda kolumna okna — mój ekwipunek, pole wymiany, ciało, pojemnik,
+półka, „Skąd” MG — rysuje `ItemGrid`, a zaznaczenie trzyma `useGridSelection` u kolumny. Siatka
+zna tylko trzy rzeczy z zewnątrz: `action` (dwuklik, Enter, przycisk na pasku), `qty` (pole
+ilości stosu na pasku, z `show`/`max`, bo pole wymiany nie ma sufitu, a półka ma) i `drag(keys)`
+z `useExchangeDrag`. Co znaczy „upuścić tutaj”, wie tryb okna, więc grupa zawsze idzie jednym
+żądaniem — pięć rzeczy w polu wymiany to jedno `trade:offer` i jedno zdjęcie zgód, nie pięć.
+Strefę `own` (`OWN_DROP_ZONE`) ma kolumna mojego ekwipunku: tam `TakeGrid` ciała i pojemnika
+oddaje rzeczy przeciągnięciem. Handel u obu stron stoi w tej samej kolejności (mój ekwipunek |
+„Daję” nad „X daje”) — do 30.10 zaproszony miał pola zamienione miejscami.
+
+**Zgoda z góry (30.10.2026, etap 64a).** Zapraszający zgadza się już w stanie `invited`
+(`mayAcceptTrade`), a dok zaproszonego pokazuje „daje: …” i „Przyjmij”, które wysyła
+`trade:respond` z `agree` i wersją widzianą w doku. Przy zgodzie zapraszającego prezent kończy się
+w tym samym kroku (`settleAccept`, ta sama ścieżka co `trade:accept`, z blokadą `executing`).
+Zgoda na nieaktualną wersję odpada (`TRADE_CHANGED`), ale zaproszenie zostaje przyjęte — okno
+pokaże zmianę. „Negocjuj” przyjmuje bez zgody.
+
 
 **Kule, śrut i strzały się nie kończą (23.10.2026, zasada domowa MG).** Podręcznik liczy każdy
 nabój (s. 94: „10 ed za 10 sztuk”, s. 169: Przeładowanie), ale MG nie chce przy stole księgowości
