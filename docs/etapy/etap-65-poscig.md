@@ -68,45 +68,71 @@ wybrał pełną walkę pojazdów z podręcznika (s. 189–192) i ulepszenia Moto
 Każdy podetap to jedna sesja. Kolejność jest zależnością: 65b potrzebuje pojazdu z 65a, 65c
 ruchu z 65b, 65d tury z 65c, 65e taranowania i Manewru z 65d.
 
-## 65a — pojazd jako własność postaci ⬜
+## 65a — pojazd jako własność postaci ✅ (30.10)
 
 **Rdzeń/system:** rdzeń zna wyłącznie „bryłę” pojazdu (nazwa, grafika, rozmiar w kratkach,
 układ foteli). Liczby CP RED (PUK, Ruch, OB, ulepszenia) mieszkają w JSON-ie systemu,
 tak jak `Character.sheet`.
 
-- [ ] Prisma `Vehicle` (migracja): `campaignId`, `ownerCharacterId?` (null = pojazd MG/NPC-a),
+- [x] Prisma `Vehicle` (migracja): `campaignId`, `ownerCharacterId?` (null = pojazd MG/NPC-a),
       `name`, `imageUrl?`, `widthSq`, `lengthSq`, `layout` (układ foteli), `system` (JSON CP RED).
       Pojazd jest osobnym wierszem, a nie polem karty, bo dzielą go pasażerowie, niszczy go scena
       i może należeć do NPC-a.
-- [ ] `shared/src/vehicles.ts` (rdzeń): układy foteli — `bike-2` (tandem), `car-2`, `car-4`
+- [x] `shared/src/vehicles.ts` (rdzeń): układy foteli — `bike-2` (tandem), `car-2`, `car-4`
       (2+2), `car-6`, `van-8` — jako punkty w ułamkach bryły (0…1), fotel kierowcy oznaczony;
       domyślne rozmiary brył (motocykl 2×3, kompakt i sportowy 3×5, supersamochód 3×5, van 3×7).
-- [ ] `shared/src/systems/cpred/vehicles.ts`: `CpredVehicleStats` (PUK max/bieżące, Ruch
+- [x] `shared/src/systems/cpred/vehicles.ts`: `CpredVehicleStats` (PUK max/bieżące, Ruch
       bitewny, OB kadłuba, fotele, rodzaj: motocykl / samochód / wodny / powietrzny), lista
       ulepszeń z s. 163–165 z flagą „działa w walce” (niżej), `readCpredVehicle`, walidacja,
       testy.
-- [ ] Katalog pojazdów z podręcznika (s. 190–191) **w kompendium w `data/private`**, wg umowy
+- [x] Katalog pojazdów z podręcznika (s. 190–191) **w kompendium w `data/private`**, wg umowy
       `dane` — w repo tylko schemat, parser i wymyślone pojazdy testowe w `data/public`.
-- [ ] Ulepszenia działające mechanicznie w 65c–65e: Opancerzenie kadłuba (OB 13, bez szyb),
+- [x] Ulepszenia działające mechanicznie w 65c–65e: Opancerzenie kadłuba (OB 13, bez szyb),
       Szyby kuloodporne (cienkie 15 PW / grube 30 PW, każde okno osobno), Wzmocniona konstrukcja
       (+20 PUK), Ulepszenie foteli (+2 fotele, nie w motocyklu), Nitro (dodatkowy Ruch za Akcję,
       raz dziennie na zbiornik), Pług bojowy, Wyrzutnia kolczatki, Ulepszone zespolenie
       (motocykl), pokładowe bronie (karabin maszynowy, miotacz ognia, wyrzutnia rakiet, broń
       biała, stanowisko bardzo ciężkiej broni). Reszta (Centrum komunikacji, Systemy
       bezpieczeństwa, Skrytki, Poduszkowiec, Silniki AV-4) to wiersz z opisem bez automatyki.
-- [ ] Moto: wiersz `kind: 'vehicle'` w `fleet` wskazuje `vehicleId` (migracja danych tworzy
+- [x] Moto: wiersz `kind: 'vehicle'` w `fleet` wskazuje `vehicleId` (migracja danych tworzy
       `Vehicle` z nazwy i kategorii wiersza, rodzaj zgadnięty z tabeli kategorii s. 162, a gdy się
       nie da — kompakt z notką), wiersz `upgrade` wskazuje pojazd i ulepszenie z listy.
       `MotoPanel` pokazuje pojazd zamiast gołej nazwy.
-- [ ] Karta: panel „Pojazdy” — lista pojazdów postaci (grafika, PUK, Ruch, fotele, ulepszenia),
+- [x] Karta: panel „Pojazdy” — lista pojazdów postaci (grafika, PUK, Ruch, fotele, ulepszenia),
       MG dodaje z katalogu i edytuje wszystko, gracz zmienia nazwę i grafikę. Zdarzenia
       `vehicle:create|update|delete` (tylko MG; gracz `vehicle:rename`).
-- [ ] Pojazdy MG/NPC-ów: okno „Pojazdy” w narzędziach MG (lista pojazdów kampanii bez
+- [x] Pojazdy MG/NPC-ów: okno „Pojazdy” w narzędziach MG (lista pojazdów kampanii bez
       właściciela, dodawanie z katalogu).
-- [ ] Kopie: `Vehicle` w `snapshot`, `archive`, paczce ZIP kampanii (grafika pojazdu jedzie
+- [x] Kopie: `Vehicle` w `snapshot`, `archive`, paczce ZIP kampanii (grafika pojazdu jedzie
       z paczką) i w kopii postaci gracza (57c) — umowa `kopie`.
-- [ ] Testy: `shared` (odczyt, walidacja, ulepszenia zmieniające PUK/fotele), serwer (MG tworzy,
+- [x] Testy: `shared` (odczyt, walidacja, ulepszenia zmieniające PUK/fotele), serwer (MG tworzy,
       gracz nie tworzy, migracja Moto).
+
+### Rozstrzygnięcia 65a bez pytań (30.10)
+
+1. **Katalog to kategoria kompendium „Pojazdy”** (`VehicleEntry`): 14 wpisów z s. 190–191 pisze
+   `tools/import/parse-vehicles.py` do `data/private`, próbka w `data/public` ma trzy wymyślone.
+   Półkę widzi cały stół (jak każdą), ale pojazdu nie kupuje się ani nie dodaje „na kartę” —
+   cena idzie cennikiem domowym ×10 (sprzęt trwały).
+2. **Pojazdy MG/NPC-ów to zakładka MG „Pojazdy”**, nie osobne okno — tak stoją inne narzędzia MG
+   (Losowe, Sieć, Kopie). W niej też pojazdy postaci, każdy z „Edytuj…”.
+3. **Panel „Pojazdy” na karcie siedzi w zakładce Ekwipunek**; gracz bez pojazdu go nie widzi.
+4. **Gracz zmienia nazwę zawsze, a grafikę tylko na wbudowaną** (`/art/vehicles/`, dojdzie
+   w 65b): wgrywa wyłącznie MG, a biblioteki „Grafik” gracz nie dostaje. Dziś grafikę daje MG
+   z biblioteki w oknie edycji.
+5. **Widoczność jak kart:** MG widzi wszystkie pojazdy, gracz — pojazdy swoich kart; auto NPC-a
+   zobaczy na scenie pościgu (65b).
+6. **Skasowana karta zostawia pojazd MG** (`SetNull`) — auto istnieje w świecie bez kierowcy.
+7. **Pojazd Taboru zmienia karta Nomady:** okno MG zostawia jego ulepszenia z Taboru, nie oddaje go
+   innej karcie i nie kasuje (`VEHICLE_IN_FLEET`); zdjęcie wiersza zabiera pojazd.
+8. **Wiersz Taboru ma stały rodzaj** — „Dołóż pojazd” i „Dołóż ulepszenie” zamiast przełącznika;
+   kategorię liczy wybór (`cpredFleetRowLevel`), stary wiersz z nazwą pokazuje „(stary wpis)”.
+   Inny pojazd w tym samym wierszu przebudowuje liczby (PUK pełne, ulepszenia zostają) i nazwę,
+   jeśli gracz jej nie zmieniał.
+9. **Ulepszenie foteli raz w małych pojazdach** (nie „nigdy w motocyklu”) — s. 163 wymienia kosz
+   motocyklowy; wpis w `decyzje-i-uproszczenia.md`.
+10. **Rozmiar i układ foteli idą za fotelami po ulepszeniach** (`cpredVehicleLayout`), chyba że MG
+    ustawi je ręcznie w tej samej zmianie.
 
 ## 65b — scena pościgu: bieżnia, auta, fotele ⬜
 

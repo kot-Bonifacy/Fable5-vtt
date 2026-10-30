@@ -896,6 +896,48 @@
       "costCategory": "expensive",
       "fit": {},
       "ignoresObscurement": true
+    },
+    {
+      "id": "vehicle.sample-skuter-miejski",
+      "category": "vehicle",
+      "name": "Skuter miejski Wiórek",
+      "description": "Wymyślony jednoślad do testów: lekki, zwrotny, bez dachu.",
+      "cost": 900,
+      "costCategory": "luxury",
+      "vehicleKind": "motorcycle",
+      "hp": 30,
+      "seats": 2,
+      "move": 20,
+      "speedKmh": 120,
+      "motoLevel": 1
+    },
+    {
+      "id": "vehicle.sample-kompakt",
+      "category": "vehicle",
+      "name": "Kompakt Zetka",
+      "description": "Wymyślone pudełko na kołach do testów.",
+      "cost": 1500,
+      "costCategory": "luxury",
+      "vehicleKind": "car",
+      "hp": 45,
+      "seats": 4,
+      "move": 20,
+      "speedKmh": 150,
+      "motoLevel": 1
+    },
+    {
+      "id": "vehicle.sample-strzala",
+      "category": "vehicle",
+      "name": "Strzała Klasy S",
+      "description": "Wymyślony szybki wóz do testów.",
+      "cost": 4000,
+      "costCategory": "superLuxury",
+      "vehicleKind": "car",
+      "hp": 45,
+      "seats": 2,
+      "move": 60,
+      "speedKmh": 420,
+      "motoLevel": 9
     }
   ]
 }

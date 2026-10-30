@@ -1,5 +1,21 @@
 # Dziennik sesji — archiwum
 
+### Sesja 30.10, druga — Reputacja bliżej podręcznika (zlecenie MG)
+
+**Zlecenie:** „sprawdź i popraw mechanikę reputacji, aby lepiej oddawała podręcznik”. Konfrontacja,
+remis bez skutku, wybór przegranego i rzut „Czy go znam?” (1k10 **niższe**) zgadzały się z s. 193–194.
+**Decyzje MG z pytań:** (1) zły wyczyn przykrywa dobrą sławę na każdym poziomie, „może” = MG wpisuje
+albo nie; (2) −2 zdejmuje 0 PW wroga **albo wygrany rewanż**; (3) strach zostaje na scenie.
+**Bez pytań, wprost z tekstu:** równy poziom nie zastępuje (wygrywał późniejszy); karta „Znasz tę
+osobę” mówi „zła sława N”; nagłówek karty „Zła sława 3” zamiast „Reputacja −3” (minus jest tylko
+w Konfrontacji). **Zmiana:** `cpredReputation` (lista po kolei), `releaseFear` + zdjęcie strachu
+w `facedown:concede`, `ReputationSection`. Wpis w `decyzje-i-uproszczenia.md`, umowa na górze `atak`.
+**Testy:** shared 2764 (nowe przypadki w `reputation.test.ts`), serwer `facedown.test.ts` 21/21
+(nowy: wygrany rewanż) i `campaign-isolation`; tsc i ESLint czyste; pełna suita serwera i klienta
+nie puszczana. **Oglądane:** tymczasowy spec E2E z `po-T6` — Ola w **Firefoksie**, MG w Chromium,
+karta Iskry (koncert 6, potem ucieczka 3 jako zła) → „Zła sława 3”, podświetlony drugi wyczyn.
+Na VPS nic nie zmieniano.
+
 ### Sesja 30.10 — „Gracze dzielą się widokiem” (zlecenie MG)
 
 **Zlecenie:** w edycji sceny przełącznik, domyślnie „widok tylko z własnych figur”, bo przy

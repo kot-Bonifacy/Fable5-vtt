@@ -14,6 +14,7 @@ import { SESSION_COOKIE, resolveSessionUser } from './auth/sessions.js';
 import { TEMPORARY_PASSWORD_ROUTES } from './auth/guards.js';
 import { ensureAdminUser, ensureGmUser } from './auth/seed.js';
 import { dropBottomlessAmmo } from './ammo-sweep.js';
+import { backfillFleetVehicles } from './vehicles.js';
 import { backfillPortraitAssetsInBackground } from './portrait-backfill.js';
 import { registerAuthRoutes } from './routes/auth.js';
 import { registerJoinRoutes } from './routes/join.js';
@@ -266,6 +267,9 @@ export async function buildApp(
   // Kule, śrut i strzały się nie kończą (zasada domowa MG z 23.10.2026) —
   // ich pudełka i „Licz amunicję” schodzą z kart w bazie, nie tylko w odczycie.
   await dropBottomlessAmmo(prisma, app.log);
+  // Etap 65a (decyzja MG 10 z 30.10): wiersze „Pojazd” Taboru sprzed etapu
+  // dostają prawdziwe pojazdy — raz, przed pierwszym żądaniem.
+  await backfillFleetVehicles(prisma, ctx.compendium, ctx.cpred, app.log);
   // Pliki, których nikt już nie wymienia (sesja naprawcza 22.08). W tle i po
   // cichu: nic tu nie jest pilne, a start stołu nie ma na co czekać.
   if (options.sweepUploads !== false) {

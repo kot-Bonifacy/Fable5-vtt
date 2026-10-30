@@ -1751,7 +1751,7 @@
    wrodzoną szerokość niż w Chromium i rozpychało kolumnę — ✕ wychodził poza
    prawą krawędź karty Moto (#76). */
 .fleet-row {
-  grid-template-columns: auto minmax(0, 1fr) 3.2rem auto;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
 }
 
 .fleet-row > * {

@@ -19,6 +19,12 @@ import {
   UPLOAD_URL_PATTERN,
 } from '@vtt/shared';
 import type { PrismaClient } from './db.js';
+import {
+  exportVehicles,
+  importVehicles,
+  remapFleetVehicles,
+  type VehicleArchiveRow,
+} from './vehicles.js';
 import type { Prisma } from './generated/prisma/client.js';
 
 /** Klient albo transakcja — wczytanie kampanii (57a) pisze wszystko w jednej. */
@@ -148,6 +154,11 @@ export interface CharacterArchive {
   template?: boolean;
   /** `CpredCharacterData` jako obiekt — wersja schematu siedzi w środku. */
   data: unknown;
+  /**
+   * Etap 65a: pojazdy tej karty (także Taboru Rodziny — wiersze wskazują je
+   * po id z pliku). Brak pola w starszych plikach = karta bez pojazdów.
+   */
+  vehicles?: VehicleArchiveRow[];
   /** Historia eurodolców (23b) i Punktów Doświadczenia (29a) — bez id. */
   ledger: CharacterLedgerRow[];
   advancement: CharacterLedgerRow[];
@@ -180,7 +191,7 @@ export async function exportCharacter(
     label: true,
     createdAt: true,
   } as const;
-  const [ledger, advancement] = await Promise.all([
+  const [ledger, advancement, vehicles] = await Promise.all([
     prisma.ledgerEntry.findMany({
       where: { characterId },
       select: columns,
@@ -191,6 +202,7 @@ export async function exportCharacter(
       select: { ...columns, revert: true, undoneAt: true },
       orderBy: { id: 'asc' },
     }),
+    exportVehicles(prisma, { ownerCharacterId: characterId }),
   ]);
   const toRow = (entry: (typeof ledger)[number]): CharacterLedgerRow => ({
     kind: entry.kind,
@@ -218,12 +230,17 @@ export async function exportCharacter(
     data: parseJsonColumn(row.data),
     ledger: ledger.map(toRow),
     advancement: advancement.map(toAdvancementRow),
+    vehicles,
   };
   const manifest = buildManifest(
     'character',
     row.campaign.name,
     payload,
-    { ledger: payload.ledger.length, advancement: payload.advancement.length },
+    {
+      ledger: payload.ledger.length,
+      advancement: payload.advancement.length,
+      vehicles: vehicles.length,
+    },
     [
       'Żetony na scenach — figura jest własnością sceny, nie karty.',
       'Konto gracza — plik niesie jego id i imię; karta wraca do tego konta tylko w kampanii, w której ono siedzi, inaczej czeka na gracza.',
@@ -315,6 +332,21 @@ export async function importCharacter(
   });
   if (ledger.length) await prisma.ledgerEntry.createMany({ data: ledger });
   if (advancement.length) await prisma.advancementEntry.createMany({ data: advancement });
+  // Etap 65a: pojazdy karty wjeżdżają z nią, a Tabor wskazuje je po nowych id.
+  // Wiersz „Pojazd” bez pojazdu w pliku (plik sprzed 65a) dostaje go przy
+  // starcie serwera albo przy następnym zapisie Taboru.
+  const vehicles = await importVehicles(
+    prisma,
+    options.campaignId,
+    payload.vehicles,
+    () => created.id,
+  );
+  if (data.fleet.length > 0) {
+    await prisma.character.update({
+      where: { id: created.id },
+      data: { data: JSON.stringify({ ...data, fleet: remapFleetVehicles(data.fleet, vehicles) }) },
+    });
+  }
 
   return { id: created.id, ownerId: owner.ownerId, pendingOwner: owner.pending?.name ?? null };
 }
@@ -978,6 +1010,8 @@ export interface CampaignArchive {
   merchants?: Record<string, unknown>[];
   /** Etap 57a: tabele losowe z wierszami (`rows`). Brak pola — brak tabel. */
   randomTables?: Record<string, unknown>[];
+  /** Etap 65a: pojazdy kampanii (kart i MG). Brak pola — brak pojazdów. */
+  vehicles?: VehicleArchiveRow[];
   /**
    * Etap 57b: trackery walki z uczestnikami (`combatants`) — tylko w kopii
    * automatycznej, bo walka może trwać między sesjami (blokada rozwoju
@@ -1004,7 +1038,7 @@ export interface CampaignExportOptions {
  * eksploracją, punktami dostępu i strefami bronionymi, boty z relacjami,
  * kompendium, baza wiedzy, dziennik z przypiętymi handoutami, handouty
  * z udostępnieniami, architektury Sieci, biblioteki żetonów i portretów,
- * sklepy, tabele losowe i (na życzenie) czat.
+ * sklepy, tabele losowe, pojazdy (65a) i (na życzenie) czat.
  */
 export const CAMPAIGN_ARCHIVE_OMITTED = [
   'Konta i hasła — plik niesie wyłącznie id, imię i rolę, nigdy skrótu hasła.',
@@ -1169,6 +1203,7 @@ export async function exportCampaign(
       }),
     ]);
 
+  const vehicles = await exportVehicles(prisma, { campaignId });
   const chat = options.includeChat
     ? await prisma.chatMessage.findMany({ where: { campaignId }, orderBy: { id: 'asc' } })
     : null;
@@ -1212,6 +1247,7 @@ export async function exportCampaign(
     portraitAssets: plain(portraitAssets),
     merchants: plain(merchants),
     randomTables: plain(randomTables),
+    vehicles,
     ...(combats ? { combats: plain(combats) } : {}),
     chat: chat ? plain(chat) : null,
   };
@@ -1244,6 +1280,7 @@ export async function exportCampaign(
       architectures: payload.architectures.length,
       merchants: merchants.length,
       randomTables: randomTables.length,
+      vehicles: vehicles.length,
       ...(combats ? { combats: combats.length } : {}),
       chat: payload.chat?.length ?? 0,
     },

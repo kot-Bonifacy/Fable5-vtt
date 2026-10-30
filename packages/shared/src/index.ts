@@ -52,6 +52,7 @@ export * from './tokens.js';
 export * from './walk-route.js';
 export * from './trade.js';
 export * from './uploads.js';
+export * from './vehicles.js';
 export * from './vision.js';
 export * from './walls.js';
 export * from './zones.js';

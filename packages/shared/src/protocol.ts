@@ -29,6 +29,7 @@ import type { MapNoteView } from './notes.js';
 import type { SceneSummary, SceneView } from './scenes.js';
 import type { TokenTargetView, TokenView } from './tokens.js';
 import type { TradeView } from './trade.js';
+import type { VehicleView } from './vehicles.js';
 import type { ExchangeCounterpartKind, ExchangeUnavailable } from './exchange.js';
 import type { ContainerLock, ContainerPreset } from './containers.js';
 import type {
@@ -172,6 +173,11 @@ export interface StateSyncPayload {
   exploration: ExplorationMask | null;
   /** Characters this user may see: the GM gets all, a player only their own. */
   characters: CharacterView[];
+  /**
+   * Pojazdy kampanii (etap 65a): MG — wszystkie, gracz — pojazdy swoich kart.
+   * Auto NPC-a gracz zobaczy dopiero na scenie pościgu (65b).
+   */
+  vehicles: VehicleView[];
   /** Bot profiles — GM only (they carry secrets), always empty for players. */
   bots: BotView[];
   /** Bot availability, filtered by role (players get no diagnostics). */

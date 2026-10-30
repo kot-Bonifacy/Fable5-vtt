@@ -59,6 +59,13 @@ import {
 } from './netrunning.js';
 import { formatEddies } from './pricing.js';
 import { CPRED_STAT_IDS, type CpredStatId } from './stats.js';
+import {
+  CPRED_VEHICLE_HP_MAX,
+  CPRED_VEHICLE_MOVE_MAX,
+  CPRED_VEHICLE_SEATS_MAX,
+  isCpredVehicleKind,
+  type CpredVehicleKind,
+} from './vehicles.js';
 
 /**
  * Compendium of CP RED game objects: weapon types (the rulebook's base rows),
@@ -87,6 +94,7 @@ export const COMPENDIUM_CATEGORIES = [
   'program',
   'netDefense',
   'criticalInjury',
+  'vehicle',
 ] as const;
 export type CompendiumCategory = (typeof COMPENDIUM_CATEGORIES)[number];
 
@@ -100,6 +108,7 @@ export const COMPENDIUM_CATEGORY_LABELS: Record<CompendiumCategory, string> = {
   program: 'Programy',
   netDefense: 'Obrona Sieci',
   criticalInjury: 'Rany krytyczne',
+  vehicle: 'Pojazdy',
 };
 
 /**
@@ -109,14 +118,16 @@ export const COMPENDIUM_CATEGORY_LABELS: Record<CompendiumCategory, string> = {
  * but *loaded* into a weapon (stage 16g); an attachment is likewise not carried
  * but *bolted on* (stage 31); and Net defenders belong to an architecture,
  * never to a person. A Program is a backpack row since stage 48b — it goes
- * into a deck slot from there.
+ * into a deck slot from there. A vehicle (stage 65a) is a row of its own table,
+ * not of the sheet — the GM gives it from the „Pojazdy” panel.
  */
 export const COMPENDIUM_ITEM_CATEGORIES = COMPENDIUM_CATEGORIES.filter(
   (category) =>
     category !== 'criticalInjury' &&
     category !== 'ammo' &&
     category !== 'attachment' &&
-    category !== 'netDefense',
+    category !== 'netDefense' &&
+    category !== 'vehicle',
 );
 
 /** Weapon quality from the rulebook: poor jams on a 1, excellent adds +1. */
@@ -543,6 +554,26 @@ export interface CriticalInjuryEntry extends CompendiumEntryBase {
   conditionalPenalty?: CpredConditionalPenalty;
 }
 
+/**
+ * Pojazd z tabel s. 190–191 (etap 65a). Wpis katalogu, nie wiersz karty:
+ * MG zakłada z niego `Vehicle` w panelu „Pojazdy”, a Nomada — wierszem Taboru.
+ */
+export interface VehicleEntry extends CompendiumEntryBase {
+  category: 'vehicle';
+  vehicleKind: CpredVehicleKind;
+  /** PUK — Punkty Uszkodzeń Kadłuba. */
+  hp: number;
+  seats: number;
+  /** Szybkość bitewna (Ruch). */
+  move: number;
+  /** Szybkość narracyjna w km/h. */
+  speedKmh?: number;
+  /** Próg Taboru Rodziny (s. 162): 1, 5, 7 albo 9; brak — poza Taborem. */
+  motoLevel?: number;
+  /** Łódź kabinowa, jacht, aerozep: PUK i fotele „na kajutę”. */
+  perRoom?: boolean;
+}
+
 export type CompendiumEntry =
   | WeaponEntry
   | AmmoEntry
@@ -552,7 +583,12 @@ export type CompendiumEntry =
   | CyberwareEntry
   | ProgramEntry
   | NetDefenseEntry
-  | CriticalInjuryEntry;
+  | CriticalInjuryEntry
+  | VehicleEntry;
+
+export function isVehicleEntry(entry: CompendiumEntry): entry is VehicleEntry {
+  return entry.category === 'vehicle';
+}
 
 export function isCriticalInjuryEntry(entry: CompendiumEntry): entry is CriticalInjuryEntry {
   return entry.category === 'criticalInjury';
@@ -808,6 +844,7 @@ export function validateCompendiumEntry(
   else if (category === 'program') entry = validateProgram(input, base, issues);
   else if (category === 'netDefense') entry = validateNetDefense(input, base, issues);
   else if (category === 'criticalInjury') entry = validateCriticalInjury(input, base, issues);
+  else if (category === 'vehicle') entry = validateVehicle(input, base, issues);
   else entry = validateGear(input, base, issues);
 
   if (issues.length > 0 || !entry) return { ok: false, issues };
@@ -896,6 +933,47 @@ function validateWeapon(
   const features = validateFeatures(input.features, issues);
   if (features.length > 0) weapon.features = features;
   return weapon;
+}
+
+function validateVehicle(
+  input: Record<string, unknown>,
+  base: CompendiumEntryBase,
+  issues: CompendiumIssue[],
+): VehicleEntry | undefined {
+  if (!isCpredVehicleKind(input.vehicleKind)) {
+    issues.push({ field: 'vehicleKind', message: 'Wybierz rodzaj pojazdu.' });
+    return undefined;
+  }
+  const whole = (field: string, label: string, min: number, max: number): number | undefined => {
+    const value = input[field];
+    if (!isInteger(value) || value < min || value > max) {
+      issues.push({ field, message: `${label}: liczba od ${min} do ${max}.` });
+      return undefined;
+    }
+    return value;
+  };
+  const hp = whole('hp', 'PUK', 1, CPRED_VEHICLE_HP_MAX);
+  const seats = whole('seats', 'Fotele', 1, CPRED_VEHICLE_SEATS_MAX);
+  const move = whole('move', 'Ruch', 0, CPRED_VEHICLE_MOVE_MAX);
+  if (hp === undefined || seats === undefined || move === undefined) return undefined;
+  const vehicle: VehicleEntry = {
+    ...base,
+    category: 'vehicle',
+    vehicleKind: input.vehicleKind,
+    hp,
+    seats,
+    move,
+  };
+  if (input.speedKmh !== undefined && input.speedKmh !== null && input.speedKmh !== '') {
+    const speed = whole('speedKmh', 'Szybkość narracyjna', 0, 5000);
+    if (speed !== undefined) vehicle.speedKmh = speed;
+  }
+  if (input.motoLevel !== undefined && input.motoLevel !== null && input.motoLevel !== '') {
+    const level = whole('motoLevel', 'Próg Taboru', 1, 10);
+    if (level !== undefined) vehicle.motoLevel = level;
+  }
+  if (input.perRoom === true) vehicle.perRoom = true;
+  return vehicle;
 }
 
 function validateFeatures(raw: unknown, issues: CompendiumIssue[]): string[] {

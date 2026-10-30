@@ -217,6 +217,12 @@ import {
   tableShowEvent,
   tableUpsertEvent,
 } from './tables.js';
+import {
+  vehicleCreateEvent,
+  vehicleDeleteEvent,
+  vehicleRenameEvent,
+  vehicleUpdateEvent,
+} from './vehicles.js';
 import { timeSetEvent } from './gametime.js';
 import { botCreateEvent, botDeleteEvent, botDuplicateEvent, botUpdateEvent } from './bots.js';
 import { botChatEvent, botTeachEvent } from './bot-chat.js';
@@ -393,6 +399,10 @@ export const EVENTS: RealtimeEvent<never, unknown>[] = [
   tableDeleteEvent,
   tableRollEvent,
   tableShowEvent,
+  vehicleCreateEvent,
+  vehicleUpdateEvent,
+  vehicleDeleteEvent,
+  vehicleRenameEvent,
   characterCreateEvent,
   characterUpdateEvent,
   characterBackupCallEvent,

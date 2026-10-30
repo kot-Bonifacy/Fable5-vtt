@@ -305,6 +305,12 @@ import type {
   WeaponClearJamPayload,
   WeaponDrawPayload,
   WeaponReloadPayload,
+  VehicleCreatePayload,
+  VehicleDeleteBroadcast,
+  VehicleRenamePayload,
+  VehicleUpdatePayload,
+  VehicleUpsertBroadcast,
+  VehicleView,
 } from '@vtt/shared';
 import {
   CPRED_STAT_EFFECT_VALUE_MAX,
@@ -367,6 +373,7 @@ import { useHandoutStore } from './stores/handoutStore.js';
 import { useScreamsheetStore } from './stores/screamsheetStore.js';
 import { useRelationStore } from './stores/relationStore.js';
 import { useBotStore } from './stores/botStore.js';
+import { useVehicleStore } from './stores/vehicleStore.js';
 import { useCreationRankStore } from './stores/creationRankStore.js';
 import { gmAttentionNow, useGmAttentionStore } from './stores/gmAttentionStore.js';
 import { newGmAttention } from './gm-attention.js';
@@ -772,6 +779,7 @@ export function connectSocket(userId: string): Socket {
     useCharacterStore.getState().applySync(payload, !syncedSinceConnect);
     syncedSinceConnect = true;
     useBotStore.getState().applySync(payload);
+    useVehicleStore.getState().applySync(payload);
     useCompendiumStore.getState().applySync(payload);
     useCombatStore.getState().applySync(payload);
     useFogStore.getState().applySync(payload);
@@ -1207,6 +1215,13 @@ export function connectSocket(userId: string): Socket {
   onPresented('character:delete', (broadcast: CharacterDeleteBroadcast) => {
     useCharacterStore.getState().applyDelete(broadcast.characterId);
   });
+  // Etap 65a: pojazdy — celowane jak karty (MG i gracz karty-właściciela).
+  socket.on('vehicle:upsert', (broadcast: VehicleUpsertBroadcast) =>
+    useVehicleStore.getState().upsert(broadcast.vehicle),
+  );
+  socket.on('vehicle:delete', (broadcast: VehicleDeleteBroadcast) =>
+    useVehicleStore.getState().remove(broadcast.vehicleId),
+  );
   onPresented(
     'chat:message',
     (broadcast: ChatMessageBroadcast) => {
@@ -3379,6 +3394,15 @@ export function botTurnErrorText(code: string): string {
  */
 export const undoSceneDelete = (sceneId: string) =>
   emitSceneAck<SceneUndoResult>('scene:undo', { sceneId });
+
+/** Etap 65a: pojazdy — MG zakłada, zmienia i kasuje, właściciel karty nazywa. */
+export const createVehicle = (payload: VehicleCreatePayload) =>
+  emitSceneAck<VehicleView>('vehicle:create', payload);
+export const updateVehicle = (vehicleId: string, patch: VehicleUpdatePayload['patch']) =>
+  emitSceneAck<VehicleView>('vehicle:update', { vehicleId, patch });
+export const deleteVehicle = (vehicleId: string) => emitSceneAck('vehicle:delete', { vehicleId });
+export const renameVehicle = (payload: VehicleRenamePayload) =>
+  emitSceneAck<VehicleView>('vehicle:rename', payload);
 
 function emitSceneAck<T = undefined>(event: string, payload: unknown): Promise<SocketAck<T>> {
   return new Promise((resolve) => {

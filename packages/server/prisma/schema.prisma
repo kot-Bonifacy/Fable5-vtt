@@ -207,6 +207,7 @@ model Campaign {
   randomTables  RandomTable[]
   merchants     Merchant[]
   gameSessions  GameSession[]
+  vehicles      Vehicle[]
 }
 
 /// A handout: the material the GM hands to the players (stage 24a).
@@ -511,8 +512,39 @@ model Character {
   ledger    LedgerEntry[]
   advancement AdvancementEntry[]
   merchant  Merchant?
+  vehicles  Vehicle[]
 
   @@index([campaignId])
+}
+
+/**
+ * Pojazd (etap 65a) — osobny wiersz, a nie pole karty: dzielą go pasażerowie,
+ * niszczy go scena pościgu i może należeć do NPC-a. Rdzeń zna tylko bryłę
+ * (rozmiar, układ foteli), liczby CP RED (PUK, Ruch, ulepszenia) leżą w `system`
+ * jak `Character.data` — czyta je `readCpredVehicle`.
+ */
+model Vehicle {
+  id               String   @id @default(cuid())
+  campaignId       String
+  /// Karta właściciela; null = pojazd MG albo NPC-a bez karty. Skasowana karta
+  /// zostawia pojazd MG — auto istnieje w świecie, nawet gdy kierowca odszedł.
+  ownerCharacterId String?
+  name             String
+  imageUrl         String?
+  widthSq          Int      @default(3)
+  lengthSq         Int      @default(5)
+  /// Układ foteli z `VEHICLE_LAYOUTS` (`car-4`, `bike-2`…).
+  layout           String   @default("car-4")
+  /// Liczby systemu (CP RED: `CpredVehicleStats`) jako JSON.
+  system           String   @default("{}")
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @default(now()) @updatedAt
+
+  campaign Campaign   @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  owner    Character? @relation(fields: [ownerCharacterId], references: [id], onDelete: SetNull)
+
+  @@index([campaignId])
+  @@index([ownerCharacterId])
 }
 
 /// A character being built in the wizard (stage 25a).

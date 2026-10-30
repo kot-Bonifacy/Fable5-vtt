@@ -11,6 +11,7 @@ import { AiPanel } from './AiPanel.js';
 import { BotPanel } from './BotPanel.js';
 import { RulesPanel } from './RulesPanel.js';
 import { KnowledgePanel } from './KnowledgePanel.js';
+import { VehiclesTab } from './VehiclePanel.js';
 import { TablePanel } from './TablePanel.js';
 import { NetPanel } from './NetPanel.js';
 import { JournalPanel } from './JournalPanel.js';
@@ -37,6 +38,7 @@ type Tab =
   | 'rules'
   | 'knowledge'
   | 'tables'
+  | 'vehicles'
   | 'net'
   | 'journal'
   | 'handouts'
@@ -72,6 +74,8 @@ const GM_TABS: { id: Tab; label: string }[] = [
   { id: 'rules', label: 'Zasady' },
   { id: 'knowledge', label: 'Wiedza' },
   { id: 'tables', label: 'Losowe' },
+  // Etap 65a: wozy MG i NPC-ów (auta graczy siedzą na ich kartach).
+  { id: 'vehicles', label: 'Pojazdy' },
   { id: 'net', label: 'Sieć' },
   { id: 'ai', label: 'AI' },
   { id: 'archive', label: 'Kopie' },
@@ -224,6 +228,8 @@ export function SidePanel() {
         <KnowledgePanel />
       ) : activeTab === 'tables' ? (
         <TablePanel />
+      ) : activeTab === 'vehicles' ? (
+        <VehiclesTab />
       ) : activeTab === 'net' ? (
         <NetPanel />
       ) : activeTab === 'journal' ? (

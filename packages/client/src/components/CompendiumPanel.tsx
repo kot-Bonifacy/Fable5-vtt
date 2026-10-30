@@ -41,6 +41,7 @@ import {
   criticalInjuryNames,
   describeAmmoFailure,
   CRITICAL_INJURY_TABLE_LABELS,
+  CPRED_VEHICLE_KIND_LABELS,
   ROLE_GM,
   SHOP_TIERS,
   SHOP_TIER_LABELS,
@@ -365,6 +366,8 @@ function shortStats(
       return `OB ${entry.sp} · ${formatCost(entry)}`;
     case 'criticalInjury':
       return `2k6 = ${entry.roll} · ${CRITICAL_INJURY_TABLE_LABELS[entry.table]}`;
+    case 'vehicle':
+      return `${CPRED_VEHICLE_KIND_LABELS[entry.vehicleKind]} · PUK ${entry.hp} · Ruch ${entry.move} · ${formatCost(entry)}`;
     case 'program':
       return `${entry.blackIce ? 'Czarny LOD' : NET_PROGRAM_CLASS_LABELS[entry.programClass]} · ATK ${entry.atk} / OBR ${entry.def} / REZ ${entry.rez} · ${formatCost(entry)}`;
     case 'netDefense':
@@ -961,6 +964,32 @@ function EntryCard({
           </>
         ) : null}
         {entry.category === 'gear' ? <ChemStats entry={entry} /> : null}
+        {entry.category === 'vehicle' ? (
+          <>
+            <Stat label="Rodzaj" value={CPRED_VEHICLE_KIND_LABELS[entry.vehicleKind]} />
+            <Stat
+              label="PUK"
+              value={`${entry.hp}${entry.perRoom ? ' na kajutę' : ''}`}
+              hint="Punkty Uszkodzeń Kadłuba — przy zerze pojazd jest Zniszczony (s. 191)."
+            />
+            <Stat label="Fotele" value={`${entry.seats}${entry.perRoom ? ' na kajutę' : ''}`} />
+            <Stat
+              label="Szybkość bitewna"
+              value={`Ruch ${entry.move}`}
+              hint="Ruch pojazdu zastępuje Ruch kierowcy po uruchomieniu (s. 192)."
+            />
+            {entry.speedKmh ? (
+              <Stat label="Szybkość narracyjna" value={`${entry.speedKmh} km/h`} />
+            ) : null}
+            {entry.motoLevel ? (
+              <Stat
+                label="Tabor Rodziny"
+                value={`od Moto ${entry.motoLevel}`}
+                hint="Nomada bierze ten pojazd do Taboru od tego poziomu Moto (s. 162)."
+              />
+            ) : null}
+          </>
+        ) : null}
         {entry.category === 'criticalInjury' ? null : (
           <>
             <Stat label="Cena" value={formatCost(entry)} />
@@ -1025,6 +1054,13 @@ function EntryCard({
       ) : null}
       {entry.source ? <p className="compendium-source">Źródło: {entry.source}</p> : null}
 
+      {/* Etap 65a: pojazd to nie wiersz karty — daje go MG albo Tabor Rodziny. */}
+      {entry.category === 'vehicle' ? (
+        <p className="compendium-note">
+          Pojazd daje MG — w sekcji „Pojazdy” na karcie postaci albo w zakładce „Pojazdy”. Nomada
+          bierze go wierszem Taboru Rodziny w panelu Moto.
+        </p>
+      ) : null}
       {/* Etap 47b: gołe ręce ma każda karta z urzędu — nie ma czego kupić. */}
       {cpredIsBareHandsEntry(entry.id) ? (
         <p className="compendium-note">
@@ -1047,7 +1083,8 @@ function EntryCard({
       !(isAmmoEntry(entry) && calibres.length === 0) &&
       !cpredIsBareHandsEntry(entry.id) &&
       entry.category !== 'criticalInjury' &&
-      entry.category !== 'netDefense' ? (
+      entry.category !== 'netDefense' &&
+      entry.category !== 'vehicle' ? (
         <div className="compendium-assign">
           <select value={target} onChange={(event) => setTargetId(event.target.value)}>
             {targets.map((character) => (

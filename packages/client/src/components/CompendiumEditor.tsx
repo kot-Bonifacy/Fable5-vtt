@@ -33,6 +33,8 @@ import {
   ARMOR_LOCATIONS,
   ARMOR_LOCATION_LABELS,
   COMPENDIUM_CATEGORIES,
+  CPRED_VEHICLE_KINDS,
+  CPRED_VEHICLE_KIND_LABELS,
   COMPENDIUM_DESCRIPTION_MAX_LENGTH,
   CPRED_AMMO_PATTERNS,
   CPRED_AMMO_PATTERN_LABELS,
@@ -1348,6 +1350,77 @@ export function CompendiumEditor() {
             </>
           ) : null}
 
+          {form.category === 'vehicle' ? (
+            <>
+              <label className="bot-field">
+                Rodzaj pojazdu
+                <select
+                  value={form.vehicleKind}
+                  onChange={(event) => patch({ vehicleKind: event.target.value })}
+                >
+                  {CPRED_VEHICLE_KINDS.map((id) => (
+                    <option key={id} value={id}>
+                      {CPRED_VEHICLE_KIND_LABELS[id]}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <div className="bot-row-inline">
+                <label className="bot-field bot-field--inline">
+                  PUK
+                  <input
+                    type="number"
+                    min={1}
+                    value={form.vehicleHp}
+                    onChange={(event) => patch({ vehicleHp: event.target.value })}
+                  />
+                </label>
+                <label className="bot-field bot-field--inline">
+                  Fotele
+                  <input
+                    type="number"
+                    min={1}
+                    value={form.vehicleSeats}
+                    onChange={(event) => patch({ vehicleSeats: event.target.value })}
+                  />
+                </label>
+                <label className="bot-field bot-field--inline" title="Szybkość bitewna">
+                  Ruch
+                  <input
+                    type="number"
+                    min={0}
+                    value={form.vehicleMove}
+                    onChange={(event) => patch({ vehicleMove: event.target.value })}
+                  />
+                </label>
+              </div>
+              <div className="bot-row-inline">
+                <label className="bot-field bot-field--inline">
+                  km/h
+                  <input
+                    type="number"
+                    min={0}
+                    value={form.vehicleSpeed}
+                    onChange={(event) => patch({ vehicleSpeed: event.target.value })}
+                  />
+                </label>
+                <label
+                  className="bot-field bot-field--inline"
+                  title="Od którego poziomu Moto Nomada weźmie go do Taboru; puste — poza Taborem."
+                >
+                  Tabor od Moto
+                  <input
+                    type="number"
+                    min={1}
+                    max={10}
+                    value={form.vehicleMotoLevel}
+                    onChange={(event) => patch({ vehicleMotoLevel: event.target.value })}
+                  />
+                </label>
+              </div>
+            </>
+          ) : null}
+
           {form.category === 'criticalInjury' ? (
             <>
               <div className="bot-row-inline">
@@ -1755,6 +1828,12 @@ interface EditorForm {
   noMoveAfterRun: boolean;
   dotAfterRun: boolean;
   noDodge: boolean;
+  vehicleKind: string;
+  vehicleHp: string;
+  vehicleSeats: string;
+  vehicleMove: string;
+  vehicleSpeed: string;
+  vehicleMotoLevel: string;
 }
 
 function toForm(entry: CompendiumEntry | undefined): EditorForm {
@@ -1909,6 +1988,12 @@ function toForm(entry: CompendiumEntry | undefined): EditorForm {
     noMoveAfterRun: entry?.category === 'criticalInjury' ? Boolean(entry.noMoveAfterRun) : false,
     dotAfterRun: entry?.category === 'criticalInjury' ? Boolean(entry.dotAfterRun) : false,
     noDodge: entry?.category === 'criticalInjury' ? Boolean(entry.noDodge) : false,
+    vehicleKind: entry?.category === 'vehicle' ? entry.vehicleKind : 'car',
+    vehicleHp: numberField(entry?.category === 'vehicle' ? entry.hp : undefined),
+    vehicleSeats: numberField(entry?.category === 'vehicle' ? entry.seats : undefined),
+    vehicleMove: numberField(entry?.category === 'vehicle' ? entry.move : undefined),
+    vehicleSpeed: numberField(entry?.category === 'vehicle' ? entry.speedKmh : undefined),
+    vehicleMotoLevel: numberField(entry?.category === 'vehicle' ? entry.motoLevel : undefined),
   };
 }
 
@@ -2152,6 +2237,17 @@ function fromForm(form: EditorForm, existingId: string | undefined): Record<stri
       deckSlots: numberOrUndefined(form.deckSlots),
       deckSlotCost: numberOrUndefined(form.deckSlotCost),
       electronics: form.electronics || undefined,
+    };
+  }
+  if (form.category === 'vehicle') {
+    return {
+      ...base,
+      vehicleKind: form.vehicleKind,
+      hp: numberOrUndefined(form.vehicleHp),
+      seats: numberOrUndefined(form.vehicleSeats),
+      move: numberOrUndefined(form.vehicleMove),
+      speedKmh: numberOrUndefined(form.vehicleSpeed),
+      motoLevel: numberOrUndefined(form.vehicleMotoLevel),
     };
   }
   if (form.category === 'criticalInjury') {

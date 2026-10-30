@@ -2875,6 +2875,15 @@ export interface CpredFleetRow {
   /** Kategoria wpisu — „równa wartości Moto lub niższa" (1…10). */
   level: number;
   notes: string;
+  /**
+   * Etap 65a: wiersz „Pojazd” wybiera pojazd z katalogu (`compendiumId`), a serwer
+   * zakłada mu prawdziwy `Vehicle` i wpisuje jego id (`vehicleId`). Wiersz
+   * „Ulepszenie” wskazuje pojazd Taboru (`vehicleId`) i ulepszenie z s. 163–165
+   * (`upgradeId`). Bez tych pól wiersz jest tym, czym był w 30d — nazwą.
+   */
+  compendiumId?: string;
+  vehicleId?: string;
+  upgradeId?: string;
 }
 
 export const CPRED_FLEET_NAME_MAX = 80;
@@ -2904,12 +2913,20 @@ export function readCpredFleet(raw: unknown): CpredFleetRow[] {
       typeof row.level === 'number' && Number.isFinite(row.level)
         ? Math.max(1, Math.min(CPRED_ROLE_ABILITY_RANK_MAX, Math.round(row.level)))
         : 1;
+    const ref = (value: unknown): string | undefined =>
+      typeof value === 'string' && value.length > 0 && value.length <= 120 ? value : undefined;
+    const compendiumId = kind === 'vehicle' ? ref(row.compendiumId) : undefined;
+    const vehicleId = ref(row.vehicleId);
+    const upgradeId = kind === 'upgrade' ? ref(row.upgradeId) : undefined;
     rows.push({
       id,
       kind,
       name,
       level,
       notes: typeof row.notes === 'string' ? row.notes.slice(0, CPRED_FLEET_NOTES_MAX) : '',
+      ...(compendiumId ? { compendiumId } : {}),
+      ...(vehicleId ? { vehicleId } : {}),
+      ...(upgradeId ? { upgradeId } : {}),
     });
   }
   return rows;

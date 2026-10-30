@@ -62,3 +62,4 @@ export * from './treatment.js';
 export * from './recovery.js';
 export * from './advancement.js';
 export * from './readiness.js';
+export * from './vehicles.js';

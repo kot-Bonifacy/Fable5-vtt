@@ -120,6 +120,7 @@ interface World {
   tokenAssetId: string;
   portraitAssetId: string;
   merchantId: string;
+  vehicleId: string;
 }
 
 let A: World;
@@ -295,6 +296,10 @@ async function seedWorld(campaignId: string, gmId: string, label: string): Promi
   const merchant = await p.merchant.create({
     data: { campaignId, characterId: npc.id, sign: name, open: true, access: 'remote' },
   });
+  // Etap 65a: pojazd karty gracza — nazwa to kanarek kampanii.
+  const vehicle = await p.vehicle.create({
+    data: { campaignId, ownerCharacterId: character.id, name },
+  });
   return {
     campaignId,
     gmId,
@@ -328,6 +333,7 @@ async function seedWorld(campaignId: string, gmId: string, label: string): Promi
     tokenAssetId: tokenAsset.id,
     portraitAssetId: portraitAsset.id,
     merchantId: merchant.id,
+    vehicleId: vehicle.id,
   };
 }
 
@@ -838,6 +844,14 @@ const CASES: Record<string, Case> = {
   'table:delete': foreign((a) => ({ id: a.tableId })),
   'table:roll': foreign((a) => ({ id: a.tableId })),
   'table:show': foreign((a) => ({ messageId: a.messageId })),
+  // vehicles (etap 65a)
+  'vehicle:create': foreign((a) => ({
+    catalogId: 'vehicle.sample-kompakt',
+    ownerCharacterId: a.characterId,
+  })),
+  'vehicle:update': foreign((a) => ({ vehicleId: a.vehicleId, patch: { name: 'x' } })),
+  'vehicle:delete': foreign((a) => ({ vehicleId: a.vehicleId })),
+  'vehicle:rename': foreign((a) => ({ vehicleId: a.vehicleId, name: 'x' })),
   // team
   'character:team-hire': foreign((a) => ({
     characterId: a.characterId,

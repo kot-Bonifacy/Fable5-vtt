@@ -9,6 +9,23 @@ czytany na starcie każdej sesji został listą zadań, a nie archiwum ustaleń.
 inaczej, niż mówi podręcznik, albo gdy dotykasz wymienionego tu kodu. Jeśli któraś z tych decyzji
 przestanie się bronić, przenieś ją stąd do `POMYSLY.md` jako zadanie — nie odwrotnie.
 
+## Pojazdy i Tabor Rodziny (etap 65a, 30.10.2026)
+
+- **Ulepszenie foteli raz w motocyklu, skuterze i żyrokopterze.** Plik etapu mówił „nie
+  w motocyklu”, a s. 163 mówi „kilkukrotnie dla większości pojazdów prócz motocykli…” i wspomina
+  kosz motocyklowy — więc małe pojazdy biorą je raz (tak samo Skrytki przemytnicze).
+- **Zakwaterowanie bez wymogu Wzmocnionej konstrukcji w kompakcie i sportowym** — VTT nie odróżnia
+  tych dwóch od supersamochodu po rodzaju; wymóg stoi w opisie ulepszenia, pilnuje go MG.
+  Zakwaterowanie wolno w każdym samochodzie, łodzi i statku powietrznym (podręcznik: AV-4,
+  aerozep, łódź kabinowa, jacht, samochód).
+- **Rodzaje drobniejsze niż tabele s. 190–191** (motocykl, samochód, skuter wodny, łódź,
+  żyrokopter, statek powietrzny) — tak dzielą je wyjątki ulepszeń.
+- **Kategoria wiersza Taboru = próg pojazdu z s. 162 albo „Wymagany Poziom Moto” ulepszenia** —
+  gracz jej nie wpisuje; stary wiersz z samą nazwą dostaje pojazd zgadnięty z nazwy (najdłuższa
+  nazwa z katalogu, potem słowo-wskazówka, na końcu kompakt z notką dla MG).
+- **Ceny pojazdów w katalogu idą cennikiem domowym ×10** (sprzęt trwały, etap 47a) — pojazdu i tak
+  nie kupuje się w VTT (`POMYSLY.md`).
+
 ## Skradanie się (etap 61, 28.10.2026)
 
 - **Tryb, nie pojedynczy Test.** Podręcznik mówi tylko „Skradanie się (ZW) przeciw Percepcji”

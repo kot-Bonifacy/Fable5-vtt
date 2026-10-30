@@ -42,6 +42,7 @@ import { campaignCatalogShopping } from './merchant.js';
 import { campaignGameTime } from './gametime.js';
 import { campaignRoom } from './state.js';
 import { targetsForSync } from './target.js';
+import { fetchVehiclesFor } from './vehicles.js';
 
 /**
  * Builds the full room state for one client: current seq, presence and the
@@ -78,6 +79,7 @@ export async function buildStateSync(
       blockers: [],
       exploration: null,
       characters: [],
+      vehicles: [],
       bots: [],
       ai: syncedAiStatus(deps, socket, user, null),
       compendium: await buildCompendiumSync(deps, null),
@@ -109,6 +111,7 @@ export async function buildStateSync(
     lights,
     vision,
     characters,
+    vehicles,
     bots,
     compendium,
     combat,
@@ -176,6 +179,8 @@ export async function buildStateSync(
       : Promise.resolve<ViewerVision | null>(null),
     // GM: all campaign characters; player: only their own.
     fetchCharactersFor(deps.ctx.prisma, deps.ctx.cpred, campaign.id, user),
+    // Pojazdy (etap 65a) tą samą miarą: MG wszystkie, gracz — swoich kart.
+    fetchVehiclesFor(deps.ctx.prisma, campaign.id, user),
     // Bot profiles carry secrets and prompts — GM only.
     fetchBotsFor(deps.ctx.prisma, campaign.id, user.role === ROLE_GM),
     // Item catalogue: files on disk plus the campaign's own entries.
@@ -262,6 +267,7 @@ export async function buildStateSync(
     blockers,
     exploration,
     characters,
+    vehicles,
     bots,
     ai: syncedAiStatus(deps, socket, user, campaign.id),
     compendium,

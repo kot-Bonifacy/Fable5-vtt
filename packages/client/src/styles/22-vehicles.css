@@ -1,0 +1,209 @@
+/* Pojazdy (etap 65a): karta pojazdu na karcie postaci i w zakładce MG
+   „Pojazdy”, okno edycji MG i wiersze Taboru Rodziny w panelu Moto. */
+
+.vehicle-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.vehicle-card {
+  display: grid;
+  grid-template-columns: 3rem minmax(0, 1fr);
+  gap: 0.5rem;
+  align-items: start;
+  padding: 0.3rem 0.4rem;
+  background: var(--cp-paper);
+  color: var(--cp-ink);
+  border: 1px solid var(--border);
+  font-size: 0.8rem;
+}
+
+.vehicle-card-thumb {
+  width: 3rem;
+  height: 3rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--cp-inset);
+  font-size: 1.4rem;
+  overflow: hidden;
+}
+
+.vehicle-card-thumb img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+
+.vehicle-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  min-width: 0;
+}
+
+.vehicle-card-head {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.vehicle-card-name {
+  flex: 1;
+  min-width: 0;
+  font-weight: 600;
+}
+
+input.vehicle-card-name {
+  font-size: 0.82rem;
+}
+
+.vehicle-card-tag {
+  padding: 0 0.3rem;
+  border: 1px solid var(--border-strong);
+  color: var(--text-dim);
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.vehicle-card-stats,
+.vehicle-card-notes,
+.vehicle-hint {
+  margin: 0;
+  color: var(--text-dim);
+  font-size: 0.74rem;
+}
+
+.vehicle-card-upgrades {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.2rem;
+}
+
+.vehicle-card-upgrades li {
+  padding: 0 0.3rem;
+  border: 1px solid var(--border);
+  font-size: 0.7rem;
+}
+
+/* Ulepszenie bez automatyki (Centrum komunikacji, Skrytki…) — opis przy stole. */
+.vehicle-card-upgrades li.vehicle-card-upgrade--prose {
+  border-style: dashed;
+  color: var(--text-dim);
+}
+
+.vehicle-add {
+  display: flex;
+  gap: 0.35rem;
+  align-items: center;
+  margin-top: 0.3rem;
+}
+
+.vehicle-add select {
+  flex: 1;
+  min-width: 0;
+}
+
+.vehicle-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.vehicles-tab h3 {
+  margin: 0.6rem 0 0.3rem;
+}
+
+.vehicle-owned {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+
+.vehicle-owner {
+  font-size: 0.72rem;
+  color: var(--text-dim);
+}
+
+/* Okno MG otwiera się także z karty postaci, czyli spod okna o z-index 300+. */
+.dialog-backdrop:has(.vehicle-editor) {
+  z-index: 400;
+}
+
+.dialog.vehicle-editor {
+  width: min(30rem, 92vw);
+}
+
+.vehicle-editor form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.vehicle-editor input[type='number'] {
+  width: 100%;
+  min-width: 0;
+}
+
+.vehicle-upgrades-field {
+  border: 1px solid var(--border);
+  padding: 0.3rem 0.5rem 0.5rem;
+  margin: 0;
+}
+
+.vehicle-upgrade-rows {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.vehicle-upgrade-rows li {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.8rem;
+}
+
+.vehicle-upgrade-rows li > span:first-child {
+  flex: 1;
+}
+
+.vehicle-delete {
+  margin-left: auto;
+}
+
+/* Tabor Rodziny od 65a: rodzaj, wybór, kategoria, ✕ — a pod spodem pojazd
+   albo ulepszenie na całą szerokość. */
+.fleet-kind {
+  font-size: 0.72rem;
+  color: var(--text-dim);
+}
+
+.fleet-level {
+  font-size: 0.72rem;
+  color: var(--text-dim);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.fleet-row select {
+  width: 100%;
+  min-width: 0;
+}
+
+.fleet-detail {
+  grid-column: 2 / -1;
+  font-size: 0.74rem;
+  color: var(--text-dim);
+}

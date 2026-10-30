@@ -27,6 +27,7 @@ import {
   cpredFieldRepairMinutes,
   cpredSheetFabrication,
   cpredRoleAbilityRank,
+  cpredFleetRowLevel,
   cpredFleetSheetProblem,
   cpredDevelopmentChanged,
   cpredRolesProblem,
@@ -40,11 +41,13 @@ import {
   mergeCharacterData,
   parseCharacterData,
   readCpredCombatAwareness,
+  readCpredFleet,
   sanitizeCharacterName,
   sanitizeNpcInput,
   rollFormula,
   sanitizeTokenImageUrl,
   validateCharacterDataPatch,
+  type VehicleEntry,
 } from '@vtt/shared';
 import type { PrismaClient } from '../db.js';
 import type { Character, Scene } from '../generated/prisma/client.js';
@@ -62,6 +65,8 @@ import {
   refuseAwaitingGm,
 } from './character-io.js';
 import { emitRuns } from './netrun-io.js';
+import { prepareFleet, syncFleetVehicles, vehicleCatalog } from '../vehicles.js';
+import { emitVehicleGone, reseatCharacterVehicles } from './vehicles.js';
 import {
   emitTokensById,
   emitTokensOfCharacter,
@@ -269,10 +274,23 @@ export const characterUpdateEvent = defineEvent<CharacterUpdatePayload, Characte
     // an audit with an unlogged back door next to it is decoration.
     let adjustBalance: number | undefined;
     let adjustPoints: number | undefined;
+    let fleetCatalog: VehicleEntry[] | null = null;
+    let fleetPrepared: Awaited<ReturnType<typeof prepareFleet>> | null = null;
     if ('data' in patch) {
       const result = validateCharacterDataPatch(patch.data, deps.ctx.cpred);
       if (!result.ok) throw new RealtimeError('INVALID_DATA');
       const { eddies, improvementPoints, ...sheet } = result.patch;
+      // Etap 65a: wiersz Taboru dostaje kategorię tego, co wybrano (próg pojazdu
+      // z s. 162, poziom ulepszenia z s. 163–165), zanim policzy się
+      // `LEVEL_ABOVE_RANK` niżej — supersamochód z Moto 4 ma odpaść tu.
+      if (sheet.fleet !== undefined) {
+        fleetCatalog = await vehicleCatalog(deps.ctx.prisma, deps.ctx.compendium, campaignId);
+        const byId = new Map(fleetCatalog.map((entry) => [entry.id, entry] as const));
+        sheet.fleet = sheet.fleet.map((row) => ({
+          ...row,
+          level: cpredFleetRowLevel(row, (id) => byId.get(id) ?? null),
+        }));
+      }
       if (eddies !== undefined) {
         if (!isGm) throw new RealtimeError('FORBIDDEN');
         adjustBalance = eddies;
@@ -428,6 +446,23 @@ export const characterUpdateEvent = defineEvent<CharacterUpdatePayload, Characte
           throw new RealtimeError('HOUSING_LOCKED');
         }
       }
+      // Etap 65a: każdy wiersz „Pojazd” z prawdziwym pojazdem, ulepszenia
+      // sprawdzone na pojazdach — po wszystkich odmowach wyżej, bo tu powstają
+      // wiersze `Vehicle`. Także wtedy, gdy Tabor wyczyściła zmiana Roli.
+      if (
+        sheet.fleet !== undefined ||
+        JSON.stringify(merged.fleet) !== JSON.stringify(current.fleet)
+      ) {
+        fleetCatalog ??= await vehicleCatalog(deps.ctx.prisma, deps.ctx.compendium, campaignId);
+        fleetPrepared = await prepareFleet(
+          deps.ctx.prisma,
+          fleetCatalog,
+          campaignId,
+          character.id,
+          readCpredFleet(merged.fleet),
+        );
+        merged.fleet = fleetPrepared.rows;
+      }
       data.data = JSON.stringify(merged);
     }
 
@@ -494,10 +529,36 @@ export const characterUpdateEvent = defineEvent<CharacterUpdatePayload, Characte
     }
     const view = toCharacterView(updated, deps.ctx.cpred);
     await emitCharacterUpsert(deps, campaignId, view);
+    if (fleetPrepared) {
+      const synced = await syncFleetVehicles(deps.ctx.prisma, character.id, fleetPrepared.rows);
+      const touched = new Set([
+        ...fleetPrepared.created.map((row) => row.id),
+        ...fleetPrepared.rebased,
+        ...synced.updated.map((row) => row.id),
+      ]);
+      for (const id of synced.deleted) touched.delete(id);
+      await reseatCharacterVehicles(deps, campaignId, [...touched], null);
+      for (const id of synced.deleted) {
+        await emitVehicleGone(deps, campaignId, id, updated.ownerId);
+      }
+    }
     // #74: a renamed employee has to reach the Korpo's roster, which is the
     // only place their player can read the name from.
     if ('name' in patch && updated.name !== character.name && updated.ownerId === null) {
       await syncTeamMemberName(deps, campaignId, updated.id, updated.name);
+    }
+    if ('ownerId' in patch && updated.ownerId !== character.ownerId) {
+      // Etap 65a: pojazdy karty idą za nią do nowego gracza.
+      const vehicles = await deps.ctx.prisma.vehicle.findMany({
+        where: { ownerCharacterId: character.id },
+        select: { id: true },
+      });
+      await reseatCharacterVehicles(
+        deps,
+        campaignId,
+        vehicles.map((row) => row.id),
+        character.ownerId,
+      );
     }
     if ('ownerId' in patch) {
       await moveCharacterTokensToOwner(
@@ -554,8 +615,19 @@ export const characterDeleteEvent = defineEvent<CharacterIdPayload>({
       where: { characterId: character.id },
       select: { id: true },
     });
+    const vehicles = await deps.ctx.prisma.vehicle.findMany({
+      where: { ownerCharacterId: character.id },
+      select: { id: true },
+    });
     await deps.ctx.prisma.character.delete({ where: { id: character.id } });
     await emitCharacterDelete(deps, campaignId, character.id, character.ownerId);
+    // Etap 65a: pojazdy zostają w świecie jako pojazdy MG (`SetNull`).
+    await reseatCharacterVehicles(
+      deps,
+      campaignId,
+      vehicles.map((row) => row.id),
+      character.ownerId,
+    );
     // Stage 30c: a Korpo's roster points at sheets by id, and JSON has nothing
     // for the database to cascade — so the row goes when the person does.
     await dropFromTeams(deps, campaignId, character.id);

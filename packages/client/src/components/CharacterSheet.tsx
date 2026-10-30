@@ -201,6 +201,7 @@ import { TeamPanel } from './TeamPanel.js';
 import { CharismaPanel } from './CharismaPanel.js';
 import { OperatorPanel } from './OperatorPanel.js';
 import { MotoPanel } from './MotoPanel.js';
+import { CharacterVehiclesSection } from './VehiclePanel.js';
 import { CredibilityPanel } from './CredibilityPanel.js';
 import { TreatInjury } from './TreatInjury.js';
 import { CyberwareBody } from './CyberwareBody.js';
@@ -3913,6 +3914,9 @@ function GearTab({ character, data, saveData }: TabProps & { character: Characte
       <LifestyleFields data={data} saveData={saveData} />
 
       <CyberdeckSection character={character} data={data} />
+
+      {/* Etap 65a: pojazdy karty — osobne wiersze bazy, nie lista na karcie. */}
+      <CharacterVehiclesSection characterId={character.id} />
     </div>
   );
 }

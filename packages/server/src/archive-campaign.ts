@@ -2,6 +2,7 @@ import { randomBytes } from 'node:crypto';
 import type { ArchiveFile, CpredRegistry } from '@vtt/shared';
 import { archiveRefusal, parseCharacterData } from '@vtt/shared';
 import type { PrismaClient } from './db.js';
+import { importVehicles } from './vehicles.js';
 import type { Prisma } from './generated/prisma/client.js';
 import {
   advancementUndoColumns,
@@ -214,6 +215,7 @@ export async function clearCampaignContent(tx: Tx, campaignId: string): Promise<
   await tx.randomTable.deleteMany({ where });
   await tx.ledgerEntry.deleteMany({ where });
   await tx.advancementEntry.deleteMany({ where });
+  await tx.vehicle.deleteMany({ where });
 }
 
 /**
@@ -248,6 +250,7 @@ export async function importCampaign(
   const portraitAssets = asRows(payload.portraitAssets);
   const merchants = asRows(payload.merchants);
   const randomTables = asRows(payload.randomTables);
+  const vehicles = asRows(payload.vehicles);
   const replace = options.mode === 'replace';
   // Walka jest stanem chwili między sesjami — wraca wyłącznie przy cofnięciu.
   const combats = replace ? asRows(payload.combats) : [];
@@ -271,7 +274,7 @@ export async function importCampaign(
   for (const rows of [bots, compendium, knowledge, journal, handouts, architectures]) {
     for (const row of rows) claim(row.id);
   }
-  for (const rows of [tokenAssets, portraitAssets, merchants, randomTables]) {
+  for (const rows of [tokenAssets, portraitAssets, merchants, randomTables, vehicles]) {
     for (const row of rows) claim(row.id);
   }
   for (const table of randomTables) for (const row of asRows(table.rows)) claim(row.id);
@@ -415,6 +418,15 @@ export async function importCampaign(
       for (const { id, templateId } of templates) {
         await tx.character.update({ where: { id }, data: { templateId } });
       }
+      // Etap 65a: pojazdy po kartach — id z góry, więc Tabor w `data` (przepisany
+      // `remap`) już wskazuje właściwe; właściciel spoza pliku schodzi do MG.
+      await importVehicles(
+        tx,
+        options.campaignId,
+        vehicles,
+        (row) => mapped(row.ownerCharacterId),
+        (oldId) => ids.get(oldId),
+      );
 
       // 3. Sceny z figurami (karta i gracz po nowych id), Sieć na scenach później.
       for (const scene of scenes) {

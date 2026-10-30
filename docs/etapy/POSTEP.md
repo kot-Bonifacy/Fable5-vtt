@@ -21,7 +21,7 @@ w plikach obok — czytaj je **na żądanie, nigdy rutynowo**:
 
 | stan         | etapy                                                                                          |
 | ------------ | ---------------------------------------------------------------------------------------------- |
-| ⬜ otwarty   | **65** Scena pościgu i walka pojazdów (⬜ zaprojektowany 30.10, 65a–65e); **62** Sieć ze sceny (🟨 zrobione, czeka na oględziny MG na VPS po wdrożeniu); **61** Skradanie się (🟨 zrobione, czeka na słowo MG o rozstrzygnięciach); **28** Wdrożenie na VPS (🟨 działa na `https://vtt.tatanga.eu` z botami od 18.10; zostały off-site, utwardzenie, monitoring); **43b**, **43c** (UI walki); **60** Czytelny czat (zlecenie MG z 24.10; 🟨 60a–60c ✅, czeka na oględziny MG z pierwszego kryterium); T10; refaktoryzacja odłożona (MG 18.10) |
+| ⬜ otwarty   | **65** Scena pościgu i walka pojazdów (🟨 65a ✅ 30.10, dalej 65b); **62** Sieć ze sceny (🟨 zrobione, czeka na oględziny MG na VPS po wdrożeniu); **61** Skradanie się (🟨 zrobione, czeka na słowo MG o rozstrzygnięciach); **28** Wdrożenie na VPS (🟨 działa na `https://vtt.tatanga.eu` z botami od 18.10; zostały off-site, utwardzenie, monitoring); **43b**, **43c** (UI walki); **60** Czytelny czat (zlecenie MG z 24.10; 🟨 60a–60c ✅, czeka na oględziny MG z pierwszego kryterium); T10; refaktoryzacja odłożona (MG 18.10) |
 | ✅ ukończone | 01–11, 13–20b, 23a–27f, 27h–27l, 29a–30d, 31–35, 37–42c, 43a, 44a–44d, 45, 46a1, 46a2, 46c1, 46c2, 46b1, 46b2, 47a, 47b, 48a, 48b, 48c, 49a, 49b, 50a, 50b, 50c, 51, 52, 53, 54, 55, 56, 57 (57a–57c), 58 (58a–58d), 59 (59a–59c), 63 (63a–63b; 63c wycofane 29.10), 64 (64a–64c) (ostatni zamknięty: 64, 2026-10-30) |
 | ⛔ wycofane  | 12, 21, 22 (głos), 27g (wydajność), 36 (makra); 27, 29, 30, 38 rozdzielone na etapy literowane |
 
@@ -29,11 +29,15 @@ Pełna tabela z nazwami i datami: `archiwum/tabela-etapow.md`.
 
 ## Od czego zacząć
 
-**Etap 65 „Scena pościgu i walka pojazdów” (zlecenie MG z 30.10) zaprojektowany, nierozpoczęty —
-zaczyna się od 65a (pojazd jako własność postaci).** Bieżnia wzorem Foundry (droga przewija się
-pod autami, figury siedzą w fotelach), tempo i dryf `Ruch / 4` na rundę, pełna walka pojazdów
-z s. 189–192 i ulepszenia Moto — MG 30.10 odwrócił decyzję z 03.09 o pojazdach. Decyzje MG 1–12
-i podział w `etap-65-poscig.md`.
+**Etap 65 „Scena pościgu i walka pojazdów” (zlecenie MG z 30.10) w toku — 65a zrobiony 30.10,
+następny jest 65b (bieżnia, auta na jezdni, fotele).** Pojazd to wiersz `Vehicle` (bryła w rdzeniu,
+liczby CP RED w `system`): MG daje go z katalogu w sekcji „Pojazdy” karty (Ekwipunek) albo
+w zakładce MG „Pojazdy” i zmienia wszystko w „Edytuj…”, gracz nadaje nazwę. Katalog 14 pojazdów
+z s. 190–191 to kategoria kompendium (`parse-vehicles.py` → `data/private`; **na VPS trzeba
+dograć `vehicles.json`**). Wiersz „Pojazd” Taboru Nomady staje się prawdziwym pojazdem,
+„Ulepszenie” ląduje w nim wg reguł s. 163–165; stare wiersze dostają pojazd przy starcie serwera.
+Decyzje MG 1–12, podział i rozstrzygnięcia 65a w `etap-65-poscig.md`, umowy na górze `postac`
+i `kopie`.
 
 **Szybka wymiana wzorem BG3 (etap 64, zlecenie MG z 30.10) — czeka na wdrożenie i oględziny
 przy stole.** Każda kolumna okna „Wymiana” to siatka kafli (`ItemGrid`): Ctrl/Shift+klik zaznacza
@@ -537,13 +541,13 @@ a nie do tego pliku.
 | `atak`      | broń i dodatki, amunicja, obrażenia, pancerz, rany krytyczne, trucizna na ostrzu, auto-unik, strach z Konfrontacji | 51   | 8       |
 | `statysta`  | figura z kartą, `statBlock`, Wartość bojowa, `token:stat`, wzorce | 17   | 3       |
 | `karta`     | strony i zakładki, panele, `sheet.css`, walidacja list, usuwanie przedmiotu | 11   | 12      |
-| `postac`    | kreator, PD i awanse, koszyk i cofanie awansów, Role i Zdolności, cyborgizacje, chrom zmieniający liczby, ekonomia, Test montażu gracza | 56   | 3       |
+| `postac`    | kreator, PD i awanse, koszyk i cofanie awansów, Role i Zdolności, cyborgizacje, chrom zmieniający liczby, ekonomia, Test montażu gracza, pojazdy i Tabor | 57   | 3       |
 | `ekwipunek` | wiersze wyposażenia, przekazanie, łup (także ciała graczy), handel, sklepy, zasięg, amunicja bez dna, egzoszkielet, narkotyki i fiolki, siatka okna „Wymiana”, zgoda z góry | 39   | 3       |
 | `czas`      | zegar świata, kalendarz, `statEffects`, leczenie po dobie, dawki i uzależnienia (`chems`) | 19   | 2       |
 | `siec`      | Programy, LOD, demony, piętra architektury, dek jako towar, strefy bronione, kamery, rozbrajanie, Sieć ze sceny | 13   | 4       |
 | `boty`      | llama-server, RAG, reindeks, dziennik i baza wiedzy, brama AI  | 10   | 10      |
 | `dane`      | `parse-manual.py`, kompendium poza repo, tabele z podręcznika  | 9    | 12      |
-| `kopie`     | `snapshot`, `archive`, paczki ZIP, wczytanie kampanii, „czeka na gracza”, kopie kampanii i cofnięcie, sklep i bot w paczce, zgłoszenie karty gracza | 19   | 6       |
+| `kopie`     | `snapshot`, `archive`, paczki ZIP, wczytanie kampanii, „czeka na gracza”, kopie kampanii i cofnięcie, sklep i bot w paczce, zgłoszenie karty gracza, pojazdy w paczce | 20   | 6       |
 | `ogledziny` | CDP i Playwright MCP, zrzuty, dwie sesje, `window.confirm`    | 0    | 114     |
 | `testy`     | vitest, migotanie, `tsc --noEmit`, środowisko dev              | 0    | 151     |
 
@@ -551,6 +555,30 @@ a nie do tego pliku.
 ## Notatki z dwóch ostatnich sesji
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
+
+### Sesja 30.10, czwarta — etap 65a „Pojazd jako własność postaci”
+
+**Zrobione wg planu:** model `Vehicle` (migracja `20261030200000_vehicles`), rdzeń
+`shared/src/vehicles.ts` (bryły, układy foteli, widok i zdarzenia), `systems/cpred/vehicles.ts`
+(rodzaje, 19 ulepszeń z s. 163–165 z flagą walki i regułami montażu, `readCpredVehicle`,
+`cpredVehicleDerived`, łata MG, zgadywanie pojazdu starego wiersza), kategoria kompendium
+`vehicle` (karta wpisu, edytor MG), parser `tools/import/parse-vehicles.py` (14 pojazdów do
+`data/private`, zgodne z tabelą), zdarzenia `vehicle:create|update|delete` (MG) i
+`vehicle:rename` (właściciel karty), `vehicles` w `state:sync`, Tabor Rodziny na prawdziwych
+pojazdach (`prepareFleet`/`syncFleetVehicles` w `character:update`, backfill przy starcie), kopie
+karty i kampanii, sekcja „Pojazdy” w Ekwipunku, zakładka MG „Pojazdy” z oknem edycji, nowy
+`MotoPanel` („Dołóż pojazd” / „Dołóż ulepszenie”). Rozstrzygnięcia bez pytań 1–10 w pliku
+etapu; odstępstwo od podręcznika (fotele w małych pojazdach, Zakwaterowanie) w
+`decyzje-i-uproszczenia.md`. **Testy:** shared 2786 (+21 `vehicles.test.ts`), serwer 1688,
+nowy `vehicles.test.ts` 11/11 (MG/gracz, reguły ulepszeń, Tabor, wyścig autozapisu, zmiana
+pojazdu w wierszu, backfill, paczka karty, skasowana karta) i cztery zdarzenia w macierzy
+izolacji; klient 442/443 — dalej tylko znany `theme.test.ts` na `10-map-combat.css`; tsc
+i ESLint czyste. **Oglądane:**
+Playwright MCP Firefox nie wstał (pułapka 03.10 w `ogledziny`), więc tymczasowy spec E2E
+`99-ogledziny/t99-pojazdy` z `po-T6`: Ola w **Firefoksie** (Tabor: pojazd, zmiana na sportowy,
+ulepszenie; sekcja „Pojazdy”, zmiana nazwy), MG w Chromium (zakładka, okno edycji z regułą
+Wzmocnionej konstrukcji, Kompendium). Oględziny złapały nazwę, która nie szła za zmianą pojazdu
+w wierszu — poprawione i przykryte testem. Na VPS nic nie zmieniano.
 
 ### Sesja 30.10, trzecia — etap 64 „Szybka wymiana wzorem BG3” (zlecenie MG)
 
@@ -573,18 +601,3 @@ zmiany (zaległość). **Oglądane:** Chromium (Marek, MG) i **Firefox** (Ola) n
 zaznaczenie Ctrl, przeciągnięcie grupy z duchem „3 przedmioty”, zgoda z góry, dok z ofertą,
 prezent jednym „Przyjmij”, „Negocjuj”, sklep, skrzynia, łup. Na VPS nic nie zmieniano.
 
-### Sesja 30.10, druga — Reputacja bliżej podręcznika (zlecenie MG)
-
-**Zlecenie:** „sprawdź i popraw mechanikę reputacji, aby lepiej oddawała podręcznik”. Konfrontacja,
-remis bez skutku, wybór przegranego i rzut „Czy go znam?” (1k10 **niższe**) zgadzały się z s. 193–194.
-**Decyzje MG z pytań:** (1) zły wyczyn przykrywa dobrą sławę na każdym poziomie, „może” = MG wpisuje
-albo nie; (2) −2 zdejmuje 0 PW wroga **albo wygrany rewanż**; (3) strach zostaje na scenie.
-**Bez pytań, wprost z tekstu:** równy poziom nie zastępuje (wygrywał późniejszy); karta „Znasz tę
-osobę” mówi „zła sława N”; nagłówek karty „Zła sława 3” zamiast „Reputacja −3” (minus jest tylko
-w Konfrontacji). **Zmiana:** `cpredReputation` (lista po kolei), `releaseFear` + zdjęcie strachu
-w `facedown:concede`, `ReputationSection`. Wpis w `decyzje-i-uproszczenia.md`, umowa na górze `atak`.
-**Testy:** shared 2764 (nowe przypadki w `reputation.test.ts`), serwer `facedown.test.ts` 21/21
-(nowy: wygrany rewanż) i `campaign-isolation`; tsc i ESLint czyste; pełna suita serwera i klienta
-nie puszczana. **Oglądane:** tymczasowy spec E2E z `po-T6` — Ola w **Firefoksie**, MG w Chromium,
-karta Iskry (koncert 6, potem ucieczka 3 jako zła) → „Zła sława 3”, podświetlony drugi wyczyn.
-Na VPS nic nie zmieniano.
