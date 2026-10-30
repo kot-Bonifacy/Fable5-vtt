@@ -57,6 +57,7 @@ const SCENE: SceneView = {
   dark: false,
   darkSightM: 2,
   explore: false,
+  partySight: false,
   spawn: null,
 };
 

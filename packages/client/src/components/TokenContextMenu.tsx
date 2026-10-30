@@ -730,9 +730,9 @@ function TokenEditDialog({ token, onClose }: { token: TokenView; onClose: () => 
           className="text-input"
           value={sharedVision}
           onChange={(e) => setSharedVision(e.target.value as '' | 'yes' | 'no')}
-          title="Figurę „oczu drużyny” każdy gracz widzi zawsze — w mgle, za ścianą, w ciemności — a w trybie „Dynamiczna” patrzy także jej oczami. Ukryta figura nie jest niczyimi oczami."
+          title="Figurę „oczu drużyny” każdy gracz widzi zawsze — w mgle, za ścianą, w ciemności — a w trybie „Dynamiczna” patrzy także jej oczami. „Samo” daje to figurom graczy tylko na scenie z włączonym „Gracze dzielą się widokiem” (Edycja sceny → Widoczność). Ukryta figura nie jest niczyimi oczami."
         >
-          <option value="">Samo — figura gracza tak, figura MG nie</option>
+          <option value="">Samo — figura gracza, gdy scena dzieli widok</option>
           <option value="yes">Tak — drużyna widzi ją i patrzy jej oczami</option>
           <option value="no">Nie — tylko jej gracz</option>
         </select>

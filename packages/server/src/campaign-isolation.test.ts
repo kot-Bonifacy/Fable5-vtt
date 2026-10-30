@@ -621,6 +621,8 @@ const CASES: Record<string, Case> = {
   // exploration
   'explore:forget': foreign((a) => ({ sceneId: a.sceneId })),
   'scene:explore': foreign((a) => ({ sceneId: a.sceneId, explore: true })),
+  // party-sight
+  'scene:party-sight': foreign((a) => ({ sceneId: a.sceneId, partySight: true })),
   // facedown
   'facedown:attempt': foreign((a) => ({
     characterId: a.characterId,

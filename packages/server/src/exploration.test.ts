@@ -353,6 +353,8 @@ describe('exploration memory', () => {
   });
 
   it('pushes a discovery to everyone as one shared broadcast', async () => {
+    // Jedna rozgłoska jest tylko na scenie, która dzieli widok (30.10).
+    await emitAck(gm, 'scene:party-sight', { sceneId, partySight: true });
     await emitAck(gm, 'explore:forget', { sceneId });
     const pushed = waitFor<ExplorationSyncBroadcast>(gm, 'explore:sync');
     // Any change to what the player sees re-derives their vision, which is what
@@ -362,6 +364,7 @@ describe('exploration memory', () => {
     const broadcast = await pushed;
     expect(broadcast.sceneId).toBe(sceneId);
     expect(exploredCount(broadcast.mask!)).toBeGreaterThan(0);
+    await emitAck(gm, 'scene:party-sight', { sceneId, partySight: false });
   });
 
   it('stops remembering when the GM says so, and keeps what it had', async () => {

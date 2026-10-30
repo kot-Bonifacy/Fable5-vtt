@@ -16,6 +16,7 @@ import {
   forgetExploration,
   setSceneExplore,
   setSceneLighting,
+  setScenePartySight,
   setSceneVisibility,
   updateScene,
 } from '../socket.js';
@@ -314,7 +315,8 @@ function GridColumnsField({
  * z niej liczy. Teraz trzy zakładki — **Mapa** i **Siatka** to szkic
  * zapisywany „Zapisz” (podgląd na mapie na żywo), **Widoczność** działa od
  * razu, bo zmienia, co serwer wysyła graczom (`scene:visibility`,
- * `scene:lighting`, `scene:explore`) — i mówi to na górze zakładki.
+ * `scene:lighting`, `scene:explore`, `scene:party-sight`) — i mówi to na górze
+ * zakładki.
  */
 export function SceneConfigWindow() {
   const open = useSceneStore((s) => s.editorOpen);
@@ -686,7 +688,8 @@ function SceneConfigBody() {
                 changing what hides the map has to take concealed tokens away
                 from the players — or hand them back — in the same operation,
                 so each setting travels on its own event (`scene:visibility`,
-                `scene:lighting`, `scene:explore`) rather than in the patch. */}
+                `scene:lighting`, `scene:explore`, `scene:party-sight`) rather
+                than in the patch. */}
             <p className="settings-note">Zmiany na tej zakładce działają od razu, bez „Zapisz”.</p>
 
             <section className="settings-group">
@@ -713,6 +716,28 @@ function SceneConfigBody() {
               </div>
               <VisibilityGuide mode={scene.visibility} />
             </section>
+
+            {/* „Oczy drużyny” (etap 45) na żądanie (30.10.2026): domyślnie każdy
+                gracz patrzy tylko własnymi figurami, bo przy wspólnym widoku
+                drużyna zostawiała zwiedzanie mapy jednemu graczowi. Na mapie
+                „Otwartej” gracze widzą wszystko, więc przełącznik nic by nie
+                zmienił. */}
+            {scene.visibility !== 'open' && (
+              <section className="settings-group">
+                <h3 className="settings-group-title">Drużyna</h3>
+                <label
+                  className="settings-row settings-row--switch"
+                  title="Wyłączone: każdy gracz widzi tylko to, co widzą jego figury, figury kolegów dopiero wtedy, gdy sam je zobaczy, i pamięta tylko miejsca, w których sam był. Włączone: figura każdego gracza patrzy za całą drużynę."
+                >
+                  <input
+                    type="checkbox"
+                    checked={scene.partySight}
+                    onChange={(e) => void setScenePartySight(scene.id, e.target.checked)}
+                  />
+                  <span>Gracze dzielą się widokiem</span>
+                </label>
+              </section>
+            )}
 
             {/* Darkness and the party's memory only mean something where sight
                 comes from tokens, so they appear with the mode that asks them. */}
@@ -804,8 +829,9 @@ function SceneConfigBody() {
                     </button>
                   </div>
                   <p className="settings-hint">
-                    Miejsca, które drużyna już widziała, zostają na mapie przyciemnione — jak plan
-                    narysowany z pamięci, bez figur, które tam teraz są. „Zapomnij” czyści ten plan.
+                    Miejsca, które gracz już widział, zostają na mapie przyciemnione — jak plan
+                    narysowany z pamięci, bez figur, które tam teraz są. Przy wspólnym widoku plan
+                    jest jeden dla całej drużyny. „Zapomnij” czyści go wszystkim.
                   </p>
                 </section>
               </>

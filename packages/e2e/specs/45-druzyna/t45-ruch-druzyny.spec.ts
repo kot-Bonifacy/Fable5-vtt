@@ -108,9 +108,13 @@ test.describe.serial('T45 ruch i widzenie drużyny', () => {
         .last()
         .click();
     }
-    expect(queryOne('SELECT playerMove, visibility FROM Scene WHERE name = ?', SCENE)).toEqual({
+    expect(
+      queryOne('SELECT playerMove, visibility, partySight FROM Scene WHERE name = ?', SCENE),
+    ).toEqual({
       playerMove: 'stop',
       visibility: 'dynamic',
+      // Od 30.10 nowa scena nie dzieli widoku — „oczy drużyny” włącza MG.
+      partySight: 0,
     });
     // Gracz widzi, czemu nie pójdzie — komunikat pada przy wejściu na scenę
     // i schodzi sam po kilku sekundach (MG, 18.10), a samo `activateScene`
@@ -138,6 +142,9 @@ test.describe.serial('T45 ruch i widzenie drużyny', () => {
 
   test('figury kart graczy biorą właściciela karty; Stop odmawia graczowi, MG nie', async () => {
     gmSocket = await mg.socket();
+    expect((await emitAck(gmSocket, 'scene:party-sight', { sceneId, partySight: true })).ok).toBe(
+      true,
+    );
     marekSocket = await marek.socket();
     const place = async (card: string, y: number) => {
       return okData(

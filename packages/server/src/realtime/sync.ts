@@ -184,8 +184,9 @@ export async function buildStateSync(
     // stripped for players, exactly like hidden tokens.
     viewedSceneId ? fetchCombatFor(deps.ctx.prisma, viewedSceneId, user) : Promise.resolve(null),
     // The party's memory of this map (stage 18c) — the same for everyone,
-    // because it holds only what somebody has already seen.
-    explorationMaskFor(deps.ctx.prisma, viewedScene),
+    // because it holds only what somebody has already seen. Na scenie bez
+    // „Gracze dzielą się widokiem” (30.10) gracz dostaje własną.
+    explorationMaskFor(deps.ctx.prisma, viewedScene, user),
     // How far down the catalogue this campaign may shop (stage 25c) — public,
     // because a player is meant to see what is still out of reach.
     campaignShopTier(deps.ctx.prisma, campaign.id),

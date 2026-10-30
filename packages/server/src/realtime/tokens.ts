@@ -136,11 +136,16 @@ function parseStatuses(raw: string): string[] {
  *
  * A linked token's HP comes from the sheet (the single source of truth); the
  * token's own pair is only used while it is standalone.
+ *
+ * `partyVision` zależy od sceny (`Scene.partySight`, 30.10), więc jedzie tylko
+ * z widokiem zbudowanym ze sceną — rachunki geometrii jej nie podają, a brak
+ * klucza zostawia u klienta wartość z ostatniej pełnej listy.
  */
 export function toTokenView(
   token: Token,
   includePrivate: boolean,
   linked?: LinkedSheet | null,
+  scene?: Pick<Scene, 'partySight'>,
 ): TokenView {
   const view: TokenView = {
     id: token.id,
@@ -165,7 +170,7 @@ export function toTokenView(
     facing: token.facing,
     // „Oczy drużyny" (etap 45) jadą do wszystkich: każdy gracz ma tę figurę
     // widzieć zawsze i rysować wokół niej okienko w mgle.
-    partyVision: sharesVision(token, linked),
+    ...(scene ? { partyVision: sharesVision(token, linked, scene) } : {}),
     // Skradanie (etap 61) jedzie do wszystkich: figurę w trybie każdy rysuje
     // półprzezroczystą. Zawsze, także `false` — klient scala widoki spreadem.
     sneaking: readTokenSneak(token.sneak) !== null,
@@ -248,16 +253,19 @@ export function controllerIds(
 
 /**
  * Czy figura jest „oczami drużyny" (etap 45, Observer z Foundry) — jedno
- * pytanie dla widoku, zasłony i klatek ruchu. Reguła w `tokenSharesVision`.
+ * pytanie dla widoku, zasłony i klatek ruchu. Reguła w `tokenSharesVision`;
+ * od 30.10 figura gracza dzieli wzrok tylko na scenie z `partySight`.
  */
 export function sharesVision(
   token: Pick<Token, 'ownerId' | 'hidden' | 'sharedVision'>,
   linked: LinkedSheet | undefined | null,
+  scene: Pick<Scene, 'partySight'>,
 ): boolean {
   return tokenSharesVision({
     sharedVision: token.sharedVision,
     hidden: token.hidden,
     playerControlled: controllerIds(token, linked).size > 0,
+    partySight: scene.partySight,
   });
 }
 
@@ -362,7 +370,7 @@ export function concealedFrom(
   // „Oczy drużyny" (etap 45): figurę kolegi gracz widzi zawsze — w czerni mgły,
   // za ścianą, w ciemności i za zasłoną, tak jak własną. Pozycja kolegi nie
   // jest tajemnicą przed drużyną, a zniknięcie go z mapy czytało się jak błąd.
-  if (sharesVision(token, linked)) return false;
+  if (sharesVision(token, linked, scene)) return false;
   if (
     concealment.figurePolygons &&
     !isPointVisible(tokenCentre(token, toGridScene(scene)), concealment.figurePolygons)
@@ -418,7 +426,7 @@ export async function fetchSceneTokensFor(
         : stored;
     const linked = row.characterId ? sheets.get(row.characterId) : undefined;
     if (concealedFrom(row, scene, concealment, linked, user.id)) continue;
-    views.push(toTokenView(row, seesPrivate(row, linked, user), linked));
+    views.push(toTokenView(row, seesPrivate(row, linked, user), linked, scene));
   }
   return views;
 }
@@ -668,7 +676,7 @@ export async function emitTokenUpsert(
   // Only an upsert that moved the token may move it at the clients (#47).
   const moved = options.moved ? { moved: true as const } : {};
   const privatePayload: TokenUpsertBroadcast = {
-    token: toTokenView(token, true, linked),
+    token: toTokenView(token, true, linked, scene),
     ...moved,
   };
 
@@ -715,7 +723,11 @@ export async function emitTokenUpsert(
   // the people controlling the token keep it (stage 17). „Oczy drużyny" (etap
   // 45) zostają przy całej drużynie — jak w `concealedFrom`.
   const fog = await fetchFogState(deps.ctx.prisma, scene);
-  if (fog.enabled && isTokenInFog(token, toGridScene(scene), fog) && !sharesVision(token, linked)) {
+  if (
+    fog.enabled &&
+    isTokenInFog(token, toGridScene(scene), fog) &&
+    !sharesVision(token, linked, scene)
+  ) {
     deps.io.to(gmRoom(campaignId)).emit('token:upsert', privatePayload);
     for (const userId of privateUserIds) {
       await emitToCampaignUser(deps.io, campaignId, userId, 'token:upsert', privatePayload);
@@ -726,7 +738,7 @@ export async function emitTokenUpsert(
   const room = campaignRoom(campaignId);
   const publicPayload: TokenUpsertBroadcast = {
     seq: deps.seqs.next(room),
-    token: toTokenView(token, false, linked),
+    token: toTokenView(token, false, linked, scene),
     ...moved,
   };
   deps.io.to(room).emit('token:upsert', publicPayload);
@@ -1013,7 +1025,7 @@ export const tokenCreateEvent = defineEvent<TokenCreatePayload, TokenView>({
     const placed = linked ? await syncWoundStatuses(deps, token, linked.hp) : token;
     await emitTokenUpsert(deps, campaignId, scene, placed, linked);
     await adoptSceneDeviceLive(deps, campaignId, scene.id, placed.glyph);
-    return toTokenView(placed, true, linked);
+    return toTokenView(placed, true, linked, scene);
   },
 });
 
@@ -1180,7 +1192,7 @@ export const tokenDuplicateEvent = defineEvent<TokenDuplicatePayload, TokenView>
     await adoptSceneDeviceLive(deps, campaignId, scene.id, copy.glyph);
     // Kopia wroga postawiona drużynie przed oczami (etap 56).
     await checkSighting(deps, campaignId, scene);
-    return toTokenView(copy, true, copyLinked);
+    return toTokenView(copy, true, copyLinked, scene);
   },
 });
 
@@ -1293,11 +1305,11 @@ export const tokenUpdateEvent = defineEvent<TokenUpdatePayload, TokenView>({
       // Vanish from players first, then refresh the GM's semi-transparent view.
       emitTokenDelete(deps, campaignId, scene, updated.id, true);
       deps.io.to(gmRoom(campaignId)).emit('token:upsert', {
-        token: toTokenView(updated, true, linked),
+        token: toTokenView(updated, true, linked, scene),
       } satisfies TokenUpsertBroadcast);
       if (!scene.active) {
         deps.io.to(sceneRoom(scene.id)).emit('token:upsert', {
-          token: toTokenView(updated, true, linked),
+          token: toTokenView(updated, true, linked, scene),
         } satisfies TokenUpsertBroadcast);
       }
     } else {
@@ -1335,7 +1347,7 @@ export const tokenUpdateEvent = defineEvent<TokenUpdatePayload, TokenView>({
     if (updated.glyph !== token.glyph) {
       await adoptSceneDeviceLive(deps, campaignId, scene.id, updated.glyph);
     }
-    return toTokenView(updated, true, linked);
+    return toTokenView(updated, true, linked, scene);
   },
 });
 
@@ -1401,7 +1413,7 @@ export const tokenStatEvent = defineEvent<TokenStatPayload, TokenView>({
     // każdej innej zmianie PW (etap 15).
     updated = await syncWoundStatuses(deps, updated, linked.hp);
     await emitTokenUpsert(deps, campaignId, scene, updated, linked);
-    return toTokenView(updated, true, linked);
+    return toTokenView(updated, true, linked, scene);
   },
 });
 
@@ -1666,7 +1678,7 @@ async function emitDynamicMove(
   const controllers = controllerIds(token, linked);
   // Czyj wzrok ten ruch zmienia: „oczy drużyny" (etap 45) patrzą za wszystkich
   // graczy, więc ich krok przelicza widok całej drużyny, nie tylko prowadzącego.
-  const party = sharesVision(token, linked);
+  const party = sharesVision(token, linked, scene);
   const sightOwners = new Set(controllers);
   deps.io.to(gmRoom(campaignId)).emit('token:move', move);
 
@@ -1884,7 +1896,7 @@ export async function emitTokenMoveFrame(
     deps.io.to(sceneRoom(scene.id)).emit('token:move', move);
   } else if (token.hidden) {
     deps.io.to(gmRoom(campaignId)).emit('token:move', move);
-  } else if (fogMatters && !sharesVision(token, fogLinked)) {
+  } else if (fogMatters && !sharesVision(token, fogLinked, scene)) {
     // „Oczy drużyny" (etap 45) idą gałęzią niżej: drużyna widzi je zawsze,
     // więc granica mgły nie zmienia, dla kogo figura istnieje.
     deps.io.to(gmRoom(campaignId)).emit('token:move', move);

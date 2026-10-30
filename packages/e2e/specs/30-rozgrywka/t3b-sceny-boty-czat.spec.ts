@@ -134,6 +134,12 @@ async function createScene(
   await editor.getByRole('tab', { name: 'Widoczność' }).click();
   await editor.locator(`input[name=scene-visibility][value=${visibility}]`).click();
   await expect(editor.locator(`input[name=scene-visibility][value=${visibility}]`)).toBeChecked();
+  // Od 30.10 nowa scena nie dzieli widoku, a łańcuch T3b–T5b gra drużyną, w której
+  // Ola patrzy oczami Kowala — MG włącza to przełącznikiem z tej samej zakładki.
+  const partySight = editor.getByLabel('Gracze dzielą się widokiem');
+  await expect(partySight).not.toBeChecked();
+  await partySight.click();
+  await expect(partySight).toBeChecked();
   return editor;
 }
 

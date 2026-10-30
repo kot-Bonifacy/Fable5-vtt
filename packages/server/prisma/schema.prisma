@@ -61,6 +61,7 @@ model User {
   campaignsRun     Campaign[]       @relation("CampaignGm")
   passwordResets   PasswordReset[]
   gameSessions     GameSession[]    @relation("GameSessionGm")
+  explorations     PlayerExploration[]
 }
 
 /// The session log (stage 53): one row per „Rozpocznij sesję” … end. Names are
@@ -907,6 +908,17 @@ model Scene {
   explore Boolean @default(true)
 
   /**
+   * Czy gracze dzielą się widokiem na tej scenie (30.10.2026, zlecenie MG).
+   *
+   * Wyłączone (domyślnie, także na scenach sprzed tej zmiany): każdy gracz
+   * patrzy wyłącznie oczami własnych figur, a figura kolegi nie jest „oczami
+   * drużyny” z etapu 45 — drużyna przestała zostawiać zwiedzanie mapy jednemu
+   * graczowi. Włączone: jak od etapu 45. Jawne `Token.sharedVision = true`
+   * od MG działa zawsze. Rozstrzyga `tokenSharesVision` w `shared/tokens.ts`.
+   */
+  partySight Boolean @default(false)
+
+  /**
    * Where the party starts looking on this map (11.09.2026) — the point the GM
    * marks with the map tool, in scene pixels.
    *
@@ -936,6 +948,7 @@ model Scene {
   accessPoints NetAccessPoint[]
   defenseZones DefenseZone[]
   exploration  SceneExploration?
+  playerExplorations PlayerExploration[]
 
   @@index([campaignId, active])
 }
@@ -994,6 +1007,31 @@ model SceneExploration {
   updatedAt DateTime @updatedAt
 
   scene Scene @relation(fields: [sceneId], references: [id], onDelete: Cascade)
+}
+
+/**
+ * Pamięć mapy jednego gracza (30.10.2026) — ten sam zapis co `SceneExploration`,
+ * czytany zamiast niej, gdy scena nie dzieli widoku (`Scene.partySight`
+ * wyłączone): gracz pamięta tylko to, co sam zobaczył. Migracja z 30.10 dała
+ * każdemu kopię pamięci drużyny sprzed przełącznika. Serwer dopisuje
+ * wzrok gracza do obu pamięci naraz, żeby przełącznik w każdą stronę zostawiał
+ * sensowną mapę. Do archiwum sceny nie jedzie — wiąże się z kontem.
+ */
+model PlayerExploration {
+  sceneId String
+  userId  String
+  cell    Int
+  cols    Int
+  rows    Int
+  data    String
+
+  updatedAt DateTime @updatedAt
+
+  scene Scene @relation(fields: [sceneId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([sceneId, userId])
+  @@index([userId])
 }
 
 /**

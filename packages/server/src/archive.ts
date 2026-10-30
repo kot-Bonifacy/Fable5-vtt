@@ -408,6 +408,7 @@ const SCENE_COLUMNS = {
   dark: true,
   darkSightM: true,
   explore: true,
+  partySight: true,
   spawnX: true,
   spawnY: true,
   playerMove: true,
@@ -698,6 +699,7 @@ export async function insertScene(
       dark: bool(sceneColumns.dark, false),
       darkSightM: num(sceneColumns.darkSightM, 2),
       explore: bool(sceneColumns.explore, true),
+      partySight: bool(sceneColumns.partySight, false),
       spawnX: maybeNum(sceneColumns.spawnX),
       spawnY: maybeNum(sceneColumns.spawnY),
       // Domyślnie **Stop**, jak przy nowej scenie (12.09, etap 45): mapa

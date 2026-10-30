@@ -82,6 +82,13 @@ export interface SceneView {
    */
   explore: boolean;
   /**
+   * Czy gracze dzielą się widokiem (30.10.2026, zlecenie MG). Wyłączone —
+   * domyślnie — każdy gracz patrzy tylko oczami własnych figur, bo „oczy
+   * drużyny” z etapu 45 sprawiały, że drużyna zostawiała zwiedzanie mapy
+   * jednemu graczowi. Włączone: figury graczy są oczami całej drużyny.
+   */
+  partySight: boolean;
+  /**
    * Jak gracze chodzą po tej mapie (etap 45, decyzja MG z 08.10.2026) — jeden
    * przełącznik w górnym pasku zamiast dawnej blokady `playerMoveLocked`
    * (12.09) schowanej w edytorze sceny.
@@ -203,6 +210,17 @@ export interface SceneLightingPayload {
 export interface SceneExplorePayload {
   sceneId: string;
   explore: boolean;
+}
+
+/**
+ * Client → server `scene:party-sight` (30.10.2026) — przełącznik „Gracze
+ * dzielą się widokiem”. Własne zdarzenie, a nie pole łaty, z tego samego
+ * powodu co `scene:lighting`: przełączenie zabiera graczom figury kolegów
+ * i kawałki mapy, więc serwer musi od razu przefiltrować ich listy.
+ */
+export interface ScenePartySightPayload {
+  sceneId: string;
+  partySight: boolean;
 }
 
 /**

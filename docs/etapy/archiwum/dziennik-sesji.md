@@ -1,5 +1,19 @@
 # Dziennik sesji — archiwum
 
+### Sesja 29.10 — cofnięcie 63c (zlecenie MG)
+
+**Zlecenie:** MG nie podoba się, że po ostatniej zmianie nie widać na lewej belce ataków, akcji
+i ruchu postaci, a czat (już przeładowany) pokazuje więcej — „zaproponuj inne rozwiązanie albo
+cofnijmy”. **Oglądane:** konto MG w **Firefoksie** (Playwright), lokalny dev, walka z samym
+Francem: budżet RUCH / AKCJA / ATAKI / DYSTANS i kropki ataków na broni widoczne — zniknięcia
+nie odtworzyłem. MG na pytanie „gdzie i kiedy” wybrał „cofnij 63c bez szukania”.
+**Zmiana:** `git revert 462beb7` (karta ataku z krokami, `foldAttackCards`, pasek kroku nad
+kubkiem, pola `dodge`/`jump` zamiast dopisków w `detail`, rezerwa `.hud-rail` pod stosem kubka).
+63a i 63b zostają. Karty zapisane w czasie 63c (pola `dodge`/`jump`) czytają się teraz bez
+dopisku o Uniku. Plik etapu, tabela etapów i umowy `tura`/`atak`/`czat` wróciły do stanu po
+63b; 63c oznaczone jako wycofane. **Testy:** shared 2760, serwer 1671, klient 442 — zielone.
+Na VPS nic nie zmieniano.
+
 ### Sesja 28.10, piąta — etap 63b „Płynna walka gracza” (zlecenie MG)
 
 **Zakres:** auto-unik z decyzji MG 4–7 (bez pytań w tej sesji — rozstrzygnięcia w pliku etapu).

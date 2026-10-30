@@ -6,6 +6,7 @@ import { canariesInDatabase, ONLY_FROM } from '../../fixtures/nocna-zmiana.ts';
 import { clickOnMap, fitCamera, tokenCentre, walkOnMap } from '../../fixtures/scene.ts';
 import { Canaries } from '../../fixtures/sniffer.ts';
 import { closeNotices, createInvitation, say } from '../../fixtures/table.ts';
+import { emitAck } from '../../fixtures/socket.ts';
 import {
   cellCentre,
   chatCards,
@@ -354,6 +355,16 @@ test.describe.serial('T5b: „Brama” — walka druga, Sieć, wieżyczka, pad A
     await fitCamera(page, BRAMA.width, BRAMA.height);
     await revealFog(page, BRAMA.yardWide.from, BRAMA.yardWide.to);
     for (const name of ['Strażnik', 'Wieżyczka']) fromPlayers.reveal(token(name).id);
+    // „Brama” dzieli widok od T3b (przełącznik z 30.10); punkt kontrolny sprzed
+    // przełącznika ma go wyłączonego, więc MG włącza go tu jeszcze raz.
+    expect(
+      (
+        await emitAck(await mg.socket(), 'scene:party-sight', {
+          sceneId: sceneRow().id,
+          partySight: true,
+        })
+      ).ok,
+    ).toBe(true);
     await expect
       .poll(() => visibleTokenIds(marek))
       .toEqual(expect.arrayContaining([token('Strażnik').id, token('Wieżyczka').id]));

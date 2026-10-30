@@ -70,6 +70,7 @@ export function buildWelcomeScene(width: number, height: number): SceneView {
     dark: false,
     darkSightM: 2,
     explore: false,
+    partySight: false,
     // Miejsca startu MG tu nie wyznaczy — tło nie ma wiersza w bazie, więc
     // kamera bierze to, co bez wyznaczonego punktu: środek dolnej krawędzi.
     spawn: null,

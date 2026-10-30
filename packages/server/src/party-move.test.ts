@@ -11,13 +11,14 @@ import type {
   CombatView,
   CombatantView,
   CpredCharacterData,
+  ExplorationMask,
   SceneView,
   SocketAck,
   StateSyncPayload,
   TokenPaceBroadcast,
   TokenView,
 } from '@vtt/shared';
-import { PACE_REFILL_MS } from '@vtt/shared';
+import { PACE_REFILL_MS, decodeFlagRuns } from '@vtt/shared';
 import type { ServerConfig } from './config.js';
 import { buildApp, type BuiltApp } from './app.js';
 import { paceClock } from './realtime/pace.js';
@@ -119,6 +120,14 @@ function emitAck<T = undefined>(
     if (payload === undefined) socket.emit(event, ack);
     else socket.emit(event, payload, ack);
   });
+}
+
+/** Czy ten punkt sceny jest w pamięci mapy z maski z gniazda. */
+function exploredAt(mask: ExplorationMask, point: { x: number; y: number }): boolean {
+  const col = Math.floor(point.x / mask.cell);
+  const row = Math.floor(point.y / mask.cell);
+  if (col < 0 || row < 0 || col >= mask.cols || row >= mask.rows) return false;
+  return decodeFlagRuns(mask.runs, mask.cols * mask.rows)[row * mask.cols + col] === 1;
 }
 
 function data<T>(ack: SocketAck<T>, what: string): T {
@@ -228,6 +237,10 @@ describe('ruch graczy i widzenie drużyny (etap 45)', () => {
     sceneId = scene.id;
     expect(scene.playerMove).toBe('stop');
     expect(scene.visibility).toBe('dynamic');
+    // Od 30.10 nowa scena nie dzieli widoku — testy etapu 45 włączają go jawnie,
+    // a test „bez wspólnego widoku” niżej wyłącza go na chwilę.
+    expect(scene.partySight).toBe(false);
+    await emitAck(gm, 'scene:party-sight', { sceneId, partySight: true });
     await emitAck(gm, 'scene:update', {
       sceneId,
       patch: { width: 4000, height: 4000, grid: { sizePx: 100 }, metersPerSquare: 2 },
@@ -372,6 +385,39 @@ describe('ruch graczy i widzenie drużyny (etap 45)', () => {
     expect(state.vision?.polygons).toHaveLength(2);
     // NPC MG za ścianą — nie.
     expect(state.tokens.map((token) => token.id)).not.toContain(npcTokenId);
+  });
+
+  it('bez „Gracze dzielą się widokiem” gracz patrzy i pamięta tylko własnymi figurami (30.10)', async () => {
+    // Vex stoi na (2 m, 2 m), środek (3 m, 3 m) — za ścianą na 4 m od Oli.
+    const vexCentre = { x: 3 * PX_PER_M, y: 3 * PX_PER_M };
+    await emitAck(gm, 'explore:forget', { sceneId });
+    const off = data(
+      await emitAck<SceneView>(gm, 'scene:party-sight', { sceneId, partySight: false }),
+      'scene:party-sight',
+    );
+    expect(off.partySight).toBe(false);
+
+    const olaState = await stateOf(ola);
+    expect(olaState.scene?.partySight).toBe(false);
+    expect(olaState.tokens.map((token) => token.id)).not.toContain(vexTokenId);
+    expect(olaState.vision?.polygons).toHaveLength(1);
+    expect(exploredAt(olaState.exploration!, vexCentre)).toBe(false);
+    const vexState = await stateOf(vex);
+    expect(vexState.tokens.find((token) => token.id === olaTokenId)).toBeUndefined();
+    expect(exploredAt(vexState.exploration!, vexCentre)).toBe(true);
+
+    // Jawne „Tak” od MG (sojusznik, kamera drużyny) działa na każdej scenie.
+    await emitAck(gm, 'token:update', { tokenId: vexTokenId, patch: { sharedVision: true } });
+    expect(await seenBy(ola)).toContain(vexTokenId);
+    await emitAck(gm, 'token:update', { tokenId: vexTokenId, patch: { sharedVision: null } });
+    expect(await seenBy(ola)).not.toContain(vexTokenId);
+
+    // Przełącza tylko MG; włączony z powrotem — drużyna znów widzi się i plan.
+    expect((await emitAck(ola, 'scene:party-sight', { sceneId, partySight: true })).ok).toBe(false);
+    await emitAck(gm, 'scene:party-sight', { sceneId, partySight: true });
+    const shared = await stateOf(ola);
+    expect(shared.tokens.find((token) => token.id === vexTokenId)?.partyVision).toBe(true);
+    expect(exploredAt(shared.exploration!, vexCentre)).toBe(true);
   });
 
   it('w całkiem czarnej ręcznej mgle drużyna widzi się nawzajem, a NPC tylko z „oczami drużyny”', async () => {

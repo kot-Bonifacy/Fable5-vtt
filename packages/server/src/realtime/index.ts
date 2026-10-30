@@ -193,6 +193,7 @@ import {
   tokenLightToggleEvent,
 } from './lights.js';
 import { explorationForgetEvent, sceneExploreEvent } from './exploration.js';
+import { scenePartySightEvent } from './party-sight.js';
 import {
   drawingClearEvent,
   drawingCreateEvent,
@@ -518,6 +519,7 @@ export const EVENTS: RealtimeEvent<never, unknown>[] = [
   tokenLightToggleEvent,
   sceneLightingEvent,
   sceneExploreEvent,
+  scenePartySightEvent,
   explorationForgetEvent,
   drawingCreateEvent,
   drawingUpdateEvent,

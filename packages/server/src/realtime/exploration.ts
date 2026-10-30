@@ -8,6 +8,7 @@ import type {
   SceneExplorePayload,
   SceneUpdateBroadcast,
   SceneView,
+  SessionUser,
 } from '@vtt/shared';
 import {
   ROLE_GM,
@@ -50,14 +51,42 @@ import { campaignRoom, sceneRoom } from './state.js';
 /** How long a discovery may sit in memory before it reaches the database. */
 const PERSIST_DEBOUNCE_MS = 1000;
 
-/** sceneId → the party's memory of that scene. */
+/**
+ * Pamięć jednego gracza (30.10.2026): scena bez „Gracze dzielą się widokiem”
+ * (`Scene.partySight`) pokazuje graczowi tylko to, co sam zobaczył — inaczej
+ * zwiad jednego dalej rysowałby plan mapy całej drużynie, a MG chodziło o to,
+ * żeby każdy chodził sam. Serwer dopisuje wzrok gracza do obu pamięci naraz;
+ * przełącznik wybiera tylko, którą gracz dostaje.
+ */
+interface MemoryKey {
+  sceneId: string;
+  /** `null` — pamięć drużyny (`SceneExploration`); inaczej `PlayerExploration`. */
+  userId: string | null;
+}
+
+/** Kto patrzy — tyle z konta, ile pamięć potrzebuje. */
+type MemoryViewer = Pick<SessionUser, 'id' | 'role'>;
+
+function cacheKey(key: MemoryKey): string {
+  return key.userId === null ? key.sceneId : `${key.sceneId}:${key.userId}`;
+}
+
+/** sceneId (drużyna) albo sceneId:userId (gracz) → pamięć tej sceny. */
 const grids = new Map<string, ExplorationGrid>();
-/** sceneId → pending write. */
+/** Ten sam klucz → zaplanowany zapis. */
 const pendingWrites = new Map<string, NodeJS.Timeout>();
 
 /** Does this scene remember anything at all? */
 export function usesExploration(scene: Pick<Scene, 'visibility' | 'explore'>): boolean {
   return scene.visibility === 'dynamic' && scene.explore;
+}
+
+/** Which memory this viewer's screen draws — the party's or their own. */
+function memoryKeyFor(scene: Pick<Scene, 'id' | 'partySight'>, viewer: MemoryViewer): MemoryKey {
+  return {
+    sceneId: scene.id,
+    userId: scene.partySight || viewer.role === ROLE_GM ? null : viewer.id,
+  };
 }
 
 /** Cell edge of this scene's exploration grid — the light mask's, deliberately. */
@@ -76,27 +105,45 @@ function cellPxOf(scene: Scene): number {
   });
 }
 
+type StoredMemory = { cell: number; cols: number; rows: number; data: string } | null;
+
+async function readMemoryRow(prisma: PrismaClient, key: MemoryKey): Promise<StoredMemory> {
+  return key.userId === null
+    ? prisma.sceneExploration.findUnique({ where: { sceneId: key.sceneId } })
+    : prisma.playerExploration.findUnique({
+        where: { sceneId_userId: { sceneId: key.sceneId, userId: key.userId } },
+      });
+}
+
 /**
- * The party's memory of one scene, from the cache or the database.
+ * One memory of one scene — the party's or a player's — from the cache or the
+ * database.
  *
  * A stored grid whose cell size or extent no longer matches the scene is
  * dropped rather than resampled: it means the GM changed the grid or resized
  * the map, and a memory stretched over a map that moved underneath it would
  * show the party rooms they never entered. Losing the memory is the honest
  * failure here, and the GM can see it happen.
+ *
+ * Gracz bez własnego zapisu zaczyna od czystej mapy — także na scenie, na
+ * której koledzy już coś zwiedzili. To, co znał sprzed przełącznika, przepisała
+ * mu migracja z 30.10. Kopia pamięci drużyny przy pierwszym odczycie wniosłaby
+ * mu to, co kolega zobaczył chwilę wcześniej w tej samej pętli wzroku.
  */
-export async function loadExploration(
+async function loadMemory(
   prisma: PrismaClient,
   scene: Scene,
+  key: MemoryKey,
 ): Promise<ExplorationGrid> {
-  const cached = grids.get(scene.id);
+  const id = cacheKey(key);
+  const cached = grids.get(id);
   const cell = cellPxOf(scene);
   const { cols, rows } = explorationDimensions(scene, cell);
   if (cached && cached.cell === cell && cached.cols === cols && cached.rows === rows) {
     return cached;
   }
 
-  const row = await prisma.sceneExploration.findUnique({ where: { sceneId: scene.id } });
+  const row = await readMemoryRow(prisma, key);
   let grid: ExplorationGrid;
   if (row && row.cell === cell && row.cols === cols && row.rows === rows) {
     grid = fromExplorationMask({
@@ -108,8 +155,16 @@ export async function loadExploration(
   } else {
     grid = createExplorationGrid(cell, cols, rows);
   }
-  grids.set(scene.id, grid);
+  grids.set(id, grid);
   return grid;
+}
+
+/** The party's memory of one scene (stage 18c). */
+export async function loadExploration(
+  prisma: PrismaClient,
+  scene: Scene,
+): Promise<ExplorationGrid> {
+  return loadMemory(prisma, scene, { sceneId: scene.id, userId: null });
 }
 
 /** Stored runs are a comma-separated list; a corrupt one starts from black. */
@@ -123,81 +178,131 @@ function parseRuns(data: string): number[] {
   return runs;
 }
 
-/** The mask a client needs; null when this scene does not remember. */
+/**
+ * The mask this viewer's client needs; null when this scene does not remember.
+ * Bez `viewer` — pamięć drużyny.
+ */
 export async function explorationMaskFor(
   prisma: PrismaClient,
   scene: Scene | null,
+  viewer?: MemoryViewer,
 ): Promise<ExplorationMask | null> {
   if (!scene || !usesExploration(scene)) return null;
-  return toExplorationMask(await loadExploration(prisma, scene));
+  const key = viewer ? memoryKeyFor(scene, viewer) : { sceneId: scene.id, userId: null };
+  return toExplorationMask(await loadMemory(prisma, scene, key));
 }
 
 /** Queues the row write; repeated calls inside the window collapse into one. */
-function schedulePersist(prisma: PrismaClient, sceneId: string): void {
-  if (pendingWrites.has(sceneId)) return;
+function schedulePersist(prisma: PrismaClient, key: MemoryKey): void {
+  const id = cacheKey(key);
+  if (pendingWrites.has(id)) return;
   const timer = setTimeout(() => {
-    pendingWrites.delete(sceneId);
-    void persistExploration(prisma, sceneId);
+    pendingWrites.delete(id);
+    void persistMemory(prisma, key);
   }, PERSIST_DEBOUNCE_MS);
   // The write must never be the reason a test run or a shutdown hangs.
   timer.unref?.();
-  pendingWrites.set(sceneId, timer);
+  pendingWrites.set(id, timer);
 }
 
-/** Writes one scene's memory now, cancelling any queued write. */
-export async function persistExploration(prisma: PrismaClient, sceneId: string): Promise<void> {
-  const timer = pendingWrites.get(sceneId);
+async function persistMemory(prisma: PrismaClient, key: MemoryKey): Promise<void> {
+  const id = cacheKey(key);
+  const timer = pendingWrites.get(id);
   if (timer) {
     clearTimeout(timer);
-    pendingWrites.delete(sceneId);
+    pendingWrites.delete(id);
   }
-  const grid = grids.get(sceneId);
+  const grid = grids.get(id);
   if (!grid) return;
   const mask = toExplorationMask(grid);
-  const data = mask.runs.join(',');
-  await prisma.sceneExploration.upsert({
-    where: { sceneId },
-    create: { sceneId, cell: mask.cell, cols: mask.cols, rows: mask.rows, data },
-    update: { cell: mask.cell, cols: mask.cols, rows: mask.rows, data },
-  });
+  const row = { cell: mask.cell, cols: mask.cols, rows: mask.rows, data: mask.runs.join(',') };
+  if (key.userId === null) {
+    await prisma.sceneExploration.upsert({
+      where: { sceneId: key.sceneId },
+      create: { sceneId: key.sceneId, ...row },
+      update: row,
+    });
+  } else {
+    const ids = { sceneId: key.sceneId, userId: key.userId };
+    await prisma.playerExploration.upsert({
+      where: { sceneId_userId: ids },
+      create: { ...ids, ...row },
+      update: row,
+    });
+  }
+}
+
+/** Klucze pamięci graczy tej sceny, które siedzą w pamięci procesu. */
+function playerKeysOf(sceneId: string): MemoryKey[] {
+  const prefix = `${sceneId}:`;
+  const keys: MemoryKey[] = [];
+  for (const id of grids.keys()) {
+    if (id.startsWith(prefix)) keys.push({ sceneId, userId: id.slice(prefix.length) });
+  }
+  return keys;
+}
+
+/** Writes one scene's memories (the party's and every player's) now. */
+export async function persistExploration(prisma: PrismaClient, sceneId: string): Promise<void> {
+  await persistMemory(prisma, { sceneId, userId: null });
+  for (const key of playerKeysOf(sceneId)) await persistMemory(prisma, key);
 }
 
 /**
- * Folds one viewer's current sight into the party's memory.
+ * Folds one viewer's current sight into the party's memory and their own.
  *
- * Returns true when that added something, which is the caller's cue to tell
- * everybody. On a group standing still in a room they know, it returns false
- * for every push — the common case, and the reason nothing here is throttled
- * beyond the write.
+ * Returns true when that added something to the memory this viewer's screen
+ * draws, which is the caller's cue to tell them. On a group standing still in
+ * a room they know, it returns false for every push — the common case, and the
+ * reason nothing here is throttled beyond the write.
  */
 export async function recordSight(
   prisma: PrismaClient,
   scene: Scene,
+  viewer: MemoryViewer,
   sight: { polygons: readonly (readonly ScenePoint[])[]; mask?: LightMask | null },
 ): Promise<boolean> {
   if (!usesExploration(scene)) return false;
-  const grid = await loadExploration(prisma, scene);
-  const added = mergeExploration(grid, sight);
-  if (added === 0) return false;
-  schedulePersist(prisma, scene.id);
-  return true;
+  const shown = memoryKeyFor(scene, viewer);
+  const keys: MemoryKey[] = [{ sceneId: scene.id, userId: null }];
+  if (viewer.role !== ROLE_GM) keys.push({ sceneId: scene.id, userId: viewer.id });
+  let grew = false;
+  for (const key of keys) {
+    const grid = await loadMemory(prisma, scene, key);
+    if (mergeExploration(grid, sight) === 0) continue;
+    schedulePersist(prisma, key);
+    if (key.userId === shown.userId) grew = true;
+  }
+  return grew;
 }
 
 /**
- * Sends the party's memory to everyone looking at the scene.
+ * Sends the memory to everyone looking at the scene.
  *
- * One broadcast for all of them, GM included: the GM's client draws no cover at
- * all, so it simply ignores it, and a targeted emission would buy nothing.
+ * Scena dzieląca widok: jedna rozgłoska dla wszystkich, MG też — jego klient
+ * nie rysuje zasłony, więc ją pomija. Scena bez dzielenia (30.10): każdy gracz
+ * dostaje własną pamięć, a `onlyUserIds` zawęża to do tych, którym urosła.
  */
 export async function emitExploration(
   deps: RealtimeDeps,
   campaignId: string,
   scene: Scene,
+  options?: { onlyUserIds?: ReadonlySet<string> },
 ): Promise<void> {
-  const mask = await explorationMaskFor(deps.ctx.prisma, scene);
-  const broadcast: ExplorationSyncBroadcast = { sceneId: scene.id, mask };
   const room = scene.active ? campaignRoom(campaignId) : sceneRoom(scene.id);
-  deps.io.to(room).emit('explore:sync', broadcast);
+  if (scene.partySight || !usesExploration(scene)) {
+    const mask = await explorationMaskFor(deps.ctx.prisma, scene);
+    const broadcast: ExplorationSyncBroadcast = { sceneId: scene.id, mask };
+    deps.io.to(room).emit('explore:sync', broadcast);
+    return;
+  }
+  const sockets = await deps.io.in(room).fetchSockets();
+  for (const member of sockets) {
+    const user = (member.data as { user: SessionUser }).user;
+    if (options?.onlyUserIds && !options.onlyUserIds.has(user.id)) continue;
+    const mask = await explorationMaskFor(deps.ctx.prisma, scene, user);
+    member.emit('explore:sync', { sceneId: scene.id, mask } satisfies ExplorationSyncBroadcast);
+  }
 }
 
 /** Drops one scene's memory — from the cache, the row and every client. */
@@ -209,6 +314,10 @@ export async function forgetExploration(
   const cell = cellPxOf(scene);
   const { cols, rows } = explorationDimensions(scene, cell);
   grids.set(scene.id, createExplorationGrid(cell, cols, rows));
+  // Pamięci graczy idą razem z nią — inaczej odczyt odtworzyłby każdemu jego
+  // własny plan, a „Zapomnij” ma czyścić mapę wszystkim.
+  dropPlayerMemories(scene.id);
+  await deps.ctx.prisma.playerExploration.deleteMany({ where: { sceneId: scene.id } });
   await persistExploration(deps.ctx.prisma, scene.id);
   await emitExploration(deps, campaignId, scene);
 }
@@ -276,10 +385,20 @@ export const sceneExploreEvent = defineEvent<SceneExplorePayload, SceneView>({
  * write of the old memory would overwrite it a second later.
  */
 export function dropExplorationCache(sceneId: string): void {
-  const timer = pendingWrites.get(sceneId);
+  dropCached(sceneId);
+  dropPlayerMemories(sceneId);
+}
+
+function dropCached(id: string): void {
+  const timer = pendingWrites.get(id);
   if (timer) clearTimeout(timer);
-  pendingWrites.delete(sceneId);
-  grids.delete(sceneId);
+  pendingWrites.delete(id);
+  grids.delete(id);
+}
+
+/** Zapomina z pamięci procesu (bez zapisu) pamięci graczy jednej sceny. */
+function dropPlayerMemories(sceneId: string): void {
+  for (const key of playerKeysOf(sceneId)) dropCached(cacheKey(key));
 }
 
 /** Test hook: drops the in-memory copy so a fresh server reads the rows again. */

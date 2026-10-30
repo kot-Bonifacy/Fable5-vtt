@@ -2590,6 +2590,10 @@ export const setSceneVisibility = (sceneId: string, visibility: SceneVisibility)
 export const setSceneExplore = (sceneId: string, explore: boolean) =>
   emitSceneAck<SceneView>('scene:explore', { sceneId, explore });
 
+/** „Gracze dzielą się widokiem” (30.10.2026) — patrz `Scene.partySight`. */
+export const setScenePartySight = (sceneId: string, partySight: boolean) =>
+  emitSceneAck<SceneView>('scene:party-sight', { sceneId, partySight });
+
 export const forgetExploration = (sceneId: string) => emitSceneAck('explore:forget', { sceneId });
 
 export const createNote = (sceneId: string, x: number, y: number, text: string, icon?: string) =>

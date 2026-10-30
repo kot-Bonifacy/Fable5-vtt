@@ -13,6 +13,7 @@ import type {
 } from '@vtt/shared';
 import {
   ROLE_GM,
+  ROLE_PLAYER,
   WALL_REACH_M,
   blockingSegments,
   figureBarriers,
@@ -343,24 +344,29 @@ export function lightSourcesOf(
  * że MG to wyłączył, i te, którym MG to włączył. Ukryta figura nie patrzy
  * niczyimi oczami poza własnymi. Warunek w zapytaniu jest kopią
  * `tokenSharesVision` — `party-move.test.ts` pilnuje, że mówią to samo.
+ * Od 30.10 figury graczy patrzą za drużynę tylko na scenie z `partySight`.
  */
 async function fetchVisionTokens(
   prisma: PrismaClient,
-  sceneId: string,
+  scene: Pick<Scene, 'id' | 'partySight'>,
   userId: string,
 ): Promise<Token[]> {
   return prisma.token.findMany({
     where: {
-      sceneId,
+      sceneId: scene.id,
       OR: [
         { ownerId: userId },
         { character: { ownerId: userId } },
         { hidden: false, sharedVision: true },
-        {
-          hidden: false,
-          sharedVision: null,
-          OR: [{ ownerId: { not: null } }, { character: { ownerId: { not: null } } }],
-        },
+        ...(scene.partySight
+          ? [
+              {
+                hidden: false,
+                sharedVision: null,
+                OR: [{ ownerId: { not: null } }, { character: { ownerId: { not: null } } }],
+              },
+            ]
+          : []),
       ],
     },
   });
@@ -499,7 +505,7 @@ export async function viewerSightFor(
   /** `borrowed: false` — the body's eyes alone (who *noticed* a foe, stage 56). */
   options: { borrowed?: boolean } = {},
 ): Promise<ViewerSight> {
-  const tokens = await fetchVisionTokens(prisma, scene.id, userId);
+  const tokens = await fetchVisionTokens(prisma, scene, userId);
   const sources = tokens.map((token) => {
     const positioned =
       liveOverride && liveOverride.tokenId === token.id
@@ -1103,9 +1109,11 @@ export async function emitDragVision(
     glows: sight.lighting ? viewerGlows(scene, context, userId, sight, live) : [],
   });
   // Walking is how a map gets discovered, so the memory grows mid-drag too —
-  // and only when it actually grew does anybody hear about it.
-  if (await recordSight(deps.ctx.prisma, scene, memoryOf(context, sight, light))) {
-    await emitExploration(deps, campaignId, scene);
+  // and only when it actually grew does anybody hear about it. Wzrok w marszu
+  // pchamy wyłącznie graczom, więc to gracz.
+  const viewer = { id: userId, role: ROLE_PLAYER };
+  if (await recordSight(deps.ctx.prisma, scene, viewer, memoryOf(context, sight, light))) {
+    await emitExploration(deps, campaignId, scene, { onlyUserIds: new Set([userId]) });
   }
 }
 
@@ -1126,7 +1134,7 @@ export async function emitVisionToPlayers(
   if (!scene.active) return;
   const context = await loadVisionContext(deps.ctx.prisma, scene);
   const sockets = await deps.io.in(campaignRoom(campaignId)).fetchSockets();
-  let discovered = false;
+  const discovered = new Set<string>();
   for (const member of sockets) {
     const data = member.data as { user: SessionUser; viewedSceneId: string | null };
     if (data.user.role === ROLE_GM || data.viewedSceneId !== scene.id) continue;
@@ -1156,11 +1164,14 @@ export async function emitVisionToPlayers(
         sceneId: scene.id,
         segments: vision.blockers,
       } satisfies BlockerSyncBroadcast);
-    // Every player's sight goes into the same memory: what the scout sees, the
-    // group knows. Accumulated over the loop and pushed once at the end.
-    if (await recordSight(deps.ctx.prisma, scene, vision.memory)) {
-      discovered = true;
+    // Every player's sight goes into the party's memory — what the scout sees,
+    // the group knows, póki scena dzieli widok — and into their own (30.10).
+    // Accumulated over the loop and pushed once at the end.
+    if (await recordSight(deps.ctx.prisma, scene, data.user, vision.memory)) {
+      discovered.add(data.user.id);
     }
   }
-  if (discovered) await emitExploration(deps, campaignId, scene);
+  if (discovered.size > 0) {
+    await emitExploration(deps, campaignId, scene, { onlyUserIds: discovered });
+  }
 }

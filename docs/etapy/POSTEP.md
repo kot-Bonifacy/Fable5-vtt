@@ -29,6 +29,11 @@ Pełna tabela z nazwami i datami: `archiwum/tabela-etapow.md`.
 
 ## Od czego zacząć
 
+**Wspólny widok drużyny to przełącznik sceny (zlecenie MG z 30.10) — czeka na wdrożenie i oględziny
+przy stole.** „Gracze dzielą się widokiem” w Edycja sceny → Widoczność, domyślnie wyłączony
+(także na starych scenach): gracz patrzy tylko własnymi figurami i pamięta tylko swój plan mapy.
+Umowa na górze `mapa`, zaległość w `zaleglosci.md`.
+
 **„Udostępniam AI” na czas (zgłoszenie MG z 29.10) — czeka na wdrożenie na VPS.** AI innego MG
 gasło 2 min po zamknięciu karty panelu administratora (obecność właściciela z 44d; log VPS
 z 25.10). Teraz przełącznik trzyma 2/4/8/24 h (domyślnie 4 h, „do HH:MM” obok), przeżywa
@@ -509,7 +514,7 @@ a nie do tego pliku.
 
 | obszar      | co obejmuje                                                    | umów | pułapek |
 | ----------- | -------------------------------------------------------------- | ---- | ------- |
-| `mapa`      | figury, zaznaczanie, narzędzia, obiekty sceny, ściany, efekty, zamek drzwi, ukryta figura zauważona, ikony urządzeń | 70   | 27      |
+| `mapa`      | figury, zaznaczanie, narzędzia, obiekty sceny, ściany, efekty, zamek drzwi, ukryta figura zauważona, ikony urządzeń, wspólny widok drużyny | 71   | 27      |
 | `czat`      | rodzaje wierszy, `visibleTo`, filtr, `seq`, `gmrecovery`, „to dotyczy mnie”, grupy kart, kolor gracza, czyszczenie | 13   | 3       |
 | `serwer`    | Prisma i migracje, zdarzenia gniazda, zapisy karty, uploady    | 26   | 21      |
 | `ui`        | okna pływające, `z-index`, motyw, skróty, dostępność, wejście, panel decyzji MG | 37   | 15      |
@@ -533,6 +538,27 @@ a nie do tego pliku.
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
 
+### Sesja 30.10 — „Gracze dzielą się widokiem” (zlecenie MG)
+
+**Zlecenie:** w edycji sceny przełącznik, domyślnie „widok tylko z własnych figur”, bo przy
+„oczach drużyny” z etapu 45 drużyna zostawiała zwiedzanie mapy jednemu graczowi (dopisek MG:
+„może być przełącznik, czy gracze dzielą się widokiem”). **Rozstrzygnięcia bez pytań:**
+(1) domyślnie wyłączony także na istniejących scenach (migracja); (2) jawne „Oczy drużyny: Tak”
+od MG na figurze działa dalej na każdej scenie; (3) **pamięć odkrytej mapy też osobno dla gracza**
+(`PlayerExploration`), gdy scena nie dzieli widoku — inaczej zwiad jednego dalej rysowałby plan
+całej drużynie (w Foundry pamięć mgły też jest per gracz); dotychczasową wspólną pamięć migracja
+skopiowała każdemu członkowi kampanii; (4) przełącznik w sekcji „Drużyna” zakładki Widoczność,
+ukryty w trybie „Otwarta”, opis w dymku. **Zmiana:** `Scene.partySight`, `scene:party-sight`
+(`realtime/party-sight.ts`), `sharesVision`/`toTokenView` ze sceną, `fetchVisionTokens`,
+`exploration.ts` (pamięć drużyny + graczy), archiwum sceny; klient `setScenePartySight`,
+przełącznik w `SceneConfigWindow`, etykieta „Samo” w menu figury. Umowa na górze `mapa`.
+**Testy:** shared 2761, serwer 1675 (nowy przypadek w `party-move.test.ts`, macierz izolacji),
+klient 441/442 — pada `theme.test.ts` na `10-map-combat.css` z commita `018a6988` (kolory wprost
+z wyboru systemu obronnego), nie z tej zmiany. **E2E:** `t45-ruch-druzyny` 8/8 (z `po-T6`);
+T3b i T5b nie puszczane (gateway) — zaległość. **Oglądane:** Firefox (Playwright, MG i gracz) na
+instancji E2E z `po-T6`: przełącznik w edytorze „Knajpy”, zapis w bazie, `partyVision` u gracza
+w obie strony. Na VPS nic nie zmieniano — **wdrożenie niesie migrację**.
+
 ### Sesja 29.10, druga — jedna broń w rękach (zlecenie MG)
 
 **Zlecenie:** „ogranicz ilość aktywnych broni do jednej (nie licząc bijatyki i sztuk walki),
@@ -553,17 +579,3 @@ Nic nie dobywałem (MG ma w dev otwartą walkę). Backend dev nie działał — 
 w `combat-actions.test.ts`), klient 442 — zielone. **E2E nie uruchamiane** — specy strzelają
 pierwszą bronią Kowala albo granatem, więc nie powinny pęknąć. Boty nie dobywają broni same:
 bot strzela tym, co trzyma, albo pięścią/granatem. Na VPS nic nie zmieniano.
-
-### Sesja 29.10 — cofnięcie 63c (zlecenie MG)
-
-**Zlecenie:** MG nie podoba się, że po ostatniej zmianie nie widać na lewej belce ataków, akcji
-i ruchu postaci, a czat (już przeładowany) pokazuje więcej — „zaproponuj inne rozwiązanie albo
-cofnijmy”. **Oglądane:** konto MG w **Firefoksie** (Playwright), lokalny dev, walka z samym
-Francem: budżet RUCH / AKCJA / ATAKI / DYSTANS i kropki ataków na broni widoczne — zniknięcia
-nie odtworzyłem. MG na pytanie „gdzie i kiedy” wybrał „cofnij 63c bez szukania”.
-**Zmiana:** `git revert 462beb7` (karta ataku z krokami, `foldAttackCards`, pasek kroku nad
-kubkiem, pola `dodge`/`jump` zamiast dopisków w `detail`, rezerwa `.hud-rail` pod stosem kubka).
-63a i 63b zostają. Karty zapisane w czasie 63c (pola `dodge`/`jump`) czytają się teraz bez
-dopisku o Uniku. Plik etapu, tabela etapów i umowy `tura`/`atak`/`czat` wróciły do stanu po
-63b; 63c oznaczone jako wycofane. **Testy:** shared 2760, serwer 1671, klient 442 — zielone.
-Na VPS nic nie zmieniano.

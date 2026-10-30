@@ -933,14 +933,20 @@ export function nextTokenCopyName(name: string, taken: readonly string[], first 
  * wzrok, figura MG nie. MG może wyłączyć to na figurze gracza (drużyna ma się
  * rozdzielić) albo włączyć sojuszniczemu NPC-owi. Figura ukryta nie jest
  * niczyimi oczami — jej w ogóle nie ma dla graczy.
+ *
+ * Od 30.10.2026 „samo” zależy też od sceny: póki MG nie włączy na niej „Gracze
+ * dzielą się widokiem” (`Scene.partySight`, domyślnie wyłączone), figura gracza
+ * nie jest oczami drużyny — każdy patrzy tylko własnymi figurami. Jawne `true`
+ * od MG (sojuszniczy NPC, kamera drużyny) działa na każdej scenie.
  */
 export function tokenSharesVision(token: {
   sharedVision: boolean | null;
   hidden: boolean;
   playerControlled: boolean;
+  partySight: boolean;
 }): boolean {
   if (token.hidden) return false;
-  return token.sharedVision ?? token.playerControlled;
+  return token.sharedVision ?? (token.playerControlled && token.partySight);
 }
 
 /**

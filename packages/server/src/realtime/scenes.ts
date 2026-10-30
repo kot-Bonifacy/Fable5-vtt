@@ -63,6 +63,7 @@ export function toSceneView(scene: Scene): SceneView {
     dark: scene.dark,
     darkSightM: scene.darkSightM,
     explore: scene.explore,
+    partySight: scene.partySight,
     // Ruch graczy (etap 45) — jedzie też do graczy, bo to ich klient ma nie
     // podnosić figury, liczyć pulę i umieć powiedzieć, dlaczego. Nieczytelna
     // wartość to „stop": zatrzymuje, zamiast puszczać.
