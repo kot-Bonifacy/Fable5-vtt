@@ -29,7 +29,7 @@ describe('cpredReputation', () => {
     expect(cpredReputation([]).level).toBe(0);
   });
 
-  it('takes the highest level, whatever order the deeds were entered in', () => {
+  it('takes the highest of good deeds, whatever order they were entered in', () => {
     const current = cpredReputation([deed('a', 2), deed('b', 7), deed('c', 4)]);
     expect(current.level).toBe(7);
     expect(current.source?.id).toBe('b');
@@ -42,19 +42,39 @@ describe('cpredReputation', () => {
     expect(current.source?.id).toBe('koncert');
   });
 
-  it('gives an equal level to the newer deed — the fresher story is the one told', () => {
-    const current = cpredReputation([deed('stare', 4), deed('nowe', 4, { notorious: true })]);
-    expect(current.source?.id).toBe('nowe');
-    expect(current.notorious).toBe(true);
+  it('keeps the older deed on an equal level — only a higher one replaces it', () => {
+    const current = cpredReputation([deed('stare', 4), deed('nowe', 4)]);
+    expect(current.source?.id).toBe('stare');
   });
 
-  it('carries the shameful flag of the winning deed only', () => {
-    const current = cpredReputation([
-      deed('tchorzostwo', 2, { notorious: true }),
-      deed('napad', 6),
-    ]);
-    expect(current.level).toBe(6);
-    expect(current.notorious).toBe(false);
+  it('lets a shameful deed cover a good name at any level (s. 193)', () => {
+    // A hero of 6 runs from a fight that a few people saw.
+    const current = cpredReputation([deed('koncert', 6), deed('ucieczka', 3, { notorious: true })]);
+    expect(current.level).toBe(3);
+    expect(current.notorious).toBe(true);
+    expect(current.source?.id).toBe('ucieczka');
+  });
+
+  it('needs a higher good deed to live a bad name down', () => {
+    const shame = deed('zdrada', 4, { notorious: true });
+    expect(cpredReputation([shame, deed('ratunek', 4)]).source?.id).toBe('zdrada');
+    expect(cpredReputation([shame, deed('ratunek', 3)]).notorious).toBe(true);
+    const redeemed = cpredReputation([shame, deed('ratunek', 5)]);
+    expect(redeemed.level).toBe(5);
+    expect(redeemed.notorious).toBe(false);
+  });
+
+  it('replaces one bad name only with a higher one', () => {
+    const shames = [deed('a', 5, { notorious: true }), deed('b', 2, { notorious: true })];
+    expect(cpredReputation(shames).source?.id).toBe('a');
+  });
+
+  it('reads the order the deeds happened in, not just their levels', () => {
+    // Same deeds, two histories: a hero who ran, or a runner who became a hero.
+    const hero = deed('koncert', 6);
+    const shame = deed('ucieczka', 3, { notorious: true });
+    expect(cpredReputation([hero, shame]).notorious).toBe(true);
+    expect(cpredReputation([shame, hero]).notorious).toBe(false);
   });
 
   it('reads straight off a sheet', () => {

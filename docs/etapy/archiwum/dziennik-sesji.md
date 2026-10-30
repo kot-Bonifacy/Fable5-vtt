@@ -1,5 +1,26 @@
 # Dziennik sesji — archiwum
 
+### Sesja 29.10, druga — jedna broń w rękach (zlecenie MG)
+
+**Zlecenie:** „ogranicz ilość aktywnych broni do jednej (nie licząc bijatyki i sztuk walki),
+pozostałe trzeba dobyć z ekwipunku”. **Decyzje MG z pytań:** dobycie przy pełnej ręce to
+zamiana za Akcję; karta bez deklaracji trzyma pierwszą broń, reszta wymaga dobycia (odwraca
+decyzję z 10.09); Bijatyka i Sztuki walki zawsze dostępne, bez dobywania; granat ręczny też
+poza limitem; limit dla każdej karty (gracze, boty, NPC-e MG).
+**Zmiana:** `CPRED_DRAWN_WEAPONS_MAX`, `cpredWeaponOutsideHands`, `CpredOutsideHands`
+(`character.ts`), `cpredGrenadesOutsideHands` (`ammostock.ts`); znikły `cpredHandsAreDeclared`,
+`cpredHandsHeld`, `cpredDrawFits` i pole planera `handsHeld` (teraz `outsideHands`). Serwer:
+`weapon:draw` zamienia broń za Akcję `CPRED_ACTION_HOLSTER`, `outsideHandsOf` w
+`realtime/attacks.ts` (także oględziny). Pasek: `notDrawn: 'swap'` zamiast `handsFull`. Karta:
+„Dobądź (Akcja)” przy broni w ręku, pięść i granat bez guzików. Testy serwera z kilkoma broniami
+na karcie — `holdFiredWeapon` (`src/test-hands.ts`). **Oglądane:** Firefox (Playwright), dev, karta
+Oleny — jedna broń „W rękach”, reszta „Dobądź (Akcja)”, Bijatyka i Sztuki walki bez guzików.
+Nic nie dobywałem (MG ma w dev otwartą walkę). Backend dev nie działał — postawiłem go
+`pnpm --filter @vtt/server dev`. **Testy:** shared 2759, serwer 1672 (nowy: zamiana za Akcję
+w `combat-actions.test.ts`), klient 442 — zielone. **E2E nie uruchamiane** — specy strzelają
+pierwszą bronią Kowala albo granatem, więc nie powinny pęknąć. Boty nie dobywają broni same:
+bot strzela tym, co trzyma, albo pięścią/granatem. Na VPS nic nie zmieniano.
+
 ### Sesja 29.10 — cofnięcie 63c (zlecenie MG)
 
 **Zlecenie:** MG nie podoba się, że po ostatniej zmianie nie widać na lewej belce ataków, akcji

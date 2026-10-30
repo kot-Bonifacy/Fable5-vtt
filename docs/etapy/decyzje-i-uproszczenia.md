@@ -671,6 +671,17 @@ test; zdanie po polsku istnieje dla klienta, który by o tej blokadzie nie wiedz
   kupuje **szansę** („2 na 10"), nie modyfikator, więc kość leci goła i porównuje się `1k10 ≤
 szansa` — kształt Rzutu na Śmierć, nie Testu na PT.
 
+- **Etap 23c, poprawka 30.10 — Reputację czyta się po kolei, a zła przykrywa dobrą (decyzja
+  MG).** „Może zastąpić Reputację dotyczącą pozytywnego wydarzenia" (s. 193) czytamy tak: zły
+  wyczyn zastępuje dobrą sławę **na każdym poziomie** (tchórzostwo 3 po koncercie 6 daje złą
+  sławę 3), a „może” to wybór MG, czy w ogóle go wpisać. Dobry wyczyn zastępuje obecny, także
+  zły, tylko gdy jest **wyższy**; przy równym poziomie zostaje starszy (wcześniej wygrywał
+  późniejszy, co pozwalało dobrej czwórce zmyć złą czwórkę). Kolejność to kolejność listy
+  na karcie (nowe na końcu). **„Pokonać wroga” to 0 PW albo wygrany rewanż** — przegrany, który
+  potem wygra z tym samym przeciwnikiem Konfrontację, przestaje się go bać, gdy nowy przegrany
+  wybierze „wycofuję się / nie ustępuję” (wcześniej wynik może jeszcze odwrócić „Postaw się”).
+  Strach zostaje na scenie: figury są per scena, statyści nie mają tożsamości poza nią.
+
 - **Etap 30d — Wiarygodność nie dotyka Reputacji z 23c.** Opis etapu zapowiadał styk, ale
   podręcznik go nie ma: Rzetelność jest szansą na to, że **odbiorcy uwierzą publikacji**,
   a Reputacja modyfikuje Konfrontację i to, czy ktoś cię rozpozna. Dwie różne liczby o dwóch

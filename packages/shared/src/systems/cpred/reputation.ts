@@ -10,6 +10,11 @@
  *    edits. A separate editable number beside the list would be a second source
  *    of truth for one fact, and the rule about replacement would live in the
  *    GM's head instead of here.
+ *  - **Bad news travels further.** „Reputacja otrzymana za takie działanie może
+ *    zastąpić Reputację dotyczącą pozytywnego wydarzenia" — a shameful deed
+ *    covers a good name whatever its level (GM decision of 30.10.2026: the „może"
+ *    is the GM's choice to write the deed down at all). So the list is read in
+ *    order, not searched for a maximum.
  *  - **Zła sława counts as a minus.** „Jeśli słyniesz z tchórzostwa, twój poziom
  *    Reputacji traktuje się jako wartość ujemną" — so a deed carries a flag, and
  *    the sign appears only where the rules ask for it: in a Konfrontacja. The
@@ -66,21 +71,26 @@ export const NO_REPUTATION: CpredReputation = { level: 0, notorious: false, sour
 /**
  * The current Reputation of a sheet.
  *
- * „Reputacja związana z nowym wyczynem zastąpi poprzednią tylko wtedy, jeśli
- * będzie wyższa" — read literally, that makes the highest level the current
- * one, whatever order the deeds happened in. Ties go to the *later* deed: two
- * fours mean people talk about the fresher one, and a shameful four earned last
- * night is exactly the case the rule about bad reputation is written for.
+ * The deeds are read in the order the GM typed them — newest last — and each
+ * one either takes over or is forgotten next to the current one:
+ *
+ *  - a deed of a **higher** level always takes over („zastąpi poprzednią tylko
+ *    wtedy, jeśli będzie wyższa"); an equal one does not;
+ *  - a **shameful** deed takes over a good name at any level — „ludzie prędzej
+ *    słyszeli o twoich marnych uczynkach niż wielkich dokonaniach" (s. 193). A
+ *    cowardice worth 3 leaves a hero of 6 known for the cowardice, by fewer
+ *    people;
+ *  - a good deed lives a bad name down only by being higher, like any other.
  */
 export function cpredReputation(sources: readonly CpredReputationSource[]): CpredReputation {
-  let best: CpredReputationSource | null = null;
+  let current: CpredReputationSource | null = null;
   for (const source of sources) {
-    // `>=` rather than `>`: on equal levels the one further down the list wins,
-    // and the sheet keeps the list in the order the GM typed it — newest last.
-    if (!best || source.level >= best.level) best = source;
+    if (source.level <= 0) continue;
+    const coversGoodName = source.notorious === true && current?.notorious !== true;
+    if (!current || source.level > current.level || coversGoodName) current = source;
   }
-  if (!best || best.level <= 0) return NO_REPUTATION;
-  return { level: best.level, notorious: best.notorious === true, source: best };
+  if (!current) return NO_REPUTATION;
+  return { level: current.level, notorious: current.notorious === true, source: current };
 }
 
 /** Shorthand for the two callers that hold a whole sheet. */

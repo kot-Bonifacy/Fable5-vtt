@@ -517,6 +517,17 @@ export const facedownConcedeEvent = defineEvent<
       await fearToken(deps, campaignId, loser, concede.winnerTokenId);
     }
     const loserName = tokenTableName(loser, loser.name);
+    const winner = await deps.ctx.prisma.token.findUnique({
+      where: { id: concede.winnerTokenId },
+    });
+    // A won re-match is „pokonać wroga" too (GM decision of 30.10.2026). Freed
+    // here and not when the dice land, because until the loser picks the
+    // defender may still answer with real dice and turn the result around.
+    let freedNote = '';
+    if (winner && (await releaseFear(deps, winner, loser.id))) {
+      await emitTokensById(deps, campaignId, [winner.id]);
+      freedNote = ` · ${tokenTableName(winner, winner.name)}: −2 przeciw ${loserName} znika (wygrany rewanż)`;
+    }
 
     const updated: RollResult = {
       ...card.roll,
@@ -524,11 +535,11 @@ export const facedownConcedeEvent = defineEvent<
         ...card.opposed,
         concede: { ...concede, chosen: choice },
         detail:
-          choice === 'stand'
+          (choice === 'stand'
             ? `${card.opposed.detail} · ${loserName} nie ustąpił — −${Math.abs(
                 CPRED_FACEDOWN_PENALTY,
               )} do Akcji przeciw ${concede.winnerName}`
-            : `${card.opposed.detail} · ${loserName} wycofał się`,
+            : `${card.opposed.detail} · ${loserName} wycofał się`) + freedNote,
       },
     };
     await saveFacedownCard(deps, campaignId, card.id, updated);
@@ -593,25 +604,37 @@ export async function clearFacedownFear(
   });
   const touched: string[] = [];
   for (const token of tokens) {
-    const feared = readSheetFearedTokens(token.statusData);
-    if (!feared.includes(beatenTokenId)) continue;
-    const left = feared.filter((id) => id !== beatenTokenId);
-    const statuses = readTokenStatuses(token.statuses);
-    await deps.ctx.prisma.token.update({
-      where: { id: token.id },
-      data: {
-        // Afraid of somebody else too? Then the sticker stays and only the
-        // address of the one who just fell comes off the list.
-        statuses: JSON.stringify(
-          left.length > 0 ? statuses : statuses.filter((id) => id !== SHEET_INTIMIDATED_STATUS_ID),
-        ),
-        statusData: writeSheetFearedTokens(token.statusData, left),
-      },
-    });
-    touched.push(token.id);
+    if (await releaseFear(deps, token, beatenTokenId)) touched.push(token.id);
   }
   if (touched.length > 0) await emitTokensById(deps, campaignId, touched);
   return touched;
+}
+
+/**
+ * Takes one opponent off a token's fear list; false when it was not on it.
+ * The caller pushes the token to the table.
+ */
+async function releaseFear(
+  deps: RealtimeDeps,
+  token: Token,
+  beatenTokenId: string,
+): Promise<boolean> {
+  const feared = readSheetFearedTokens(token.statusData);
+  if (!feared.includes(beatenTokenId)) return false;
+  const left = feared.filter((id) => id !== beatenTokenId);
+  const statuses = readTokenStatuses(token.statuses);
+  await deps.ctx.prisma.token.update({
+    where: { id: token.id },
+    data: {
+      // Afraid of somebody else too? Then the sticker stays and only the
+      // address of the one just beaten comes off the list.
+      statuses: JSON.stringify(
+        left.length > 0 ? statuses : statuses.filter((id) => id !== SHEET_INTIMIDATED_STATUS_ID),
+      ),
+      statusData: writeSheetFearedTokens(token.statusData, left),
+    },
+  });
+  return true;
 }
 
 /**
@@ -696,8 +719,10 @@ export const reputationRecogniseEvent = defineEvent<
       success: known,
       // Naming the level on a miss would leak exactly what the roll failed to
       // learn, so the number only appears once it has been earned.
+      // „Nie będą pod wrażeniem" (s. 193): whoever recognises a coward must
+      // learn it is cowardice they recognise.
       label: known
-        ? `Znasz tę osobę — Reputacja ${reputation.level}${
+        ? `Znasz tę osobę — ${reputation.notorious ? 'zła sława' : 'Reputacja'} ${reputation.level}${
             reputation.source?.note ? ` (${reputation.source.note})` : ''
           }`
         : 'Nic ci to imię nie mówi',

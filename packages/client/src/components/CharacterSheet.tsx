@@ -5285,9 +5285,10 @@ function LifepathEnemies({
  * Reputacja (stage 23c) — the number and the deeds behind it.
  *
  * The number is not editable, and that is the whole design: RAW replaces a
- * Reputation only with a higher one, so the deed list *is* the value and a
- * field beside it would be a second, disagreeing copy. The GM adds deeds; the
- * player reads them (the server refuses their patch either way).
+ * Reputation only with a higher one — or with a shameful one at any level —
+ * so the deed list, read in order, *is* the value and a field beside it would
+ * be a second, disagreeing copy. The GM adds deeds; the player reads them (the
+ * server refuses their patch either way).
  */
 function ReputationSection({
   character,
@@ -5349,7 +5350,9 @@ function ReputationSection({
               : 'Reputacja — wchodzi do Konfrontacji jako CHA + Reputacja + 1k10'
           }
         >
-          Reputacja {current.notorious ? `−${current.level}` : current.level}
+          {/* The level is the reach of the story (s. 193); the minus belongs
+              to a Konfrontacja only, so the header names the infamy instead. */}
+          {current.notorious ? 'Zła sława' : 'Reputacja'} {current.level}
         </span>
         <span className="reputation-reach">
           {current.level > 0
@@ -5367,7 +5370,7 @@ function ReputationSection({
             className="small-button"
             onClick={addDeed}
             disabled={sources.length >= REPUTATION_SOURCE_ROWS_MAX}
-            title="Reputację przyznaje MG za czyny postaci (s. 193)"
+            title="Reputację przyznaje MG za czyny postaci (s. 193). Nowy wyczyn zastępuje obecny, gdy jest wyższy; zły zastępuje dobrą sławę na każdym poziomie"
           >
             + Wyczyn
           </button>
@@ -5400,7 +5403,10 @@ function ReputationSection({
                     placeholder="Za co — np. koncert w Afterlife"
                     onChange={(e) => patchDeed(row.id, { note: e.target.value })}
                   />
-                  <label className="reputation-bad" title="Zła sława — w Konfrontacji na minus">
+                  <label
+                    className="reputation-bad"
+                    title="Zła sława — przykrywa dobrą na każdym poziomie, w Konfrontacji na minus"
+                  >
                     <input
                       type="checkbox"
                       checked={row.notorious === true}
@@ -5421,10 +5427,9 @@ function ReputationSection({
                 </>
               ) : (
                 <>
-                  <span className="reputation-level">
-                    {row.notorious ? `−${row.level}` : row.level}
-                  </span>
+                  <span className="reputation-level">{row.level}</span>
                   <span className="reputation-note">{row.note || '—'}</span>
+                  {row.notorious && <span className="reputation-bad">zła</span>}
                   <span className="reputation-date">{row.at ?? ''}</span>
                 </>
               )}

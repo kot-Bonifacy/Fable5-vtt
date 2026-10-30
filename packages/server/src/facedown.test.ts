@@ -603,6 +603,7 @@ describe('reputacja i konfrontacja', () => {
   });
 
   it('rzut na rozpoznanie idzie na szept i zgadza się ze swoją własną kością', async () => {
+    const card = waitFor<ChatMessageBroadcast>(player, 'chat:message');
     const ack = await emitAck<{ messageId: number; roll: number; known: boolean }>(
       player,
       'reputation:recognise',
@@ -613,6 +614,38 @@ describe('reputacja i konfrontacja', () => {
     expect(answer.roll).toBeLessThanOrEqual(10);
     // Kolec is known at level 10 — „niższy od" means a natural 10 still misses.
     expect(answer.known).toBe(answer.roll < 10);
+    // „Nie będą pod wrażeniem" — the card says what Kolec is known for.
+    const label = (await card).message.roll?.outcome?.label ?? '';
+    if (answer.known) expect(label).toContain('zła sława 10');
+  });
+
+  // „Znika, gdy tylko uda ci się pokonać wroga" — wygrany rewanż też jest
+  // pokonaniem (decyzja MG z 30.10.2026).
+  it('wygrany rewanż zdejmuje strach przed tym, kogo się pokonało', async () => {
+    // Rico boi się Kolca (ręcznie, jak MG z menu figury) i rusza na rewanż:
+    // CHA 10 + Reputacja 10 − 2 przy najgorszej kości to 9, a Kolec stoi na −4.
+    await emitAck(gm, 'token:update', {
+      tokenId: heroTokenId,
+      patch: { statuses: [CPRED_INTIMIDATED_STATUS_ID] },
+    });
+    await emitAck(gm, 'token:feared', { tokenId: heroTokenId, fearedTokenIds: [cowardTokenId] });
+    // Kolec starts clean, so the sticker he ends with is the re-match's.
+    await emitAck(gm, 'token:feared', { tokenId: cowardTokenId, fearedTokenIds: [] });
+    await emitAck(gm, 'token:update', { tokenId: cowardTokenId, patch: { statuses: [] } });
+    expect(await statusesOf(cowardTokenId)).not.toContain('intimidated');
+
+    const { messageId, roll } = await faceDown(player, heroId, cowardTokenId);
+    expect(roll.breakdown?.find((row) => row.label === 'Przegrana Konfrontacja')?.value).toBe(-2);
+    expect(roll.opposed?.outcome).toBe('win');
+    // Until the loser picks, the result may still turn — the fear stays.
+    expect(await statusesOf(heroTokenId)).toContain('intimidated');
+
+    const updated = waitFor<ChatMessageBroadcast>(gm, 'chat:update');
+    await emitAck(gm, 'facedown:concede', { messageId, choice: 'stand' });
+    expect((await updated).message.roll?.opposed?.detail).toContain('Rico: −2 przeciw Kolec znika');
+    expect(await statusesOf(heroTokenId)).not.toContain('intimidated');
+    // The one who lost the re-match is the one afraid now.
+    expect(await statusesOf(cowardTokenId)).toContain('intimidated');
   });
 
   it('nikt nie rozpoznaje statysty, o którym nikt nie słyszał', async () => {

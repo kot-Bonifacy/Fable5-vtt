@@ -520,7 +520,7 @@ a nie do tego pliku.
 | `ui`        | okna pływające, `z-index`, motyw, skróty, dostępność, wejście, panel decyzji MG | 37   | 15      |
 | `kosci`     | kubek, `rollFormula`, wezwania i prośby o Test, tabele losowe, PT od MG | 24   | 2       |
 | `tura`      | budżet Akcji i metrów, kolejka, trasa, ruch przez ściany, skok, walka z zauważenia, pytanie MG o przekroczenie, Percepcja w drodze, ukryte figury, skradanie, kropki ataków | 33   | 7       |
-| `atak`      | broń i dodatki, amunicja, obrażenia, pancerz, rany krytyczne, trucizna na ostrzu, auto-unik | 50   | 8       |
+| `atak`      | broń i dodatki, amunicja, obrażenia, pancerz, rany krytyczne, trucizna na ostrzu, auto-unik, strach z Konfrontacji | 51   | 8       |
 | `statysta`  | figura z kartą, `statBlock`, Wartość bojowa, `token:stat`, wzorce | 17   | 3       |
 | `karta`     | strony i zakładki, panele, `sheet.css`, walidacja list, usuwanie przedmiotu | 11   | 12      |
 | `postac`    | kreator, PD i awanse, koszyk i cofanie awansów, Role i Zdolności, cyborgizacje, chrom zmieniający liczby, ekonomia, Test montażu gracza | 56   | 3       |
@@ -537,6 +537,22 @@ a nie do tego pliku.
 ## Notatki z dwóch ostatnich sesji
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
+
+### Sesja 30.10, druga — Reputacja bliżej podręcznika (zlecenie MG)
+
+**Zlecenie:** „sprawdź i popraw mechanikę reputacji, aby lepiej oddawała podręcznik”. Konfrontacja,
+remis bez skutku, wybór przegranego i rzut „Czy go znam?” (1k10 **niższe**) zgadzały się z s. 193–194.
+**Decyzje MG z pytań:** (1) zły wyczyn przykrywa dobrą sławę na każdym poziomie, „może” = MG wpisuje
+albo nie; (2) −2 zdejmuje 0 PW wroga **albo wygrany rewanż**; (3) strach zostaje na scenie.
+**Bez pytań, wprost z tekstu:** równy poziom nie zastępuje (wygrywał późniejszy); karta „Znasz tę
+osobę” mówi „zła sława N”; nagłówek karty „Zła sława 3” zamiast „Reputacja −3” (minus jest tylko
+w Konfrontacji). **Zmiana:** `cpredReputation` (lista po kolei), `releaseFear` + zdjęcie strachu
+w `facedown:concede`, `ReputationSection`. Wpis w `decyzje-i-uproszczenia.md`, umowa na górze `atak`.
+**Testy:** shared 2764 (nowe przypadki w `reputation.test.ts`), serwer `facedown.test.ts` 21/21
+(nowy: wygrany rewanż) i `campaign-isolation`; tsc i ESLint czyste; pełna suita serwera i klienta
+nie puszczana. **Oglądane:** tymczasowy spec E2E z `po-T6` — Ola w **Firefoksie**, MG w Chromium,
+karta Iskry (koncert 6, potem ucieczka 3 jako zła) → „Zła sława 3”, podświetlony drugi wyczyn.
+Na VPS nic nie zmieniano.
 
 ### Sesja 30.10 — „Gracze dzielą się widokiem” (zlecenie MG)
 
@@ -559,23 +575,3 @@ T3b i T5b nie puszczane (gateway) — zaległość. **Oglądane:** Firefox (Play
 instancji E2E z `po-T6`: przełącznik w edytorze „Knajpy”, zapis w bazie, `partyVision` u gracza
 w obie strony. Na VPS nic nie zmieniano — **wdrożenie niesie migrację**.
 
-### Sesja 29.10, druga — jedna broń w rękach (zlecenie MG)
-
-**Zlecenie:** „ogranicz ilość aktywnych broni do jednej (nie licząc bijatyki i sztuk walki),
-pozostałe trzeba dobyć z ekwipunku”. **Decyzje MG z pytań:** dobycie przy pełnej ręce to
-zamiana za Akcję; karta bez deklaracji trzyma pierwszą broń, reszta wymaga dobycia (odwraca
-decyzję z 10.09); Bijatyka i Sztuki walki zawsze dostępne, bez dobywania; granat ręczny też
-poza limitem; limit dla każdej karty (gracze, boty, NPC-e MG).
-**Zmiana:** `CPRED_DRAWN_WEAPONS_MAX`, `cpredWeaponOutsideHands`, `CpredOutsideHands`
-(`character.ts`), `cpredGrenadesOutsideHands` (`ammostock.ts`); znikły `cpredHandsAreDeclared`,
-`cpredHandsHeld`, `cpredDrawFits` i pole planera `handsHeld` (teraz `outsideHands`). Serwer:
-`weapon:draw` zamienia broń za Akcję `CPRED_ACTION_HOLSTER`, `outsideHandsOf` w
-`realtime/attacks.ts` (także oględziny). Pasek: `notDrawn: 'swap'` zamiast `handsFull`. Karta:
-„Dobądź (Akcja)” przy broni w ręku, pięść i granat bez guzików. Testy serwera z kilkoma broniami
-na karcie — `holdFiredWeapon` (`src/test-hands.ts`). **Oglądane:** Firefox (Playwright), dev, karta
-Oleny — jedna broń „W rękach”, reszta „Dobądź (Akcja)”, Bijatyka i Sztuki walki bez guzików.
-Nic nie dobywałem (MG ma w dev otwartą walkę). Backend dev nie działał — postawiłem go
-`pnpm --filter @vtt/server dev`. **Testy:** shared 2759, serwer 1672 (nowy: zamiana za Akcję
-w `combat-actions.test.ts`), klient 442 — zielone. **E2E nie uruchamiane** — specy strzelają
-pierwszą bronią Kowala albo granatem, więc nie powinny pęknąć. Boty nie dobywają broni same:
-bot strzela tym, co trzyma, albo pięścią/granatem. Na VPS nic nie zmieniano.
