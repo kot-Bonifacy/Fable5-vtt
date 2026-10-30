@@ -308,6 +308,12 @@ import type {
   VehicleCreatePayload,
   VehicleDeleteBroadcast,
   VehicleRenamePayload,
+  ChasePlacePayload,
+  ChaseSyncBroadcast,
+  SceneKind,
+  SceneVehicleView,
+  VehicleAllowDriverPayload,
+  VehicleSeatPayload,
   VehicleUpdatePayload,
   VehicleUpsertBroadcast,
   VehicleView,
@@ -390,6 +396,7 @@ import { useLightStore } from './stores/lightStore.js';
 import { useExplorationStore } from './stores/explorationStore.js';
 import { useCoverStore } from './stores/coverStore.js';
 import { useSmokeStore } from './stores/smokeStore.js';
+import { useChaseStore } from './stores/chaseStore.js';
 import { useTargetStore } from './stores/targetStore.js';
 import { usePaceStore } from './stores/paceStore.js';
 import { PLAYER_MOVE_PACE_NOTE, PLAYER_MOVE_STOP_NOTE } from './map/player-move.js';
@@ -780,6 +787,7 @@ export function connectSocket(userId: string): Socket {
     syncedSinceConnect = true;
     useBotStore.getState().applySync(payload);
     useVehicleStore.getState().applySync(payload);
+    useChaseStore.getState().applySync(payload);
     useCompendiumStore.getState().applySync(payload);
     useCombatStore.getState().applySync(payload);
     useFogStore.getState().applySync(payload);
@@ -1571,6 +1579,13 @@ export function connectSocket(userId: string): Socket {
   // Smoke rides with the covers (stage 16h) and for the same reason: everybody
   // sees the cloud, and a missed edit would leave a player rolling -4 for a
   // square that has been clear for a round.
+  // Auta na scenie pościgu (65b) — celowane per widz (gracz nie widzi aut,
+  // które odpadły z pościgu), więc bez seq, jak `zone:sync`.
+  onPresented('chase:sync', (broadcast: ChaseSyncBroadcast) => {
+    if (viewingScene(broadcast.sceneId)) {
+      useChaseStore.getState().setVehicles(broadcast.sceneId, broadcast.vehicles);
+    }
+  });
   onPresented('smoke:sync', (broadcast: SmokeSyncBroadcast & { seq?: number }) => {
     if (chat().applySeq(broadcast.seq)) {
       socket?.emit('state:request');
@@ -3404,6 +3419,19 @@ export const deleteVehicle = (vehicleId: string) => emitSceneAck('vehicle:delete
 export const renameVehicle = (payload: VehicleRenamePayload) =>
   emitSceneAck<VehicleView>('vehicle:rename', payload);
 
+/** Etap 65b: auta na scenie pościgu — MG stawia, przesuwa i zdejmuje. */
+export const placeChaseVehicle = (payload: ChasePlacePayload) =>
+  emitSceneAck<SceneVehicleView>('chase:place', payload);
+export const moveChaseVehicle = (sceneVehicleId: string, x: number, y: number) =>
+  emitSceneAck<SceneVehicleView>('chase:move', { sceneVehicleId, x, y });
+export const removeChaseVehicle = (sceneVehicleId: string) =>
+  emitSceneAck('chase:remove', { sceneVehicleId });
+/** Figura siada w fotelu (gracz własną, MG każdą). */
+export const seatInVehicle = (payload: VehicleSeatPayload) => emitSceneAck('vehicle:seat', payload);
+/** Właściciel auta (albo MG) daje karcie kierownicę albo ją odbiera. */
+export const allowVehicleDriver = (payload: VehicleAllowDriverPayload) =>
+  emitSceneAck<SceneVehicleView>('vehicle:allow-driver', payload);
+
 function emitSceneAck<T = undefined>(event: string, payload: unknown): Promise<SocketAck<T>> {
   return new Promise((resolve) => {
     if (!socket) {
@@ -3464,7 +3492,8 @@ export const startSession = (campaignId: string) =>
 /** „Zakończ sesję” (etap 44c): slot wolny, gracze wracają do widoku między sesjami. */
 export const endSession = (campaignId: string) => emitSceneAck('session:end', { campaignId });
 
-export const createScene = (name: string) => emitSceneAck<SceneView>('scene:create', { name });
+export const createScene = (name: string, kind: SceneKind = 'map') =>
+  emitSceneAck<SceneView>('scene:create', { name, kind });
 
 export const updateScene = (sceneId: string, patch: ScenePatch) =>
   emitSceneAck<SceneView>('scene:update', { sceneId, patch });

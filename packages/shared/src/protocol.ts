@@ -30,6 +30,7 @@ import type { SceneSummary, SceneView } from './scenes.js';
 import type { TokenTargetView, TokenView } from './tokens.js';
 import type { TradeView } from './trade.js';
 import type { VehicleView } from './vehicles.js';
+import type { SceneVehicleView } from './chase.js';
 import type { ExchangeCounterpartKind, ExchangeUnavailable } from './exchange.js';
 import type { ContainerLock, ContainerPreset } from './containers.js';
 import type {
@@ -175,9 +176,14 @@ export interface StateSyncPayload {
   characters: CharacterView[];
   /**
    * Pojazdy kampanii (etap 65a): MG — wszystkie, gracz — pojazdy swoich kart.
-   * Auto NPC-a gracz zobaczy dopiero na scenie pościgu (65b).
+   * Auto NPC-a gracz widzi tylko na scenie pościgu (65b, `sceneVehicles`).
    */
   vehicles: VehicleView[];
+  /**
+   * Auta na oglądanej scenie pościgu (etap 65b) — z bryłą, bo gracz nie ma
+   * pojazdów NPC-ów w `vehicles`. MG: wszystkie, gracz: te w kadrze.
+   */
+  sceneVehicles: SceneVehicleView[];
   /** Bot profiles — GM only (they carry secrets), always empty for players. */
   bots: BotView[];
   /** Bot availability, filtered by role (players get no diagnostics). */

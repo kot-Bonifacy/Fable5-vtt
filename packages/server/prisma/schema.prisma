@@ -540,8 +540,9 @@ model Vehicle {
   createdAt        DateTime @default(now())
   updatedAt        DateTime @default(now()) @updatedAt
 
-  campaign Campaign   @relation(fields: [campaignId], references: [id], onDelete: Cascade)
-  owner    Character? @relation(fields: [ownerCharacterId], references: [id], onDelete: SetNull)
+  campaign  Campaign      @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  owner     Character?    @relation(fields: [ownerCharacterId], references: [id], onDelete: SetNull)
+  placement SceneVehicle?
 
   @@index([campaignId])
   @@index([ownerCharacterId])
@@ -770,19 +771,59 @@ model Token {
    * rzucały. Null — figura się nie skrada.
    */
   sneak String?
+  /**
+   * Fotel w aucie na scenie pościgu (etap 65b): auto i numer fotela z układu
+   * (`VEHICLE_LAYOUTS`, 0 = kierowca). `x`, `y` figury dalej są prawdziwe —
+   * serwer przelicza je przy każdym ruchu auta, więc zasięg, linia strzału
+   * i PT nie wiedzą o pojazdach. Auto zdjęte ze sceny zeruje `sceneVehicleId`
+   * (`SetNull`); `vehicleSeat` bez auta nic nie znaczy.
+   */
+  sceneVehicleId String?
+  vehicleSeat    Int?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  scene     Scene      @relation(fields: [sceneId], references: [id], onDelete: Cascade)
-  owner     User?      @relation(fields: [ownerId], references: [id], onDelete: SetNull)
-  character Character? @relation(fields: [characterId], references: [id], onDelete: SetNull)
+  scene        Scene         @relation(fields: [sceneId], references: [id], onDelete: Cascade)
+  owner        User?         @relation(fields: [ownerId], references: [id], onDelete: SetNull)
+  character    Character?    @relation(fields: [characterId], references: [id], onDelete: SetNull)
+  sceneVehicle SceneVehicle? @relation(fields: [sceneVehicleId], references: [id], onDelete: SetNull)
   /// Removing a token pulls it out of any running combat.
   combatants Combatant[]
   netRun     NetRun?
 
   @@index([sceneId])
   @@index([characterId])
+  @@index([sceneVehicleId])
+}
+
+/**
+ * Auto stojące na scenie pościgu (etap 65b). Pojazd jest wierszem kampanii
+ * (`Vehicle`), a to jego miejsce na bieżni: środek bryły w pikselach sceny
+ * i stan w pościgu. Jedno auto stoi na jednej scenie naraz (`vehicleId`
+ * unikalne). Figury w fotelach wskazują ten wiersz (`Token.sceneVehicleId`).
+ */
+model SceneVehicle {
+  id        String @id @default(cuid())
+  sceneId   String
+  vehicleId String @unique
+  /** Środek bryły w pikselach sceny. */
+  x         Float
+  y         Float
+  /** `racing` | `behind` | `escaped` | `wrecked` (`SCENE_VEHICLE_STATUSES`). */
+  status    String @default("racing")
+  /**
+   * Karty, którym właściciel auta (albo MG) pozwolił siąść za kierownicą —
+   * JSON tablicy id (`vehicle:allow-driver`).
+   */
+  drivers   String @default("[]")
+  createdAt DateTime @default(now())
+
+  scene      Scene   @relation(fields: [sceneId], references: [id], onDelete: Cascade)
+  vehicle    Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  passengers Token[]
+
+  @@index([sceneId])
 }
 
 /** One uploaded token image — the campaign's simple asset library. */
@@ -962,6 +1003,26 @@ model Scene {
   spawnX Float?
   spawnY Float?
 
+  /**
+   * Rodzaj sceny (etap 65b): `map` — zwykła mapa, `chase` — scena pościgu:
+   * tło przewija się w kółko pod autami (bieżnia), a figury siedzą w fotelach
+   * (`SceneVehicle`). Rodzaj zmienia tylko MG; `chase → map` wysadza wszystkich
+   * z aut na miejscu.
+   */
+  kind String @default("map")
+  /** Kierunek jazdy: `right` | `left` | `up` | `down`. */
+  chaseDirection String  @default("right")
+  /** Tempo pościgu (Ruch) — prędkość bieżni u klienta, dryf aut od 65c. */
+  chaseTempo     Int     @default(40)
+  /** Droga jedzie (bieżnia się przewija) albo stoi. */
+  chaseRunning   Boolean @default(true)
+  /**
+   * Pas jezdni w poprzek kierunku jazdy, w kratkach od krawędzi sceny
+   * (od–do, włącznie z `from`, bez `to`). Null — cała szerokość sceny.
+   */
+  chaseRoadFrom  Int?
+  chaseRoadTo    Int?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -981,6 +1042,7 @@ model Scene {
   defenseZones DefenseZone[]
   exploration  SceneExploration?
   playerExplorations PlayerExploration[]
+  vehicles     SceneVehicle[]
 
   @@index([campaignId, active])
 }

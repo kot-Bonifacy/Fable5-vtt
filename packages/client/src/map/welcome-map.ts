@@ -1,4 +1,5 @@
-import { DEFAULT_GRID, gridSizeForColumns, type SceneView } from '@vtt/shared';
+// prettier-ignore
+import { DEFAULT_CHASE_SETTINGS, DEFAULT_GRID, gridSizeForColumns, type SceneView } from '@vtt/shared';
 
 /**
  * Mapa powitalna gracza (zlecenie MG, 11.09.2026).
@@ -74,6 +75,8 @@ export function buildWelcomeScene(width: number, height: number): SceneView {
     // Miejsca startu MG tu nie wyznaczy — tło nie ma wiersza w bazie, więc
     // kamera bierze to, co bez wyznaczonego punktu: środek dolnej krawędzi.
     spawn: null,
+    kind: 'map',
+    chase: DEFAULT_CHASE_SETTINGS,
   };
 }
 

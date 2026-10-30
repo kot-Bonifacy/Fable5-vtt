@@ -1,6 +1,18 @@
 import { useEffect, useState, type ChangeEvent, type ReactNode } from 'react';
-import type { GridConfig, MapUploadResult, ScenePatch, SceneVisibility } from '@vtt/shared';
+import type {
+  ChaseDirection,
+  GridConfig,
+  MapUploadResult,
+  SceneKind,
+  ScenePatch,
+  SceneVisibility,
+} from '@vtt/shared';
 import {
+  CHASE_DIRECTIONS,
+  CHASE_DIRECTION_LABELS,
+  CHASE_TEMPO_MAX,
+  CHASE_TEMPO_MIN,
+  chaseIsHorizontal,
   GRID_SIZE_MAX,
   GRID_SIZE_MIN,
   SCENE_DARK_SIGHT_MAX_M,
@@ -33,12 +45,27 @@ import {
   IconWall,
 } from './MapIcons.js';
 
-type SceneTab = 'map' | 'grid' | 'vision';
+type SceneTab = 'map' | 'grid' | 'vision' | 'chase';
 
 const TABS: { id: SceneTab; label: string }[] = [
   { id: 'map', label: 'Mapa' },
   { id: 'grid', label: 'Siatka' },
   { id: 'vision', label: 'Widoczność' },
+  { id: 'chase', label: 'Pościg' },
+];
+
+/** Rodzaj sceny (etap 65b) — przełącznik na zakładce „Pościg”. */
+const SCENE_KINDS_UI: { id: SceneKind; label: string; hint: string }[] = [
+  {
+    id: 'map',
+    label: 'Mapa',
+    hint: 'Zwykła mapa: figury chodzą po niej same. Zmiana z pościgu wysadza wszystkich z aut tam, gdzie siedzieli.',
+  },
+  {
+    id: 'chase',
+    label: 'Pościg',
+    hint: 'Droga przewija się pod autami, a postacie siedzą w fotelach i jadą razem z autem.',
+  },
 ];
 
 /** Które pola szkicu należą do której zakładki — kropka „niezapisane” na zakładce. */
@@ -59,6 +86,7 @@ function tabIsDirty(tab: SceneTab, draft: ScenePatch | null): boolean {
       draft.metersPerSquare !== undefined
     );
   }
+  if (tab === 'chase') return draft.kind !== undefined || draft.chase !== undefined;
   return false;
 }
 
@@ -303,6 +331,74 @@ function GridColumnsField({
           : `W pionie wychodzi ${formatDecimal(rows, 2)} — ostatni rząd rozjeżdża się o ${formatDecimal(leftoverPx, 1)} px.`}
       </p>
     </>
+  );
+}
+
+/**
+ * Pas jezdni sceny pościgu (65b): od–do w kratkach w poprzek kierunku jazdy.
+ * Auto nie wyjedzie poza pas; bez pasa jeździ po całej szerokości sceny.
+ * Pas widać u MG na mapie jako dwie przerywane linie.
+ */
+function ChaseRoadSection({
+  road,
+  horizontal,
+  cells,
+  onChange,
+}: {
+  road: { from: number; to: number } | null;
+  horizontal: boolean;
+  cells: number;
+  onChange: (road: { from: number; to: number } | null) => void;
+}) {
+  const span = road ?? { from: 0, to: Math.max(1, cells) };
+  const set = (from: number, to: number) => {
+    const a = Math.max(0, Math.round(from));
+    const b = Math.max(a + 1, Math.round(to));
+    onChange({ from: a, to: b });
+  };
+  return (
+    <section className="settings-group">
+      <h3 className="settings-group-title">Pas jezdni</h3>
+      <label
+        className="settings-row settings-row--switch"
+        title="Auta mogą stanąć wszędzie w poprzek sceny."
+      >
+        <input
+          type="checkbox"
+          checked={road === null}
+          onChange={(e) => (e.target.checked ? onChange(null) : set(span.from, span.to))}
+        />
+        <span>Cała szerokość sceny</span>
+      </label>
+      {road !== null && (
+        <div
+          className="settings-row"
+          title={`${horizontal ? 'Wiersze' : 'Kolumny'} kratek liczone od ${horizontal ? 'górnej' : 'lewej'} krawędzi sceny (od 0) — pierwsza zajęta przez jezdnię i pierwsza za nią.`}
+        >
+          <label className="settings-label" htmlFor="chase-road-from">
+            {horizontal ? 'Wiersze' : 'Kolumny'}
+          </label>
+          <input
+            id="chase-road-from"
+            type="number"
+            className="scene-number-input"
+            aria-label="Pas jezdni od kratki"
+            min={0}
+            value={road.from}
+            onChange={(e) => set(Number(e.target.value), road.to)}
+          />
+          <span className="scene-config-unit">–</span>
+          <input
+            type="number"
+            className="scene-number-input"
+            aria-label="Pas jezdni do kratki"
+            min={1}
+            value={road.to}
+            onChange={(e) => set(road.from, Number(e.target.value))}
+          />
+        </div>
+      )}
+    </section>
   );
 }
 
@@ -677,6 +773,72 @@ function SceneConfigBody() {
                     </>
                   )}
                 </section>
+              </>
+            )}
+          </>
+        )}
+
+        {tab === 'chase' && (
+          <>
+            <section className="settings-group">
+              <h3 className="settings-group-title">Rodzaj sceny</h3>
+              <Segmented
+                label="Rodzaj sceny"
+                options={SCENE_KINDS_UI}
+                value={scene.kind}
+                onChange={(kind) => patchDraft({ kind })}
+              />
+            </section>
+            {scene.kind === 'chase' && (
+              <>
+                <section className="settings-group">
+                  <h3 className="settings-group-title">Jazda</h3>
+                  <Segmented<ChaseDirection>
+                    label="Kierunek jazdy"
+                    options={CHASE_DIRECTIONS.map((id) => ({
+                      id,
+                      label: CHASE_DIRECTION_LABELS[id],
+                      hint: `Auta jadą ${CHASE_DIRECTION_LABELS[id]}, a droga przewija się w przeciwną stronę.`,
+                    }))}
+                    value={scene.chase.direction}
+                    onChange={(direction) => patchDraft({ chase: { direction } })}
+                  />
+                  <div
+                    className="settings-row"
+                    title="Ruch pościgu: tempo / 4 kratek na rundę. Tyle jedzie droga, a od walki pojazdów auto wolniejsze od tempa traci dystans."
+                  >
+                    <label className="settings-label" htmlFor="chase-tempo">
+                      Tempo (Ruch)
+                    </label>
+                    <input
+                      id="chase-tempo"
+                      type="number"
+                      className="scene-number-input"
+                      min={CHASE_TEMPO_MIN}
+                      max={CHASE_TEMPO_MAX}
+                      step={5}
+                      value={scene.chase.tempo}
+                      onChange={(e) => patchDraft({ chase: { tempo: Number(e.target.value) } })}
+                    />
+                  </div>
+                  <label className="settings-row settings-row--switch">
+                    <input
+                      type="checkbox"
+                      checked={scene.chase.running}
+                      onChange={(e) => patchDraft({ chase: { running: e.target.checked } })}
+                    />
+                    <span>Droga jedzie</span>
+                  </label>
+                </section>
+                <ChaseRoadSection
+                  road={scene.chase.road}
+                  horizontal={chaseIsHorizontal(scene.chase.direction)}
+                  cells={Math.floor(
+                    (chaseIsHorizontal(scene.chase.direction) ? scene.height : scene.width) /
+                      scene.grid.sizePx,
+                  )}
+                  onChange={(road) => patchDraft({ chase: { road } })}
+                />
               </>
             )}
           </>

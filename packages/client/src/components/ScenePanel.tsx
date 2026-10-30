@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react';
-import type { SceneSummary } from '@vtt/shared';
+import type { SceneKind, SceneSummary } from '@vtt/shared';
 import { confirmDestructive } from '../confirm.js';
 import { noteAck } from '../notices.js';
 import { readinessKey } from '../session-readiness.js';
@@ -100,6 +100,8 @@ export function ScenePanel() {
   const scenes = useSceneStore((s) => s.scenes);
   const viewedId = useSceneStore((s) => s.scene?.id ?? null);
   const [newName, setNewName] = useState('');
+  // Etap 65b: rodzaj nowej sceny — zwykła mapa albo pościg z bieżnią.
+  const [newKind, setNewKind] = useState<SceneKind>('map');
   // Edycja sceny to osobne okno (`SceneConfigWindow`, 15.10) — panel je tylko otwiera.
   const setEditorOpen = useSceneStore((s) => s.setEditorOpen);
 
@@ -107,7 +109,7 @@ export function ScenePanel() {
     event.preventDefault();
     const trimmed = newName.trim();
     if (trimmed.length === 0) return;
-    const ack = await createScene(trimmed);
+    const ack = await createScene(trimmed, newKind);
     if (ack.ok && ack.data) {
       setNewName('');
       await viewScene(ack.data.id);
@@ -147,6 +149,15 @@ export function ScenePanel() {
           value={newName}
           onChange={(e) => setNewName(e.target.value)}
         />
+        <select
+          aria-label="Rodzaj nowej sceny"
+          title="Pościg: droga przewija się pod autami, a postacie siedzą w fotelach"
+          value={newKind}
+          onChange={(e) => setNewKind(e.target.value === 'chase' ? 'chase' : 'map')}
+        >
+          <option value="map">Mapa</option>
+          <option value="chase">Pościg</option>
+        </select>
         <button className="primary-button" type="submit" disabled={newName.trim().length === 0}>
           Utwórz
         </button>

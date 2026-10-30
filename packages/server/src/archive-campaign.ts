@@ -270,6 +270,7 @@ export async function importCampaign(
   for (const scene of scenes) {
     claim(scene.id);
     for (const token of asRows(scene.tokens)) claim(token.id);
+    for (const row of asRows(scene.sceneVehicles)) claim(row.id);
   }
   for (const rows of [bots, compendium, knowledge, journal, handouts, architectures]) {
     for (const row of rows) claim(row.id);
@@ -443,6 +444,8 @@ export async function importCampaign(
           owner: (old) => member(old),
           wallIds: walls,
           remap,
+          vehicleId: (old) => ids.get(old),
+          sceneVehicleId: (old) => ids.get(old),
         });
         droppedBindings += created.droppedBindings;
       }

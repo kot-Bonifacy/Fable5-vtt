@@ -121,6 +121,7 @@ interface World {
   portraitAssetId: string;
   merchantId: string;
   vehicleId: string;
+  sceneVehicleId: string;
 }
 
 let A: World;
@@ -300,6 +301,11 @@ async function seedWorld(campaignId: string, gmId: string, label: string): Promi
   const vehicle = await p.vehicle.create({
     data: { campaignId, ownerCharacterId: character.id, name },
   });
+  // Etap 65b: auto na drodze sceny (scena świata nie musi być pościgiem —
+  // obce id odpada wcześniej, na `requirePlaced`).
+  const sceneVehicle = await p.sceneVehicle.create({
+    data: { sceneId: scene.id, vehicleId: vehicle.id, x: 500, y: 500 },
+  });
   return {
     campaignId,
     gmId,
@@ -334,6 +340,7 @@ async function seedWorld(campaignId: string, gmId: string, label: string): Promi
     portraitAssetId: portraitAsset.id,
     merchantId: merchant.id,
     vehicleId: vehicle.id,
+    sceneVehicleId: sceneVehicle.id,
   };
 }
 
@@ -852,6 +859,20 @@ const CASES: Record<string, Case> = {
   'vehicle:update': foreign((a) => ({ vehicleId: a.vehicleId, patch: { name: 'x' } })),
   'vehicle:delete': foreign((a) => ({ vehicleId: a.vehicleId })),
   'vehicle:rename': foreign((a) => ({ vehicleId: a.vehicleId, name: 'x' })),
+  // chase (etap 65b)
+  'chase:place': foreign((a) => ({ sceneId: a.sceneId, vehicleId: a.vehicleId, x: 1, y: 1 })),
+  'chase:move': foreign((a) => ({ sceneVehicleId: a.sceneVehicleId, x: 1, y: 1 })),
+  'chase:remove': foreign((a) => ({ sceneVehicleId: a.sceneVehicleId })),
+  'vehicle:seat': foreign((a) => ({
+    tokenId: a.tokenId,
+    sceneVehicleId: a.sceneVehicleId,
+    seat: 1,
+  })),
+  'vehicle:allow-driver': foreign((a) => ({
+    sceneVehicleId: a.sceneVehicleId,
+    tokenId: a.tokenId,
+    allow: true,
+  })),
   // team
   'character:team-hire': foreign((a) => ({
     characterId: a.characterId,

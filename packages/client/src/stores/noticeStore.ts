@@ -42,7 +42,9 @@ export type NoticeTopic =
   /** Pobranie i wczytanie kopii (etap 57a). */
   | 'archive'
   /** Tryb skradania (etap 61): prośba, koniec trybu, zauważenie przez Neutralnego. */
-  | 'sneak';
+  | 'sneak'
+  /** Scena pościgu (etap 65b): auta i fotele. */
+  | 'chase';
 
 export interface NoticeAction {
   label: string;

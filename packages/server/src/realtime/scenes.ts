@@ -1,5 +1,6 @@
 import type { Socket } from 'socket.io';
 import type {
+  ChaseSettings,
   SceneActivateBroadcast,
   SceneCreatePayload,
   SceneIdPayload,
@@ -13,7 +14,10 @@ import type {
 } from '@vtt/shared';
 import {
   ROLE_GM,
+  defaultChaseDirection,
   isAmbiencePreset,
+  isChaseDirection,
+  isSceneKind,
   isPlayerMoveMode,
   isSceneVisibility,
   normalizeGridOffset,
@@ -28,6 +32,7 @@ import { forgetScene } from './undo-buffer.js';
 import { placeOwedCreationTokens } from './creation.js';
 import { releaseTargetsOffScene } from './target.js';
 import { endCampaignSneaks } from './sneak.js';
+import { settleChaseAfterSceneChange } from './chase.js';
 import { campaignRoom, gmRoom, sceneRoom } from './state.js';
 
 export function toSceneView(scene: Scene): SceneView {
@@ -73,6 +78,28 @@ export function toSceneView(scene: Scene): SceneView {
     // graczy — to ich kamera je czyta, gdy nie mają jeszcze figury na mapie.
     spawn:
       scene.spawnX !== null && scene.spawnY !== null ? { x: scene.spawnX, y: scene.spawnY } : null,
+    kind: isSceneKind(scene.kind) ? scene.kind : 'map',
+    chase: chaseSettingsOf(scene),
+  };
+}
+
+/** Ustawienia pościgu z wiersza sceny (etap 65b); nieczytelne pola — domyślne. */
+export function chaseSettingsOf(
+  scene: Pick<
+    Scene,
+    'chaseDirection' | 'chaseTempo' | 'chaseRunning' | 'chaseRoadFrom' | 'chaseRoadTo'
+  >,
+): ChaseSettings {
+  return {
+    direction: isChaseDirection(scene.chaseDirection) ? scene.chaseDirection : 'right',
+    tempo: scene.chaseTempo,
+    running: scene.chaseRunning,
+    road:
+      scene.chaseRoadFrom !== null &&
+      scene.chaseRoadTo !== null &&
+      scene.chaseRoadTo > scene.chaseRoadFrom
+        ? { from: scene.chaseRoadFrom, to: scene.chaseRoadTo }
+        : null,
   };
 }
 
@@ -161,8 +188,19 @@ export const sceneCreateEvent = defineEvent<SceneCreatePayload, SceneView>({
     const campaignId = requireCampaignId(socket.data);
     const name = sanitizeSceneName(payload?.name);
     if (name === null) throw new RealtimeError('INVALID_NAME');
-
-    const scene = await deps.ctx.prisma.scene.create({ data: { name, campaignId } });
+    // Scena pościgu (etap 65b) startuje otwarta, bez ciemności i pamięci mapy,
+    // w skali 1 m na kratkę: na autostradzie nie ma ścian, a widzenie z auta
+    // tylko by migało. Ruch graczy stoi (Stop), jak na każdej nowej scenie.
+    const chase = payload?.kind === 'chase';
+    const scene = await deps.ctx.prisma.scene.create({
+      data: {
+        name,
+        campaignId,
+        ...(chase
+          ? { kind: 'chase', visibility: 'open', dark: false, explore: false, metersPerSquare: 1 }
+          : {}),
+      },
+    });
     await emitSceneList(deps, campaignId);
     return toSceneView(scene);
   },
@@ -193,12 +231,31 @@ export const sceneUpdateEvent = defineEvent<SceneUpdatePayload, SceneView>({
         // the patch sets dimensions explicitly.
         if (patch.width === undefined) data.width = patch.background.width;
         if (patch.height === undefined) data.height = patch.background.height;
+        // Droga na scenie pościgu (65b) biegnie zwykle wzdłuż dłuższego boku
+        // mapy — nowe tło zgaduje kierunek jazdy, chyba że łata go podaje.
+        if ((patch.kind ?? scene.kind) === 'chase' && patch.chase?.direction === undefined) {
+          data.chaseDirection = defaultChaseDirection(
+            patch.background.width,
+            patch.background.height,
+          );
+        }
       }
     }
     if (patch.width !== undefined) data.width = patch.width;
     if (patch.height !== undefined) data.height = patch.height;
     if (patch.playerMove !== undefined) data.playerMove = patch.playerMove;
     if (patch.ambience !== undefined) data.ambience = patch.ambience;
+    if (patch.kind !== undefined) data.kind = patch.kind;
+    if (patch.chase !== undefined) {
+      const chase = patch.chase;
+      if (chase.direction !== undefined) data.chaseDirection = chase.direction;
+      if (chase.tempo !== undefined) data.chaseTempo = chase.tempo;
+      if (chase.running !== undefined) data.chaseRunning = chase.running;
+      if (chase.road !== undefined) {
+        data.chaseRoadFrom = chase.road?.from ?? null;
+        data.chaseRoadTo = chase.road?.to ?? null;
+      }
+    }
     if (patch.spawn !== undefined) {
       data.spawnX = patch.spawn === null ? null : patch.spawn.x;
       data.spawnY = patch.spawn === null ? null : patch.spawn.y;
@@ -231,6 +288,18 @@ export const sceneUpdateEvent = defineEvent<SceneUpdatePayload, SceneView>({
     }
     if (patch.name !== undefined || patch.background !== undefined || patch.spawn !== undefined) {
       await emitSceneList(deps, campaignId);
+    }
+    // Etap 65b: zmiana rodzaju, kierunku albo pasa jezdni przestawia auta —
+    // `chase → map` zdejmuje je z drogi i wysadza figury na miejscu, reszta
+    // przycina auta do nowego pasa i przesadza figury w fotelach.
+    if (
+      patch.kind !== undefined ||
+      patch.chase?.direction !== undefined ||
+      patch.chase?.road !== undefined ||
+      patch.background !== undefined ||
+      patch.grid !== undefined
+    ) {
+      await settleChaseAfterSceneChange(deps, campaignId, updated);
     }
     return view;
   },

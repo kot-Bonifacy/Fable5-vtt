@@ -134,46 +134,81 @@ tak jak `Character.sheet`.
 10. **Rozmiar i układ foteli idą za fotelami po ulepszeniach** (`cpredVehicleLayout`), chyba że MG
     ustawi je ręcznie w tej samej zmianie.
 
-## 65b — scena pościgu: bieżnia, auta, fotele ⬜
+## 65b — scena pościgu: bieżnia, auta, fotele ✅ (30.10)
 
-- [ ] `Scene.kind` = `"map" | "chase"` (migracja, stare sceny `"map"`), do tego `chaseDirection`
+- [x] `Scene.kind` = `"map" | "chase"` (migracja, stare sceny `"map"`), do tego `chaseDirection`
       (`right | left | up | down` — kierunek jazdy, domyślnie z proporcji tła: szersze → `right`),
       `chaseTempo` (Ruch, domyślnie 40), `chaseRunning` (droga jedzie / stoi), `chaseRoadFrom`,
       `chaseRoadTo` (pas jezdni w poprzek kierunku, w kratkach; auto nie wyjedzie poza niego).
       Nowa scena pościgu startuje z `visibility = "open"`, bez mgły i ciemności,
       `metersPerSquare = 1`, `playerMove = "stop"`.
-- [ ] „Nowa scena” pyta o rodzaj: „Mapa” / „Pościg”. Edycja sceny → sekcja „Pościg” (kierunek,
+- [x] „Nowa scena” pyta o rodzaj: „Mapa” / „Pościg”. Edycja sceny → sekcja „Pościg” (kierunek,
       tempo, pas jezdni, „Droga jedzie”). Rodzaj zmienia tylko MG; przejście `chase → map`
       wysadza wszystkich z aut na miejscu.
-- [ ] Prisma `SceneVehicle`: `sceneId`, `vehicleId`, `x`, `y` (środek bryły w pikselach sceny),
+- [x] Prisma `SceneVehicle`: `sceneId`, `vehicleId`, `x`, `y` (środek bryły w pikselach sceny),
       `status` (`racing | behind | escaped | wrecked`). Jedno auto stoi na jednej scenie naraz.
-- [ ] `Token.vehicleSeat` (`sceneVehicleId` + numer fotela). **Serwer przelicza `x`, `y`
+- [x] `Token.vehicleSeat` (`sceneVehicleId` + numer fotela). **Serwer przelicza `x`, `y`
       figur w fotelach przy każdym ruchu auta i zapisuje je jak zwykły ruch** — zasięgi, linia
       strzału, PT i cała reszta liczą z figur bez wiedzy o pojazdach (rdzeń bez zmian).
       Figura w fotelu nie chodzi: `token:move` odmawia (`IN_VEHICLE`), poza MG.
-- [ ] Bieżnia w Pixi: tło jako `TilingSprite` przewijane wzdłuż `chaseDirection` z prędkością
+- [x] Bieżnia w Pixi: tło jako `TilingSprite` przewijane wzdłuż `chaseDirection` z prędkością
       z `chaseTempo`, **wyłącznie po stronie klienta** (serwer niesie tylko tempo i `chaseRunning`;
       faza przewijania nie jest synchronizowana — to dekoracja). Szew: przy wczytaniu tła na
       płótnie powstaje tekstura, w której ostatnie ~3 kratki przenikają się z pierwszymi, więc
       zapętla się każda mapa drogi. `prefers-reduced-motion` → droga jedzie wolno.
-- [ ] Auto na mapie: sprite obrócony do kierunku jazdy (grafiki rysowane przodem do góry),
+- [x] Auto na mapie: sprite obrócony do kierunku jazdy (grafiki rysowane przodem do góry),
       podpis z nazwą, pasek PUK (65d), znaczniki wolnych foteli. Figury na fotelach w normalnym
       rozmiarze, nad autem.
-- [ ] Rozsadzanie: gracz klika wolny fotel w aucie (`vehicle:seat`); fotel kierowcy tylko
+- [x] Rozsadzanie: gracz klika wolny fotel w aucie (`vehicle:seat`); fotel kierowcy tylko
       właściciel auta albo gracz, któremu właściciel dał zgodę (`vehicle:allow-driver`), MG
       zawsze. Gracz przesiada się na wolny fotel tego samego auta. MG przeciąga figurę na
       dowolny fotel dowolnego auta i z auta na jezdnię.
-- [ ] MG stawia auto na drodze z karty postaci albo z okna „Pojazdy” (przeciągnięcie na mapę).
-- [ ] Grafiki startowe: auta i motocykl z wolną licencją (widok z góry, styl możliwie zbliżony
+- [x] MG stawia auto na drodze z karty postaci albo z okna „Pojazdy” (przeciągnięcie na mapę).
+- [x] Grafiki startowe: auta i motocykl z wolną licencją (widok z góry, styl możliwie zbliżony
       do przykładów MG), w `packages/client/public/art/vehicles/` z plikiem licencji;
       przy grafice dowolnej MG wgrywa własną (uploads).
-- [ ] Testy: `shared` (pozycja fotela po obrocie, pas jezdni), serwer (fotel kierowcy bez zgody
+- [x] Testy: `shared` (pozycja fotela po obrocie, pas jezdni), serwer (fotel kierowcy bez zgody
       odmówiony, ruch auta przenosi figury, `token:move` w fotelu odmówiony).
+
+### Rozstrzygnięcia 65b bez pytań (30.10)
+
+1. **Zgoda na kierownicę trzyma się karty** (`SceneVehicle.drivers` — id kart), ale
+   `vehicle:allow-driver` bierze **figurę**: gracz nie zna kart cudzych figur (`characterId` jedzie
+   tylko w widoku prywatnym), a widok auta niesie `driverTokenIds`. Figura bez karty kierownicę
+   dostaje od MG ręką. Daje ją właściciel auta albo MG w menu auta („Może prowadzić”).
+2. **Gracz wsiada z jezdni do dowolnego auta** (pierwsze rozsadzenie) i przesiada się w obrębie
+   swojego; do innego auta przesadza tylko MG (`VEHICLE_SWITCH_GM_ONLY`). Odległość od auta nie
+   gra roli — rozsadzanie dzieje się przed pościgiem.
+3. **MG przesadza upuszczeniem figury** (`token:move` z ręki, `final`): na wolny fotel — siada
+   (także w innym aucie), na auto bez wolnego fotela pod kursorem — wraca na swój, na jezdnię —
+   wysiada. Bot pożycza konto MG, ale nie ma `hand`, więc z fotela nie wychodzi (`IN_VEHICLE`).
+4. **W 65b auto przesuwa tylko MG** przeciągnięciem (`chase:move`, bez budżetu, przycięte do pasa
+   jezdni) — jazdę kierowcy i jego budżet daje 65c.
+5. **Ustawienia pościgu to zakładka „Pościg” w Edycji sceny** (rodzaj, kierunek, tempo, „Droga
+   jedzie”, pas jezdni) — szkic z „Zapisz”, jak Mapa i Siatka, bo niczego graczom nie zabiera.
+   Pas widać u MG jako dwie przerywane bursztynowe linie.
+6. **Kierunek jazdy zgaduje każde nowe tło sceny pościgu** (szersze → w prawo, wyższe → w górę),
+   chyba że łata podaje kierunek — MG poprawia go potem w zakładce.
+7. **„Na drogę”** na karcie pojazdu (u MG, gdy ogląda scenę pościgu) stawia auto na środku sceny
+   przyciętym do pasa; przeciągnięcie karty na mapę — tam, gdzie upuszczono.
+8. **Grafiki: 8 aut z paczki Unlucky Studio (CC0)**, `public/art/vehicles/ATTRIBUTION.md`.
+   Motocykla w wolnej licencji i tym stylu nie znaleziono — rysuje się bryłą zastępczą
+   (zaległość). Auto bez grafiki dostaje domyślną wg układu (`defaultVehicleArt`); właściciel
+   wybiera wbudowaną na karcie pojazdu („Grafika”). Obrazek jest wpisany w bryłę z zachowaniem
+   proporcji (auta z paczki są smuklejsze od 3×5).
+9. **Gracz widzi auta `racing` i `wrecked`**, `behind`/`escaped` — tylko MG (pod 65c);
+   `chase:sync` jest celowany per widz, bez seq.
+10. **Auta na scenie jadą w paczce tylko z kampanią** (`SceneArchive.sceneVehicles`, fotele figur
+    przez mapę id); pojedyncza scena w innej kampanii wjeżdża bez aut, a figury bez foteli.
+11. **Bieżnia rusza, gdy zapętlona tekstura jest gotowa**; do tego czasu stoi zwykłe tło. Szew
+    przenika `CHASE_SEAM_SQUARES` = 3 kratki na płótnie (`buildSeamlessTexture`).
 
 ## 65c — jazda, tempo i odpadanie ⬜
 
 - [ ] Poza walką: kierowca przeciąga auto w pasie jezdni bez budżetu (MG ustawia szyk), dryf
-      nie działa.
+      nie działa. Dziś (65b) przeciąga tylko MG: `chase:move` + `ChaseLayer.beginDrag`.
+- [ ] Kamera gracza jedzie za autem, w którym siedzi jego figura (oględziny 65b: po ruchu auta
+      figura wyjeżdża graczowi z kadru).
 - [ ] Uruchomienie pojazdu (`vehicle-start` z `turn.ts`) za Akcję: kierowca przeskakuje na
       początek kolejki inicjatywy, Ruch pojazdu zastępuje Ruch kierowcy, kierowca traci Bieg.
       Auto wstawione do pościgu przez MG jest już uruchomione.

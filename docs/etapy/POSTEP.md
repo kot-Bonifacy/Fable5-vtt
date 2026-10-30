@@ -21,7 +21,7 @@ w plikach obok — czytaj je **na żądanie, nigdy rutynowo**:
 
 | stan         | etapy                                                                                          |
 | ------------ | ---------------------------------------------------------------------------------------------- |
-| ⬜ otwarty   | **65** Scena pościgu i walka pojazdów (🟨 65a ✅ 30.10, dalej 65b); **62** Sieć ze sceny (🟨 zrobione, czeka na oględziny MG na VPS po wdrożeniu); **61** Skradanie się (🟨 zrobione, czeka na słowo MG o rozstrzygnięciach); **28** Wdrożenie na VPS (🟨 działa na `https://vtt.tatanga.eu` z botami od 18.10; zostały off-site, utwardzenie, monitoring); **43b**, **43c** (UI walki); **60** Czytelny czat (zlecenie MG z 24.10; 🟨 60a–60c ✅, czeka na oględziny MG z pierwszego kryterium); T10; refaktoryzacja odłożona (MG 18.10) |
+| ⬜ otwarty   | **65** Scena pościgu i walka pojazdów (🟨 65a, 65b ✅ 30.10, dalej 65c); **62** Sieć ze sceny (🟨 zrobione, czeka na oględziny MG na VPS po wdrożeniu); **61** Skradanie się (🟨 zrobione, czeka na słowo MG o rozstrzygnięciach); **28** Wdrożenie na VPS (🟨 działa na `https://vtt.tatanga.eu` z botami od 18.10; zostały off-site, utwardzenie, monitoring); **43b**, **43c** (UI walki); **60** Czytelny czat (zlecenie MG z 24.10; 🟨 60a–60c ✅, czeka na oględziny MG z pierwszego kryterium); T10; refaktoryzacja odłożona (MG 18.10) |
 | ✅ ukończone | 01–11, 13–20b, 23a–27f, 27h–27l, 29a–30d, 31–35, 37–42c, 43a, 44a–44d, 45, 46a1, 46a2, 46c1, 46c2, 46b1, 46b2, 47a, 47b, 48a, 48b, 48c, 49a, 49b, 50a, 50b, 50c, 51, 52, 53, 54, 55, 56, 57 (57a–57c), 58 (58a–58d), 59 (59a–59c), 63 (63a–63b; 63c wycofane 29.10), 64 (64a–64c) (ostatni zamknięty: 64, 2026-10-30) |
 | ⛔ wycofane  | 12, 21, 22 (głos), 27g (wydajność), 36 (makra); 27, 29, 30, 38 rozdzielone na etapy literowane |
 
@@ -29,8 +29,15 @@ Pełna tabela z nazwami i datami: `archiwum/tabela-etapow.md`.
 
 ## Od czego zacząć
 
-**Etap 65 „Scena pościgu i walka pojazdów” (zlecenie MG z 30.10) w toku — 65a zrobiony 30.10,
-następny jest 65b (bieżnia, auta na jezdni, fotele).** Pojazd to wiersz `Vehicle` (bryła w rdzeniu,
+**Etap 65 „Scena pościgu i walka pojazdów” (zlecenie MG z 30.10) w toku — 65a i 65b zrobione
+30.10, następny jest 65c (jazda kierowcy w turze, tempo i dryf, odpadanie).** Od 65b scena ma
+rodzaj „Pościg” (wybór przy „Utwórz”, zakładka „Pościg” w Edycji sceny: kierunek, tempo, pas
+jezdni, „Droga jedzie”): tło przewija się w kółko bez szwu (`ChaseLayer`), auta to `SceneVehicle`
+(MG daje je „Na drogę” albo przeciąga kartę pojazdu na mapę i przesuwa po pasie), a figury siedzą
+w fotelach z prawdziwymi `x`, `y` — gracz klika wolny fotel, kierownica dla właściciela auta albo
+za zgodą z menu auta, MG przesadza upuszczeniem. Grafiki aut: CC0 Unlucky Studio, motocykl bez
+grafiki (zaległość). Rozstrzygnięcia 65b w pliku etapu, umowy na górze `mapa` i `kopie`.
+Pojazd to wiersz `Vehicle` (bryła w rdzeniu,
 liczby CP RED w `system`): MG daje go z katalogu w sekcji „Pojazdy” karty (Ekwipunek) albo
 w zakładce MG „Pojazdy” i zmienia wszystko w „Edytuj…”, gracz nadaje nazwę. Katalog 14 pojazdów
 z s. 190–191 to kategoria kompendium (`parse-vehicles.py` → `data/private`; **na VPS trzeba
@@ -532,7 +539,7 @@ a nie do tego pliku.
 
 | obszar      | co obejmuje                                                    | umów | pułapek |
 | ----------- | -------------------------------------------------------------- | ---- | ------- |
-| `mapa`      | figury, zaznaczanie, narzędzia, obiekty sceny, ściany, efekty, zamek drzwi, ukryta figura zauważona, ikony urządzeń, wspólny widok drużyny | 71   | 27      |
+| `mapa`      | figury, zaznaczanie, narzędzia, obiekty sceny, ściany, efekty, zamek drzwi, ukryta figura zauważona, ikony urządzeń, wspólny widok drużyny, scena pościgu | 72   | 27      |
 | `czat`      | rodzaje wierszy, `visibleTo`, filtr, `seq`, `gmrecovery`, „to dotyczy mnie”, grupy kart, kolor gracza, czyszczenie | 13   | 3       |
 | `serwer`    | Prisma i migracje, zdarzenia gniazda, zapisy karty, uploady    | 26   | 21      |
 | `ui`        | okna pływające, `z-index`, motyw, skróty, dostępność, wejście, panel decyzji MG | 37   | 15      |
@@ -547,7 +554,7 @@ a nie do tego pliku.
 | `siec`      | Programy, LOD, demony, piętra architektury, dek jako towar, strefy bronione, kamery, rozbrajanie, Sieć ze sceny | 13   | 4       |
 | `boty`      | llama-server, RAG, reindeks, dziennik i baza wiedzy, brama AI  | 10   | 10      |
 | `dane`      | `parse-manual.py`, kompendium poza repo, tabele z podręcznika  | 9    | 12      |
-| `kopie`     | `snapshot`, `archive`, paczki ZIP, wczytanie kampanii, „czeka na gracza”, kopie kampanii i cofnięcie, sklep i bot w paczce, zgłoszenie karty gracza, pojazdy w paczce | 20   | 6       |
+| `kopie`     | `snapshot`, `archive`, paczki ZIP, wczytanie kampanii, „czeka na gracza”, kopie kampanii i cofnięcie, sklep i bot w paczce, zgłoszenie karty gracza, pojazdy w paczce, auta na scenie pościgu | 21   | 6       |
 | `ogledziny` | CDP i Playwright MCP, zrzuty, dwie sesje, `window.confirm`    | 0    | 114     |
 | `testy`     | vitest, migotanie, `tsc --noEmit`, środowisko dev              | 0    | 151     |
 
@@ -555,6 +562,29 @@ a nie do tego pliku.
 ## Notatki z dwóch ostatnich sesji
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
+
+### Sesja 30.10, piąta — etap 65b „Scena pościgu: bieżnia, auta, fotele”
+
+**Zrobione wg planu:** migracja `20261031090000_chase_scene` (`Scene.kind` i `chase*`,
+`SceneVehicle`, `Token.sceneVehicleId`/`vehicleSeat`), rdzeń `shared/src/chase.ts` (fotel po
+obrocie, pas jezdni, przycięcie auta, łata ustawień), serwer `realtime/chase.ts` (`chase:place`,
+`chase:move`, `chase:remove`, `vehicle:seat`, `vehicle:allow-driver`, `chase:sync`, fotel przy
+upuszczeniu przez MG, przesadzenie po zmianie pojazdu i sceny), `IN_VEHICLE` w `token:move`
+i `token:walk`, auta i fotele w paczce kampanii. Klient: `ChaseLayer` (bieżnia z przenikającym
+szwem, auta z grafiką, znaczniki wolnych foteli, pas u MG), ciągnięcie auta przez MG, klik
+w fotel i `ChaseVehicleMenu`, „Na drogę” i przeciąganie karty pojazdu na mapę, wybór rodzaju
+przy „Utwórz”, zakładka „Pościg” w Edycji sceny, wybór wbudowanej grafiki na karcie pojazdu.
+Grafiki: 8 aut CC0 (Unlucky Studio, OpenGameArt) w `public/art/vehicles/` z atrybucją.
+Rozstrzygnięcia bez pytań 1–11 w pliku etapu. **Odstępstwa:** motocykl bez grafiki (nie ma
+wolnej w tym stylu), auto w 65b przesuwa tylko MG (jazda kierowcy to 65c), kamera gracza nie
+jedzie za autem (dopisane do 65c). Migracja ma w nazwie 31.10 zamiast 30.10 — zastosowana, więc
+zostaje. **Testy:** shared 2800 (+14 `chase.test.ts`), serwer 1696 (nowy `chase.test.ts` 8/8,
+pięć zdarzeń w macierzy izolacji), klient 442/443 — dalej tylko znany `theme.test.ts`; tsc
+i ESLint czyste. **Oglądane:** tymczasowy spec `99-ogledziny/t99-poscig` z `po-T6`: MG
+w Chromium (nowa scena „Pościg”, zakładka, pas, „Na drogę”, przeciągnięcie auta), Ola
+w **Firefoksie** na mapie wiaduktu MG (bieżnia, auto z grafiką, fotel kierowcy klikiem, menu
+auta, figura jedzie z autem). Oględziny złapały klik w fotel poza kadrem gracza (spec) i za duży
+podpis auta (zmniejszony). Na VPS nic nie zmieniano.
 
 ### Sesja 30.10, czwarta — etap 65a „Pojazd jako własność postaci”
 
@@ -579,25 +609,3 @@ Playwright MCP Firefox nie wstał (pułapka 03.10 w `ogledziny`), więc tymczaso
 ulepszenie; sekcja „Pojazdy”, zmiana nazwy), MG w Chromium (zakładka, okno edycji z regułą
 Wzmocnionej konstrukcji, Kompendium). Oględziny złapały nazwę, która nie szła za zmianą pojazdu
 w wierszu — poprawione i przykryte testem. Na VPS nic nie zmieniano.
-
-### Sesja 30.10, trzecia — etap 64 „Szybka wymiana wzorem BG3” (zlecenie MG)
-
-**Zlecenie:** szybsze oddawanie wielu rzeczy jednej osobie, wzorem BG3 — w jednym oknie mój
-ekwipunek i to, co druga strona położy w polu wymiany, przeciąganie, zatwierdzenie po uzgodnieniu.
-**Oględziny przed zmianą** (spec E2E z `po-T6`): okno handlu już miało trzy kolumny i dwie zgody,
-ale prezent trzech rzeczy kosztował 7 kroków, a u zaproszonego pola stały zamienione. **Decyzje
-MG z pytań:** boli klikanie zgód i trafianie do okna; Ctrl/Shift + przeciąganie grupy; dalej
-dwie zgody, ale zapraszający z góry i „Przyjmij” w doku ze zgodą; siatka kafli jak w BG3 w całym
-oknie; układ: ekwipunek | dwa pola na środku; nowych wejść do okna nie trzeba. **Zmiana:** 64a —
-`mayAcceptTrade`, `trade:respond` z `agree`/`version`, `settleAccept`, dok z „daje: …”,
-„Przyjmij”/„Negocjuj” (commit `113a8944`); 64b/64c — `ItemGrid.tsx` (`useGridSelection`,
-`useItemTile`), `TakeGrid.tsx`, przepisane `TradePane`, `OwnInventoryColumn`, `LootPane`,
-`ContainerPane`, `GmPane`, `MerchantPane`; ikona `hud/swap-bag.svg` (game-icons, Lorc) z wpisem
-w atrybucji; okno dwukolumnowe 800 px. Rozstrzygnięcia bez pytań — w pliku etapu. **Testy:** shared
-2765, serwer 1677 (nowy przypadek prezentu w `trade.test.ts`), klient 441/442 (dalej tylko znany
-`theme.test.ts` na `10-map-combat.css`); E2E `t46a`+`t46b` 26/26, `t6a` 13/13 bez `@llm`
-(gateway wyłączony; zapisał `po-T6a`), `t7a` 3/3; **`t4b` pada na granacie 4.6** — nie z tej
-zmiany (zaległość). **Oglądane:** Chromium (Marek, MG) i **Firefox** (Ola) na instancji E2E —
-zaznaczenie Ctrl, przeciągnięcie grupy z duchem „3 przedmioty”, zgoda z góry, dok z ofertą,
-prezent jednym „Przyjmij”, „Negocjuj”, sklep, skrzynia, łup. Na VPS nic nie zmieniano.
-

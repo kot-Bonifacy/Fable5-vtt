@@ -1,3 +1,4 @@
+import { settleSeatAfterGmDrop } from './chase.js';
 import { deferView } from './presentation.js';
 import type {
   FogShapeView,
@@ -174,6 +175,11 @@ export function toTokenView(
     // Skradanie (etap 61) jedzie do wszystkich: figurę w trybie każdy rysuje
     // półprzezroczystą. Zawsze, także `false` — klient scala widoki spreadem.
     sneaking: readTokenSneak(token.sneak) !== null,
+    // Fotel w aucie (etap 65b) jedzie do wszystkich: figurę w aucie widać.
+    vehicleSeat:
+      token.sceneVehicleId !== null && token.vehicleSeat !== null
+        ? { sceneVehicleId: token.sceneVehicleId, seat: token.vehicleSeat }
+        : null,
   };
   // Rany figury prowadzonej przez MG jadą **publicznie** (31.08): przy stole
   // widać, że ktoś ma odciętą dłoń, a Medyk gracza ma mieć co załatać. Do 38a
@@ -1806,6 +1812,8 @@ export const tokenWalkEvent = defineEvent<TokenWalkPayload, { tokenId: string }>
     if (!isGm && token.hidden) throw new RealtimeError('TOKEN_NOT_FOUND');
     if (!isGm && token.ownerId !== user.id) throw new RealtimeError('FORBIDDEN');
     if (!isGm && scene.playerMove === 'stop') throw new RealtimeError('MOVE_LOCKED');
+    // Etap 65b: figura w fotelu jedzie z autem, nie chodzi.
+    if (!isGm && token.sceneVehicleId !== null) throw new RealtimeError('IN_VEHICLE');
     await refuseMoveBeforeSightedFight(deps, scene.id, user);
     const points = sanitizeTokenPath(payload?.route);
     if (!points) throw new RealtimeError('BAD_REQUEST');
@@ -1850,8 +1858,17 @@ export const tokenWalkEvent = defineEvent<TokenWalkPayload, { tokenId: string }>
 
 export const tokenMoveEvent = defineEvent<TokenMovePayload, { x: number; y: number }>({
   name: 'token:move',
-  handler: async ({ deps, socket, user, payload }) =>
-    performTokenMove(deps, { campaignId: requireCampaignId(socket.data), user, payload }),
+  handler: async ({ deps, socket, user, payload }) => {
+    const campaignId = requireCampaignId(socket.data);
+    const landed = await performTokenMove(deps, { campaignId, user, payload, hand: true });
+    // Etap 65b: MG upuścił figurę na scenie pościgu — na fotel siada, na jezdnię
+    // wysiada. Po zapisanym lądowaniu, żeby fotel liczył się z pola, na którym stanęła.
+    if (user.role === ROLE_GM && payload?.final === true) {
+      const { scene } = await requireCampaignToken(deps.ctx.prisma, campaignId, payload.tokenId);
+      await settleSeatAfterGmDrop(deps, campaignId, scene, payload.tokenId);
+    }
+    return landed;
+  },
 });
 
 /**
@@ -1941,6 +1958,12 @@ export async function performTokenMove(
      * Nigdy z drutu.
      */
     judged?: boolean;
+    /**
+     * Ruch z ręki na mapie (`token:move` z gniazda). Tylko taki ruch MG
+     * wyciąga figurę z fotela auta (65b) — bot pożycza konto MG, ale w aucie
+     * jest pasażerem i nie chodzi.
+     */
+    hand?: boolean;
   },
 ): Promise<{ x: number; y: number }> {
   {
@@ -1964,6 +1987,11 @@ export async function performTokenMove(
     // dopiero na upuszczeniu (`final`), a Stop ma odrzucić także pojedynczą
     // klatkę ciągnięcia. MG nie jest nim związany nigdy (jak budżetem Tury, 14b).
     if (!isGm && scene.playerMove === 'stop') throw new RealtimeError('MOVE_LOCKED');
+    // Etap 65b: figura w fotelu jedzie z autem — przesiada się `vehicle:seat`,
+    // a z auta wyciąga ją tylko ręka MG (wysiadka na jezdnię, decyzja MG 4).
+    if (token.sceneVehicleId !== null && !(isGm && options.hand === true && !judged)) {
+      throw new RealtimeError('IN_VEHICLE');
+    }
     // Etap 56: drużyna zobaczyła wroga — do „Rozpocznij walkę” albo „Odwołaj”
     // gracze stoją, także z klatkami marszu, które były już w drodze.
     await refuseMoveBeforeSightedFight(deps, scene.id, user);

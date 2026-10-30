@@ -23,6 +23,7 @@ import { requireOwnUploadUrl } from '../campaign-uploads.js';
 import type { PrismaClient } from '../db.js';
 import type { Vehicle } from '../generated/prisma/client.js';
 import { createVehicle, toVehicleView, vehicleBodyColumns } from '../vehicles.js';
+import { refreshChaseScenes, refreshVehiclePlacement } from './chase.js';
 import { campaignEntry } from './compendium.js';
 import { RealtimeError, defineEvent, type RealtimeDeps } from './registry.js';
 import { emitToCampaignUser, gmRoom } from './state.js';
@@ -80,6 +81,8 @@ export async function emitVehicleUpsert(
   if (formerUserId && formerUserId !== userId) {
     await emitVehicleGone(deps, campaignId, row.id, formerUserId, false);
   }
+  // Auto na scenie pościgu (65b) idzie za pojazdem: nazwa, grafika, bryła, fotele.
+  await refreshVehiclePlacement(deps, campaignId, row.id);
 }
 
 export async function emitVehicleGone(
@@ -92,6 +95,9 @@ export async function emitVehicleGone(
   const payload: VehicleDeleteBroadcast = { vehicleId };
   if (toGm) deps.io.to(gmRoom(campaignId)).emit('vehicle:delete', payload);
   if (userId) await emitToCampaignUser(deps.io, campaignId, userId, 'vehicle:delete', payload);
+  // Skasowany pojazd zszedł ze sceny pościgu kaskadą (65b) — `toGm` znaczy,
+  // że zniknął naprawdę, a nie tylko z oczu dawnego właściciela.
+  if (toGm) await refreshChaseScenes(deps, campaignId);
 }
 
 /**

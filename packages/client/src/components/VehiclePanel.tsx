@@ -4,11 +4,13 @@ import {
   CPRED_VEHICLE_KIND_LABELS,
   CPRED_VEHICLE_UPGRADE_PROBLEMS,
   ROLE_GM,
+  VEHICLE_ART,
   VEHICLE_LAYOUT_IDS,
   VEHICLE_LAYOUT_LABELS,
   VEHICLE_SIZE_MAX,
   VEHICLE_SIZE_MIN,
   cpredVehicleDerived,
+  defaultVehicleArt,
   cpredVehicleUpgrade,
   cpredVehicleUpgradeProblem,
   cpredVehicleUpgradesFor,
@@ -26,7 +28,17 @@ import {
 } from '@vtt/shared';
 import { apiGet } from '../api.js';
 import { noteAck } from '../notices.js';
-import { createVehicle, deleteVehicle, renameVehicle, updateVehicle } from '../socket.js';
+import {
+  createVehicle,
+  deleteVehicle,
+  placeChaseVehicle,
+  renameVehicle,
+  updateVehicle,
+} from '../socket.js';
+import { startVehicleDrag } from '../map/vehicle-drag.js';
+import { useChaseStore } from '../stores/chaseStore.js';
+import { useSceneStore } from '../stores/sceneStore.js';
+import { chaseErrorText } from './ChaseVehicleMenu.js';
 import { useAuthStore } from '../stores/authStore.js';
 import { useCharacterStore } from '../stores/characterStore.js';
 import { useCompendiumStore } from '../stores/compendiumStore.js';
@@ -113,10 +125,38 @@ export function VehicleCard({
     if (!noteAck('character', ack, vehicleErrorText)) setName(vehicle.name);
   }
 
+  // Etap 65b: MG ogląda scenę pościgu — auto daje się postawić na drodze
+  // przyciskiem albo przeciągnięciem karty na mapę.
+  const isGm = useAuthStore((s) => s.user?.role === ROLE_GM);
+  const chaseScene = useSceneStore((s) => (s.scene?.kind === 'chase' ? s.scene : null));
+  const onRoad = useChaseStore((s) => s.vehicles.some((entry) => entry.vehicleId === vehicle.id));
+  const placeable = isGm && chaseScene !== null;
+
+  async function placeOnRoad() {
+    if (!chaseScene) return;
+    const ack = await placeChaseVehicle({
+      sceneId: chaseScene.id,
+      vehicleId: vehicle.id,
+      x: chaseScene.width / 2,
+      y: chaseScene.height / 2,
+    });
+    noteAck('chase', ack, chaseErrorText);
+  }
+
   return (
-    <li className="vehicle-card" data-vehicle-id={vehicle.id}>
+    <li
+      className="vehicle-card"
+      data-vehicle-id={vehicle.id}
+      draggable={placeable}
+      onDragStart={placeable ? (event) => startVehicleDrag(event, vehicle.id) : undefined}
+      title={placeable ? 'Przeciągnij na drogę sceny pościgu' : undefined}
+    >
       <div className="vehicle-card-thumb" aria-hidden="true">
-        {vehicle.imageUrl ? <img src={vehicle.imageUrl} alt="" /> : <span>🚗</span>}
+        {(vehicle.imageUrl ?? defaultVehicleArt(vehicle.layout)) ? (
+          <img src={vehicle.imageUrl ?? defaultVehicleArt(vehicle.layout) ?? ''} alt="" />
+        ) : (
+          <span>🏍</span>
+        )}
       </div>
       <div className="vehicle-card-body">
         <div className="vehicle-card-head">
@@ -143,6 +183,17 @@ export function VehicleCard({
               Tabor
             </span>
           ) : null}
+          {placeable && onRoad ? <span className="vehicle-card-tag">Na drodze</span> : null}
+          {placeable && !onRoad ? (
+            <button
+              type="button"
+              className="cp-mini-button"
+              title="Stawia auto na środku pasa jezdni oglądanej sceny pościgu"
+              onClick={() => void placeOnRoad()}
+            >
+              Na drogę
+            </button>
+          ) : null}
           {onEdit ? (
             <button type="button" className="cp-mini-button" onClick={onEdit}>
               Edytuj…
@@ -150,6 +201,7 @@ export function VehicleCard({
           ) : null}
         </div>
         <p className="vehicle-card-stats">{vehicleSummary(stats)}</p>
+        {canRename ? <VehicleArtPicker vehicle={vehicle} /> : null}
         {stats.upgrades.length > 0 ? (
           <ul className="vehicle-card-upgrades">
             {stats.upgrades.map((row) => {
@@ -169,6 +221,40 @@ export function VehicleCard({
         {stats.notes ? <p className="vehicle-card-notes">{stats.notes}</p> : null}
       </div>
     </li>
+  );
+}
+
+/**
+ * Wbudowana grafika pojazdu (etap 65b) — właściciel wybiera ją sam, bez MG
+ * (`vehicle:rename` przyjmuje tylko `/art/vehicles/`). Grafika z biblioteki MG
+ * stoi na liście jako „własna MG”, żeby wybór jej nie gubił po cichu.
+ */
+function VehicleArtPicker({ vehicle }: { vehicle: VehicleView }) {
+  const builtIn = VEHICLE_ART.some((art) => art.url === vehicle.imageUrl);
+  async function pick(value: string) {
+    const ack = await renameVehicle({
+      vehicleId: vehicle.id,
+      imageUrl: value === '' ? null : value,
+    });
+    noteAck('character', ack, vehicleErrorText);
+  }
+  return (
+    <label className="vehicle-card-art" title="Jak auto wygląda na scenie pościgu">
+      <span>Grafika</span>
+      <select value={vehicle.imageUrl ?? ''} onChange={(event) => void pick(event.target.value)}>
+        <option value="">domyślna</option>
+        {vehicle.imageUrl && !builtIn ? (
+          <option value={vehicle.imageUrl} disabled>
+            własna MG
+          </option>
+        ) : null}
+        {VEHICLE_ART.map((art) => (
+          <option key={art.url} value={art.url}>
+            {art.label}
+          </option>
+        ))}
+      </select>
+    </label>
   );
 }
 

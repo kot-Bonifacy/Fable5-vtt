@@ -186,6 +186,12 @@ export interface TokenView {
    * z wiersza rzutu i menu figury.
    */
   sneakDv?: number | null;
+  /**
+   * Fotel w aucie na scenie pościgu (etap 65b) — publicznie, bo figurę
+   * w fotelu widać w aucie. Zawsze, także `null`: klient scala widoki
+   * spreadem, a brak klucza zostawiłby figurę w aucie po wyjściu.
+   */
+  vehicleSeat: { sceneVehicleId: string; seat: number } | null;
 }
 
 /**

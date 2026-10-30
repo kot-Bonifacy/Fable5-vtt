@@ -417,6 +417,12 @@ export interface SceneArchive {
    */
   accessPoints?: Record<string, unknown>[];
   defenseZones?: Record<string, unknown>[];
+  /**
+   * Etap 65b: auta na scenie pościgu. Wskazują pojazdy kampanii, więc wracają
+   * tylko z kampanią (`SceneInsertOptions.vehicleId`); pojedyncza scena w innej
+   * kampanii wjeżdża bez aut, a figury — bez foteli.
+   */
+  sceneVehicles?: Record<string, unknown>[];
 }
 
 /** Kolumny sceny, które opisują scenę — bez `id`, `campaignId` i `active`. */
@@ -445,6 +451,12 @@ const SCENE_COLUMNS = {
   spawnY: true,
   playerMove: true,
   ambience: true,
+  kind: true,
+  chaseDirection: true,
+  chaseTempo: true,
+  chaseRunning: true,
+  chaseRoadFrom: true,
+  chaseRoadTo: true,
 } as const;
 
 export async function exportScene(
@@ -458,7 +470,7 @@ export async function exportScene(
   if (!scene) return null;
   const { campaign, ...sceneColumns } = scene;
 
-  const [tokens, walls, covers, lights, notes, drawings, fog, smoke, exploration] =
+  const [tokens, walls, covers, lights, notes, drawings, fog, smoke, exploration, sceneVehicles] =
     await Promise.all([
       prisma.token.findMany({
         where: { sceneId },
@@ -493,6 +505,9 @@ export async function exportScene(
           lightColor: true,
           lightFlicker: true,
           lightOn: true,
+          // Fotel w aucie (65b) — `sceneVehicleId` przechodzi przez mapę id kampanii.
+          sceneVehicleId: true,
+          vehicleSeat: true,
         },
       }),
       prisma.wall.findMany({
@@ -568,6 +583,11 @@ export async function exportScene(
         where: { sceneId },
         select: { cell: true, cols: true, rows: true, data: true },
       }),
+      prisma.sceneVehicle.findMany({
+        where: { sceneId },
+        select: { id: true, vehicleId: true, x: true, y: true, status: true, drivers: true },
+        orderBy: { createdAt: 'asc' },
+      }),
     ]);
 
   const payload: SceneArchive = {
@@ -585,6 +605,10 @@ export async function exportScene(
     fog: fog.map((row) => ({ ...row, data: parseJsonColumn(row.data) })),
     smoke,
     exploration,
+    sceneVehicles: sceneVehicles.map((row) => ({
+      ...row,
+      drivers: parseJsonColumn(row.drivers),
+    })),
   };
 
   const manifest = buildManifest(
@@ -695,6 +719,13 @@ export interface SceneInsertOptions {
   remap?: (value: unknown) => unknown;
   /** Etap 57b: chwila założenia z kopii — lista scen po cofnięciu w tej samej kolejności. */
   createdAt?: Date;
+  /**
+   * Etap 65b: pojazd kampanii dla starego id — tylko wczytanie kampanii. Brak
+   * — auta sceny nie wjeżdżają, a figury tracą fotele.
+   */
+  vehicleId?: (oldId: string) => string | undefined;
+  /** Nowe id auta na scenie dla starego (mapa id kampanii); brak — nada je baza. */
+  sceneVehicleId?: (oldId: string) => string | undefined;
 }
 
 export async function insertScene(
@@ -739,11 +770,47 @@ export async function insertScene(
       // narysowana. Archiwum sprzed etapu 45 niesie jeszcze `playerMoveLocked`.
       playerMove: importedPlayerMove(sceneColumns),
       ambience: str(sceneColumns.ambience, 'none'),
+      kind: sceneColumns.kind === 'chase' ? 'chase' : 'map',
+      chaseDirection: str(sceneColumns.chaseDirection, 'right'),
+      chaseTempo: Math.round(num(sceneColumns.chaseTempo, 40)),
+      chaseRunning: bool(sceneColumns.chaseRunning, true),
+      chaseRoadFrom: maybeNum(sceneColumns.chaseRoadFrom),
+      chaseRoadTo: maybeNum(sceneColumns.chaseRoadTo),
     },
     select: { id: true },
   });
   const sceneId = scene.id;
 
+  // Auta na scenie (65b) przed figurami — fotel figury wskazuje auto kluczem obcym.
+  const placedIds = new Map<string, string>();
+  if (options.vehicleId) {
+    for (const row of asRows(payload.sceneVehicles)) {
+      const vehicleId = options.vehicleId(str(row.vehicleId));
+      if (!vehicleId) continue;
+      const created = await db.sceneVehicle.create({
+        data: {
+          ...(options.sceneVehicleId?.(str(row.id))
+            ? { id: options.sceneVehicleId(str(row.id))! }
+            : {}),
+          sceneId,
+          vehicleId,
+          x: num(row.x),
+          y: num(row.y),
+          status: str(row.status, 'racing'),
+          drivers: stringifyJsonColumn(remap(row.drivers), '[]'),
+        },
+        select: { id: true },
+      });
+      placedIds.set(str(row.id), created.id);
+    }
+  }
+
+  const seatColumns = (row: Record<string, unknown>) => {
+    const placed = placedIds.get(str(row.sceneVehicleId));
+    return placed && typeof row.vehicleSeat === 'number'
+      ? { sceneVehicleId: placed, vehicleSeat: Math.round(row.vehicleSeat) }
+      : { sceneVehicleId: null, vehicleSeat: null };
+  };
   const tokenRows = asRows(payload.tokens);
   if (tokenRows.length) {
     await db.token.createMany({
@@ -782,6 +849,7 @@ export async function insertScene(
           lightColor: str(row.lightColor, '#ffd9a0'),
           lightFlicker: bool(row.lightFlicker),
           lightOn: bool(row.lightOn, true),
+          ...seatColumns(row),
         };
       }),
     });

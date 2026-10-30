@@ -207,3 +207,48 @@ input.vehicle-card-name {
   font-size: 0.74rem;
   color: var(--text-dim);
 }
+
+/* Etap 65b: wbudowana grafika pojazdu na karcie. */
+.vehicle-card-art {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.8rem;
+  color: var(--text-dim);
+}
+
+.vehicle-card-art select {
+  min-width: 0;
+  flex: 1;
+}
+
+/* Menu auta na scenie pościgu (65b): fotel, kto w nim siedzi albo „Usiądź”. */
+.chase-menu-seat {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0 0.5rem;
+  min-height: 2rem;
+}
+
+.chase-menu-seat-label {
+  font-size: 0.8rem;
+  color: var(--text-dim);
+  white-space: nowrap;
+}
+
+.chase-menu-seat-who {
+  font-size: 0.85rem;
+  text-align: right;
+}
+
+.chase-menu-seat-who--free {
+  color: var(--text-dim);
+  font-style: italic;
+}
+
+.chase-menu-seat .context-menu-item {
+  width: auto;
+  text-align: right;
+}

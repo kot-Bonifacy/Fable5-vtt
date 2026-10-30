@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import {
+  DEFAULT_CHASE_SETTINGS,
   createDefaultCharacterData,
   type CompendiumEntry,
   type CpredCharacterData,
@@ -59,6 +60,8 @@ const SCENE: SceneView = {
   explore: false,
   partySight: false,
   spawn: null,
+  kind: 'map',
+  chase: DEFAULT_CHASE_SETTINGS,
 };
 
 function token(id: string, x: number): TokenView {
@@ -73,6 +76,7 @@ function token(id: string, x: number): TokenView {
     ownerId: null,
     hidden: false,
     statuses: [],
+    vehicleSeat: null,
   };
 }
 

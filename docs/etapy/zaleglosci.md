@@ -6,6 +6,15 @@ w `POMYSLY.md` („Do sprawdzenia przy stole”), decyzje MG — w `decyzje-i-up
 
 ## Otwarte
 
+**30.10.2026 — etap 65b „Scena pościgu”: oględziny MG i wdrożenie.** Oglądane na instancji E2E
+(spec `99-ogledziny/t99-poscig`, nie w repo): MG w Chromium, gracz w **Firefoksie** na mapie
+wiaduktu MG — bieżnia jedzie, auta z grafiką, fotel kierowcy klikiem, menu auta, przeciągnięcie
+auta przez MG niesie figurę. Szew bieżni oglądany tylko na zrzutach (nie na żywo). Pas jezdni
+ustawiono na oko (wiersze 7–12), prawdziwy pas mapy wiaduktu wyznaczy MG. **Motocykl nie ma
+grafiki** — wolnej licencji w stylu paczki Unlucky Studio nie znalazłem (OpenGameArt „Bikes”
+to 32-pikselowy pixel-art na czarnym tle), rysuje się bryłą. Na VPS: migracja
+`20261031090000_chase_scene` wjedzie z `./deploy.sh`; `vehicles.json` z 65a dalej trzeba dograć.
+
 **30.10.2026 — T4b pada na granacie (4.6), niezależnie od etapu 64.** `E2E_FROM=po-T4a`,
 dwa przebiegi pod rząd: Marek rzuca granat w Zbira i Ochroniarza, a karta „Granat odłamkowy →
 wybrane pole” nie przychodzi w 20 s (`rollAndWait`, `t4b-walka-knajpa-lup.spec.ts:356`). Krok

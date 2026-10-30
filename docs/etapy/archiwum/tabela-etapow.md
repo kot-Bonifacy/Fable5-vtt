@@ -166,7 +166,7 @@ a w `POSTEP.md` popraw tylko wiersz stanu.
 | 64c    | Szybka wymiana: siatka w łupie, pojemniku, sklepie i trybie MG | ✅     | 2026-10-30          |
 | 65     | Scena pościgu i walka pojazdów: bieżnia wzorem Foundry, auta z fotelami, tempo i dryf, walka pojazdów z s. 189–192, przeszkody (65a–65e) | 🟨     |                     |
 | 65a    | Pojazd jako własność postaci: `Vehicle`, katalog, panel „Pojazdy”, Moto jako prawdziwe pojazdy | ✅     | 2026-10-30          |
-| 65b    | Scena pościgu: `Scene.kind`, przewijana droga bez szwu, auta na jezdni, fotele i przypięte figury | ⬜     |                     |
+| 65b    | Scena pościgu: `Scene.kind`, przewijana droga bez szwu, auta na jezdni, fotele i przypięte figury | ✅     | 2026-10-30          |
 | 65c    | Jazda w pościgu: uruchomienie, budżet `Ruch / 4`, tempo i dryf na rundę, odpadanie za krawędzią | ⬜     |                     |
 | 65d    | Walka pojazdów: PUK i OB, cel auto/pasażer, słaby punkt, Manewry, utrata kontroli, taranowanie, ulepszenia Moto | ⬜     |                     |
 | 65e    | Przeszkody i ruch uliczny: MG wypuszcza na pas, Manewr albo taranowanie, kolczatka | ⬜     |                     |

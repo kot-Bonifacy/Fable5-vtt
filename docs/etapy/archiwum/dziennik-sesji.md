@@ -1,5 +1,26 @@
 # Dziennik sesji — archiwum
 
+### Sesja 30.10, trzecia — etap 64 „Szybka wymiana wzorem BG3” (zlecenie MG)
+
+**Zlecenie:** szybsze oddawanie wielu rzeczy jednej osobie, wzorem BG3 — w jednym oknie mój
+ekwipunek i to, co druga strona położy w polu wymiany, przeciąganie, zatwierdzenie po uzgodnieniu.
+**Oględziny przed zmianą** (spec E2E z `po-T6`): okno handlu już miało trzy kolumny i dwie zgody,
+ale prezent trzech rzeczy kosztował 7 kroków, a u zaproszonego pola stały zamienione. **Decyzje
+MG z pytań:** boli klikanie zgód i trafianie do okna; Ctrl/Shift + przeciąganie grupy; dalej
+dwie zgody, ale zapraszający z góry i „Przyjmij” w doku ze zgodą; siatka kafli jak w BG3 w całym
+oknie; układ: ekwipunek | dwa pola na środku; nowych wejść do okna nie trzeba. **Zmiana:** 64a —
+`mayAcceptTrade`, `trade:respond` z `agree`/`version`, `settleAccept`, dok z „daje: …”,
+„Przyjmij”/„Negocjuj” (commit `113a8944`); 64b/64c — `ItemGrid.tsx` (`useGridSelection`,
+`useItemTile`), `TakeGrid.tsx`, przepisane `TradePane`, `OwnInventoryColumn`, `LootPane`,
+`ContainerPane`, `GmPane`, `MerchantPane`; ikona `hud/swap-bag.svg` (game-icons, Lorc) z wpisem
+w atrybucji; okno dwukolumnowe 800 px. Rozstrzygnięcia bez pytań — w pliku etapu. **Testy:** shared
+2765, serwer 1677 (nowy przypadek prezentu w `trade.test.ts`), klient 441/442 (dalej tylko znany
+`theme.test.ts` na `10-map-combat.css`); E2E `t46a`+`t46b` 26/26, `t6a` 13/13 bez `@llm`
+(gateway wyłączony; zapisał `po-T6a`), `t7a` 3/3; **`t4b` pada na granacie 4.6** — nie z tej
+zmiany (zaległość). **Oglądane:** Chromium (Marek, MG) i **Firefox** (Ola) na instancji E2E —
+zaznaczenie Ctrl, przeciągnięcie grupy z duchem „3 przedmioty”, zgoda z góry, dok z ofertą,
+prezent jednym „Przyjmij”, „Negocjuj”, sklep, skrzynia, łup. Na VPS nic nie zmieniano.
+
 ### Sesja 30.10, druga — Reputacja bliżej podręcznika (zlecenie MG)
 
 **Zlecenie:** „sprawdź i popraw mechanikę reputacji, aby lepiej oddawała podręcznik”. Konfrontacja,

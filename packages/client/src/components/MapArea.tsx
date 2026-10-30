@@ -16,6 +16,8 @@ import {
   cpredMovementBlock,
   drawingBounds,
   isPointInPolygon,
+  chaseBodyContains,
+  seatAtPoint,
   fogFloorPassable,
   isPointVisible,
   isSegmentClear,
@@ -98,6 +100,9 @@ import {
   updateWall,
   updateZone,
   inventoryErrorText,
+  moveChaseVehicle,
+  placeChaseVehicle,
+  seatInVehicle,
 } from '../socket.js';
 import { loadAttackAtToken } from '../attack-targeting.js';
 import { bindMapFx } from '../map-fx.js';
@@ -158,6 +163,9 @@ import { useCoverStore } from '../stores/coverStore.js';
 import { useZoneStore } from '../stores/zoneStore.js';
 import { useCompendiumStore } from '../stores/compendiumStore.js';
 import { useSmokeStore } from '../stores/smokeStore.js';
+import { useChaseStore } from '../stores/chaseStore.js';
+import { ChaseVehicleMenu, chaseErrorText, seatableFigure } from './ChaseVehicleMenu.js';
+import { isVehicleDrag, readVehicleDrag } from '../map/vehicle-drag.js';
 import { useTargetStore } from '../stores/targetStore.js';
 import { NoticeColumn, type PinnedNotice } from './NoticeColumn.js';
 import { useFoesDefeatedNotice } from '../foes-defeated.js';
@@ -235,6 +243,51 @@ function openSheetOfToken(tokenId: string): void {
  * terrain are refused outside a fight too, with no card, so their line is the
  * whole reason (#29).
  */
+/**
+ * Klik w auto na scenie pościgu (etap 65b). Wolny fotel pod kursorem i figura
+ * do posadzenia (prowadzona albo jedyna własna) — siada; reszta auta — menu.
+ */
+function vehicleClickAt(
+  worldX: number,
+  worldY: number,
+  toClient: (point: ScenePoint) => ScenePoint | null,
+): boolean {
+  const scene = useSceneStore.getState().scene;
+  if (!scene || scene.kind !== 'chase') return false;
+  const point = { x: worldX, y: worldY };
+  const vehicles = useChaseStore.getState().vehicles;
+  const direction = scene.chase.direction;
+  const grid = scene.grid.sizePx;
+  const vehicle = [...vehicles]
+    .reverse()
+    .find((entry) => chaseBodyContains(entry, entry, direction, grid, point));
+  if (!vehicle) return false;
+  const tokens = useTokenStore.getState().tokens;
+  const user = useAuthStore.getState().user;
+  const isGm = user?.role === ROLE_GM;
+  const seat = seatAtPoint(vehicle, vehicle, direction, grid, point);
+  const taken = Object.values(tokens).some(
+    (token) => token.vehicleSeat?.sceneVehicleId === vehicle.id && token.vehicleSeat.seat === seat,
+  );
+  const figure = seatableFigure(
+    tokens,
+    scene.id,
+    useSelectionStore.getState().tokenId,
+    user?.id ?? null,
+    isGm,
+  );
+  if (seat !== null && !taken && figure) {
+    void seatInVehicle({ tokenId: figure.id, sceneVehicleId: vehicle.id, seat }).then((ack) => {
+      if (ack.ok) clearNotices('chase');
+      else notifyRefusal('chase', chaseErrorText(ack.error));
+    });
+    return true;
+  }
+  const at = toClient(point);
+  if (at) useChaseStore.getState().openMenu(vehicle.id, at.x, at.y);
+  return true;
+}
+
 function moveErrorText(code: string | undefined): string {
   switch (code) {
     case 'MOVE_REFUSED':
@@ -264,6 +317,9 @@ function moveErrorText(code: string | undefined): string {
       return COMBAT_PENDING_NOTE;
     case 'TOKEN_NOT_FOUND':
       return 'Nie znaleziono tokenu — odśwież stronę.';
+    // Etap 65b: figura w fotelu jedzie z autem.
+    case 'IN_VEHICLE':
+      return chaseErrorText(code);
     default:
       return `Nie udało się przesunąć tokenu: ${code ?? 'nieznany błąd'}.`;
   }
@@ -767,6 +823,12 @@ export function MapArea() {
    */
   const onTokenDragOver = useCallback(
     (event: ReactDragEvent<HTMLElement>) => {
+      // Etap 65b: auto z okna „Pojazdy” — na scenę pościgu, bez obrysu kratki.
+      if (isGm && isVehicleDrag(event) && useSceneStore.getState().scene?.kind === 'chase') {
+        event.preventDefault();
+        event.dataTransfer.dropEffect = 'copy';
+        return;
+      }
       if (!isGm || !isTokenDrag(event)) return;
       event.preventDefault();
       event.dataTransfer.dropEffect = 'copy';
@@ -786,6 +848,19 @@ export function MapArea() {
 
   const onTokenDrop = useCallback(
     (event: ReactDragEvent<HTMLElement>) => {
+      if (isGm && isVehicleDrag(event)) {
+        event.preventDefault();
+        const scene = useSceneStore.getState().scene;
+        const vehicleId = readVehicleDrag(event);
+        const world = rendererRef.current?.clientToWorld(event.clientX, event.clientY);
+        if (!scene || scene.kind !== 'chase' || !vehicleId || !world) return;
+        void placeChaseVehicle({ sceneId: scene.id, vehicleId, x: world.x, y: world.y }).then(
+          (ack) => {
+            if (!ack.ok) notifyRefusal('chase', chaseErrorText(ack.error));
+          },
+        );
+        return;
+      }
       if (!isGm || !isTokenDrag(event)) return;
       event.preventDefault();
       const renderer = rendererRef.current;
@@ -813,6 +888,14 @@ export function MapArea() {
   const handleMapClick = useCallback(
     (worldX: number, worldY: number): boolean => {
       if (placeToken(worldX, worldY)) return true;
+      // Auto na scenie pościgu (65b): klik w wolny fotel sadza w nim figurę,
+      // klik w resztę auta otwiera jego menu. Przed granatem i skokiem nie —
+      // to one rozbrajają się klikiem obok, a auto jest dużym celem.
+      if (
+        vehicleClickAt(worldX, worldY, (point) => rendererRef.current?.worldToClient(point) ?? null)
+      ) {
+        return true;
+      }
       // Skok w ręku (19.10.2026) bierze klik przed granatem: to on był ostatnim
       // wyborem z paska, a klik obok pól go odkłada, zamiast rzucać.
       if (jumpAtPoint(worldX, worldY)) return true;
@@ -830,6 +913,11 @@ export function MapArea() {
     const renderer = new MapRenderer();
     renderer.onBackgroundLoad = setBackgroundLoad;
     renderer.onMapClick = handleMapClick;
+    renderer.onVehicleMove = (sceneVehicleId, x, y) => {
+      void moveChaseVehicle(sceneVehicleId, x, y).then((ack) => {
+        if (!ack.ok) notifyRefusal('chase', chaseErrorText(ack.error));
+      });
+    };
     renderer.onTokenMove = (tokenId, x, y, final, path, extra) => {
       const ack = sendTokenMove(tokenId, x, y, final, path, extra);
       void ack?.then((result) => {
@@ -1989,6 +2077,38 @@ export function MapArea() {
     return useCoverStore.subscribe(pushCovers);
   }, [ready, pushCovers]);
 
+  // Auta na scenie pościgu (65b) z zajętymi fotelami — fotel zajmuje figura,
+  // więc lista jedzie od nowa także po każdej zmianie figur.
+  useEffect(() => {
+    if (!ready) return;
+    const push = () => {
+      const occupied = new Map<string, Set<number>>();
+      for (const token of Object.values(useTokenStore.getState().tokens)) {
+        const seat = token.vehicleSeat;
+        if (!seat) continue;
+        const taken = occupied.get(seat.sceneVehicleId) ?? new Set<number>();
+        taken.add(seat.seat);
+        occupied.set(seat.sceneVehicleId, taken);
+      }
+      rendererRef.current?.setChaseVehicles(
+        useChaseStore.getState().vehicles,
+        occupied,
+        useAuthStore.getState().user?.role === ROLE_GM,
+      );
+    };
+    push();
+    const offChase = useChaseStore.subscribe((state, previous) => {
+      if (state.vehicles !== previous.vehicles) push();
+    });
+    const offTokens = useTokenStore.subscribe((state, previous) => {
+      if (state.tokens !== previous.tokens) push();
+    });
+    return () => {
+      offChase();
+      offTokens();
+    };
+  }, [ready]);
+
   // Strefy bronione (26f) jadą tą samą drogą co osłony: rozbrojenie systemu ma
   // zgasić szrafirunek od razu, a nie po najbliższym renderze Reacta.
   // Ikona strefy (29.10) bierze się z wpisu kompendium, więc strefy jadą
@@ -2523,6 +2643,7 @@ export function MapArea() {
         <ExchangeDock />
       </div>
       <AimMenu />
+      <ChaseVehicleMenu />
       <DrawingTextEditor />
       <SceneObjectCard onDelete={(ref) => void removeSceneObject(ref)} />
       {menu && <TokenContextMenu menu={menu} onClose={() => setMenu(null)} />}

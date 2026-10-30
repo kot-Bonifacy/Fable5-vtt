@@ -13,6 +13,7 @@ import {
 } from 'pixi.js';
 import { Viewport } from 'pixi-viewport';
 import { MapFxLayer } from './MapFxLayer.js';
+import { ChaseLayer } from './ChaseLayer.js';
 import { DESTROY_TREE, releasePooledGraphicsData } from './pixi-destroy.js';
 import {
   MAP_MAX_ZOOM,
@@ -24,6 +25,7 @@ import {
 import type {
   CoverView,
   SmokeView,
+  SceneVehicleView,
   DefenseZoneView,
   DrawingShape,
   DrawingStyle,
@@ -988,6 +990,8 @@ export class MapRenderer {
    * „walk here", and exactly one of the two has to win it.
    */
   onMapClick: ((x: number, y: number) => boolean) | null = null;
+  /** MG puścił przeciągnięte auto (etap 65b) — środek bryły po przycięciu do pasa. */
+  onVehicleMove: ((sceneVehicleId: string, x: number, y: number) => void) | null = null;
   /** The steered token changed (stage 16e); null means nothing is selected. */
   onSelectionChange: ((tokenId: string | null, reason: SelectionChange) => void) | null = null;
   /**
@@ -1128,6 +1132,15 @@ export class MapRenderer {
   private readonly app = new Application();
   private viewport: Viewport | null = null;
   private readonly background = new Sprite();
+  /** Scena pościgu (etap 65b): bieżnia zamiast tła i auta pod figurami. */
+  private readonly chase = new ChaseLayer();
+  /** Auto ciągnięte przez MG (65b): skąd chwycone i czy już ruszyło. */
+  private vehicleGrab: {
+    id: string;
+    start: ScenePoint;
+    offset: ScenePoint;
+    moved: boolean;
+  } | null = null;
   private readonly grid = new Graphics();
   /** Kontrastowa siatka przy otwartym edytorze sceny (12.09) — patrz `map/grid-style.ts`. */
   private gridContrast = false;
@@ -1801,6 +1814,7 @@ export class MapRenderer {
       .decelerate({ friction: 0.9 })
       .clampZoom({ minScale: MIN_ZOOM, maxScale: MAX_ZOOM });
     viewport.addChild(this.background);
+    viewport.addChild(this.chase.road);
     viewport.addChild(this.grid);
     // Public drawings are map content: they go under the tokens (a sketched
     // route must not cover a portrait) and under the fog, which therefore
@@ -1819,6 +1833,9 @@ export class MapRenderer {
     // same reason: the whole job of the layer is showing who is standing in one.
     this.zoneLayer.addChild(this.zoneGraphics);
     viewport.addChild(this.zoneLayer);
+    // Auta na scenie pościgu (65b) — nad osłonami i strefami, pod figurami,
+    // które w nich siedzą. Klik rozstrzyga się ze współrzędnych, jak przy osłonie.
+    viewport.addChild(this.chase.layer);
     // Range rings sit under the tokens so they never hide a portrait; the
     // ruler sits above everything, because a measurement is meant to be read.
     this.rangeLayer.addChild(this.rangeGraphics);
@@ -1939,6 +1956,7 @@ export class MapRenderer {
     this.app.ticker.add(this.tickTurn);
     this.app.ticker.add(this.tickFx);
     this.app.ticker.add(this.tickPing);
+    this.app.ticker.add(this.tickChase);
     this.fx.shake = this.shakeFigure;
 
     /**
@@ -2107,6 +2125,7 @@ export class MapRenderer {
       this.setFigureVision(null);
       this.fogSprite.visible = false;
       this.fx.setScene(null);
+      this.chase.setScene(null);
       this.clearTokens();
       releasePooledGraphicsData();
       return;
@@ -2123,6 +2142,7 @@ export class MapRenderer {
     // The effect layer measures blasts in metres, so it needs the scene's scale
     // — and a scene change wipes whatever was still burning on the old map.
     this.fx.setScene(scene);
+    this.chase.setScene(scene);
     // The scene's size drives the fog texture, so a resized (or swapped) map
     // has to recomposite it before the next frame.
     this.setFog(this.lastFog, this.lastFogPending, this.fogIsGm);
@@ -2526,6 +2546,23 @@ export class MapRenderer {
       // „narysuj obok". Rozstrzygnięcie MG z 24.08.
       if (this.grabSceneHandle(point)) return;
 
+      // Auto na scenie pościgu (65b): MG chwyta je i przeciąga po drodze. Figura
+      // siedząca w aucie bierze klik sama (jej menu, zaznaczenie, przeciąganie
+      // do innego fotela), a gest bez ruchu zostaje kliknięciem — menu auta.
+      if (!this.mapToolArmed && this.viewerIsGm && !isTokenTarget(event.target)) {
+        const vehicle = this.chase.pick(point);
+        if (vehicle) {
+          this.vehicleGrab = {
+            id: vehicle.id,
+            start: point,
+            offset: { x: vehicle.x - point.x, y: vehicle.y - point.y },
+            moved: false,
+          };
+          viewport.plugins.pause('drag');
+          return;
+        }
+      }
+
       // Ramka zaznaczenia (etap 35). Przed wszystkimi narzędziami rysowania,
       // ale **po** uchwytach: `Shift` na pustym tle jest wolny (panorama zostaje
       // na gołym lewym przycisku — rozstrzygnięcie MG z 05.09), a `Shift`+klik
@@ -2713,6 +2750,22 @@ export class MapRenderer {
         this.moveSceneHandle(point, event.ctrlKey || event.metaKey);
         return;
       }
+      const grab = this.vehicleGrab;
+      if (grab) {
+        if (
+          !grab.moved &&
+          Math.hypot(point.x - grab.start.x, point.y - grab.start.y) <
+            DRAG_THRESHOLD_PX * this.overlayScale()
+        ) {
+          return;
+        }
+        if (!grab.moved) {
+          grab.moved = true;
+          this.chase.beginDrag(grab.id, { x: point.x + grab.offset.x, y: point.y + grab.offset.y });
+        }
+        this.chase.dragTo({ x: point.x + grab.offset.x, y: point.y + grab.offset.y });
+        return;
+      }
 
       // Obrys pod kursorem na uzbrojonej warstwie (27k). Tylko poza trwającym
       // gestem: w połowie ciągnięcia prostokąta pytanie „co tu leży" nie ma
@@ -2793,6 +2846,18 @@ export class MapRenderer {
     });
 
     const end = () => {
+      const grab = this.vehicleGrab;
+      if (grab) {
+        this.vehicleGrab = null;
+        this.viewport?.plugins.resume('drag');
+        if (!grab.moved) return;
+        const centre = this.chase.commitDrag();
+        if (centre) this.onVehicleMove?.(grab.id, centre.x, centre.y);
+        // Puszczenie przeciągnięcia nie jest rozkazem marszu ani klikiem w auto.
+        this.dragEndedAt = performance.now();
+        this.layerPickSpent = true;
+        return;
+      }
       if (this.marquee) {
         const marquee = this.marquee;
         const dragged =
@@ -3434,6 +3499,15 @@ export class MapRenderer {
       point.y <= viewport.bottom - marginY
     );
   }
+
+  /**
+   * Bieżnia sceny pościgu (65b). Zwykłe tło przestaje się rysować, gdy tylko
+   * zapętlona tekstura jest gotowa — do tego czasu stoi pod nią jak zawsze.
+   */
+  private readonly tickChase = (ticker: { deltaMS: number }): void => {
+    this.chase.tick(ticker.deltaMS / 1000);
+    this.background.renderable = !this.chase.road.visible;
+  };
 
   private readonly tickPing = (): void => {
     if (this.pings.length === 0) return;
@@ -6712,6 +6786,21 @@ export class MapRenderer {
    * smoke is still a figure, and burying it would cost the one thing the layer
    * exists to show — who is inside.
    */
+  /** Auta na scenie pościgu (65b) i zajęte fotele (`sceneVehicleId` → numery). */
+  setChaseVehicles(
+    vehicles: SceneVehicleView[],
+    occupied: Map<string, Set<number>>,
+    showRoadBand: boolean,
+  ): void {
+    if (this.destroyed) return;
+    this.chase.setVehicles(vehicles, occupied, showRoadBand);
+  }
+
+  /** Auto pod punktem sceny (65b) — klik w auto rozstrzyga `MapArea`. */
+  vehicleAt(x: number, y: number): SceneVehicleView | null {
+    return this.chase.pick({ x, y });
+  }
+
   setSmoke(smoke: SmokeView[]): void {
     if (this.destroyed) return;
     this.lastSmoke = smoke;
@@ -8263,6 +8352,8 @@ export class MapRenderer {
       // The layer owns sprites and text of its own; the viewport teardown above
       // reaches its container, but its item list still holds the references.
       this.fx.destroy();
+      this.app.ticker.remove(this.tickChase);
+      this.chase.destroy();
       this.app.destroy(true, DESTROY_TREE);
       this.tokenNodes.clear();
       this.noteNodes.clear();

@@ -12,6 +12,8 @@ export function mergeScenePatch(scene: SceneView, patch: ScenePatch): SceneView 
     ...(patch.gridMode !== undefined ? { gridMode: patch.gridMode } : {}),
     ...(patch.metersPerSquare !== undefined ? { metersPerSquare: patch.metersPerSquare } : {}),
     grid: { ...scene.grid, ...patch.grid },
+    ...(patch.kind !== undefined ? { kind: patch.kind } : {}),
+    chase: { ...scene.chase, ...patch.chase },
   };
 }
 
@@ -127,6 +129,9 @@ export const useSceneStore = create<SceneStoreState>((set, get) => ({
         ...fields,
         ...(fields.grid || state.draft?.grid
           ? { grid: { ...state.draft?.grid, ...fields.grid } }
+          : {}),
+        ...(fields.chase || state.draft?.chase
+          ? { chase: { ...state.draft?.chase, ...fields.chase } }
           : {}),
       };
       return withEffective({ scene: state.scene, draft });

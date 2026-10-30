@@ -24,6 +24,7 @@ import { useSettingsStore } from './stores/settingsStore.js';
 import { useTableStore } from './stores/tableStore.js';
 import { useTokenStore } from './stores/tokenStore.js';
 import { useVehicleStore } from './stores/vehicleStore.js';
+import { useChaseStore } from './stores/chaseStore.js';
 import { useExchangeStore } from './stores/exchangeStore.js';
 import { useWallStore } from './stores/wallStore.js';
 import { useZoneStore } from './stores/zoneStore.js';
@@ -107,6 +108,7 @@ export function installE2EHook(): void {
         table: useTableStore,
         token: useTokenStore,
         vehicle: useVehicleStore,
+        chase: useChaseStore,
         wall: useWallStore,
         zone: useZoneStore,
       },

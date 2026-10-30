@@ -1,5 +1,6 @@
 import type { ScenePoint } from './measure.js';
 import { isAmbiencePreset, type AmbiencePreset } from './music.js';
+import { isSceneKind, sanitizeChasePatch, type ChaseSettings, type SceneKind } from './chase.js';
 
 export const GRID_MODES = ['grid', 'gridless'] as const;
 export type GridMode = (typeof GRID_MODES)[number];
@@ -116,6 +117,13 @@ export interface SceneView {
    * znacznik na mapie widzi i tak wyłącznie MG.
    */
   spawn: ScenePoint | null;
+  /** Rodzaj sceny (etap 65b): zwykła mapa albo scena pościgu. */
+  kind: SceneKind;
+  /**
+   * Ustawienia pościgu (etap 65b) — jadą zawsze, także na zwykłej mapie, żeby
+   * przełączenie rodzaju w edytorze nie zaczynało od pustych pól.
+   */
+  chase: ChaseSettings;
 }
 
 /**
@@ -155,6 +163,8 @@ export interface MapUploadResult {
 /** Client → server payload of `scene:create`. */
 export interface SceneCreatePayload {
   name: string;
+  /** Etap 65b: „Mapa” albo „Pościg”; brak — mapa. */
+  kind?: SceneKind;
 }
 
 /** Mutable scene fields; a patch carries any subset. */
@@ -179,6 +189,14 @@ export interface ScenePatch {
    */
   playerMove?: PlayerMoveMode;
   ambience?: AmbiencePreset;
+  /**
+   * Rodzaj sceny (etap 65b). Pole łaty, bo niczego graczom nie zabiera:
+   * `chase → map` wysadza figury z aut na miejscu, a ich `x`, `y` już są
+   * prawdziwe.
+   */
+  kind?: SceneKind;
+  /** Ustawienia pościgu (etap 65b) — dowolny podzbiór; `road: null` kasuje pas. */
+  chase?: Partial<ChaseSettings>;
   // `visibility` is deliberately NOT patchable here: changing it has to
   // re-filter every player's token list in the same breath, so it goes through
   // `scene:visibility` (stages 17a, 18a) rather than the generic scene patch.
@@ -371,6 +389,12 @@ export function sanitizeScenePatch(raw: unknown): ScenePatch | null {
 
   if (isPlayerMoveMode(input.playerMove)) {
     patch.playerMove = input.playerMove;
+  }
+
+  if (isSceneKind(input.kind)) patch.kind = input.kind;
+  if ('chase' in input) {
+    const chase = sanitizeChasePatch(input.chase);
+    if (chase && Object.keys(chase).length > 0) patch.chase = chase;
   }
 
   if ('spawn' in input) {

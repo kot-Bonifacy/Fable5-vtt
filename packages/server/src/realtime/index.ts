@@ -223,6 +223,13 @@ import {
   vehicleRenameEvent,
   vehicleUpdateEvent,
 } from './vehicles.js';
+import {
+  chaseMoveEvent,
+  chasePlaceEvent,
+  chaseRemoveEvent,
+  vehicleAllowDriverEvent,
+  vehicleSeatEvent,
+} from './chase.js';
 import { timeSetEvent } from './gametime.js';
 import { botCreateEvent, botDeleteEvent, botDuplicateEvent, botUpdateEvent } from './bots.js';
 import { botChatEvent, botTeachEvent } from './bot-chat.js';
@@ -403,6 +410,11 @@ export const EVENTS: RealtimeEvent<never, unknown>[] = [
   vehicleUpdateEvent,
   vehicleDeleteEvent,
   vehicleRenameEvent,
+  chasePlaceEvent,
+  chaseMoveEvent,
+  chaseRemoveEvent,
+  vehicleSeatEvent,
+  vehicleAllowDriverEvent,
   characterCreateEvent,
   characterUpdateEvent,
   characterBackupCallEvent,

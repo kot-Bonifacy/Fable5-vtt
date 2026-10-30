@@ -173,6 +173,27 @@ export interface VehicleDeleteBroadcast {
  */
 export const VEHICLE_ART_PREFIX = '/art/vehicles/';
 
+/**
+ * Wbudowane grafiki aut (etap 65b, CC0 — `public/art/vehicles/ATTRIBUTION.md`),
+ * rysowane przodem do góry. Motocykla w tym stylu nie ma — rysuje się bryłą.
+ */
+export const VEHICLE_ART: readonly { url: string; label: string }[] = [
+  { url: '/art/vehicles/car-red.webp', label: 'Czerwone sportowe' },
+  { url: '/art/vehicles/car-black-viper.webp', label: 'Czarne w pasy' },
+  { url: '/art/vehicles/car-orange.webp', label: 'Pomarańczowy muscle car' },
+  { url: '/art/vehicles/car-taxi.webp', label: 'Taksówka' },
+  { url: '/art/vehicles/car-police.webp', label: 'Radiowóz' },
+  { url: '/art/vehicles/pickup-blue.webp', label: 'Pickup' },
+  { url: '/art/vehicles/van-ambulance.webp', label: 'Karetka' },
+  { url: '/art/vehicles/van-white.webp', label: 'Furgon' },
+];
+
+/** Grafika auta bez własnej: furgon dla `van-8`, auto dla reszty, motocykl — bryła. */
+export function defaultVehicleArt(layout: VehicleLayoutId): string | null {
+  if (layout === 'bike-2') return null;
+  return layout === 'van-8' ? '/art/vehicles/van-white.webp' : '/art/vehicles/car-red.webp';
+}
+
 export function isVehicleArtUrl(value: unknown): value is string {
   return (
     typeof value === 'string' &&

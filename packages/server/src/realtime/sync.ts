@@ -43,6 +43,7 @@ import { campaignGameTime } from './gametime.js';
 import { campaignRoom } from './state.js';
 import { targetsForSync } from './target.js';
 import { fetchVehiclesFor } from './vehicles.js';
+import { fetchSceneVehiclesFor } from './chase.js';
 
 /**
  * Builds the full room state for one client: current seq, presence and the
@@ -80,6 +81,7 @@ export async function buildStateSync(
       exploration: null,
       characters: [],
       vehicles: [],
+      sceneVehicles: [],
       bots: [],
       ai: syncedAiStatus(deps, socket, user, null),
       compendium: await buildCompendiumSync(deps, null),
@@ -112,6 +114,7 @@ export async function buildStateSync(
     vision,
     characters,
     vehicles,
+    sceneVehicles,
     bots,
     compendium,
     combat,
@@ -181,6 +184,10 @@ export async function buildStateSync(
     fetchCharactersFor(deps.ctx.prisma, deps.ctx.cpred, campaign.id, user),
     // Pojazdy (etap 65a) tą samą miarą: MG wszystkie, gracz — swoich kart.
     fetchVehiclesFor(deps.ctx.prisma, campaign.id, user),
+    // Auta na oglądanej scenie pościgu (65b): MG wszystkie, gracz — te w kadrze.
+    viewedSceneId
+      ? fetchSceneVehiclesFor(deps.ctx.prisma, viewedSceneId, user)
+      : Promise.resolve([]),
     // Bot profiles carry secrets and prompts — GM only.
     fetchBotsFor(deps.ctx.prisma, campaign.id, user.role === ROLE_GM),
     // Item catalogue: files on disk plus the campaign's own entries.
@@ -268,6 +275,7 @@ export async function buildStateSync(
     exploration,
     characters,
     vehicles,
+    sceneVehicles,
     bots,
     ai: syncedAiStatus(deps, socket, user, campaign.id),
     compendium,
