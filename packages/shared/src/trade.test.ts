@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   isTradeReady,
+  mayAcceptTrade,
   mayEditTradeOffer,
   mayCancelTrade,
   setTradeAccept,
@@ -86,8 +87,12 @@ describe('stan handlu', () => {
     expect(setTradeAccept(empty, 0, true, 3)).toEqual({ ok: false, error: 'TRADE_EMPTY' });
   });
 
-  it('nie zatwierdza się handlu, który czeka jeszcze na zaproszonego', () => {
-    expect(setTradeAccept(trade({ status: 'invited' }), 0, true, 3)).toEqual({
+  it('zaproszony nie zgadza się osobno, zanim przyjmie zaproszenie (64a)', () => {
+    expect(setTradeAccept(trade({ status: 'invited' }), 1, true, 3)).toEqual({
+      ok: false,
+      error: 'TRADE_NOT_OPEN',
+    });
+    expect(setTradeAccept(trade({ status: 'done' }), 0, true, 3)).toEqual({
       ok: false,
       error: 'TRADE_NOT_OPEN',
     });
@@ -142,16 +147,31 @@ describe('pole wymiany przed przyjęciem zaproszenia (etap 46a)', () => {
     expect(mayEditTradeOffer(trade({ status: 'done' }), 0)).toBe(false);
   });
 
-  it('zgody w stanie zaproszenia nie ma — pole zapraszającego zostaje przy przyjęciu', () => {
+  it('zapraszający zgadza się z góry, ale gotowy jest dopiero handel otwarty (64a)', () => {
     const invited = setTradeOffer(trade({ status: 'invited', version: 1 }), 0, {
       items: [{ list: 'gear', rowId: 'g1', qty: 1 }],
       views: [],
       eddies: 0,
     });
-    expect(setTradeAccept(invited, 0, true, invited.version)).toEqual({
-      ok: false,
-      error: 'TRADE_NOT_OPEN',
-    });
-    expect(invited.sides[0].items).toHaveLength(1);
+    expect(mayAcceptTrade(invited, 0)).toBe(true);
+    expect(mayAcceptTrade(invited, 1)).toBe(false);
+    const agreed = setTradeAccept(invited, 0, true, invited.version);
+    if (!agreed.ok) throw new Error(agreed.error);
+    expect(agreed.trade.sides[0].accepted).toBe(true);
+    expect(isTradeReady(agreed.trade)).toBe(false);
+
+    // Przyjęcie zaproszenia ze zgodą: zgoda zapraszającego zostaje, a obie
+    // na tę samą wersję wykonują prezent.
+    const both = setTradeAccept({ ...agreed.trade, status: 'open' }, 1, true, invited.version);
+    if (!both.ok) throw new Error(both.error);
+    expect(isTradeReady(both.trade)).toBe(true);
+  });
+
+  it('zmiana pola zapraszającego zdejmuje jego zgodę z góry', () => {
+    const invited = trade({ status: 'invited', sides: [side({ eddies: 5 }), side()] });
+    const agreed = setTradeAccept(invited, 0, true, invited.version);
+    if (!agreed.ok) throw new Error(agreed.error);
+    const changed = setTradeOffer(agreed.trade, 0, { items: [], views: [], eddies: 6 });
+    expect(changed.sides[0].accepted).toBe(false);
   });
 });

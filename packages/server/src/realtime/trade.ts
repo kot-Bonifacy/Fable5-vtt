@@ -251,10 +251,28 @@ export const tradeRespondEvent = defineEvent<TradeRespondPayload, void>({
     }
 
     if (!invitee) throw new RealtimeError('NOT_YOURS');
+    const agree = payload.agree === true;
+    const version = payload.version;
+    if (agree && (typeof version !== 'number' || !Number.isInteger(version))) {
+      throw new RealtimeError('BAD_REQUEST');
+    }
     await requireReach(deps.ctx.prisma, trade.sides[0].characterId, trade.sides[1].characterId);
     const current = trades.get(trade.id);
     if (!current || current.status !== 'invited') throw new RealtimeError('TRADE_NOT_OPEN');
-    await emitTrade(deps, store({ ...current, status: 'open' }));
+    const opened = store({ ...current, status: 'open' as const });
+    if (!agree) {
+      await emitTrade(deps, opened);
+      return;
+    }
+    // Etap 64a: „Przyjmij” w doku to przyjęcie razem ze zgodą. Zgoda na inną
+    // wersję niż widziana odpada jak w `trade:accept`, ale handel zostaje
+    // otwarty — zaproszony zobaczy w oknie, co się zmieniło.
+    const next = setTradeAccept(opened, 1, true, version as number);
+    if (!next.ok) {
+      await emitTrade(deps, opened);
+      throw new RealtimeError(next.error);
+    }
+    await settleAccept(deps, next.trade, user);
   },
 });
 
@@ -321,31 +339,43 @@ export const tradeAcceptEvent = defineEvent<TradeAcceptPayload, void>({
 
     const next = setTradeAccept(trade, sideIndex, payload?.accepted === true, version);
     if (!next.ok) throw new RealtimeError(next.error);
-    store(next.trade);
-    if (!isTradeReady(next.trade)) {
-      await emitTrade(deps, next.trade);
-      return;
-    }
-
-    // Od tej chwili handel jest zamknięty dla zmian — synchronicznie, przed
-    // pierwszym `await`, bo drugi klik może przyjść w tej samej pętli zdarzeń.
-    executing.add(trade.id);
-    try {
-      await executeTrade(deps, next.trade, user);
-    } catch (error) {
-      // Odmowy z `refuse`/`cancelWith` zostawiły już stan i powód. Każdy inny
-      // błąd (baza, transakcja) zdejmuje zgody — inaczej handel zostałby
-      // „gotowy", a następne kliknięcie próbowałoby go wykonać po cichu.
-      if (!(error instanceof RealtimeError)) {
-        const current = trades.get(trade.id);
-        if (current) await emitTrade(deps, store(withTradeNotice(current, 'TRADE_FAILED')));
-      }
-      throw error;
-    } finally {
-      executing.delete(trade.id);
-    }
+    await settleAccept(deps, next.trade, user);
   },
 });
+
+/**
+ * Zapisuje stan po zgodzie, a gdy obie strony zgodziły się na tę samą wersję —
+ * wykonuje wymianę. Wspólne dla „Zgadzam się” i „Przyjmij” w doku (64a).
+ */
+async function settleAccept(
+  deps: RealtimeDeps,
+  trade: TradeState,
+  user: SessionUser,
+): Promise<void> {
+  store(trade);
+  if (!isTradeReady(trade)) {
+    await emitTrade(deps, trade);
+    return;
+  }
+
+  // Od tej chwili handel jest zamknięty dla zmian — synchronicznie, przed
+  // pierwszym `await`, bo drugi klik może przyjść w tej samej pętli zdarzeń.
+  executing.add(trade.id);
+  try {
+    await executeTrade(deps, trade, user);
+  } catch (error) {
+    // Odmowy z `refuse`/`cancelWith` zostawiły już stan i powód. Każdy inny
+    // błąd (baza, transakcja) zdejmuje zgody — inaczej handel zostałby
+    // „gotowy", a następne kliknięcie próbowałoby go wykonać po cichu.
+    if (!(error instanceof RealtimeError)) {
+      const current = trades.get(trade.id);
+      if (current) await emitTrade(deps, store(withTradeNotice(current, 'TRADE_FAILED')));
+    }
+    throw error;
+  } finally {
+    executing.delete(trade.id);
+  }
+}
 
 /**
  * Odmowa w chwili wykonania: zgody przepadają, powód widzą obie strony,

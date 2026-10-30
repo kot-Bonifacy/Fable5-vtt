@@ -598,6 +598,81 @@ describe('handel', () => {
     expect((await cancelled).closedBy).toBe('MG');
   });
 
+  it('prezent jednym kliknięciem: zgoda z góry i „Przyjmij” ze zgodą (64a)', async () => {
+    const invite = async () =>
+      data(
+        await emitAck<{ trade: TradeView }>(vex, 'trade:invite', {
+          fromCharacterId: vexCharacterId,
+          toTokenId: ricoTokenId,
+        }),
+        'trade:invite',
+      ).trade;
+    const stimpaks = (await sheetOf(vex, vexCharacterId)).gear[0]!;
+    const before = stimpaks.qty ?? 0;
+    // Wersję bierze się z listy, nie z rozgłoszenia — to po zaproszeniu
+    // potrafi dojść do Rico dopiero po odpowiedzi na ofertę.
+    const gift = async (tradeId: string, qty: number) => {
+      await emitAck(vex, 'trade:offer', {
+        tradeId,
+        items: [{ list: 'gear', rowId: stimpaks.id, qty }],
+        eddies: 0,
+      });
+      const list = data(await emitAck<{ trades: TradeView[] }>(vex, 'trade:list'), 'trade:list');
+      return list.trades.find((trade) => trade.id === tradeId)!.version;
+    };
+
+    // Zapraszający zgadza się, zanim Rico w ogóle przyjmie zaproszenie.
+    const first = await invite();
+    const version = await gift(first.id, 1);
+    expect(
+      await emitAck(rico, 'trade:accept', { tradeId: first.id, version, accepted: true }),
+    ).toEqual({ ok: false, error: 'TRADE_NOT_OPEN' });
+    let seen = nextTrade(rico);
+    expect(
+      (await emitAck(vex, 'trade:accept', { tradeId: first.id, version, accepted: true })).ok,
+    ).toBe(true);
+    expect((await seen).sides[0].accepted).toBe(true);
+    expect(
+      await emitAck(rico, 'trade:respond', { tradeId: first.id, accept: true, agree: true }),
+    ).toEqual({ ok: false, error: 'BAD_REQUEST' });
+    const done = nextTrade(vex, 'done');
+    expect(
+      (
+        await emitAck(rico, 'trade:respond', {
+          tradeId: first.id,
+          accept: true,
+          agree: true,
+          version,
+        })
+      ).ok,
+    ).toBe(true);
+    expect((await done).closedBy).toBe('Rico');
+    expect((await sheetOf(rico, ricoCharacterId)).gear[0]?.qty).toBe(1);
+
+    // „Przyjmij” przed zgodą zapraszającego: handel otwarty z jedną zgodą,
+    // a zgoda na nieaktualną wersję odpada, choć zaproszenie zostaje przyjęte.
+    const second = await invite();
+    const next = await gift(second.id, 1);
+    seen = nextTrade(vex, 'open');
+    expect(
+      await emitAck(rico, 'trade:respond', {
+        tradeId: second.id,
+        accept: true,
+        agree: true,
+        version: next - 1,
+      }),
+    ).toEqual({ ok: false, error: 'TRADE_CHANGED' });
+    expect((await seen).sides.map((side) => side.accepted)).toEqual([false, false]);
+    seen = nextTrade(vex);
+    await emitAck(rico, 'trade:accept', { tradeId: second.id, version: next, accepted: true });
+    expect((await seen).sides[1].accepted).toBe(true);
+    const finished = nextTrade(rico, 'done');
+    await emitAck(vex, 'trade:accept', { tradeId: second.id, version: next, accepted: true });
+    await finished;
+    expect((await sheetOf(rico, ricoCharacterId)).gear[0]?.qty).toBe(2);
+    expect((await sheetOf(vex, vexCharacterId)).gear[0]?.qty).toBe(before - 2);
+  });
+
   it('za daleko — zaproszenie nie wychodzi', async () => {
     await emitAck(gm, 'token:move', { tokenId: ricoTokenId, x: 20 * PX_PER_M, y: 0, final: true });
     expect(

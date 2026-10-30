@@ -1863,8 +1863,13 @@ export const respondInventory = (messageId: number, accept: boolean) =>
 export const inviteTrade = (payload: TradeInvitePayload) =>
   emitSceneAck<{ trade: TradeView }>('trade:invite', payload);
 
-export const respondTrade = (tradeId: string, accept: boolean) =>
-  emitSceneAck('trade:respond', { tradeId, accept });
+/** `agreeVersion` (64a): przyjęcie razem ze zgodą na to, co zaproszony widział w doku. */
+export const respondTrade = (tradeId: string, accept: boolean, agreeVersion?: number) =>
+  emitSceneAck('trade:respond', {
+    tradeId,
+    accept,
+    ...(agreeVersion !== undefined ? { agree: true, version: agreeVersion } : {}),
+  });
 
 export const offerTrade = (payload: TradeOfferPayload) => emitSceneAck('trade:offer', payload);
 

@@ -11,7 +11,10 @@
  *  1. **Handel zaczyna się zaproszeniem.** Zaproszony dostaje okno po
  *     „Przyjmij"; zapraszający ma je od razu, w stanie „czeka na…", i może już
  *     kłaść rzeczy w swoje pole (etap 46a, jedno okno „Wymiana") — inaczej
- *     „Wyślij bez czekania" nie miałoby czego wysłać. Zgód w tym stanie nie ma.
+ *     „Wyślij bez czekania" nie miałoby czego wysłać. Od 30.10 (etap 64a)
+ *     zapraszający może się w tym stanie już zgodzić, a zaproszony przyjmuje
+ *     zaproszenie razem ze zgodą jednym „Przyjmij” w doku — prezent dla
+ *     kolegi to wtedy jedno kliknięcie po każdej stronie (`mayAcceptTrade`).
  *  2. **Każda zmiana w którymkolwiek polu wymiany kasuje OBIE zgody.** Nikt
  *     nie podmieni przedmiotu w chwili, gdy druga strona już kliknęła. Zgoda
  *     niesie numer wersji, którą widział klikający — zgoda na starszą wersję
@@ -160,6 +163,15 @@ export function setTradeOffer(
 export type TradeAcceptError = 'TRADE_NOT_OPEN' | 'TRADE_CHANGED' | 'TRADE_EMPTY';
 
 /**
+ * Czy ta strona może teraz dać zgodę (rozstrzygnięcie 1): w negocjacjach
+ * obie, przed przyjęciem zaproszenia — zapraszający (etap 64a). Zaproszony
+ * zgadza się razem z przyjęciem (`trade:respond` z `agree`).
+ */
+export function mayAcceptTrade(trade: Pick<TradeState, 'status'>, side: TradeSideIndex): boolean {
+  return mayEditTradeOffer(trade, side);
+}
+
+/**
  * Zgoda albo jej cofnięcie. Zgoda przechodzi wyłącznie na wersję, którą
  * klikający widział; cofnięcie zawsze (nie ma czego pilnować).
  */
@@ -169,7 +181,7 @@ export function setTradeAccept(
   accepted: boolean,
   seenVersion: number,
 ): { ok: true; trade: TradeState } | { ok: false; error: TradeAcceptError } {
-  if (trade.status !== 'open') return { ok: false, error: 'TRADE_NOT_OPEN' };
+  if (!mayAcceptTrade(trade, side)) return { ok: false, error: 'TRADE_NOT_OPEN' };
   if (accepted && seenVersion !== trade.version) return { ok: false, error: 'TRADE_CHANGED' };
   if (accepted && isTradeEmpty(trade)) return { ok: false, error: 'TRADE_EMPTY' };
   const sides = trade.sides.map((current, index) =>

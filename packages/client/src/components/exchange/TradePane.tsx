@@ -214,6 +214,7 @@ export function TradePane({ trade }: { trade: TradeView }) {
 
   const spectator = mine === null;
   const emptyOffer = (mine?.items.length ?? 0) === 0 && (mine?.eddies ?? 0) === 0;
+  const emptyTrade = emptyOffer && (other?.items.length ?? 0) === 0 && (other?.eddies ?? 0) === 0;
 
   return (
     <>
@@ -384,7 +385,8 @@ export function TradePane({ trade }: { trade: TradeView }) {
           </p>
         ) : invited && mineIndex === 0 ? (
           <p className="inventory-hint">
-            Czekasz, aż {other?.name} przyjmie zaproszenie — możesz już kłaść rzeczy w swoje pole.
+            Czekasz, aż {other?.name} przyjmie zaproszenie — możesz już kłaść rzeczy w swoje pole i
+            od razu się zgodzić: wtedy jedno „Przyjmij” po drugiej stronie kończy wymianę.
             {other?.characterId
               ? ' Koledze z drużyny wyślesz je też bez czekania, jako propozycję do przyjęcia.'
               : ''}
@@ -398,11 +400,11 @@ export function TradePane({ trade }: { trade: TradeView }) {
           </p>
         )}
         <div className="inventory-actions">
-          {mine && !invited && (
+          {mine && (!invited || mineIndex === 0) && (
             <button
               type="button"
               className={`small-button${mine.accepted ? '' : ' small-button--primary'}`}
-              disabled={busy || (!mine.accepted && stale)}
+              disabled={busy || (!mine.accepted && (stale || emptyTrade))}
               title={
                 mine.accepted
                   ? 'Cofnij zgodę'
@@ -484,7 +486,7 @@ function OfferZone({
     >
       <p className="trade-column-title">
         {side.mine ? 'Moje pole wymiany' : `Pole wymiany: ${side.name}`}
-        {!invited && (
+        {(!invited || side.accepted) && (
           <span className={`trade-consent${side.accepted ? ' trade-consent--yes' : ''}`}>
             {side.accepted ? '✔ zgoda' : 'bez zgody'}
           </span>

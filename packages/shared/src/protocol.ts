@@ -659,10 +659,17 @@ export interface TradeInvitePayload {
   toCharacterId?: string;
 }
 
-/** Odpowiedź zaproszonego: `accept: false` odrzuca zaproszenie. */
+/**
+ * Odpowiedź zaproszonego: `accept: false` odrzuca zaproszenie. Z `agree`
+ * (etap 64a, „Przyjmij” w doku) przyjęcie od razu niesie zgodę na wersję
+ * `version`, którą zaproszony widział — przy zgodzie zapraszającego z góry
+ * wymiana dzieje się w tym samym kroku.
+ */
 export interface TradeRespondPayload {
   tradeId: string;
   accept: boolean;
+  agree?: boolean;
+  version?: number;
 }
 
 /** Cała nowa zawartość własnego pola wymiany — kasuje obie zgody. */

@@ -906,3 +906,11 @@
 .chat-surgery-price {
   width: 5.5rem;
 }
+
+/* Etap 64a: co zapraszający kładzie w pole — pod zdaniem zaproszenia w doku. */
+.trade-dock-offer {
+  display: block;
+  max-width: 22rem;
+  font-size: 0.74rem;
+  opacity: 0.85;
+}
