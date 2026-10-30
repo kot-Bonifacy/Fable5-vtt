@@ -992,6 +992,12 @@ export class MapRenderer {
   onMapClick: ((x: number, y: number) => boolean) | null = null;
   /** MG puścił przeciągnięte auto (etap 65b) — środek bryły po przycięciu do pasa. */
   onVehicleMove: ((sceneVehicleId: string, x: number, y: number) => void) | null = null;
+  /**
+   * Czy gracz może ciągnąć to auto (65c): `false` — nie, `null` — bez limitu
+   * (poza walką), liczba — budżet tury kierowcy w pikselach sceny. MG ciągnie
+   * każde auto bez pytania.
+   */
+  vehicleDragRule: ((vehicle: SceneVehicleView) => number | null | false) | null = null;
   /** The steered token changed (stage 16e); null means nothing is selected. */
   onSelectionChange: ((tokenId: string | null, reason: SelectionChange) => void) | null = null;
   /**
@@ -1140,6 +1146,8 @@ export class MapRenderer {
     start: ScenePoint;
     offset: ScenePoint;
     moved: boolean;
+    /** Budżet kierowcy w pikselach (65c); `null` — bez limitu (MG, poza walką). */
+    limitPx: number | null;
   } | null = null;
   private readonly grid = new Graphics();
   /** Kontrastowa siatka przy otwartym edytorze sceny (12.09) — patrz `map/grid-style.ts`. */
@@ -2549,18 +2557,22 @@ export class MapRenderer {
       // Auto na scenie pościgu (65b): MG chwyta je i przeciąga po drodze. Figura
       // siedząca w aucie bierze klik sama (jej menu, zaznaczenie, przeciąganie
       // do innego fotela), a gest bez ruchu zostaje kliknięciem — menu auta.
-      if (!this.mapToolArmed && this.viewerIsGm && !isTokenTarget(event.target)) {
-        const vehicle = this.chase.pick(point);
-        if (vehicle) {
-          this.vehicleGrab = {
-            id: vehicle.id,
-            start: point,
-            offset: { x: vehicle.x - point.x, y: vehicle.y - point.y },
-            moved: false,
-          };
-          viewport.plugins.pause('drag');
-          return;
-        }
+      // Od 65c także kierowca swoje auto — z limitem budżetu tury w walce.
+      const grabbed =
+        !this.mapToolArmed && !isTokenTarget(event.target) ? this.chase.pick(point) : null;
+      // `null` z reguły znaczy „bez limitu”, więc brak reguły to osobne `false`.
+      const rule = this.vehicleDragRule;
+      const limitPx = !grabbed ? false : this.viewerIsGm ? null : rule ? rule(grabbed) : false;
+      if (grabbed && limitPx !== false) {
+        this.vehicleGrab = {
+          id: grabbed.id,
+          start: point,
+          offset: { x: grabbed.x - point.x, y: grabbed.y - point.y },
+          moved: false,
+          limitPx,
+        };
+        viewport.plugins.pause('drag');
+        return;
       }
 
       // Ramka zaznaczenia (etap 35). Przed wszystkimi narzędziami rysowania,
@@ -2761,7 +2773,11 @@ export class MapRenderer {
         }
         if (!grab.moved) {
           grab.moved = true;
-          this.chase.beginDrag(grab.id, { x: point.x + grab.offset.x, y: point.y + grab.offset.y });
+          this.chase.beginDrag(
+            grab.id,
+            { x: point.x + grab.offset.x, y: point.y + grab.offset.y },
+            grab.limitPx,
+          );
         }
         this.chase.dragTo({ x: point.x + grab.offset.x, y: point.y + grab.offset.y });
         return;
@@ -6794,6 +6810,18 @@ export class MapRenderer {
   ): void {
     if (this.destroyed) return;
     this.chase.setVehicles(vehicles, occupied, showRoadBand);
+  }
+
+  /**
+   * Kamera jedzie za autem gracza (65c): przesuwa widok o tyle, o ile
+   * przesunęło się auto, więc to stoi w tym samym miejscu ekranu.
+   */
+  panBy(dx: number, dy: number): void {
+    const viewport = this.viewport;
+    if (this.destroyed || !viewport || (dx === 0 && dy === 0)) return;
+    const { x, y } = viewport.center;
+    viewport.moveCenter(x + dx, y + dy);
+    this.refreshOverlays();
   }
 
   /** Auto pod punktem sceny (65b) — klik w auto rozstrzyga `MapArea`. */

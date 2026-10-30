@@ -7,6 +7,7 @@ import {
 } from '../../vehicles.js';
 import type { VehicleEntry } from './compendium.js';
 import type { CpredFleetRow } from './roleability.js';
+import { cpredActionBlock } from './statuses.js';
 
 /**
  * Pojazdy CP RED (etap 65a, s. 189–192 i ulepszenia Moto s. 163–165).
@@ -660,4 +661,47 @@ export function cpredFleetRowLevel(
     return Math.max(row.level, cpredVehicleUpgrade(row.upgradeId)?.motoLevel ?? 1);
   }
   return row.level;
+}
+
+// ───────────────────────── Pościg (etap 65c, s. 191–192) ─────────────────────────
+
+/** PT Testu zwykłej jazdy (s. 192). */
+export const CPRED_DRIVING_TEST_DV = 10;
+/** „…jeśli suma REF i odpowiedniej Umiejętności prowadzenia jest większa od 9” (s. 192). */
+export const CPRED_DRIVING_TEST_THRESHOLD = 9;
+/** Wszczep, który zwalnia rękę z kierownicy (s. 191). */
+export const CPRED_INTERFACE_PLUGS_NAME = 'Złącza interfejsu';
+
+/**
+ * Czy kierowca w każdej turze rzuca Test zwykłej jazdy: REF + Umiejętność
+ * prowadzenia ≤ 9 (s. 192).
+ */
+export function cpredDrivingTestNeeded(ref: number, skill: number): boolean {
+  return ref + skill <= CPRED_DRIVING_TEST_THRESHOLD;
+}
+
+/**
+ * Liczby pojazdu w pościgu: kratki na Akcję Ruchu (`Ruch / 4`), dryf na rundę
+ * i zbiorniki Nitro, które jeszcze zostały. Zgaszony silnik nie daje ruchu,
+ * a droga zabiera auto w tył z pełnym tempem (decyzja MG 12).
+ */
+export function cpredVehicleChase(
+  stats: CpredVehicleStats,
+  chase: { tempo: number; started: boolean; nitroUsed: number },
+): { moveSq: number; driftSq: number; nitroLeft: number } {
+  const speed = chase.started ? stats.move : 0;
+  return {
+    moveSq: Math.max(0, speed) / 4,
+    driftSq: (Math.max(0, speed) - Math.max(0, chase.tempo)) / 4,
+    nitroLeft: Math.max(0, cpredVehicleDerived(stats).nitroTanks - chase.nitroUsed),
+  };
+}
+
+/**
+ * Czy kierowca z tymi stanami panuje nad autem: Nieprzytomny, Martwy
+ * i Śmiertelnie Ranny nie prowadzą (65c) — auto jedzie bez kontroli, dopóki
+ * ktoś się nie przesiądzie.
+ */
+export function cpredDriverIncapable(statuses: readonly string[]): boolean {
+  return statuses.includes('mortally-wounded') || cpredActionBlock(statuses) !== null;
 }

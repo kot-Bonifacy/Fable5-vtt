@@ -654,3 +654,37 @@ describe('Death Save owed at the start of the turn (17.10.2026, s. 187)', () => 
     expect(spendCpredTurn(settleCpredDeathSave(owing), { kind: 'move' }).ok).toBe(true);
   });
 });
+
+describe('kierowca w pościgu (65c, s. 192)', () => {
+  const driving = { metresPerMove: 10, note: 'Kompakt: Ruch 40', noRun: true };
+
+  it('Ruch pojazdu zastępuje Ruch kierowcy, a Bieg odpada', () => {
+    const state = freshCpredTurn(driving);
+    expect(cpredMetresLeft(state)).toBe(10);
+    expect(cpredRunMetres(state)).toBe(0);
+    const moved = spendCpredTurn(state, { kind: 'move', metres: 10 });
+    expect(moved.ok).toBe(true);
+    if (!moved.ok) return;
+    expect(spendCpredTurn(moved.state, { kind: 'action', actionId: CPRED_ACTION_RUN })).toEqual({
+      ok: false,
+      error: 'RUN_BLOCKED',
+    });
+    expect(spendCpredTurn(moved.state, { kind: 'move', metres: 3, extra: true }).ok).toBe(false);
+  });
+
+  it('Nitro za Akcję daje drugi Ruch pojazdu', () => {
+    const nitro = spendCpredTurn(freshCpredTurn(driving), {
+      kind: 'action',
+      actionId: 'vehicle-nitro',
+    });
+    expect(nitro.ok).toBe(true);
+    if (!nitro.ok) return;
+    expect(cpredMetresLeft(nitro.state)).toBe(20);
+  });
+
+  it('zakaz Biegu idzie za fotelem, nie za turą', () => {
+    const walker = withCpredMoveAllowance(freshCpredTurn(driving), { metresPerMove: 8 });
+    expect(walker.runBlocked).toBeUndefined();
+    expect(readCpredTurn(JSON.stringify(freshCpredTurn(driving))).runBlocked).toBe(true);
+  });
+});

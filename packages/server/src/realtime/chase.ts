@@ -1,5 +1,4 @@
 import type {
-  ChaseMovePayload,
   ChasePlacePayload,
   ChaseRemovePayload,
   ChaseSettings,
@@ -10,8 +9,13 @@ import type {
   VehicleSeatPayload,
 } from '@vtt/shared';
 import {
+  CPRED_ACTION_MOVE,
+  CPRED_ACTION_VEHICLE_ENTER,
   ROLE_GM,
   VEHICLE_LAYOUTS,
+  cpredDriverIncapable,
+  cpredVehicleChase,
+  readCpredVehicle,
   chaseBodyContains,
   clampChaseVehicle,
   isSceneVehicleStatus,
@@ -28,6 +32,7 @@ import { RealtimeError, defineEvent, type RealtimeDeps } from './registry.js';
 import { chaseSettingsOf, requireCampaignScene } from './scenes.js';
 import { campaignRoom, gmRoom } from './state.js';
 import { emitTokensById, requireCampaignToken } from './tokens.js';
+import { requireTurnSpend } from './combat-actions.js';
 
 /**
  * Scena pościgu (etap 65b): auta na bieżni i figury w fotelach.
@@ -44,14 +49,14 @@ import { emitTokensById, requireCampaignToken } from './tokens.js';
  * i wyskok na jezdnię — tylko MG (decyzja 4).
  */
 
-type PlacedVehicle = SceneVehicle & { vehicle: Vehicle };
+export type PlacedVehicle = SceneVehicle & { vehicle: Vehicle };
 
-function requireCampaignId(socketData: { campaign: { id: string } | null }): string {
+export function requireChaseCampaignId(socketData: { campaign: { id: string } | null }): string {
   if (!socketData.campaign) throw new RealtimeError('NO_CAMPAIGN');
   return socketData.campaign.id;
 }
 
-function readDrivers(raw: string): string[] {
+export function readDrivers(raw: string): string[] {
   try {
     const parsed: unknown = JSON.parse(raw);
     return Array.isArray(parsed)
@@ -70,16 +75,40 @@ export function chaseBodyOf(vehicle: Vehicle): ChaseBody {
   };
 }
 
+function readStatuses(raw: string): string[] {
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed.filter((id): id is string => typeof id === 'string') : [];
+  } catch {
+    return [];
+  }
+}
+
+/** Czy figura za kierownicą panuje nad autem (Nieprzytomny, Martwy, Śmiertelnie Ranny — nie). */
+export function driverCapable(token: Pick<Token, 'statuses'>): boolean {
+  return !cpredDriverIncapable(readStatuses(token.statuses));
+}
+
 /**
- * Widok auta. `driverTokenIds` to figury sceny z kartą z listy zgód — podaje
- * je wołający, który zna figury (`placedViews`); bez nich lista jest pusta.
+ * Widok auta. `driverTokens` to figury sceny z kartą z listy zgód, a `driver`
+ * — figura w fotelu kierowcy; podaje je `placedViews`, który zna figury.
  */
-export function toSceneVehicleView(
+function toSceneVehicleView(
   row: PlacedVehicle,
-  driverTokens: readonly Pick<Token, 'id' | 'characterId'>[] = [],
+  context: {
+    tempo: number;
+    driverTokens: readonly Pick<Token, 'id' | 'characterId'>[];
+    driver: Pick<Token, 'statuses'> | null;
+  },
 ): SceneVehicleView {
   const body = chaseBodyOf(row.vehicle);
   const drivers = new Set(readDrivers(row.drivers));
+  const driverTokens = context.driverTokens;
+  const chase = cpredVehicleChase(readCpredVehicle(row.vehicle.system), {
+    tempo: context.tempo,
+    started: row.started,
+    nitroUsed: row.nitroUsed,
+  });
   return {
     id: row.id,
     sceneId: row.sceneId,
@@ -96,12 +125,29 @@ export function toSceneVehicleView(
     driverTokenIds: driverTokens
       .filter((token) => token.characterId !== null && drivers.has(token.characterId))
       .map((token) => token.id),
+    started: row.started,
+    control: row.lostControl
+      ? 'lost'
+      : context.driver && driverCapable(context.driver)
+        ? 'driver'
+        : 'none',
+    moveSq: chase.moveSq,
+    driftSq: chase.driftSq,
+    nitroLeft: chase.nitroLeft,
   };
 }
 
-/** Auta sceny jako widoki, z figurami, którym wolno prowadzić. */
-async function placedViews(prisma: PrismaClient, sceneId: string): Promise<SceneVehicleView[]> {
+/** Auta sceny jako widoki, z figurami, którym wolno prowadzić, i kierowcami. */
+export async function placedViews(
+  prisma: PrismaClient,
+  sceneId: string,
+): Promise<SceneVehicleView[]> {
   const rows = await placedOnScene(prisma, sceneId);
+  if (rows.length === 0) return [];
+  const scene = await prisma.scene.findUnique({
+    where: { id: sceneId },
+    select: { chaseTempo: true },
+  });
   const allowed = new Set(rows.flatMap((row) => readDrivers(row.drivers)));
   const tokens =
     allowed.size === 0
@@ -110,10 +156,35 @@ async function placedViews(prisma: PrismaClient, sceneId: string): Promise<Scene
           where: { sceneId, characterId: { in: [...allowed] } },
           select: { id: true, characterId: true },
         });
-  return rows.map((row) => toSceneVehicleView(row, tokens));
+  const seated = await prisma.token.findMany({
+    where: { sceneVehicleId: { in: rows.map((row) => row.id) }, vehicleSeat: 0 },
+    select: { sceneVehicleId: true, statuses: true },
+  });
+  return rows.map((row) =>
+    toSceneVehicleView(row, {
+      tempo: scene?.chaseTempo ?? 0,
+      driverTokens: tokens,
+      driver: seated.find((token) => token.sceneVehicleId === row.id) ?? null,
+    }),
+  );
 }
 
-async function placedOnScene(prisma: PrismaClient, sceneId: string): Promise<PlacedVehicle[]> {
+/** Widok jednego auta tej sceny — odpowiedź zdarzeń, które je zmieniły. */
+export async function placedView(
+  prisma: PrismaClient,
+  sceneId: string,
+  sceneVehicleId: string,
+): Promise<SceneVehicleView> {
+  const views = await placedViews(prisma, sceneId);
+  const view = views.find((entry) => entry.id === sceneVehicleId);
+  if (!view) throw new RealtimeError('VEHICLE_NOT_FOUND');
+  return view;
+}
+
+export async function placedOnScene(
+  prisma: PrismaClient,
+  sceneId: string,
+): Promise<PlacedVehicle[]> {
   return prisma.sceneVehicle.findMany({
     where: { sceneId },
     include: { vehicle: true },
@@ -158,7 +229,7 @@ export async function emitChase(
 }
 
 /** Geometria sceny potrzebna do przycięcia auta i foteli. */
-function chaseGeometry(scene: Scene): {
+export function chaseGeometry(scene: Scene): {
   settings: ChaseSettings;
   frame: {
     width: number;
@@ -203,7 +274,7 @@ function seatPosition(
  * którego układ już nie ma (mniejszy pojazd), wysiada na miejscu.
  * Zwraca figury, które trzeba rozesłać.
  */
-async function carryPassengers(
+export async function carryPassengers(
   prisma: PrismaClient,
   scene: Scene,
   placed: PlacedVehicle,
@@ -332,7 +403,7 @@ export async function refreshChaseScenes(deps: RealtimeDeps, campaignId: string)
   }
 }
 
-async function requirePlaced(
+export async function requirePlaced(
   prisma: PrismaClient,
   campaignId: string,
   sceneVehicleId: unknown,
@@ -348,7 +419,7 @@ async function requirePlaced(
   return row;
 }
 
-function requirePoint(payload: { x?: unknown; y?: unknown } | undefined): ScenePoint {
+export function requirePoint(payload: { x?: unknown; y?: unknown } | undefined): ScenePoint {
   const x = payload?.x;
   const y = payload?.y;
   if (
@@ -379,7 +450,7 @@ export async function moveSceneVehicle(
   const moved = await carryPassengers(deps.ctx.prisma, scene, current);
   await emitChase(deps, campaignId, scene.id);
   await emitTokensById(deps, campaignId, moved, { moved: true });
-  return toSceneVehicleView(current);
+  return placedView(deps.ctx.prisma, scene.id, row.id);
 }
 
 /** MG stawia auto kampanii na drodze sceny pościgu (albo przestawia je z innej). */
@@ -387,7 +458,7 @@ export const chasePlaceEvent = defineEvent<ChasePlacePayload, SceneVehicleView>(
   name: 'chase:place',
   role: ROLE_GM,
   handler: async ({ deps, socket, payload }) => {
-    const campaignId = requireCampaignId(socket.data);
+    const campaignId = requireChaseCampaignId(socket.data);
     const scene = await requireCampaignScene(deps.ctx.prisma, campaignId, payload?.sceneId);
     if (scene.kind !== 'chase') throw new RealtimeError('NOT_A_CHASE');
     const point = requirePoint(payload);
@@ -426,18 +497,7 @@ export const chasePlaceEvent = defineEvent<ChasePlacePayload, SceneVehicleView>(
       data: { sceneId: scene.id, vehicleId: vehicle.id, x: centre.x, y: centre.y },
     });
     await emitChase(deps, campaignId, scene.id);
-    return toSceneVehicleView({ ...created, vehicle });
-  },
-});
-
-/** MG przesuwa auto po drodze (65b bez budżetu — jazdę w turze daje 65c). */
-export const chaseMoveEvent = defineEvent<ChaseMovePayload, SceneVehicleView>({
-  name: 'chase:move',
-  role: ROLE_GM,
-  handler: async ({ deps, socket, payload }) => {
-    const campaignId = requireCampaignId(socket.data);
-    const placed = await requirePlaced(deps.ctx.prisma, campaignId, payload?.sceneVehicleId);
-    return moveSceneVehicle(deps, campaignId, placed, requirePoint(payload));
+    return placedView(deps.ctx.prisma, scene.id, created.id);
   },
 });
 
@@ -446,7 +506,7 @@ export const chaseRemoveEvent = defineEvent<ChaseRemovePayload, void>({
   name: 'chase:remove',
   role: ROLE_GM,
   handler: async ({ deps, socket, payload }) => {
-    const campaignId = requireCampaignId(socket.data);
+    const campaignId = requireChaseCampaignId(socket.data);
     const placed = await requirePlaced(deps.ctx.prisma, campaignId, payload?.sceneVehicleId);
     const passengers = await deps.ctx.prisma.token.findMany({
       where: { sceneVehicleId: placed.id },
@@ -467,7 +527,7 @@ export const chaseRemoveEvent = defineEvent<ChaseRemovePayload, void>({
 });
 
 /** Konto, które prowadzi kartę właściciela auta; `null` — auto MG albo NPC-a. */
-async function ownerUserOf(prisma: PrismaClient, vehicle: Vehicle): Promise<string | null> {
+export async function ownerUserOf(prisma: PrismaClient, vehicle: Vehicle): Promise<string | null> {
   if (!vehicle.ownerCharacterId) return null;
   const row = await prisma.character.findUnique({
     where: { id: vehicle.ownerCharacterId },
@@ -528,7 +588,7 @@ async function seatTaken(
 export const vehicleSeatEvent = defineEvent<VehicleSeatPayload, void>({
   name: 'vehicle:seat',
   handler: async ({ deps, socket, user, payload }) => {
-    const campaignId = requireCampaignId(socket.data);
+    const campaignId = requireChaseCampaignId(socket.data);
     const { token, scene } = await requireCampaignToken(
       deps.ctx.prisma,
       campaignId,
@@ -553,19 +613,55 @@ export const vehicleSeatEvent = defineEvent<VehicleSeatPayload, void>({
     if (await seatTaken(deps.ctx.prisma, placed, seat, token.id)) {
       throw new RealtimeError('SEAT_TAKEN');
     }
+    if (seat === 0 && (await isBotFigure(deps.ctx.prisma, campaignId, token))) {
+      throw new RealtimeError('BOT_CANNOT_DRIVE');
+    }
     if (seat === 0 && !(await mayTakeWheel(deps.ctx.prisma, placed, token, user))) {
       throw new RealtimeError('DRIVER_SEAT_FORBIDDEN');
     }
+    // Etap 65c: w walce gracz płaci za fotel — przesiadka w aucie to Akcja
+    // Ruchu, wejście z jezdni to Akcja („Wejście do pojazdu”, s. 191).
+    if (!isGm) {
+      const switching = token.sceneVehicleId === placed.id;
+      await requireTurnSpend(
+        deps,
+        campaignId,
+        scene,
+        token.id,
+        { kind: 'action', actionId: switching ? CPRED_ACTION_MOVE : CPRED_ACTION_VEHICLE_ENTER },
+        user,
+        switching ? CPRED_ACTION_MOVE : CPRED_ACTION_VEHICLE_ENTER,
+      );
+    }
     await seatToken(deps.ctx.prisma, scene, placed, token, seat);
     await emitTokensById(deps, campaignId, [token.id], { moved: true });
+    await emitChase(deps, campaignId, scene.id);
   },
 });
+
+/**
+ * Bot-towarzysz jedzie tylko jako pasażer (decyzja MG 9): strzela i unika,
+ * ale nie prowadzi (`BOT_CANNOT_DRIVE`). Rozpoznaje go karta przypięta do
+ * profilu bota, jak w `autoEvasionHandsOf`.
+ */
+export async function isBotFigure(
+  prisma: PrismaClient,
+  campaignId: string,
+  token: Pick<Token, 'characterId'>,
+): Promise<boolean> {
+  if (!token.characterId) return false;
+  const bot = await prisma.botProfile.findFirst({
+    where: { campaignId, archived: false, characterId: token.characterId },
+    select: { id: true },
+  });
+  return bot !== null;
+}
 
 /** Właściciel auta (albo MG) daje karcie kierownicę albo ją odbiera. */
 export const vehicleAllowDriverEvent = defineEvent<VehicleAllowDriverPayload, SceneVehicleView>({
   name: 'vehicle:allow-driver',
   handler: async ({ deps, socket, user, payload }) => {
-    const campaignId = requireCampaignId(socket.data);
+    const campaignId = requireChaseCampaignId(socket.data);
     const placed = await requirePlaced(deps.ctx.prisma, campaignId, payload?.sceneVehicleId);
     if (user.role !== ROLE_GM && (await ownerUserOf(deps.ctx.prisma, placed.vehicle)) !== user.id) {
       throw new RealtimeError('FORBIDDEN');
@@ -583,8 +679,7 @@ export const vehicleAllowDriverEvent = defineEvent<VehicleAllowDriverPayload, Sc
       data: { drivers: JSON.stringify([...drivers]) },
     });
     await emitChase(deps, campaignId, placed.sceneId);
-    const views = await placedViews(deps.ctx.prisma, placed.sceneId);
-    return views.find((view) => view.id === placed.id)!;
+    return placedView(deps.ctx.prisma, placed.sceneId, placed.id);
   },
 });
 
@@ -615,6 +710,7 @@ export async function settleSeatAfterGmDrop(
     onBody = true;
     const seat = seatAtPoint(placed, body, settings.direction, scene.gridSizePx, centre);
     if (seat === null || (await seatTaken(deps.ctx.prisma, placed, seat, token.id))) continue;
+    if (seat === 0 && (await isBotFigure(deps.ctx.prisma, campaignId, token))) continue;
     await seatToken(deps.ctx.prisma, scene, placed, token, seat);
     await emitTokensById(deps, campaignId, [token.id], { moved: true });
     return;

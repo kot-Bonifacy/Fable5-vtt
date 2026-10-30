@@ -160,6 +160,17 @@ export const CPRED_ACTION_DOSE = 'dose';
 export const CPRED_ACTION_COAT_BLADE = 'coat-blade';
 
 /**
+ * Pojazd w pościgu (etap 65c, s. 191–192): uruchomienie i zatrzymanie są
+ * Akcją, zwykła jazda słabego kierowcy zabiera Akcję na Test, a Nitro za Akcję
+ * daje drugi Ruch pojazdu. Wszystkie rozstrzyga `realtime/chase-driving.ts`.
+ */
+export const CPRED_ACTION_VEHICLE_ENTER = 'vehicle-enter';
+export const CPRED_ACTION_VEHICLE_START = 'vehicle-start';
+export const CPRED_ACTION_VEHICLE_STOP = 'vehicle-stop';
+export const CPRED_ACTION_DRIVE_TEST = 'vehicle-drive';
+export const CPRED_ACTION_NITRO = 'vehicle-nitro';
+
+/**
  * The catalogue itself (s. 168–169). Mechanics, not rulebook prose: the costs
  * and conditions are the game's arithmetic, which the engine needs to run at
  * all — the flavour text stays in the private data, like every other stage.
@@ -308,16 +319,39 @@ export const CPRED_ACTIONS: readonly CpredActionDefinition[] = [
     hint: 'Przygotowanie lub odrzucenie tarczy zabiera Akcję.',
   },
   {
-    id: 'vehicle-enter',
+    id: CPRED_ACTION_VEHICLE_ENTER,
     name: 'Wejście do pojazdu',
     cost: 'action',
     hint: 'Wsiadasz do pojazdu. Opuszczenie pojazdu jest częścią Akcji Ruchu.',
   },
   {
-    id: 'vehicle-start',
+    id: CPRED_ACTION_VEHICLE_START,
     name: 'Uruchomienie pojazdu',
     cost: 'action',
     hint: 'Zyskujesz Ruch pojazdu i przesuwasz się na początek Kolejki Inicjatywy.',
+    handledElsewhere: true,
+  },
+  {
+    id: CPRED_ACTION_VEHICLE_STOP,
+    name: 'Zatrzymanie pojazdu',
+    cost: 'action',
+    hint: 'Gasisz silnik — pojazd przestaje jechać.',
+    handledElsewhere: true,
+  },
+  {
+    id: CPRED_ACTION_DRIVE_TEST,
+    name: 'Zwykła jazda',
+    cost: 'action',
+    hint: 'Kierowca z REF + Prowadzenie ≤ 9 rzuca w każdej turze Test PT 10, inaczej traci kontrolę.',
+    handledElsewhere: true,
+  },
+  {
+    id: CPRED_ACTION_NITRO,
+    name: 'Nitro',
+    cost: 'action',
+    hint: 'Kierowca za Akcję dostaje drugi Ruch pojazdu. Jeden zbiornik na pościg.',
+    grantsMove: 1,
+    handledElsewhere: true,
   },
   {
     id: 'vehicle-maneuver',
@@ -495,6 +529,12 @@ export interface CpredTurnState {
    * a spine injury may take the same Action and must outlive a passed save.
    */
   deathSavePending: boolean;
+  /**
+   * The participant is driving a running vehicle (etap 65c): „Kierowca nie może
+   * używać Akcji Biegu" (s. 192). Read off the allowance like the metres, so it
+   * follows the seat rather than the turn it began in.
+   */
+  runBlocked?: boolean;
 }
 
 /**
@@ -618,6 +658,8 @@ export interface CpredMoveAllowance {
   metresPerMove: number | null;
   /** What shrank it, for the tracker to show („Złamana noga −4"). */
   note?: string | null;
+  /** Ruch pojazdu zastępuje Ruch kierowcy, a Bieg odpada (s. 192, etap 65c). */
+  noRun?: boolean;
 }
 
 /**
@@ -651,6 +693,7 @@ export function freshCpredTurn(
     blockedAction: carry?.noAction ?? null,
     blockedMove: carry?.noMove ?? null,
     deathSavePending: carry?.deathSave === true,
+    ...(allowance?.noRun === true ? { runBlocked: true } : {}),
   };
 }
 
@@ -665,8 +708,16 @@ export function withCpredMoveAllowance(
 ): CpredTurnState {
   const metresPerMove = normalizeMetresPerMove(allowance?.metresPerMove);
   const moveNote = allowance?.note ?? null;
-  if (metresPerMove === state.metresPerMove && moveNote === state.moveNote) return state;
-  return { ...state, metresPerMove, moveNote };
+  const runBlocked = allowance?.noRun === true;
+  if (
+    metresPerMove === state.metresPerMove &&
+    moveNote === state.moveNote &&
+    runBlocked === (state.runBlocked === true)
+  ) {
+    return state;
+  }
+  const { runBlocked: _previous, ...rest } = state;
+  return { ...rest, metresPerMove, moveNote, ...(runBlocked ? { runBlocked: true } : {}) };
 }
 
 /** Rounding slack, in metres: float noise must not refuse a legal last step. */
@@ -733,7 +784,9 @@ export type CpredTurnProblem =
   /** The Interface rank's Net Actions are all spent (stage 26b). */
   | 'NO_NET_ACTIONS_LEFT'
   /** Mortally Wounded and the turn's Death Save is not rolled yet (17.10.2026). */
-  | 'DEATH_SAVE_PENDING';
+  | 'DEATH_SAVE_PENDING'
+  /** The driver of a running vehicle has no Bieg (s. 192, etap 65c). */
+  | 'RUN_BLOCKED';
 
 export type CpredTurnResult =
   { ok: true; state: CpredTurnState } | { ok: false; error: CpredTurnProblem };
@@ -781,6 +834,7 @@ export function readCpredTurn(raw: unknown): CpredTurnState {
   const blockedAction = typeof raw.blockedAction === 'string' ? raw.blockedAction : null;
   const blockedMove = typeof raw.blockedMove === 'string' ? raw.blockedMove : null;
   const deathSavePending = raw.deathSavePending === true;
+  const runBlocked = raw.runBlocked === true;
 
   let action: CpredSpentAction | null = null;
   if (isReadable(raw.action) && typeof raw.action.id === 'string') {
@@ -831,6 +885,7 @@ export function readCpredTurn(raw: unknown): CpredTurnState {
     blockedAction,
     blockedMove,
     deathSavePending,
+    ...(runBlocked ? { runBlocked: true } : {}),
   };
 }
 
@@ -885,6 +940,9 @@ export function spendCpredTurn(state: CpredTurnState, spend: CpredTurnSpend): Cp
   if (state.deathSavePending) return { ok: false, error: 'DEATH_SAVE_PENDING' };
   if (state.blockedAction !== null) return { ok: false, error: 'ACTION_BLOCKED' };
   if (state.action !== null) return { ok: false, error: 'NO_ACTION_LEFT' };
+  if (definition.id === CPRED_ACTION_RUN && state.runBlocked === true) {
+    return { ok: false, error: 'RUN_BLOCKED' };
+  }
   if (definition.requiresSpentMove && state.moveUsed === 0) {
     return { ok: false, error: 'RUN_NEEDS_MOVE' };
   }
@@ -1312,7 +1370,7 @@ export function cpredTurnBudget(
 export function cpredRunMetres(state: CpredTurnState): number {
   if (state.metresPerMove === null) return 0;
   if (state.action !== null || state.blockedAction !== null || state.blockedMove !== null) return 0;
-  if (state.deathSavePending) return 0;
+  if (state.deathSavePending || state.runBlocked === true) return 0;
   const definition = cpredAction(CPRED_ACTION_RUN);
   return roundMetres(state.metresPerMove * (definition?.grantsMove ?? 1));
 }
@@ -1356,6 +1414,7 @@ export const CPRED_TURN_PROBLEM_MESSAGES: Record<CpredTurnProblem, string> = {
   MOVE_BLOCKED: 'Rana krytyczna zabiera ci Akcję Ruchu w tej turze.',
   NO_NET_ACTIONS_LEFT: 'Nie masz już Akcji Sieciowych w tej turze.',
   DEATH_SAVE_PENDING: CPRED_DEATH_SAVE_PENDING_MESSAGE,
+  RUN_BLOCKED: 'Kierowca nie biegnie — Ruch daje mu pojazd.',
 };
 
 /** The sentence behind a blocked spend, when the state carries one. */

@@ -445,7 +445,7 @@ describe('etap 65b: scena pościgu, auta i fotele', () => {
     expect((await moved).token.vehicleSeat).toEqual({ sceneVehicleId: car.id, seat: 2 });
     expect(
       await emitAck(owner, 'chase:move', { sceneVehicleId: car.id, x: 0, y: 0 }),
-    ).toMatchObject({ ok: false, error: 'FORBIDDEN' });
+    ).toMatchObject({ ok: false, error: 'NOT_DRIVER' });
   });
 
   it('MG przesadza do innego auta upuszczeniem i wysadza na jezdnię', async () => {

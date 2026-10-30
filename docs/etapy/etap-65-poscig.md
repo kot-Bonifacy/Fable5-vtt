@@ -203,33 +203,68 @@ tak jak `Character.sheet`.
 11. **Bieżnia rusza, gdy zapętlona tekstura jest gotowa**; do tego czasu stoi zwykłe tło. Szew
     przenika `CHASE_SEAM_SQUARES` = 3 kratki na płótnie (`buildSeamlessTexture`).
 
-## 65c — jazda, tempo i odpadanie ⬜
+## 65c — jazda, tempo i odpadanie ✅ (31.10)
 
-- [ ] Poza walką: kierowca przeciąga auto w pasie jezdni bez budżetu (MG ustawia szyk), dryf
+- [x] Poza walką: kierowca przeciąga auto w pasie jezdni bez budżetu (MG ustawia szyk), dryf
       nie działa. Dziś (65b) przeciąga tylko MG: `chase:move` + `ChaseLayer.beginDrag`.
-- [ ] Kamera gracza jedzie za autem, w którym siedzi jego figura (oględziny 65b: po ruchu auta
+- [x] Kamera gracza jedzie za autem, w którym siedzi jego figura (oględziny 65b: po ruchu auta
       figura wyjeżdża graczowi z kadru).
-- [ ] Uruchomienie pojazdu (`vehicle-start` z `turn.ts`) za Akcję: kierowca przeskakuje na
+- [x] Uruchomienie pojazdu (`vehicle-start` z `turn.ts`) za Akcję: kierowca przeskakuje na
       początek kolejki inicjatywy, Ruch pojazdu zastępuje Ruch kierowcy, kierowca traci Bieg.
       Auto wstawione do pościgu przez MG jest już uruchomione.
-- [ ] W walce: Akcja Ruchu kierowcy przesuwa auto najwyżej o `Ruch / 4` kratek (podgląd trasy
+- [x] W walce: Akcja Ruchu kierowcy przesuwa auto najwyżej o `Ruch / 4` kratek (podgląd trasy
       i budżet jak przy ruchu figury, bez ścian), Nitro dokłada drugi taki ruch za Akcję.
-- [ ] Na początku każdej rundy serwer przesuwa każde auto o `(tempo − Ruch) / 4` kratek wzdłuż
+- [x] Na początku każdej rundy serwer przesuwa każde auto o `(tempo − Ruch) / 4` kratek wzdłuż
       kierunku (czyste `chaseDrift` w `shared`, testy). Auto, którego bryła cała wyjedzie za
       tylną krawędź, dostaje `behind`, za przednią — `escaped`: znika z kadru graczy, jego
       figury wychodzą z kolejki, na czacie notka „X zostaje w tyle” / „X ucieka”. MG ma
       „Przywróć” w menu auta.
-- [ ] Zwykła jazda (s. 192): kierowca z REF + Prowadzenie ≤ 9 w każdej turze rzuca Test PT 10
+- [x] Zwykła jazda (s. 192): kierowca z REF + Prowadzenie ≤ 9 w każdej turze rzuca Test PT 10
       w ramach Akcji, porażka = utrata kontroli (65d). Rzut serwera kubkiem gracza.
-- [ ] Ręka na kierownicy: kierowca bez złącz interfejsu ma jedną rękę zajętą — broń dwuręczna
+- [x] Ręka na kierownicy: kierowca bez złącz interfejsu ma jedną rękę zajętą — broń dwuręczna
       niedostępna (zasada „jedna broń w rękach”, umowa `atak`). Zabranie ręki = utrata kontroli
       na początku następnej tury.
-- [ ] Kierowca pada (Śmiertelnie Ranny, nieprzytomny) albo fotel pusty → auto bez kontroli,
+- [x] Kierowca pada (Śmiertelnie Ranny, nieprzytomny) albo fotel pusty → auto bez kontroli,
       dopóki ktoś się nie przesiądzie (przesiadka za Akcję Ruchu).
-- [ ] Bot-towarzysz na fotelu kierowcy niedozwolony (`BOT_CANNOT_DRIVE`).
-- [ ] `decyzje-i-uproszczenia.md`: wpis o tempie, dryfie i budżecie `Ruch / 4` (domowa zasada).
-- [ ] Testy: `shared` (dryf, budżet, odpadanie, zwykła jazda), serwer (runda przesuwa auta
+- [x] Bot-towarzysz na fotelu kierowcy niedozwolony (`BOT_CANNOT_DRIVE`).
+- [x] `decyzje-i-uproszczenia.md`: wpis o tempie, dryfie i budżecie `Ruch / 4` (domowa zasada).
+- [x] Testy: `shared` (dryf, budżet, odpadanie, zwykła jazda), serwer (runda przesuwa auta
       i figury, `behind` wyrzuca z kolejki).
+
+### Rozstrzygnięcia 65c bez pytań (31.10)
+
+1. **Budżet auta to budżet tury kierowcy** (`chase-budget.ts`): za kierownicą uruchomionego auta
+   `moveBudgetForCombatant` daje `Ruch / 4` kratek × m/kratkę zamiast Ruchu z karty i znak
+   `noRun` (Bieg odmawia `RUN_BLOCKED`, drugi pas zasięgu znika). Ruch auta to `{ kind: 'move',
+   metres }` w linii prostej, jak marsz — rejestr, odmowy i pytanie MG o przekroczenie działają
+   bez zmian, a kilka przeciągnięć dzieli jedną pulę. Nitro (`vehicle:nitro`) to Akcja z
+   `grantsMove: 1` — drugi taki budżet.
+2. **Dryf od rundy 2** — pierwszą rundę ustawia MG (szyk z przeciągania). Raz na rundę
+   (`SceneVehicle.driftRound`), więc cofnięcie i ponowienie tury nie przesuwa aut drugi raz;
+   droga, która stoi, nie dryfuje. Na początku rundy gaśnie też utrata kontroli.
+3. **Auto za krawędzią** (cała bryła): `behind` / `escaped`, figury z foteli wychodzą z kolejki,
+   na czacie wiersz akcji „Zostaje w tyle” / „Ucieka” z nazwą auta. „Przywróć do pościgu” (MG)
+   stawia auto przy krawędzi, za którą wypadło, **bez** powrotu figur do kolejki — MG dokłada je
+   „Dołącz do walki”.
+4. **Silnik w menu auta** („Uruchom silnik” / „Zgaś silnik”, `vehicle:engine`): kierowca w walce
+   płaci Akcją, a uruchomienie przesuwa go na początek kolejki (inicjatywa najwyższa + 1, powrót
+   przez `resumeCombatantId`); MG przełącza bez kosztu i bez zmiany kolejki. Zgaszone auto nie
+   jedzie (`VEHICLE_NOT_STARTED`) i dryfuje w tył z pełnym tempem.
+5. **Test zwykłej jazdy** rzuca serwer przy pierwszym ruchu auta w turze (Akcja `vehicle-drive`,
+   karta rzutu jawna, kości 3D lecą); Akcja już wydana → `DRIVING_TEST_NEEDS_ACTION`. Porażka →
+   `lostControl` (auto „utrata kontroli”) do następnej rundy; MG może oddać kontrolę wcześniej.
+6. **Kontrola auta w widoku** (`SceneVehicleView.control`): `driver`, `none` (pusty fotel albo
+   kierowca Nieprzytomny, Martwy, Śmiertelnie Ranny — `cpredDriverIncapable`) i `lost`. Bez
+   kierowcy nikt poza MG auta nie przesuwa, a dryf działa dalej.
+7. **Przesiadka w walce kosztuje gracza**: w obrębie auta Akcja Ruchu, wsiadanie z jezdni Akcja
+   („Wejście do pojazdu”, s. 191). MG przesadza bez kosztu.
+8. **Bot nie siada za kierownicą** ani z menu (`BOT_CANNOT_DRIVE`), ani upuszczeniem przez MG
+   (fotel kierowcy go nie przyjmuje).
+9. **Kamera gracza** przesuwa się o tyle, o ile przesunęło się auto z jego figurą (bez animacji),
+   więc auto stoi w tym samym miejscu ekranu; MG — bez zmian.
+10. **Przeciąganie przez kierowcę** (`MapArea.driverDragLimit` → `vehicleDragRule` renderera):
+    poza walką bez limitu, w walce tylko we własnej turze, przycięte do reszty budżetu w linii
+    prostej (`chaseLimitMove`) po przycięciu do pasa.
 
 ## 65d — walka pojazdów ⬜
 

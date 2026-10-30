@@ -817,6 +817,14 @@ model SceneVehicle {
    * JSON tablicy id (`vehicle:allow-driver`).
    */
   drivers   String @default("[]")
+  /** Silnik pracuje (65c) — auto postawione przez MG jest już uruchomione. */
+  started     Boolean @default(true)
+  /** Utrata kontroli (65c): Test zwykłej jazdy oblany; mija z następną rundą. */
+  lostControl Boolean @default(false)
+  /** Runda walki, w której auto już dryfowało — dryf raz na rundę (65c). */
+  driftRound  Int     @default(0)
+  /** Zbiorniki Nitro zużyte w tym pościgu (65c). */
+  nitroUsed   Int     @default(0)
   createdAt DateTime @default(now())
 
   scene      Scene   @relation(fields: [sceneId], references: [id], onDelete: Cascade)

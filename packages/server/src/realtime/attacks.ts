@@ -1,3 +1,4 @@
+import { drivesWithOneHand } from './chase-budget.js';
 import { withPresentation } from './presentation.js';
 import type {
   AttackEvadePayload,
@@ -1228,6 +1229,13 @@ export async function performAttackRoll(
             ...cpredSmokeModifiers(await smokeModifiersAt(deps, scene, origin)),
           ],
           ...(attackerGrapple.grappled ? { grappled: true } : {}),
+          ...((await drivesWithOneHand(
+            deps.ctx.prisma,
+            attacker,
+            data.cyberware.map((piece) => piece.name),
+          ))
+            ? { wheelHand: true }
+            : {}),
           lineOfFire,
           ...(reachBlocked ? { reachBlocked: true } : {}),
           ...(barrierSp > 0 ? { barrierSp } : {}),

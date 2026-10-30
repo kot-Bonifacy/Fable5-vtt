@@ -21,7 +21,7 @@ w plikach obok — czytaj je **na żądanie, nigdy rutynowo**:
 
 | stan         | etapy                                                                                          |
 | ------------ | ---------------------------------------------------------------------------------------------- |
-| ⬜ otwarty   | **65** Scena pościgu i walka pojazdów (🟨 65a, 65b ✅ 30.10, dalej 65c); **62** Sieć ze sceny (🟨 zrobione, czeka na oględziny MG na VPS po wdrożeniu); **61** Skradanie się (🟨 zrobione, czeka na słowo MG o rozstrzygnięciach); **28** Wdrożenie na VPS (🟨 działa na `https://vtt.tatanga.eu` z botami od 18.10; zostały off-site, utwardzenie, monitoring); **43b**, **43c** (UI walki); **60** Czytelny czat (zlecenie MG z 24.10; 🟨 60a–60c ✅, czeka na oględziny MG z pierwszego kryterium); T10; refaktoryzacja odłożona (MG 18.10) |
+| ⬜ otwarty   | **65** Scena pościgu i walka pojazdów (🟨 65a, 65b ✅ 30.10, 65c ✅ 31.10, dalej 65d); **62** Sieć ze sceny (🟨 zrobione, czeka na oględziny MG na VPS po wdrożeniu); **61** Skradanie się (🟨 zrobione, czeka na słowo MG o rozstrzygnięciach); **28** Wdrożenie na VPS (🟨 działa na `https://vtt.tatanga.eu` z botami od 18.10; zostały off-site, utwardzenie, monitoring); **43b**, **43c** (UI walki); **60** Czytelny czat (zlecenie MG z 24.10; 🟨 60a–60c ✅, czeka na oględziny MG z pierwszego kryterium); T10; refaktoryzacja odłożona (MG 18.10) |
 | ✅ ukończone | 01–11, 13–20b, 23a–27f, 27h–27l, 29a–30d, 31–35, 37–42c, 43a, 44a–44d, 45, 46a1, 46a2, 46c1, 46c2, 46b1, 46b2, 47a, 47b, 48a, 48b, 48c, 49a, 49b, 50a, 50b, 50c, 51, 52, 53, 54, 55, 56, 57 (57a–57c), 58 (58a–58d), 59 (59a–59c), 63 (63a–63b; 63c wycofane 29.10), 64 (64a–64c) (ostatni zamknięty: 64, 2026-10-30) |
 | ⛔ wycofane  | 12, 21, 22 (głos), 27g (wydajność), 36 (makra); 27, 29, 30, 38 rozdzielone na etapy literowane |
 
@@ -30,7 +30,13 @@ Pełna tabela z nazwami i datami: `archiwum/tabela-etapow.md`.
 ## Od czego zacząć
 
 **Etap 65 „Scena pościgu i walka pojazdów” (zlecenie MG z 30.10) w toku — 65a i 65b zrobione
-30.10, następny jest 65c (jazda kierowcy w turze, tempo i dryf, odpadanie).** Od 65b scena ma
+30.10, 65c 31.10, następny jest 65d (walka pojazdów: ostrzał auta i pasażera, słaby punkt,
+Manewr, utrata kontroli, taranowanie).** Od 65c kierowca sam ciągnie swoje auto: poza walką bez
+budżetu, w walce z budżetu tury kierowcy (`Ruch / 4` kratek za Akcję Ruchu, bez Biegu, Nitro za
+Akcję drugi raz), po serwerowym Teście zwykłej jazdy, gdy REF + Prowadzenie ≤ 9. Od rundy 2 auta
+dryfują o `(Ruch − tempo) / 4`, a auto całe za krawędzią odpada (figury z kolejki, MG ma
+„Przywróć”); kamera gracza jedzie za autem, menu auta ma stan, silnik i Nitro. Rozstrzygnięcia 65c
+w pliku etapu, zasada domowa w `decyzje-i-uproszczenia.md`, umowy na górze `mapa` i `tura`. Od 65b scena ma
 rodzaj „Pościg” (wybór przy „Utwórz”, zakładka „Pościg” w Edycji sceny: kierunek, tempo, pas
 jezdni, „Droga jedzie”): tło przewija się w kółko bez szwu (`ChaseLayer`), auta to `SceneVehicle`
 (MG daje je „Na drogę” albo przeciąga kartę pojazdu na mapę i przesuwa po pasie), a figury siedzą
@@ -539,12 +545,12 @@ a nie do tego pliku.
 
 | obszar      | co obejmuje                                                    | umów | pułapek |
 | ----------- | -------------------------------------------------------------- | ---- | ------- |
-| `mapa`      | figury, zaznaczanie, narzędzia, obiekty sceny, ściany, efekty, zamek drzwi, ukryta figura zauważona, ikony urządzeń, wspólny widok drużyny, scena pościgu | 72   | 27      |
+| `mapa`      | figury, zaznaczanie, narzędzia, obiekty sceny, ściany, efekty, zamek drzwi, ukryta figura zauważona, ikony urządzeń, wspólny widok drużyny, scena pościgu, jazda kierowcy i dryf | 73   | 27      |
 | `czat`      | rodzaje wierszy, `visibleTo`, filtr, `seq`, `gmrecovery`, „to dotyczy mnie”, grupy kart, kolor gracza, czyszczenie | 13   | 3       |
 | `serwer`    | Prisma i migracje, zdarzenia gniazda, zapisy karty, uploady    | 26   | 21      |
 | `ui`        | okna pływające, `z-index`, motyw, skróty, dostępność, wejście, panel decyzji MG | 37   | 15      |
 | `kosci`     | kubek, `rollFormula`, wezwania i prośby o Test, tabele losowe, PT od MG | 24   | 2       |
-| `tura`      | budżet Akcji i metrów, kolejka, trasa, ruch przez ściany, skok, walka z zauważenia, pytanie MG o przekroczenie, Percepcja w drodze, ukryte figury, skradanie, kropki ataków | 33   | 7       |
+| `tura`      | budżet Akcji i metrów, kolejka, trasa, ruch przez ściany, skok, walka z zauważenia, pytanie MG o przekroczenie, Percepcja w drodze, ukryte figury, skradanie, kropki ataków, kierowca bez Biegu | 34   | 7       |
 | `atak`      | broń i dodatki, amunicja, obrażenia, pancerz, rany krytyczne, trucizna na ostrzu, auto-unik, strach z Konfrontacji | 51   | 8       |
 | `statysta`  | figura z kartą, `statBlock`, Wartość bojowa, `token:stat`, wzorce | 17   | 3       |
 | `karta`     | strony i zakładki, panele, `sheet.css`, walidacja list, usuwanie przedmiotu | 11   | 12      |
@@ -562,6 +568,29 @@ a nie do tego pliku.
 ## Notatki z dwóch ostatnich sesji
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
+
+### Sesja 31.10 — etap 65c „Jazda, tempo i odpadanie”
+
+**Zrobione wg planu** (sesja przerwana limitem 30.10 i dokończona 31.10): budżet auta jako budżet
+tury kierowcy (`realtime/chase-budget.ts` → `moveBudgetForCombatant`, `noRun`/`RUN_BLOCKED`
+w `cpred/turn.ts`), `realtime/chase-driving.ts` (`chase:move` dla kierowcy, `vehicle:engine`
+z przejściem na początek kolejki, `vehicle:nitro`, `chase:restore`, `vehicle:control`, Test
+zwykłej jazdy przez `rollServerSkillTest`, dryf `driftChaseRound` w `advanceTurn` od rundy 2
+z odpadaniem i wierszem na czacie), koszt przesiadki w walce i `BOT_CANNOT_DRIVE`
+w `vehicle:seat`, `WHEEL_TWO_HANDED` w planie ataku, migracja `20261031120000_chase_driving`.
+Klient: kierowca ciągnie auto z limitem budżetu (`vehicleDragRule`), kamera gracza za autem
+(`panBy`), podpis auta ze stanem, menu auta (stan, silnik, Nitro, „Przywróć”, „Oddaj kontrolę”).
+Rozstrzygnięcia 1–10 w pliku etapu. **Odstępstwa:** dryf od rundy 2, Nitro na pościg zamiast na
+dobę, „zdjęcie ręki z kierownicy” bez gestu (odmowa broni dwuręcznej) — wszystkie w
+`decyzje-i-uproszczenia.md`. **Testy:** shared 2811 (+ `chase`, `turn`, `vehicles`), serwer
+1701/1701 (nowy `chase-driving.test.ts` 5/5, cztery zdarzenia w macierzy izolacji, `chase.test.ts`
+z `NOT_DRIVER`), klient 442/443 — dalej tylko znany `theme.test.ts`; tsc i ESLint czyste.
+**Oglądane:** tymczasowy spec `99-ogledziny/t99-jazda` z `po-T6`, Ola w **Firefoksie**: jazda
+poza walką (kamera jedzie za autem), w walce Test zwykłej jazdy z kośćmi 3D („Zdane · 14 > PT
+10”), auto staje dokładnie na 10 kratkach budżetu, Bieg wyszarzony, menu auta, dryf −5 w rundzie
+2, auto za tylną krawędzią znika i „Zostaje w tyle” na czacie. Oględziny złapały regułę
+przeciągania, która zamieniała „bez limitu” w „nie wolno” (`?? false`) — poprawione. MG
+w Chromium tylko gniazdem (ciągnięcie auta przez MG oglądane w 65b). Na VPS nic nie zmieniano.
 
 ### Sesja 30.10, piąta — etap 65b „Scena pościgu: bieżnia, auta, fotele”
 
@@ -585,27 +614,3 @@ w Chromium (nowa scena „Pościg”, zakładka, pas, „Na drogę”, przeciąg
 w **Firefoksie** na mapie wiaduktu MG (bieżnia, auto z grafiką, fotel kierowcy klikiem, menu
 auta, figura jedzie z autem). Oględziny złapały klik w fotel poza kadrem gracza (spec) i za duży
 podpis auta (zmniejszony). Na VPS nic nie zmieniano.
-
-### Sesja 30.10, czwarta — etap 65a „Pojazd jako własność postaci”
-
-**Zrobione wg planu:** model `Vehicle` (migracja `20261030200000_vehicles`), rdzeń
-`shared/src/vehicles.ts` (bryły, układy foteli, widok i zdarzenia), `systems/cpred/vehicles.ts`
-(rodzaje, 19 ulepszeń z s. 163–165 z flagą walki i regułami montażu, `readCpredVehicle`,
-`cpredVehicleDerived`, łata MG, zgadywanie pojazdu starego wiersza), kategoria kompendium
-`vehicle` (karta wpisu, edytor MG), parser `tools/import/parse-vehicles.py` (14 pojazdów do
-`data/private`, zgodne z tabelą), zdarzenia `vehicle:create|update|delete` (MG) i
-`vehicle:rename` (właściciel karty), `vehicles` w `state:sync`, Tabor Rodziny na prawdziwych
-pojazdach (`prepareFleet`/`syncFleetVehicles` w `character:update`, backfill przy starcie), kopie
-karty i kampanii, sekcja „Pojazdy” w Ekwipunku, zakładka MG „Pojazdy” z oknem edycji, nowy
-`MotoPanel` („Dołóż pojazd” / „Dołóż ulepszenie”). Rozstrzygnięcia bez pytań 1–10 w pliku
-etapu; odstępstwo od podręcznika (fotele w małych pojazdach, Zakwaterowanie) w
-`decyzje-i-uproszczenia.md`. **Testy:** shared 2786 (+21 `vehicles.test.ts`), serwer 1688,
-nowy `vehicles.test.ts` 11/11 (MG/gracz, reguły ulepszeń, Tabor, wyścig autozapisu, zmiana
-pojazdu w wierszu, backfill, paczka karty, skasowana karta) i cztery zdarzenia w macierzy
-izolacji; klient 442/443 — dalej tylko znany `theme.test.ts` na `10-map-combat.css`; tsc
-i ESLint czyste. **Oglądane:**
-Playwright MCP Firefox nie wstał (pułapka 03.10 w `ogledziny`), więc tymczasowy spec E2E
-`99-ogledziny/t99-pojazdy` z `po-T6`: Ola w **Firefoksie** (Tabor: pojazd, zmiana na sportowy,
-ulepszenie; sekcja „Pojazdy”, zmiana nazwy), MG w Chromium (zakładka, okno edycji z regułą
-Wzmocnionej konstrukcji, Kompendium). Oględziny złapały nazwę, która nie szła za zmianą pojazdu
-w wierszu — poprawione i przykryte testem. Na VPS nic nie zmieniano.

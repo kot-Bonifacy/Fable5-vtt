@@ -1008,6 +1008,20 @@ export async function rollSecretPerception(
   token: Token,
   dv: number,
 ): Promise<RollResult | null> {
+  return rollServerSkillTest(deps, token, CPRED_PERCEPTION_SKILL_ID, dv);
+}
+
+/**
+ * Test Umiejętności, który serwer rzuca sam za figurę — ukryta Percepcja wyżej
+ * i Test zwykłej jazdy kierowcy w pościgu (etap 65c). Ten sam plan co rzut
+ * z karty, bez Szczęścia; `null`, gdy planer odmawia.
+ */
+export async function rollServerSkillTest(
+  deps: RealtimeDeps,
+  token: Token,
+  skillId: string,
+  dv: number,
+): Promise<RollResult | null> {
   const registry = deps.ctx.cpred;
   const character = token.characterId
     ? await deps.ctx.prisma.character.findUnique({ where: { id: token.characterId } })
@@ -1018,12 +1032,7 @@ export async function rollSecretPerception(
   const context = character
     ? await situationForCharacter(deps, character.campaignId, token.sceneId, character, data)
     : await situationForStatist(deps, token, {});
-  const planned = planCpredRoll(
-    data,
-    registry,
-    { kind: 'skill', skillId: CPRED_PERCEPTION_SKILL_ID },
-    context,
-  );
+  const planned = planCpredRoll(data, registry, { kind: 'skill', skillId }, context);
   if (!planned.ok) return null;
   const { plan } = planned;
   const result = rollFormula(plan.formula, createMixedRng(), { checkRule: plan.checkRule });

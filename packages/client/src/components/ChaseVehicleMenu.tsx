@@ -1,10 +1,24 @@
-import { VEHICLE_LAYOUTS, ROLE_GM, type SceneVehicleView, type TokenView } from '@vtt/shared';
+import {
+  CHASE_CONTROL_LABELS,
+  VEHICLE_LAYOUTS,
+  ROLE_GM,
+  type SceneVehicleView,
+  type TokenView,
+} from '@vtt/shared';
 import { useAuthStore } from '../stores/authStore.js';
 import { useChaseStore } from '../stores/chaseStore.js';
 import { useCharacterStore } from '../stores/characterStore.js';
 import { useSelectionStore } from '../stores/selectionStore.js';
 import { useTokenStore } from '../stores/tokenStore.js';
-import { allowVehicleDriver, removeChaseVehicle, seatInVehicle } from '../socket.js';
+import {
+  allowVehicleDriver,
+  fireVehicleNitro,
+  removeChaseVehicle,
+  restoreChaseVehicle,
+  restoreVehicleControl,
+  seatInVehicle,
+  setVehicleEngine,
+} from '../socket.js';
 import { notifyRefusal } from '../notices.js';
 
 /**
@@ -32,6 +46,30 @@ export function chaseErrorText(code: string | undefined): string {
       return 'Auta stawia się tylko na scenie pościgu.';
     case 'FORBIDDEN':
       return 'Nie możesz tego zrobić z tym autem.';
+    case 'NOT_DRIVER':
+      return 'Auto prowadzi ten, kto siedzi za kierownicą.';
+    case 'DRIVER_INCAPABLE':
+      return 'Kierowca nie jest w stanie prowadzić — ktoś musi się przesiąść.';
+    case 'VEHICLE_NOT_RACING':
+      return 'To auto odpadło z pościgu — wróci, gdy MG je przywróci.';
+    case 'VEHICLE_NOT_STARTED':
+      return 'Silnik jest zgaszony — najpierw uruchom auto.';
+    case 'VEHICLE_OUT_OF_CONTROL':
+      return 'Kierowca stracił panowanie nad autem — do następnej rundy prowadzi je MG.';
+    case 'DRIVING_TEST_NEEDS_ACTION':
+      return 'Zwykła jazda wymaga Testu w ramach Akcji, a Akcja tej tury już poszła.';
+    case 'NO_NITRO':
+      return 'W tym aucie nie zostało Nitro.';
+    case 'NITRO_COMBAT_ONLY':
+      return 'Nitro odpala się w walce — poza nią auto jedzie bez budżetu.';
+    case 'BOT_CANNOT_DRIVE':
+      return 'Bot jedzie tylko jako pasażer — nie prowadzi.';
+    case 'NO_MOVE_LEFT':
+      return 'Auto przejechało już cały Ruch tej tury.';
+    case 'NOT_YOUR_TURN':
+      return 'To nie jest twoja tura.';
+    case 'NO_ACTION_LEFT':
+      return 'Nie masz już Akcji w tej turze.';
     default:
       return `Nie udało się: ${code ?? 'nieznany błąd'}.`;
   }
@@ -75,6 +113,14 @@ export function ChaseVehicleMenu() {
   const ownsVehicle =
     vehicle.ownerCharacterId !== null && characters[vehicle.ownerCharacterId] !== undefined;
   const mayGrantWheel = isGm || ownsVehicle;
+  const driver = bySeat.get(0);
+  const drives = isGm || (driver !== undefined && driver.ownerId === user.id);
+  const act = (call: () => Promise<{ ok: boolean; error?: string }>) => {
+    void call().then((ack) => {
+      if (!ack.ok) notifyRefusal('chase', chaseErrorText(ack.error));
+    });
+    close();
+  };
 
   const sit = (seat: number) => {
     if (!figure) return;
@@ -101,6 +147,45 @@ export function ChaseVehicleMenu() {
         aria-label={`Auto: ${vehicle.name}`}
       >
         <p className="context-menu-title">{vehicle.name}</p>
+        <p className="chase-menu-state">{vehicleStateLine(vehicle)}</p>
+        {drives && vehicle.status === 'racing' && (
+          <button
+            type="button"
+            className="context-menu-item"
+            title="Uruchomienie i zatrzymanie są Akcją. Uruchomienie przesuwa kierowcę na początek kolejki."
+            onClick={() => act(() => setVehicleEngine(vehicle.id, !vehicle.started))}
+          >
+            {vehicle.started ? 'Zgaś silnik' : 'Uruchom silnik'}
+          </button>
+        )}
+        {drives && vehicle.status === 'racing' && vehicle.nitroLeft > 0 && (
+          <button
+            type="button"
+            className="context-menu-item"
+            title="Za Akcję kierowca dostaje drugi Ruch pojazdu (w walce)."
+            onClick={() => act(() => fireVehicleNitro(vehicle.id))}
+          >
+            {`Nitro (${vehicle.nitroLeft})`}
+          </button>
+        )}
+        {isGm && (vehicle.status === 'behind' || vehicle.status === 'escaped') && (
+          <button
+            type="button"
+            className="context-menu-item"
+            onClick={() => act(() => restoreChaseVehicle(vehicle.id))}
+          >
+            Przywróć do pościgu
+          </button>
+        )}
+        {isGm && vehicle.control === 'lost' && (
+          <button
+            type="button"
+            className="context-menu-item"
+            onClick={() => act(() => restoreVehicleControl(vehicle.id))}
+          >
+            Oddaj kierowcy kontrolę
+          </button>
+        )}
         <p className="context-menu-section">Fotele</p>
         {VEHICLE_LAYOUTS[vehicle.layout].map((_, seat) => {
           const occupant = bySeat.get(seat);
@@ -142,6 +227,22 @@ export function ChaseVehicleMenu() {
       </div>
     </>
   );
+}
+
+/** „Ruch 5 kratek/turę · dryf −5 · kierowca prowadzi” — stan auta jednym wierszem. */
+function vehicleStateLine(vehicle: SceneVehicleView): string {
+  if (vehicle.status === 'behind') return 'Zostało w tyle — poza pościgiem';
+  if (vehicle.status === 'escaped') return 'Uciekło — poza pościgiem';
+  const drift =
+    vehicle.driftSq === 0
+      ? 'bez dryfu'
+      : `dryf ${vehicle.driftSq > 0 ? '+' : '−'}${formatSq(Math.abs(vehicle.driftSq))}/rundę`;
+  const move = vehicle.started ? `${formatSq(vehicle.moveSq)} kratek/turę` : 'silnik zgaszony';
+  return `${move} · ${drift} · ${CHASE_CONTROL_LABELS[vehicle.control]}`;
+}
+
+function formatSq(value: number): string {
+  return Number.isInteger(value) ? String(value) : value.toFixed(1).replace('.', ',');
 }
 
 /** Kierownica dla pasażerów z kartą — poza kartą właściciela, która ma ją zawsze. */

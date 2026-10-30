@@ -252,3 +252,10 @@ input.vehicle-card-name {
   width: auto;
   text-align: right;
 }
+
+/* Stan auta w menu (65c): budżet na turę, dryf i kto panuje nad autem. */
+.chase-menu-state {
+  margin: 0 0.5rem 0.25rem;
+  font-size: 0.78rem;
+  color: var(--text-dim);
+}

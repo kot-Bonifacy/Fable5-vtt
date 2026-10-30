@@ -873,6 +873,11 @@ const CASES: Record<string, Case> = {
     tokenId: a.tokenId,
     allow: true,
   })),
+  // jazda w pościgu (etap 65c)
+  'vehicle:engine': foreign((a) => ({ sceneVehicleId: a.sceneVehicleId, on: false })),
+  'vehicle:nitro': foreign((a) => ({ sceneVehicleId: a.sceneVehicleId })),
+  'chase:restore': foreign((a) => ({ sceneVehicleId: a.sceneVehicleId })),
+  'vehicle:control': foreign((a) => ({ sceneVehicleId: a.sceneVehicleId })),
   // team
   'character:team-hire': foreign((a) => ({
     characterId: a.characterId,

@@ -33,6 +33,7 @@ import {
   type SceneObjectShape,
   type ScenePoint,
   type SceneView,
+  type SceneVehicleView,
   type TokenGlyph,
   type TokenView,
 } from '@vtt/shared';
@@ -482,6 +483,36 @@ function sceneDeleteErrorText(kind: SceneObjectRef['kind'], code: string | undef
 }
 
 /**
+ * Czy gracz może ciągnąć to auto i jak daleko (65c) — to samo pytanie, które
+ * zada serwer, żeby kursor nie obiecywał jazdy, której nie będzie: figura
+ * gracza za kierownicą, auto w kadrze, silnik i kontrola. Poza walką bez
+ * limitu, w walce tylko we własnej turze i najwyżej o resztę budżetu kierowcy.
+ */
+function driverDragLimit(
+  vehicle: SceneVehicleView,
+  tokens: Record<string, TokenView>,
+  combat: CombatView | null,
+  userId: string | null,
+  scene: SceneView | null,
+): number | null | false {
+  const driver = Object.values(tokens).find(
+    (token) => token.vehicleSeat?.sceneVehicleId === vehicle.id && token.vehicleSeat?.seat === 0,
+  );
+  if (!driver || !userId || driver.ownerId !== userId || !scene) return false;
+  if (vehicle.status !== 'racing' || !vehicle.started || vehicle.control !== 'driver') return false;
+  const row =
+    combat && combat.round >= 1
+      ? combat.combatants.find((entry) => entry.tokenId === driver.id)
+      : undefined;
+  if (!row) return null;
+  if (combat?.activeCombatantId !== row.id) return false;
+  const distance = row.turn?.distance;
+  if (!distance) return null;
+  const metresLeft = Math.max(0, distance.max - distance.used);
+  return (metresLeft / scene.metersPerSquare) * scene.grid.sizePx;
+}
+
+/**
  * What is left of the acting participant's movement, as the reach circle needs
  * it. Only drawn for a token this user may actually drag: the GM sees it for
  * whoever is acting, a player only for their own.
@@ -915,9 +946,20 @@ export function MapArea() {
     renderer.onMapClick = handleMapClick;
     renderer.onVehicleMove = (sceneVehicleId, x, y) => {
       void moveChaseVehicle(sceneVehicleId, x, y).then((ack) => {
-        if (!ack.ok) notifyRefusal('chase', chaseErrorText(ack.error));
+        if (ack.ok) return;
+        notifyRefusal('chase', chaseErrorText(ack.error));
+        // Odmowa (65c: budżet, kontrola): auto wraca tam, gdzie trzyma je serwer.
+        useChaseStore.setState((state) => ({ vehicles: [...state.vehicles] }));
       });
     };
+    renderer.vehicleDragRule = (vehicle) =>
+      driverDragLimit(
+        vehicle,
+        useTokenStore.getState().tokens,
+        useCombatStore.getState().combat,
+        useAuthStore.getState().user?.id ?? null,
+        useSceneStore.getState().scene,
+      );
     renderer.onTokenMove = (tokenId, x, y, final, path, extra) => {
       const ack = sendTokenMove(tokenId, x, y, final, path, extra);
       void ack?.then((result) => {
@@ -2078,9 +2120,23 @@ export function MapArea() {
   }, [ready, pushCovers]);
 
   // Auta na scenie pościgu (65b) z zajętymi fotelami — fotel zajmuje figura,
-  // więc lista jedzie od nowa także po każdej zmianie figur.
+  // więc lista jedzie od nowa także po każdej zmianie figur. Od 65c kamera
+  // gracza jedzie za autem, w którym siedzi jego figura.
   useEffect(() => {
     if (!ready) return;
+    const followOwnVehicle = (next: SceneVehicleView[], before: SceneVehicleView[]) => {
+      const user = useAuthStore.getState().user;
+      if (!user || user.role === ROLE_GM) return;
+      const tokens = Object.values(useTokenStore.getState().tokens);
+      const ridden = next.find((vehicle) =>
+        tokens.some(
+          (token) => token.ownerId === user.id && token.vehicleSeat?.sceneVehicleId === vehicle.id,
+        ),
+      );
+      const was = ridden && before.find((vehicle) => vehicle.id === ridden.id);
+      if (!ridden || !was) return;
+      rendererRef.current?.panBy(ridden.x - was.x, ridden.y - was.y);
+    };
     const push = () => {
       const occupied = new Map<string, Set<number>>();
       for (const token of Object.values(useTokenStore.getState().tokens)) {
@@ -2098,7 +2154,9 @@ export function MapArea() {
     };
     push();
     const offChase = useChaseStore.subscribe((state, previous) => {
-      if (state.vehicles !== previous.vehicles) push();
+      if (state.vehicles === previous.vehicles) return;
+      push();
+      followOwnVehicle(state.vehicles, previous.vehicles);
     });
     const offTokens = useTokenStore.subscribe((state, previous) => {
       if (state.tokens !== previous.tokens) push();

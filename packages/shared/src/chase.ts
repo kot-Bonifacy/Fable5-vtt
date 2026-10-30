@@ -209,6 +209,129 @@ export function clampChaseVehicle(
   };
 }
 
+/**
+ * Kratki, o które auto o tej szybkości jedzie w jednej Akcji Ruchu kierowcy
+ * (decyzja MG 12: `Ruch / 4`) — zasada domowa, opisana
+ * w `decyzje-i-uproszczenia.md`. Ta sama miara, co prędkość bieżni.
+ */
+export function chaseMoveSquares(speed: number): number {
+  return Math.max(0, speed) / 4;
+}
+
+/**
+ * Dryf auta na początku rundy w kratkach wzdłuż kierunku jazdy (decyzja MG 12):
+ * auto wolniejsze od tempa pościgu traci `(tempo − Ruch) / 4`, szybsze tyle
+ * zyskuje. Ujemny — w tył.
+ */
+export function chaseDriftSquares(tempo: number, speed: number): number {
+  return (Math.max(0, speed) - Math.max(0, tempo)) / 4;
+}
+
+/** Środek przesunięty wzdłuż kierunku jazdy o `squares` kratek (ujemne — w tył). */
+export function chaseShiftAlong(
+  centre: ScenePoint,
+  direction: ChaseDirection,
+  squares: number,
+  gridSizePx: number,
+): ScenePoint {
+  const step = squares * gridSizePx;
+  switch (direction) {
+    case 'right':
+      return { x: centre.x + step, y: centre.y };
+    case 'left':
+      return { x: centre.x - step, y: centre.y };
+    case 'down':
+      return { x: centre.x, y: centre.y + step };
+    case 'up':
+      return { x: centre.x, y: centre.y - step };
+  }
+}
+
+/**
+ * Czy bryła **cała** wyjechała za krawędź sceny: za tylną — `behind` (zostaje
+ * w tyle), za przednią — `escaped` (ucieka). Bryła choć trochę w kadrze — `null`.
+ */
+export function chaseOffscreen(
+  centre: ScenePoint,
+  body: Pick<ChaseBody, 'widthSq' | 'lengthSq'>,
+  direction: ChaseDirection,
+  scene: { width: number; height: number; gridSizePx: number },
+): 'behind' | 'escaped' | null {
+  const { hx, hy } = chaseBodyHalfExtents(body, direction, scene.gridSizePx);
+  switch (direction) {
+    case 'right':
+      if (centre.x + hx <= 0) return 'behind';
+      if (centre.x - hx >= scene.width) return 'escaped';
+      return null;
+    case 'left':
+      if (centre.x - hx >= scene.width) return 'behind';
+      if (centre.x + hx <= 0) return 'escaped';
+      return null;
+    case 'down':
+      if (centre.y + hy <= 0) return 'behind';
+      if (centre.y - hy >= scene.height) return 'escaped';
+      return null;
+    case 'up':
+      if (centre.y - hy >= scene.height) return 'behind';
+      if (centre.y + hy <= 0) return 'escaped';
+      return null;
+  }
+}
+
+/**
+ * Środek auta po dryfie: wzdłuż kierunku bez przycięcia do sceny (auto może
+ * z niej wyjechać — wtedy odpada z pościgu), w poprzek — w pasie jezdni.
+ */
+export function chaseDriftedCentre(
+  centre: ScenePoint,
+  body: Pick<ChaseBody, 'widthSq' | 'lengthSq'>,
+  settings: Pick<ChaseSettings, 'direction' | 'road'>,
+  scene: {
+    width: number;
+    height: number;
+    gridSizePx: number;
+    gridOffsetX: number;
+    gridOffsetY: number;
+  },
+  squares: number,
+): ScenePoint {
+  const shifted = chaseShiftAlong(centre, settings.direction, squares, scene.gridSizePx);
+  const across = clampChaseVehicle(shifted, body, settings, scene);
+  return chaseIsHorizontal(settings.direction)
+    ? { x: shifted.x, y: across.y }
+    : { x: across.x, y: shifted.y };
+}
+
+/**
+ * Auto wraca do pościgu (MG, „Przywróć”): stawia się przy krawędzi, za którą
+ * wypadło — `behind` przy tylnej, `escaped` przy przedniej — w pasie jezdni.
+ */
+export function chaseReturnCentre(
+  centre: ScenePoint,
+  body: Pick<ChaseBody, 'widthSq' | 'lengthSq'>,
+  settings: Pick<ChaseSettings, 'direction' | 'road'>,
+  scene: {
+    width: number;
+    height: number;
+    gridSizePx: number;
+    gridOffsetX: number;
+    gridOffsetY: number;
+  },
+): ScenePoint {
+  return clampChaseVehicle(centre, body, settings, scene);
+}
+
+/**
+ * Cel przeciągnięcia auta przycięty do budżetu: punkt na odcinku `from → to`
+ * najwyżej `limitPx` pikseli od `from` (miara jak marsz figury — w linii prostej).
+ */
+export function chaseLimitMove(from: ScenePoint, to: ScenePoint, limitPx: number): ScenePoint {
+  const distance = Math.hypot(to.x - from.x, to.y - from.y);
+  if (distance <= limitPx || distance === 0) return to;
+  const ratio = Math.max(0, limitPx) / distance;
+  return { x: from.x + (to.x - from.x) * ratio, y: from.y + (to.y - from.y) * ratio };
+}
+
 /** Czy punkt leży na bryle auta (do trafiania kliknięciem i upuszczeniem). */
 export function chaseBodyContains(
   centre: ScenePoint,
@@ -312,7 +435,30 @@ export interface SceneVehicleView {
    * nie jedzie (`TokenView` w widoku publicznym).
    */
   driverTokenIds: string[];
+  /** Silnik pracuje (65c). Auto postawione przez MG jest już uruchomione. */
+  started: boolean;
+  /**
+   * Kto panuje nad autem (65c): `driver` — kierowca zdolny do działania,
+   * `none` — pusty fotel kierowcy albo kierowca leży, `lost` — utrata
+   * kontroli (zwykła jazda, puszczona kierownica) do następnej rundy.
+   */
+  control: ChaseControl;
+  /** Kratki na Akcję Ruchu kierowcy (`Ruch / 4`) — system liczy, rdzeń rysuje. */
+  moveSq: number;
+  /** Dryf na rundę w kratkach (ujemny — w tył); 0 bez tempa albo ze zgaszonym silnikiem. */
+  driftSq: number;
+  /** Zbiorniki Nitro, które jeszcze zostały na ten pościg. */
+  nitroLeft: number;
 }
+
+export const CHASE_CONTROLS = ['driver', 'none', 'lost'] as const;
+export type ChaseControl = (typeof CHASE_CONTROLS)[number];
+
+export const CHASE_CONTROL_LABELS: Record<ChaseControl, string> = {
+  driver: 'kierowca prowadzi',
+  none: 'bez kierowcy',
+  lost: 'utrata kontroli',
+};
 
 /** Server → client `chase:sync` — wszystkie auta jednej sceny (wzór `smoke:sync`). */
 export interface ChaseSyncBroadcast {
@@ -329,11 +475,41 @@ export interface ChasePlacePayload {
   y: number;
 }
 
-/** MG: `chase:move` — przesunięcie auta; figury w fotelach jadą z nim. */
+/**
+ * `chase:move` — przesunięcie auta; figury w fotelach jadą z nim. MG przesuwa
+ * każde auto bez budżetu, gracz — auto, w którym jego figura siedzi za
+ * kierownicą (65c): poza walką bez budżetu, w walce w swojej turze za Akcję
+ * Ruchu kierowcy.
+ */
 export interface ChaseMovePayload {
   sceneVehicleId: string;
   x: number;
   y: number;
+}
+
+/**
+ * `vehicle:engine` — uruchomienie albo zatrzymanie auta (65c). Kierowca
+ * w walce płaci Akcją, a uruchomienie przesuwa go na początek kolejki; MG
+ * przełącza bez kosztu.
+ */
+export interface VehicleEnginePayload {
+  sceneVehicleId: string;
+  on: boolean;
+}
+
+/** `vehicle:nitro` — kierowca w walce za Akcję dostaje drugi Ruch pojazdu (65c). */
+export interface VehicleNitroPayload {
+  sceneVehicleId: string;
+}
+
+/** MG: `chase:restore` — auto, które odpadło z pościgu, wraca na drogę (65c). */
+export interface ChaseRestorePayload {
+  sceneVehicleId: string;
+}
+
+/** MG: `vehicle:control` — oddaje kierowcy kontrolę przed następną rundą (65c). */
+export interface VehicleControlPayload {
+  sceneVehicleId: string;
 }
 
 /** MG: `chase:remove` — auto schodzi z drogi, figury zostają, gdzie siedziały. */

@@ -282,6 +282,8 @@ export interface SheetMoveBudget {
   metresPerMove: number;
   /** „Pancerz −2 · Złamana noga −4" — shown next to the metres, never guessed. */
   note: string | null;
+  /** The figure drives a running vehicle: no Bieg (CP RED s. 192, etap 65c). */
+  noRun?: boolean;
 }
 
 /**
@@ -1532,7 +1534,9 @@ export function freshTurnState(
 ): SheetTurnState {
   return JSON.stringify(
     freshCpredTurn(
-      move ? { metresPerMove: move.metresPerMove, note: move.note } : null,
+      move
+        ? { metresPerMove: move.metresPerMove, note: move.note, noRun: move.noRun === true }
+        : null,
       carry ?? null,
     ),
   );
@@ -1549,7 +1553,9 @@ export function applyMoveBudget(
 ): SheetTurnState {
   const state = withCpredMoveAllowance(
     readCpredTurn(stored ?? undefined),
-    move ? { metresPerMove: move.metresPerMove, note: move.note } : null,
+    move
+      ? { metresPerMove: move.metresPerMove, note: move.note, noRun: move.noRun === true }
+      : null,
   );
   return JSON.stringify(state);
 }

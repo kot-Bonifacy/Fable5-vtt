@@ -9,6 +9,25 @@ czytany na starcie każdej sesji został listą zadań, a nie archiwum ustaleń.
 inaczej, niż mówi podręcznik, albo gdy dotykasz wymienionego tu kodu. Jeśli któraś z tych decyzji
 przestanie się bronić, przenieś ją stąd do `POMYSLY.md` jako zadanie — nie odwrotnie.
 
+## Jazda w pościgu (etap 65c, 31.10.2026)
+
+- **Tempo, dryf i budżet `Ruch / 4` to zasada domowa** (decyzja MG 12 z 30.10). Podręcznik
+  (s. 192) każe kierowcy jechać „jak Akcją Ruchu na piechotę, tylko z Ruchem pojazdu”, czyli
+  Ruch × 2 m — na bieżni 40 Ruchu to 80 kratek, więcej niż cała mapa. VTT liczy więc Akcję Ruchu
+  kierowcy jako `Ruch / 4` kratek, a każde auto na początku rundy (od drugiej) dryfuje
+  o `(Ruch − tempo) / 4` kratek: wolniejsze od tempa pościgu zostaje w tyle, szybsze ucieka.
+  Kratki, nie metry — skala sceny (domyślnie 1 m) nic tu nie zmienia.
+- **Uruchomienie przenosi kierowcę na początek kolejki inicjatywą „najwyższa + 1”** (jak LOD,
+  s. 205), a kolejka wraca potem do tego, kto był następny. Auto postawione przez MG już pracuje,
+  więc w zwykłym pościgu nikt nie „startuje” i kolejka zostaje taka, jaką wyrzuciły kości.
+- **Test zwykłej jazdy rzuca serwer przy pierwszym ruchu auta w turze**, nie na początku tury —
+  kierowca, który nie rusza auta, nie płaci Akcji. Bez Szczęścia. Porażka to utrata kontroli do
+  następnej rundy (auto prowadzi MG); zderzenia i taranowanie dochodzą w 65d.
+- **Ręka na kierownicy odmawia broni dwuręcznej** (`WHEEL_TWO_HANDED`); świadome „zdjęcie ręki”
+  z utratą kontroli na początku następnej tury (s. 191) nie ma osobnego gestu.
+- **Nitro: zbiornik na pościg, nie na dobę** — liczy go auto na scenie (`SceneVehicle.nitroUsed`),
+  a nie zegar świata; nowe postawienie auta napełnia zbiorniki.
+
 ## Pojazdy i Tabor Rodziny (etap 65a, 30.10.2026)
 
 - **Ulepszenie foteli raz w motocyklu, skuterze i żyrokopterze.** Plik etapu mówił „nie

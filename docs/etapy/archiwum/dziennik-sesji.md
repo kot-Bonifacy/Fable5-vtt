@@ -1,5 +1,29 @@
 # Dziennik sesji — archiwum
 
+### Sesja 30.10, czwarta — etap 65a „Pojazd jako własność postaci”
+
+**Zrobione wg planu:** model `Vehicle` (migracja `20261030200000_vehicles`), rdzeń
+`shared/src/vehicles.ts` (bryły, układy foteli, widok i zdarzenia), `systems/cpred/vehicles.ts`
+(rodzaje, 19 ulepszeń z s. 163–165 z flagą walki i regułami montażu, `readCpredVehicle`,
+`cpredVehicleDerived`, łata MG, zgadywanie pojazdu starego wiersza), kategoria kompendium
+`vehicle` (karta wpisu, edytor MG), parser `tools/import/parse-vehicles.py` (14 pojazdów do
+`data/private`, zgodne z tabelą), zdarzenia `vehicle:create|update|delete` (MG) i
+`vehicle:rename` (właściciel karty), `vehicles` w `state:sync`, Tabor Rodziny na prawdziwych
+pojazdach (`prepareFleet`/`syncFleetVehicles` w `character:update`, backfill przy starcie), kopie
+karty i kampanii, sekcja „Pojazdy” w Ekwipunku, zakładka MG „Pojazdy” z oknem edycji, nowy
+`MotoPanel` („Dołóż pojazd” / „Dołóż ulepszenie”). Rozstrzygnięcia bez pytań 1–10 w pliku
+etapu; odstępstwo od podręcznika (fotele w małych pojazdach, Zakwaterowanie) w
+`decyzje-i-uproszczenia.md`. **Testy:** shared 2786 (+21 `vehicles.test.ts`), serwer 1688,
+nowy `vehicles.test.ts` 11/11 (MG/gracz, reguły ulepszeń, Tabor, wyścig autozapisu, zmiana
+pojazdu w wierszu, backfill, paczka karty, skasowana karta) i cztery zdarzenia w macierzy
+izolacji; klient 442/443 — dalej tylko znany `theme.test.ts` na `10-map-combat.css`; tsc
+i ESLint czyste. **Oglądane:**
+Playwright MCP Firefox nie wstał (pułapka 03.10 w `ogledziny`), więc tymczasowy spec E2E
+`99-ogledziny/t99-pojazdy` z `po-T6`: Ola w **Firefoksie** (Tabor: pojazd, zmiana na sportowy,
+ulepszenie; sekcja „Pojazdy”, zmiana nazwy), MG w Chromium (zakładka, okno edycji z regułą
+Wzmocnionej konstrukcji, Kompendium). Oględziny złapały nazwę, która nie szła za zmianą pojazdu
+w wierszu — poprawione i przykryte testem. Na VPS nic nie zmieniano.
+
 ### Sesja 30.10, trzecia — etap 64 „Szybka wymiana wzorem BG3” (zlecenie MG)
 
 **Zlecenie:** szybsze oddawanie wielu rzeczy jednej osobie, wzorem BG3 — w jednym oknie mój

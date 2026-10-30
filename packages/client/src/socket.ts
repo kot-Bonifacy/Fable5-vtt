@@ -3431,6 +3431,15 @@ export const seatInVehicle = (payload: VehicleSeatPayload) => emitSceneAck('vehi
 /** Właściciel auta (albo MG) daje karcie kierownicę albo ją odbiera. */
 export const allowVehicleDriver = (payload: VehicleAllowDriverPayload) =>
   emitSceneAck<SceneVehicleView>('vehicle:allow-driver', payload);
+/** Etap 65c: silnik (kierowca w walce za Akcję), Nitro, a u MG powrót i kontrola. */
+export const setVehicleEngine = (sceneVehicleId: string, on: boolean) =>
+  emitSceneAck<SceneVehicleView>('vehicle:engine', { sceneVehicleId, on });
+export const fireVehicleNitro = (sceneVehicleId: string) =>
+  emitSceneAck<SceneVehicleView>('vehicle:nitro', { sceneVehicleId });
+export const restoreChaseVehicle = (sceneVehicleId: string) =>
+  emitSceneAck<SceneVehicleView>('chase:restore', { sceneVehicleId });
+export const restoreVehicleControl = (sceneVehicleId: string) =>
+  emitSceneAck<SceneVehicleView>('vehicle:control', { sceneVehicleId });
 
 function emitSceneAck<T = undefined>(event: string, payload: unknown): Promise<SocketAck<T>> {
   return new Promise((resolve) => {
@@ -3864,6 +3873,8 @@ export function combatErrorText(code: string): string {
       return 'Celowanie zabiera całą Akcję — nie po rozpoczętym ataku.';
     case 'RUN_NEEDS_MOVE':
       return 'Bieg wymaga wcześniejszego wykonania Akcji Ruchu w tej turze.';
+    case 'RUN_BLOCKED':
+      return 'Kierowca nie biegnie — Ruch daje mu pojazd.';
     case 'HOLD_NEEDS_DECLARATION':
       return 'Wstrzymanie Akcji wymaga opisu wyzwalacza albo wartości w kolejce.';
     case 'HOLD_NEEDS_INITIATIVE':

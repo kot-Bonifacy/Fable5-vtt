@@ -4,7 +4,9 @@ import {
   VEHICLE_LAYOUTS,
   chaseHeadingDeg,
   chaseIsHorizontal,
+  chaseLimitMove,
   chaseScrollSpeed,
+  CHASE_CONTROL_LABELS,
   chaseRoadSpanPx,
   clampChaseVehicle,
   defaultVehicleArt,
@@ -102,6 +104,15 @@ function prefersReducedMotion(): boolean {
   );
 }
 
+/** Podpis auta: nazwa i — gdy coś jest nie tak — stan (65c). */
+function vehicleCaption(vehicle: SceneVehicleView): string {
+  if (!vehicle.started) return `${vehicle.name} · silnik zgaszony`;
+  if (vehicle.control !== 'driver') {
+    return `${vehicle.name} · ${CHASE_CONTROL_LABELS[vehicle.control]}`;
+  }
+  return vehicle.name;
+}
+
 export class ChaseLayer {
   /** Bieżnia — stoi w miejscu tła sceny, które na scenie pościgu się chowa. */
   readonly road = new TilingSprite({ texture: Texture.EMPTY, width: 1, height: 1 });
@@ -117,8 +128,16 @@ export class ChaseLayer {
   /** Pas jezdni u MG — dwie przerywane linie wzdłuż drogi. */
   private readonly band = new Graphics();
   private showBand = false;
-  /** Auto ciągnięte przez MG: id i środek pod kursorem (przed przycięciem). */
-  private dragging: { id: string; centre: ScenePoint } | null = null;
+  /**
+   * Auto ciągnięte przez MG albo kierowcę: id, środek pod kursorem, skąd
+   * ruszyło i budżet kierowcy w pikselach (65c; `null` — bez limitu).
+   */
+  private dragging: {
+    id: string;
+    centre: ScenePoint;
+    origin: ScenePoint;
+    limitPx: number | null;
+  } | null = null;
   private destroyed = false;
 
   constructor() {
@@ -227,8 +246,10 @@ export class ChaseLayer {
     return null;
   }
 
-  beginDrag(id: string, centre: ScenePoint): void {
-    this.dragging = { id, centre };
+  beginDrag(id: string, centre: ScenePoint, limitPx: number | null = null): void {
+    const vehicle = this.vehicles.find((entry) => entry.id === id);
+    const origin = vehicle ? { x: vehicle.x, y: vehicle.y } : centre;
+    this.dragging = { id, centre, origin, limitPx };
   }
 
   /** Środek auta po przycięciu do pasa — podgląd ciągnięcia i to, co pójdzie do serwera. */
@@ -238,13 +259,17 @@ export class ChaseLayer {
     if (!scene || !drag) return null;
     const vehicle = this.vehicles.find((entry) => entry.id === drag.id);
     if (!vehicle) return null;
-    drag.centre = clampChaseVehicle(centre, vehicle, scene.chase, {
+    const clamped = clampChaseVehicle(centre, vehicle, scene.chase, {
       width: scene.width,
       height: scene.height,
       gridSizePx: scene.grid.sizePx,
       gridOffsetX: scene.grid.offsetX,
       gridOffsetY: scene.grid.offsetY,
     });
+    // Pas jezdni jest wypukły, więc odcinek od miejsca startu do przyciętego
+    // celu cały w nim leży — budżet przycina już po pasie.
+    drag.centre =
+      drag.limitPx === null ? clamped : chaseLimitMove(drag.origin, clamped, drag.limitPx);
     this.redraw();
     return drag.centre;
   }
@@ -402,7 +427,7 @@ export class ChaseLayer {
       }
     }
 
-    node.label.text = vehicle.name;
+    node.label.text = vehicleCaption(vehicle);
     node.label.style.fontSize = Math.max(12, grid * 0.22);
     const horizontal = chaseIsHorizontal(direction);
     node.label.position.set(0, -(horizontal ? width : length) / 2 - grid * 0.08);

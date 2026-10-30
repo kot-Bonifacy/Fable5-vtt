@@ -349,6 +349,7 @@ export type CpredAttackProblem =
   | 'RANGED_WEAPON_IN_MELEE'
   | 'NOT_ENOUGH_AMMO'
   | 'GRAPPLE_TWO_HANDED'
+  | 'WHEEL_TWO_HANDED'
   | 'SHIELD_TWO_HANDED'
   | 'NO_LINE_OF_FIRE'
   | 'TARGET_BEHIND_COVER'
@@ -532,6 +533,12 @@ export interface CpredAttackContext {
    * dwie ręce" (s. 176).
    */
   grappled?: boolean;
+  /**
+   * The attacker drives a running vehicle without interface plugs: „jedną rękę
+   * musisz trzymać na kierownicy i w czasie jazdy nie możesz jej wykorzystać do
+   * niczego innego” (s. 191, etap 65c) — two-handed weapons are out.
+   */
+  wheelHand?: boolean;
   /**
    * Is the straight line to the target free of walls, shut doors and — from
    * stage 16c — cover (stage 16b)?
@@ -810,6 +817,9 @@ export function planCpredAttack(
   // of a Hold, whatever the sheet says about extra arms (s. 176).
   if (context.grappled === true && resolved?.hands === 2) {
     return { ok: false, error: 'GRAPPLE_TWO_HANDED' };
+  }
+  if (context.wheelHand === true && resolved?.hands === 2) {
+    return { ok: false, error: 'WHEEL_TWO_HANDED' };
   }
 
   // What is *in* the gun outranks what is in front of it: „naboje … należy
@@ -1323,6 +1333,8 @@ export const CPRED_ATTACK_PROBLEM_MESSAGES: Record<CpredAttackProblem, string> =
   RANGED_WEAPON_IN_MELEE: 'Tej broni nie użyjesz w zwarciu.',
   NOT_ENOUGH_AMMO: 'Za mało amunicji — przeładuj broń.',
   GRAPPLE_TWO_HANDED: 'W Trzymaniu nie można używać broni dwuręcznych.',
+  WHEEL_TWO_HANDED:
+    'Jedna ręka trzyma kierownicę — broni dwuręcznej nie użyjesz bez złącz interfejsu.',
   SHIELD_TWO_HANDED: CPRED_SHIELD_TWO_HANDED_REFUSAL,
   NO_LINE_OF_FIRE: 'Cel za przeszkodą — nie masz linii strzału.',
   TARGET_BEHIND_COVER: 'Cel jest za osłoną — ostrzelaj osłonę albo strzelaj mimo niej.',

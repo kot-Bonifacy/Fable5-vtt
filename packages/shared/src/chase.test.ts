@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import {
   chaseBodyContains,
+  chaseDriftSquares,
+  chaseDriftedCentre,
+  chaseLimitMove,
+  chaseMoveSquares,
+  chaseOffscreen,
+  chaseShiftAlong,
   chaseRoadSpanPx,
   chaseScrollSpeed,
   clampChaseVehicle,
@@ -116,5 +122,37 @@ describe('ustawienia pościgu', () => {
       chase: { direction: 'left' },
     });
     expect(sanitizeScenePatch({ kind: 'boat' })).toEqual({});
+  });
+});
+
+describe('jazda w pościgu (65c)', () => {
+  it('budżet to Ruch / 4 kratek, dryf (Ruch − tempo) / 4', () => {
+    expect(chaseMoveSquares(40)).toBe(10);
+    expect(chaseDriftSquares(40, 20)).toBe(-5);
+    expect(chaseDriftSquares(40, 40)).toBe(0);
+    expect(chaseDriftSquares(40, 60)).toBe(5);
+  });
+
+  it('przesuwa środek wzdłuż kierunku jazdy', () => {
+    expect(chaseShiftAlong({ x: 500, y: 500 }, 'right', -2, 100)).toEqual({ x: 300, y: 500 });
+    expect(chaseShiftAlong({ x: 500, y: 500 }, 'up', 3, 100)).toEqual({ x: 500, y: 200 });
+  });
+
+  it('dryf nie przycina wzdłuż drogi, ale trzyma pas w poprzek', () => {
+    const settings = { direction: 'right' as const, road: { from: 6, to: 12 } };
+    const drifted = chaseDriftedCentre({ x: 200, y: 100 }, CAR, settings, SCENE, -5);
+    expect(drifted).toEqual({ x: -300, y: 750 });
+  });
+
+  it('odpada dopiero bryła cała za krawędzią: w tyle albo ucieka', () => {
+    expect(chaseOffscreen({ x: -240, y: 900 }, CAR, 'right', SCENE)).toBeNull();
+    expect(chaseOffscreen({ x: -250, y: 900 }, CAR, 'right', SCENE)).toBe('behind');
+    expect(chaseOffscreen({ x: 2650, y: 900 }, CAR, 'right', SCENE)).toBe('escaped');
+    expect(chaseOffscreen({ x: 1200, y: 2050 }, CAR, 'up', SCENE)).toBe('behind');
+  });
+
+  it('przycina przeciągnięcie do budżetu w linii prostej', () => {
+    expect(chaseLimitMove({ x: 0, y: 0 }, { x: 300, y: 400 }, 250)).toEqual({ x: 150, y: 200 });
+    expect(chaseLimitMove({ x: 0, y: 0 }, { x: 30, y: 40 }, 250)).toEqual({ x: 30, y: 40 });
   });
 });

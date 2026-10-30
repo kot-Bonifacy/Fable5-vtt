@@ -1,3 +1,4 @@
+import { drivingMoveBudget } from './chase-budget.js';
 import { deferView } from './presentation.js';
 import type {
   ChatMessageView,
@@ -987,6 +988,11 @@ export async function moveBudgetForCombatant(
   deps: RealtimeDeps,
   row: CombatantRow,
 ): Promise<SheetMoveBudget | null> {
+  // Etap 65c: za kierownicą uruchomionego auta Ruch daje pojazd, nie karta.
+  if (row.token) {
+    const driving = await drivingMoveBudget(deps.ctx.prisma, row.token);
+    if (driving) return driving;
+  }
   const characterId = row.token?.character?.id;
   if (!characterId) return null;
   const character = await deps.ctx.prisma.character.findUnique({

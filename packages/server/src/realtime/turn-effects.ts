@@ -52,6 +52,7 @@ import {
   emitTokensOfCharacter,
   requireCampaignToken,
 } from './tokens.js';
+import { driftChaseRound, pointerAfterDrift } from './chase-driving.js';
 import { sweepTimedEffects } from './timed-effects.js';
 import { runZonesAtTurnEnd } from './zones.js';
 import { sweepBackupArrivals } from './backup.js';
@@ -119,7 +120,17 @@ export async function advanceTurn(
 
   // The roster is re-read: the end-of-turn hook may have written a carry, and
   // `applyTurnPointer` is what spends it into the fresh budget.
-  const refreshed = await loadCombatById(deps.ctx.prisma, combat.id);
+  let refreshed = await loadCombatById(deps.ctx.prisma, combat.id);
+  // Etap 65c: początek rundy na scenie pościgu — auta dryfują, a te, które
+  // wyjechały z kadru, zabierają swoje figury z kolejki. Od rundy 2: pierwszą
+  // ustawia MG.
+  if (pointer.round > combat.round && pointer.round >= 2) {
+    const dropped = await driftChaseRound(deps, campaignId, scene, refreshed, pointer.round, user);
+    if (dropped) {
+      refreshed = await loadCombatById(deps.ctx.prisma, combat.id);
+      pointer = pointerAfterDrift(refreshed, pointer);
+    }
+  }
   await applyTurnPointer(deps, refreshed, pointer, true);
 
   // Stage 16h: a minute is twenty rounds, and this is where they are counted. Swept

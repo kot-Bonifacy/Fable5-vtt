@@ -2,6 +2,9 @@ import { describe, expect, it } from 'vitest';
 import { validateCompendiumEntry, type VehicleEntry } from './compendium.js';
 import { readCpredFleet, cpredFleetProblem } from './roleability.js';
 import {
+  cpredDriverIncapable,
+  cpredDrivingTestNeeded,
+  cpredVehicleChase,
   CPRED_VEHICLE_FALLBACK,
   cpredFleetRowLevel,
   cpredGuessFleetVehicle,
@@ -311,5 +314,43 @@ describe('Tabor Rodziny', () => {
     ]);
     expect(rows[0]).not.toHaveProperty('upgradeId');
     expect(rows[1]).not.toHaveProperty('compendiumId');
+  });
+});
+
+describe('pojazd w pościgu (65c)', () => {
+  const stats = readCpredVehicle({ kind: 'car', hpMax: 50, seats: 4, move: 20 });
+
+  it('liczy budżet, dryf i zbiorniki Nitro; zgaszony silnik daje pełny dryf w tył', () => {
+    expect(cpredVehicleChase(stats, { tempo: 40, started: true, nitroUsed: 0 })).toEqual({
+      moveSq: 5,
+      driftSq: -5,
+      nitroLeft: 0,
+    });
+    const nitro = readCpredVehicle({
+      kind: 'car',
+      hpMax: 50,
+      seats: 4,
+      move: 40,
+      upgrades: [
+        { id: 'a', upgradeId: 'nitro' },
+        { id: 'b', upgradeId: 'nitro' },
+      ],
+    });
+    expect(cpredVehicleChase(nitro, { tempo: 40, started: false, nitroUsed: 1 })).toEqual({
+      moveSq: 0,
+      driftSq: -10,
+      nitroLeft: 1,
+    });
+  });
+
+  it('Test zwykłej jazdy przy REF + Umiejętność ≤ 9', () => {
+    expect(cpredDrivingTestNeeded(5, 4)).toBe(true);
+    expect(cpredDrivingTestNeeded(6, 4)).toBe(false);
+  });
+
+  it('Nieprzytomny, Martwy i Śmiertelnie Ranny nie prowadzą', () => {
+    expect(cpredDriverIncapable(['mortally-wounded'])).toBe(true);
+    expect(cpredDriverIncapable(['unconscious'])).toBe(true);
+    expect(cpredDriverIncapable(['prone'])).toBe(false);
   });
 });
