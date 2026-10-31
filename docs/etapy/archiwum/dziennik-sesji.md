@@ -1,5 +1,37 @@
 # Dziennik sesji — archiwum
 
+### Sesja 31.10, czwarta — etap 65e „Przeszkody i ruch uliczny”
+
+**Zrobione wg planu:** rdzeń `shared/chase-obstacles.ts` (rodzaje z grafikami, wypuszczenie przy
+przedniej krawędzi, `chaseObstacleSweep` — tor przeszkody przez bryły aut ruchem względnym,
+kolczatka), reguły w `vehiclecombat.ts` (Gwałtowny skręt PT 13, kolczatka PT 17 i 4k6,
+`cpredVehicleSpikesLeft`, `cpredSpikesAffect`), akcja `vehicle-spikes`. Serwer: migracja
+`20261031220000_chase_obstacles` (`ChaseObstacle`, `SceneVehicle.spikesUsed`), nowy
+`realtime/chase-obstacles.ts` (`chase:obstacle-spawn` tylko w walce, `-remove`, `-answer`,
+`vehicle:spikes`, `driftObstaclesRound` w haku dryfu, `crossSpikes` po jeździe kierowcy),
+przeszkoda jako cel `resolveRam` (`ramObstacle`), słaby punkt kolczatki znacznikiem serwera
+w `rollAimedAtWeakSpot`, przeszkody w `chase:sync` i `state:sync`, cztery zdarzenia w macierzy
+izolacji. Klient: paleta „Przeszkody” na pasku MG (`ChaseObstacleTools`, wyszarzona poza walką),
+rysunek w `ChaseLayer`, menu przeszkody i pasek kierowcy (`ChaseObstacleMenu`), „Zrzuć
+kolczatkę” w menu auta, przeszkody w pytaniu „Zderzenie”. Grafiki: Kenney Racing Pack (CC0)
+i „Caltrops” z game-icons.net (CC BY 3.0) w `public/art/obstacles/` z atrybucją. Rozstrzygnięcia
+1–10 w pliku etapu, zasady domowe w `decyzje-i-uproszczenia.md`. **Odstępstwa:** paczka aut z 65b
+nie ma przeszkód — barierki z innego źródła; minięta przeszkoda staje za autem także po
+zderzeniu; taranowanie przeszkody bez „Cofnij”; kolczatka liczona jak Nitro. **Testy:** shared
+2854 (nowy `chase-obstacles.test.ts` 14/14, kolczatka w `vehiclecombat.test.ts`), serwer
+1722/1722 (nowy `chase-obstacles.test.ts` 6/6), klient 442/443 — dalej tylko znany
+`theme.test.ts`; tsc, ESLint i Prettier czyste w zmienionych plikach. Stały E2E
+`48-poscig/t65-przeszkody` (`@szybkie`, kości skryptowane) 3/3; cała grupa `@szybkie` 67/71 —
+`t8a-szew-zaslony` (Firefox) pada też na kliencie z `HEAD`, `t9a` raz migotał (`zaleglosci.md`). **Oglądane:** tymczasowy spec
+`99-ogledziny/t99-przeszkody` z `po-T6` (skasowany): Ola w **Firefoksie** (barykada z obrysem,
+pasek „Na drodze”, skręt nieudany → utrata kontroli i zderzenie, skręt udany → barykada za
+autem, kolczatka za autem gangu), MG w **Chromium** (paleta, przycisk wyszarzony poza walką,
+menu przeszkody „Za kierowcę”, menu auta z „Zrzuć kolczatkę”). Oględziny złapały: barykadę
+4-kratkową na dwóch pasach (zwężona do 3), pasek komunikatu nad menu auta (menu podniesione),
+dwuwyrazowe nazwy w palecie łamane w dwie linie. Cudze zmiany w drzewie (`MapFxLayer.ts`,
+`CombatForms.tsx`, `damage.test.ts`, `grapple-turns.test.ts`, stare spece `99-ogledziny`) nie
+ruszane. Na VPS nic nie zmieniano.
+
 ### Sesja 31.10, trzecia — etap 65d2 „Manewr, taranowanie, broń pokładowa”
 
 **Decyzje MG na starcie:** całość w jednym podetapie (propozycja podziału na 65d2 + 65d3

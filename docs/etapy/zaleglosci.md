@@ -6,6 +6,15 @@ w `POMYSLY.md` („Do sprawdzenia przy stole”), decyzje MG — w `decyzje-i-up
 
 ## Otwarte
 
+**31.10.2026 — Karta prośby o operację mówi „Zoperowane” po nieudanym Teście montażu.**
+Oględziny netrunnerki (spec `99-ogledziny/t99-netrunner-chrom`, A6, Ola w **Firefoksie**): Iskra
+operuje Kowala (Wyświetlacz, galeria, PT 13), kość 2 → 11. Karta rzutu poprawnie: „Wszczep
+zniszczony · pacjent: Kowal · cyborgizacja przepadła (s. 226)”, pieniądze zeszły, wiersza brak.
+Ale karta prośby (`SurgeryRequest`) zamyka się zieloną plakietką „ZOPEROWANE — 1 000 ED — OLA”
+u obojga graczy — `close('operated', price)` w `realtime/surgery.ts` nie zna wyniku Testu,
+a `SurgeryResolutionKind` nie ma rodzaju „nieudana”. Do decyzji MG: osobny rodzaj (np.
+„Operacja nieudana — wszczep zniszczony”, czerwona plakietka) czy tylko inny kolor.
+
 **31.10.2026 — T4b 4.8 „pięść, która trafia” raz spudłowała.** Na trzy przebiegi T4b od
 `po-T4a` (sesja piąta 31.10) jeden padł w 4.8 na `punch.attack?.hit === false` (kość
 skryptowana 8, Iskra pod Rzeźnikiem); powtórka bez zmian w kodzie 20/20. Adnotacji z rozbiciem

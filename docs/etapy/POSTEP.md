@@ -560,6 +560,29 @@ a nie do tego pliku.
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
 
+### Sesja 31.10, szósta — testy netrunnerki w przeglądarce
+
+**Zlecenie MG:** zaprojektować i wykonać testy netrunnera w przeglądarce, w tym wstawianie
+cyborgizacji i podgląd przez punkt dostępu kamery w zamkniętym pomieszczeniu. **Zrobione:** dwa
+spece oględzin od `po-T6` (`99-ogledziny/`, nie w repo, kości skryptowane). **`t99-netrunner-chrom`
+6/6** (Ola/Iskra w **Firefoksie**, Marek/Kowal i MG w Chromium): A1 Iskra sama wszczepia Techfryz
+(galeria, „Iskra — Chirurgia 2”), A2 Gniazdo czipów z kliniki — „Iskra — to pacjent” wyszarzone,
+„Zainstaluj” wyszarzone, surowe gniazdo `SURGEON_REQUIRED`, A3 MG ripperdokiem (PT 15, −5000 ed,
+−7 Człowieczeństwa, wiersz na sylwetce u Oli), A4 Czip pamięci bez operacji (bez listy chirurgów),
+A5 Kowal prosi o Złącza interfejsu — odmowa „cyborgizacji podstawowej”, A6 porażka Testu niszczy
+wszczep. **`t99-netrunner-kamera` 8/8** (Ola w **Firefoksie**, Marek w Chromium): serwerownia
+z czterech ścian i zaryglowanymi drzwiami, ukryta kamera MG w środku, Kurier za wschodnią ścianą.
+Podłączenie klikiem w terminal nie daje obrazu; Kontrola „Węzła ochrony” daje stożek przycięty
+ścianami (Wartownik widoczny, Kurier nie, u Marka nic — podsłuch czysty), „Obróć” na północ gasi
+obraz, „Wyłącz”/„Włącz”, „Otwórz” zamka przez Sieć zdejmuje przeszkodę (Kowal widzi wnętrze
+własnymi oczami; rygiel zostaje `locked`, zgodnie z umową), druga kamera z „Węzła elewacji”,
+„Odłącz się” — serwerownia znów czarna (pożyczony wzrok nie zostaje w pamięci). **Znalezisko:**
+karta prośby o operację mówi „Zoperowane” po nieudanym Teście — `zaleglosci.md`. **Uwagi bez
+zmian w kodzie:** figura stoi rogiem na siatce, więc kamera „na ścianie” ląduje w kratce po jednej
+lub drugiej stronie — postawiona za ścianą poprawnie nic nie widzi (MG stawia ją w kratce od
+środka); Techfryz i Czip pamięci dają kartę „Utrata Człowieczeństwa … 0”. **Testy:** tylko te dwa
+spece E2E; kodu nie zmieniano. Cudze zmiany w drzewie nie ruszane.
+
 ### Sesja 31.10, piąta — zaległości bez MG i bez VPS
 
 **Zlecenie MG:** przejrzeć zaległości poza refaktoryzacją i wdrożeniem, zrobić kilka. **Zrobione:**
@@ -584,35 +607,3 @@ na żywo nie widziano. **Nie ruszane:** ikony okna Celowania w Firefoksie (CSS m
 zaległość każe najpierw obejrzeć przy stole), oględziny MG, VPS. Cudze zmiany w drzewie
 (`MapFxLayer.ts`, `damage.test.ts`, `grapple-turns.test.ts`, stare spece `99-ogledziny`) nie
 ruszane.
-
-### Sesja 31.10, czwarta — etap 65e „Przeszkody i ruch uliczny”
-
-**Zrobione wg planu:** rdzeń `shared/chase-obstacles.ts` (rodzaje z grafikami, wypuszczenie przy
-przedniej krawędzi, `chaseObstacleSweep` — tor przeszkody przez bryły aut ruchem względnym,
-kolczatka), reguły w `vehiclecombat.ts` (Gwałtowny skręt PT 13, kolczatka PT 17 i 4k6,
-`cpredVehicleSpikesLeft`, `cpredSpikesAffect`), akcja `vehicle-spikes`. Serwer: migracja
-`20261031220000_chase_obstacles` (`ChaseObstacle`, `SceneVehicle.spikesUsed`), nowy
-`realtime/chase-obstacles.ts` (`chase:obstacle-spawn` tylko w walce, `-remove`, `-answer`,
-`vehicle:spikes`, `driftObstaclesRound` w haku dryfu, `crossSpikes` po jeździe kierowcy),
-przeszkoda jako cel `resolveRam` (`ramObstacle`), słaby punkt kolczatki znacznikiem serwera
-w `rollAimedAtWeakSpot`, przeszkody w `chase:sync` i `state:sync`, cztery zdarzenia w macierzy
-izolacji. Klient: paleta „Przeszkody” na pasku MG (`ChaseObstacleTools`, wyszarzona poza walką),
-rysunek w `ChaseLayer`, menu przeszkody i pasek kierowcy (`ChaseObstacleMenu`), „Zrzuć
-kolczatkę” w menu auta, przeszkody w pytaniu „Zderzenie”. Grafiki: Kenney Racing Pack (CC0)
-i „Caltrops” z game-icons.net (CC BY 3.0) w `public/art/obstacles/` z atrybucją. Rozstrzygnięcia
-1–10 w pliku etapu, zasady domowe w `decyzje-i-uproszczenia.md`. **Odstępstwa:** paczka aut z 65b
-nie ma przeszkód — barierki z innego źródła; minięta przeszkoda staje za autem także po
-zderzeniu; taranowanie przeszkody bez „Cofnij”; kolczatka liczona jak Nitro. **Testy:** shared
-2854 (nowy `chase-obstacles.test.ts` 14/14, kolczatka w `vehiclecombat.test.ts`), serwer
-1722/1722 (nowy `chase-obstacles.test.ts` 6/6), klient 442/443 — dalej tylko znany
-`theme.test.ts`; tsc, ESLint i Prettier czyste w zmienionych plikach. Stały E2E
-`48-poscig/t65-przeszkody` (`@szybkie`, kości skryptowane) 3/3; cała grupa `@szybkie` 67/71 —
-`t8a-szew-zaslony` (Firefox) pada też na kliencie z `HEAD`, `t9a` raz migotał (`zaleglosci.md`). **Oglądane:** tymczasowy spec
-`99-ogledziny/t99-przeszkody` z `po-T6` (skasowany): Ola w **Firefoksie** (barykada z obrysem,
-pasek „Na drodze”, skręt nieudany → utrata kontroli i zderzenie, skręt udany → barykada za
-autem, kolczatka za autem gangu), MG w **Chromium** (paleta, przycisk wyszarzony poza walką,
-menu przeszkody „Za kierowcę”, menu auta z „Zrzuć kolczatkę”). Oględziny złapały: barykadę
-4-kratkową na dwóch pasach (zwężona do 3), pasek komunikatu nad menu auta (menu podniesione),
-dwuwyrazowe nazwy w palecie łamane w dwie linie. Cudze zmiany w drzewie (`MapFxLayer.ts`,
-`CombatForms.tsx`, `damage.test.ts`, `grapple-turns.test.ts`, stare spece `99-ogledziny`) nie
-ruszane. Na VPS nic nie zmieniano.
