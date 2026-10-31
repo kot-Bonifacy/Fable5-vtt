@@ -80,7 +80,9 @@ etap 66b (rozszerzenie formatu + wzorzec).
 5. **Uśpiony dron to urządzenie wyłączone w Sieci** — silnik nie gasi przez to figury, MG po
    prostu jej nie rusza (notatka „Alarm i przeciwnicy”). Pomysł na automat w `POMYSLY.md`.
 6. **Latarki ustawia MG** w menu figury (notatka „Zanim zaczniecie”) — wzorzec nie zakłada figur
-   graczy, a przedmiot „Latarka” nie daje światła.
+   graczy, a przedmiot „Latarka” nie daje światła. **Domyślne światło figury to od 31.10 6 m
+   jasno / 12 m przyćmione** (`TOKEN_LIGHT_DEFAULT_DIM_M`, wcześniej 14 m; zlecenie MG) — MG
+   zaznacza „Nosi światło” i nie wpisuje liczb.
 7. **Statystyki dronów wymyślone** (Wartość bojowa 10/12/14, PW 15/20/30), broń z alternatywami
    do próbki; Czarny LOD `program.kruk` z alternatywą `program.osa`.
 8. **Gracze chodzą w Eksploracji** (`playerMove: explore`) — scena gotowa do skradania od

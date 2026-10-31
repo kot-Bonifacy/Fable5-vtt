@@ -65,7 +65,7 @@ export const LIGHT_DEFAULT_BRIGHT_M = 4;
 export const LIGHT_DEFAULT_DIM_M = 10;
 /** A hand torch, the default a token's light is offered with. */
 export const TOKEN_LIGHT_DEFAULT_BRIGHT_M = 6;
-export const TOKEN_LIGHT_DEFAULT_DIM_M = 14;
+export const TOKEN_LIGHT_DEFAULT_DIM_M = 12;
 
 /**
  * Bounds of the radius „light this room" picks, in metres.

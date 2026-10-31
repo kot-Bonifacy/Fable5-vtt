@@ -588,7 +588,9 @@ Wartość bojowa); wzorzec `data/public/scenes/fabryka-dronow/`. **Poprawka w pr
 lądowisk jest 12, nie 14 (pomyliłem się w opisie dla MG). **Oglądane:** Ola/Iskra w
 **Firefoksie** (sterownia, podłączenie, 19 urządzeń), MG i Marek/Kowal w Chromium (ciemno,
 latarka, brak przecieku wrogów do gniazda gracza) — spec `99-ogledziny/t99-fabryka` 6/6, nie w
-repo. **Testy:** shared 2874/2874, serwer 1730/1730, `tsc` shared, serwer i klient czysty.
+repo. **Po sesji (MG):** domyślne światło figury 6 m jasno / 12 m przyćmione (było 6/14),
+notatka wzorca mówi o wartościach domyślnych. **Testy:** shared 2874/2874, serwer 1730/1730,
+`tsc` shared, serwer i klient czysty.
 Cudze zmiany w drzewie (`MapFxLayer.ts`, `damage.test.ts`, `grapple-turns.test.ts`,
 `99-ogledziny`) nie ruszane.
 
