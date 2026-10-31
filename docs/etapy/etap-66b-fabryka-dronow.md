@@ -69,7 +69,7 @@ etap 66b (rozszerzenie formatu + wzorzec).
 
 ## Rozstrzygnięcia bez pytań (31.10)
 
-1. **Kratka 2 m** (wiadukt ma 1 m) — hala 48×36 m, siatka 24×18 jak na mapie wiaduktu.
+1. **Kratka 2 m** (wiadukt ma 1 m) — hala 96×72 m, siatka 48×36 (30,17 px). Pierwotnie 24×18 (hala 48×36 m), ale postać zajmowała za dużo hali; 31.10 MG kazał zagęścić siatkę 2× w każdą stronę — położenia ×2, kamery 30 → 60 m.
 2. **Lądowisk jest 12, nie 14** (pomyłka w projekcie pokazanym MG): 6 na górze, po 3 na bokach —
    11 uśpionych Szerszeni i prototyp.
 3. **Prototyp czuwa od początku i nie budzi się z alarmem** — strzela do każdego, kto wejdzie na

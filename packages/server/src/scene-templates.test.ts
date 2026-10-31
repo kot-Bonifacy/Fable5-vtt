@@ -316,7 +316,7 @@ describe('etap 66b: wzorzec zwykłej mapy — „Fabryka dronów”', () => {
     expect(tokens).toHaveLength(19);
     expect(tokens.filter((token) => token.glyph === 'camera')).toHaveLength(4);
     const camera = tokens.find((token) => token.name === 'Kamera lądowisk')!;
-    expect(camera).toMatchObject({ facing: 90, visionRange: 30, disposition: 'neutral' });
+    expect(camera).toMatchObject({ facing: 90, visionRange: 60, disposition: 'neutral' });
     // Środek kratki ze wzorca to środek figury: lewy górny róg o pół kratki wcześniej.
     expect(camera.x + scene.gridSizePx / 2).toBeCloseTo(880, 0);
 
