@@ -137,8 +137,9 @@ przestanie się bronić, przenieś ją stąd do `POMYSLY.md` jako zadanie — ni
 - **Kategoria wiersza Taboru = próg pojazdu z s. 162 albo „Wymagany Poziom Moto” ulepszenia** —
   gracz jej nie wpisuje; stary wiersz z samą nazwą dostaje pojazd zgadnięty z nazwy (najdłuższa
   nazwa z katalogu, potem słowo-wskazówka, na końcu kompakt z notką dla MG).
-- **Ceny pojazdów w katalogu są jak w podręczniku (×1, decyzja MG z 31.10.2026)** — wcześniej szły
-  cennikiem domowym ×10 jak sprzęt trwały (etap 47a); `CPRED_PRICE_SCALE_VEHICLE` w `pricing.ts`.
+- **Ceny pojazdów w katalogu to 0,3 ceny podręcznika (decyzje MG z 31.10.2026)** — wcześniej szły
+  cennikiem domowym ×10 jak sprzęt trwały (etap 47a); kompakt 9000 ed, motocykl 6000 ed.
+  `CPRED_PRICE_SCALE_VEHICLE` w `pricing.ts` — jedyny mnożnik ułamkowy, kwoty się zaokrągla.
   Pojazdu i tak nie kupuje się w VTT (`POMYSLY.md`).
 
 ## Skradanie się (etap 61, 28.10.2026)

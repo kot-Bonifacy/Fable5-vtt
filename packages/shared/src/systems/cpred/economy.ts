@@ -45,7 +45,7 @@ export const COST_CATEGORY_PRICE: Record<CostCategory, number> = {
 export function entryPrice(entry: PricedEntry): number | null {
   if (entry.cost !== null && entry.cost !== undefined) return entry.cost;
   if (entry.costCategory) {
-    return COST_CATEGORY_PRICE[entry.costCategory] * cpredCatalogPriceScale(entry);
+    return Math.round(COST_CATEGORY_PRICE[entry.costCategory] * cpredCatalogPriceScale(entry));
   }
   return null;
 }
