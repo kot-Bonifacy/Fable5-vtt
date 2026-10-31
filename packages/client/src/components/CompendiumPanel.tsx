@@ -75,6 +75,7 @@ import {
   COMPENDIUM_SHELF_LABELS,
   COMPENDIUM_SHELVES,
   countByCategory,
+  shelfOf,
   shopTierContextOf,
   useCompendiumStore,
   visibleEntries,
@@ -186,7 +187,9 @@ export function CompendiumPanel() {
             className={`compendium-category ${category === id ? 'compendium-category--active' : ''} ${
               searching && counts[id] === 0 ? 'compendium-category--miss' : ''
             }`}
-            onClick={() => setCategory(id)}
+            // Ponowny klik w otwartą zakładkę zdejmuje filtr (31.10).
+            title={category === id ? 'Kliknij ponownie, by pokazać wszystkie kategorie' : undefined}
+            onClick={() => setCategory(category === id ? null : id)}
           >
             {COMPENDIUM_SHELF_LABELS[id]} <span className="compendium-count">{counts[id]}</span>
           </button>
@@ -210,7 +213,7 @@ export function CompendiumPanel() {
                   szukania na skasowanie frazy — nie na zakładanie niczego. */}
               {order.length === 0 ? (
                 <EmptyState text="Kompendium jest puste — MG wczytuje je z rozdziałów podręcznika (skrypt importu w narzędziach)." />
-              ) : searching && elsewhere[0] ? (
+              ) : searching && category && elsewhere[0] ? (
                 <EmptyState
                   text={`Nic nie pasuje do „${query.trim()}” w kategorii „${COMPENDIUM_SHELF_LABELS[category]}”. Znalezione w: ${elsewhere
                     .map((id) => `${COMPENDIUM_SHELF_LABELS[id]} (${counts[id]})`)
@@ -248,13 +251,18 @@ export function CompendiumPanel() {
                   onClick={() => select(entry.id)}
                 >
                   <span className="compendium-row-name">
-                    {category === 'weapon' ||
-                    category === 'ammo' ||
-                    category === 'armor' ||
-                    category === 'attachment' ? (
+                    {entry.category === 'weapon' ||
+                    entry.category === 'ammo' ||
+                    entry.category === 'armor' ||
+                    entry.category === 'attachment' ? (
                       <ItemIcon icon={entryIcon(entry)} />
                     ) : null}
                     {entry.name}
+                    {category === null ? (
+                      <span className="compendium-tag">
+                        {COMPENDIUM_SHELF_LABELS[shelfOf(entry)]}
+                      </span>
+                    ) : null}
                     {entry.custom ? <span className="compendium-tag">własny</span> : null}
                     {entry.incomplete ? (
                       <span className="compendium-tag compendium-tag--warn" title="Dane niepełne">

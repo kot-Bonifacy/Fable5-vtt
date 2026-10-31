@@ -72,8 +72,8 @@ interface CompendiumStoreState {
   /** What each Role may buy above street level in the creator (naprawa 3b). */
   roleTools: Record<string, CpredShopRoleTools>;
 
-  /** Browse state of the side panel. */
-  category: CompendiumShelf;
+  /** Browse state of the side panel; null = every shelf at once (31.10). */
+  category: CompendiumShelf | null;
   query: string;
   /** Entry whose card is open; null shows the list. */
   selectedId: string | null;
@@ -86,7 +86,7 @@ interface CompendiumStoreState {
   applyShopEntryTier: (entryId: string, tier: ShopTier | null) => void;
   applyUpsert: (entry: CompendiumEntry) => void;
   applyDelete: (id: string) => void;
-  setCategory: (category: CompendiumShelf) => void;
+  setCategory: (category: CompendiumShelf | null) => void;
   setQuery: (query: string) => void;
   select: (id: string | null) => void;
   edit: (id: string | null) => void;
@@ -189,16 +189,19 @@ export function shopTierContextOf(
   return { overrides, weaponTypeName: (id) => weaponTypeById[id]?.name };
 }
 
-/** Entries of the active shelf matching the search box, in server order. */
+/**
+ * Entries of the active shelf matching the search box, in server order. A
+ * null shelf is the whole compendium — the GM clicked the open tab again.
+ */
 export function visibleEntries(
   entries: Record<string, CompendiumEntry>,
   order: string[],
   query: string,
-  shelf: CompendiumShelf,
+  shelf: CompendiumShelf | null,
 ): CompendiumEntry[] {
   const all = order
     .map((id) => entries[id])
-    .filter((e): e is CompendiumEntry => !!e && shelfOf(e) === shelf);
+    .filter((e): e is CompendiumEntry => !!e && (shelf === null || shelfOf(e) === shelf));
   if (all.length === 0) return NO_ENTRIES;
   return searchCompendium(all, query);
 }
