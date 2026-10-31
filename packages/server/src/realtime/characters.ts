@@ -68,9 +68,9 @@ import { emitRuns } from './netrun-io.js';
 import { prepareFleet, syncFleetVehicles, vehicleCatalog } from '../vehicles.js';
 import { emitVehicleGone, reseatCharacterVehicles } from './vehicles.js';
 import {
-  emitTokensById,
   emitTokensOfCharacter,
   moveCharacterTokensToOwner,
+  removeCharacterFigures,
   requireCampaignToken,
 } from './tokens.js';
 import { requireTurnSpend } from './combat-actions.js';
@@ -620,12 +620,10 @@ export const characterDeleteEvent = defineEvent<CharacterIdPayload>({
       // waits for „Przyjmij do gry".
       if (character.playReady) throw new RealtimeError('FORBIDDEN');
     }
-    // Tokens are unlinked by the DB (SetNull); refresh them so their bars
-    // fall back to their own HP instead of showing the dead sheet's.
-    const linkedTokens = await deps.ctx.prisma.token.findMany({
-      where: { characterId: character.id },
-      select: { id: true },
-    });
+    // 31.10.2026 (decyzja MG): usunięta postać znika całkowicie, także
+    // z mapy — figury idą przed kartą, bo potem baza je odpina (`SetNull`).
+    // Samą figurę bez karty zdejmuje „Usuń” w menu figury.
+    await removeCharacterFigures(deps, campaignId, character.id);
     const vehicles = await deps.ctx.prisma.vehicle.findMany({
       where: { ownerCharacterId: character.id },
       select: { id: true },
@@ -642,11 +640,6 @@ export const characterDeleteEvent = defineEvent<CharacterIdPayload>({
     // Stage 30c: a Korpo's roster points at sheets by id, and JSON has nothing
     // for the database to cascade — so the row goes when the person does.
     await dropFromTeams(deps, campaignId, character.id);
-    await emitTokensById(
-      deps,
-      campaignId,
-      linkedTokens.map((token) => token.id),
-    );
   },
 });
 

@@ -593,6 +593,9 @@ tabelą zniknęła — „Dobądź” / „Schowaj” stoi pod nazwą latarki w 
 broni (`GearLightHands`, `RowTable.below`). Oglądane w Firefoksie (Playwright) na Heńku z latarką
 z kompendium; latarkę potem usunąłem. Przy okazji siatka „Fabryki dronów” 2× gęstsza (48×36,
 hala 96×72 m, kamery 60 m).
+**I jeszcze (MG: „klikam usuń na postaci Bob, a token wciąż stoi”):** ✕ przy postaci kasuje teraz
+także jej figury na wszystkich scenach (`removeCharacterFigures`, umowa na górze `serwer`); test
+`character-rolls` przepisany z „odpina figurę” na „zabiera figurę”. Serwer 1736/1736.
 Cudze zmiany w drzewie nie ruszane.
 
 ### Sesja 31.10, dziewiąta — „Fabryka dronów” i wzorzec zwykłej mapy (etap 66b)

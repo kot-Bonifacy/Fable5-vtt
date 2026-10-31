@@ -962,10 +962,31 @@ export async function removeCardWithFigures(
   campaignId: string,
   characterId: string,
 ): Promise<void> {
+  await removeCharacterFigures(deps, campaignId, characterId);
+  await deps.ctx.prisma.character.deleteMany({
+    where: { id: characterId, campaignId, ownerId: null },
+  });
+  await emitCharacterDelete(deps, campaignId, characterId, null);
+}
+
+/**
+ * Kasuje wszystkie figury karty na wszystkich scenach kampanii i odświeża to,
+ * co `token:delete` odświeża po jednej: widzenie graczy, listy figur i tracker
+ * walki każdej dotkniętej sceny. Woła się **przed** skasowaniem karty — potem
+ * baza odpina figury (`SetNull`) i nie da się ich już po karcie znaleźć.
+ * Używają: ✕ przy postaci na liście (31.10, decyzja MG: usunięta postać znika
+ * też z mapy) i pusty stos (`removeCardWithFigures`).
+ */
+export async function removeCharacterFigures(
+  deps: RealtimeDeps,
+  campaignId: string,
+  characterId: string,
+): Promise<void> {
   const tokens = await deps.ctx.prisma.token.findMany({
     where: { characterId },
     include: { scene: true },
   });
+  const scenes = new Map<string, Scene>();
   for (const row of tokens) {
     const { scene, ...token } = row;
     if (scene.campaignId !== campaignId) continue;
@@ -973,11 +994,13 @@ export async function removeCardWithFigures(
     forgetPace(token.id);
     releaseTokenTargets(deps, token.id);
     emitTokenDelete(deps, campaignId, scene, token.id, deleteAudience(token));
+    scenes.set(scene.id, scene);
   }
-  await deps.ctx.prisma.character.deleteMany({
-    where: { id: characterId, campaignId, ownerId: null },
-  });
-  await emitCharacterDelete(deps, campaignId, characterId, null);
+  for (const scene of scenes.values()) {
+    await emitVisionToPlayers(deps, campaignId, scene);
+    await emitSceneTokensToPlayers(deps, campaignId, scene);
+    await emitCombatOfScene(deps, campaignId, scene);
+  }
 }
 
 export async function requireCampaignToken(

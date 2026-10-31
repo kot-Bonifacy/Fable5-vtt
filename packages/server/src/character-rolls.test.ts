@@ -14,6 +14,7 @@ import type {
   SceneView,
   SocketAck,
   StateSyncPayload,
+  TokenDeleteBroadcast,
   TokenUpsertBroadcast,
   TokenView,
 } from '@vtt/shared';
@@ -541,16 +542,16 @@ describe('token ↔ character link', () => {
     expect(ack).toEqual({ ok: false, error: 'CHARACTER_NOT_FOUND' });
   });
 
-  it('deleting the character unlinks the token and falls back to its own HP', async () => {
-    const tokenUpsert = waitForMatch<TokenUpsertBroadcast>(
+  // 31.10.2026 (decyzja MG): do tego dnia figura zostawała odpięta, z własnymi
+  // PW — teraz ✕ przy postaci zabiera ją z mapy razem z kartą.
+  it('deleting the character removes its token from the map', async () => {
+    const tokenDelete = waitForMatch<TokenDeleteBroadcast>(
       gm,
-      'token:upsert',
-      (payload) => payload.token.id === tokenId && payload.token.hp !== undefined,
+      'token:delete',
+      (payload) => payload.tokenId === tokenId,
     );
-    await emitAck(gm, 'character:delete', { characterId });
-    const view = (await tokenUpsert).token;
-    expect(view.id).toBe(tokenId);
-    expect(view.characterId).toBeNull();
-    expect(view.hp).toBeNull();
+    expect(await emitAck(gm, 'character:delete', { characterId })).toMatchObject({ ok: true });
+    expect((await tokenDelete).tokenId).toBe(tokenId);
+    expect(await built.prisma.token.findUnique({ where: { id: tokenId } })).toBeNull();
   });
 });

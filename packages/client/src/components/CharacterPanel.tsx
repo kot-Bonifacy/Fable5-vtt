@@ -188,7 +188,7 @@ export function CharacterPanel() {
   }
 
   async function removeCharacter(characterId: string, name: string) {
-    if (!confirmDestructive(`Usunąć postać „${name}”?`)) return;
+    if (!confirmDestructive(`Usunąć postać „${name}”? Jej figury znikną z mapy.`)) return;
     const ack = await deleteCharacter(characterId);
     noteAck('character', ack, ackErrorText);
   }
