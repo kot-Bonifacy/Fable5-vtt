@@ -2333,6 +2333,13 @@ function attackAckErrorText(code: string): string {
       return 'Tego auta nie ma już na drodze.';
     case 'NO_BULLETPROOF_GLASS':
       return 'To auto nie ma szyb kuloodpornych — strzelaj w pasażera albo w kadłub.';
+    // Etap 65d2: broń pokładowa.
+    case 'MOUNT_DRIVER_ONLY':
+      return 'Z broni pokładowej strzela kierowca tego auta.';
+    case 'MOUNT_AUTOFIRE_ONLY':
+      return 'Pokładowy karabin maszynowy strzela tylko Ogniem ciągłym.';
+    case 'MOUNT_FRONT_ONLY':
+      return 'Ta broń pokładowa razi tylko cele przed pojazdem.';
     default:
       return `Błąd ataku: ${code}`;
   }
@@ -3446,8 +3453,13 @@ export const renameVehicle = (payload: VehicleRenamePayload) =>
 /** Etap 65b: auta na scenie pościgu — MG stawia, przesuwa i zdejmuje. */
 export const placeChaseVehicle = (payload: ChasePlacePayload) =>
   emitSceneAck<SceneVehicleView>('chase:place', payload);
-export const moveChaseVehicle = (sceneVehicleId: string, x: number, y: number) =>
-  emitSceneAck<SceneVehicleView>('chase:move', { sceneVehicleId, x, y });
+export const moveChaseVehicle = (sceneVehicleId: string, x: number, y: number, ram = false) =>
+  emitSceneAck<SceneVehicleView>('chase:move', {
+    sceneVehicleId,
+    x,
+    y,
+    ...(ram ? { ram: true } : {}),
+  });
 export const removeChaseVehicle = (sceneVehicleId: string) =>
   emitSceneAck('chase:remove', { sceneVehicleId });
 /** Figura siada w fotelu (gracz własną, MG każdą). */
@@ -3464,6 +3476,13 @@ export const restoreChaseVehicle = (sceneVehicleId: string) =>
   emitSceneAck<SceneVehicleView>('chase:restore', { sceneVehicleId });
 export const restoreVehicleControl = (sceneVehicleId: string) =>
   emitSceneAck<SceneVehicleView>('vehicle:control', { sceneVehicleId });
+/** Etap 65d2: Manewr kierowcy, wezwanie MG do Manewru, przeładowanie broni pokładowej. */
+export const performVehicleManeuver = (sceneVehicleId: string, maneuverId: string) =>
+  emitSceneAck<SceneVehicleView>('vehicle:maneuver', { sceneVehicleId, maneuverId });
+export const callVehicleManeuver = (sceneVehicleId: string, maneuverId: string | null) =>
+  emitSceneAck<SceneVehicleView>('vehicle:maneuver-call', { sceneVehicleId, maneuverId });
+export const reloadVehicleMount = (sceneVehicleId: string, upgradeRowId: string) =>
+  emitSceneAck<SceneVehicleView>('vehicle:mount-reload', { sceneVehicleId, upgradeRowId });
 
 function emitSceneAck<T = undefined>(event: string, payload: unknown): Promise<SocketAck<T>> {
   return new Promise((resolve) => {

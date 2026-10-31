@@ -878,6 +878,12 @@ const CASES: Record<string, Case> = {
   'vehicle:nitro': foreign((a) => ({ sceneVehicleId: a.sceneVehicleId })),
   'chase:restore': foreign((a) => ({ sceneVehicleId: a.sceneVehicleId })),
   'vehicle:control': foreign((a) => ({ sceneVehicleId: a.sceneVehicleId })),
+  'vehicle:maneuver': foreign((a) => ({ sceneVehicleId: a.sceneVehicleId, maneuverId: 'swerve' })),
+  'vehicle:maneuver-call': foreign((a) => ({
+    sceneVehicleId: a.sceneVehicleId,
+    maneuverId: 'swerve',
+  })),
+  'vehicle:mount-reload': foreign((a) => ({ sceneVehicleId: a.sceneVehicleId, upgradeRowId: 'x' })),
   // team
   'character:team-hire': foreign((a) => ({
     characterId: a.characterId,

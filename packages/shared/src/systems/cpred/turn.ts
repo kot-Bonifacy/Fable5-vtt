@@ -169,6 +169,8 @@ export const CPRED_ACTION_VEHICLE_START = 'vehicle-start';
 export const CPRED_ACTION_VEHICLE_STOP = 'vehicle-stop';
 export const CPRED_ACTION_DRIVE_TEST = 'vehicle-drive';
 export const CPRED_ACTION_NITRO = 'vehicle-nitro';
+/** Manewr (65d2, s. 192) — `vehicle:maneuver` w `chase-driving.ts`. */
+export const CPRED_ACTION_MANEUVER = 'vehicle-maneuver';
 
 /**
  * The catalogue itself (s. 168–169). Mechanics, not rulebook prose: the costs
@@ -354,10 +356,11 @@ export const CPRED_ACTIONS: readonly CpredActionDefinition[] = [
     handledElsewhere: true,
   },
   {
-    id: 'vehicle-maneuver',
+    id: CPRED_ACTION_MANEUVER,
     name: 'Manewr pojazdem',
     cost: 'action',
     hint: 'Niebezpieczny manewr pochłaniający całą uwagę kierowcy.',
+    handledElsewhere: true,
   },
   {
     id: CPRED_ACTION_NET,

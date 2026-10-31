@@ -320,21 +320,72 @@ tak jak `Character.sheet`.
 10. **Wybuch nie rusza auta** — granat w auto bije figury w obszarze jak dziś, a kadłub zostaje
     (`POMYSLY.md`). Ognia zaporowego na auto nie ma (`COVER_NOT_SUPPRESSIBLE`).
 
-## 65d2 — manewry, taranowanie i bronie pokładowe ⬜
+## 65d2 — manewry, taranowanie i bronie pokładowe ✅ (31.10)
 
-- [ ] Manewr (s. 192) za Akcję i Akcję Ruchu kierowcy: Gwałtowny skręt 13, Ostry zakręt 13,
-      Nagłe zatrzymanie 13, Zawrót na ręcznym 17, Skok 17. MG wzywa do Manewru przez panel decyzji
-      (umowa `ui`) albo kierowca deklaruje go sam. Porażka = utrata kontroli.
-- [ ] Utrata kontroli: auto oznaczone, MG wyznacza mu ruch do końca tury (przeciągnięcie bez
-      budżetu); zderzenie rozstrzyga się jak taranowanie.
-- [ ] Taranowanie: oba pojazdy (albo pojazd i osłona/pieszy) po 6k6, każdy uczestnik Rana
-      Krytyczna „Odgięciowy uraz kręgosłupa szyjnego” (sprawdź wpis w kompendium ran). Pług bojowy
-      z przodu zdejmuje z taranującego obrażenia i ranę, z Nitro +2k6 dla uderzonego. Pieszy unika
-      Testem ZW + Unik PT 13.
-- [ ] Pokładowe bronie: wiersz broni na pojeździe, strzela kierowca za Akcję (stanowisko bardzo
-      ciężkiej broni — pasażer na swoim fotelu). Bez przeładowania w ruchu, poza stanowiskiem.
-- [ ] Testy: `shared` (Manewr, taranowanie z Pługiem i Nitro), serwer (Manewr z panelu decyzji,
-      taranowanie dwóch aut).
+- [x] Manewr (s. 192) za Akcję i Akcję Ruchu kierowcy: Gwałtowny skręt 13, Ostry zakręt 13,
+      Nagłe zatrzymanie 13, Zawrót na ręcznym 17, Skok 17. MG wzywa do Manewru ~~przez panel
+      decyzji (umowa `ui`)~~ z menu auta (decyzja MG z 31.10) albo kierowca deklaruje go sam.
+      Porażka = utrata kontroli.
+- [x] Utrata kontroli: auto oznaczone, MG wyznacza mu ruch ~~do końca tury~~ do następnej rundy
+      (przeciągnięcie bez budżetu); zderzenie rozstrzyga się jak taranowanie.
+- [x] Taranowanie: oba pojazdy ~~(albo pojazd i osłona/pieszy)~~ albo pojazd i pieszy po 6k6,
+      każdy uczestnik Rana Krytyczna „Odgięciowy uraz kręgosłupa szyjnego” (wpis kompendium ran
+      szukany po nazwie). Pług bojowy z przodu zdejmuje z taranującego obrażenia i ranę, z Nitro
+      +2k6 dla uderzonego. Pieszy unika Testem ZW + Unik PT 13. Osłony — w 65e jako przeszkody.
+- [x] Pokładowe bronie: ~~wiersz broni na pojeździe~~ wiersz broni składany z ulepszenia,
+      strzela kierowca za Akcję (stanowisko bardzo ciężkiej broni — pasażer na swoim fotelu).
+      Bez przeładowania w ruchu, poza stanowiskiem.
+- [x] Testy: `shared` (Manewr, taranowanie z Pługiem i Nitro, zderzenie brył, wiersze broni
+      pokładowej), serwer (Manewr gracza i na wezwanie MG, taranowanie dwóch aut, pieszy, broń
+      pokładowa — `chase-ram.test.ts`).
+
+### Rozstrzygnięcia 65d2 (31.10)
+
+Dwie decyzje MG na starcie sesji: **całość w jednym podetapie** (bez dzielenia na 65d3) i **wezwanie
+do Manewru z menu auta** zamiast panelu decyzji po każdym ruchu. Reszta bez pytań:
+
+1. **Manewr to `vehicle:maneuver`** (`chase-driving.ts`): serwer rzuca Test REF + Umiejętność
+   prowadzenia + 1k10 jawnie, z kośćmi 3D (`rollServerSkillTest`, karta „Manewr: …”). Porażka →
+   `lostControl` i wiersz „Utrata kontroli” na czacie. Akcja `vehicle-maneuver` zastępuje Test
+   zwykłej jazdy w tej turze. Akcją Ruchu jest sama jazda (`decyzje-i-uproszczenia.md`).
+2. **Wezwanie MG to `SceneVehicle.maneuverCall`** (`vehicle:maneuver-call`, migracja
+   `20261031180000_chase_maneuver`): czeka na aucie, widok niesie `maneuverCall`, a kierowca-gracz
+   dostaje bursztynowy pasek „MG wzywa do Manewru: …” z „Wykonaj Manewr” (temat `maneuver`).
+   Na wezwanie Manewr nic nie kosztuje. MG w menu auta gracza ma „Wezwij do Manewru” i
+   „Odwołaj: …”, przy aucie NPC-a — same Manewry, które rzuca od razu.
+3. **Manewry pasują do rodzaju pojazdu** (`cpredManeuversFor`): jezdnia i woda — pięć z tabeli,
+   latające — Lądowanie i Manewr w powietrzu. Lista jedzie w widoku (`maneuvers` z podpisem PT).
+4. **Zderzenie to geometria rdzenia** (`chaseFirstContact`, `chaseHitsWithFront` w
+   `shared/chase.ts`): bryły w osiach sceny, metoda płyt, auto stojące przy przeszkodzie wjeżdża
+   w nią od razu. Przeszkody to inne auta w kadrze (także wraki) i jawne figury spoza foteli
+   z kartą albo PW.
+5. **W walce `chase:move` bez `ram` staje przed przeszkodą**, z `ram` taranuje
+   (`resolveRam` w `chase-ram.ts`), a jeśli przeszkoda ustąpiła, jedzie do celu albo następnej
+   przeszkody (tej już nie taranuje). Klient pyta przed wysłaniem tą samą geometrią
+   (`chaseObstacleAhead`): pasek „Zderzenie” z „Taranuj / Zatrzymaj się przed”. Poza walką
+   kolizji nie ma.
+6. **Kości taranowania to karty obrażeń wymierzone w auto albo pieszego** („Taranowanie: A → B”),
+   rozliczane od razu przez `applyDamageRollTo` — z OB kadłuba, pancerzem pieszego i „Cofnij”.
+   Nitro „w tej turze” czyta Akcję kierowcy (`vehicle-nitro`).
+7. **Rana z taranowania** idzie przez nowe `giveCriticalInjury` (`damage.ts`, wyjęte z
+   `character:injury`): figury z kartą w obu autach i pieszy po trafieniu. Brak wpisu w
+   kompendium = brak rany, bez odmowy.
+8. **Broń pokładowa to wiersz broni składany z ulepszenia** (`cpredMountWeaponRows`, id
+   `mount:<pojazd>:<wiersz ulepszenia>` z `mountrows.ts`) i dokładany do listy kierowcy na czas
+   strzału — na serwerze (`mountedShotFor` w `vehicle-mounts.ts`, rzut obrażeń
+   `mountRowForDamage`) i na pasku klienta (`withTokenMounts`). Magazynek mieszka w aucie
+   (`Vehicle.system.mountAmmo`), karta kierowcy zostaje nietknięta. Wiersz jest poza limitem rąk,
+   a ręka na kierownicy go nie blokuje. Broń bierze wpis katalogu: Karabin szturmowy (30 naboi
+   z opisu ulepszenia), Miotacz ognia, Wyrzutnia rakiet (3), Bardzo duża broń biała.
+9. **Karabin pokładowy strzela tylko Ogniem ciągłym** (`MOUNT_AUTOFIRE_ONLY`), karabin i rakiety —
+   w przednią ćwiartkę bryły (`MOUNT_FRONT_ONLY`). Strzela tylko kierowca (`MOUNT_DRIVER_ONLY`).
+10. **Przeładowanie broni pokładowej to `vehicle:mount-reload`**: z paska (slot przeładowania)
+    albo z menu auta „Przeładuj: …”. Na postoju za Akcję, w ruchu `MOUNT_RELOAD_MOVING`; widok
+    niesie `moving` i `mounts`. Pasek nie pokazuje karabinowi pokładowemu trybu pojedynczego.
+11. **Dryf staje przy zderzaku** (oględziny: wolniejszy wóz wjeżdżał w auto Oli i stały w jednym
+    miejscu): `driftChaseRound` sprawdza drogę dryfu tą samą `chaseFirstContact`, bez obrażeń.
+12. **Menu auta mierzy swoją wysokość** (`useMenuTop` z menu figury, oględziny: z Manewrami
+    wyjeżdżało za okno) — nie mieści się pod kursorem, staje nad nim.
 
 ## 65e — przeszkody i ruch uliczny ⬜
 

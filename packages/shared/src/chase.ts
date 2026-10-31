@@ -332,6 +332,101 @@ export function chaseLimitMove(from: ScenePoint, to: ScenePoint, limitPx: number
   return { x: from.x + (to.x - from.x) * ratio, y: from.y + (to.y - from.y) * ratio };
 }
 
+/** Przeszkoda na drodze jadącego auta (65d2): bryła innego auta albo pieszy — prostokąt w osiach sceny. */
+export interface ChaseObstacleBox {
+  id: string;
+  centre: ScenePoint;
+  hx: number;
+  hy: number;
+}
+
+/** Pierwsze zetknięcie jadącego auta z przeszkodą (`chaseFirstContact`). */
+export interface ChaseContact {
+  id: string;
+  /** Ułamek odcinka `from → to`, na którym bryły się zetknęły (0…1). */
+  t: number;
+  /** Środek jadącego auta w chwili zetknięcia. */
+  centre: ScenePoint;
+  /** Oś, w której bryły się zetknęły — `x` to zderzenie bokiem pionowej krawędzi. */
+  axis: 'x' | 'y';
+}
+
+const CONTACT_EPSILON = 1e-6;
+/** Bryły zachodzące na siebie na starcie mniej niż o tyle pikseli tylko się dotykają (cofka po zderzeniu). */
+const TOUCH_TOLERANCE_PX = 0.05;
+
+/**
+ * Taranowanie (65d2): auto jedzie w linii prostej `from → to` (jak marsz
+ * figury), a to jest pierwsza przeszkoda, na którą wjedzie jego bryła. Metoda
+ * płyt na prostokątach powiększonych o połowy jadącego. Przeszkoda, na której
+ * auto już stoi (bryły zachodzą na starcie), się nie liczy — wyjazd z niej to
+ * nie zderzenie. Samo dotknięcie krawędzią też nie.
+ */
+export function chaseFirstContact(
+  from: ScenePoint,
+  to: ScenePoint,
+  mover: { hx: number; hy: number },
+  obstacles: readonly ChaseObstacleBox[],
+): ChaseContact | null {
+  const dx = to.x - from.x;
+  const dy = to.y - from.y;
+  let best: ChaseContact | null = null;
+  for (const box of obstacles) {
+    const ex = box.hx + mover.hx;
+    const ey = box.hy + mover.hy;
+    const relX = from.x - box.centre.x;
+    const relY = from.y - box.centre.y;
+    if (Math.abs(relX) < ex - TOUCH_TOLERANCE_PX && Math.abs(relY) < ey - TOUCH_TOLERANCE_PX) {
+      continue;
+    }
+    const slab = (rel: number, d: number, extent: number): [number, number] | null => {
+      if (Math.abs(d) < CONTACT_EPSILON) {
+        return Math.abs(rel) < extent - CONTACT_EPSILON ? [-Infinity, Infinity] : null;
+      }
+      const a = (-extent - rel) / d;
+      const b = (extent - rel) / d;
+      return a < b ? [a, b] : [b, a];
+    };
+    const sx = slab(relX, dx, ex);
+    const sy = slab(relY, dy, ey);
+    if (!sx || !sy) continue;
+    const enter = Math.max(sx[0], sy[0]);
+    const exit = Math.min(sx[1], sy[1]);
+    // Auto, które po zderzeniu stoi przy przeszkodzie (cofka o setną piksela),
+    // wjeżdża w nią od razu — wejście „trochę przed startem” to zero.
+    const length = Math.max(CONTACT_EPSILON, Math.hypot(dx, dy));
+    if (enter < -TOUCH_TOLERANCE_PX / length) continue;
+    if (enter >= 1 - CONTACT_EPSILON || exit <= Math.max(0, enter) + CONTACT_EPSILON) continue;
+    if (best && best.t <= enter) continue;
+    // Cofka o setną piksela, żeby bryły po zatrzymaniu nie zachodziły na siebie.
+    const t = Math.max(0, enter - 0.01 / length);
+    best = {
+      id: box.id,
+      t,
+      centre: { x: from.x + dx * t, y: from.y + dy * t },
+      axis: sx[0] >= sy[0] ? 'x' : 'y',
+    };
+  }
+  return best;
+}
+
+/**
+ * Czy auto uderzyło przodem (Pług bojowy, s. 164): zetknięcie na osi jazdy
+ * i ruch do przodu — auto, które cofa się albo ociera bokiem, przodem nie bije.
+ */
+export function chaseHitsWithFront(
+  direction: ChaseDirection,
+  from: ScenePoint,
+  to: ScenePoint,
+  contact: Pick<ChaseContact, 'axis'>,
+): boolean {
+  const horizontal = chaseIsHorizontal(direction);
+  if ((contact.axis === 'x') !== horizontal) return false;
+  const along = horizontal ? to.x - from.x : to.y - from.y;
+  const forward = direction === 'right' || direction === 'down' ? 1 : -1;
+  return along * forward > 0;
+}
+
 /** Czy punkt leży na bryle auta (do trafiania kliknięciem i upuszczeniem). */
 export function chaseBodyContains(
   centre: ScenePoint,
@@ -524,6 +619,26 @@ export interface SceneVehicleView {
   windows: Record<VehicleWindowSide, { hp: number; max: number }> | null;
   /** Nazwy ulepszeń do panelu auta — system liczy, rdzeń wypisuje. */
   upgrades: string[];
+  /** Manewry, które pasują do tego pojazdu (65d2) — system liczy, menu auta wypisuje. */
+  maneuvers: ChaseManeuverOption[];
+  /**
+   * Wezwanie MG do Manewru (65d2), które czeka na kierowcę; `null` — brak.
+   * Kierowca-gracz widzi pasek z „Wykonaj”, a za NPC-a MG rzuca od razu.
+   */
+  maneuverCall: ChaseManeuverOption | null;
+  /**
+   * Bronie pokładowe (65d2): wiersz ulepszenia, jego rodzaj i naboje w magazynku
+   * (brak — pełny). Klient kierowcy składa z nich wiersze broni paska.
+   */
+  mounts: { id: string; upgradeId: string; ammo?: number }[];
+  /** Auto jedzie: silnik pracuje, droga jedzie, auto nie jest wrakiem (przeładowanie broni pokładowej). */
+  moving: boolean;
+}
+
+/** Manewr pojazdu na liście menu auta: id systemu i podpis z PT. */
+export interface ChaseManeuverOption {
+  id: string;
+  label: string;
 }
 
 export const CHASE_CONTROLS = ['driver', 'none', 'lost'] as const;
@@ -560,6 +675,32 @@ export interface ChaseMovePayload {
   sceneVehicleId: string;
   x: number;
   y: number;
+  /**
+   * Taranowanie (65d2): w walce auto, którego droga trafia na inne auto albo
+   * pieszego, bez tej flagi staje przed przeszkodą, a z nią w nią wjeżdża.
+   */
+  ram?: boolean;
+}
+
+/**
+ * `vehicle:maneuver` — kierowca wykonuje Manewr (65d2, s. 192): sam za Akcję
+ * w swojej turze albo na wezwanie MG (bez kosztu). MG rzuca za kierowcę-NPC-a.
+ */
+export interface VehicleManeuverPayload {
+  sceneVehicleId: string;
+  maneuverId: string;
+}
+
+/** MG: `vehicle:maneuver-call` — wzywa kierowcę do Manewru; `maneuverId: null` odwołuje. */
+export interface VehicleManeuverCallPayload {
+  sceneVehicleId: string;
+  maneuverId: string | null;
+}
+
+/** `vehicle:mount-reload` — kierowca przeładowuje broń pokładową na postoju (65d2). */
+export interface VehicleMountReloadPayload {
+  sceneVehicleId: string;
+  upgradeRowId: string;
 }
 
 /**

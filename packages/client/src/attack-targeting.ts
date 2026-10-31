@@ -58,6 +58,7 @@ import { useRollStore } from './stores/rollStore.js';
 import { useSceneStore } from './stores/sceneStore.js';
 import { useTokenStore } from './stores/tokenStore.js';
 import { useWallStore } from './stores/wallStore.js';
+import { withTokenMounts } from './chase-mounts.js';
 
 /**
  * Turning a click on a token into an attack loaded in the cup (stage 16).
@@ -198,7 +199,9 @@ export function planAttackPreview(
     ? sheetFighter(intent.characterId)
     : statistFighter(attackerToken, intent.weaponRowId);
   if (typeof fighter === 'string') return { ok: false, message: fighter };
-  const { data, name } = fighter;
+  const { name } = fighter;
+  // Etap 65d2: broń pokładowa auta, które ta figura prowadzi.
+  const data = withTokenMounts(fighter.data, attackerToken);
 
   const row = data.weapons.find((weapon) => weapon.id === intent.weaponRowId);
   if (!row) return { ok: false, message: 'Nie znalazłem tej broni na karcie.' };

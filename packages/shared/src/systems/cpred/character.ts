@@ -78,6 +78,7 @@ import { cpredChromeModOf } from './chromestats.js';
 import { readCpredContainer, type CpredContainer } from './container.js';
 import { isCpredKeyId } from './lock.js';
 import { cpredIsBareHandsRow, cpredWithBareHands } from './barehands.js';
+import { cpredIsMountRowId } from './mountrows.js';
 import {
   CPRED_STAT_IDS,
   CPRED_STAT_LABELS,
@@ -818,7 +819,8 @@ export function cpredArmorPenalty(armor: readonly CpredArmorRow[] | undefined): 
 export type CpredOutsideHands = (row: CpredWeaponRow) => boolean;
 
 export function cpredWeaponOutsideHands(row: CpredWeaponRow, outside?: CpredOutsideHands): boolean {
-  return cpredIsBareHandsRow(row) || outside?.(row) === true;
+  // Broń pokładowa (65d2) siedzi na aucie, nie w rękach kierowcy.
+  return cpredIsBareHandsRow(row) || cpredIsMountRowId(row.id) || outside?.(row) === true;
 }
 
 /**
@@ -832,7 +834,7 @@ export function cpredWeaponInHands(
   rowId: string,
   outside?: CpredOutsideHands,
 ): boolean {
-  if (cpredIsBareHandsRow(rowId)) return true;
+  if (cpredIsBareHandsRow(rowId) || cpredIsMountRowId(rowId)) return true;
   const row = data.weapons.find((weapon) => weapon.id === rowId);
   if (row && cpredWeaponOutsideHands(row, outside)) return true;
   return cpredDrawnWeapons(data, outside).some((weapon) => weapon.id === rowId);

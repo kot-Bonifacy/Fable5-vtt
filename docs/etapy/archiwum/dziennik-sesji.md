@@ -1,5 +1,28 @@
 # Dziennik sesji — archiwum
 
+### Sesja 31.10 — etap 65c „Jazda, tempo i odpadanie”
+
+**Zrobione wg planu** (sesja przerwana limitem 30.10 i dokończona 31.10): budżet auta jako budżet
+tury kierowcy (`realtime/chase-budget.ts` → `moveBudgetForCombatant`, `noRun`/`RUN_BLOCKED`
+w `cpred/turn.ts`), `realtime/chase-driving.ts` (`chase:move` dla kierowcy, `vehicle:engine`
+z przejściem na początek kolejki, `vehicle:nitro`, `chase:restore`, `vehicle:control`, Test
+zwykłej jazdy przez `rollServerSkillTest`, dryf `driftChaseRound` w `advanceTurn` od rundy 2
+z odpadaniem i wierszem na czacie), koszt przesiadki w walce i `BOT_CANNOT_DRIVE`
+w `vehicle:seat`, `WHEEL_TWO_HANDED` w planie ataku, migracja `20261031120000_chase_driving`.
+Klient: kierowca ciągnie auto z limitem budżetu (`vehicleDragRule`), kamera gracza za autem
+(`panBy`), podpis auta ze stanem, menu auta (stan, silnik, Nitro, „Przywróć”, „Oddaj kontrolę”).
+Rozstrzygnięcia 1–10 w pliku etapu. **Odstępstwa:** dryf od rundy 2, Nitro na pościg zamiast na
+dobę, „zdjęcie ręki z kierownicy” bez gestu (odmowa broni dwuręcznej) — wszystkie w
+`decyzje-i-uproszczenia.md`. **Testy:** shared 2811 (+ `chase`, `turn`, `vehicles`), serwer
+1701/1701 (nowy `chase-driving.test.ts` 5/5, cztery zdarzenia w macierzy izolacji, `chase.test.ts`
+z `NOT_DRIVER`), klient 442/443 — dalej tylko znany `theme.test.ts`; tsc i ESLint czyste.
+**Oglądane:** tymczasowy spec `99-ogledziny/t99-jazda` z `po-T6`, Ola w **Firefoksie**: jazda
+poza walką (kamera jedzie za autem), w walce Test zwykłej jazdy z kośćmi 3D („Zdane · 14 > PT
+10”), auto staje dokładnie na 10 kratkach budżetu, Bieg wyszarzony, menu auta, dryf −5 w rundzie
+2, auto za tylną krawędzią znika i „Zostaje w tyle” na czacie. Oględziny złapały regułę
+przeciągania, która zamieniała „bez limitu” w „nie wolno” (`?? false`) — poprawione. MG
+w Chromium tylko gniazdem (ciągnięcie auta przez MG oglądane w 65b). Na VPS nic nie zmieniano.
+
 ### Sesja 30.10, piąta — etap 65b „Scena pościgu: bieżnia, auta, fotele”
 
 **Zrobione wg planu:** migracja `20261031090000_chase_scene` (`Scene.kind` i `chase*`,

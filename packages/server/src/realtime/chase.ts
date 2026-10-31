@@ -19,6 +19,9 @@ import {
   cpredVehicleUpgradeNames,
   cpredVehicleWindows,
   cpredVehicleWrecked,
+  cpredManeuversFor,
+  cpredMountDefinition,
+  cpredVehicleManeuver,
   readCpredVehicle,
   chaseBodyContains,
   clampChaseVehicle,
@@ -101,6 +104,7 @@ function toSceneVehicleView(
   row: PlacedVehicle,
   context: {
     tempo: number;
+    running: boolean;
     driverTokens: readonly Pick<Token, 'id' | 'characterId'>[];
     driver: Pick<Token, 'statuses'> | null;
   },
@@ -149,7 +153,39 @@ function toSceneVehicleView(
     armorSp: derived.hullSp,
     windows: cpredVehicleWindows(stats),
     upgrades: cpredVehicleUpgradeNames(stats),
+    maneuvers: cpredManeuversFor(stats.kind).map(maneuverOption),
+    maneuverCall: maneuverCallOf(row.maneuverCall),
+    mounts: stats.upgrades
+      .filter((upgrade) => cpredMountDefinition(upgrade.upgradeId) !== null)
+      .map((upgrade) => ({
+        id: upgrade.id,
+        upgradeId: upgrade.upgradeId,
+        ...(stats.mountAmmo[upgrade.id] !== undefined ? { ammo: stats.mountAmmo[upgrade.id] } : {}),
+      })),
+    moving: vehicleMoving(row, stats, context.running),
   };
+}
+
+/** Manewr jako pozycja menu auta: „Gwałtowny skręt (PT 13)”. */
+function maneuverOption(maneuver: { id: string; name: string; dv: number }): {
+  id: string;
+  label: string;
+} {
+  return { id: maneuver.id, label: `${maneuver.name} (PT ${maneuver.dv})` };
+}
+
+function maneuverCallOf(raw: string | null): { id: string; label: string } | null {
+  const maneuver = raw ? cpredVehicleManeuver(raw) : null;
+  return maneuver ? maneuverOption(maneuver) : null;
+}
+
+/** Auto jedzie: silnik pracuje, droga jedzie i auto nie jest wrakiem (65d2). */
+export function vehicleMoving(
+  row: Pick<SceneVehicle, 'started'>,
+  stats: ReturnType<typeof readCpredVehicle>,
+  running: boolean,
+): boolean {
+  return row.started && running && !cpredVehicleWrecked(stats);
 }
 
 /** Auta sceny jako widoki, z figurami, którym wolno prowadzić, i kierowcami. */
@@ -161,7 +197,7 @@ export async function placedViews(
   if (rows.length === 0) return [];
   const scene = await prisma.scene.findUnique({
     where: { id: sceneId },
-    select: { chaseTempo: true },
+    select: { chaseTempo: true, chaseRunning: true },
   });
   const allowed = new Set(rows.flatMap((row) => readDrivers(row.drivers)));
   const tokens =
@@ -178,6 +214,7 @@ export async function placedViews(
   return rows.map((row) =>
     toSceneVehicleView(row, {
       tempo: scene?.chaseTempo ?? 0,
+      running: scene?.chaseRunning ?? false,
       driverTokens: tokens,
       driver: seated.find((token) => token.sceneVehicleId === row.id) ?? null,
     }),

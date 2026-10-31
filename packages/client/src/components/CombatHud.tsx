@@ -36,6 +36,7 @@ import {
 } from '../hud.js';
 import { IconEye } from './MapIcons.js';
 import { useAuthStore } from '../stores/authStore.js';
+import { useChaseStore } from '../stores/chaseStore.js';
 import { useCharacterStore } from '../stores/characterStore.js';
 import { useCombatStore } from '../stores/combatStore.js';
 import { gmSteerLocked } from '../combat-steer.js';
@@ -571,6 +572,8 @@ function useHudContext(): HudContext {
       useCharacterStore.subscribe(refresh),
       useCompendiumStore.subscribe(refresh),
       useAuthStore.subscribe(refresh),
+      // Etap 65d2: magazynek broni pokładowej jedzie z widokiem auta.
+      useChaseStore.subscribe(refresh),
     ];
     return () => {
       for (const unsub of unsubs) unsub();

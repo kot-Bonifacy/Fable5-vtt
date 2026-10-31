@@ -21,7 +21,7 @@ w plikach obok — czytaj je **na żądanie, nigdy rutynowo**:
 
 | stan         | etapy                                                                                          |
 | ------------ | ---------------------------------------------------------------------------------------------- |
-| ⬜ otwarty   | **65** Scena pościgu i walka pojazdów (🟨 65a, 65b ✅ 30.10, 65c, 65d1 ✅ 31.10, dalej 65d2); **62** Sieć ze sceny (🟨 zrobione, czeka na oględziny MG na VPS po wdrożeniu); **61** Skradanie się (🟨 zrobione, czeka na słowo MG o rozstrzygnięciach); **28** Wdrożenie na VPS (🟨 działa na `https://vtt.tatanga.eu` z botami od 18.10; zostały off-site, utwardzenie, monitoring); **43b**, **43c** (UI walki); **60** Czytelny czat (zlecenie MG z 24.10; 🟨 60a–60c ✅, czeka na oględziny MG z pierwszego kryterium); T10; refaktoryzacja odłożona (MG 18.10) |
+| ⬜ otwarty   | **65** Scena pościgu i walka pojazdów (🟨 65a, 65b ✅ 30.10, 65c, 65d1, 65d2 ✅ 31.10, dalej 65e); **62** Sieć ze sceny (🟨 zrobione, czeka na oględziny MG na VPS po wdrożeniu); **61** Skradanie się (🟨 zrobione, czeka na słowo MG o rozstrzygnięciach); **28** Wdrożenie na VPS (🟨 działa na `https://vtt.tatanga.eu` z botami od 18.10; zostały off-site, utwardzenie, monitoring); **43b**, **43c** (UI walki); **60** Czytelny czat (zlecenie MG z 24.10; 🟨 60a–60c ✅, czeka na oględziny MG z pierwszego kryterium); T10; refaktoryzacja odłożona (MG 18.10) |
 | ✅ ukończone | 01–11, 13–20b, 23a–27f, 27h–27l, 29a–30d, 31–35, 37–42c, 43a, 44a–44d, 45, 46a1, 46a2, 46c1, 46c2, 46b1, 46b2, 47a, 47b, 48a, 48b, 48c, 49a, 49b, 50a, 50b, 50c, 51, 52, 53, 54, 55, 56, 57 (57a–57c), 58 (58a–58d), 59 (59a–59c), 63 (63a–63b; 63c wycofane 29.10), 64 (64a–64c) (ostatni zamknięty: 64, 2026-10-30) |
 | ⛔ wycofane  | 12, 21, 22 (głos), 27g (wydajność), 36 (makra); 27, 29, 30, 38 rozdzielone na etapy literowane |
 
@@ -30,8 +30,15 @@ Pełna tabela z nazwami i datami: `archiwum/tabela-etapow.md`.
 ## Od czego zacząć
 
 **Etap 65 „Scena pościgu i walka pojazdów” (zlecenie MG z 30.10) w toku — 65a i 65b zrobione
-30.10, 65c i 65d1 31.10, następny jest 65d2 (Manewr, utrata kontroli z ruchem od MG,
-taranowanie, bronie pokładowe; 65d podzielony 31.10 decyzją MG).** Od 65d1 auto jest celem
+30.10, 65c, 65d1 i 65d2 31.10, został 65e (przeszkody i ruch uliczny, kolczatka).** Od 65d2
+kierowca ma w menu auta Manewry z PT (w walce za Akcję, porażka to utrata kontroli), a MG
+„Wezwij do Manewru” — kierowca-gracz dostaje pasek z „Wykonaj Manewr” (bez kosztu). W walce droga
+auta przez inne auto albo pieszego pyta „Zderzenie: Taranuj / Zatrzymaj się przed”; taranowanie
+to jawne 6k6 dla obu stron (przez OB), Rana „Odgięciowy uraz…” dla jadących, Pług przodem chroni
+taranującego, pod Nitro +2k6, pieszy uskakuje Testem PT 13. Dryf staje przy zderzaku. Broń
+pokładowa (karabin, miotacz, rakiety, broń biała) stoi na pasku kierowcy jako wiersz składany
+z ulepszenia, magazynek w aucie, przeładowanie tylko na postoju. Rozstrzygnięcia 65d2 w pliku
+etapu, zasady domowe w `decyzje-i-uproszczenia.md`, umowy na górze `mapa` i `atak`. Od 65d1 auto jest celem
 ataku: klik w kadłub z bronią w ręku ładuje kubek, a okno Celowania daje „Słaby punkt” (−8,
 po OB ×2). Kadłub bierze obrażenia minus OB kadłuba, PUK 0 to wrak (stoi, dryfuje w tył,
 `VEHICLE_WRECKED`). Szyby kuloodporne to osłona pasażera na burcie zwróconej do strzelca
@@ -552,13 +559,13 @@ a nie do tego pliku.
 
 | obszar      | co obejmuje                                                    | umów | pułapek |
 | ----------- | -------------------------------------------------------------- | ---- | ------- |
-| `mapa`      | figury, zaznaczanie, narzędzia, obiekty sceny, ściany, efekty, zamek drzwi, ukryta figura zauważona, ikony urządzeń, wspólny widok drużyny, scena pościgu, jazda kierowcy i dryf | 73   | 27      |
+| `mapa`      | figury, zaznaczanie, narzędzia, obiekty sceny, ściany, efekty, zamek drzwi, ukryta figura zauważona, ikony urządzeń, wspólny widok drużyny, scena pościgu, jazda kierowcy i dryf, Manewr i taranowanie | 74   | 27      |
 | `czat`      | rodzaje wierszy, `visibleTo`, filtr, `seq`, `gmrecovery`, „to dotyczy mnie”, grupy kart, kolor gracza, czyszczenie | 13   | 3       |
 | `serwer`    | Prisma i migracje, zdarzenia gniazda, zapisy karty, uploady    | 26   | 21      |
 | `ui`        | okna pływające, `z-index`, motyw, skróty, dostępność, wejście, panel decyzji MG | 37   | 15      |
 | `kosci`     | kubek, `rollFormula`, wezwania i prośby o Test, tabele losowe, PT od MG | 24   | 2       |
 | `tura`      | budżet Akcji i metrów, kolejka, trasa, ruch przez ściany, skok, walka z zauważenia, pytanie MG o przekroczenie, Percepcja w drodze, ukryte figury, skradanie, kropki ataków, kierowca bez Biegu | 34   | 7       |
-| `atak`      | broń i dodatki, amunicja, obrażenia, pancerz, rany krytyczne, trucizna na ostrzu, auto-unik, strach z Konfrontacji, auto jako cel | 52   | 8       |
+| `atak`      | broń i dodatki, amunicja, obrażenia, pancerz, rany krytyczne, trucizna na ostrzu, auto-unik, strach z Konfrontacji, auto jako cel, broń pokładowa | 53   | 8       |
 | `statysta`  | figura z kartą, `statBlock`, Wartość bojowa, `token:stat`, wzorce | 17   | 3       |
 | `karta`     | strony i zakładki, panele, `sheet.css`, walidacja list, usuwanie przedmiotu | 11   | 12      |
 | `postac`    | kreator, PD i awanse, koszyk i cofanie awansów, Role i Zdolności, cyborgizacje, chrom zmieniający liczby, ekonomia, Test montażu gracza, pojazdy i Tabor | 57   | 3       |
@@ -568,13 +575,42 @@ a nie do tego pliku.
 | `boty`      | llama-server, RAG, reindeks, dziennik i baza wiedzy, brama AI  | 10   | 10      |
 | `dane`      | `parse-manual.py`, kompendium poza repo, tabele z podręcznika  | 9    | 12      |
 | `kopie`     | `snapshot`, `archive`, paczki ZIP, wczytanie kampanii, „czeka na gracza”, kopie kampanii i cofnięcie, sklep i bot w paczce, zgłoszenie karty gracza, pojazdy w paczce, auta na scenie pościgu | 21   | 6       |
-| `ogledziny` | CDP i Playwright MCP, zrzuty, dwie sesje, `window.confirm`    | 0    | 114     |
+| `ogledziny` | CDP i Playwright MCP, zrzuty, dwie sesje, `window.confirm`    | 0    | 115     |
 | `testy`     | vitest, migotanie, `tsc --noEmit`, środowisko dev              | 0    | 151     |
 
 
 ## Notatki z dwóch ostatnich sesji
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
+
+### Sesja 31.10, trzecia — etap 65d2 „Manewr, taranowanie, broń pokładowa”
+
+**Decyzje MG na starcie:** całość w jednym podetapie (propozycja podziału na 65d2 + 65d3
+odrzucona), wezwanie do Manewru z menu auta zamiast panelu decyzji. **Zrobione wg planu:**
+`systems/cpred/vehiclecombat.ts` (Manewry z PT, `cpredRamOutcome` z Pługiem i Nitro, wiersze broni
+pokładowej `cpredMountWeaponRows`), liść `mountrows.ts`, geometria zderzenia w `shared/chase.ts`
+(`chaseFirstContact`, `chaseHitsWithFront`), `Vehicle.system.mountAmmo`. Serwer:
+`vehicle:maneuver` i `vehicle:maneuver-call` (migracja `20261031180000_chase_maneuver`,
+`SceneVehicle.maneuverCall`), taranowanie w `chase:move` (`driveWithContacts` → `resolveRam`
+w nowym `realtime/chase-ram.ts`, Rana przez `giveCriticalInjury` wyjęte z `character:injury`),
+broń pokładowa w ataku i rzucie obrażeń (`realtime/vehicle-mounts.ts`, `vehicle:mount-reload`),
+dryf staje przy zderzaku. Klient: menu auta (Manewry albo „Wezwij do Manewru”, „Odwołaj”,
+„Przeładuj”), pasek wezwania u kierowcy, pasek „Zderzenie” przed wysłaniem ruchu
+(`client/src/chase-ram.ts`), broń pokładowa na pasku i w celowaniu (`chase-mounts.ts`, karabin
+tylko seria). Rozstrzygnięcia 1–12 w pliku etapu. **Odstępstwa:** Manewr płaci Akcją (Akcja
+Ruchu = sama jazda), wezwanie bez kosztu, kolizje tylko w walce, 6k6 przez OB, przeładowanie
+broni pokładowej do pełna także rakiet, miotacz i broń biała na każdą stronę, osłony bez
+taranowania (65e) — wszystko w `decyzje-i-uproszczenia.md`. **Testy:** shared 2837 (nowy
+`vehiclecombat.test.ts` 14/14), serwer 1716/1716 (nowy `chase-ram.test.ts` 8/8, trzy zdarzenia
+w macierzy izolacji), klient 442/443 — dalej tylko znany `theme.test.ts`; tsc, ESLint i Prettier
+czyste w zmienionych plikach. **Oglądane:** tymczasowy spec `99-ogledziny/t99-taranowanie`
+z `po-T6` (skasowany): Ola w **Firefoksie** (karabin pokładowy na pasku i strzał z kubka,
+pasek wezwania i „Wykonaj Manewr”, „Zderzenie” → „Taranuj” → 6k6 i „wjeżdża pługiem”), MG
+w **Chromium** (menu auta z „Wezwij do Manewru”). Oględziny złapały: tryb pojedynczy karabinu
+na pasku, surowy kod `MOUNT_FRONT_ONLY` w odmowie ataku, dryf wpychający auto w auto i menu auta
+wyjeżdżające za okno — poprawione. Cudze zmiany w drzewie (`MapFxLayer.ts`, `CombatForms.tsx`,
+`damage.test.ts`, `grapple-turns.test.ts`, stare spece `99-ogledziny`) nie ruszane. Na VPS nic
+nie zmieniano.
 
 ### Sesja 31.10, druga — etap 65d1 „Ostrzał pojazdów”
 
@@ -601,27 +637,4 @@ w **Chromium** (panel auta, PUK 0 polem). Złapane: ikony okna Celowania nie rys
 zrzutach Firefoksa — także dla figury, sprzed etapu (`zaleglosci.md`). W drzewie zostały cudze,
 niezacommitowane zmiany sprzed sesji (`MapFxLayer.ts`, `CombatForms.tsx`, `damage.test.ts`,
 `grapple-turns.test.ts`) — nie ruszane. Na VPS nic nie zmieniano.
-
-### Sesja 31.10 — etap 65c „Jazda, tempo i odpadanie”
-
-**Zrobione wg planu** (sesja przerwana limitem 30.10 i dokończona 31.10): budżet auta jako budżet
-tury kierowcy (`realtime/chase-budget.ts` → `moveBudgetForCombatant`, `noRun`/`RUN_BLOCKED`
-w `cpred/turn.ts`), `realtime/chase-driving.ts` (`chase:move` dla kierowcy, `vehicle:engine`
-z przejściem na początek kolejki, `vehicle:nitro`, `chase:restore`, `vehicle:control`, Test
-zwykłej jazdy przez `rollServerSkillTest`, dryf `driftChaseRound` w `advanceTurn` od rundy 2
-z odpadaniem i wierszem na czacie), koszt przesiadki w walce i `BOT_CANNOT_DRIVE`
-w `vehicle:seat`, `WHEEL_TWO_HANDED` w planie ataku, migracja `20261031120000_chase_driving`.
-Klient: kierowca ciągnie auto z limitem budżetu (`vehicleDragRule`), kamera gracza za autem
-(`panBy`), podpis auta ze stanem, menu auta (stan, silnik, Nitro, „Przywróć”, „Oddaj kontrolę”).
-Rozstrzygnięcia 1–10 w pliku etapu. **Odstępstwa:** dryf od rundy 2, Nitro na pościg zamiast na
-dobę, „zdjęcie ręki z kierownicy” bez gestu (odmowa broni dwuręcznej) — wszystkie w
-`decyzje-i-uproszczenia.md`. **Testy:** shared 2811 (+ `chase`, `turn`, `vehicles`), serwer
-1701/1701 (nowy `chase-driving.test.ts` 5/5, cztery zdarzenia w macierzy izolacji, `chase.test.ts`
-z `NOT_DRIVER`), klient 442/443 — dalej tylko znany `theme.test.ts`; tsc i ESLint czyste.
-**Oglądane:** tymczasowy spec `99-ogledziny/t99-jazda` z `po-T6`, Ola w **Firefoksie**: jazda
-poza walką (kamera jedzie za autem), w walce Test zwykłej jazdy z kośćmi 3D („Zdane · 14 > PT
-10”), auto staje dokładnie na 10 kratkach budżetu, Bieg wyszarzony, menu auta, dryf −5 w rundzie
-2, auto za tylną krawędzią znika i „Zostaje w tyle” na czacie. Oględziny złapały regułę
-przeciągania, która zamieniała „bez limitu” w „nie wolno” (`?? false`) — poprawione. MG
-w Chromium tylko gniazdem (ciągnięcie auta przez MG oglądane w 65b). Na VPS nic nie zmieniano.
 

@@ -123,6 +123,13 @@ import { planStockReload, planThrowFromStock } from './ammo-stock.js';
 import { placeSmoke, smokeModifiersAt } from './smoke.js';
 import { emitMapFx, fxCentre } from './fx.js';
 import { pinToken } from './turn-effects.js';
+import {
+  mountedShotFor,
+  requireMountedShotAllowed,
+  saveMountedAmmo,
+  withMountedShot,
+  type MountedShot,
+} from './vehicle-mounts.js';
 import { RealtimeError, defineEvent, type RealtimeDeps } from './registry.js';
 import { containerTokenIds, isContainerToken } from './containers.js';
 import { grappleStateForToken, readTokenStatuses } from './combat.js';
@@ -405,15 +412,18 @@ async function buildCharacterSource(
   character: Character,
   token: Token,
   request: CpredAttackRequest | undefined,
+  /** Broń pokładowa auta (65d2) — dokładana do listy na czas strzału, nie na kartę. */
+  mounted: MountedShot | null = null,
 ): Promise<AttackSource> {
-  const data = parseCharacterData(character.data, registry);
-  if (!data.statBlock) return { character, token, data, stored: data };
+  const stored = parseCharacterData(character.data, registry);
+  const data = mounted ? withMountedShot(stored, mounted) : stored;
+  if (!data.statBlock) return { character, token, data, stored };
   const weapon = await resolveWeaponRow(deps, campaignId, data, request?.weaponRowId);
   return {
     character,
     token,
     data: sheetForRoll(data, attackSkillId(weapon, request)),
-    stored: data,
+    stored,
   };
 }
 
@@ -1103,6 +1113,10 @@ export async function performAttackRoll(
         throw new RealtimeError('OWN_VEHICLE');
       }
 
+      // Broń pokładowa (65d2): wiersz z ulepszenia auta, z którego strzela kierowca.
+      const mounted = character
+        ? await mountedShotFor(deps, campaignId, attacker, payload?.request?.weaponRowId)
+        : null;
       const source = character
         ? await buildCharacterSource(
             deps,
@@ -1111,6 +1125,7 @@ export async function performAttackRoll(
             character,
             attacker,
             payload?.request,
+            mounted,
           )
         : await buildFigureSource(deps, campaignId, registry, attacker, payload?.request, device);
       const data = source.data;
@@ -1134,6 +1149,9 @@ export async function performAttackRoll(
         : coverTarget
           ? metresForRules(distanceToCover(origin, coverTarget) * metresPerPixel(sceneView))
           : metresForRules(metresBetween(origin, aimPoint, sceneView));
+      if (mounted) {
+        await requireMountedShotAllowed(deps, mounted, payload?.request?.mode, aimPoint);
+      }
 
       const weapon = await resolveWeaponRow(
         deps,
@@ -1273,7 +1291,9 @@ export async function performAttackRoll(
             ...cpredSmokeModifiers(await smokeModifiersAt(deps, scene, origin)),
           ],
           ...(attackerGrapple.grappled ? { grappled: true } : {}),
-          ...((await drivesWithOneHand(
+          // Broń pokładowa siedzi na aucie — ręka na kierownicy jej nie blokuje.
+          ...(!mounted &&
+          (await drivesWithOneHand(
             deps.ctx.prisma,
             attacker,
             data.cyberware.map((piece) => piece.name),
@@ -1331,6 +1351,10 @@ export async function performAttackRoll(
       }
 
       await spendAttackCosts(deps, campaignId, source, meta, plan.luckSpent, thrownGear);
+      // Magazynek broni pokładowej mieszka w aucie (65d2), nie na karcie kierowcy.
+      if (mounted && meta.ammoCost > 0) {
+        await saveMountedAmmo(deps, campaignId, mounted, meta.ammoAfter);
+      }
 
       const gesture: RollGesture | undefined = sanitizeGesture(payload?.gesture);
       const result: RollResult = rollFormula(plan.formula, createMixedRng(gesture?.entropy), {

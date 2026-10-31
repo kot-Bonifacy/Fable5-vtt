@@ -7,21 +7,29 @@ import type {
   TurnPointer,
   VehicleControlPayload,
   VehicleEnginePayload,
+  VehicleManeuverCallPayload,
+  VehicleManeuverPayload,
   VehicleNitroPayload,
+  ScenePoint,
 } from '@vtt/shared';
 import {
   CPRED_ACTION_DRIVE_TEST,
+  CPRED_ACTION_MANEUVER,
   CPRED_ACTION_MOVE,
   CPRED_ACTION_NITRO,
   CPRED_ACTION_VEHICLE_START,
   CPRED_ACTION_VEHICLE_STOP,
   CPRED_DRIVING_TEST_DV,
   ROLE_GM,
+  chaseBodyHalfExtents,
   chaseDriftedCentre,
+  chaseFirstContact,
   chaseOffscreen,
   clampChaseVehicle,
   cpredDrivingTestNeeded,
   cpredEffectiveStat,
+  cpredManeuverTitle,
+  cpredManeuversFor,
   cpredSkillLevel,
   cpredVehicleChase,
   cpredVehicleSkillId,
@@ -47,8 +55,10 @@ import {
   requirePoint,
   type PlacedVehicle,
 } from './chase.js';
+import { firstChaseContact, postServerRoll, resolveRam } from './chase-ram.js';
 import {
   findCombatantForToken,
+  loadCombat,
   loadCombatById,
   renumberOrder,
   toCombatView,
@@ -58,7 +68,6 @@ import {
 import { requireTurnSpend } from './combat-actions.js';
 import { logSpentAction } from './combat-log.js';
 import { rollServerSkillTest } from './character-rolls.js';
-import { INCLUDE_CHAT_NAMES, deliverRollMessage, toChatMessageView } from './chat-io.js';
 import { clearGrapplesOf } from './grapple-state.js';
 import { RealtimeError, defineEvent, type RealtimeDeps } from './registry.js';
 import { emitTokensById } from './tokens.js';
@@ -75,7 +84,10 @@ import { emitTokensById } from './tokens.js';
 type PlacedWithScene = PlacedVehicle & { scene: Scene };
 
 /** Figura w fotelu kierowcy tego auta albo `null`. */
-async function driverOf(prisma: PrismaClient, sceneVehicleId: string): Promise<Token | null> {
+export async function driverOf(
+  prisma: PrismaClient,
+  sceneVehicleId: string,
+): Promise<Token | null> {
   return prisma.token.findFirst({ where: { sceneVehicleId, vehicleSeat: 0 } });
 }
 
@@ -83,7 +95,7 @@ async function driverOf(prisma: PrismaClient, sceneVehicleId: string): Promise<T
  * Kierowca, którym ten gracz prowadzi auto: jego jawna figura w fotelu 0,
  * zdolna do działania, w aucie, które jedzie w kadrze.
  */
-async function requireOwnDriver(
+export async function requireOwnDriver(
   prisma: PrismaClient,
   placed: PlacedWithScene,
   user: SessionUser,
@@ -99,7 +111,7 @@ async function requireOwnDriver(
 }
 
 /** Ta sama kontrola przed ruchem: silnik i panowanie nad autem. */
-function requireControllable(placed: PlacedWithScene): void {
+export function requireControllable(placed: PlacedWithScene): void {
   // Wrak nie jedzie (s. 191, 65d1) — przed silnikiem, bo to on mówi, dlaczego.
   if (cpredVehicleWrecked(readCpredVehicle(placed.vehicle.system))) {
     throw new RealtimeError('VEHICLE_WRECKED');
@@ -133,7 +145,10 @@ async function requireDrivingTest(
     return;
   }
   const turn = readCpredTurn(turnState ?? undefined);
-  if (turn.action?.id === CPRED_ACTION_DRIVE_TEST) return;
+  // Manewr (65d2) to Test prowadzenia trudniejszy od zwykłej jazdy — zastępuje go.
+  if (turn.action?.id === CPRED_ACTION_DRIVE_TEST || turn.action?.id === CPRED_ACTION_MANEUVER) {
+    return;
+  }
   if (turn.action !== null) throw new RealtimeError('DRIVING_TEST_NEEDS_ACTION');
   await requireTurnSpend(
     deps,
@@ -148,18 +163,7 @@ async function requireDrivingTest(
   const roll = await rollServerSkillTest(deps, driver, skillId, CPRED_DRIVING_TEST_DV);
   if (roll) {
     roll.title = `Zwykła jazda: ${roll.title ?? ''}`.trim();
-    const stored = await deps.ctx.prisma.chatMessage.create({
-      data: {
-        campaignId,
-        authorId: user.id,
-        kind: 'roll',
-        text: roll.title,
-        payload: JSON.stringify(roll),
-        sceneId: placed.sceneId,
-      },
-      include: INCLUDE_CHAT_NAMES,
-    });
-    await deliverRollMessage(deps, campaignId, user.id, toChatMessageView(stored));
+    await postServerRoll(deps, campaignId, user, placed.sceneId, roll);
   }
   if (roll?.outcome?.success === true) return;
   await deps.ctx.prisma.sceneVehicle.update({
@@ -181,7 +185,16 @@ export const chaseMoveEvent = defineEvent<ChaseMovePayload, SceneVehicleView>({
     const campaignId = requireChaseCampaignId(socket.data);
     const placed = await requirePlaced(deps.ctx.prisma, campaignId, payload?.sceneVehicleId);
     const point = requirePoint(payload);
-    if (user.role === ROLE_GM) return moveSceneVehicle(deps, campaignId, placed, point);
+    const ram = payload?.ram === true;
+    if (user.role === ROLE_GM) {
+      // Poza walką MG ustawia szyk — auta przechodzą przez siebie (65d2).
+      if (!(await loadCombat(deps.ctx.prisma, placed.sceneId))) {
+        return moveSceneVehicle(deps, campaignId, placed, point);
+      }
+      const { settings, frame } = chaseGeometry(placed.scene);
+      const target = clampChaseVehicle(point, chaseBodyOf(placed.vehicle), settings, frame);
+      return driveWithContacts(deps, campaignId, user, placed, target, ram);
+    }
 
     const driver = await requireOwnDriver(deps.ctx.prisma, placed, user);
     requireControllable(placed);
@@ -190,23 +203,73 @@ export const chaseMoveEvent = defineEvent<ChaseMovePayload, SceneVehicleView>({
     const pixels = Math.hypot(target.x - placed.x, target.y - placed.y);
     if (pixels < 0.5) return placedView(deps.ctx.prisma, placed.sceneId, placed.id);
     const found = await findCombatantForToken(deps.ctx.prisma, placed.sceneId, driver.id);
-    if (found) {
-      await requireDrivingTest(deps, campaignId, placed, driver, found.combatant.turnState, user);
-      const metres = (pixels / placed.scene.gridSizePx) * placed.scene.metersPerSquare;
-      await requireTurnSpend(
-        deps,
-        campaignId,
-        placed.scene,
-        driver.id,
-        { kind: 'move', metres },
-        user,
-        CPRED_ACTION_MOVE,
-        { silent: true },
-      );
-    }
-    return moveSceneVehicle(deps, campaignId, placed, target);
+    if (!found) return moveSceneVehicle(deps, campaignId, placed, target);
+
+    await requireDrivingTest(deps, campaignId, placed, driver, found.combatant.turnState, user);
+    // Bez taranowania auto staje przed przeszkodą i płaci tylko za drogę do
+    // niej; z taranowaniem płaci za całą drogę — jeśli zderzenie je zatrzyma,
+    // reszta Akcji Ruchu przepada razem z jazdą.
+    const contact = ram ? null : await firstChaseContact(deps.ctx.prisma, placed, placed, target);
+    const paidTo = contact?.centre ?? target;
+    const metres =
+      (Math.hypot(paidTo.x - placed.x, paidTo.y - placed.y) / placed.scene.gridSizePx) *
+      placed.scene.metersPerSquare;
+    await requireTurnSpend(
+      deps,
+      campaignId,
+      placed.scene,
+      driver.id,
+      { kind: 'move', metres },
+      user,
+      CPRED_ACTION_MOVE,
+      { silent: true },
+    );
+    return driveWithContacts(deps, campaignId, user, placed, target, ram);
   },
 });
+
+/**
+ * Jazda w walce z zderzeniami (65d2): auto jedzie do `target`, a gdy po drodze
+ * trafi na inne auto albo pieszego — bez `ram` staje przed nim, z `ram` taranuje
+ * (`resolveRam`) i jedzie dalej, jeśli przeszkoda ustąpiła, do następnej
+ * przeszkody albo celu.
+ */
+async function driveWithContacts(
+  deps: RealtimeDeps,
+  campaignId: string,
+  user: SessionUser,
+  placed: PlacedWithScene,
+  target: ScenePoint,
+  ram: boolean,
+): Promise<SceneVehicleView> {
+  const prisma = deps.ctx.prisma;
+  const from = { x: placed.x, y: placed.y };
+  const contact = await firstChaseContact(prisma, placed, from, target);
+  if (!contact) return moveSceneVehicle(deps, campaignId, placed, target);
+  const stopped = await moveSceneVehicle(deps, campaignId, placed, contact.centre);
+  if (!ram) return stopped;
+
+  const atContact = await requirePlaced(prisma, campaignId, placed.id);
+  const goesOn = await resolveRam(
+    deps,
+    campaignId,
+    user,
+    atContact,
+    contact.obstacle,
+    contact.front,
+  );
+  if (!goesOn) return placedView(prisma, placed.sceneId, placed.id);
+  const after = await requirePlaced(prisma, campaignId, placed.id);
+  // Taranujący, którego zderzenie samo rozbiło, dalej nie jedzie (s. 191).
+  if (cpredVehicleWrecked(readCpredVehicle(after.vehicle.system))) {
+    return placedView(prisma, placed.sceneId, placed.id);
+  }
+  const skip = new Set([
+    contact.obstacle.kind === 'token' ? `token:${contact.obstacle.id}` : contact.obstacle.id,
+  ]);
+  const next = await firstChaseContact(prisma, after, after, target, skip);
+  return moveSceneVehicle(deps, campaignId, after, next?.centre ?? target);
+}
 
 /**
  * Przesuwa kierowcę na początek kolejki (s. 192: „Kierowca natychmiast
@@ -368,6 +431,104 @@ export const vehicleControlEvent = defineEvent<VehicleControlPayload, SceneVehic
   },
 });
 
+/** Manewr z listy pasującej do tego pojazdu albo odmowa. */
+function requireManeuver(placed: PlacedWithScene, maneuverId: unknown) {
+  const kind = readCpredVehicle(placed.vehicle.system).kind;
+  const maneuver = cpredManeuversFor(kind).find((entry) => entry.id === maneuverId);
+  if (!maneuver) throw new RealtimeError('UNKNOWN_MANEUVER');
+  return maneuver;
+}
+
+/**
+ * `vehicle:maneuver` — Manewr pojazdem (65d2, s. 192): Test REF + Umiejętność
+ * prowadzenia + 1k10 przeciw PT Manewru, rzucony przez serwer jawnie, z kośćmi
+ * 3D. Porażka to natychmiastowa utrata kontroli (MG prowadzi auto do następnej
+ * rundy). Kierowca deklarujący Manewr sam płaci w walce Akcją — Akcją Ruchu
+ * jest sama jazda, którą Manewr się dzieje. Na wezwanie MG (`maneuverCall`)
+ * i za kierowcę-NPC-a, którym rzuca MG, Manewr nic nie kosztuje: to MG
+ * zdecydował, że sytuacja go wymaga.
+ */
+export const vehicleManeuverEvent = defineEvent<VehicleManeuverPayload, SceneVehicleView>({
+  name: 'vehicle:maneuver',
+  handler: async ({ deps, socket, user, payload }) => {
+    const campaignId = requireChaseCampaignId(socket.data);
+    const placed = await requirePlaced(deps.ctx.prisma, campaignId, payload?.sceneVehicleId);
+    if (placed.scene.kind !== 'chase') throw new RealtimeError('NOT_A_CHASE');
+    const maneuver = requireManeuver(placed, payload?.maneuverId);
+    const driver =
+      user.role === ROLE_GM
+        ? await driverOf(deps.ctx.prisma, placed.id)
+        : await requireOwnDriver(deps.ctx.prisma, placed, user);
+    if (!driver) throw new RealtimeError('NOT_DRIVER');
+    if (!driverCapable(driver)) throw new RealtimeError('DRIVER_INCAPABLE');
+    requireControllable(placed);
+    const called = placed.maneuverCall === maneuver.id;
+    if (user.role !== ROLE_GM && !called) {
+      const found = await findCombatantForToken(deps.ctx.prisma, placed.sceneId, driver.id);
+      if (found) {
+        await requireTurnSpend(
+          deps,
+          campaignId,
+          placed.scene,
+          driver.id,
+          { kind: 'action', actionId: CPRED_ACTION_MANEUVER },
+          user,
+          CPRED_ACTION_MANEUVER,
+          { silent: true },
+        );
+      }
+    }
+    const skillId = cpredVehicleSkillId(readCpredVehicle(placed.vehicle.system).kind);
+    const roll = await rollServerSkillTest(deps, driver, skillId, maneuver.dv);
+    if (roll) {
+      roll.title = `${cpredManeuverTitle(maneuver)} — ${roll.title ?? ''}`.trim();
+      await postServerRoll(deps, campaignId, user, placed.sceneId, roll);
+    }
+    const failed = roll?.outcome?.success !== true;
+    await deps.ctx.prisma.sceneVehicle.update({
+      where: { id: placed.id },
+      data: { maneuverCall: null, ...(failed ? { lostControl: true } : {}) },
+    });
+    if (failed) {
+      const line: CombatActionLogEntry = {
+        combatantId: '',
+        actorName: placed.vehicle.name,
+        actionId: 'chase-lost-control',
+        actionName: 'Utrata kontroli',
+        note: `${maneuver.name} nieudany — MG prowadzi auto do końca rundy`,
+      };
+      await logSpentAction(deps, campaignId, user, line);
+    }
+    await emitChase(deps, campaignId, placed.sceneId);
+    return placedView(deps.ctx.prisma, placed.sceneId, placed.id);
+  },
+});
+
+/**
+ * MG: `vehicle:maneuver-call` — „MG decyduje, kiedy prowadzenie pojazdu wymaga
+ * wykonania Manewru” (s. 192). Wezwanie czeka na aucie, dopóki kierowca go nie
+ * wykona albo MG nie odwoła (`maneuverId: null`); kierowca-gracz widzi pasek.
+ */
+export const vehicleManeuverCallEvent = defineEvent<VehicleManeuverCallPayload, SceneVehicleView>({
+  name: 'vehicle:maneuver-call',
+  role: ROLE_GM,
+  handler: async ({ deps, socket, payload }) => {
+    const campaignId = requireChaseCampaignId(socket.data);
+    const placed = await requirePlaced(deps.ctx.prisma, campaignId, payload?.sceneVehicleId);
+    const maneuverCall =
+      payload?.maneuverId === null ? null : requireManeuver(placed, payload?.maneuverId).id;
+    if (maneuverCall && !(await driverOf(deps.ctx.prisma, placed.id))) {
+      throw new RealtimeError('NOT_DRIVER');
+    }
+    await deps.ctx.prisma.sceneVehicle.update({
+      where: { id: placed.id },
+      data: { maneuverCall },
+    });
+    await emitChase(deps, campaignId, placed.sceneId);
+    return placedView(deps.ctx.prisma, placed.sceneId, placed.id);
+  },
+});
+
 /**
  * Początek rundy na scenie pościgu (decyzja MG 12): każde auto w kadrze dryfuje
  * o `(Ruch − tempo) / 4` kratek wzdłuż drogi, a utrata kontroli z poprzedniej
@@ -395,6 +556,9 @@ export async function driftChaseRound(
   const { settings, frame } = chaseGeometry(scene);
   const moved: string[] = [];
   const dropped: { name: string; status: 'behind' | 'escaped'; passengers: string[] }[] = [];
+  // Gdzie auta stoją w trakcie dryfu (65d2): auto dryfujące na inne staje przy
+  // jego zderzaku bez obrażeń — taranowanie to decyzja kierowcy w jego turze.
+  const centres = new Map(placed.map((row) => [row.id, { x: row.x, y: row.y }]));
   for (const row of placed) {
     if (row.status !== 'racing' || row.driftRound >= round) continue;
     const chase = cpredVehicleChase(readCpredVehicle(row.vehicle.system), {
@@ -404,11 +568,33 @@ export async function driftChaseRound(
     });
     const squares = scene.chaseRunning ? chase.driftSq : 0;
     const body = chaseBodyOf(row.vehicle);
-    const centre =
+    const drifted =
       squares === 0
         ? { x: row.x, y: row.y }
         : chaseDriftedCentre(row, body, settings, frame, squares);
-    const off = squares === 0 ? null : chaseOffscreen(centre, body, settings.direction, frame);
+    const contact =
+      squares === 0
+        ? null
+        : chaseFirstContact(
+            { x: row.x, y: row.y },
+            drifted,
+            chaseBodyHalfExtents(body, settings.direction, scene.gridSizePx),
+            placed
+              .filter((other) => other.id !== row.id && other.status === 'racing')
+              .map((other) => ({
+                id: other.id,
+                centre: centres.get(other.id)!,
+                ...chaseBodyHalfExtents(
+                  chaseBodyOf(other.vehicle),
+                  settings.direction,
+                  scene.gridSizePx,
+                ),
+              })),
+          );
+    const centre = contact?.centre ?? drifted;
+    centres.set(row.id, centre);
+    const off =
+      squares === 0 || contact ? null : chaseOffscreen(centre, body, settings.direction, frame);
     const updated = await prisma.sceneVehicle.update({
       where: { id: row.id },
       data: {

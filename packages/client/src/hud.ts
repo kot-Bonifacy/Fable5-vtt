@@ -49,6 +49,7 @@ import {
   clearWeaponJam,
   combatErrorText,
   reloadWeapon,
+  reloadVehicleMount,
   requestSneak,
   runNetScan,
   setTokenTarget,
@@ -72,6 +73,8 @@ import { useSelectionStore } from './stores/selectionStore.js';
 import { useTokenStore } from './stores/tokenStore.js';
 import { armJump, disarmJump } from './jump.js';
 import { useSceneStore } from './stores/sceneStore.js';
+import { mountAutofireOnly, mountReloadTarget, withTokenMounts } from './chase-mounts.js';
+import { chaseErrorText } from './components/ChaseVehicleMenu.js';
 
 /**
  * The wiring behind the combat HUD (stage 16f).
@@ -309,7 +312,8 @@ export function hudContextFor(tokenId: string | null): HudContext {
   const weaponTypeById = new Map(Object.entries(compendium.weaponTypeById));
 
   const slots = hotbarSlotsFor({
-    sheet: character ? character.data : null,
+    // Etap 65d2: kierowca widzi na pasku broń pokładową swojego auta.
+    sheet: character ? withTokenMounts(character.data, token) : null,
     // Etap 46c: granaty i rakiety przychodzą z ekwipunku — pasek liczy zapas.
     ...(character ? { stockGear: character.data.gear } : {}),
     resolve: (compendiumId) => {
@@ -345,9 +349,14 @@ export function hudContextFor(tokenId: string | null): HudContext {
   });
 
   // Wyjście ze skradania jest darmowe zawsze (etap 61) — także w cudzej turze.
+  // Karabin pokładowy (65d2) strzela tylko Ogniem ciągłym — pojedynczego nie ma.
+  const fireable = slots.filter(
+    (slot) =>
+      slot.kind !== 'weapon' || slot.mode === 'autofire' || !mountAutofireOnly(slot.weaponRowId),
+  );
   const shown = refusal
-    ? slots.map((slot) => (isSneakStop(slot, token) ? slot : { ...slot, disabled: refusal }))
-    : slots;
+    ? fireable.map((slot) => (isSneakStop(slot, token) ? slot : { ...slot, disabled: refusal }))
+    : fireable;
 
   return {
     token,
@@ -779,6 +788,14 @@ export function activateSlot(slot: CpredHotbarSlot, tokenId: string): void {
   }
 
   if (slot.kind === 'reload') {
+    // Broń pokładowa (65d2) ładuje się w aucie, na postoju — osobne zdarzenie.
+    const mount = mountReloadTarget(slot.weaponRowId);
+    if (mount) {
+      void reloadVehicleMount(mount.sceneVehicleId, mount.upgradeRowId).then((ack) => {
+        if (!ack.ok) notifyRefusal('action', chaseErrorText(ack.error));
+      });
+      return;
+    }
     const token = useTokenStore.getState().tokens[tokenId];
     // A sheet is addressed by its character, a statist by its token (29.08) —
     // the server picks the arm from which of the two arrives.

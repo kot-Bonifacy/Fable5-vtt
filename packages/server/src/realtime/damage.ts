@@ -1001,47 +1001,72 @@ export const characterInjuryEvent = defineEvent<CharacterInjuryPayload>({
       (row) => row.id === injuryId && isCriticalInjuryEntry(row),
     );
     if (!entry) throw new RealtimeError('UNKNOWN_INJURY');
-
-    const applied = applyForcedFailureToSheet(
+    const given = await giveCriticalInjury(
+      deps,
+      campaignId,
+      user.id,
       character,
-      deps.ctx.cpred,
-      { damage: 0, injuryIds: [injuryId] },
-      compendium.entries,
+      injuryId,
+      'Ranę nadał MG — bez rzutu na obrażenia.',
     );
     // Rana, którą postać już ma, nie dubluje się (ta sama reguła co przy
     // drugim granacie w tej samej minucie) — i wtedy nie ma czego zapisywać.
-    if (!applied.log.injury) throw new RealtimeError('INJURY_ALREADY_THERE');
-
-    const saved = await deps.ctx.prisma.character.update({
-      where: { id: character.id },
-      data: { data: applied.data },
-    });
-    await emitCharacterUpsert(deps, campaignId, toCharacterView(saved, deps.ctx.cpred));
-    await emitTokensOfCharacter(deps, campaignId, saved);
-
-    // Rana nadana w środku walki zabiera to, co zabrałaby wylosowana (14e).
-    if (applied.carry) {
-      const tokens = await deps.ctx.prisma.token.findMany({
-        where: { characterId: character.id },
-        include: { scene: true },
-      });
-      for (const token of tokens) {
-        if (token.scene.campaignId !== campaignId) continue;
-        await oweCarryToToken(deps, token.sceneId, token.id, applied.carry);
-        await emitCombatOfScene(deps, campaignId, token.scene);
-      }
-    }
-
-    const log: DamageLogEntry = {
-      ...applied.log,
-      targetName: character.name,
-      characterId: character.id,
-      targetOwnerId: character.ownerId,
-      injuryNote: 'Ranę nadał MG — bez rzutu na obrażenia.',
-    };
-    await logDamage(deps, campaignId, user.id, log);
+    if (!given) throw new RealtimeError('INJURY_ALREADY_THERE');
   },
 });
+
+/**
+ * Rana Krytyczna bez rzutu na obrażenia — z ręki MG (`character:injury`) albo
+ * z taranowania (65d2, „Odgięciowy uraz kręgosłupa szyjnego”). Zapis karty,
+ * dług rany w walce (14e) i wpis na czacie. `false`, gdy postać już ją ma.
+ */
+export async function giveCriticalInjury(
+  deps: RealtimeDeps,
+  campaignId: string,
+  authorId: string,
+  character: Character,
+  injuryId: string,
+  note: string,
+): Promise<boolean> {
+  const compendium = await buildCompendiumSync(deps, campaignId);
+  const applied = applyForcedFailureToSheet(
+    character,
+    deps.ctx.cpred,
+    { damage: 0, injuryIds: [injuryId] },
+    compendium.entries,
+  );
+  if (!applied.log.injury) return false;
+
+  const saved = await deps.ctx.prisma.character.update({
+    where: { id: character.id },
+    data: { data: applied.data },
+  });
+  await emitCharacterUpsert(deps, campaignId, toCharacterView(saved, deps.ctx.cpred));
+  await emitTokensOfCharacter(deps, campaignId, saved);
+
+  // Rana nadana w środku walki zabiera to, co zabrałaby wylosowana (14e).
+  if (applied.carry) {
+    const tokens = await deps.ctx.prisma.token.findMany({
+      where: { characterId: character.id },
+      include: { scene: true },
+    });
+    for (const token of tokens) {
+      if (token.scene.campaignId !== campaignId) continue;
+      await oweCarryToToken(deps, token.sceneId, token.id, applied.carry);
+      await emitCombatOfScene(deps, campaignId, token.scene);
+    }
+  }
+
+  const log: DamageLogEntry = {
+    ...applied.log,
+    targetName: character.name,
+    characterId: character.id,
+    targetOwnerId: character.ownerId,
+    injuryNote: note,
+  };
+  await logDamage(deps, campaignId, authorId, log);
+  return true;
+}
 
 export const damageUndoEvent = defineEvent<DamageUndoPayload, void>({
   name: 'damage:undo',

@@ -172,7 +172,8 @@ import { useTargetStore } from '../stores/targetStore.js';
 import { NoticeColumn, type PinnedNotice } from './NoticeColumn.js';
 import { useFoesDefeatedNotice } from '../foes-defeated.js';
 import { useSightingNotice } from '../foe-sighting.js';
-import { clearNotices, noteAck, notifyInfo, notifyRefusal } from '../notices.js';
+import { clearNotices, noteAck, notifyChoice, notifyInfo, notifyRefusal } from '../notices.js';
+import { chaseObstacleAhead } from '../chase-ram.js';
 import { PLAYER_MOVE_PACE_NOTE, PLAYER_MOVE_STOP_NOTE } from '../map/player-move.js';
 import { MAP_TOOL_KEYS } from '../shortcuts.js';
 import {
@@ -949,12 +950,31 @@ export function MapArea() {
     renderer.onBackgroundLoad = setBackgroundLoad;
     renderer.onMapClick = handleMapClick;
     renderer.onVehicleMove = (sceneVehicleId, x, y) => {
-      void moveChaseVehicle(sceneVehicleId, x, y).then((ack) => {
-        if (ack.ok) return;
-        notifyRefusal('chase', chaseErrorText(ack.error));
-        // Odmowa (65c: budżet, kontrola): auto wraca tam, gdzie trzyma je serwer.
-        useChaseStore.setState((state) => ({ vehicles: [...state.vehicles] }));
-      });
+      const send = (ram: boolean) =>
+        void moveChaseVehicle(sceneVehicleId, x, y, ram).then((ack) => {
+          if (ack.ok) return;
+          notifyRefusal('chase', chaseErrorText(ack.error));
+          // Odmowa (65c: budżet, kontrola): auto wraca tam, gdzie trzyma je serwer.
+          useChaseStore.setState((state) => ({ vehicles: [...state.vehicles] }));
+        });
+      // Etap 65d2: w walce droga przez auto albo pieszego to pytanie o taranowanie.
+      const vehicle = useChaseStore.getState().vehicles.find((row) => row.id === sceneVehicleId);
+      const obstacle = vehicle ? chaseObstacleAhead(vehicle, { x, y }) : null;
+      if (!obstacle) {
+        send(false);
+        return;
+      }
+      // Do odpowiedzi auto stoi tam, gdzie trzyma je serwer.
+      useChaseStore.setState((state) => ({ vehicles: [...state.vehicles] }));
+      notifyChoice(
+        'chase',
+        `Na drodze: ${obstacle}. Taranowanie to 6k6 dla obu stron i Rana Krytyczna dla jadących.`,
+        [
+          { label: 'Taranuj', run: () => send(true) },
+          { label: 'Zatrzymaj się przed', run: () => send(false) },
+        ],
+        { title: 'Zderzenie' },
+      );
     };
     renderer.vehicleDragRule = (vehicle) =>
       driverDragLimit(

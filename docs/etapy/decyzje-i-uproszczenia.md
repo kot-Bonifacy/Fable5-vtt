@@ -9,6 +9,45 @@ czytany na starcie każdej sesji został listą zadań, a nie archiwum ustaleń.
 inaczej, niż mówi podręcznik, albo gdy dotykasz wymienionego tu kodu. Jeśli któraś z tych decyzji
 przestanie się bronić, przenieś ją stąd do `POMYSLY.md` jako zadanie — nie odwrotnie.
 
+## Manewr, taranowanie i broń pokładowa (etap 65d2, 31.10.2026)
+
+- **Manewr płaci Akcją, a Akcją Ruchu jest sama jazda.** „Manewr zabiera obie Akcje” (s. 192):
+  VTT księguje Akcję (`vehicle-maneuver`), a kierowca dalej ciągnie auto z budżetu Akcji Ruchu.
+  Ta jazda to sam Manewr, nie osobny ruch. Strzelać już nie może. Manewr zastępuje Test zwykłej
+  jazdy w tej turze.
+- **Manewr na wezwanie MG nic nie kosztuje**, za kierowcę-NPC-a MG rzuca bez kosztu. To MG
+  zdecydował, że sytuacja go wymaga („MG decyduje, kiedy…”). Często woła o niego w cudzej
+  turze, na przykład gdy coś wyskoczy przed auto.
+- **Utrata kontroli trwa do następnej rundy**, nie „do końca tury”. To ta sama flaga co po
+  oblanej zwykłej jeździe (65c). MG wyznacza drogę, przeciągając auto bez budżetu. Gdy trafi
+  w coś po drodze, dostaje pytanie o taranowanie jak kierowca.
+- **Zderzenie liczy się tylko w walce.** Poza walką MG ustawia szyk i auta przechodzą przez
+  siebie. W walce droga auta przez inne auto albo pieszego to pytanie „Taranuj / Zatrzymaj się
+  przed”. Bez taranowania auto staje przy przeszkodzie i płaci tylko za dojazd. Z taranowaniem
+  płaci za całą drogę, a jeśli zderzenie je zatrzyma, reszta Akcji Ruchu przepada.
+- **Dryf nie przepycha auta przez auto.** Auto, które na początku rundy dryfuje na inne, staje
+  przy jego zderzaku bez obrażeń. To nie taranowanie, tylko szybszy dogania wolniejszego. Czy
+  w nie wjechać, decyduje kierowca w swojej turze. Auta dryfują po kolei (kolejność postawienia).
+- **6k6 taranowania idzie przez OB kadłuba** jak każde trafienie w auto (pieszy — przez
+  pancerz). Podręcznik mówi tylko „otrzymujecie po 6k6 obrażeń”. Kości lecą jawnie na czacie,
+  a obrażenia rozlicza droga „Zastosuj” z „Cofnij”.
+- **Rana „Odgięciowy uraz kręgosłupa szyjnego” idzie do każdej figury z kartą** w obu autach.
+  Taranujący z Pługiem przodem jest z niej zwolniony. Figura bez karty rany nie ma gdzie
+  zapisać. Rana bez bonusowych obrażeń: to nie Krytyk z kości.
+- **Unik pieszego rzuca serwer od razu**, jak auto-unik z 63b. „Wskoczenie na pojazd” po
+  udanym Uniku albo po trafieniu z ≥ 1 PW nie ma gestu: MG sadza figurę w fotelu ręką.
+- **Osłony z mapy (42b) się nie taranuje** — na bieżni ich nie ma. Przeszkody drogowe z PW
+  przychodzą w 65e.
+- **Broń pokładowa przeładowuje się za darmo do pełna, także rakiety**, na postoju (silnik
+  zgaszony albo droga stoi), w walce za Akcję. To zasada domowa z 23.10 (naboje bez dna)
+  rozciągnięta na zasobnik rakiet, który nie ma skąd brać rakiet z ekwipunku kierowcy.
+- **Miotacz ognia i broń biała pokładowa razą na każdą stronę.** Podręcznik montuje je
+  „z przodu, z boku lub z tyłu”, ale VTT nie pamięta strony montażu. Karabin maszynowy
+  i rakiety razą tylko „cele przed pojazdem”: przednia ćwiartka bryły (`vehicleSideFacing`).
+- **Stanowisko bardzo ciężkiej broni nie ma osobnej mechaniki.** Pasażer i tak strzela
+  z fotela własną bronią dwuręczną, przeładowuje w jeździe, a szyba kuloodporna chroni go jak
+  każdego pasażera (65d1).
+
 ## Ostrzał pojazdów (etap 65d1, 31.10.2026)
 
 - **Szyby kuloodporne to cztery burty, nie każde okno.** Podręcznik (s. 163) mówi „każde okno

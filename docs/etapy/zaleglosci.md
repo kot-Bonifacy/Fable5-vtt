@@ -6,6 +6,19 @@ w `POMYSLY.md` („Do sprawdzenia przy stole”), decyzje MG — w `decyzje-i-up
 
 ## Otwarte
 
+**31.10.2026 — etap 65d2 „Manewr, taranowanie, broń pokładowa”: oględziny MG i wdrożenie.**
+Oglądane na instancji E2E (spec `99-ogledziny/t99-taranowanie`, skasowany): Ola w **Firefoksie**
+prowadzi auto z Pługiem i karabinem pokładowym. Karabin stoi na pasku (30/30, tylko seria),
+strzał z kubka („→ Wóz Maelstromu · 2 m · PT 22 · ogień ciągły”) zdjął 10 naboi z auta.
+Wezwanie MG daje bursztynowy pasek z „Wykonaj Manewr”. Przeciągnięcie w wóz daje pasek
+„Zderzenie” → „Taranuj” → karty 6k6 i „wjeżdża pługiem”, a auto staje przy wozie. MG
+w Chromium: menu auta z „Wezwij do Manewru” i „Broń pokładowa”. **Nie widziane na żywo:** Rana
+z taranowania (Ganger nie miał karty — sprawdza `chase-ram.test.ts`), Nitro +2k6, Unik pieszego,
+przeładowanie na postoju, kierowca-NPC rzucający Manewr z menu MG. **Karta kości 6k6 z dwiema
+szóstkami pokazuje chip „Rana krytyczna!” także wtedy, gdy obrażenia idą w auto** (wzór kości
+obrażeń, sprzed 65d2; kadłub ran nie bierze), do sprawdzenia przy stole. Na VPS: migracja
+`20261031180000_chase_maneuver` wjedzie z `./deploy.sh`.
+
 **31.10.2026 — etap 65d1 „Ostrzał pojazdów”: oględziny MG i wdrożenie.** Oglądane na instancji
 E2E (spec `99-ogledziny/t99-ostrzal`, nie w repo): Ola w **Firefoksie** strzela w kadłub (kubek
 „→ Wóz Maelstromu · 5 m · PT 13”, okno Celowania z „Słabym punktem”, karta z wierszem

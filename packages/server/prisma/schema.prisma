@@ -825,6 +825,8 @@ model SceneVehicle {
   driftRound  Int     @default(0)
   /** Zbiorniki Nitro zużyte w tym pościgu (65c). */
   nitroUsed   Int     @default(0)
+  /** Wezwanie MG do Manewru czekające na kierowcę — id manewru systemu (65d2). */
+  maneuverCall String?
   createdAt DateTime @default(now())
 
   scene      Scene   @relation(fields: [sceneId], references: [id], onDelete: Cascade)

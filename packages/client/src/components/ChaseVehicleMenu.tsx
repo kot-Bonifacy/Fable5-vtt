@@ -1,6 +1,8 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   CHASE_CONTROL_LABELS,
+  cpredMountDefinition,
+  cpredVehicleUpgrade,
   VEHICLE_LAYOUTS,
   VEHICLE_WINDOW_SIDES,
   ROLE_GM,
@@ -15,7 +17,10 @@ import { useSelectionStore } from '../stores/selectionStore.js';
 import { useTokenStore } from '../stores/tokenStore.js';
 import {
   allowVehicleDriver,
+  callVehicleManeuver,
   fireVehicleNitro,
+  performVehicleManeuver,
+  reloadVehicleMount,
   removeChaseVehicle,
   restoreChaseVehicle,
   restoreVehicleControl,
@@ -23,7 +28,8 @@ import {
   setVehicleEngine,
   updateVehicle,
 } from '../socket.js';
-import { notifyRefusal } from '../notices.js';
+import { clearNotices, notifyChoice, notifyRefusal } from '../notices.js';
+import { useMenuTop } from './TokenContextMenu.js';
 
 /**
  * Menu auta na scenie pościgu (etap 65b) — klik w auto, a nie w wolny fotel.
@@ -85,6 +91,17 @@ export function chaseErrorText(code: string | undefined): string {
     // Etap 65d1: PUK 0.
     case 'VEHICLE_WRECKED':
       return 'Auto jest wrakiem — nie pojedzie, dopóki ktoś go nie naprawi.';
+    // Etap 65d2: Manewr, taranowanie i bronie pokładowe.
+    case 'UNKNOWN_MANEUVER':
+      return 'Ten Manewr nie pasuje do tego pojazdu.';
+    case 'MOUNT_DRIVER_ONLY':
+      return 'Z broni pokładowej strzela kierowca tego auta.';
+    case 'MOUNT_AUTOFIRE_ONLY':
+      return 'Pokładowy karabin maszynowy strzela tylko Ogniem ciągłym.';
+    case 'MOUNT_FRONT_ONLY':
+      return 'Ta broń pokładowa razi tylko cele przed pojazdem.';
+    case 'MOUNT_RELOAD_MOVING':
+      return 'Broni pokładowej nie da się przeładować w czasie jazdy — zgaś silnik albo zatrzymaj drogę.';
     default:
       return `Nie udało się: ${code ?? 'nieznany błąd'}.`;
   }
@@ -117,6 +134,10 @@ export function ChaseVehicleMenu() {
   const characters = useCharacterStore((s) => s.characters);
   const steeredId = useSelectionStore((s) => s.tokenId);
   const user = useAuthStore((s) => s.user);
+  useManeuverCallNotice(vehicles, tokens, user?.id ?? null);
+  // Z Manewrami i bronią pokładową (65d2) menu bywa wyższe od okna — wysokość
+  // mierzy się po renderze, jak w menu figury.
+  const placement = useMenuTop((menu?.clientY ?? 0) + 12);
   const vehicle = menu ? vehicles.find((entry) => entry.id === menu.sceneVehicleId) : undefined;
   if (!menu || !vehicle || !user) return null;
   const isGm = user.role === ROLE_GM;
@@ -146,7 +167,6 @@ export function ChaseVehicleMenu() {
   };
 
   const left = Math.max(8, Math.min(menu.clientX + 12, window.innerWidth - MENU_WIDTH - 8));
-  const top = Math.max(8, Math.min(menu.clientY + 12, window.innerHeight - 320));
 
   return (
     <>
@@ -156,8 +176,9 @@ export function ChaseVehicleMenu() {
         onContextMenu={(e) => e.preventDefault()}
       />
       <div
+        ref={placement.ref}
         className="context-menu chase-menu"
-        style={{ left, top, width: MENU_WIDTH }}
+        style={{ left, top: placement.top, width: MENU_WIDTH }}
         role="menu"
         aria-label={`Auto: ${vehicle.name}`}
       >
@@ -184,6 +205,16 @@ export function ChaseVehicleMenu() {
             {`Nitro (${vehicle.nitroLeft})`}
           </button>
         )}
+        {vehicle.status === 'racing' && (
+          <VehicleManeuvers
+            vehicle={vehicle}
+            driver={driver}
+            isGm={isGm}
+            drives={drives}
+            act={act}
+          />
+        )}
+        {drives && vehicle.mounts.length > 0 && <VehicleMounts vehicle={vehicle} act={act} />}
         {isGm && (vehicle.status === 'behind' || vehicle.status === 'escaped') && (
           <button
             type="button"
@@ -341,6 +372,142 @@ function vehicleStateLine(vehicle: SceneVehicleView): string {
 
 function formatSq(value: number): string {
   return Number.isInteger(value) ? String(value) : value.toFixed(1).replace('.', ',');
+}
+
+type MenuAct = (call: () => Promise<{ ok: boolean; error?: string }>) => void;
+
+/**
+ * Manewr (etap 65d2, s. 192): kierowca deklaruje go sam (w walce za Akcję),
+ * a MG wzywa do niego kierowcę-gracza albo rzuca za kierowcę-NPC-a od razu.
+ */
+function VehicleManeuvers({
+  vehicle,
+  driver,
+  isGm,
+  drives,
+  act,
+}: {
+  vehicle: SceneVehicleView;
+  driver: TokenView | undefined;
+  isGm: boolean;
+  drives: boolean;
+  act: MenuAct;
+}) {
+  if (!driver || vehicle.maneuvers.length === 0) return null;
+  // Figura gracza za kierownicą: MG ją wzywa, a rzuca gracz. NPC — rzuca MG.
+  const calls = isGm && typeof driver.ownerId === 'string' && driver.ownerId.length > 0;
+  if (!drives && !calls) return null;
+  return (
+    <>
+      <p className="context-menu-section">
+        {calls ? 'Wezwij do Manewru' : 'Manewr — Akcja, porażka to utrata kontroli'}
+      </p>
+      {calls && vehicle.maneuverCall && (
+        <button
+          type="button"
+          className="context-menu-item"
+          onClick={() => act(() => callVehicleManeuver(vehicle.id, null))}
+        >
+          {`Odwołaj: ${vehicle.maneuverCall.label}`}
+        </button>
+      )}
+      {vehicle.maneuvers.map((maneuver) => (
+        <button
+          key={maneuver.id}
+          type="button"
+          className="context-menu-item"
+          title={
+            calls
+              ? 'Kierowca dostaje pasek z „Wykonaj Manewr” — na wezwanie Manewr nie kosztuje Akcji.'
+              : 'Test REF + Prowadzenie + 1k10 przeciw PT. Porażka — MG prowadzi auto do końca rundy.'
+          }
+          onClick={() =>
+            act(() =>
+              calls
+                ? callVehicleManeuver(vehicle.id, maneuver.id)
+                : performVehicleManeuver(vehicle.id, maneuver.id),
+            )
+          }
+        >
+          {maneuver.label}
+        </button>
+      ))}
+    </>
+  );
+}
+
+/** Bronie pokładowe auta (65d2): przeładowanie na postoju; strzela się z paska kierowcy. */
+function VehicleMounts({ vehicle, act }: { vehicle: SceneVehicleView; act: MenuAct }) {
+  const loadable = vehicle.mounts.filter(
+    (mount) => cpredMountDefinition(mount.upgradeId)?.magazine !== 0,
+  );
+  if (loadable.length === 0) return null;
+  return (
+    <>
+      <p className="context-menu-section">Broń pokładowa</p>
+      {loadable.map((mount) => (
+        <button
+          key={mount.id}
+          type="button"
+          className="context-menu-item"
+          disabled={vehicle.moving}
+          title={
+            vehicle.moving
+              ? 'Nie da się przeładować w czasie jazdy — zgaś silnik albo zatrzymaj drogę.'
+              : 'Pełny magazynek, w walce za Akcję.'
+          }
+          onClick={() => act(() => reloadVehicleMount(vehicle.id, mount.id))}
+        >
+          {`Przeładuj: ${cpredVehicleUpgrade(mount.upgradeId)?.name ?? mount.upgradeId}`}
+        </button>
+      ))}
+    </>
+  );
+}
+
+/**
+ * Pasek wezwania do Manewru u kierowcy-gracza (65d2): stoi, dopóki MG nie
+ * odwoła albo kierowca nie wykona Manewru.
+ */
+function useManeuverCallNotice(
+  vehicles: readonly SceneVehicleView[],
+  tokens: Record<string, TokenView>,
+  userId: string | null,
+): void {
+  let call: { vehicle: SceneVehicleView; id: string; label: string } | null = null;
+  for (const vehicle of vehicles) {
+    if (!vehicle.maneuverCall || !userId) continue;
+    const driver = Object.values(tokens).find(
+      (token) => token.vehicleSeat?.sceneVehicleId === vehicle.id && token.vehicleSeat.seat === 0,
+    );
+    if (driver?.ownerId === userId) {
+      call = { vehicle, ...vehicle.maneuverCall };
+      break;
+    }
+  }
+  const key = call ? `${call.vehicle.id}:${call.id}` : null;
+  useEffect(() => {
+    if (!call) {
+      clearNotices('maneuver');
+      return;
+    }
+    const { vehicle, id, label } = call;
+    notifyChoice(
+      'maneuver',
+      `MG wzywa do Manewru: ${label}. Porażka to utrata kontroli nad autem.`,
+      [
+        {
+          label: 'Wykonaj Manewr',
+          run: () =>
+            void performVehicleManeuver(vehicle.id, id).then((ack) => {
+              if (!ack.ok) notifyRefusal('chase', chaseErrorText(ack.error));
+            }),
+        },
+      ],
+      { title: vehicle.name },
+    );
+    // Klucz mówi wszystko, co pasek pokazuje — nowe wezwanie to nowy pasek.
+  }, [key]);
 }
 
 /** Kierownica dla pasażerów z kartą — poza kartą właściciela, która ma ją zawsze. */

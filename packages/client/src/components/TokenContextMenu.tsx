@@ -98,7 +98,10 @@ const MENU_MARGIN = 8;
  * mieści się pod kursorem, staje nad nim; wyższe od okna przewija się samo
  * (`max-height` w `05-tokens.css`).
  */
-function useMenuTop(y: number): { ref: (element: HTMLDivElement | null) => void; top: number } {
+export function useMenuTop(y: number): {
+  ref: (element: HTMLDivElement | null) => void;
+  top: number;
+} {
   const [height, setHeight] = useState(0);
   const observer = useRef<ResizeObserver | null>(null);
   const ref = useCallback((element: HTMLDivElement | null) => {

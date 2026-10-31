@@ -365,6 +365,11 @@ export interface CpredVehicleStats {
    * oberwały; brak burty znaczy pełne PW (`cpredVehicleWindows`).
    */
   windows: Partial<Record<VehicleWindowSide, number>>;
+  /**
+   * Naboje w magazynkach broni pokładowych (65d2) — po id wiersza ulepszenia;
+   * brak wpisu znaczy pełny magazynek (`cpredMountWeaponRows`).
+   */
+  mountAmmo: Record<string, number>;
 }
 
 /** Gdy katalogu nie ma (próbka, plik bez wpisu): kompakt z tabeli s. 190. */
@@ -420,12 +425,28 @@ export function readCpredVehicle(raw: unknown): CpredVehicleStats {
     fleetRowId: typeof input.fleetRowId === 'string' && input.fleetRowId ? input.fleetRowId : null,
     notes: typeof input.notes === 'string' ? input.notes.slice(0, CPRED_VEHICLE_NOTES_MAX) : '',
     windows: {},
+    mountAmmo: {},
   };
   // Bieżące PUK liczy się od sufitu z ulepszeniami — Wzmocniona konstrukcja to +20.
   const derived = cpredVehicleDerived(stats);
   stats.hp = clampInt(input.hp, 0, derived.hpMax, derived.hpMax);
   stats.windows = readWindows(input.windows, derived.windowHp);
+  stats.mountAmmo = readMountAmmo(input.mountAmmo, stats.upgrades);
   return stats;
+}
+
+function readMountAmmo(
+  raw: unknown,
+  upgrades: readonly CpredVehicleUpgradeRow[],
+): Record<string, number> {
+  if (typeof raw !== 'object' || raw === null) return {};
+  const rows = new Set(upgrades.map((row) => row.id));
+  const ammo: Record<string, number> = {};
+  for (const [rowId, value] of Object.entries(raw as Record<string, unknown>)) {
+    if (!rows.has(rowId) || typeof value !== 'number' || !Number.isFinite(value)) continue;
+    ammo[rowId] = Math.max(0, Math.min(1000, Math.round(value)));
+  }
+  return ammo;
 }
 
 function readWindows(raw: unknown, max: number): Partial<Record<VehicleWindowSide, number>> {

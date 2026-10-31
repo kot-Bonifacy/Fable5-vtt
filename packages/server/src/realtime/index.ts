@@ -227,9 +227,12 @@ import {
   chaseMoveEvent,
   chaseRestoreEvent,
   vehicleControlEvent,
+  vehicleManeuverEvent,
+  vehicleManeuverCallEvent,
   vehicleEngineEvent,
   vehicleNitroEvent,
 } from './chase-driving.js';
+import { vehicleMountReloadEvent } from './vehicle-mounts.js';
 import {
   chasePlaceEvent,
   chaseRemoveEvent,
@@ -420,6 +423,9 @@ export const EVENTS: RealtimeEvent<never, unknown>[] = [
   chaseMoveEvent,
   chaseRestoreEvent,
   vehicleControlEvent,
+  vehicleManeuverEvent,
+  vehicleManeuverCallEvent,
+  vehicleMountReloadEvent,
   vehicleEngineEvent,
   vehicleNitroEvent,
   chaseRemoveEvent,

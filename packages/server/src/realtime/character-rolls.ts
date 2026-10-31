@@ -47,6 +47,7 @@ import {
   cpredSheetWoundState,
   tokenTableName,
   woundStateFromHp,
+  cpredWithMountWeapons,
 } from '@vtt/shared';
 import type { Character, Token } from '../generated/prisma/client.js';
 import { emitMapFx, fxCentre } from './fx.js';
@@ -62,6 +63,7 @@ import {
 } from '../sheets.js';
 import { createMixedRng } from './dice-rng.js';
 import { CPRED_PERCEPTION_SKILL_ID } from './zone-effects.js';
+import { mountRowForDamage } from './vehicle-mounts.js';
 import { RealtimeError, defineEvent, type RealtimeDeps } from './registry.js';
 import {
   emitCombatOfScene,
@@ -1190,7 +1192,12 @@ async function performScopedRoll(
     // „nie ma takiej", a nie zdradzać, że da się nią rzucić na wezwanie.
     requireGmFramedCheck(user, call !== null, request.kind);
     await requireAttackShooter(deps, campaignId, user, request, source);
-    const data = source.data;
+    // Obrażenia za strzał z broni pokładowej (65d2): wiersz siedzi w aucie.
+    const mountRow =
+      request.kind === 'damage'
+        ? await mountRowForDamage(deps, campaignId, request.weaponRowId)
+        : null;
+    const data = mountRow ? cpredWithMountWeapons(source.data, [mountRow]) : source.data;
     // „Obaj walczący ... otrzymują modyfikator −2 do wszystkich Akcji" (s. 176):
     // every Check made from the sheet carries it, named, so the player can see
     // where it came from. A Death Save is not an Action and is exempt — the
