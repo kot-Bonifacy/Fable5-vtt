@@ -40,10 +40,15 @@ export interface SurgeryRequestEntry {
   resolution?: { kind: SurgeryResolutionKind; byName: string; price?: number };
 }
 
-export type SurgeryResolutionKind = 'operated' | 'declined' | 'cancelled';
+/**
+ * `failed` — Medyk operował, ale Test montażu nie wyszedł: wszczep zniszczony
+ * (s. 226), pieniądze i tak zeszły (31.10.2026, oględziny netrunnerki).
+ */
+export type SurgeryResolutionKind = 'operated' | 'failed' | 'declined' | 'cancelled';
 
 export const SURGERY_RESOLUTION_LABELS: Record<SurgeryResolutionKind, string> = {
   operated: 'Zoperowane',
+  failed: 'Nieudana, wszczep zniszczony',
   declined: 'Medyk odmówił',
   cancelled: 'Wycofane',
 };

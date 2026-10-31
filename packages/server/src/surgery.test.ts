@@ -15,6 +15,7 @@ import type {
   SocketAck,
   StateSyncPayload,
 } from '@vtt/shared';
+import { surgeryResolutionLabel } from '@vtt/shared';
 import type { ServerConfig } from './config.js';
 import { buildApp, type BuiltApp } from './app.js';
 import { joinUrl } from './test-join.js';
@@ -349,6 +350,29 @@ describe('prośba o operację u Medyka innego gracza (#41)', () => {
     ).toEqual({ ok: false, error: 'SURGERY_CLOSED' });
   });
 
+  it('nieudany Test montażu zamyka prośbę jako „nieudana”, nie „Zoperowane”', async () => {
+    const messageId = await request();
+    const before = await sheetOf(gm, kowalId);
+    const update = waitFor<ChatMessageBroadcast>(marek, 'chat:update');
+    const rolls = collect<ChatMessageBroadcast>(marek, 'chat:message');
+    scriptDice([2]);
+    const ack = data(
+      await emitAck<{ pending: boolean }>(ola, 'cyberware:respond', {
+        messageId,
+        action: 'operate',
+        price: 0,
+      }),
+      'cyberware:respond',
+    );
+    expect(ack.pending).toBe(false);
+    const test = rolls.stop().find((row) => row.message.roll?.title?.startsWith('Montaż'));
+    expect(test?.message.roll?.outcome?.success).toBe(false);
+    const closed = (await update).message.surgery;
+    expect(closed?.resolution).toMatchObject({ kind: 'failed', byName: 'Ola', price: 0 });
+    expect(surgeryResolutionLabel(closed!)).toBe('Nieudana, wszczep zniszczony — 0 ed');
+    expect((await sheetOf(gm, kowalId)).cyberware.length).toBe(before.cyberware.length);
+  });
+
   it('etap 48c: „Znaleziony” bez wszczepu w Wyposażeniu — prośby nie ma', async () => {
     expect(
       await emitAck(marek, 'cyberware:request', {
@@ -496,9 +520,9 @@ describe('prośba o operację u Medyka innego gracza (#41)', () => {
     ]);
     const count = (sync: StateSyncPayload) =>
       sync.messages.filter((m) => m.kind === 'surgery').length;
-    expect(count(marekSync)).toBe(7);
-    expect(count(olaSync)).toBe(7);
-    expect(count(gmSync)).toBe(7);
+    expect(count(marekSync)).toBe(8);
+    expect(count(olaSync)).toBe(8);
+    expect(count(gmSync)).toBe(8);
     expect(count(obcySync)).toBe(0);
   });
 });

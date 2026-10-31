@@ -65,7 +65,11 @@ export function SurgeryRequestRow({
   return (
     <div
       className={`chat-message chat-inventory${
-        resolution && resolution.kind !== 'operated' ? ' chat-inventory--refused' : ''
+        // Nieudana operacja się odbyła (pieniądze zeszły) — karta nie gaśnie
+        // jak odmowa, tylko plakietka robi się czerwona.
+        resolution && resolution.kind !== 'operated' && resolution.kind !== 'failed'
+          ? ' chat-inventory--refused'
+          : ''
       }`}
       data-testid="surgery-request"
     >
@@ -91,7 +95,11 @@ export function SurgeryRequestRow({
       {resolution && (
         <span
           className={`chat-action-badge${
-            resolution.kind === 'operated' ? ' chat-inventory-badge--done' : ''
+            resolution.kind === 'operated'
+              ? ' chat-inventory-badge--done'
+              : resolution.kind === 'failed'
+                ? ' chat-inventory-badge--failed'
+                : ''
           }`}
         >
           {surgeryResolutionLabel(entry)} — {resolution.byName}

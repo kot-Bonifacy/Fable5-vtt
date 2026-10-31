@@ -120,6 +120,11 @@ export const exchangeCounterpartsEvent = defineEvent<
 
       // Najbliższa figura każdej karty (umowa `ekwipunek`: karta potrafi stać
       // dwiema figurami, a serwer mierzy zasięg po najbliższej parze).
+      // Wyjątek: figura wskazana klikiem zawsze mówi za swoją kartę. Postać gracza
+      // stoi zwykle na kilku scenach, a stan (Ogłuszony, Pochwycony) jest naklejką
+      // **figury** — najbliższa para ze starej sceny dawała handel zamiast łupu,
+      // a klient, szukając wpisu po id klikniętej figury, nie znajdował nic (31.10).
+      const pointed = typeof payload?.tokenId === 'string' ? payload.tokenId : null;
       const nearest = new Map<string, { placed: PlacedToken; metres: number | null }>();
       for (const placed of candidates.values()) {
         const characterId = placed.token.characterId;
@@ -130,7 +135,14 @@ export const exchangeCounterpartsEvent = defineEvent<
           .map((stand) => metresBetweenPlaced(stand, placed));
         const metres = distances.length > 0 ? Math.min(...distances) : null;
         const known = nearest.get(characterId);
-        if (known && (known.metres ?? Infinity) <= (metres ?? Infinity)) continue;
+        if (known && known.placed.token.id === pointed) continue;
+        if (
+          known &&
+          placed.token.id !== pointed &&
+          (known.metres ?? Infinity) <= (metres ?? Infinity)
+        ) {
+          continue;
+        }
         nearest.set(characterId, { placed, metres });
       }
 

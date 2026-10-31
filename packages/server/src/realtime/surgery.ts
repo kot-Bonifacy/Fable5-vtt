@@ -6,6 +6,7 @@ import type {
   CyberwareSurgeonsResult,
   SessionUser,
   SurgeryRequestEntry,
+  SurgeryResolutionKind,
 } from '@vtt/shared';
 import {
   CYBERWARE_INSTALL_COST,
@@ -208,7 +209,7 @@ async function operate(
   user: SessionUser,
   entry: SurgeryRequestEntry,
   price: number,
-): Promise<void> {
+): Promise<'operated' | 'failed'> {
   const prisma = deps.ctx.prisma;
   const patient = await findCampaignCharacter(prisma, campaignId, entry.patientId);
   const surgeon = await findCampaignCharacter(prisma, campaignId, entry.surgeonId);
@@ -226,7 +227,7 @@ async function operate(
   const fromGear = entry.payment === 'installOnly';
   if (fromGear) requireFoundCyberware(data, cyberware);
 
-  await performInstall(deps, campaignId, user, patient, data, {
+  const { failed } = await performInstall(deps, campaignId, user, patient, data, {
     entry: cyberware,
     surgeon: surgeonRoll,
     bill: {
@@ -238,6 +239,7 @@ async function operate(
     refusal,
     fromGear,
   });
+  return failed ? 'failed' : 'operated';
 }
 
 function readPrice(raw: unknown): number {
@@ -285,7 +287,7 @@ export const cyberwareRespondEvent = defineEvent<CyberwareRespondPayload, { pend
 
       const isGm = user.role === ROLE_GM;
       const audience = [entry.patientOwnerId, entry.surgeonOwnerId, stored.authorId];
-      const close = async (kind: 'operated' | 'declined' | 'cancelled', price?: number) => {
+      const close = async (kind: SurgeryResolutionKind, price?: number) => {
         entry.resolution = { kind, byName: user.name, ...(price === undefined ? {} : { price }) };
         delete entry.quote;
         await emitSurgeryUpdate(deps, campaignId, messageId, entry, audience);
@@ -302,16 +304,14 @@ export const cyberwareRespondEvent = defineEvent<CyberwareRespondPayload, { pend
             await emitSurgeryUpdate(deps, campaignId, messageId, entry, audience);
             return { pending: true };
           }
-          await operate(deps, campaignId, user, entry, price);
-          await close('operated', price);
+          await close(await operate(deps, campaignId, user, entry, price), price);
           return { pending: false };
         }
         case 'approve': {
           if (!mayPatientAnswer(entry, user.id, isGm)) throw new RealtimeError('SURGERY_NOT_YOURS');
           if (entry.quote === undefined) throw new RealtimeError('SURGERY_NOT_QUOTED');
           const price = entry.quote;
-          await operate(deps, campaignId, user, entry, price);
-          await close('operated', price);
+          await close(await operate(deps, campaignId, user, entry, price), price);
           return { pending: false };
         }
         case 'decline': {

@@ -501,6 +501,45 @@ describe('przedmioty między kartami', () => {
     });
   });
 
+  it('figura wskazana klikiem mówi za kartę, także gdy na innej scenie stoi bliżej (31.10)', async () => {
+    // Stara scena: Vex i Rico jeden na drugim — bliżej niż na Zaułku, ale bez naklejki.
+    const old = data(await emitAck<SceneView>(gm, 'scene:create', { name: 'Knajpa' }), 'scene');
+    const extra: string[] = [];
+    for (const [name, characterId, ownerId] of [
+      ['Vex', vexCharacterId, vexUserId],
+      ['Rico', ricoCharacterId, ricoUserId],
+    ] as const) {
+      extra.push(
+        data(
+          await emitAck<TokenView>(gm, 'token:create', {
+            sceneId: old.id,
+            name,
+            x: 0,
+            y: 0,
+            ownerId,
+            characterId,
+          }),
+          'token:create',
+        ).id,
+      );
+    }
+    await emitAck(gm, 'token:update', { tokenId: ricoTokenId, patch: { statuses: ['stunned'] } });
+    try {
+      const listed = data(
+        await emitAck<ExchangeCounterpartsResult>(vex, 'exchange:counterparts', {
+          characterId: vexCharacterId,
+          tokenId: ricoTokenId,
+        }),
+        'exchange:counterparts',
+      );
+      const rico = listed.counterparts.filter((row) => row.name === 'Rico');
+      expect(rico.map((row) => [row.tokenId, row.kind])).toEqual([[ricoTokenId, 'loot']]);
+    } finally {
+      await emitAck(gm, 'token:update', { tokenId: ricoTokenId, patch: { statuses: [] } });
+      for (const tokenId of extra) await emitAck(gm, 'token:delete', { tokenId });
+    }
+  });
+
   it('gracz nie przeszuka figury, która stoi na nogach', async () => {
     const standing = data(
       await emitAck<CharacterView>(gm, 'character:create', { name: 'Wartownik' }),

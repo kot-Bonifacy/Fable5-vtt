@@ -492,7 +492,7 @@ export async function performInstall(
      */
     fromGear?: boolean;
   },
-): Promise<{ messageId: number }> {
+): Promise<{ messageId: number; failed: boolean }> {
   const { entry, surgeon, bill, gesture, refusal } = input;
   if (input.fromGear) {
     const found = cpredGearRowOfEntry(data.gear, entry.id);
@@ -511,7 +511,7 @@ export async function performInstall(
       // Bez rachunku `rollSurgery` niczego nie zapisuje — a zniszczony wszczep
       // i tak musi zejść z plecaka.
       if (input.fromGear && bill.cost <= 0) await saveSheet(deps, campaignId, character, data);
-      return { messageId: failed };
+      return { messageId: failed, failed: true };
     }
   }
 
@@ -558,7 +558,7 @@ export async function performInstall(
       humanityLine(updated),
   };
   const messageId = await postCard(deps, campaignId, user, character, result);
-  return { messageId };
+  return { messageId, failed: false };
 }
 
 async function removeCyberware(

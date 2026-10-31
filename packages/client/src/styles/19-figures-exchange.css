@@ -366,6 +366,12 @@
   color: var(--ok);
 }
 
+/* Operacja z nieudanym Testem montażu — wszczep zniszczony (31.10.2026). */
+.chat-inventory-badge--failed {
+  background: rgb(var(--err-rgb) / 18%);
+  color: var(--err);
+}
+
 /* Handel (38c): karta mówi, kto co dał — dwie listy pod dwoma podpisami. */
 .chat-inventory-side {
   margin: 0.2rem 0 0;
