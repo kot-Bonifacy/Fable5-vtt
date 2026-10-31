@@ -163,7 +163,7 @@ function SceneTemplates() {
                   type="button"
                   className="small-button"
                   disabled={busyId !== null}
-                  title="Zakłada w tej kampanii własną kopię: scenę, auta, karty NPC-ów i notatki MG"
+                  title="Zakłada w tej kampanii własną kopię: scenę z autami, kartami NPC-ów, ścianami, gniazdami Sieci i notatkami MG"
                   onClick={() => void add(template)}
                 >
                   {busyId === template.id ? 'Dodaję…' : 'Dodaj do kampanii'}

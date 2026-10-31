@@ -1,5 +1,26 @@
 # Dziennik sesji — archiwum
 
+### Sesja 31.10, siódma — zaległości bez MG i bez VPS (druga tura)
+
+**Zlecenie MG:** sprawdzić zaległości poza refaktoryzacją i wdrożeniem na VPS, zrobić kilka.
+**Zrobione:** (1) **Karta prośby o operację po nieudanym Teście** — nowy rodzaj `failed`
+(„Nieudana, wszczep zniszczony”, czerwona plakietka); `performInstall` zwraca wynik Testu. Wybrałem
+osobny rodzaj bez pytania MG — napis zmienia się w `SURGERY_RESOLUTION_LABELS`. Test serwera,
+oglądane w **Firefoksie** (A6 `t99-netrunner-chrom` 6/6). (2) **Łup z ciała gracza** (oględziny
+z 24.10) — **błąd**: dwuklik w Ogłuszonego kolegę dawał podpowiedź zamiast łupu, bo
+`exchange:counterparts` brał najbliższą parę figur karty, a ta stała na starej scenie bez naklejki.
+Figura wskazana klikiem wygrywa teraz zawsze (umowa na górze `ekwipunek`, test pada bez poprawki).
+Po poprawce w **Firefoksie**: łup, „Weź” dwuklikiem w kafel, karta „Łup” u Marka (Chromium).
+Nowa zaległość: otwarte okno łupu nie wraca do handlu po zdjęciu naklejki. (3) **Ikony okna
+Celowania w Firefoksie** — nie odtworzone: prawdziwe okno przy strzale w figurę i to samo
+wstrzyknięte nad mapę rysują sylwetki od pierwszej klatki; zaległość zamknięta. (4) Wpis o granacie
+T4b 4.6 (naprawiony w sesji piątej) zdjęty z otwartych. **Testy:** shared 2859, serwer 1725/1725,
+klient 443/443, `tsc` shared/serwer/klient czysty; E2E `t99-netrunner-chrom` 6/6 (spece oględzin
+łupu i ikon skasowane). **Uwaga dla MG:** karta łupu i plakietki prośby podpisują się nazwą konta
+(„Zabrane — Ola”) — miejsca z kontem w rozgrywce są wciąż do rozstrzygnięcia, nie ruszałem. Cudze
+zmiany w drzewie (`MapFxLayer.ts`, `damage.test.ts`, `grapple-turns.test.ts`, `99-ogledziny`) nie
+ruszane.
+
 ### Sesja 31.10, szósta — testy netrunnerki w przeglądarce
 
 **Zlecenie MG:** zaprojektować i wykonać testy netrunnera w przeglądarce, w tym wstawianie

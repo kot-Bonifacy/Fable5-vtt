@@ -268,3 +268,84 @@ describe('etap 66: sceny przykładowe', () => {
     expect(await built.prisma.character.count({ where: { campaignId } })).toBe(6);
   });
 });
+
+describe('etap 66b: wzorzec zwykłej mapy — „Fabryka dronów”', () => {
+  it('staje ciemna, ze ścianami, osłonami, urządzeniami, gniazdami i Siecią z uśpionymi dronami', async () => {
+    const gm = await connect(gmCookie);
+    const list = data(await emitAck<SceneTemplateSummary[]>(gm, 'scene:templates'), 'templates');
+    expect(list.find((row) => row.id === 'fabryka-dronow')).toMatchObject({
+      kind: 'map',
+      vehicles: 0,
+      figures: 19,
+    });
+    const result = data(
+      await emitAck<SceneTemplateCreateResult>(gm, 'scene:from-template', {
+        templateId: 'fabryka-dronow',
+      }),
+      'from-template',
+    );
+    // Próbka ma alternatywę dla broni dronów i Czarnego LOD-u.
+    expect(result.missing).toEqual([]);
+
+    const scene = await built.prisma.scene.findUniqueOrThrow({ where: { id: result.sceneId } });
+    expect(scene).toMatchObject({
+      kind: 'map',
+      visibility: 'dynamic',
+      dark: true,
+      darkSightM: 2,
+      explore: true,
+      partySight: false,
+      playerMove: 'explore',
+      metersPerSquare: 2,
+    });
+
+    const walls = await built.prisma.wall.findMany({ where: { sceneId: scene.id } });
+    expect(walls).toHaveLength(82);
+    const doors = walls.filter((wall) => wall.kind === 'door');
+    expect(doors).toHaveLength(4);
+    expect(doors.filter((door) => door.locked)).toHaveLength(1);
+    expect(walls.filter((wall) => wall.kind === 'barrier').every((wall) => wall.armor === 10)).toBe(
+      true,
+    );
+    expect(await built.prisma.cover.count({ where: { sceneId: scene.id } })).toBe(10);
+
+    const tokens = await built.prisma.token.findMany({
+      where: { sceneId: scene.id },
+      include: { character: true },
+    });
+    expect(tokens).toHaveLength(19);
+    expect(tokens.filter((token) => token.glyph === 'camera')).toHaveLength(4);
+    const camera = tokens.find((token) => token.name === 'Kamera lądowisk')!;
+    expect(camera).toMatchObject({ facing: 90, visionRange: 30, disposition: 'neutral' });
+    // Środek kratki ze wzorca to środek figury: lewy górny róg o pół kratki wcześniej.
+    expect(camera.x + scene.gridSizePx / 2).toBeCloseTo(880, 0);
+
+    const prototype = tokens.find((token) => token.name === 'Prototyp „Sowa”')!;
+    const sheet = JSON.parse(prototype.character!.data) as CpredCharacterData;
+    expect(sheet.gear.map((row) => row.name)).toContain('Drzazga z danymi „Sowa”');
+    expect(sheet.statBlock).toMatchObject({ combatValue: 14, hpMax: 30 });
+    expect(sheet.weapons.map((row) => row.name)).toContain('Zardzewiak');
+
+    const points = await built.prisma.netAccessPoint.findMany({ where: { sceneId: scene.id } });
+    expect(points).toHaveLength(5);
+    expect(points.every((point) => point.hidden && point.architectureId)).toBe(true);
+    const architecture = await built.prisma.netArchitecture.findUniqueOrThrow({
+      where: { id: points[0]!.architectureId! },
+    });
+    expect(architecture).toMatchObject({ campaignId, name: 'Sieć fabryki dronów' });
+    const floors = (JSON.parse(architecture.data) as { branches: { floors: unknown[] }[] })
+      .branches[0]!.floors as {
+      kind: string;
+      devices?: { tokenId: string }[];
+      programIds?: string[];
+    }[];
+    expect(floors).toHaveLength(8);
+    const tokenIds = new Set(tokens.map((token) => token.id));
+    const wired = floors.flatMap((floor) => floor.devices ?? []);
+    expect(wired).toHaveLength(19);
+    expect(wired.every((device) => tokenIds.has(device.tokenId))).toBe(true);
+    expect(floors.find((floor) => floor.kind === 'ice')!.programIds).toEqual(['program.osa']);
+    const runtime = JSON.parse(architecture.runtime) as { devices: { on: boolean }[] };
+    expect(runtime.devices.filter((device) => !device.on)).toHaveLength(11);
+  });
+});

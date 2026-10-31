@@ -1,5 +1,11 @@
 # Pomysły poza zakresem etapów
 
+**31.10.2026 (etap 66b) — uśpione urządzenie na mapie.** Dron wyłączony w Sieci (`runtime.devices` z `on: false`)
+stoi na mapie jak każda figura — MG go po prostu nie rusza. Automat: naklejka „Wyłączony” na figurze urządzenia
+(szary krążek, bez tury w kolejce, bez Percepcji w drodze), zdejmowana przy „Włącz”; prototyp z drzazgą dałby się
+wtedy przeszukać bez ręcznego „Unieruchomiony”. Do tego latarka z przedmiotu „Latarka” (światło figury
+z ekwipunku), żeby MG nie ustawiał jej każdej postaci ręką.
+
 **28.10.2026 (etap 63b) — auto-unik, czego VTT jeszcze nie robi.** (1) **Auto-unik NPC-ów MG**
 — przełącznik w Ustawieniach albo na karcie NPC-a, żeby MG nie rzucał Uniku każdemu gangerowi.
 (2) **Auto-unik ze Szczęściem** — próg („dorzuć do N punktów, gdy brakuje do przebicia”), dziś

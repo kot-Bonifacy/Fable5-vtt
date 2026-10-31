@@ -7,10 +7,12 @@
  * zwykłą, własną kopię. Wzorca nie zmienia się z aplikacji: nowy dokłada się
  * commitem (decyzja MG z 31.10 — „wzorce w repo”).
  *
- * Rdzeń zna tu tylko geometrię: tło, siatkę, ustawienia pościgu, auta (bryła
- * i grafika), figury (miejsce albo fotel) i notatki MG. Liczby systemu — z czego
- * zbudować auto i kartę NPC-a — leżą w nieprzejrzanych polach `system`, które
- * czyta moduł systemu (`systems/cpred/scene-template.ts`). Wzorzec opisuje
+ * Rdzeń zna tu tylko geometrię: tło, siatkę, widoczność i ciemność, ustawienia
+ * pościgu, auta (bryła i grafika), figury (miejsce albo fotel, ikona urządzenia,
+ * kierunek), ściany, osłony, gniazda Sieci i notatki MG (etap 66b). Liczby
+ * systemu — z czego zbudować auto, kartę NPC-a i Architekturę Sieci — leżą
+ * w nieprzejrzanych polach `system`, które czyta moduł systemu
+ * (`systems/cpred/scene-template.ts`). Wzorzec opisuje
  * NPC-a statblokiem i id wpisów kompendium, a nie treścią podręcznika, więc
  * może leżeć w publicznym repo; kartę buduje serwer z kompendium kampanii.
  *
@@ -33,8 +35,17 @@ import {
   type PlayerMoveMode,
   type SceneVisibility,
 } from './scenes.js';
-import { isTokenDisposition, type TokenDisposition } from './tokens.js';
+import { COVER_HP_MAX, COVER_NAME_MAX } from './covers.js';
+import { SCENE_DARK_SIGHT_DEFAULT_M, SCENE_DARK_SIGHT_MAX_M } from './lights.js';
+import {
+  isTokenDisposition,
+  sanitizeTokenGlyph,
+  type TokenDisposition,
+  type TokenGlyph,
+} from './tokens.js';
 import { VEHICLE_NAME_MAX, isVehicleArtUrl } from './vehicles.js';
+import { VISION_RANGE_MAX_METRES } from './vision.js';
+import { WALL_ARMOR_MAX, WALL_KINDS, type WallKind } from './walls.js';
 
 export const SCENE_TEMPLATE_SCHEMA_VERSION = 1;
 
@@ -52,7 +63,13 @@ export const SCENE_TEMPLATE_DESCRIPTION_MAX = 600;
 export const SCENE_TEMPLATE_VEHICLES_MAX = 12;
 export const SCENE_TEMPLATE_FIGURES_MAX = 40;
 export const SCENE_TEMPLATE_NOTES_MAX = 12;
+/** Odcinki ścian po rozcięciu łańcuchów — plan budynku, nie labirynt bez końca. */
+export const SCENE_TEMPLATE_WALL_SEGMENTS_MAX = 600;
+export const SCENE_TEMPLATE_COVERS_MAX = 60;
+export const SCENE_TEMPLATE_ACCESS_POINTS_MAX = 12;
 const FIGURE_NAME_MAX = 64;
+const ACCESS_POINT_NAME_MAX = 60;
+const ACCESS_POINT_NOTES_MAX = 1000;
 const KEY_PATTERN = /^[a-z0-9-]{1,32}$/;
 
 /** Wiersz listy w panelu scen — bez treści wzorca. */
@@ -90,6 +107,14 @@ export interface SceneTemplateScene {
   gridPlayers: boolean;
   metersPerSquare: number;
   visibility: SceneVisibility;
+  /** Ciemność sceny (etap 18b) — działa tylko przy widoczności „dynamic”. */
+  dark: boolean;
+  /** Wzrok w ciemności bez światła, w metrach. */
+  darkSightM: number;
+  /** Pamięć odkrytej mapy (etap 18c); domyślnie włączona poza pościgiem. */
+  explore: boolean;
+  /** „Gracze dzielą się widokiem” (30.10) — domyślnie wyłączone jak na nowej scenie. */
+  partySight: boolean;
   playerMove: PlayerMoveMode;
   ambience: AmbiencePreset;
   /** Miejsce startu drużyny w kratkach. */
@@ -111,6 +136,11 @@ export interface SceneTemplateVehicle {
 }
 
 export interface SceneTemplateFigure {
+  /**
+   * Klucz, którym figurę wskazuje reszta wzorca (urządzenie w Architekturze
+   * Sieci); `null` — figury nikt nie wskazuje.
+   */
+  key: string | null;
   name: string;
   /** Miejsce w kratkach — dla figury poza autem. */
   x: number;
@@ -119,6 +149,12 @@ export interface SceneTemplateFigure {
   vehicle: { key: string; seat: number } | null;
   disposition: TokenDisposition | null;
   hidden: boolean;
+  /** Ikona urządzenia (kamera, dron…) zamiast inicjału — `Token.glyph`. */
+  glyph: TokenGlyph | null;
+  /** Kierunek w stopniach zgodnie z zegarem od góry (`Token.facing`); `null` — bez grotu. */
+  facing: number | null;
+  /** Zasięg wzroku w metrach (`Token.visionRange`); `null` — tyle, ile pozwolą ściany. */
+  visionRange: number | null;
   /** Statblok karty NPC-a — czyta moduł systemu. */
   system: unknown;
 }
@@ -128,6 +164,47 @@ export interface SceneTemplateNote {
   y: number;
   icon: NoteIcon;
   text: string;
+}
+
+/**
+ * Ściana wzorca to **łańcuch** punktów w kratkach, jak rysuje go edytor —
+ * serwer tnie go na odcinki (`Wall` to zawsze jeden odcinek). Drzwi i brama to
+ * zwykle łańcuch z dwóch punktów.
+ */
+export interface SceneTemplateWall {
+  kind: WallKind;
+  points: { x: number; y: number }[];
+  /** Tylko otwory (drzwi, okno, brama). */
+  open: boolean;
+  playerToggle: boolean;
+  locked: boolean;
+  /** Tylko bariery i bramy: ile pocisk traci po drodze. */
+  armor: number;
+  /** Tylko bariery: zasłania figury, nie mapę. */
+  hidesFigures: boolean;
+}
+
+/** Osłona (etap 16c): prostokąt w kratkach — lewy górny róg i rozmiar. */
+export interface SceneTemplateCover {
+  name: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  hp: number;
+  hidden: boolean;
+}
+
+/** Gniazdo Sieci (etap 26b) — miejsce na mapie; Architekturę buduje moduł systemu. */
+export interface SceneTemplateAccessPoint {
+  name: string;
+  x: number;
+  y: number;
+  /** Domyślnie ukryte, jak każde nowe gniazdo — do znalezienia Skanerem. */
+  hidden: boolean;
+  notes: string;
+  /** Klucz Architektury z `system` wzorca; `null` — gniazdo bez Sieci. */
+  net: string | null;
 }
 
 export interface SceneTemplate {
@@ -141,6 +218,11 @@ export interface SceneTemplate {
   figures: SceneTemplateFigure[];
   /** Notatki warstwy MG (`MapNote`) — gracz ich nie dostaje. */
   notes: SceneTemplateNote[];
+  walls: SceneTemplateWall[];
+  covers: SceneTemplateCover[];
+  accessPoints: SceneTemplateAccessPoint[];
+  /** Dane systemu dla całej sceny (CP RED: Architektury Sieci) — czyta moduł systemu. */
+  system: unknown;
 }
 
 export interface SceneTemplateCreatePayload {
@@ -226,6 +308,13 @@ function readScene(raw: unknown): SceneTemplateScene | null {
   if (isObj(raw.spawn) && finite(raw.spawn.x) && finite(raw.spawn.y)) {
     spawn = { x: raw.spawn.x, y: raw.spawn.y };
   }
+  if (raw.dark !== undefined && typeof raw.dark !== 'boolean') return null;
+  let darkSightM = SCENE_DARK_SIGHT_DEFAULT_M;
+  if (raw.darkSightM !== undefined) {
+    if (!finite(raw.darkSightM) || raw.darkSightM < 0) return null;
+    if (raw.darkSightM > SCENE_DARK_SIGHT_MAX_M) return null;
+    darkSightM = raw.darkSightM;
+  }
   return {
     kind,
     backgroundUrl,
@@ -249,6 +338,11 @@ function readScene(raw: unknown): SceneTemplateScene | null {
       : kind === 'chase'
         ? 'open'
         : 'dynamic',
+    // Pościg nie ma ścian ani ciemności (jak `scene:create` z rodzajem „Pościg”).
+    dark: kind === 'map' && raw.dark === true,
+    darkSightM,
+    explore: kind === 'map' && raw.explore !== false,
+    partySight: raw.partySight === true,
     playerMove: isPlayerMoveMode(raw.playerMove) ? raw.playerMove : 'stop',
     ambience: isAmbiencePreset(raw.ambience) ? raw.ambience : 'none',
     spawn,
@@ -273,6 +367,24 @@ function readFigure(raw: unknown, vehicleKeys: ReadonlySet<string>): SceneTempla
   if (!isObj(raw)) return null;
   const name = text(raw.name, FIGURE_NAME_MAX);
   if (!name) return null;
+  let key: string | null = null;
+  if (raw.key !== undefined && raw.key !== null) {
+    if (typeof raw.key !== 'string' || !KEY_PATTERN.test(raw.key)) return null;
+    key = raw.key;
+  }
+  const glyph = raw.glyph === undefined ? null : sanitizeTokenGlyph(raw.glyph);
+  if (glyph === undefined) return null;
+  let facing: number | null = null;
+  if (raw.facing !== undefined && raw.facing !== null) {
+    if (!finite(raw.facing)) return null;
+    facing = ((raw.facing % 360) + 360) % 360;
+  }
+  let visionRange: number | null = null;
+  if (raw.visionRange !== undefined && raw.visionRange !== null) {
+    if (!finite(raw.visionRange) || raw.visionRange < 1) return null;
+    if (raw.visionRange > VISION_RANGE_MAX_METRES) return null;
+    visionRange = raw.visionRange;
+  }
   let vehicle: SceneTemplateFigure['vehicle'] = null;
   if (raw.vehicle !== undefined && raw.vehicle !== null) {
     const seat = isObj(raw.vehicle) ? raw.vehicle.seat : undefined;
@@ -284,14 +396,102 @@ function readFigure(raw: unknown, vehicleKeys: ReadonlySet<string>): SceneTempla
   // Figura w fotelu bierze miejsce z auta — liczby są wtedy nieobowiązkowe.
   if (!vehicle && (!finite(raw.x) || !finite(raw.y))) return null;
   return {
+    key,
     name,
     x: finite(raw.x) ? raw.x : 0,
     y: finite(raw.y) ? raw.y : 0,
     vehicle,
     disposition: isTokenDisposition(raw.disposition) ? raw.disposition : null,
     hidden: raw.hidden === true,
+    glyph,
+    facing,
+    visionRange,
     system: raw.system ?? null,
   };
+}
+
+function readPoint(raw: unknown): { x: number; y: number } | null {
+  if (Array.isArray(raw) && raw.length === 2 && finite(raw[0]) && finite(raw[1])) {
+    return { x: raw[0], y: raw[1] };
+  }
+  if (isObj(raw) && finite(raw.x) && finite(raw.y)) return { x: raw.x, y: raw.y };
+  return null;
+}
+
+function readWall(raw: unknown): SceneTemplateWall | null {
+  if (!isObj(raw) || !Array.isArray(raw.points) || raw.points.length < 2) return null;
+  const kind: WallKind | null =
+    raw.kind === undefined
+      ? 'wall'
+      : (WALL_KINDS as readonly unknown[]).includes(raw.kind)
+        ? (raw.kind as WallKind)
+        : null;
+  if (!kind) return null;
+  const points: { x: number; y: number }[] = [];
+  for (const entry of raw.points) {
+    const point = readPoint(entry);
+    if (!point) return null;
+    points.push(point);
+  }
+  for (let i = 1; i < points.length; i += 1) {
+    const a = points[i - 1]!;
+    const b = points[i]!;
+    if (a.x === b.x && a.y === b.y) return null;
+  }
+  const opening = kind === 'door' || kind === 'window' || kind === 'gate';
+  const barrier = kind === 'barrier' || kind === 'gate';
+  let armor = 0;
+  if (raw.armor !== undefined) {
+    if (!barrier || !Number.isInteger(raw.armor)) return null;
+    armor = raw.armor as number;
+    if (armor < 0 || armor > WALL_ARMOR_MAX) return null;
+  }
+  return {
+    kind,
+    points,
+    open: opening && raw.open === true,
+    playerToggle: opening && raw.playerToggle === true,
+    locked: opening && raw.locked === true,
+    armor,
+    hidesFigures: kind === 'barrier' && raw.hidesFigures === true,
+  };
+}
+
+function readCover(raw: unknown): SceneTemplateCover | null {
+  if (!isObj(raw)) return null;
+  const name = text(raw.name, COVER_NAME_MAX);
+  if (!name || !finite(raw.x) || !finite(raw.y)) return null;
+  if (!finite(raw.width) || !finite(raw.height) || raw.width <= 0 || raw.height <= 0) return null;
+  if (!Number.isInteger(raw.hp) || (raw.hp as number) < 0 || (raw.hp as number) > COVER_HP_MAX) {
+    return null;
+  }
+  return {
+    name,
+    x: raw.x,
+    y: raw.y,
+    width: raw.width,
+    height: raw.height,
+    hp: raw.hp as number,
+    hidden: raw.hidden === true,
+  };
+}
+
+function readAccessPoint(raw: unknown): SceneTemplateAccessPoint | null {
+  if (!isObj(raw) || !finite(raw.x) || !finite(raw.y)) return null;
+  const name = text(raw.name, ACCESS_POINT_NAME_MAX);
+  if (!name) return null;
+  let notes = '';
+  if (raw.notes !== undefined) {
+    const read = text(raw.notes, ACCESS_POINT_NOTES_MAX);
+    if (read === null) return null;
+    notes = read;
+  }
+  let net: string | null = null;
+  if (raw.net !== undefined && raw.net !== null) {
+    if (typeof raw.net !== 'string' || !KEY_PATTERN.test(raw.net)) return null;
+    net = raw.net;
+  }
+  return { name, x: raw.x, y: raw.y, hidden: raw.hidden !== false, notes, net };
 }
 
 function readNote(raw: unknown): SceneTemplateNote | null {
@@ -325,15 +525,28 @@ export function readSceneTemplate(raw: unknown, id: string): SceneTemplate | nul
   const rawVehicles = Array.isArray(raw.vehicles) ? raw.vehicles : [];
   const rawFigures = Array.isArray(raw.figures) ? raw.figures : [];
   const rawNotes = Array.isArray(raw.notes) ? raw.notes : [];
+  const rawWalls = Array.isArray(raw.walls) ? raw.walls : [];
+  const rawCovers = Array.isArray(raw.covers) ? raw.covers : [];
+  const rawPoints = Array.isArray(raw.accessPoints) ? raw.accessPoints : [];
   if (
     rawVehicles.length > SCENE_TEMPLATE_VEHICLES_MAX ||
     rawFigures.length > SCENE_TEMPLATE_FIGURES_MAX ||
-    rawNotes.length > SCENE_TEMPLATE_NOTES_MAX
+    rawNotes.length > SCENE_TEMPLATE_NOTES_MAX ||
+    rawCovers.length > SCENE_TEMPLATE_COVERS_MAX ||
+    rawPoints.length > SCENE_TEMPLATE_ACCESS_POINTS_MAX
   ) {
     return null;
   }
   // Auta tylko na scenie pościgu — na mapie nie ma ich gdzie postawić.
   if (rawVehicles.length > 0 && scene.kind !== 'chase') return null;
+  // Ściany, osłony i gniazda tylko na mapie — bieżnia pościgu przewija tło
+  // pod wszystkim, co na niej stoi.
+  if (
+    scene.kind === 'chase' &&
+    (rawWalls.length > 0 || rawCovers.length > 0 || rawPoints.length > 0)
+  ) {
+    return null;
+  }
 
   const vehicles: SceneTemplateVehicle[] = [];
   for (const row of rawVehicles) {
@@ -344,9 +557,14 @@ export function readSceneTemplate(raw: unknown, id: string): SceneTemplate | nul
   const keys = new Set(vehicles.map((vehicle) => vehicle.key));
   const figures: SceneTemplateFigure[] = [];
   const seats = new Set<string>();
+  const figureKeys = new Set<string>();
   for (const row of rawFigures) {
     const figure = readFigure(row, keys);
     if (!figure) return null;
+    if (figure.key) {
+      if (figureKeys.has(figure.key)) return null;
+      figureKeys.add(figure.key);
+    }
     if (figure.vehicle) {
       const seat = `${figure.vehicle.key}#${figure.vehicle.seat}`;
       if (seats.has(seat)) return null;
@@ -360,6 +578,27 @@ export function readSceneTemplate(raw: unknown, id: string): SceneTemplate | nul
     if (!note) return null;
     notes.push(note);
   }
+  const walls: SceneTemplateWall[] = [];
+  let segments = 0;
+  for (const row of rawWalls) {
+    const wall = readWall(row);
+    if (!wall) return null;
+    segments += wall.points.length - 1;
+    walls.push(wall);
+  }
+  if (segments > SCENE_TEMPLATE_WALL_SEGMENTS_MAX) return null;
+  const covers: SceneTemplateCover[] = [];
+  for (const row of rawCovers) {
+    const cover = readCover(row);
+    if (!cover) return null;
+    covers.push(cover);
+  }
+  const accessPoints: SceneTemplateAccessPoint[] = [];
+  for (const row of rawPoints) {
+    const point = readAccessPoint(row);
+    if (!point) return null;
+    accessPoints.push(point);
+  }
 
   return {
     schemaVersion: SCENE_TEMPLATE_SCHEMA_VERSION,
@@ -371,6 +610,10 @@ export function readSceneTemplate(raw: unknown, id: string): SceneTemplate | nul
     vehicles,
     figures,
     notes,
+    walls,
+    covers,
+    accessPoints,
+    system: raw.system ?? null,
   };
 }
 

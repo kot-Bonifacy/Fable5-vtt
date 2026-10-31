@@ -21,7 +21,7 @@ w plikach obok — czytaj je **na żądanie, nigdy rutynowo**:
 
 | stan         | etapy                                                                                          |
 | ------------ | ---------------------------------------------------------------------------------------------- |
-| ⬜ otwarty   | **66** Sceny przykładowe (🟨 zrobione 31.10, czeka na oględziny MG przy stole i wdrożenie); **65** Scena pościgu i walka pojazdów (🟨 65a–65e ✅ 30–31.10, czeka na oględziny MG przy stole); **62** Sieć ze sceny (🟨 zrobione, czeka na oględziny MG na VPS po wdrożeniu); **61** Skradanie się (🟨 zrobione, czeka na słowo MG o rozstrzygnięciach); **28** Wdrożenie na VPS (🟨 działa na `https://vtt.tatanga.eu` z botami od 18.10; zostały off-site, utwardzenie, monitoring); **43b**, **43c** (UI walki); **60** Czytelny czat (zlecenie MG z 24.10; 🟨 60a–60c ✅, czeka na oględziny MG z pierwszego kryterium); T10; refaktoryzacja odłożona (MG 18.10) |
+| ⬜ otwarty   | **66** Sceny przykładowe (🟨 zrobione 31.10, czeka na oględziny MG przy stole i wdrożenie; **66b** „Fabryka dronów” 🟨 zrobione 31.10, tak samo); **65** Scena pościgu i walka pojazdów (🟨 65a–65e ✅ 30–31.10, czeka na oględziny MG przy stole); **62** Sieć ze sceny (🟨 zrobione, czeka na oględziny MG na VPS po wdrożeniu); **61** Skradanie się (🟨 zrobione, czeka na słowo MG o rozstrzygnięciach); **28** Wdrożenie na VPS (🟨 działa na `https://vtt.tatanga.eu` z botami od 18.10; zostały off-site, utwardzenie, monitoring); **43b**, **43c** (UI walki); **60** Czytelny czat (zlecenie MG z 24.10; 🟨 60a–60c ✅, czeka na oględziny MG z pierwszego kryterium); T10; refaktoryzacja odłożona (MG 18.10) |
 | ✅ ukończone | 01–11, 13–20b, 23a–27f, 27h–27l, 29a–30d, 31–35, 37–42c, 43a, 44a–44d, 45, 46a1, 46a2, 46c1, 46c2, 46b1, 46b2, 47a, 47b, 48a, 48b, 48c, 49a, 49b, 50a, 50b, 50c, 51, 52, 53, 54, 55, 56, 57 (57a–57c), 58 (58a–58d), 59 (59a–59c), 63 (63a–63b; 63c wycofane 29.10), 64 (64a–64c) (ostatni zamknięty: 64, 2026-10-30) |
 | ⛔ wycofane  | 12, 21, 22 (głos), 27g (wydajność), 36 (makra); 27, 29, 30, 38 rozdzielone na etapy literowane |
 
@@ -36,7 +36,12 @@ własną kopię (scena, pojazdy MG, karty NPC-ów, figury w fotelach, notatki MG
 to „Pościg na wiadukcie”: drużyna ucieka kradzioną taksówką górną jezdnią, pickup Maelstromu
 (Szczęka, Bolec, Rdza) na ogonie, skrojone na 1–2 postacie z botami. Wzorzec niesie id
 z alternatywami zamiast treści podręcznika. Plik etapu `etap-66-sceny-przykladowe.md`, umowa
-na górze `mapa`.
+na górze `mapa`. **Od 66b (31.10) wzorzec umie zwykłą mapę:** ciemność, ściany, drzwi, osłony,
+figury z ikoną i kierunkiem, gniazda Sieci i Architekturę z uśpionymi urządzeniami. Drugi
+wzorzec to „Fabryka dronów”: ciemna hala, drużyna (netrunner + bojowiec) wchodzi dolną bramą po
+drzazgę z prototypu „Sowa” na prawym górnym lądowisku; patrol trzech dronów, 4 kamery, 11
+uśpionych Szerszeni (alarm = MG włącza je w Sieci), 5 ukrytych gniazd. Plik etapu
+`etap-66b-fabryka-dronow.md`, umowa na górze `mapa`.
 
 **Etap 65 „Scena pościgu i walka pojazdów” (zlecenie MG z 30.10) zrobiony 30–31.10 (65a–65e)
 — czeka na oględziny MG przy stole (szew bieżni na żywo, prawdziwy pas mapy wiaduktu) i na
@@ -545,7 +550,7 @@ a nie do tego pliku.
 
 | obszar      | co obejmuje                                                    | umów | pułapek |
 | ----------- | -------------------------------------------------------------- | ---- | ------- |
-| `mapa`      | figury, zaznaczanie, narzędzia, obiekty sceny, ściany, efekty, zamek drzwi, ukryta figura zauważona, ikony urządzeń, wspólny widok drużyny, scena pościgu, jazda kierowcy i dryf, Manewr i taranowanie, przeszkody pościgu, sceny przykładowe | 76   | 27      |
+| `mapa`      | figury, zaznaczanie, narzędzia, obiekty sceny, ściany, efekty, zamek drzwi, ukryta figura zauważona, ikony urządzeń, wspólny widok drużyny, scena pościgu, jazda kierowcy i dryf, Manewr i taranowanie, przeszkody pościgu, sceny przykładowe, wzorzec zwykłej mapy | 77   | 27      |
 | `czat`      | rodzaje wierszy, `visibleTo`, filtr, `seq`, `gmrecovery`, „to dotyczy mnie”, grupy kart, kolor gracza, czyszczenie | 13   | 3       |
 | `serwer`    | Prisma i migracje, zdarzenia gniazda, zapisy karty, uploady    | 26   | 21      |
 | `ui`        | okna pływające, `z-index`, motyw, skróty, dostępność, wejście, panel decyzji MG | 37   | 15      |
@@ -561,13 +566,31 @@ a nie do tego pliku.
 | `boty`      | llama-server, RAG, reindeks, dziennik i baza wiedzy, brama AI  | 10   | 10      |
 | `dane`      | `parse-manual.py`, kompendium poza repo, tabele z podręcznika  | 9    | 12      |
 | `kopie`     | `snapshot`, `archive`, paczki ZIP, wczytanie kampanii, „czeka na gracza”, kopie kampanii i cofnięcie, sklep i bot w paczce, zgłoszenie karty gracza, pojazdy w paczce, auta na scenie pościgu, przeszkody poza paczką | 22   | 6       |
-| `ogledziny` | CDP i Playwright MCP, zrzuty, dwie sesje, `window.confirm`    | 0    | 116     |
+| `ogledziny` | CDP i Playwright MCP, zrzuty, dwie sesje, `window.confirm`    | 0    | 117     |
 | `testy`     | vitest, migotanie, `tsc --noEmit`, środowisko dev              | 0    | 152     |
 
 
 ## Notatki z dwóch ostatnich sesji
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
+
+### Sesja 31.10, dziewiąta — „Fabryka dronów” i wzorzec zwykłej mapy (etap 66b)
+
+**Zlecenie MG:** scenariusz przykładowy do mapy fabryki dronów — bez oświetlenia, dwóch graczy
+widzi tylko to, co sami dostrzegą, drony za przeciwników, gniazda Sieci do wyłączania dronów
+i podglądu kamer, drzazga z danymi po drugiej stronie hali. **Decyzje MG z pytań:** wejście
+dolną bramą, drzazga w dronie na górnych lądowiskach (zleceniodawca wie, w którym), ciemność
+z latarkami, patrol + uśpione drony, alarm tylko budzi drony, jedna Sieć z kilkoma gniazdami,
+netrunner + bojowiec graczy, mapa publiczna. MG zgodził się na etap 66b (format + wzorzec).
+**Zrobione:** format wzorca rozszerzony o ciemność, ściany, osłony, ikonę/kierunek/wzrok figury,
+gniazda i Architektury z uśpionymi urządzeniami (`system.net`), dodatki karty NPC-a (plecak,
+Wartość bojowa); wzorzec `data/public/scenes/fabryka-dronow/`. **Poprawka w projekcie:**
+lądowisk jest 12, nie 14 (pomyliłem się w opisie dla MG). **Oglądane:** Ola/Iskra w
+**Firefoksie** (sterownia, podłączenie, 19 urządzeń), MG i Marek/Kowal w Chromium (ciemno,
+latarka, brak przecieku wrogów do gniazda gracza) — spec `99-ogledziny/t99-fabryka` 6/6, nie w
+repo. **Testy:** shared 2874/2874, serwer 1730/1730, `tsc` shared, serwer i klient czysty.
+Cudze zmiany w drzewie (`MapFxLayer.ts`, `damage.test.ts`, `grapple-turns.test.ts`,
+`99-ogledziny`) nie ruszane.
 
 ### Sesja 31.10, ósma — sceny przykładowe i „Pościg na wiadukcie” (etap 66)
 
@@ -583,24 +606,3 @@ na `localhost:5173` był zalogowany jako `mg_primo` w „ulice Lublina” — ta
 **Testy:** shared 2865/2865, serwer 1729/1729 (z dopisaną macierzą izolacji), `tsc` shared,
 serwer i klient czysty. Cudze zmiany w drzewie (`MapFxLayer.ts`, `damage.test.ts`,
 `grapple-turns.test.ts`, `99-ogledziny`) nie ruszane.
-
-### Sesja 31.10, siódma — zaległości bez MG i bez VPS (druga tura)
-
-**Zlecenie MG:** sprawdzić zaległości poza refaktoryzacją i wdrożeniem na VPS, zrobić kilka.
-**Zrobione:** (1) **Karta prośby o operację po nieudanym Teście** — nowy rodzaj `failed`
-(„Nieudana, wszczep zniszczony”, czerwona plakietka); `performInstall` zwraca wynik Testu. Wybrałem
-osobny rodzaj bez pytania MG — napis zmienia się w `SURGERY_RESOLUTION_LABELS`. Test serwera,
-oglądane w **Firefoksie** (A6 `t99-netrunner-chrom` 6/6). (2) **Łup z ciała gracza** (oględziny
-z 24.10) — **błąd**: dwuklik w Ogłuszonego kolegę dawał podpowiedź zamiast łupu, bo
-`exchange:counterparts` brał najbliższą parę figur karty, a ta stała na starej scenie bez naklejki.
-Figura wskazana klikiem wygrywa teraz zawsze (umowa na górze `ekwipunek`, test pada bez poprawki).
-Po poprawce w **Firefoksie**: łup, „Weź” dwuklikiem w kafel, karta „Łup” u Marka (Chromium).
-Nowa zaległość: otwarte okno łupu nie wraca do handlu po zdjęciu naklejki. (3) **Ikony okna
-Celowania w Firefoksie** — nie odtworzone: prawdziwe okno przy strzale w figurę i to samo
-wstrzyknięte nad mapę rysują sylwetki od pierwszej klatki; zaległość zamknięta. (4) Wpis o granacie
-T4b 4.6 (naprawiony w sesji piątej) zdjęty z otwartych. **Testy:** shared 2859, serwer 1725/1725,
-klient 443/443, `tsc` shared/serwer/klient czysty; E2E `t99-netrunner-chrom` 6/6 (spece oględzin
-łupu i ikon skasowane). **Uwaga dla MG:** karta łupu i plakietki prośby podpisują się nazwą konta
-(„Zabrane — Ola”) — miejsca z kontem w rozgrywce są wciąż do rozstrzygnięcia, nie ruszałem. Cudze
-zmiany w drzewie (`MapFxLayer.ts`, `damage.test.ts`, `grapple-turns.test.ts`, `99-ogledziny`) nie
-ruszane.

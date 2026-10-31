@@ -1,0 +1,1532 @@
+{
+  "schemaVersion": 1,
+  "name": "Fabryka dronów",
+  "category": "examples",
+  "description": "Ciemna hala montażowa po zmianie: drużyna wchodzi dolną bramą po drzazgę z danymi prototypu, który czuwa na lądowisku po drugiej stronie hali. Netrunner i bojowiec, każdy widzi tylko to, co sam dostrzeże: patrol dronów, kamery, kilkanaście uśpionych dronów, jedna Sieć z pięcioma gniazdami.",
+  "scene": {
+    "kind": "map",
+    "backgroundUrl": "/public/scenes/fabryka-dronow/map.webp",
+    "backgroundWidth": 1448,
+    "backgroundHeight": 1086,
+    "width": 1448,
+    "height": 1086,
+    "gridSizePx": 60.333333,
+    "gridOffsetX": 0,
+    "gridOffsetY": 0,
+    "gridVisible": true,
+    "gridPlayers": false,
+    "metersPerSquare": 2,
+    "visibility": "dynamic",
+    "dark": true,
+    "darkSightM": 2,
+    "explore": true,
+    "partySight": false,
+    "playerMove": "explore",
+    "ambience": "none",
+    "spawn": {
+      "x": 12,
+      "y": 16.21
+    }
+  },
+  "figures": [
+    {
+      "key": "pajak-1",
+      "name": "Pająk 1",
+      "x": 4.97,
+      "y": 4.97,
+      "glyph": "ground-drone",
+      "facing": 180,
+      "disposition": "hostile",
+      "system": {
+        "stats": {
+          "int": 3,
+          "ref": 6,
+          "dex": 6,
+          "tech": 3,
+          "cool": 5,
+          "will": 4,
+          "luck": 0,
+          "move": 6,
+          "body": 4,
+          "emp": 1
+        },
+        "hpMax": 20,
+        "skills": {
+          "perception": 4
+        },
+        "statBlock": {
+          "combatValue": 12
+        },
+        "weapons": [
+          [
+            "weapon.submachine-gun",
+            "weapon.zardzewiak"
+          ]
+        ]
+      }
+    },
+    {
+      "key": "pajak-2",
+      "name": "Pająk 2",
+      "x": 18.81,
+      "y": 12.6,
+      "glyph": "ground-drone",
+      "facing": 0,
+      "disposition": "hostile",
+      "system": {
+        "stats": {
+          "int": 3,
+          "ref": 6,
+          "dex": 6,
+          "tech": 3,
+          "cool": 5,
+          "will": 4,
+          "luck": 0,
+          "move": 6,
+          "body": 4,
+          "emp": 1
+        },
+        "hpMax": 20,
+        "skills": {
+          "perception": 4
+        },
+        "statBlock": {
+          "combatValue": 12
+        },
+        "weapons": [
+          [
+            "weapon.submachine-gun",
+            "weapon.zardzewiak"
+          ]
+        ]
+      }
+    },
+    {
+      "key": "szerszen-patrol",
+      "name": "Szerszeń patrolowy",
+      "x": 13.26,
+      "y": 1.24,
+      "glyph": "drone",
+      "facing": 270,
+      "disposition": "hostile",
+      "system": {
+        "stats": {
+          "int": 3,
+          "ref": 7,
+          "dex": 7,
+          "tech": 3,
+          "cool": 5,
+          "will": 4,
+          "luck": 0,
+          "move": 8,
+          "body": 3,
+          "emp": 1
+        },
+        "hpMax": 15,
+        "skills": {
+          "perception": 5
+        },
+        "statBlock": {
+          "combatValue": 10
+        },
+        "weapons": [
+          [
+            "weapon.medium-pistol",
+            "weapon.zgrzyt-9"
+          ]
+        ]
+      }
+    },
+    {
+      "key": "kamera-brama",
+      "name": "Kamera nad bramą",
+      "x": 10.61,
+      "y": 15.0,
+      "glyph": "camera",
+      "facing": 0,
+      "visionRange": 30,
+      "disposition": "neutral",
+      "system": {
+        "stats": {
+          "int": 3,
+          "ref": 1,
+          "dex": 1,
+          "tech": 1,
+          "cool": 1,
+          "will": 1,
+          "luck": 0,
+          "move": 1,
+          "body": 1,
+          "emp": 1
+        },
+        "hpMax": 5,
+        "skills": {
+          "perception": 6
+        }
+      }
+    },
+    {
+      "key": "kamera-zachod",
+      "name": "Kamera zachodnia",
+      "x": 2.15,
+      "y": 14.75,
+      "glyph": "camera",
+      "facing": 0,
+      "visionRange": 30,
+      "disposition": "neutral",
+      "system": {
+        "stats": {
+          "int": 3,
+          "ref": 1,
+          "dex": 1,
+          "tech": 1,
+          "cool": 1,
+          "will": 1,
+          "luck": 0,
+          "move": 1,
+          "body": 1,
+          "emp": 1
+        },
+        "hpMax": 5,
+        "skills": {
+          "perception": 6
+        }
+      }
+    },
+    {
+      "key": "kamera-wschod",
+      "name": "Kamera wschodnia",
+      "x": 21.85,
+      "y": 14.75,
+      "glyph": "camera",
+      "facing": 0,
+      "visionRange": 30,
+      "disposition": "neutral",
+      "system": {
+        "stats": {
+          "int": 3,
+          "ref": 1,
+          "dex": 1,
+          "tech": 1,
+          "cool": 1,
+          "will": 1,
+          "luck": 0,
+          "move": 1,
+          "body": 1,
+          "emp": 1
+        },
+        "hpMax": 5,
+        "skills": {
+          "perception": 6
+        }
+      }
+    },
+    {
+      "key": "kamera-ladowiska",
+      "name": "Kamera lądowisk",
+      "x": 14.59,
+      "y": 1.96,
+      "glyph": "camera",
+      "facing": 90,
+      "visionRange": 30,
+      "disposition": "neutral",
+      "system": {
+        "stats": {
+          "int": 3,
+          "ref": 1,
+          "dex": 1,
+          "tech": 1,
+          "cool": 1,
+          "will": 1,
+          "luck": 0,
+          "move": 1,
+          "body": 1,
+          "emp": 1
+        },
+        "hpMax": 5,
+        "skills": {
+          "perception": 6
+        }
+      }
+    },
+    {
+      "key": "ladowisko-g1",
+      "name": "Szerszeń G1",
+      "x": 1.96,
+      "y": 1.24,
+      "glyph": "drone",
+      "facing": 180,
+      "disposition": "hostile",
+      "system": {
+        "stats": {
+          "int": 3,
+          "ref": 7,
+          "dex": 7,
+          "tech": 3,
+          "cool": 5,
+          "will": 4,
+          "luck": 0,
+          "move": 8,
+          "body": 3,
+          "emp": 1
+        },
+        "hpMax": 15,
+        "skills": {
+          "perception": 5
+        },
+        "statBlock": {
+          "combatValue": 10
+        },
+        "weapons": [
+          [
+            "weapon.medium-pistol",
+            "weapon.zgrzyt-9"
+          ]
+        ]
+      }
+    },
+    {
+      "key": "ladowisko-g2",
+      "name": "Szerszeń G2",
+      "x": 4.69,
+      "y": 1.24,
+      "glyph": "drone",
+      "facing": 180,
+      "disposition": "hostile",
+      "system": {
+        "stats": {
+          "int": 3,
+          "ref": 7,
+          "dex": 7,
+          "tech": 3,
+          "cool": 5,
+          "will": 4,
+          "luck": 0,
+          "move": 8,
+          "body": 3,
+          "emp": 1
+        },
+        "hpMax": 15,
+        "skills": {
+          "perception": 5
+        },
+        "statBlock": {
+          "combatValue": 10
+        },
+        "weapons": [
+          [
+            "weapon.medium-pistol",
+            "weapon.zgrzyt-9"
+          ]
+        ]
+      }
+    },
+    {
+      "key": "ladowisko-g3",
+      "name": "Szerszeń G3",
+      "x": 7.92,
+      "y": 1.24,
+      "glyph": "drone",
+      "facing": 180,
+      "disposition": "hostile",
+      "system": {
+        "stats": {
+          "int": 3,
+          "ref": 7,
+          "dex": 7,
+          "tech": 3,
+          "cool": 5,
+          "will": 4,
+          "luck": 0,
+          "move": 8,
+          "body": 3,
+          "emp": 1
+        },
+        "hpMax": 15,
+        "skills": {
+          "perception": 5
+        },
+        "statBlock": {
+          "combatValue": 10
+        },
+        "weapons": [
+          [
+            "weapon.medium-pistol",
+            "weapon.zgrzyt-9"
+          ]
+        ]
+      }
+    },
+    {
+      "key": "ladowisko-g4",
+      "name": "Szerszeń G4",
+      "x": 16.04,
+      "y": 1.24,
+      "glyph": "drone",
+      "facing": 180,
+      "disposition": "hostile",
+      "system": {
+        "stats": {
+          "int": 3,
+          "ref": 7,
+          "dex": 7,
+          "tech": 3,
+          "cool": 5,
+          "will": 4,
+          "luck": 0,
+          "move": 8,
+          "body": 3,
+          "emp": 1
+        },
+        "hpMax": 15,
+        "skills": {
+          "perception": 5
+        },
+        "statBlock": {
+          "combatValue": 10
+        },
+        "weapons": [
+          [
+            "weapon.medium-pistol",
+            "weapon.zgrzyt-9"
+          ]
+        ]
+      }
+    },
+    {
+      "key": "ladowisko-g5",
+      "name": "Szerszeń G5",
+      "x": 19.36,
+      "y": 1.24,
+      "glyph": "drone",
+      "facing": 180,
+      "disposition": "hostile",
+      "system": {
+        "stats": {
+          "int": 3,
+          "ref": 7,
+          "dex": 7,
+          "tech": 3,
+          "cool": 5,
+          "will": 4,
+          "luck": 0,
+          "move": 8,
+          "body": 3,
+          "emp": 1
+        },
+        "hpMax": 15,
+        "skills": {
+          "perception": 5
+        },
+        "statBlock": {
+          "combatValue": 10
+        },
+        "weapons": [
+          [
+            "weapon.medium-pistol",
+            "weapon.zgrzyt-9"
+          ]
+        ]
+      }
+    },
+    {
+      "key": "ladowisko-z1",
+      "name": "Szerszeń Z1",
+      "x": 1.08,
+      "y": 4.23,
+      "glyph": "drone",
+      "facing": 90,
+      "disposition": "hostile",
+      "system": {
+        "stats": {
+          "int": 3,
+          "ref": 7,
+          "dex": 7,
+          "tech": 3,
+          "cool": 5,
+          "will": 4,
+          "luck": 0,
+          "move": 8,
+          "body": 3,
+          "emp": 1
+        },
+        "hpMax": 15,
+        "skills": {
+          "perception": 5
+        },
+        "statBlock": {
+          "combatValue": 10
+        },
+        "weapons": [
+          [
+            "weapon.medium-pistol",
+            "weapon.zgrzyt-9"
+          ]
+        ]
+      }
+    },
+    {
+      "key": "ladowisko-z2",
+      "name": "Szerszeń Z2",
+      "x": 1.08,
+      "y": 7.38,
+      "glyph": "drone",
+      "facing": 90,
+      "disposition": "hostile",
+      "system": {
+        "stats": {
+          "int": 3,
+          "ref": 7,
+          "dex": 7,
+          "tech": 3,
+          "cool": 5,
+          "will": 4,
+          "luck": 0,
+          "move": 8,
+          "body": 3,
+          "emp": 1
+        },
+        "hpMax": 15,
+        "skills": {
+          "perception": 5
+        },
+        "statBlock": {
+          "combatValue": 10
+        },
+        "weapons": [
+          [
+            "weapon.medium-pistol",
+            "weapon.zgrzyt-9"
+          ]
+        ]
+      }
+    },
+    {
+      "key": "ladowisko-z3",
+      "name": "Szerszeń Z3",
+      "x": 1.08,
+      "y": 11.02,
+      "glyph": "drone",
+      "facing": 90,
+      "disposition": "hostile",
+      "system": {
+        "stats": {
+          "int": 3,
+          "ref": 7,
+          "dex": 7,
+          "tech": 3,
+          "cool": 5,
+          "will": 4,
+          "luck": 0,
+          "move": 8,
+          "body": 3,
+          "emp": 1
+        },
+        "hpMax": 15,
+        "skills": {
+          "perception": 5
+        },
+        "statBlock": {
+          "combatValue": 10
+        },
+        "weapons": [
+          [
+            "weapon.medium-pistol",
+            "weapon.zgrzyt-9"
+          ]
+        ]
+      }
+    },
+    {
+      "key": "ladowisko-w1",
+      "name": "Szerszeń W1",
+      "x": 22.92,
+      "y": 4.23,
+      "glyph": "drone",
+      "facing": 270,
+      "disposition": "hostile",
+      "system": {
+        "stats": {
+          "int": 3,
+          "ref": 7,
+          "dex": 7,
+          "tech": 3,
+          "cool": 5,
+          "will": 4,
+          "luck": 0,
+          "move": 8,
+          "body": 3,
+          "emp": 1
+        },
+        "hpMax": 15,
+        "skills": {
+          "perception": 5
+        },
+        "statBlock": {
+          "combatValue": 10
+        },
+        "weapons": [
+          [
+            "weapon.medium-pistol",
+            "weapon.zgrzyt-9"
+          ]
+        ]
+      }
+    },
+    {
+      "key": "ladowisko-w2",
+      "name": "Szerszeń W2",
+      "x": 22.92,
+      "y": 7.38,
+      "glyph": "drone",
+      "facing": 270,
+      "disposition": "hostile",
+      "system": {
+        "stats": {
+          "int": 3,
+          "ref": 7,
+          "dex": 7,
+          "tech": 3,
+          "cool": 5,
+          "will": 4,
+          "luck": 0,
+          "move": 8,
+          "body": 3,
+          "emp": 1
+        },
+        "hpMax": 15,
+        "skills": {
+          "perception": 5
+        },
+        "statBlock": {
+          "combatValue": 10
+        },
+        "weapons": [
+          [
+            "weapon.medium-pistol",
+            "weapon.zgrzyt-9"
+          ]
+        ]
+      }
+    },
+    {
+      "key": "ladowisko-w3",
+      "name": "Szerszeń W3",
+      "x": 22.92,
+      "y": 11.14,
+      "glyph": "drone",
+      "facing": 270,
+      "disposition": "hostile",
+      "system": {
+        "stats": {
+          "int": 3,
+          "ref": 7,
+          "dex": 7,
+          "tech": 3,
+          "cool": 5,
+          "will": 4,
+          "luck": 0,
+          "move": 8,
+          "body": 3,
+          "emp": 1
+        },
+        "hpMax": 15,
+        "skills": {
+          "perception": 5
+        },
+        "statBlock": {
+          "combatValue": 10
+        },
+        "weapons": [
+          [
+            "weapon.medium-pistol",
+            "weapon.zgrzyt-9"
+          ]
+        ]
+      }
+    },
+    {
+      "key": "prototyp",
+      "name": "Prototyp „Sowa”",
+      "x": 22.18,
+      "y": 1.24,
+      "glyph": "drone",
+      "facing": 180,
+      "disposition": "hostile",
+      "system": {
+        "stats": {
+          "int": 3,
+          "ref": 7,
+          "dex": 7,
+          "tech": 3,
+          "cool": 5,
+          "will": 4,
+          "luck": 0,
+          "move": 8,
+          "body": 5,
+          "emp": 1
+        },
+        "hpMax": 30,
+        "skills": {
+          "perception": 6
+        },
+        "statBlock": {
+          "combatValue": 14
+        },
+        "weapons": [
+          [
+            "weapon.submachine-gun",
+            "weapon.zardzewiak"
+          ]
+        ],
+        "gear": [
+          {
+            "name": "Drzazga z danymi „Sowa”",
+            "notes": "Dane projektowe prototypu: sterowanie roju, sensory, oprogramowanie. Cel zlecenia.",
+            "qty": 1
+          }
+        ]
+      }
+    }
+  ],
+  "walls": [
+    {
+      "points": [
+        [
+          10.81,
+          0.41
+        ],
+        [
+          0.41,
+          0.41
+        ],
+        [
+          0.41,
+          17.6
+        ],
+        [
+          10.81,
+          17.6
+        ]
+      ]
+    },
+    {
+      "points": [
+        [
+          13.21,
+          0.41
+        ],
+        [
+          23.59,
+          0.41
+        ],
+        [
+          23.59,
+          17.6
+        ],
+        [
+          13.21,
+          17.6
+        ]
+      ]
+    },
+    {
+      "kind": "door",
+      "points": [
+        [
+          10.81,
+          0.41
+        ],
+        [
+          13.21,
+          0.41
+        ]
+      ],
+      "locked": true
+    },
+    {
+      "points": [
+        [
+          10.81,
+          17.6
+        ],
+        [
+          10.81,
+          16.66
+        ]
+      ]
+    },
+    {
+      "points": [
+        [
+          13.21,
+          17.6
+        ],
+        [
+          13.21,
+          16.66
+        ]
+      ]
+    },
+    {
+      "kind": "door",
+      "points": [
+        [
+          10.81,
+          16.66
+        ],
+        [
+          13.21,
+          16.66
+        ]
+      ],
+      "playerToggle": true
+    },
+    {
+      "points": [
+        [
+          0.41,
+          15.41
+        ],
+        [
+          3.65,
+          15.41
+        ],
+        [
+          3.65,
+          15.99
+        ]
+      ]
+    },
+    {
+      "kind": "door",
+      "points": [
+        [
+          3.65,
+          15.99
+        ],
+        [
+          3.65,
+          16.94
+        ]
+      ],
+      "playerToggle": true
+    },
+    {
+      "points": [
+        [
+          3.65,
+          16.94
+        ],
+        [
+          3.65,
+          17.6
+        ]
+      ]
+    },
+    {
+      "points": [
+        [
+          23.59,
+          15.41
+        ],
+        [
+          20.35,
+          15.41
+        ],
+        [
+          20.35,
+          15.99
+        ]
+      ]
+    },
+    {
+      "kind": "door",
+      "points": [
+        [
+          20.35,
+          15.99
+        ],
+        [
+          20.35,
+          16.94
+        ]
+      ],
+      "playerToggle": true
+    },
+    {
+      "points": [
+        [
+          20.35,
+          16.94
+        ],
+        [
+          20.35,
+          17.6
+        ]
+      ]
+    },
+    {
+      "points": [
+        [
+          2.78,
+          2.65
+        ],
+        [
+          4.34,
+          2.65
+        ],
+        [
+          4.34,
+          7.82
+        ],
+        [
+          2.78,
+          7.82
+        ],
+        [
+          2.78,
+          2.65
+        ]
+      ]
+    },
+    {
+      "points": [
+        [
+          5.72,
+          2.65
+        ],
+        [
+          7.29,
+          2.65
+        ],
+        [
+          7.29,
+          7.76
+        ],
+        [
+          5.72,
+          7.76
+        ],
+        [
+          5.72,
+          2.65
+        ]
+      ]
+    },
+    {
+      "points": [
+        [
+          8.62,
+          2.65
+        ],
+        [
+          10.03,
+          2.65
+        ],
+        [
+          10.03,
+          7.76
+        ],
+        [
+          8.62,
+          7.76
+        ],
+        [
+          8.62,
+          2.65
+        ]
+      ]
+    },
+    {
+      "points": [
+        [
+          13.92,
+          2.65
+        ],
+        [
+          15.33,
+          2.65
+        ],
+        [
+          15.33,
+          7.76
+        ],
+        [
+          13.92,
+          7.76
+        ],
+        [
+          13.92,
+          2.65
+        ]
+      ]
+    },
+    {
+      "points": [
+        [
+          16.74,
+          2.65
+        ],
+        [
+          18.31,
+          2.65
+        ],
+        [
+          18.31,
+          7.76
+        ],
+        [
+          16.74,
+          7.76
+        ],
+        [
+          16.74,
+          2.65
+        ]
+      ]
+    },
+    {
+      "points": [
+        [
+          19.64,
+          2.57
+        ],
+        [
+          21.25,
+          2.57
+        ],
+        [
+          21.25,
+          7.82
+        ],
+        [
+          19.64,
+          7.82
+        ],
+        [
+          19.64,
+          2.57
+        ]
+      ]
+    },
+    {
+      "points": [
+        [
+          2.78,
+          10.61
+        ],
+        [
+          4.34,
+          10.61
+        ],
+        [
+          4.34,
+          14.59
+        ],
+        [
+          2.78,
+          14.59
+        ],
+        [
+          2.78,
+          10.61
+        ]
+      ]
+    },
+    {
+      "points": [
+        [
+          6.0,
+          10.77
+        ],
+        [
+          7.59,
+          10.77
+        ],
+        [
+          7.59,
+          14.55
+        ],
+        [
+          6.0,
+          14.55
+        ],
+        [
+          6.0,
+          10.77
+        ]
+      ]
+    },
+    {
+      "points": [
+        [
+          8.73,
+          10.64
+        ],
+        [
+          10.14,
+          10.64
+        ],
+        [
+          10.14,
+          14.55
+        ],
+        [
+          8.73,
+          14.55
+        ],
+        [
+          8.73,
+          10.64
+        ]
+      ]
+    },
+    {
+      "points": [
+        [
+          13.84,
+          10.69
+        ],
+        [
+          15.2,
+          10.69
+        ],
+        [
+          15.2,
+          14.55
+        ],
+        [
+          13.84,
+          14.55
+        ],
+        [
+          13.84,
+          10.69
+        ]
+      ]
+    },
+    {
+      "points": [
+        [
+          16.41,
+          10.69
+        ],
+        [
+          17.93,
+          10.69
+        ],
+        [
+          17.93,
+          14.55
+        ],
+        [
+          16.41,
+          14.55
+        ],
+        [
+          16.41,
+          10.69
+        ]
+      ]
+    },
+    {
+      "points": [
+        [
+          19.64,
+          10.24
+        ],
+        [
+          21.3,
+          10.24
+        ],
+        [
+          21.3,
+          14.55
+        ],
+        [
+          19.64,
+          14.55
+        ],
+        [
+          19.64,
+          10.24
+        ]
+      ]
+    },
+    {
+      "kind": "barrier",
+      "points": [
+        [
+          11.64,
+          1.57
+        ],
+        [
+          12.35,
+          1.57
+        ],
+        [
+          12.35,
+          8.09
+        ],
+        [
+          11.64,
+          8.09
+        ],
+        [
+          11.64,
+          1.57
+        ]
+      ],
+      "armor": 10
+    },
+    {
+      "kind": "barrier",
+      "points": [
+        [
+          11.64,
+          10.52
+        ],
+        [
+          12.35,
+          10.52
+        ],
+        [
+          12.35,
+          15.75
+        ],
+        [
+          11.64,
+          15.75
+        ],
+        [
+          11.64,
+          10.52
+        ]
+      ],
+      "armor": 10
+    },
+    {
+      "kind": "barrier",
+      "points": [
+        [
+          7.79,
+          8.78
+        ],
+        [
+          11.06,
+          8.78
+        ],
+        [
+          11.06,
+          9.94
+        ],
+        [
+          7.79,
+          9.94
+        ],
+        [
+          7.79,
+          8.78
+        ]
+      ],
+      "armor": 10
+    },
+    {
+      "kind": "barrier",
+      "points": [
+        [
+          12.96,
+          8.78
+        ],
+        [
+          16.21,
+          8.78
+        ],
+        [
+          16.21,
+          9.94
+        ],
+        [
+          12.96,
+          9.94
+        ],
+        [
+          12.96,
+          8.78
+        ]
+      ],
+      "armor": 10
+    }
+  ],
+  "covers": [
+    {
+      "name": "Skrzynia",
+      "x": 2.85,
+      "y": 8.07,
+      "width": 0.55,
+      "height": 0.55,
+      "hp": 20
+    },
+    {
+      "name": "Skrzynia",
+      "x": 1.96,
+      "y": 8.9,
+      "width": 0.7,
+      "height": 0.85,
+      "hp": 20
+    },
+    {
+      "name": "Skrzynia",
+      "x": 10.28,
+      "y": 2.78,
+      "width": 0.46,
+      "height": 0.73,
+      "hp": 20
+    },
+    {
+      "name": "Skrzynia",
+      "x": 13.26,
+      "y": 2.78,
+      "width": 0.46,
+      "height": 0.73,
+      "hp": 20
+    },
+    {
+      "name": "Skrzynia",
+      "x": 20.62,
+      "y": 8.07,
+      "width": 0.55,
+      "height": 0.55,
+      "hp": 20
+    },
+    {
+      "name": "Skrzynia",
+      "x": 21.33,
+      "y": 8.9,
+      "width": 0.71,
+      "height": 0.85,
+      "hp": 20
+    },
+    {
+      "name": "Skrzynia",
+      "x": 5.34,
+      "y": 12.51,
+      "width": 0.5,
+      "height": 1.08,
+      "hp": 20
+    },
+    {
+      "name": "Skrzynia",
+      "x": 18.23,
+      "y": 12.76,
+      "width": 0.5,
+      "height": 0.83,
+      "hp": 20
+    },
+    {
+      "name": "Beczki",
+      "x": 8.87,
+      "y": 16.16,
+      "width": 0.5,
+      "height": 0.99,
+      "hp": 25
+    },
+    {
+      "name": "Beczki",
+      "x": 14.65,
+      "y": 16.16,
+      "width": 0.5,
+      "height": 0.99,
+      "hp": 25
+    }
+  ],
+  "accessPoints": [
+    {
+      "name": "Konsola sterowni zachodniej",
+      "x": 1.91,
+      "y": 16.33,
+      "net": "fabryka",
+      "notes": "Za drzwiami sterowni na lewo od bramy. Najbliższe gniazdo od startu."
+    },
+    {
+      "name": "Konsola sterowni wschodniej",
+      "x": 22.09,
+      "y": 16.33,
+      "net": "fabryka",
+      "notes": "Za drzwiami sterowni na prawo od bramy."
+    },
+    {
+      "name": "Budka operatora zachodnia",
+      "x": 6.46,
+      "y": 8.78,
+      "net": "fabryka"
+    },
+    {
+      "name": "Budka operatora wschodnia",
+      "x": 17.49,
+      "y": 8.78,
+      "net": "fabryka"
+    },
+    {
+      "name": "Pulpit centralny",
+      "x": 11.97,
+      "y": 8.54,
+      "net": "fabryka",
+      "notes": "Na skrzyżowaniu taśmociągów; wejście przez narożniki platformy."
+    }
+  ],
+  "notes": [
+    {
+      "x": 7.96,
+      "y": 16.74,
+      "icon": "📌",
+      "text": "FABRYKA DRONÓW — zlecenie\n\nZleceniodawca (fixer, korporacyjny konkurent — dopasuj do kampanii) chce danych prototypu „Sowa”. Drzazga siedzi w samym dronie: prototyp czuwa na prawym górnym lądowisku, przy górnej bramie. Zleceniodawca to wie i mówi drużynie wprost.\n\nDrużyna wchodzi dolną bramą towarową. Hala stoi po zmianie: lampy zgaszone, ludzi nie ma, pilnują drony i kamery.\n\nWygrana: drzazga w czyimś ekwipunku i drużyna z powrotem za dolną bramą.\nDrzazgę wyjmuje się z prototypu wyłączonego w Sieci (wtedy MG nakłada mu „Unieruchomiony” i figurę da się przeszukać) albo z wraku (PW 0 — łup z ciała).\n\nSkrojone na dwie postacie: netrunnera i bojowca (Solo, Ochroniarz). Netrunner musi siedzieć przy gnieździe (zasięg 6 m), więc bojowiec idzie sam w ciemność."
+    },
+    {
+      "x": 14.25,
+      "y": 16.74,
+      "icon": "❓",
+      "text": "ZANIM ZACZNIECIE\n\n1. Scena jest ciemna, a gracze nie dzielą się widokiem: każdy widzi tylko to, co widzi jego figura (2 m w ciemności).\n2. Latarki: daj każdej figurze gracza światło (menu figury → Światło, np. 6 m jasno / 12 m przyćmione). Gracz sam je włącza i gasi.\n   Latarka świeci także dla dronów i kamer — kto świeci, ten jest widoczny z daleka.\n3. Aktywuj scenę. Figury graczy staną przy dolnej bramie (miejsce startu).\n4. Gracze chodzą w trybie Eksploracji, Skradanie działa jak zwykle: drony i kamery patrzą własnymi oczami.\n5. Kontenery to ściany (zasłaniają widok), taśmociągi to bariera — nie przejdzie się przez nie, ale widać ponad nimi. Na platformę pulpitu centralnego wchodzi się narożnikami.\n6. Gniazda Sieci są ukryte — netrunner znajduje je Skanerem albo MG odsłania je, gdy postać stanie przy konsoli."
+    },
+    {
+      "x": 18.23,
+      "y": 16.74,
+      "icon": "⚠️",
+      "text": "ALARM I PRZECIWNICY\n\nPatrol (aktywny): Pająk 1, Pająk 2 (drony naziemne) i Szerszeń patrolowy przy lądowiskach. Prowadź ich trasy alejkami między kontenerami.\nKamery (4, Neutralne): zauważenie postaci daje MG pasek — to jest alarm.\n\nALARM: co rundę budzi się jeden uśpiony Szerszeń, od lądowiska najbliższego hałasu — MG włącza go w Sieci (Architektura → stan urządzenia) i od tej rundy dron działa. Uśpiony dron (wyłączony w Sieci) nie rusza się i nie strzela.\nPrototyp „Sowa” się nie budzi — on czuwa od początku i strzela do każdego, kto podejdzie na jego lądowisko.\n\nNetrunner może: wyłączać drony (węzły patrolu i lądowisk), patrzeć oczami kamer i je obracać (węzeł kamer), a wyłączenie Sowy w węźle „Lądowisk: północ” pozwala wyjąć drzazgę bez walki.\n\nTrudniej: włącz od startu dwa Szerszenie z lądowisk. Łatwiej: odsłoń graczom jedno gniazdo przy starcie."
+    },
+    {
+      "x": 21.88,
+      "y": 3.15,
+      "icon": "💰",
+      "text": "PROTOTYP „SOWA”\n\nDrzazga z danymi leży w ekwipunku karty prototypu. Wartość bojowa 14, 30 PW, pistolet maszynowy.\nWyłączony w Sieci: nałóż „Unieruchomiony” — postać obok przeszukuje figurę i zabiera drzazgę (łup z ciała).\nZniszczony: wrak z PW 0 przeszukuje się tak samo."
+    }
+  ],
+  "system": {
+    "net": [
+      {
+        "key": "fabryka",
+        "name": "Sieć fabryki dronów",
+        "difficulty": "standard",
+        "notes": "Sieć hali montażowej: kamery, patrol, lądowiska. Gniazda w obu sterowniach, w budkach operatorów i w pulpicie centralnym.",
+        "floors": [
+          {
+            "kind": "password",
+            "label": "Hasło: konto serwisowe"
+          },
+          {
+            "kind": "controlNode",
+            "label": "Węzeł kamer",
+            "devices": [
+              {
+                "figure": "kamera-brama"
+              },
+              {
+                "figure": "kamera-zachod"
+              },
+              {
+                "figure": "kamera-wschod"
+              },
+              {
+                "figure": "kamera-ladowiska"
+              }
+            ]
+          },
+          {
+            "kind": "ice",
+            "label": "Czarny LOD",
+            "programs": [
+              [
+                "program.kruk",
+                "program.osa"
+              ]
+            ]
+          },
+          {
+            "kind": "controlNode",
+            "label": "Węzeł patrolu",
+            "devices": [
+              {
+                "figure": "pajak-1"
+              },
+              {
+                "figure": "pajak-2"
+              },
+              {
+                "figure": "szerszen-patrol"
+              }
+            ]
+          },
+          {
+            "kind": "file",
+            "label": "Plik: dziennik produkcji",
+            "notes": "Harmonogram testów prototypu „Sowa”, kody wyrobów, nazwisko kierownika zmiany. Do sprzedania albo jako haczyk na kolejną robotę."
+          },
+          {
+            "kind": "password",
+            "label": "Hasło: kierownik hali"
+          },
+          {
+            "kind": "controlNode",
+            "label": "Węzeł lądowisk: północ",
+            "devices": [
+              {
+                "figure": "ladowisko-g1",
+                "on": false
+              },
+              {
+                "figure": "ladowisko-g2",
+                "on": false
+              },
+              {
+                "figure": "ladowisko-g3",
+                "on": false
+              },
+              {
+                "figure": "ladowisko-g4",
+                "on": false
+              },
+              {
+                "figure": "ladowisko-g5",
+                "on": false
+              },
+              {
+                "figure": "prototyp"
+              }
+            ]
+          },
+          {
+            "kind": "controlNode",
+            "label": "Węzeł lądowisk: skrzydła",
+            "devices": [
+              {
+                "figure": "ladowisko-z1",
+                "on": false
+              },
+              {
+                "figure": "ladowisko-z2",
+                "on": false
+              },
+              {
+                "figure": "ladowisko-z3",
+                "on": false
+              },
+              {
+                "figure": "ladowisko-w1",
+                "on": false
+              },
+              {
+                "figure": "ladowisko-w2",
+                "on": false
+              },
+              {
+                "figure": "ladowisko-w3",
+                "on": false
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

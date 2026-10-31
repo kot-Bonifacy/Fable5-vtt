@@ -5,19 +5,28 @@ import type {
   SceneTemplateSummary,
 } from '@vtt/shared';
 import {
+  NET_SCENE_CONTROL_DV,
   ROLE_GM,
   clampChaseVehicle,
+  cpredTemplateNetArchitecture,
+  cpredTemplateNetProgramIds,
   cpredTemplateNpcEntryIds,
+  cpredTemplateNpcFinish,
   cpredTemplateNpcInput,
   cpredTemplateVehicleStats,
   isVehicleEntry,
   mergeCharacterData,
+  netDifficultyDv,
+  netrunningDataOf,
+  readCpredTemplateNets,
   readCpredTemplateNpc,
+  readCpredTemplateNpcExtras,
   readCpredTemplateVehicle,
   sceneTemplatePoint,
   sceneTemplateSummary,
   seatedTokenPosition,
   vehicleSeatCentre,
+  type CpredTemplatePlacedFigure,
 } from '@vtt/shared';
 import type { Character, Scene, Vehicle } from '../generated/prisma/client.js';
 import { loadSceneTemplate, loadSceneTemplates } from '../scene-templates.js';
@@ -26,6 +35,8 @@ import { emitCharacterUpsert, toCharacterView } from './character-io.js';
 import { npcSheetFrom } from './characters.js';
 import { chaseBodyOf, chaseGeometry } from './chase.js';
 import { campaignEntry } from './compendium.js';
+import { nextRowId } from './economy.js';
+import { emitList as emitNetList } from './netrunning.js';
 import { RealtimeError, defineEvent, type RealtimeDeps } from './registry.js';
 import { emitSceneList } from './scenes.js';
 import { emitVehicleUpsert } from './vehicles.js';
@@ -33,8 +44,9 @@ import { emitVehicleUpsert } from './vehicles.js';
 /**
  * Sceny przykładowe (etap 66): lista wzorców z repo i założenie kopii
  * w kampanii MG. Kopia jest zwykłą sceną kampanii — z jej autami (pojazdy MG
- * bez właściciela), kartami NPC-ów i notatkami warstwy MG — więc dalej żyje
- * jak każda inna: edycja, paczka, kopia zapasowa, usunięcie.
+ * bez właściciela), kartami NPC-ów, notatkami warstwy MG, a od 66b także
+ * ścianami, osłonami, gniazdami Sieci i Architekturami — więc dalej żyje jak
+ * każda inna: edycja, paczka, kopia zapasowa, usunięcie.
  */
 
 function requireCampaignId(socketData: { campaign: { id: string } | null }): string {
@@ -73,6 +85,7 @@ export const sceneFromTemplateEvent = defineEvent<
     for (const character of created.characters) {
       await emitCharacterUpsert(deps, campaignId, toCharacterView(character, deps.ctx.cpred));
     }
+    if (created.architectures > 0) await emitNetList(deps, campaignId);
     return { sceneId: created.scene.id, missing: created.missing };
   },
 });
@@ -108,6 +121,8 @@ export async function instantiateSceneTemplate(
   scene: Scene;
   vehicles: Vehicle[];
   characters: Character[];
+  /** Ile Architektur Sieci założono (biblioteka MG do odświeżenia). */
+  architectures: number;
   missing: string[];
 }> {
   const prisma = deps.ctx.prisma;
@@ -128,11 +143,21 @@ export async function instantiateSceneTemplate(
     if (await campaignEntry(deps, campaignId, id)) known.add(id);
   }
   const sheets: Awaited<ReturnType<typeof npcSheetFrom>>[] = [];
-  for (const npc of npcs) {
+  for (const [index, npc] of npcs.entries()) {
     const { input, missing: lacking } = cpredTemplateNpcInput(npc, (id) => known.has(id));
     lacking.forEach((id) => missing.add(id));
-    sheets.push(await npcSheetFrom(deps, campaignId, input));
+    const sheet = await npcSheetFrom(deps, campaignId, input);
+    const extras = readCpredTemplateNpcExtras(template.figures[index]!.system);
+    sheets.push(cpredTemplateNpcFinish(sheet, extras, nextRowId));
   }
+
+  // Sieć: Programy LOD-u sprawdza się przed transakcją jak broń NPC-ów.
+  const nets = readCpredTemplateNets(template.system);
+  const knownPrograms = new Set<string>();
+  for (const id of new Set(cpredTemplateNetProgramIds(nets))) {
+    if (await campaignEntry(deps, campaignId, id)) knownPrograms.add(id);
+  }
+  const netData = netrunningDataOf(deps.ctx.cpred);
 
   const name = await freeSceneName(deps, campaignId, template.name);
   const t = template.scene;
@@ -156,9 +181,10 @@ export async function instantiateSceneTemplate(
         gridPlayers: t.gridPlayers,
         metersPerSquare: t.metersPerSquare,
         visibility: t.visibility,
-        // Pościg bez ścian i ciemności (jak `scene:create` z rodzajem „Pościg”).
-        dark: false,
-        explore: t.kind !== 'chase',
+        dark: t.dark,
+        darkSightM: t.darkSightM,
+        explore: t.explore,
+        partySight: t.partySight,
         playerMove: t.playerMove,
         ambience: t.ambience,
         spawnX: t.spawn ? point(t.spawn).x : null,
@@ -199,6 +225,7 @@ export async function instantiateSceneTemplate(
     }
 
     const characters: Character[] = [];
+    const placedFigures = new Map<string, CpredTemplatePlacedFigure>();
     for (const [index, figure] of template.figures.entries()) {
       const character = await tx.character.create({
         data: {
@@ -227,20 +254,107 @@ export async function instantiateSceneTemplate(
         : car
           ? { x: car.x, y: car.y }
           : point(figure);
-      await tx.token.create({
+      // `point()` daje środek kratki, a figura stoi lewym górnym rogiem.
+      const corner = car ? at : { x: at.x - scene.gridSizePx / 2, y: at.y - scene.gridSizePx / 2 };
+      const token = await tx.token.create({
         data: {
           sceneId: scene.id,
           name: figure.name,
-          x: at.x,
-          y: at.y,
+          x: corner.x,
+          y: corner.y,
           size: 1,
           hidden: figure.hidden,
           ownerId: null,
           characterId: character.id,
           disposition: figure.disposition,
+          glyph: figure.glyph,
+          facing: figure.facing,
+          visionRange: figure.visionRange,
           ...(seatCentre && car && figure.vehicle
             ? { sceneVehicleId: car.id, vehicleSeat: figure.vehicle.seat }
             : {}),
+        },
+      });
+      if (figure.key) {
+        placedFigures.set(figure.key, {
+          tokenId: token.id,
+          name: figure.name,
+          glyph: figure.glyph,
+        });
+      }
+    }
+
+    // Ściany: łańcuch wzorca → odcinki, jak gest edytora.
+    const wallRows = template.walls.flatMap((wall) =>
+      wall.points.slice(1).map((end, at) => {
+        const from = point(wall.points[at]!);
+        const to = point(end);
+        return {
+          sceneId: scene.id,
+          kind: wall.kind,
+          open: wall.open,
+          playerToggle: wall.playerToggle,
+          locked: wall.locked,
+          armor: wall.armor,
+          hidesFigures: wall.hidesFigures,
+          x1: from.x,
+          y1: from.y,
+          x2: to.x,
+          y2: to.y,
+        };
+      }),
+    );
+    if (wallRows.length > 0) await tx.wall.createMany({ data: wallRows });
+
+    for (const cover of template.covers) {
+      const corner = point(cover);
+      await tx.cover.create({
+        data: {
+          sceneId: scene.id,
+          typeId: 'generic',
+          name: cover.name,
+          x: corner.x,
+          y: corner.y,
+          width: cover.width * scene.gridSizePx,
+          height: cover.height * scene.gridSizePx,
+          hpMax: cover.hp,
+          hpCurrent: cover.hp,
+          hidden: cover.hidden,
+        },
+      });
+    }
+
+    // Architektury po figurach — urządzenie to id figury na tej scenie.
+    const architectureIds = new Map<string, string>();
+    for (const net of nets) {
+      const built = cpredTemplateNetArchitecture(net, {
+        figure: (key) => placedFigures.get(key),
+        defaultDv: netDifficultyDv(net.difficulty, netData) || NET_SCENE_CONTROL_DV,
+        knownProgram: (id) => knownPrograms.has(id),
+      });
+      built.missing.forEach((id) => missing.add(id));
+      const row = await tx.netArchitecture.create({
+        data: {
+          campaignId,
+          name: built.architecture.name,
+          difficulty: built.architecture.difficulty,
+          data: JSON.stringify({ ...built.architecture, id: undefined }),
+          runtime: JSON.stringify(
+            built.devices.length > 0 ? { viruses: [], devices: built.devices } : { viruses: [] },
+          ),
+        },
+      });
+      architectureIds.set(net.key, row.id);
+    }
+    for (const access of template.accessPoints) {
+      await tx.netAccessPoint.create({
+        data: {
+          sceneId: scene.id,
+          architectureId: access.net ? (architectureIds.get(access.net) ?? null) : null,
+          name: access.name,
+          ...point(access),
+          hidden: access.hidden,
+          notes: access.notes,
         },
       });
     }
@@ -250,7 +364,7 @@ export async function instantiateSceneTemplate(
         data: { sceneId: scene.id, ...point(note), icon: note.icon, text: note.text },
       });
     }
-    return { scene, vehicles, characters };
+    return { scene, vehicles, characters, architectures: architectureIds.size };
   });
 
   return { ...result, missing: [...missing] };
