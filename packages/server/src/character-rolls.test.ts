@@ -399,6 +399,30 @@ describe('sheet rolls', () => {
     expect((refilled.data.data as CpredCharacterData).luckCurrent).toBe(3);
   });
 
+  it('lets a player lower Humanity by hand, never raise it (31.10.2026)', async () => {
+    const lowered = await emitAck<CharacterView>(vex, 'character:update', {
+      characterId,
+      patch: { data: { humanityCurrent: 10 } },
+    });
+    if (!lowered.ok || !lowered.data) throw new Error('character:update failed');
+    expect((lowered.data.data as CpredCharacterData).humanityCurrent).toBe(10);
+
+    // Typing the old number back after an install would undo the Humanity Loss.
+    const raised = await emitAck(vex, 'character:update', {
+      characterId,
+      patch: { data: { humanityCurrent: 11 } },
+    });
+    expect(raised).toEqual({ ok: false, error: 'FORBIDDEN' });
+
+    // The GM restores it — clamped to the ceiling, where this suite had it.
+    const restored = await emitAck<CharacterView>(gm, 'character:update', {
+      characterId,
+      patch: { data: { humanityCurrent: 999 } },
+    });
+    if (!restored.ok || !restored.data) throw new Error('character:update failed');
+    expect((restored.data.data as CpredCharacterData).humanityCurrent).toBeGreaterThan(10);
+  });
+
   it('keeps a private sheet roll away from other players', async () => {
     await roundTrip(rogue); // flush anything still in flight
     const before = rogueChatTraffic.length;

@@ -2590,6 +2590,17 @@ export function validateCharacterDataPatch(
 ):
   { ok: true; patch: Partial<CpredCharacterData> } | { ok: false; issues: CpredValidationIssue[] } {
   const { patch, issues } = collectCharacterDataPatch(raw, registry);
+  // 31.10.2026: dwa wiersze o tym samym id przechodziły blokadę przedmiotów
+  // gracza — łata `[B, B]` zamiast `[A, B]` wyjmowała A i dublowała B bez
+  // montażu, zapłaty i Utraty Człowieczeństwa. Sprawdzane tylko tu, a nie
+  // w `validateRows`: odczyt karty jest tolerancyjny i nie może zgubić całej
+  // listy przez jedną starą kopię.
+  for (const field of ['weapons', 'armor', 'gear', 'cyberware'] as const) {
+    const rows = patch[field];
+    if (rows && new Set(rows.map((row) => row.id)).size !== rows.length) {
+      issues.push(issue(field, 'Dwa wiersze listy mają to samo id.'));
+    }
+  }
   if (issues.length > 0) return { ok: false, issues };
   return { ok: true, patch };
 }

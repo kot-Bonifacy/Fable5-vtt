@@ -983,6 +983,8 @@ function IdentityColumn({
   function setHumanity(event: ChangeEvent<HTMLInputElement>) {
     const value = parseNumberInput(event);
     if (value === undefined) return;
+    // Serwer odmawia graczowi wzrostu (31.10.2026) — nie wysyłamy łaty na pewną odmowę.
+    if (!isGm && value > data.humanityCurrent) return;
     saveData({ humanityCurrent: value }, 'humanityCurrent');
   }
 
@@ -1156,10 +1158,16 @@ function IdentityColumn({
             <input
               type="number"
               min={HUMANITY_MIN}
-              max={humanityCeiling}
+              max={isGm ? humanityCeiling : data.humanityCurrent}
               value={data.humanityCurrent}
               onChange={setHumanity}
               aria-label="Człowieczeństwo"
+              {...(isGm
+                ? {}
+                : {
+                    title:
+                      'Ręką możesz Człowieczeństwo tylko zmniejszyć — odzyskuje się je terapią albo u MG.',
+                  })}
             />
             <span className="cp-of">z</span>
             <span className="cp-pool-max">{humanityCeiling}</span>

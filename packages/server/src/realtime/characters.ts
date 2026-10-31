@@ -387,6 +387,17 @@ export const characterUpdateEvent = defineEvent<CharacterUpdatePayload, Characte
       if (!isGm && sheet.luckCurrent !== undefined && sheet.luckCurrent > current.luckCurrent) {
         throw new RealtimeError('FORBIDDEN');
       }
+      // 31.10.2026: Człowieczeństwo tak samo — gracz ręką tylko je traci.
+      // Wpisanie starej liczby po montażu zerowało Utratę Człowieczeństwa
+      // (s. 229); odzyskuje się je terapią (`character:cyberware`), wyjęciem
+      // wszczepu albo decyzją MG.
+      if (
+        !isGm &&
+        sheet.humanityCurrent !== undefined &&
+        sheet.humanityCurrent > current.humanityCurrent
+      ) {
+        throw new RealtimeError('FORBIDDEN');
+      }
       // Etap 46c (decyzja MG 6 z 09.10): gracz naboi ręką tylko ubywa —
       // magazynek napełnia Przeładowanie (w walce za Akcję, od 23.10 kulami
       // za darmo), a granatów przybywa z zakupu, wymiany, łupu i od MG.

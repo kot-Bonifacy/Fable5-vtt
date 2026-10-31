@@ -125,6 +125,18 @@ describe('validateCharacterDataPatch', () => {
     if (result.ok) expect(result.patch.armor?.[0]?.name).toBe('Ciężki pancerz ');
   });
 
+  // 31.10.2026: łata `[B, B]` zamiast `[A, B]` przechodziła blokadę przedmiotów
+  // gracza i dublowała wszczep bez montażu i Utraty Człowieczeństwa.
+  it('rejects an item list with two rows sharing an id', () => {
+    const row = { id: 'c1', name: 'Cyberoko', notes: '' };
+    const result = validateCharacterDataPatch({ cyberware: [row, { ...row }] }, registry);
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.issues.map((i) => i.field)).toContain('cyberware');
+
+    const weapon = { id: 'w1', name: 'Nóż', damage: '1k6', ammo: '', rof: '2', notes: '' };
+    expect(validateCharacterDataPatch({ weapons: [weapon, weapon] }, registry).ok).toBe(false);
+  });
+
   it('rejects out-of-range stats with a Polish message', () => {
     const stats = { ...createDefaultCharacterData().stats, int: 11 };
     const result = validateCharacterDataPatch({ stats }, registry);

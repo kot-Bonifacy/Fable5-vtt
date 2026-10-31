@@ -434,7 +434,7 @@ describe('cyborgizacje i człowieczeństwo', () => {
 
     // Druga tura terapii z poziomu tuż pod sufitem — nadwyżka przepada.
     const ceiling = 60 - after.cyberware.reduce((s, r) => s + (r.humanityMaxPenalty ?? 0), 0);
-    await emitAck<CharacterView>(vex, 'character:update', {
+    await emitAck<CharacterView>(gm, 'character:update', {
       characterId,
       patch: { data: { humanityCurrent: ceiling - 1 } },
     });
