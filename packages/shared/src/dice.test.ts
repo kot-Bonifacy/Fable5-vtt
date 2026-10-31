@@ -10,6 +10,7 @@ import {
   parseRollNotation,
   rollCheck,
   rollFormula,
+  rollWoundsCritically,
   type DiceRng,
   type RollFormula,
 } from './dice.js';
@@ -172,6 +173,43 @@ describe('rollFormula', () => {
     expect(rollFormula(parse('1d6+1d6'), scriptedRng([6, 6])).criticalDamage).toBe(true);
     // Subtracted d6 dice never contribute to the flag.
     expect(rollFormula(parse('2d6-2d6'), scriptedRng([6, 1, 6, 6])).criticalDamage).toBe(false);
+  });
+});
+
+describe('rollWoundsCritically', () => {
+  const crit = { criticalDamage: true } as const;
+  const body = { location: 'body', locationLabel: 'tułów' };
+
+  it('needs two sixes', () => {
+    expect(rollWoundsCritically({ criticalDamage: false, damage: body })).toBe(false);
+    expect(rollWoundsCritically(crit)).toBe(true);
+    expect(rollWoundsCritically({ ...crit, damage: { ...body, targetTokenId: 't1' } })).toBe(true);
+  });
+
+  it('promises no Injury to a car or a cover alone', () => {
+    expect(rollWoundsCritically({ ...crit, damage: { ...body, targetVehicleId: 'v1' } })).toBe(
+      false,
+    );
+    expect(
+      rollWoundsCritically({
+        ...crit,
+        damage: { ...body, targetVehicleId: 'v1', targetWindow: 'front' },
+      }),
+    ).toBe(false);
+    expect(rollWoundsCritically({ ...crit, damage: { ...body, targetCoverId: 3 } })).toBe(false);
+  });
+
+  it('keeps the chip for an area that may have caught people', () => {
+    expect(
+      rollWoundsCritically({
+        ...crit,
+        damage: {
+          ...body,
+          targetVehicleId: 'v1',
+          areaTargets: [{ tokenId: 't1', name: 'Zbir', metres: 2 }],
+        },
+      }),
+    ).toBe(true);
   });
 });
 

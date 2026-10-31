@@ -193,8 +193,7 @@ w pliku etapu (sekcje 57a–57c).
 
 **Inicjatywę gracza rzuca gracz (zlecenie MG z 22.10) — dalej etap 28, potem T10.** „Rzuć
 wszystkim” i „⟳” MG rzucają tylko za NPC-e; gracz dostaje kubek załadowany inicjatywą, gdy jego
-figura wchodzi do starcia, a 🎲 na pasie pulsuje do rzutu. Umowa na górze `tura`. Otwarte:
-„kreator Kuby” w T8a-ekrany pada na blokadzie rozwoju w walce (21.10).
+figura wchodzi do starcia, a 🎲 na pasie pulsuje do rzutu. Umowa na górze `tura`.
 
 **Jedna ogólna osłona z PW i widocznością (zlecenie MG z 21.10) — dalej etap 28, potem T10.**
 Paleta osłon ma pole PW i oko zamiast listy rodzajów z katalogu; ukrytej osłony gracz nie dostaje
@@ -230,7 +229,7 @@ Umowa na górze `postac`.
 **Test gracza tylko na wezwanie MG (zlecenie MG z 19.10) — dalej etap 28, potem T10.** Gracz
 nie rzuci Testu Cechy ani Umiejętności, zanim MG nie ustali PT: klik w wiersz własnej karty to
 prośba o Test, serwer bez wezwania odpowiada `CHECK_NEEDS_GM_DV`. MG i boty bez zmian. Umowa na
-górze `kosci`. Otwarta zaległość: T4a 4.1 i T6b 6.6d szukają starych pól w „Załóż starcie”.
+górze `kosci`.
 
 **Etap 56 „Walka z zauważenia wroga” (zlecenie MG z 19.10) zamknięty 19.10 — dalej etap 28, potem
 T10.** Figura ma postawę wzorem Foundry (Przyjazna / Neutralna / Wroga; NPC startuje Neutralny,
@@ -554,12 +553,37 @@ a nie do tego pliku.
 | `dane`      | `parse-manual.py`, kompendium poza repo, tabele z podręcznika  | 9    | 12      |
 | `kopie`     | `snapshot`, `archive`, paczki ZIP, wczytanie kampanii, „czeka na gracza”, kopie kampanii i cofnięcie, sklep i bot w paczce, zgłoszenie karty gracza, pojazdy w paczce, auta na scenie pościgu, przeszkody poza paczką | 22   | 6       |
 | `ogledziny` | CDP i Playwright MCP, zrzuty, dwie sesje, `window.confirm`    | 0    | 116     |
-| `testy`     | vitest, migotanie, `tsc --noEmit`, środowisko dev              | 0    | 151     |
+| `testy`     | vitest, migotanie, `tsc --noEmit`, środowisko dev              | 0    | 152     |
 
 
 ## Notatki z dwóch ostatnich sesji
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
+
+### Sesja 31.10, piąta — zaległości bez MG i bez VPS
+
+**Zlecenie MG:** przejrzeć zaległości poza refaktoryzacją i wdrożeniem, zrobić kilka. **Zrobione:**
+(1) **Granat z magazynkiem był „w kieszeni”** — T4b 4.6 padał na odmowie „W ręku masz inną broń”:
+własny granat MG z Kompendium (typ „Granat”, magazynek 2) nie przechodził przez
+`cpredGrenadesOutsideHands`, które uznawało tylko granat bez magazynka. Nowe `cpredIsHandGrenade`
+(`ammostock.ts`), test. T4b od `po-T4a` **20/20** (przebieg zapisał na nowo `po-T4`); w jednym
+z trzech przebiegów 4.8 raz spudłowała pięść — nowa obserwacja w `zaleglosci.md`. (2) **Chip „Rana
+krytyczna!” przy obrażeniach auta i osłony** — `rollWoundsCritically` w `shared/dice.ts` (obszar
+z ludźmi chip zachowuje), `ChatPanel` z niego korzysta; test. (3) **`t8a-szew-zaslony` (Firefox)** —
+to nie szew: od 30.10 gracz bez figury bez wspólnego widoku dostaje plakat „Jeszcze bez postaci”,
+a pomiar liczył jego piksele; Chromium był pomijany przez `describe.serial`. Spec włącza
+`scene:party-sight` gniazdem MG i sprawdza brak plakatu — zielony w Firefoksie i Chromium; pułapka
+na górze `testy`. (4) **`theme.test.ts` zielony** — surowe kolory listy systemów obronnych
+(`10-map-combat.css`, 29.10) przeszły do tokenów mapy (`--zone-glyph-tint`, `--map-warn-hover`,
+`--map-shadow-popover`, `--map-warn`), wygląd bez zmian. (5) `tsc` E2E czysty poza nieśledzonymi
+`99-ogledziny` (`emitAck` bez `payload` w `t62` i `t65`). Z „Od czego zacząć” zdjęte dwie
+zaległości zamknięte 24.10. **Testy:** shared 2859, serwer 1723/1723, klient **443/443**; E2E: T4b
+20/20, `t8a-szew-zaslony` 2/2, `t65-przeszkody` 3/3, `t62-siec-sceny` 6/6. **Oglądane:** tylko
+zrzuty Playwrighta z przebiegów (Firefox i Chromium), bez osobnych oględzin — chipu rany na aucie
+na żywo nie widziano. **Nie ruszane:** ikony okna Celowania w Firefoksie (CSS maski poprawny,
+zaległość każe najpierw obejrzeć przy stole), oględziny MG, VPS. Cudze zmiany w drzewie
+(`MapFxLayer.ts`, `damage.test.ts`, `grapple-turns.test.ts`, stare spece `99-ogledziny`) nie
+ruszane.
 
 ### Sesja 31.10, czwarta — etap 65e „Przeszkody i ruch uliczny”
 
@@ -592,32 +616,3 @@ menu przeszkody „Za kierowcę”, menu auta z „Zrzuć kolczatkę”). Oględ
 dwuwyrazowe nazwy w palecie łamane w dwie linie. Cudze zmiany w drzewie (`MapFxLayer.ts`,
 `CombatForms.tsx`, `damage.test.ts`, `grapple-turns.test.ts`, stare spece `99-ogledziny`) nie
 ruszane. Na VPS nic nie zmieniano.
-
-### Sesja 31.10, trzecia — etap 65d2 „Manewr, taranowanie, broń pokładowa”
-
-**Decyzje MG na starcie:** całość w jednym podetapie (propozycja podziału na 65d2 + 65d3
-odrzucona), wezwanie do Manewru z menu auta zamiast panelu decyzji. **Zrobione wg planu:**
-`systems/cpred/vehiclecombat.ts` (Manewry z PT, `cpredRamOutcome` z Pługiem i Nitro, wiersze broni
-pokładowej `cpredMountWeaponRows`), liść `mountrows.ts`, geometria zderzenia w `shared/chase.ts`
-(`chaseFirstContact`, `chaseHitsWithFront`), `Vehicle.system.mountAmmo`. Serwer:
-`vehicle:maneuver` i `vehicle:maneuver-call` (migracja `20261031180000_chase_maneuver`,
-`SceneVehicle.maneuverCall`), taranowanie w `chase:move` (`driveWithContacts` → `resolveRam`
-w nowym `realtime/chase-ram.ts`, Rana przez `giveCriticalInjury` wyjęte z `character:injury`),
-broń pokładowa w ataku i rzucie obrażeń (`realtime/vehicle-mounts.ts`, `vehicle:mount-reload`),
-dryf staje przy zderzaku. Klient: menu auta (Manewry albo „Wezwij do Manewru”, „Odwołaj”,
-„Przeładuj”), pasek wezwania u kierowcy, pasek „Zderzenie” przed wysłaniem ruchu
-(`client/src/chase-ram.ts`), broń pokładowa na pasku i w celowaniu (`chase-mounts.ts`, karabin
-tylko seria). Rozstrzygnięcia 1–12 w pliku etapu. **Odstępstwa:** Manewr płaci Akcją (Akcja
-Ruchu = sama jazda), wezwanie bez kosztu, kolizje tylko w walce, 6k6 przez OB, przeładowanie
-broni pokładowej do pełna także rakiet, miotacz i broń biała na każdą stronę, osłony bez
-taranowania (65e) — wszystko w `decyzje-i-uproszczenia.md`. **Testy:** shared 2837 (nowy
-`vehiclecombat.test.ts` 14/14), serwer 1716/1716 (nowy `chase-ram.test.ts` 8/8, trzy zdarzenia
-w macierzy izolacji), klient 442/443 — dalej tylko znany `theme.test.ts`; tsc, ESLint i Prettier
-czyste w zmienionych plikach. **Oglądane:** tymczasowy spec `99-ogledziny/t99-taranowanie`
-z `po-T6` (skasowany): Ola w **Firefoksie** (karabin pokładowy na pasku i strzał z kubka,
-pasek wezwania i „Wykonaj Manewr”, „Zderzenie” → „Taranuj” → 6k6 i „wjeżdża pługiem”), MG
-w **Chromium** (menu auta z „Wezwij do Manewru”). Oględziny złapały: tryb pojedynczy karabinu
-na pasku, surowy kod `MOUNT_FRONT_ONLY` w odmowie ataku, dryf wpychający auto w auto i menu auta
-wyjeżdżające za okno — poprawione. Cudze zmiany w drzewie (`MapFxLayer.ts`, `CombatForms.tsx`,
-`damage.test.ts`, `grapple-turns.test.ts`, stare spece `99-ogledziny`) nie ruszane. Na VPS nic
-nie zmieniano.

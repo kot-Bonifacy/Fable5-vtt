@@ -6,13 +6,12 @@ w `POMYSLY.md` („Do sprawdzenia przy stole”), decyzje MG — w `decyzje-i-up
 
 ## Otwarte
 
-**31.10.2026 — `t8a-szew-zaslony` (Firefox) pada sprzed etapu 65e.** „Gracz bez figury
-w firefox: przekątna sceny zostaje czarna” liczy 708 jasnych pikseli zamiast 0 — tak samo na
-kliencie z `HEAD` (`fd078a9d`, zmiany 65e schowane), więc to nie przeszkody pościgu. Chromium
-w tym samym specu zielony. Zacząć od pułapki #53 w sekcji `mapa` `pulapki-dev.md` (szew sprite'a)
-i od tego, który commit od 03.10 ruszał zasłonę albo `MapRenderer`. W tym samym przebiegu
-`@szybkie` raz padł `t9a-konta` „konsola bez nowych błędów” (dwa błędy WebSocketu Firefoksa przy
-zamkniętej sesji — pułapka w `ogledziny`); powtórka zielona.
+**31.10.2026 — T4b 4.8 „pięść, która trafia” raz spudłowała.** Na trzy przebiegi T4b od
+`po-T4a` (sesja piąta 31.10) jeden padł w 4.8 na `punch.attack?.hit === false` (kość
+skryptowana 8, Iskra pod Rzeźnikiem); powtórka bez zmian w kodzie 20/20. Adnotacji z rozbiciem
+rzutu tamten przebieg nie zostawił (bez raportu JSON). Przy kolejnej porażce sprawdzić, czy kości
+skryptu nie zjada wcześniej ukryta Percepcja z marszu Iskry („Iskra przystanęła: ukryta rzecz
+po drodze” w 4.9).
 
 **31.10.2026 — etap 65e „Przeszkody i ruch uliczny”: oględziny MG i wdrożenie.** Oglądane na
 instancji E2E (spec `99-ogledziny/t99-przeszkody`, skasowany): MG w Chromium, Ola w **Firefoksie**
@@ -29,9 +28,7 @@ Wezwanie MG daje bursztynowy pasek z „Wykonaj Manewr”. Przeciągnięcie w w�
 „Zderzenie” → „Taranuj” → karty 6k6 i „wjeżdża pługiem”, a auto staje przy wozie. MG
 w Chromium: menu auta z „Wezwij do Manewru” i „Broń pokładowa”. **Nie widziane na żywo:** Rana
 z taranowania (Ganger nie miał karty — sprawdza `chase-ram.test.ts`), Nitro +2k6, Unik pieszego,
-przeładowanie na postoju, kierowca-NPC rzucający Manewr z menu MG. **Karta kości 6k6 z dwiema
-szóstkami pokazuje chip „Rana krytyczna!” także wtedy, gdy obrażenia idą w auto** (wzór kości
-obrażeń, sprzed 65d2; kadłub ran nie bierze), do sprawdzenia przy stole. Na VPS: migracja
+przeładowanie na postoju, kierowca-NPC rzucający Manewr z menu MG. Na VPS: migracja
 `20261031180000_chase_maneuver` wjedzie z `./deploy.sh`.
 
 **31.10.2026 — etap 65d1 „Ostrzał pojazdów”: oględziny MG i wdrożenie.** Oglądane na instancji

@@ -1,5 +1,34 @@
 # Dziennik sesji — archiwum
 
+### Sesja 31.10, trzecia — etap 65d2 „Manewr, taranowanie, broń pokładowa”
+
+**Decyzje MG na starcie:** całość w jednym podetapie (propozycja podziału na 65d2 + 65d3
+odrzucona), wezwanie do Manewru z menu auta zamiast panelu decyzji. **Zrobione wg planu:**
+`systems/cpred/vehiclecombat.ts` (Manewry z PT, `cpredRamOutcome` z Pługiem i Nitro, wiersze broni
+pokładowej `cpredMountWeaponRows`), liść `mountrows.ts`, geometria zderzenia w `shared/chase.ts`
+(`chaseFirstContact`, `chaseHitsWithFront`), `Vehicle.system.mountAmmo`. Serwer:
+`vehicle:maneuver` i `vehicle:maneuver-call` (migracja `20261031180000_chase_maneuver`,
+`SceneVehicle.maneuverCall`), taranowanie w `chase:move` (`driveWithContacts` → `resolveRam`
+w nowym `realtime/chase-ram.ts`, Rana przez `giveCriticalInjury` wyjęte z `character:injury`),
+broń pokładowa w ataku i rzucie obrażeń (`realtime/vehicle-mounts.ts`, `vehicle:mount-reload`),
+dryf staje przy zderzaku. Klient: menu auta (Manewry albo „Wezwij do Manewru”, „Odwołaj”,
+„Przeładuj”), pasek wezwania u kierowcy, pasek „Zderzenie” przed wysłaniem ruchu
+(`client/src/chase-ram.ts`), broń pokładowa na pasku i w celowaniu (`chase-mounts.ts`, karabin
+tylko seria). Rozstrzygnięcia 1–12 w pliku etapu. **Odstępstwa:** Manewr płaci Akcją (Akcja
+Ruchu = sama jazda), wezwanie bez kosztu, kolizje tylko w walce, 6k6 przez OB, przeładowanie
+broni pokładowej do pełna także rakiet, miotacz i broń biała na każdą stronę, osłony bez
+taranowania (65e) — wszystko w `decyzje-i-uproszczenia.md`. **Testy:** shared 2837 (nowy
+`vehiclecombat.test.ts` 14/14), serwer 1716/1716 (nowy `chase-ram.test.ts` 8/8, trzy zdarzenia
+w macierzy izolacji), klient 442/443 — dalej tylko znany `theme.test.ts`; tsc, ESLint i Prettier
+czyste w zmienionych plikach. **Oglądane:** tymczasowy spec `99-ogledziny/t99-taranowanie`
+z `po-T6` (skasowany): Ola w **Firefoksie** (karabin pokładowy na pasku i strzał z kubka,
+pasek wezwania i „Wykonaj Manewr”, „Zderzenie” → „Taranuj” → 6k6 i „wjeżdża pługiem”), MG
+w **Chromium** (menu auta z „Wezwij do Manewru”). Oględziny złapały: tryb pojedynczy karabinu
+na pasku, surowy kod `MOUNT_FRONT_ONLY` w odmowie ataku, dryf wpychający auto w auto i menu auta
+wyjeżdżające za okno — poprawione. Cudze zmiany w drzewie (`MapFxLayer.ts`, `CombatForms.tsx`,
+`damage.test.ts`, `grapple-turns.test.ts`, stare spece `99-ogledziny`) nie ruszane. Na VPS nic
+nie zmieniano.
+
 ### Sesja 31.10, druga — etap 65d1 „Ostrzał pojazdów”
 
 **Plan skorygowany na starcie (decyzja MG):** 65d nie mieścił się w sesji, więc dzieli się na

@@ -3,7 +3,9 @@ import { brightPixelsAlong } from '../../fixtures/canvas.ts';
 import { KNAJPA } from '../../fixtures/maps.ts';
 import { campaignId } from '../../fixtures/nocna-zmiana.ts';
 import { fitCamera } from '../../fixtures/scene.ts';
+import { sceneByName } from '../../fixtures/regresja.ts';
 import { DEAD_GATEWAY } from '../../fixtures/security.ts';
+import { emitAck } from '../../fixtures/socket.ts';
 import { createInvitation } from '../../fixtures/table.ts';
 import { hasCheckpoint, restoreCheckpoint, startInstance } from '../../instance/instance.ts';
 
@@ -18,6 +20,12 @@ import { hasCheckpoint, restoreCheckpoint, startInstance } from '../../instance/
  *
  * Kontrola: ten sam pomiar na zwiedzonej sali (pamięć terenu, mapa przyciemniona)
  * musi znaleźć jasne piksele — inaczej zero na przekątnej nic by nie znaczyło.
+ *
+ * Od 30.10 scena dzieli widok drużyny tylko z przełącznikiem „Gracze dzielą się
+ * widokiem” (domyślnie wyłączony, `po-T4a` go nie ma). Bez niego gracz bez figury
+ * nie widzi niczego i dostaje plakat „Jeszcze bez postaci”, a pomiar liczył jasne
+ * piksele plakatu (31.10: 708 w Firefoksie). MG włącza więc przełącznik jak w 03.10,
+ * kiedy oczy drużyny były zawsze wspólne.
  */
 
 const ENGINES: Engine[] = ['firefox', 'chromium'];
@@ -30,13 +38,23 @@ const EXPLORED = [
 ];
 
 test.describe.serial('T8a: szew zasłony pola widzenia (#53) @szybkie', () => {
-  let mg: Actor;
+  let mg: Actor | undefined;
 
   test.beforeAll(async () => {
     test.skip(!hasCheckpoint('po-T4a'), 'brak punktu po-T4a — najpierw pełny przebieg T3–T4a');
     test.setTimeout(3 * 60_000);
     await restoreCheckpoint('po-T4a');
     await startInstance(DEAD_GATEWAY);
+  });
+
+  test.beforeEach(async ({ cast }) => {
+    if (mg) return;
+    mg = await cast.mg('chromium');
+    const shared = await emitAck(await mg.socket(), 'scene:party-sight', {
+      sceneId: sceneByName('Knajpa').id,
+      partySight: true,
+    });
+    expect(shared.ok).toBe(true);
   });
 
   test.afterAll(async ({ cast }) => {
@@ -47,11 +65,10 @@ test.describe.serial('T8a: szew zasłony pola widzenia (#53) @szybkie', () => {
     test(`gracz bez figury w ${engine}: przekątna sceny zostaje czarna`, async ({ cast }) => {
       test.setTimeout(2 * 60_000);
       cast.viewport = { width: 1920, height: 1080 };
-      mg ??= await cast.mg('chromium');
       const gracz = await cast.gracz(
         `Szew${engine}`,
         engine,
-        await createInvitation(mg, campaignId(), `Szew${engine}`),
+        await createInvitation(mg!, campaignId(), `Szew${engine}`),
       );
       await expect
         .poll(
@@ -66,6 +83,8 @@ test.describe.serial('T8a: szew zasłony pola widzenia (#53) @szybkie', () => {
       await fitCamera(gracz.page, KNAJPA.width, KNAJPA.height).catch(() => undefined);
       // Pamięć terenu i zasłona składają się po przyjściu stanu — dajemy im klatki.
       await gracz.page.waitForTimeout(1500);
+      // Oczy drużyny są — plakat „Poza sceną” zasłoniłby mapę i pomiar.
+      await expect(gracz.page.getByRole('region', { name: 'Poza sceną' })).toHaveCount(0);
 
       expect(await brightPixelsAlong(gracz.page, EXPLORED[0]!, EXPLORED[1]!)).toBeGreaterThan(100);
       expect(await brightPixelsAlong(gracz.page, DIAGONAL[0]!, DIAGONAL[1]!)).toBe(0);

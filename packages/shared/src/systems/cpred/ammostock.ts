@@ -433,18 +433,32 @@ export function cpredThrowsFromStock(
   row: { ammoMax: number },
   resolved: Pick<ResolvedWeapon, 'thrown' | 'ammoPatterns'> | null | undefined,
 ): boolean {
-  return resolved?.thrown === true && (resolved.ammoPatterns?.length ?? 0) > 0 && row.ammoMax <= 0;
+  return cpredIsHandGrenade(resolved) && row.ammoMax <= 0;
+}
+
+/**
+ * Granat ręczny — broń rzucana z kształtem naboju (nóż rzucany go nie ma),
+ * niezależnie od tego, czy wiersz liczy sztuki zapasem, czy magazynkiem.
+ */
+export function cpredIsHandGrenade(
+  resolved: Pick<ResolvedWeapon, 'thrown' | 'ammoPatterns'> | null | undefined,
+): boolean {
+  return resolved?.thrown === true && (resolved.ammoPatterns?.length ?? 0) > 0;
 }
 
 /**
  * Granat ręczny stoi poza limitem jednej broni w rękach (decyzja MG
- * z 29.10.2026): rzut bierze sztukę z zapasu bez dobywania. Wołający daje
- * swój katalog, bo silnik zasad katalogu nie trzyma.
+ * z 29.10.2026): rzuca się go bez dobywania. Wołający daje swój katalog, bo
+ * silnik zasad katalogu nie trzyma.
+ *
+ * Także granat z magazynkiem (31.10.2026, T4b 4.6): MG może założyć w Kompendium
+ * własny granat typu „Granat” z polem magazynka (wtedy wiersz liczy sztuki
+ * w `ammoCurrent`, a nie w zapasie) — to dalej granat ręczny, nie broń w dłoni.
  */
 export function cpredGrenadesOutsideHands(
   resolve: (row: CpredWeaponRow) => ResolvedWeapon | null,
 ): CpredOutsideHands {
-  return (row) => cpredThrowsFromStock(row, resolve(row));
+  return (row) => cpredIsHandGrenade(resolve(row));
 }
 
 /**

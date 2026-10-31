@@ -9,6 +9,39 @@ go czytać.
 albo gdy chcesz sprawdzić, czy pozycja, która wygląda na nową, nie jest wracającą starą.
 Treść wpisów jest niezmieniona — łącznie z datami i odsyłaczami do notatek sesji.
 
+## Zamknięte 2026-10-31, piąta sesja (zaległości bez MG i bez VPS)
+
+**30.10.2026 — T4b pada na granacie (4.6), niezależnie od etapu 64.** `E2E_FROM=po-T4a`,
+dwa przebiegi pod rząd: Marek rzuca granat w Zbira i Ochroniarza, a karta „Granat odłamkowy →
+wybrane pole” nie przychodzi w 20 s (`rollAndWait`, `t4b-walka-knajpa-lup.spec.ts:356`). Krok
+dotyka rzutu granatem, nie okna wymiany; podejrzany „jedna broń w rękach” (`6ab9f2c2`, 29.10 —
+granat ręczny poza limitem). Dalszych 15 kroków T4b (w tym przekazanie pistoletu kaflem) nie
+uruchomiono; ten sam przepływ wymiany sprawdza zielone `t46a` 46a.3.
+
+*Zamknięte 31.10 (piąta sesja):* granat Kowala w `po-T4a` to własny wpis MG z Kompendium
+(`weapon.granat-odlamkowy`, typ „Granat”, **magazynek 2**, z T4a). `cpredGrenadesOutsideHands`
+uznawał za „poza rękami” tylko granat bez magazynka (`cpredThrowsFromStock` wymaga `ammoMax <= 0`),
+więc serwer odmawiał rzutu „W ręku masz inną broń — dobądź tę z ekwipunku” — przy stole tak samo
+z każdym granatem z magazynkiem. Teraz rozpoznaje go `cpredIsHandGrenade` (broń rzucana z kształtem
+naboju, bez względu na magazynek), test w `ammostock.test.ts`. T4b od `po-T4a` 20/20 (przebieg
+zapisał na nowo `po-T4`).
+
+**31.10.2026 — `t8a-szew-zaslony` (Firefox) pada sprzed etapu 65e.** „Gracz bez figury
+w firefox: przekątna sceny zostaje czarna” liczy 708 jasnych pikseli zamiast 0 — tak samo na
+kliencie z `HEAD` (`fd078a9d`, zmiany 65e schowane), więc to nie przeszkody pościgu. Chromium
+w tym samym specu zielony. Zacząć od pułapki #53 w sekcji `mapa` `pulapki-dev.md` (szew sprite'a)
+i od tego, który commit od 03.10 ruszał zasłonę albo `MapRenderer`. W tym samym przebiegu
+`@szybkie` raz padł `t9a-konta` „konsola bez nowych błędów” (dwa błędy WebSocketu Firefoksa przy
+zamkniętej sesji — pułapka w `ogledziny`); powtórka zielona.
+
+*Zamknięte 31.10 (piąta sesja):* to nie szew. Od 30.10 („Gracze dzielą się widokiem”, domyślnie
+wyłączone; `po-T4a` ma `partySight = 0`) gracz bez figury w „Knajpie” nie ma czyimi oczami
+patrzeć, więc dostaje plakat „Jeszcze bez postaci” (`NoFigurePoster`), a `brightPixelsAlong`
+liczył jasne piksele plakatu. Chromium przechodził tylko pozornie — w `describe.serial` po porażce
+Firefoksa nie ruszał (sam pierwszy w kolejce też dostaje plakat: 719). Spec włącza teraz
+przełącznik gniazdem MG (`scene:party-sight`), jak było przed 30.10, i sprawdza, że plakatu nie
+ma. Zielony w obu silnikach.
+
 ## Zamknięte 2026-10-24, trzecia sesja (zaległe przebiegi E2E)
 
 **23.10.2026 — E2E po „kule się nie kończą”: T5b 5.9, T3a 3.7–3.8 i 46c.9 nieprzepuszczone.**

@@ -145,7 +145,7 @@ test.describe.serial('T62 Sieć ze sceny: kamery bez Architektury', () => {
 
   test('MG: gniazdo podpięte do złożonej „Sieć: restauracja Mariana”', async () => {
     const list = dataOf<{ architectures: { id: string; name: string }[] }>(
-      await emitAck(gm, 'net:list'),
+      await emitAck(gm, 'net:list', undefined),
     ).architectures;
     expect(list.map((entry) => entry.name)).toContain(`Sieć: ${SCENE}`);
   });
@@ -219,7 +219,7 @@ test.describe.serial('T62 Sieć ze sceny: kamery bez Architektury', () => {
       .click();
     await expect(runWindow().locator('.net-sighted-device')).toHaveCount(3);
     const list = dataOf<{ architectures: { name: string }[] }>(
-      await emitAck(gm, 'net:list'),
+      await emitAck(gm, 'net:list', undefined),
     ).architectures;
     expect(list.filter((entry) => entry.name === `Sieć: ${SCENE}`)).toHaveLength(1);
   });

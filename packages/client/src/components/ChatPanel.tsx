@@ -34,6 +34,7 @@ import {
   isInventoryMoveOpen,
   isSurgeryOpen,
   isCardSubmissionOpen,
+  rollWoundsCritically,
 } from '@vtt/shared';
 import {
   allowCombatAction,
@@ -161,6 +162,8 @@ function RollRow({ message, isGm }: { message: ChatMessageView; isGm: boolean })
   const isGmRoll = message.kind === 'gmroll';
   // Sheet rolls speak for the character; chat commands for the user.
   const label = roll.actor ?? message.authorName;
+  // A car's hull and a cover take no Critical Injury (65d2 zaległość).
+  const wounds = rollWoundsCritically(roll);
 
   return (
     <div className={`chat-message chat-roll${isGmRoll ? ' chat-roll--gm' : ''}`}>
@@ -185,7 +188,7 @@ function RollRow({ message, isGm }: { message: ChatMessageView; isGm: boolean })
         </div>
         <RollDice roll={roll} />
         <RollBreakdown roll={roll} />
-        {(roll.critical || roll.criticalDamage) && (
+        {(roll.critical || wounds) && (
           <div className="chat-roll-badges">
             {roll.critical?.type === 'crit' && (
               <span className="chat-roll-badge chat-roll-badge--crit">
@@ -213,7 +216,7 @@ function RollRow({ message, isGm }: { message: ChatMessageView; isGm: boolean })
                   : `Fumble! dorzut −${roll.critical.extraRoll}`}
               </span>
             )}
-            {roll.criticalDamage && (
+            {wounds && (
               <span className="chat-roll-badge chat-roll-badge--injury">Rana krytyczna!</span>
             )}
           </div>

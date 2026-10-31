@@ -15,6 +15,7 @@ import {
   cpredReloadFromStock,
   cpredStockAmmoId,
   cpredTakeAmmo,
+  cpredGrenadesOutsideHands,
   cpredThrowsFromStock,
   cpredWeaponsWithoutStock,
 } from './ammostock.js';
@@ -373,6 +374,24 @@ describe('granat rzucany i broń bez zapasu', () => {
     expect(cpredThrowsFromStock({ ammoMax: 2 }, resolved(GRENADE))).toBe(false);
     expect(cpredThrowsFromStock({ ammoMax: 0 }, resolved(KNIFE))).toBe(false);
     expect(cpredThrowsFromStock({ ammoMax: 0 }, null)).toBe(false);
+  });
+
+  it('granat z magazynkiem też stoi poza rękami, nóż rzucany nie (T4b 4.6, 31.10)', () => {
+    const row = (ammoMax: number): CpredWeaponRow => ({
+      id: `r${ammoMax}`,
+      name: 'Granat odłamkowy',
+      notes: '',
+      damage: '',
+      ammoCurrent: ammoMax,
+      ammoMax,
+      ammoType: '',
+      rof: '1',
+    });
+    const grenade = cpredGrenadesOutsideHands(() => resolved(GRENADE));
+    expect(grenade(row(0))).toBe(true);
+    expect(grenade(row(2))).toBe(true);
+    expect(cpredGrenadesOutsideHands(() => resolved(KNIFE))(row(0))).toBe(false);
+    expect(cpredGrenadesOutsideHands(() => null)(row(2))).toBe(false);
   });
 
   it('podsumowanie kreatora wymienia broń bez naboju jej kalibru', () => {

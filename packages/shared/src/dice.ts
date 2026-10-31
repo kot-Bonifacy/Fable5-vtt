@@ -309,6 +309,20 @@ export function damageTotal(roll: Pick<RollResult, 'total' | 'damage'>): number 
 }
 
 /**
+ * Whether the card should promise a Critical Injury (31.10.2026, zaległość
+ * z 65d2). Two sixes wound a body, not a car's hull or a cover: damage aimed
+ * at one of those alone takes no Injury (`damage.ts` never gives one there),
+ * so its card must not say „Rana krytyczna!". An area roll keeps the chip —
+ * the people it caught can still be wounded.
+ */
+export function rollWoundsCritically(roll: Pick<RollResult, 'criticalDamage' | 'damage'>): boolean {
+  if (!roll.criticalDamage) return false;
+  const damage = roll.damage;
+  if (!damage || damage.areaTargets?.length) return true;
+  return damage.targetVehicleId === undefined && damage.targetCoverId === undefined;
+}
+
+/**
  * An attack a roll resolved, so the chat card can show the verdict and offer
  * the follow-up damage roll (stage 16). Like `RollDamageMeta`, this stays
  * opaque: the engine judges nothing here, it only carries what the system

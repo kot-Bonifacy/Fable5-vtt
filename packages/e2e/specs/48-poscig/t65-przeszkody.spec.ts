@@ -166,7 +166,7 @@ test.describe.serial('@szybkie T65e pościg: przeszkody i kolczatka', () => {
         }),
       );
     }
-    dataOf(await emitAck(gm, 'combat:next'));
+    dataOf(await emitAck(gm, 'combat:next', undefined));
     await closeNotices(ola.page);
   });
 
@@ -189,8 +189,8 @@ test.describe.serial('@szybkie T65e pościg: przeszkody i kolczatka', () => {
   });
 
   test('nowa runda: barykada staje przed autem, a Ola omija ją Gwałtownym skrętem (Firefox)', async () => {
-    dataOf(await emitAck(gm, 'combat:next'));
-    dataOf(await emitAck(gm, 'combat:next'));
+    dataOf(await emitAck(gm, 'combat:next', undefined));
+    dataOf(await emitAck(gm, 'combat:next', undefined));
     await expect
       .poll(async () => (await obstacles(ola))[0]?.blockingVehicleId ?? null)
       .toBe(olaCar.id);
@@ -225,8 +225,8 @@ test.describe.serial('@szybkie T65e pościg: przeszkody i kolczatka', () => {
       .toBe(true);
     // 3 + 3 + 3 + 3 = 12 przez OB 0, ×2 w słaby punkt.
     scriptDice([3, 3, 3, 3]);
-    dataOf(await emitAck(gm, 'combat:next'));
-    dataOf(await emitAck(gm, 'combat:next'));
+    dataOf(await emitAck(gm, 'combat:next', undefined));
+    dataOf(await emitAck(gm, 'combat:next', undefined));
     await expect
       .poll(async () => (await vehicle(ola, emptyCar.id))?.hp, { timeout: 30_000 })
       .toBe(emptyCar.hp - 24);
