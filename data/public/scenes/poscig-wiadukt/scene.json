@@ -1,0 +1,110 @@
+{
+  "schemaVersion": 1,
+  "name": "Pościg na wiadukcie",
+  "category": "examples",
+  "description": "Drużyna ucieka kradzioną taksówką górną jezdnią neonowego wiaduktu, a pickup Maelstromu siedzi jej na ogonie. Gotowe starcie dla 1–2 postaci z botami: dwa auta, trzech gangerów z kartami, notatki MG z przebiegiem i zwrotami akcji.",
+  "scene": {
+    "kind": "chase",
+    "backgroundUrl": "/public/scenes/poscig-wiadukt/map.webp",
+    "backgroundWidth": 1448,
+    "backgroundHeight": 1086,
+    "width": 1448,
+    "height": 1086,
+    "gridSizePx": 60.333333,
+    "gridOffsetX": 0,
+    "gridOffsetY": 0,
+    "gridVisible": true,
+    "gridPlayers": false,
+    "metersPerSquare": 1,
+    "visibility": "open",
+    "playerMove": "stop",
+    "ambience": "street",
+    "spawn": { "x": 6.5, "y": 11.5 },
+    "chase": {
+      "direction": "left",
+      "tempo": 40,
+      "running": true,
+      "road": { "from": 3, "to": 9 }
+    }
+  },
+  "vehicles": [
+    {
+      "key": "taksowka",
+      "name": "Kradziona taksówka",
+      "imageUrl": "/art/vehicles/car-taxi.webp",
+      "x": 6.5,
+      "y": 4.5,
+      "system": {
+        "catalogIds": ["vehicle.samochod-sportowy", "vehicle.sample-kompakt"],
+        "upgrades": ["spikes"]
+      }
+    },
+    {
+      "key": "pickup",
+      "name": "Pickup Maelstromu",
+      "imageUrl": "/art/vehicles/pickup-blue.webp",
+      "x": 17,
+      "y": 7,
+      "system": {
+        "catalogIds": ["vehicle.samochod-sportowy", "vehicle.sample-kompakt"],
+        "upgrades": ["reinforced", "ram"]
+      }
+    }
+  ],
+  "figures": [
+    {
+      "name": "Szczęka",
+      "vehicle": { "key": "pickup", "seat": 0 },
+      "disposition": "hostile",
+      "system": {
+        "stats": { "int": 4, "ref": 6, "dex": 6, "tech": 5, "cool": 4, "will": 4, "luck": 2, "move": 6, "body": 6, "emp": 2 },
+        "skills": { "driving": 6, "handgun": 5, "evasion": 4, "perception": 4, "brawling": 4, "athletics": 3 },
+        "weapons": [["weapon.heavy-pistol", "weapon.zgrzyt-9"]],
+        "armorBody": ["armor.light-armorjack", "armor.kurtka-warsztatowa"]
+      }
+    },
+    {
+      "name": "Bolec",
+      "vehicle": { "key": "pickup", "seat": 1 },
+      "disposition": "hostile",
+      "system": {
+        "stats": { "int": 3, "ref": 7, "dex": 6, "tech": 3, "cool": 5, "will": 4, "luck": 2, "move": 6, "body": 7, "emp": 2 },
+        "skills": { "shoulder-arms": 6, "melee-weapon": 4, "brawling": 5, "evasion": 4, "perception": 4, "athletics": 4 },
+        "weapons": [["weapon.shotgun", "weapon.huk-12"], ["weapon.medium-melee", "weapon.szpon"]],
+        "armorBody": ["armor.light-armorjack", "armor.kurtka-warsztatowa"]
+      }
+    },
+    {
+      "name": "Rdza",
+      "vehicle": { "key": "pickup", "seat": 2 },
+      "disposition": "hostile",
+      "system": {
+        "stats": { "int": 5, "ref": 7, "dex": 7, "tech": 4, "cool": 7, "will": 6, "luck": 3, "move": 6, "body": 8, "emp": 1 },
+        "skills": { "handgun": 6, "autofire": 4, "melee-weapon": 5, "brawling": 5, "evasion": 6, "perception": 5, "tactics": 4, "interrogation": 4 },
+        "weapons": [["weapon.heavy-submachine-gun", "weapon.zardzewiak"], ["weapon.heavy-melee", "weapon.szpon"]],
+        "armorBody": ["armor.medium-armorjack", "armor.kurtka-warsztatowa"],
+        "armorHead": ["armor.light-armorjack", "armor.helm-kurierski"]
+      }
+    }
+  ],
+  "notes": [
+    {
+      "x": 3,
+      "y": 12,
+      "icon": "📌",
+      "text": "POŚCIG NA WIADUKCIE — o co chodzi\n\nRobota poszła nie tak: drużyna ma coś, co należy do Maelstromu (towar, chip, człowieka — dopasuj do kampanii) i ucieka kradzioną taksówką górną jezdnią wiaduktu. Pickup gangu siedzi jej na ogonie.\n\nWygrana drużyny: pickup zostaje w tyle (cała bryła za prawą krawędzią kadru), staje się wrakiem (PUK 0) albo traci kierowcę.\nPorażka: taksówka jest wrakiem albo sama wypada za prawą krawędź — Maelstrom dopada drużynę na wiadukcie i dalej toczy się zwykła walka.\n\nObsada pickupa (karty NPC założone w kampanii, statystyki wymyślone):\n• Szczęka — kierowca, ciężki pistolet.\n• Bolec — strzelba i maczeta, siedzi obok kierowcy.\n• Rdza — herszt z tyłu, ciężki pistolet maszynowy i ciężka broń biała.\n\nSkrojone na 1–2 postacie z botami-towarzyszami. Trudniej: dołóż drugie auto z zakładki MG „Pojazdy” i obsadź je kopiami gangerów."
+    },
+    {
+      "x": 10,
+      "y": 12,
+      "icon": "❓",
+      "text": "ZANIM RUSZYCIE\n\n1. Aktywuj scenę. Figury graczy staną na dolnej jezdni (miejsce startu); każdy klika wolny fotel w taksówce.\n2. Taksówka nie ma właściciela: kierownicę daje MG — menu auta → „Może prowadzić” przy figurze kierowcy. Bot-towarzysz jedzie tylko jako pasażer.\n3. Oba auta mają uruchomione silniki. Tempo pościgu 40 to Ruch obu aut, więc nikt sam z siebie nie dryfuje — układ zmieniają jazda kierowców, Nitro, trafienia i przeszkody.\n4. Włącz tryb turowy. Kierowca przesuwa auto w swojej turze najwyżej o Ruch / 4 kratek.\n5. Taksówka ma wyrzutnię kolczatki („Zrzuć kolczatkę” w menu auta), pickup — Wzmocnioną konstrukcję i Pług bojowy.\n6. Droga jedzie w lewo (ruch prawostronny, górna jezdnia). Kierunek, tempo i pas jezdni zmienisz w Edycji sceny → Pościg."
+    },
+    {
+      "x": 17,
+      "y": 12,
+      "icon": "⚠️",
+      "text": "ZWROTY AKCJI (propozycje)\n\nRunda 2 — Auto cywilne z palety „Przeszkody” na pasie taksówki: kierowca robi Manewr albo taranuje.\nRunda 3 — Rdza celuje w słaby punkt taksówki (Celowanie, −8, obrażenia po OB ×2). Ostrzeż graczy okrzykiem z pickupa.\nRunda 4 — Szczęka zjeżdża na pas taksówki i taranuje Pługiem bojowym: pickup nie odnosi obrażeń.\nRunda 5 — Roboty drogowe przed oboma autami: kto nie wyhamuje Manewrem, ten traci kontrolę.\n\nGdy Rdza padnie, reszta gangu traci zapał: Szczęka gasi silnik i pickup zostaje w tyle.\nGdy taksówka ma PUK ≤ 15: z silnika bucha dym — kolejne trafienie w kadłub może ją zatrzymać (decyzja MG).\n\nŁup z ciał i wraku: broń gangerów, trochę gotówki i to, po co Maelstrom ruszył w pościg."
+    }
+  ]
+}

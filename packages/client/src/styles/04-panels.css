@@ -660,6 +660,23 @@
   gap: 0.35rem;
 }
 
+.scene-templates {
+  border-top: 1px solid var(--border);
+  padding-top: 0.5rem;
+}
+
+.scene-templates > summary {
+  cursor: pointer;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-dim);
+  margin-bottom: 0.5rem;
+}
+
+.scene-templates[open] > summary {
+  color: var(--text);
+}
+
 .scene-create-form {
   display: flex;
   gap: 0.5rem;

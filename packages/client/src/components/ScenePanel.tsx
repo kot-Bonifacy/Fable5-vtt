@@ -1,9 +1,16 @@
 import { useEffect, useState, type FormEvent } from 'react';
-import type { SceneKind, SceneSummary } from '@vtt/shared';
+import type { SceneKind, SceneSummary, SceneTemplateSummary } from '@vtt/shared';
 import { confirmDestructive } from '../confirm.js';
-import { noteAck } from '../notices.js';
+import { noteAck, notifyInfo } from '../notices.js';
 import { readinessKey } from '../session-readiness.js';
-import { activateScene, createScene, deleteScene, viewScene } from '../socket.js';
+import {
+  activateScene,
+  createScene,
+  createSceneFromTemplate,
+  deleteScene,
+  listSceneTemplates,
+  viewScene,
+} from '../socket.js';
 import { useChatStore } from '../stores/chatStore.js';
 import { useSceneStore } from '../stores/sceneStore.js';
 
@@ -96,6 +103,80 @@ function SceneRow({
   );
 }
 
+/**
+ * Sceny przykładowe (etap 66): gotowe wzorce z repo, wspólne dla każdego MG.
+ * Lista ładuje się dopiero przy rozwinięciu — panel scen otwiera się często,
+ * a wzorce ogląda się rzadko. „Dodaj do kampanii” zakłada zwykłą, własną
+ * kopię i od razu ją pokazuje; wzorzec zostaje nietknięty.
+ */
+function SceneTemplates() {
+  const [templates, setTemplates] = useState<SceneTemplateSummary[] | null>(null);
+  const [busyId, setBusyId] = useState<string | null>(null);
+
+  async function load() {
+    if (templates !== null) return;
+    const ack = await listSceneTemplates();
+    setTemplates(ack.ok && ack.data ? ack.data : []);
+  }
+
+  async function add(template: SceneTemplateSummary) {
+    setBusyId(template.id);
+    const ack = await createSceneFromTemplate(template.id);
+    setBusyId(null);
+    if (!noteAck('scene', ack, () => 'Nie udało się dodać sceny przykładowej.')) return;
+    if (!ack.data) return;
+    await viewScene(ack.data.sceneId);
+    if (ack.data.missing.length > 0) {
+      notifyInfo(
+        `Kompendium tej kampanii nie zna: ${ack.data.missing.join(', ')}. Scena stoi bez tych rzeczy — dołóż je ręcznie.`,
+        { title: template.name },
+      );
+    }
+  }
+
+  return (
+    <details
+      className="scene-templates"
+      onToggle={(e) => {
+        if ((e.currentTarget as HTMLDetailsElement).open) void load();
+      }}
+    >
+      <summary title="Gotowe sceny do testów i szybkiego użycia — wspólne dla wszystkich MG">
+        Przykładowe
+      </summary>
+      {templates === null ? (
+        <p className="placeholder-text">Wczytuję…</p>
+      ) : templates.length === 0 ? (
+        <p className="placeholder-text">Brak scen przykładowych.</p>
+      ) : (
+        <ul className="scene-list">
+          {templates.map((template) => (
+            <li key={template.id} className="scene-row" title={template.description}>
+              <div className="scene-row-main">
+                <span className="scene-row-name">{template.name}</span>
+                <span className="badge badge--off">
+                  {template.kind === 'chase' ? 'pościg' : 'mapa'}
+                </span>
+              </div>
+              <div className="scene-row-actions">
+                <button
+                  type="button"
+                  className="small-button"
+                  disabled={busyId !== null}
+                  title="Zakłada w tej kampanii własną kopię: scenę, auta, karty NPC-ów i notatki MG"
+                  onClick={() => void add(template)}
+                >
+                  {busyId === template.id ? 'Dodaję…' : 'Dodaj do kampanii'}
+                </button>
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+    </details>
+  );
+}
+
 export function ScenePanel() {
   const scenes = useSceneStore((s) => s.scenes);
   const viewedId = useSceneStore((s) => s.scene?.id ?? null);
@@ -140,6 +221,8 @@ export function ScenePanel() {
           />
         ))}
       </ul>
+
+      <SceneTemplates />
 
       <form className="scene-create-form" onSubmit={(e) => void create(e)}>
         <input

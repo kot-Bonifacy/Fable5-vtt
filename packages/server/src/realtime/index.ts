@@ -24,6 +24,7 @@ import {
 import { SessionClock } from './session-clock.js';
 import { chatClearEvent, chatHistoryEvent, chatSendEvent } from './chat.js';
 import { diceSkinEvent } from './dice-skins.js';
+import { sceneFromTemplateEvent, sceneTemplatesEvent } from './scene-templates.js';
 import {
   sceneActivateEvent,
   sceneCreateEvent,
@@ -362,6 +363,8 @@ export const EVENTS: RealtimeEvent<never, unknown>[] = [
   chatClearEvent,
   diceSkinEvent,
   sceneCreateEvent,
+  sceneTemplatesEvent,
+  sceneFromTemplateEvent,
   sceneUpdateEvent,
   sceneDeleteEvent,
   sceneActivateEvent,

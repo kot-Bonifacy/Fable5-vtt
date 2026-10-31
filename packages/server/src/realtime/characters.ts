@@ -193,7 +193,7 @@ export const characterCreateEvent = defineEvent<CharacterCreatePayload, Characte
 });
 
 /** Statblok z okna „Nowa postać” → karta (etap 49a); wpisy kampanii wygrywają z plikiem. */
-async function npcSheetFrom(
+export async function npcSheetFrom(
   deps: RealtimeDeps,
   campaignId: string,
   raw: unknown,

@@ -1,5 +1,28 @@
 # Dziennik sesji — archiwum
 
+### Sesja 31.10, szósta — testy netrunnerki w przeglądarce
+
+**Zlecenie MG:** zaprojektować i wykonać testy netrunnera w przeglądarce, w tym wstawianie
+cyborgizacji i podgląd przez punkt dostępu kamery w zamkniętym pomieszczeniu. **Zrobione:** dwa
+spece oględzin od `po-T6` (`99-ogledziny/`, nie w repo, kości skryptowane). **`t99-netrunner-chrom`
+6/6** (Ola/Iskra w **Firefoksie**, Marek/Kowal i MG w Chromium): A1 Iskra sama wszczepia Techfryz
+(galeria, „Iskra — Chirurgia 2”), A2 Gniazdo czipów z kliniki — „Iskra — to pacjent” wyszarzone,
+„Zainstaluj” wyszarzone, surowe gniazdo `SURGEON_REQUIRED`, A3 MG ripperdokiem (PT 15, −5000 ed,
+−7 Człowieczeństwa, wiersz na sylwetce u Oli), A4 Czip pamięci bez operacji (bez listy chirurgów),
+A5 Kowal prosi o Złącza interfejsu — odmowa „cyborgizacji podstawowej”, A6 porażka Testu niszczy
+wszczep. **`t99-netrunner-kamera` 8/8** (Ola w **Firefoksie**, Marek w Chromium): serwerownia
+z czterech ścian i zaryglowanymi drzwiami, ukryta kamera MG w środku, Kurier za wschodnią ścianą.
+Podłączenie klikiem w terminal nie daje obrazu; Kontrola „Węzła ochrony” daje stożek przycięty
+ścianami (Wartownik widoczny, Kurier nie, u Marka nic — podsłuch czysty), „Obróć” na północ gasi
+obraz, „Wyłącz”/„Włącz”, „Otwórz” zamka przez Sieć zdejmuje przeszkodę (Kowal widzi wnętrze
+własnymi oczami; rygiel zostaje `locked`, zgodnie z umową), druga kamera z „Węzła elewacji”,
+„Odłącz się” — serwerownia znów czarna (pożyczony wzrok nie zostaje w pamięci). **Znalezisko:**
+karta prośby o operację mówi „Zoperowane” po nieudanym Teście — `zaleglosci.md`. **Uwagi bez
+zmian w kodzie:** figura stoi rogiem na siatce, więc kamera „na ścianie” ląduje w kratce po jednej
+lub drugiej stronie — postawiona za ścianą poprawnie nic nie widzi (MG stawia ją w kratce od
+środka); Techfryz i Czip pamięci dają kartę „Utrata Człowieczeństwa … 0”. **Testy:** tylko te dwa
+spece E2E; kodu nie zmieniano. Cudze zmiany w drzewie nie ruszane.
+
 ### Sesja 31.10, piąta — zaległości bez MG i bez VPS
 
 **Zlecenie MG:** przejrzeć zaległości poza refaktoryzacją i wdrożeniem, zrobić kilka. **Zrobione:**

@@ -314,6 +314,8 @@ import type {
   ChasePlacePayload,
   ChaseSyncBroadcast,
   SceneKind,
+  SceneTemplateCreateResult,
+  SceneTemplateSummary,
   SceneVehicleView,
   VehicleAllowDriverPayload,
   VehicleSeatPayload,
@@ -3560,6 +3562,14 @@ export const endSession = (campaignId: string) => emitSceneAck('session:end', { 
 
 export const createScene = (name: string, kind: SceneKind = 'map') =>
   emitSceneAck<SceneView>('scene:create', { name, kind });
+
+/** Etap 66: wzorce scen z repo (sekcja „Przykładowe” w panelu scen, tylko MG). */
+export const listSceneTemplates = () =>
+  emitSceneAck<SceneTemplateSummary[]>('scene:templates', undefined);
+
+/** Etap 66: kopia wzorca jako nowa scena kampanii (z autami, NPC-ami i notatkami MG). */
+export const createSceneFromTemplate = (templateId: string) =>
+  emitSceneAck<SceneTemplateCreateResult>('scene:from-template', { templateId });
 
 export const updateScene = (sceneId: string, patch: ScenePatch) =>
   emitSceneAck<SceneView>('scene:update', { sceneId, patch });

@@ -21,13 +21,22 @@ w plikach obok — czytaj je **na żądanie, nigdy rutynowo**:
 
 | stan         | etapy                                                                                          |
 | ------------ | ---------------------------------------------------------------------------------------------- |
-| ⬜ otwarty   | **65** Scena pościgu i walka pojazdów (🟨 65a–65e ✅ 30–31.10, czeka na oględziny MG przy stole); **62** Sieć ze sceny (🟨 zrobione, czeka na oględziny MG na VPS po wdrożeniu); **61** Skradanie się (🟨 zrobione, czeka na słowo MG o rozstrzygnięciach); **28** Wdrożenie na VPS (🟨 działa na `https://vtt.tatanga.eu` z botami od 18.10; zostały off-site, utwardzenie, monitoring); **43b**, **43c** (UI walki); **60** Czytelny czat (zlecenie MG z 24.10; 🟨 60a–60c ✅, czeka na oględziny MG z pierwszego kryterium); T10; refaktoryzacja odłożona (MG 18.10) |
+| ⬜ otwarty   | **66** Sceny przykładowe (🟨 zrobione 31.10, czeka na oględziny MG przy stole i wdrożenie); **65** Scena pościgu i walka pojazdów (🟨 65a–65e ✅ 30–31.10, czeka na oględziny MG przy stole); **62** Sieć ze sceny (🟨 zrobione, czeka na oględziny MG na VPS po wdrożeniu); **61** Skradanie się (🟨 zrobione, czeka na słowo MG o rozstrzygnięciach); **28** Wdrożenie na VPS (🟨 działa na `https://vtt.tatanga.eu` z botami od 18.10; zostały off-site, utwardzenie, monitoring); **43b**, **43c** (UI walki); **60** Czytelny czat (zlecenie MG z 24.10; 🟨 60a–60c ✅, czeka na oględziny MG z pierwszego kryterium); T10; refaktoryzacja odłożona (MG 18.10) |
 | ✅ ukończone | 01–11, 13–20b, 23a–27f, 27h–27l, 29a–30d, 31–35, 37–42c, 43a, 44a–44d, 45, 46a1, 46a2, 46c1, 46c2, 46b1, 46b2, 47a, 47b, 48a, 48b, 48c, 49a, 49b, 50a, 50b, 50c, 51, 52, 53, 54, 55, 56, 57 (57a–57c), 58 (58a–58d), 59 (59a–59c), 63 (63a–63b; 63c wycofane 29.10), 64 (64a–64c) (ostatni zamknięty: 64, 2026-10-30) |
 | ⛔ wycofane  | 12, 21, 22 (głos), 27g (wydajność), 36 (makra); 27, 29, 30, 38 rozdzielone na etapy literowane |
 
 Pełna tabela z nazwami i datami: `archiwum/tabela-etapow.md`.
 
 ## Od czego zacząć
+
+**Sceny przykładowe (etap 66, zlecenie MG z 31.10) — czekają na oględziny MG przy stole
+i na wdrożenie.** W panelu scen MG pod listą stoi zwijana sekcja „Przykładowe”: wzorce
+z `data/public/scenes/<id>/scene.json`, wspólne dla każdego MG, a „Dodaj do kampanii” zakłada
+własną kopię (scena, pojazdy MG, karty NPC-ów, figury w fotelach, notatki MG). Pierwszy wzorzec
+to „Pościg na wiadukcie”: drużyna ucieka kradzioną taksówką górną jezdnią, pickup Maelstromu
+(Szczęka, Bolec, Rdza) na ogonie, skrojone na 1–2 postacie z botami. Wzorzec niesie id
+z alternatywami zamiast treści podręcznika. Plik etapu `etap-66-sceny-przykladowe.md`, umowa
+na górze `mapa`.
 
 **Etap 65 „Scena pościgu i walka pojazdów” (zlecenie MG z 30.10) zrobiony 30–31.10 (65a–65e)
 — czeka na oględziny MG przy stole (szew bieżni na żywo, prawdziwy pas mapy wiaduktu) i na
@@ -536,7 +545,7 @@ a nie do tego pliku.
 
 | obszar      | co obejmuje                                                    | umów | pułapek |
 | ----------- | -------------------------------------------------------------- | ---- | ------- |
-| `mapa`      | figury, zaznaczanie, narzędzia, obiekty sceny, ściany, efekty, zamek drzwi, ukryta figura zauważona, ikony urządzeń, wspólny widok drużyny, scena pościgu, jazda kierowcy i dryf, Manewr i taranowanie, przeszkody pościgu | 75   | 27      |
+| `mapa`      | figury, zaznaczanie, narzędzia, obiekty sceny, ściany, efekty, zamek drzwi, ukryta figura zauważona, ikony urządzeń, wspólny widok drużyny, scena pościgu, jazda kierowcy i dryf, Manewr i taranowanie, przeszkody pościgu, sceny przykładowe | 76   | 27      |
 | `czat`      | rodzaje wierszy, `visibleTo`, filtr, `seq`, `gmrecovery`, „to dotyczy mnie”, grupy kart, kolor gracza, czyszczenie | 13   | 3       |
 | `serwer`    | Prisma i migracje, zdarzenia gniazda, zapisy karty, uploady    | 26   | 21      |
 | `ui`        | okna pływające, `z-index`, motyw, skróty, dostępność, wejście, panel decyzji MG | 37   | 15      |
@@ -560,6 +569,21 @@ a nie do tego pliku.
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
 
+### Sesja 31.10, ósma — sceny przykładowe i „Pościg na wiadukcie” (etap 66)
+
+**Zlecenie MG:** zaprojektować scenę pościgu na mapie wiaduktu i dodać ją do nowej kategorii
+scen „przykładowe” dla wszystkich MG. **Decyzje MG z pytań:** wzorce w repo, mapa MG do repo,
+gotowe starcie, tylko górna jezdnia, Maelstrom, drużyna ucieka, 1–2 postacie z botami, auto
+drużyny w scenie. **Zrobione:** rdzeń i część CP RED wzorca w `shared`, zdarzenia
+`scene:templates` / `scene:from-template`, sekcja „Przykładowe” w `ScenePanel`, wzorzec
+`data/public/scenes/poscig-wiadukt/` (mapa w WebP 365 KB z PNG 2,8 MB). **Oglądane w Firefoksie**
+(Playwright) na izolowanej instancji E2E z `data/private` — bez braków w kompendium, bieżnia
+jedzie; po oględzinach skrócone imiona gangerów (podpisy nachodziły pod autem). Profil Firefoksa
+na `localhost:5173` był zalogowany jako `mg_primo` w „ulice Lublina” — tam nic nie dodawano.
+**Testy:** shared 2865/2865, serwer 1729/1729 (z dopisaną macierzą izolacji), `tsc` shared,
+serwer i klient czysty. Cudze zmiany w drzewie (`MapFxLayer.ts`, `damage.test.ts`,
+`grapple-turns.test.ts`, `99-ogledziny`) nie ruszane.
+
 ### Sesja 31.10, siódma — zaległości bez MG i bez VPS (druga tura)
 
 **Zlecenie MG:** sprawdzić zaległości poza refaktoryzacją i wdrożeniem na VPS, zrobić kilka.
@@ -580,26 +604,3 @@ klient 443/443, `tsc` shared/serwer/klient czysty; E2E `t99-netrunner-chrom` 6/6
 („Zabrane — Ola”) — miejsca z kontem w rozgrywce są wciąż do rozstrzygnięcia, nie ruszałem. Cudze
 zmiany w drzewie (`MapFxLayer.ts`, `damage.test.ts`, `grapple-turns.test.ts`, `99-ogledziny`) nie
 ruszane.
-
-### Sesja 31.10, szósta — testy netrunnerki w przeglądarce
-
-**Zlecenie MG:** zaprojektować i wykonać testy netrunnera w przeglądarce, w tym wstawianie
-cyborgizacji i podgląd przez punkt dostępu kamery w zamkniętym pomieszczeniu. **Zrobione:** dwa
-spece oględzin od `po-T6` (`99-ogledziny/`, nie w repo, kości skryptowane). **`t99-netrunner-chrom`
-6/6** (Ola/Iskra w **Firefoksie**, Marek/Kowal i MG w Chromium): A1 Iskra sama wszczepia Techfryz
-(galeria, „Iskra — Chirurgia 2”), A2 Gniazdo czipów z kliniki — „Iskra — to pacjent” wyszarzone,
-„Zainstaluj” wyszarzone, surowe gniazdo `SURGEON_REQUIRED`, A3 MG ripperdokiem (PT 15, −5000 ed,
-−7 Człowieczeństwa, wiersz na sylwetce u Oli), A4 Czip pamięci bez operacji (bez listy chirurgów),
-A5 Kowal prosi o Złącza interfejsu — odmowa „cyborgizacji podstawowej”, A6 porażka Testu niszczy
-wszczep. **`t99-netrunner-kamera` 8/8** (Ola w **Firefoksie**, Marek w Chromium): serwerownia
-z czterech ścian i zaryglowanymi drzwiami, ukryta kamera MG w środku, Kurier za wschodnią ścianą.
-Podłączenie klikiem w terminal nie daje obrazu; Kontrola „Węzła ochrony” daje stożek przycięty
-ścianami (Wartownik widoczny, Kurier nie, u Marka nic — podsłuch czysty), „Obróć” na północ gasi
-obraz, „Wyłącz”/„Włącz”, „Otwórz” zamka przez Sieć zdejmuje przeszkodę (Kowal widzi wnętrze
-własnymi oczami; rygiel zostaje `locked`, zgodnie z umową), druga kamera z „Węzła elewacji”,
-„Odłącz się” — serwerownia znów czarna (pożyczony wzrok nie zostaje w pamięci). **Znalezisko:**
-karta prośby o operację mówi „Zoperowane” po nieudanym Teście — `zaleglosci.md`. **Uwagi bez
-zmian w kodzie:** figura stoi rogiem na siatce, więc kamera „na ścianie” ląduje w kratce po jednej
-lub drugiej stronie — postawiona za ścianą poprawnie nic nie widzi (MG stawia ją w kratce od
-środka); Techfryz i Czip pamięci dają kartę „Utrata Człowieczeństwa … 0”. **Testy:** tylko te dwa
-spece E2E; kodu nie zmieniano. Cudze zmiany w drzewie nie ruszane.

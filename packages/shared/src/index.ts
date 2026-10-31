@@ -44,6 +44,7 @@ export * from './relations.js';
 export * from './rules-assistant.js';
 export * from './scene-handles.js';
 export * from './scene-objects.js';
+export * from './scene-templates.js';
 export * from './scenes.js';
 export * from './screamsheets.js';
 export * from './smoke.js';

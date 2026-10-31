@@ -171,3 +171,4 @@ a w `POSTEP.md` popraw tylko wiersz stanu.
 | 65d1   | Ostrzał pojazdów: cel auto albo pasażer, szyby kuloodporne, OB kadłuba i PUK, wrak, słaby punkt, Ulepszone zespolenie, panel auta | ✅     | 2026-10-31          |
 | 65d2   | Manewry: Manewr, utrata kontroli z ruchem od MG, taranowanie (Pług, Nitro, pieszy), bronie pokładowe | ✅     | 2026-10-31          |
 | 65e    | Przeszkody i ruch uliczny: MG wypuszcza na pas, Manewr albo taranowanie, kolczatka | ✅     | 2026-10-31          |
+| 66     | Sceny przykładowe: wzorce scen w repo dla każdego MG, „Pościg na wiadukcie” (Maelstrom, taksówka) | 🟨     | 2026-10-31          |
