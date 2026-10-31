@@ -6,14 +6,11 @@ w `POMYSLY.md` („Do sprawdzenia przy stole”), decyzje MG — w `decyzje-i-up
 
 ## Otwarte
 
-**31.10.2026 — Karta prośby o operację mówi „Zoperowane” po nieudanym Teście montażu.**
-Oględziny netrunnerki (spec `99-ogledziny/t99-netrunner-chrom`, A6, Ola w **Firefoksie**): Iskra
-operuje Kowala (Wyświetlacz, galeria, PT 13), kość 2 → 11. Karta rzutu poprawnie: „Wszczep
-zniszczony · pacjent: Kowal · cyborgizacja przepadła (s. 226)”, pieniądze zeszły, wiersza brak.
-Ale karta prośby (`SurgeryRequest`) zamyka się zieloną plakietką „ZOPEROWANE — 1 000 ED — OLA”
-u obojga graczy — `close('operated', price)` w `realtime/surgery.ts` nie zna wyniku Testu,
-a `SurgeryResolutionKind` nie ma rodzaju „nieudana”. Do decyzji MG: osobny rodzaj (np.
-„Operacja nieudana — wszczep zniszczony”, czerwona plakietka) czy tylko inny kolor.
+**31.10.2026 — Otwarte okno łupu nie wraca do handlu po zdjęciu naklejki.** Oględziny łupu
+z ciała gracza (sesja siódma, Ola w **Firefoksie**): MG zdejmuje Kowalowi „Ogłuszony”, a okno
+Oli dalej stoi w trybie „loot” z „Zabierz wszystko” (serwer i tak odmówi `STILL_STANDING`).
+Okno nie odświeża listy drugich stron, gdy zmienia się naklejka figury; `Esc` go nie zamyka.
+Drobne — ponowne otwarcie z menu figury daje handel.
 
 **31.10.2026 — T4b 4.8 „pięść, która trafia” raz spudłowała.** Na trzy przebiegi T4b od
 `po-T4a` (sesja piąta 31.10) jeden padł w 4.8 na `punch.attack?.hit === false` (kość
@@ -47,9 +44,6 @@ E2E (spec `99-ogledziny/t99-ostrzal`, nie w repo): Ola w **Firefoksie** strzela 
 przyciemniony z podpisem „wrak”; MG w Chromium — panel auta (PUK z paskiem i polem, OB, szyby,
 ulepszenia). Trafienia w kadłub na żywo nie widziałem (dwa strzały w słaby punkt chybiły),
 obrażenia auta i szyby sprawdza `chase-combat.test.ts`. Ulepszone zespolenie — tylko test serwera.
-**Ikony okna Celowania (także dla figury, sprzed 65d1) nie rysują się na zrzutach Firefoksa**:
-maska ma dobry adres (`/icons/hud/aim-body.svg`) i kolor, a kafel jest pusty — sprawdzić przy
-stole w Firefoksie i Chrome, zanim ktoś zacznie szukać błędu w kodzie.
 
 **30.10.2026 — etap 65b „Scena pościgu”: oględziny MG i wdrożenie.** Oglądane na instancji E2E
 (spec `99-ogledziny/t99-poscig`, nie w repo): MG w Chromium, gracz w **Firefoksie** na mapie
@@ -61,13 +55,6 @@ to 32-pikselowy pixel-art na czarnym tle), rysuje się bryłą (31.10: Kenney Ra
 `PNG/Motorcycles/motorcycle_*.png` z góry — styl płaski, kreskówkowy, jak barierki przeszkód 65e;
 do decyzji MG, czy pasuje obok aut Unlucky Studio). Na VPS: migracja
 `20261031090000_chase_scene` wjedzie z `./deploy.sh`; `vehicles.json` z 65a dalej trzeba dograć.
-
-**30.10.2026 — T4b pada na granacie (4.6), niezależnie od etapu 64.** `E2E_FROM=po-T4a`,
-dwa przebiegi pod rząd: Marek rzuca granat w Zbira i Ochroniarza, a karta „Granat odłamkowy →
-wybrane pole” nie przychodzi w 20 s (`rollAndWait`, `t4b-walka-knajpa-lup.spec.ts:356`). Krok
-dotyka rzutu granatem, nie okna wymiany; podejrzany „jedna broń w rękach” (`6ab9f2c2`, 29.10 —
-granat ręczny poza limitem). Dalszych 15 kroków T4b (w tym przekazanie pistoletu kaflem) nie
-uruchomiono; ten sam przepływ wymiany sprawdza zielone `t46a` 46a.3.
 
 **30.10.2026 — etap 64 „Szybka wymiana”: oględziny przy stole i wdrożenie.** Siatka kafli
 i zgoda z góry oglądane na instancji E2E (Chromium i Firefox), nie na VPS. Do sprawdzenia
@@ -86,11 +73,6 @@ kolegi; po włączeniu — widzą).
 24.10 wieczorem (zrobione). (2) W przeglądarce nie
 oglądano rzutu na uzależnienie po skoku zegara ani ciosu zatrutym nożem na mapie — oba są
 w testach serwera (`chems.test.ts`); oględziny wymagają przestawienia zegara kampanii.
-
-**24.10.2026 — oględziny łupu z ciała gracza.** Zmiana z sesji piątej 24.10 (ciała leżą otworem)
-ma testy serwera, ale nie była oglądana. Do sprawdzenia w Firefoksie (Playwright) obok Chrome MG:
-MG daje figurze gracza „Ogłuszony”, drugi gracz obok niej — „Wymiana…” i podwójny klik otwierają
-łup („Weź”, „Zabierz wszystko”), okradany dostaje kartę czatu; po zdjęciu naklejki znów handel.
 
 **24.10.2026 — punkty kontrolne E2E z różnych dni; jeden rozjazd pozycji w T7b do obserwacji.** Po
 sesji 24.10 (trzecia) `po-T3a`, `po-T4a`, `po-T4`, `po-T5` i `po-T6` są zapisane na nowo, ale każdy

@@ -1,5 +1,30 @@
 # Dziennik sesji — archiwum
 
+### Sesja 31.10, piąta — zaległości bez MG i bez VPS
+
+**Zlecenie MG:** przejrzeć zaległości poza refaktoryzacją i wdrożeniem, zrobić kilka. **Zrobione:**
+(1) **Granat z magazynkiem był „w kieszeni”** — T4b 4.6 padał na odmowie „W ręku masz inną broń”:
+własny granat MG z Kompendium (typ „Granat”, magazynek 2) nie przechodził przez
+`cpredGrenadesOutsideHands`, które uznawało tylko granat bez magazynka. Nowe `cpredIsHandGrenade`
+(`ammostock.ts`), test. T4b od `po-T4a` **20/20** (przebieg zapisał na nowo `po-T4`); w jednym
+z trzech przebiegów 4.8 raz spudłowała pięść — nowa obserwacja w `zaleglosci.md`. (2) **Chip „Rana
+krytyczna!” przy obrażeniach auta i osłony** — `rollWoundsCritically` w `shared/dice.ts` (obszar
+z ludźmi chip zachowuje), `ChatPanel` z niego korzysta; test. (3) **`t8a-szew-zaslony` (Firefox)** —
+to nie szew: od 30.10 gracz bez figury bez wspólnego widoku dostaje plakat „Jeszcze bez postaci”,
+a pomiar liczył jego piksele; Chromium był pomijany przez `describe.serial`. Spec włącza
+`scene:party-sight` gniazdem MG i sprawdza brak plakatu — zielony w Firefoksie i Chromium; pułapka
+na górze `testy`. (4) **`theme.test.ts` zielony** — surowe kolory listy systemów obronnych
+(`10-map-combat.css`, 29.10) przeszły do tokenów mapy (`--zone-glyph-tint`, `--map-warn-hover`,
+`--map-shadow-popover`, `--map-warn`), wygląd bez zmian. (5) `tsc` E2E czysty poza nieśledzonymi
+`99-ogledziny` (`emitAck` bez `payload` w `t62` i `t65`). Z „Od czego zacząć” zdjęte dwie
+zaległości zamknięte 24.10. **Testy:** shared 2859, serwer 1723/1723, klient **443/443**; E2E: T4b
+20/20, `t8a-szew-zaslony` 2/2, `t65-przeszkody` 3/3, `t62-siec-sceny` 6/6. **Oglądane:** tylko
+zrzuty Playwrighta z przebiegów (Firefox i Chromium), bez osobnych oględzin — chipu rany na aucie
+na żywo nie widziano. **Nie ruszane:** ikony okna Celowania w Firefoksie (CSS maski poprawny,
+zaległość każe najpierw obejrzeć przy stole), oględziny MG, VPS. Cudze zmiany w drzewie
+(`MapFxLayer.ts`, `damage.test.ts`, `grapple-turns.test.ts`, stare spece `99-ogledziny`) nie
+ruszane.
+
 ### Sesja 31.10, czwarta — etap 65e „Przeszkody i ruch uliczny”
 
 **Zrobione wg planu:** rdzeń `shared/chase-obstacles.ts` (rodzaje z grafikami, wypuszczenie przy

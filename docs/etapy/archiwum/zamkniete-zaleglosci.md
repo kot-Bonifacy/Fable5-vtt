@@ -9,6 +9,53 @@ go czytać.
 albo gdy chcesz sprawdzić, czy pozycja, która wygląda na nową, nie jest wracającą starą.
 Treść wpisów jest niezmieniona — łącznie z datami i odsyłaczami do notatek sesji.
 
+## Zamknięte 2026-10-31, siódma sesja (zaległości bez MG i bez VPS, druga tura)
+
+**31.10.2026 — Karta prośby o operację mówi „Zoperowane” po nieudanym Teście montażu.**
+Oględziny netrunnerki (spec `99-ogledziny/t99-netrunner-chrom`, A6, Ola w **Firefoksie**): Iskra
+operuje Kowala (Wyświetlacz, galeria, PT 13), kość 2 → 11. Karta rzutu poprawnie: „Wszczep
+zniszczony · pacjent: Kowal · cyborgizacja przepadła (s. 226)”, pieniądze zeszły, wiersza brak.
+Ale karta prośby (`SurgeryRequest`) zamyka się zieloną plakietką „ZOPEROWANE — 1 000 ED — OLA”
+u obojga graczy — `close('operated', price)` w `realtime/surgery.ts` nie zna wyniku Testu,
+a `SurgeryResolutionKind` nie ma rodzaju „nieudana”. Do decyzji MG: osobny rodzaj (np.
+„Operacja nieudana — wszczep zniszczony”, czerwona plakietka) czy tylko inny kolor.
+**Zamknięte:** osobny rodzaj `failed` w `SurgeryResolutionKind` („Nieudana, wszczep zniszczony”,
+czerwona plakietka `chat-inventory-badge--failed`, karta nie gaśnie jak odmowa). `performInstall`
+zwraca `failed`, `operate` w `realtime/surgery.ts` zamyka prośbę tym rodzajem. Test
+`surgery.test.ts` › „nieudany Test montażu…”; oglądane w **Firefoksie** (A6 `t99-netrunner-chrom`).
+Wybrane bez pytania MG (osobny rodzaj zamiast samego koloru) — łatwo zmienić napis w
+`SURGERY_RESOLUTION_LABELS`.
+
+**24.10.2026 — oględziny łupu z ciała gracza.** Zmiana z sesji piątej 24.10 (ciała leżą otworem)
+ma testy serwera, ale nie była oglądana. Do sprawdzenia w Firefoksie (Playwright) obok Chrome MG:
+MG daje figurze gracza „Ogłuszony”, drugi gracz obok niej — „Wymiana…” i podwójny klik otwierają
+łup („Weź”, „Zabierz wszystko”), okradany dostaje kartę czatu; po zdjęciu naklejki znów handel.
+**Zamknięte:** oględziny (spec `99-ogledziny/t99-lup-gracza`, skasowany; Ola w **Firefoksie**,
+Marek w Chromium) znalazły błąd: dwuklik w Ogłuszonego Kowala dawał podpowiedź zamiast łupu.
+`exchange:counterparts` wybierał dla karty najbliższą parę figur, a postaci graczy stoją na kilku
+scenach — przy remisie wygrywała figura ze starej sceny bez naklejki, a klient szukał wpisu po
+id klikniętej figury. Teraz figura wskazana w żądaniu (`tokenId`) zawsze mówi za swoją kartę
+(`realtime/exchange.ts`), test `inventory.test.ts` › „figura wskazana klikiem…” (bez poprawki
+pada). Po poprawce: dwuklik otwiera łup, dwuklik w kafel zabiera rzecz, Marek dostaje kartę
+„Łup · Kowal → Iskra · Zabrane”. Okno po zdjęciu naklejki — nowa zaległość.
+
+**31.10.2026 (z wpisu 65d1) — Ikony okna Celowania nie rysują się na zrzutach Firefoksa.**
+Maska ma dobry adres (`/icons/hud/aim-body.svg`) i kolor, a kafel jest pusty — sprawdzić przy
+stole w Firefoksie i Chrome, zanim ktoś zacznie szukać błędu w kodzie.
+**Zamknięte (nie odtworzone):** w Firefoksie (Playwright, instancja E2E od `po-T6`) prawdziwe
+okno Celowania przy strzale w figurę rysuje wszystkie sylwetki od pierwszej klatki; to samo
+okno wstrzyknięte nad płótno mapy i osobna strona z tym CSS i SVG — też. Wariant dla auta
+używa tego samego `HudIcon`. Pusty kafel z 31.10 to najpewniej zrzut w złej chwili.
+
+**30.10.2026 — T4b pada na granacie (4.6), niezależnie od etapu 64.** `E2E_FROM=po-T4a`,
+dwa przebiegi pod rząd: Marek rzuca granat w Zbira i Ochroniarza, a karta „Granat odłamkowy →
+wybrane pole” nie przychodzi w 20 s (`rollAndWait`, `t4b-walka-knajpa-lup.spec.ts:356`). Krok
+dotyka rzutu granatem, nie okna wymiany; podejrzany „jedna broń w rękach” (`6ab9f2c2`, 29.10 —
+granat ręczny poza limitem). Dalszych 15 kroków T4b (w tym przekazanie pistoletu kaflem) nie
+uruchomiono; ten sam przepływ wymiany sprawdza zielone `t46a` 46a.3.
+**Zamknięte w sesji piątej 31.10** (`cpredIsHandGrenade`, wpis wyżej) — w sesji siódmej zdjęte
+z listy otwartych, gdzie zostało przez pomyłkę.
+
 ## Zamknięte 2026-10-31, piąta sesja (zaległości bez MG i bez VPS)
 
 **30.10.2026 — T4b pada na granacie (4.6), niezależnie od etapu 64.** `E2E_FROM=po-T4a`,

@@ -545,8 +545,8 @@ a nie do tego pliku.
 | `atak`      | broń i dodatki, amunicja, obrażenia, pancerz, rany krytyczne, trucizna na ostrzu, auto-unik, strach z Konfrontacji, auto jako cel, broń pokładowa | 53   | 8       |
 | `statysta`  | figura z kartą, `statBlock`, Wartość bojowa, `token:stat`, wzorce | 17   | 3       |
 | `karta`     | strony i zakładki, panele, `sheet.css`, walidacja list, usuwanie przedmiotu | 11   | 12      |
-| `postac`    | kreator, PD i awanse, koszyk i cofanie awansów, Role i Zdolności, cyborgizacje, chrom zmieniający liczby, ekonomia, Test montażu gracza, pojazdy i Tabor | 57   | 3       |
-| `ekwipunek` | wiersze wyposażenia, przekazanie, łup (także ciała graczy), handel, sklepy, zasięg, amunicja bez dna, egzoszkielet, narkotyki i fiolki, siatka okna „Wymiana”, zgoda z góry | 39   | 3       |
+| `postac`    | kreator, PD i awanse, koszyk i cofanie awansów, Role i Zdolności, cyborgizacje, chrom zmieniający liczby, ekonomia, Test montażu gracza, pojazdy i Tabor | 58   | 3       |
+| `ekwipunek` | wiersze wyposażenia, przekazanie, łup (także ciała graczy), handel, sklepy, zasięg, amunicja bez dna, egzoszkielet, narkotyki i fiolki, siatka okna „Wymiana”, zgoda z góry | 40   | 3       |
 | `czas`      | zegar świata, kalendarz, `statEffects`, leczenie po dobie, dawki i uzależnienia (`chems`) | 19   | 2       |
 | `siec`      | Programy, LOD, demony, piętra architektury, dek jako towar, strefy bronione, kamery, rozbrajanie, Sieć ze sceny | 13   | 4       |
 | `boty`      | llama-server, RAG, reindeks, dziennik i baza wiedzy, brama AI  | 10   | 10      |
@@ -559,6 +559,27 @@ a nie do tego pliku.
 ## Notatki z dwóch ostatnich sesji
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
+
+### Sesja 31.10, siódma — zaległości bez MG i bez VPS (druga tura)
+
+**Zlecenie MG:** sprawdzić zaległości poza refaktoryzacją i wdrożeniem na VPS, zrobić kilka.
+**Zrobione:** (1) **Karta prośby o operację po nieudanym Teście** — nowy rodzaj `failed`
+(„Nieudana, wszczep zniszczony”, czerwona plakietka); `performInstall` zwraca wynik Testu. Wybrałem
+osobny rodzaj bez pytania MG — napis zmienia się w `SURGERY_RESOLUTION_LABELS`. Test serwera,
+oglądane w **Firefoksie** (A6 `t99-netrunner-chrom` 6/6). (2) **Łup z ciała gracza** (oględziny
+z 24.10) — **błąd**: dwuklik w Ogłuszonego kolegę dawał podpowiedź zamiast łupu, bo
+`exchange:counterparts` brał najbliższą parę figur karty, a ta stała na starej scenie bez naklejki.
+Figura wskazana klikiem wygrywa teraz zawsze (umowa na górze `ekwipunek`, test pada bez poprawki).
+Po poprawce w **Firefoksie**: łup, „Weź” dwuklikiem w kafel, karta „Łup” u Marka (Chromium).
+Nowa zaległość: otwarte okno łupu nie wraca do handlu po zdjęciu naklejki. (3) **Ikony okna
+Celowania w Firefoksie** — nie odtworzone: prawdziwe okno przy strzale w figurę i to samo
+wstrzyknięte nad mapę rysują sylwetki od pierwszej klatki; zaległość zamknięta. (4) Wpis o granacie
+T4b 4.6 (naprawiony w sesji piątej) zdjęty z otwartych. **Testy:** shared 2859, serwer 1725/1725,
+klient 443/443, `tsc` shared/serwer/klient czysty; E2E `t99-netrunner-chrom` 6/6 (spece oględzin
+łupu i ikon skasowane). **Uwaga dla MG:** karta łupu i plakietki prośby podpisują się nazwą konta
+(„Zabrane — Ola”) — miejsca z kontem w rozgrywce są wciąż do rozstrzygnięcia, nie ruszałem. Cudze
+zmiany w drzewie (`MapFxLayer.ts`, `damage.test.ts`, `grapple-turns.test.ts`, `99-ogledziny`) nie
+ruszane.
 
 ### Sesja 31.10, szósta — testy netrunnerki w przeglądarce
 
@@ -582,28 +603,3 @@ zmian w kodzie:** figura stoi rogiem na siatce, więc kamera „na ścianie” l
 lub drugiej stronie — postawiona za ścianą poprawnie nic nie widzi (MG stawia ją w kratce od
 środka); Techfryz i Czip pamięci dają kartę „Utrata Człowieczeństwa … 0”. **Testy:** tylko te dwa
 spece E2E; kodu nie zmieniano. Cudze zmiany w drzewie nie ruszane.
-
-### Sesja 31.10, piąta — zaległości bez MG i bez VPS
-
-**Zlecenie MG:** przejrzeć zaległości poza refaktoryzacją i wdrożeniem, zrobić kilka. **Zrobione:**
-(1) **Granat z magazynkiem był „w kieszeni”** — T4b 4.6 padał na odmowie „W ręku masz inną broń”:
-własny granat MG z Kompendium (typ „Granat”, magazynek 2) nie przechodził przez
-`cpredGrenadesOutsideHands`, które uznawało tylko granat bez magazynka. Nowe `cpredIsHandGrenade`
-(`ammostock.ts`), test. T4b od `po-T4a` **20/20** (przebieg zapisał na nowo `po-T4`); w jednym
-z trzech przebiegów 4.8 raz spudłowała pięść — nowa obserwacja w `zaleglosci.md`. (2) **Chip „Rana
-krytyczna!” przy obrażeniach auta i osłony** — `rollWoundsCritically` w `shared/dice.ts` (obszar
-z ludźmi chip zachowuje), `ChatPanel` z niego korzysta; test. (3) **`t8a-szew-zaslony` (Firefox)** —
-to nie szew: od 30.10 gracz bez figury bez wspólnego widoku dostaje plakat „Jeszcze bez postaci”,
-a pomiar liczył jego piksele; Chromium był pomijany przez `describe.serial`. Spec włącza
-`scene:party-sight` gniazdem MG i sprawdza brak plakatu — zielony w Firefoksie i Chromium; pułapka
-na górze `testy`. (4) **`theme.test.ts` zielony** — surowe kolory listy systemów obronnych
-(`10-map-combat.css`, 29.10) przeszły do tokenów mapy (`--zone-glyph-tint`, `--map-warn-hover`,
-`--map-shadow-popover`, `--map-warn`), wygląd bez zmian. (5) `tsc` E2E czysty poza nieśledzonymi
-`99-ogledziny` (`emitAck` bez `payload` w `t62` i `t65`). Z „Od czego zacząć” zdjęte dwie
-zaległości zamknięte 24.10. **Testy:** shared 2859, serwer 1723/1723, klient **443/443**; E2E: T4b
-20/20, `t8a-szew-zaslony` 2/2, `t65-przeszkody` 3/3, `t62-siec-sceny` 6/6. **Oglądane:** tylko
-zrzuty Playwrighta z przebiegów (Firefox i Chromium), bez osobnych oględzin — chipu rany na aucie
-na żywo nie widziano. **Nie ruszane:** ikony okna Celowania w Firefoksie (CSS maski poprawny,
-zaległość każe najpierw obejrzeć przy stole), oględziny MG, VPS. Cudze zmiany w drzewie
-(`MapFxLayer.ts`, `damage.test.ts`, `grapple-turns.test.ts`, stare spece `99-ogledziny`) nie
-ruszane.
