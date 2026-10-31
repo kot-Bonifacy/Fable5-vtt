@@ -204,19 +204,23 @@ export function visibleEntries(
 }
 
 /**
- * How many entries each shelf holds, for the badges on the tabs.
+ * How many entries each shelf holds, for the badges on the tabs. With a
+ * search phrase the badges count the hits instead (31.10): the search runs on
+ * the open tab only, and „latarka" typed on the weapons tab used to answer
+ * „nothing" while the flashlight sat one tab over.
  */
 export function countByCategory(
   entries: Record<string, CompendiumEntry>,
   order: string[],
+  query = '',
 ): Record<CompendiumShelf, number> {
   const counts = Object.fromEntries(COMPENDIUM_SHELVES.map((shelf) => [shelf, 0])) as Record<
     CompendiumShelf,
     number
   >;
-  for (const id of order) {
-    const entry = entries[id];
-    if (entry) counts[shelfOf(entry)] += 1;
+  const all = order.map((id) => entries[id]).filter((e): e is CompendiumEntry => !!e);
+  for (const entry of query.trim() ? searchCompendium(all, query) : all) {
+    counts[shelfOf(entry)] += 1;
   }
   return counts;
 }

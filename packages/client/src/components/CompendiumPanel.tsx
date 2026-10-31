@@ -148,7 +148,16 @@ export function CompendiumPanel() {
     [category, found, foundWeapons, weaponType],
   );
   const entryIcon = useEntryIcon();
-  const counts = useMemo(() => countByCategory(entriesById, shelf), [entriesById, shelf]);
+  const counts = useMemo(
+    () => countByCategory(entriesById, shelf, query),
+    [entriesById, shelf, query],
+  );
+  const searching = query.trim().length > 0;
+  // Wyszukiwanie działa w otwartej zakładce; pusty wynik wskazuje zakładki,
+  // w których fraza jednak coś znalazła (31.10 — latarka szukana w „Broni”).
+  const elsewhere = COMPENDIUM_SHELVES.filter((id) => id !== category && counts[id] > 0).sort(
+    (a, b) => counts[b] - counts[a],
+  );
 
   const selected = selectedId ? (entriesById[selectedId] ?? null) : null;
 
@@ -174,7 +183,9 @@ export function CompendiumPanel() {
           <button
             key={id}
             type="button"
-            className={`compendium-category ${category === id ? 'compendium-category--active' : ''}`}
+            className={`compendium-category ${category === id ? 'compendium-category--active' : ''} ${
+              searching && counts[id] === 0 ? 'compendium-category--miss' : ''
+            }`}
             onClick={() => setCategory(id)}
           >
             {COMPENDIUM_SHELF_LABELS[id]} <span className="compendium-count">{counts[id]}</span>
@@ -199,9 +210,19 @@ export function CompendiumPanel() {
                   szukania na skasowanie frazy — nie na zakładanie niczego. */}
               {order.length === 0 ? (
                 <EmptyState text="Kompendium jest puste — MG wczytuje je z rozdziałów podręcznika (skrypt importu w narzędziach)." />
-              ) : query.trim().length > 0 ? (
+              ) : searching && elsewhere[0] ? (
                 <EmptyState
-                  text={`Nic nie pasuje do „${query.trim()}” w kategorii „${COMPENDIUM_SHELF_LABELS[category]}”.`}
+                  text={`Nic nie pasuje do „${query.trim()}” w kategorii „${COMPENDIUM_SHELF_LABELS[category]}”. Znalezione w: ${elsewhere
+                    .map((id) => `${COMPENDIUM_SHELF_LABELS[id]} (${counts[id]})`)
+                    .join(', ')}.`}
+                  action={{
+                    label: `Pokaż: ${COMPENDIUM_SHELF_LABELS[elsewhere[0]]}`,
+                    onClick: () => setCategory(elsewhere[0]!),
+                  }}
+                />
+              ) : searching ? (
+                <EmptyState
+                  text={`Nic nie pasuje do „${query.trim()}” w żadnej kategorii.`}
                   action={{ label: 'Wyczyść szukanie', onClick: () => setQuery('') }}
                 />
               ) : (
