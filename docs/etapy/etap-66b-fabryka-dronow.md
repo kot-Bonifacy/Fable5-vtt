@@ -21,7 +21,8 @@ etap 66b (rozszerzenie formatu + wzorzec).
 
 1. **Wejście dolną bramą, drzazga w jednym z dronów na górnych lądowiskach** (MG zmienił
    pierwszą propozycję „przekątnej”).
-2. **Ciemność + latarki postaci** — lampy hali zgaszone, wzrok w ciemności 2 m, latarka to
+2. **Ciemność + latarki postaci** — lampy hali zgaszone, wzrok w ciemności 2 m (od 31.10 4 m — po zagęszczeniu
+   kratki 2 m to jedna kratka pod samą figurą i gracz nie widział nic), latarka to
    światło figury, które gracz włącza i gasi.
 3. **Patrol + uśpione drony na lądowiskach** — alarm budzi kolejne.
 4. **Netrunner + bojowiec, postacie graczy** — wzorzec nie zakłada kart graczy.

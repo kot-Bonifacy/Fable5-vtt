@@ -292,7 +292,7 @@ describe('etap 66b: wzorzec zwykłej mapy — „Fabryka dronów”', () => {
       kind: 'map',
       visibility: 'dynamic',
       dark: true,
-      darkSightM: 2,
+      darkSightM: 4,
       explore: true,
       partySight: false,
       playerMove: 'explore',

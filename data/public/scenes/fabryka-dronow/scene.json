@@ -18,7 +18,7 @@
     "metersPerSquare": 2,
     "visibility": "dynamic",
     "dark": true,
-    "darkSightM": 2,
+    "darkSightM": 4,
     "explore": true,
     "partySight": false,
     "playerMove": "explore",
@@ -1387,7 +1387,7 @@
       "x": 28.5,
       "y": 33.48,
       "icon": "❓",
-      "text": "ZANIM ZACZNIECIE\n\n1. Scena jest ciemna, a gracze nie dzielą się widokiem: każdy widzi tylko to, co widzi jego figura (2 m w ciemności).\n2. Latarki: zaznacz każdej figurze gracza „Nosi światło” w menu figury — domyślnie 6 m jasno / 12 m przyćmione. Gracz sam je włącza i gasi.\n   Latarka świeci także dla dronów i kamer — kto świeci, ten jest widoczny z daleka.\n3. Aktywuj scenę. Figury graczy staną przy dolnej bramie (miejsce startu).\n4. Gracze chodzą w trybie Eksploracji, Skradanie działa jak zwykle: drony i kamery patrzą własnymi oczami.\n5. Kontenery to ściany (zasłaniają widok), taśmociągi to bariera — nie przejdzie się przez nie, ale widać ponad nimi. Na platformę pulpitu centralnego wchodzi się narożnikami.\n6. Gniazda Sieci są ukryte — netrunner znajduje je Skanerem albo MG odsłania je, gdy postać stanie przy konsoli."
+      "text": "ZANIM ZACZNIECIE\n\n1. Scena jest ciemna, a gracze nie dzielą się widokiem: każdy widzi tylko to, co widzi jego figura (4 m w ciemności, dwie kratki).\n2. Latarki: zaznacz każdej figurze gracza „Nosi światło” w menu figury — domyślnie 6 m jasno / 12 m przyćmione. Gracz sam je włącza i gasi.\n   Latarka świeci także dla dronów i kamer — kto świeci, ten jest widoczny z daleka.\n3. Aktywuj scenę. Figury graczy staną przy dolnej bramie (miejsce startu).\n4. Gracze chodzą w trybie Eksploracji, Skradanie działa jak zwykle: drony i kamery patrzą własnymi oczami.\n5. Kontenery to ściany (zasłaniają widok), taśmociągi to bariera — nie przejdzie się przez nie, ale widać ponad nimi. Na platformę pulpitu centralnego wchodzi się narożnikami.\n6. Gniazda Sieci są ukryte — netrunner znajduje je Skanerem albo MG odsłania je, gdy postać stanie przy konsoli."
     },
     {
       "x": 36.46,
