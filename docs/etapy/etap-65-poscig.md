@@ -118,7 +118,7 @@ tak jak `Character.sheet`.
 1. **Katalog to kategoria kompendium „Pojazdy”** (`VehicleEntry`): 14 wpisów z s. 190–191 pisze
    `tools/import/parse-vehicles.py` do `data/private`, próbka w `data/public` ma trzy wymyślone.
    Półkę widzi cały stół (jak każdą), ale pojazdu nie kupuje się ani nie dodaje „na kartę” —
-   cena idzie cennikiem domowym ×10 (sprzęt trwały).
+   cena idzie cennikiem domowym ×10 (sprzęt trwały) — od 31.10 ×1, jak w podręczniku (decyzja MG).
 2. **Pojazdy MG/NPC-ów to zakładka MG „Pojazdy”**, nie osobne okno — tak stoją inne narzędzia MG
    (Losowe, Sieć, Kopie). W niej też pojazdy postaci, każdy z „Edytuj…”.
 3. **Panel „Pojazdy” na karcie siedzi w zakładce Ekwipunek**; gracz bez pojazdu go nie widzi.

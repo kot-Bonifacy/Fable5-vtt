@@ -14,6 +14,8 @@ import type { CompendiumEntry, CompendiumRegistry, CostCategory } from './compen
  *  - drobny sprzęt ogólny (pasma Tanie, Codzienne, Drogie — 10–50 ed) ×3,
  *  - amunicja ×1 (decyzja MG z 20.10.2026 — dziesięć zwykłych naboi za 10 ed
  *    to już cena z dzisiejszego sklepu, ×3 robiło z nich towar luksusowy),
+ *  - pojazdy ×1 (decyzja MG z 31.10.2026 — kompakt za 30 000 ed to cena
+ *    dzisiejszego salonu, ×10 robiło z motocykla majątek nie do uzbierania),
  *  - czynsz, Poziom życia, zakup mieszkania, wypłaty i gotówka startowa ×1.
  *
  * **Pasmo zostaje przy przedmiocie.** Od pasma zależą PT i czas Wytwarzania
@@ -32,6 +34,9 @@ export const CPRED_PRICE_SCALE_DURABLE = 10;
 export const CPRED_PRICE_SCALE_CONSUMABLE = 3;
 /** Amunicja — ceny podręcznika już wyglądają jak dzisiejsze euro. */
 export const CPRED_PRICE_SCALE_AMMO = 1;
+
+/** Pojazdy — kompakt za 30 000 ed to już cena z dzisiejszego salonu (MG 31.10.2026). */
+export const CPRED_PRICE_SCALE_VEHICLE = 1;
 
 /** Pasma sprzętu ogólnego, które liczą się jak drobiazg. */
 const CONSUMABLE_GEAR_BANDS: ReadonlySet<CostCategory> = new Set(['cheap', 'everyday', 'costly']);
@@ -99,6 +104,7 @@ export function cpredCatalogPriceScale(
   const exception = entry.id === undefined ? undefined : PRICE_SCALE_BY_ID.get(entry.id);
   if (exception !== undefined) return exception;
   if (entry.category === 'ammo') return CPRED_PRICE_SCALE_AMMO;
+  if (entry.category === 'vehicle') return CPRED_PRICE_SCALE_VEHICLE;
   if (
     entry.category === 'gear' &&
     entry.costCategory !== undefined &&
@@ -132,7 +138,7 @@ export function cpredScaleCatalogPrices(registry: CompendiumRegistry): Compendiu
 export const CPRED_PRICE_HOUSE_RULE_NOTE =
   'Ceny w eurodolcach przy tym stole różnią się od podręcznika (cennik domowy MG): broń, pancerze,' +
   ' cyborgizacje, sprzęt Netrunnera i droższy sprzęt kosztują 10 razy tyle, drobny sprzęt 3 razy' +
-  ' tyle, amunicja i zwykła broń biała (nóż, kij, piła łańcuchowa) tyle co w podręczniku, łuk 3 razy,' +
+  ' tyle, amunicja, pojazdy i zwykła broń biała (nóż, kij, piła łańcuchowa) tyle co w podręczniku, łuk 3 razy,' +
   ' kusza 4 razy, a maczeta i pałka ogłuszająca 2 razy tyle, montaż znalezionej cyborgizacji 10 razy tyle, a terapia 2 razy tyle; czynsz, Poziom' +
   ' życia i wypłaty są jak w podręczniku. Gdy pytanie dotyczy ceny, podajesz cenę z fragmentu i' +
   ' dopisujesz, ile wynosi po przeliczniku.';

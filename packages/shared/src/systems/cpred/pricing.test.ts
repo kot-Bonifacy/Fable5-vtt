@@ -27,6 +27,15 @@ describe('cennik domowy (etap 47a)', () => {
       CPRED_PRICE_SCALE_AMMO,
     );
     expect(cpredScaledEntry(entry({ category: 'ammo', cost: 10 })).cost).toBe(10);
+    // Pojazdy po cenie z podręcznika (decyzja MG z 31.10.2026): kompakt 30 000 ed, nie 300 000.
+    expect(
+      cpredScaledEntry(
+        entry({ id: 'vehicle.samochod-kompaktowy', category: 'vehicle', cost: 30_000 }),
+      ).cost,
+    ).toBe(30_000);
+    expect(
+      cpredCatalogPriceScale(entry({ category: 'vehicle', costCategory: 'superLuxury' })),
+    ).toBe(1);
     // Sprzęt ogólny: Tanie, Codzienne i Drogie (10–50 ed) to drobiazg…
     for (const band of ['cheap', 'everyday', 'costly']) {
       expect(cpredCatalogPriceScale(entry({ category: 'gear', costCategory: band }))).toBe(3);
