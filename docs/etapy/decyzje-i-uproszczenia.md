@@ -9,6 +9,30 @@ czytany na starcie każdej sesji został listą zadań, a nie archiwum ustaleń.
 inaczej, niż mówi podręcznik, albo gdy dotykasz wymienionego tu kodu. Jeśli któraś z tych decyzji
 przestanie się bronić, przenieś ją stąd do `POMYSLY.md` jako zadanie — nie odwrotnie.
 
+## Ostrzał pojazdów (etap 65d1, 31.10.2026)
+
+- **Szyby kuloodporne to cztery burty, nie każde okno.** Podręcznik (s. 163) mówi „każde okno
+  przyjmuje obrażenia osobno”, ale auto na bieżni nie ma okien w geometrii. VTT trzyma PW szyb
+  na burtę (przód, tył, lewa, prawa — `Vehicle.system.windows`), a strzał w pasażera idzie przez
+  burtę zwróconą do strzelca (`vehicleSideFacing`). Strzelec w tym samym aucie szyby nie ma.
+- **Szyba zatrzymuje strzał jak osłona**, z kartą „Ostrzelaj szybę / Strzelaj mimo szyby”
+  (16c). „Mimo szyby” to decyzja stołu (szyba opuszczona, cel się wychylił). Granat leci nad
+  szybą jak nad osłoną; wybuch dziś bije figury w obszarze, a samego auta nie rusza (`POMYSLY.md`).
+- **OB kadłuba się nie zdziera.** Ablacja (s. 186) jest regułą pancerza postaci; o pojeździe
+  podręcznik nie mówi, więc Opancerzenie kadłuba zostaje OB 13 do końca. Broń biała bierze
+  połowę OB kadłuba jak pancerza (s. 176).
+- **Cios bronią białą w jadące auto ma PT 13 także bez Celowania.** Podręcznik daje PT 13
+  wprost tylko ciosowi w słaby punkt („…a ponadto modyfikator −8 wciąż ma zastosowanie”);
+  zwykły cios w jadące auto nie może być łatwiejszy. W stojące (zgaszony silnik, stojąca droga,
+  wrak) cios trafia zawsze — w VTT to PT 0.
+- **Ulepszone zespolenie: kierowca unika *zamiast* pasażera.** „Unika ataków za siebie,
+  pasażera i motocykl” (s. 165) — VTT woła o Unik kierowcę (`RollAttackMeta.evasionBy`), także
+  przy strzale w pasażera, zamiast dawać dwa Uniki do wyboru.
+- **Wrak to PUK 0, nie osobny stan.** Kolumna `SceneVehicle.status` mówi tylko, czy auto jest
+  w kadrze; widok liczy `wrecked` z PUK. Wrak dryfuje w tył z pełnym tempem jak zgaszone auto,
+  figury zostają w fotelach, silnika się nie uruchomi (`VEHICLE_WRECKED`). „Cofnij” trafienia
+  albo PUK ustawione przez MG przywracają jazdę.
+
 ## Jazda w pościgu (etap 65c, 31.10.2026)
 
 - **Tempo, dryf i budżet `Ruch / 4` to zasada domowa** (decyzja MG 12 z 30.10). Podręcznik

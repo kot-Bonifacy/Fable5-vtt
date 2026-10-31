@@ -529,6 +529,12 @@ export function DiceCup() {
               ...(loaded.targetTokenId ? { tokenId: loaded.targetTokenId } : {}),
               ...(loaded.targetCoverId !== undefined ? { coverId: loaded.targetCoverId } : {}),
               ...(loaded.targetPoint ? { point: loaded.targetPoint } : {}),
+              ...(loaded.targetVehicleId !== undefined
+                ? {
+                    vehicleId: loaded.targetVehicleId,
+                    ...(loaded.targetWindow ? { window: loaded.targetWindow } : {}),
+                  }
+                : {}),
             },
             luck > 0 ? { ...loaded.request, luckSpent: luck } : loaded.request,
             loaded.attackerTokenId,

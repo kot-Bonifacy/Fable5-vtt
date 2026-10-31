@@ -1197,6 +1197,9 @@ export interface DamageApplyPayload {
    * przepadają", s. 179).
    */
   coverId?: number;
+  /** Auto na scenie pościgu zamiast figury (etap 65d1), z `window` — szyba burty. */
+  vehicleId?: string;
+  window?: string;
   /** Overrides the location the roll was made for. */
   location?: string;
   /** SP protecting the target — for statists without a sheet. */
@@ -1240,6 +1243,12 @@ export interface AttackRollPayload<TRequest = unknown> {
    * fields may be present.
    */
   targetPoint?: ScenePoint;
+  /**
+   * Auto na scenie pościgu (`SceneVehicle.id`) zamiast figury (etap 65d1) —
+   * z `targetWindow` szyba kuloodporna tej burty.
+   */
+  targetVehicleId?: string;
+  targetWindow?: string;
   /** Which of the character's tokens is shooting; derived when omitted. */
   attackerTokenId?: string;
   request: TRequest;
@@ -1269,6 +1278,16 @@ export type AttackBlocked =
       /** The Human Shield itself — „PW tarczy to PW trzymanego" (s. 181). */
       tokenId: string;
       name: string;
+    }
+  | {
+      /** Szyba kuloodporna auta między strzelcem a pasażerem (etap 65d1). */
+      kind: 'window';
+      sceneVehicleId: string;
+      side: string;
+      /** „Przednia szyba — Thorton Galena”. */
+      name: string;
+      hpCurrent: number;
+      hpMax: number;
     };
 
 /** Ack of `attack:roll`: the card that was posted, or what stood in the way. */

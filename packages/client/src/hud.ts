@@ -969,6 +969,31 @@ export function shootCoverAt(worldX: number, worldY: number): boolean {
 }
 
 /**
+ * Strzał bronią z paska w auto na scenie pościgu (etap 65d1) — „ostrzelaj
+ * samochód” jak przy osłonie z 16c, tylko celem jest `SceneVehicle`. Z pustymi
+ * rękami (albo z autem, w którym siedzi strzelec) klik idzie dalej: wolny
+ * fotel, menu auta.
+ */
+export function shootVehicleAt(sceneVehicleId: string): boolean {
+  const weapon = useHudStore.getState().activeWeapon;
+  const selected = useSelectionStore.getState().tokenId;
+  if (!weapon || weapon.pointTarget || !selected || weapon.tokenId !== selected) return false;
+  const token = useTokenStore.getState().tokens[weapon.tokenId];
+  if (!token || token.vehicleSeat?.sceneVehicleId === sceneVehicleId) return false;
+  loadAttackFor(
+    {
+      ...(token.characterId ? { characterId: token.characterId } : {}),
+      attackerTokenId: weapon.tokenId,
+      weaponRowId: weapon.weaponRowId,
+      ...(weapon.attachmentId ? { attachmentId: weapon.attachmentId } : {}),
+      mode: weapon.mode,
+    },
+    { kind: 'vehicle', sceneVehicleId },
+  );
+  return true;
+}
+
+/**
  * Next token this viewer may steer, in a stable order (`Tab`).
  *
  * A player cycles their own figures; the GM cycles the fight when there is one

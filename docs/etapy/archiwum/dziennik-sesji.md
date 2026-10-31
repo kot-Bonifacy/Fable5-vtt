@@ -1,5 +1,28 @@
 # Dziennik sesji — archiwum
 
+### Sesja 30.10, piąta — etap 65b „Scena pościgu: bieżnia, auta, fotele”
+
+**Zrobione wg planu:** migracja `20261031090000_chase_scene` (`Scene.kind` i `chase*`,
+`SceneVehicle`, `Token.sceneVehicleId`/`vehicleSeat`), rdzeń `shared/src/chase.ts` (fotel po
+obrocie, pas jezdni, przycięcie auta, łata ustawień), serwer `realtime/chase.ts` (`chase:place`,
+`chase:move`, `chase:remove`, `vehicle:seat`, `vehicle:allow-driver`, `chase:sync`, fotel przy
+upuszczeniu przez MG, przesadzenie po zmianie pojazdu i sceny), `IN_VEHICLE` w `token:move`
+i `token:walk`, auta i fotele w paczce kampanii. Klient: `ChaseLayer` (bieżnia z przenikającym
+szwem, auta z grafiką, znaczniki wolnych foteli, pas u MG), ciągnięcie auta przez MG, klik
+w fotel i `ChaseVehicleMenu`, „Na drogę” i przeciąganie karty pojazdu na mapę, wybór rodzaju
+przy „Utwórz”, zakładka „Pościg” w Edycji sceny, wybór wbudowanej grafiki na karcie pojazdu.
+Grafiki: 8 aut CC0 (Unlucky Studio, OpenGameArt) w `public/art/vehicles/` z atrybucją.
+Rozstrzygnięcia bez pytań 1–11 w pliku etapu. **Odstępstwa:** motocykl bez grafiki (nie ma
+wolnej w tym stylu), auto w 65b przesuwa tylko MG (jazda kierowcy to 65c), kamera gracza nie
+jedzie za autem (dopisane do 65c). Migracja ma w nazwie 31.10 zamiast 30.10 — zastosowana, więc
+zostaje. **Testy:** shared 2800 (+14 `chase.test.ts`), serwer 1696 (nowy `chase.test.ts` 8/8,
+pięć zdarzeń w macierzy izolacji), klient 442/443 — dalej tylko znany `theme.test.ts`; tsc
+i ESLint czyste. **Oglądane:** tymczasowy spec `99-ogledziny/t99-poscig` z `po-T6`: MG
+w Chromium (nowa scena „Pościg”, zakładka, pas, „Na drogę”, przeciągnięcie auta), Ola
+w **Firefoksie** na mapie wiaduktu MG (bieżnia, auto z grafiką, fotel kierowcy klikiem, menu
+auta, figura jedzie z autem). Oględziny złapały klik w fotel poza kadrem gracza (spec) i za duży
+podpis auta (zmniejszony). Na VPS nic nie zmieniano.
+
 ### Sesja 30.10, czwarta — etap 65a „Pojazd jako własność postaci”
 
 **Zrobione wg planu:** model `Vehicle` (migracja `20261030200000_vehicles`), rdzeń

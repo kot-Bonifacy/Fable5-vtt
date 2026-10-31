@@ -10,6 +10,7 @@ import { applyDamage, expireTimedEffect, undoDamage } from '../socket.js';
 import { useTokenStore } from '../stores/tokenStore.js';
 import { useCoverStore } from '../stores/coverStore.js';
 import { useChatStore } from '../stores/chatStore.js';
+import { useChaseStore } from '../stores/chaseStore.js';
 
 /**
  * Applying damage from the chat card (stage 15) — GM only.
@@ -26,6 +27,14 @@ const NO_TARGET = '';
  * the answer is either a person or the car they were behind.
  */
 const COVER_PREFIX = 'cover:';
+/** Auto na scenie pościgu w tej samej liście (etap 65d1): `vehicle:<id>` albo `vehicle:<id>:<burta>`. */
+const VEHICLE_PREFIX = 'vehicle:';
+
+function vehicleChoice(value: string): { vehicleId: string; window?: string } | null {
+  if (!value.startsWith(VEHICLE_PREFIX)) return null;
+  const [vehicleId, window] = value.slice(VEHICLE_PREFIX.length).split(':');
+  return vehicleId ? { vehicleId, ...(window ? { window } : {}) } : null;
+}
 
 export function DamageApplyControls({
   message,
@@ -36,6 +45,7 @@ export function DamageApplyControls({
 }) {
   const tokens = useTokenStore((s) => s.tokens);
   const covers = useCoverStore((s) => s.covers);
+  const vehicles = useChaseStore((s) => s.vehicles);
   /**
    * Damage rolled for an attack card settles itself (03.10, decyzja MG po T8b),
    * so once a live entry for this roll is on the feed there is nothing left to
@@ -55,7 +65,11 @@ export function DamageApplyControls({
     // agree with it (stage 16c: a shot at a car cannot land on a person).
     roll.damage?.targetCoverId !== undefined
       ? `${COVER_PREFIX}${roll.damage.targetCoverId}`
-      : (roll.damage?.targetTokenId ?? NO_TARGET),
+      : roll.damage?.targetVehicleId !== undefined
+        ? `${VEHICLE_PREFIX}${roll.damage.targetVehicleId}${
+            roll.damage.targetWindow ? `:${roll.damage.targetWindow}` : ''
+          }`
+        : (roll.damage?.targetTokenId ?? NO_TARGET),
   );
   const [location, setLocation] = useState<CpredHitLocation>(
     isCpredHitLocation(roll.damage?.location) ? roll.damage.location : 'body',
@@ -69,7 +83,8 @@ export function DamageApplyControls({
   const coverId = tokenId.startsWith(COVER_PREFIX)
     ? Number.parseInt(tokenId.slice(COVER_PREFIX.length), 10)
     : null;
-  const target = coverId === null && tokenId ? tokens[tokenId] : undefined;
+  const vehicle = vehicleChoice(tokenId);
+  const target = coverId === null && !vehicle && tokenId ? tokens[tokenId] : undefined;
   // A statist token carries its own HP; a linked one takes them from the sheet.
   const needsArmorHint = target !== undefined && target.characterId == null;
 
@@ -79,6 +94,11 @@ export function DamageApplyControls({
     // and neither is shown, so there is nothing to send by accident.
     if (coverId !== null) {
       applyDamage({ messageId: message.id, coverId });
+      return;
+    }
+    // Auto (65d1): kadłub ma OB z ulepszeń, liczy je serwer — bez pól pancerza.
+    if (vehicle) {
+      applyDamage({ messageId: message.id, ...vehicle });
       return;
     }
     const sp = Number.parseInt(armorOverride, 10);
@@ -139,8 +159,18 @@ export function DamageApplyControls({
             {cover.name} ({cover.hpCurrent}/{cover.hpMax} PW)
           </option>
         ))}
+        {vehicles.map((entry) => (
+          <option key={`vehicle-${entry.id}`} value={`${VEHICLE_PREFIX}${entry.id}`}>
+            {entry.name} ({entry.hp}/{entry.hpMax} PUK)
+          </option>
+        ))}
+        {vehicle?.window && (
+          <option value={tokenId}>
+            {vehicles.find((entry) => entry.id === vehicle.vehicleId)?.name ?? 'Auto'} — szyba
+          </option>
+        )}
       </select>
-      {coverId === null && (
+      {coverId === null && !vehicle && (
         <>
           <select
             value={location}

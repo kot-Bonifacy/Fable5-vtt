@@ -147,6 +147,13 @@ import {
   type SceneVisionContext,
 } from './vision.js';
 import { toCoverView } from './covers-io.js';
+import {
+  evasionDefenderFor,
+  requireTargetVehicle,
+  vehicleAimPoint,
+  vehicleAttackTarget,
+  windowBlockFor,
+} from './vehicle-targets.js';
 import { emitCovers } from './covers.js';
 import { isBodyBlocked } from './walls-io.js';
 import { toSceneView } from './scenes.js';
@@ -892,7 +899,12 @@ async function evasionPendingOf(
   campaignId: string,
   registry: CpredRegistry,
   attack: RollAttackMeta,
-  meta: { melee: boolean; targetTokenId?: string | null },
+  meta: {
+    melee: boolean;
+    targetTokenId?: string | null;
+    targetVehicleId?: string;
+    targetWindow?: string;
+  },
 ): Promise<string[]> {
   if (attack.damageNotation === undefined) return [];
   if (attack.area) {
@@ -902,8 +914,13 @@ async function evasionPendingOf(
         : [],
     );
   }
-  if (attack.hit !== true || attack.evaded || attack.noEvade || !meta.targetTokenId) return [];
-  const target = await deps.ctx.prisma.token.findUnique({ where: { id: meta.targetTokenId } });
+  if (attack.hit !== true || attack.evaded || attack.noEvade) return [];
+  // Etap 65d1: auto nie unika, a na motocyklu z Ulepszonym zespoleniem unika
+  // kierowca — za motocykl i za pasażera (s. 165).
+  const defenderId = await evasionDefenderFor(deps, campaignId, meta);
+  if (!defenderId) return [];
+  if (defenderId !== meta.targetTokenId) attack.evasionBy = defenderId;
+  const target = await deps.ctx.prisma.token.findUnique({ where: { id: defenderId } });
   if (!target?.characterId) return [];
   let data: CpredCharacterData;
   try {
@@ -1023,8 +1040,19 @@ export async function performAttackRoll(
         !pointAim && payload?.targetCoverId !== undefined
           ? await requireCampaignCover(deps, campaignId, payload.targetCoverId)
           : null;
+      // Etap 65d1: auto na scenie pościgu (albo szyba jego burty) — czwarty cel.
+      const vehicleTarget =
+        !pointAim && !coverTarget && payload?.targetVehicleId !== undefined
+          ? await requireTargetVehicle(
+              deps,
+              campaignId,
+              user,
+              payload.targetVehicleId,
+              payload.targetWindow,
+            )
+          : null;
       const tokenTarget =
-        pointAim || coverTarget
+        pointAim || coverTarget || vehicleTarget
           ? null
           : await requireCampaignToken(deps.ctx.prisma, campaignId, payload?.targetTokenId);
       const target = tokenTarget?.token ?? null;
@@ -1035,9 +1063,11 @@ export async function performAttackRoll(
       }
       const scene = coverTarget
         ? coverTarget.scene
-        : tokenTarget
-          ? tokenTarget.scene
-          : await requireAttackerScene(deps, campaignId, character, payload?.attackerTokenId);
+        : vehicleTarget
+          ? vehicleTarget.placed.scene
+          : tokenTarget
+            ? tokenTarget.scene
+            : await requireAttackerScene(deps, campaignId, character, payload?.attackerTokenId);
 
       // A hidden token must not even be targetable by a player: a rejected
       // attack would tell them exactly where it stands. Unrevealed fog conceals
@@ -1068,6 +1098,10 @@ export async function performAttackRoll(
             device !== undefined,
           );
       if (target && attacker.id === target.id) throw new RealtimeError('BAD_REQUEST');
+      // Własnego auta się nie ostrzeliwuje — strzał z fotela idzie na zewnątrz.
+      if (vehicleTarget && attacker.sceneVehicleId === vehicleTarget.placed.id) {
+        throw new RealtimeError('OWN_VEHICLE');
+      }
 
       const source = character
         ? await buildCharacterSource(
@@ -1090,7 +1124,9 @@ export async function performAttackRoll(
         ? tokenCentre(toTokenView(target, true), sceneView)
         : coverTarget
           ? coverAimPoint(origin, coverTarget)
-          : requireScenePoint(payload?.targetPoint, scene);
+          : vehicleTarget
+            ? vehicleAimPoint(vehicleTarget.placed, origin)
+            : requireScenePoint(payload?.targetPoint, scene);
       const metres = target
         ? metresForRules(
             metresBetweenTokens(toTokenView(attacker, true), toTokenView(target, true), sceneView),
@@ -1164,6 +1200,12 @@ export async function performAttackRoll(
           return { blocked: { kind: 'shield', tokenId: shield.tokenId, name: shield.name } };
         }
       }
+      // Szyba kuloodporna burty zwróconej do strzelca (65d1) — osłona pasażera,
+      // dopóki ma PW. Granat leci nad nią jak nad osłoną (16d).
+      if (target && !explosive && payload?.request?.ignoreCover !== true) {
+        const pane = await windowBlockFor(deps.ctx.prisma, target, attacker, origin);
+        if (pane) return { blocked: pane };
+      }
 
       // A fence stops an arm and not a round (stage 42a), so a swing asks its own
       // question of whatever stops a body. Asked of every melee weapon; the
@@ -1177,7 +1219,7 @@ export async function performAttackRoll(
       // nothing: a swing, a blast, a cone, suppressive fire.
       const walls = fire.loaded?.walls ?? [];
       const barrierSp =
-        (target || coverTarget) && walls.length > 0
+        (target || coverTarget || vehicleTarget) && walls.length > 0
           ? barrierArmorAlong(walls, origin, aimPoint)
           : 0;
 
@@ -1207,7 +1249,9 @@ export async function performAttackRoll(
             }
           : coverTarget
             ? { name: coverTarget.name, coverId: coverTarget.id, metres, cover: true }
-            : { name: POINT_TARGET_NAME, metres, point: true },
+            : vehicleTarget
+              ? vehicleAttackTarget(vehicleTarget.placed, vehicleTarget.window, metres)
+              : { name: POINT_TARGET_NAME, metres, point: true },
         {
           modifiers: [
             ...sheetSituationModifiers({
@@ -1590,6 +1634,9 @@ async function buildAttackMeta(
     // Stage 16c: „Zastosuj" has to know it is denting a car rather than a
     // person, because the two take damage down different paths.
     ...(meta.targetCoverId !== undefined ? { targetCoverId: meta.targetCoverId } : {}),
+    // Etap 65d1: auto (albo jego szyba) — kadłub ma własną drogę obrażeń.
+    ...(meta.targetVehicleId !== undefined ? { targetVehicleId: meta.targetVehicleId } : {}),
+    ...(meta.targetWindow ? { targetWindow: meta.targetWindow } : {}),
     ...(area ? { area } : {}),
     ...(forcedChecks ? { forcedChecks } : {}),
     ...(smart ? { smart } : {}),
@@ -1756,15 +1803,17 @@ async function performEvasion(
     }
 
     if (roll.attack.evaded || roll.attack.noEvade) throw new RealtimeError('ALREADY_EVADED');
-    // A car does not duck (stage 16c).
-    if (!meta.targetTokenId) throw new RealtimeError('NOT_THE_TARGET');
+    // A car does not duck (stage 16c) — chyba że to motocykl z Ulepszonym
+    // zespoleniem: wtedy unika kierowca, za siebie, pasażera i motocykl (65d1).
+    const defenderId = roll.attack.evasionBy ?? meta.targetTokenId;
+    if (!defenderId) throw new RealtimeError('NOT_THE_TARGET');
 
     // Whoever is being shot at may duck — and only their owner or the GM says
     // so. Until the repair session of 22.08 this asked for a **sheet**, which
     // meant a statist could never press the button: their defence DV was read
     // off their combat profile (stage 16b) but the dodge was not.
     const target = await deps.ctx.prisma.token.findUnique({
-      where: { id: meta.targetTokenId },
+      where: { id: defenderId },
       include: { scene: true },
     });
     if (!target || target.scene.campaignId !== campaignId) {
@@ -2094,7 +2143,9 @@ export const attackNoEvadeEvent = defineEvent<AttackNoEvadePayload, void>({
     const roll = JSON.parse(message.payload) as RollResult;
     const meta = roll.attack?.system as CpredAttackMeta | undefined;
     if (!roll.attack || !meta) throw new RealtimeError('NOT_AN_ATTACK');
-    const tokenId = roll.attack.area ? payload.tokenId : meta.targetTokenId;
+    const tokenId = roll.attack.area
+      ? payload.tokenId
+      : (roll.attack.evasionBy ?? meta.targetTokenId);
     if (!tokenId || !(roll.attack.evasionPending ?? []).includes(tokenId)) {
       throw new RealtimeError('NOT_THE_TARGET');
     }

@@ -201,6 +201,10 @@ export interface DamageLogEntry {
   targetTokenId?: string;
   /** Cover that took the damage instead of a token (stage 16c). */
   targetCoverId?: number;
+  /** Auto, które oberwało (etap 65d1) — `SceneVehicle.id`. */
+  targetVehicleId?: string;
+  /** Burta, której szyba oberwała zamiast kadłuba (65d1). */
+  targetWindow?: string;
   targetName: string;
   /** Sheet that took the damage; absent for statists and for redacted views. */
   characterId?: string | null;

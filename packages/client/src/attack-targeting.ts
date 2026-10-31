@@ -10,12 +10,16 @@ import type {
   ScenePoint,
   SceneView,
   TokenView,
+  VehicleWindowSide,
 } from '@vtt/shared';
 import {
   CPRED_ATTACK_PROBLEM_MESSAGES,
   ROLE_GM,
   STATIST_WEAPON_ROW_ID,
+  VEHICLE_WINDOW_LABELS,
   WALL_REACH_M,
+  chaseBodyNearestPoint,
+  isVehicleWindowSide,
   barrierArmorAlong,
   barrierConcealPenaltyAlong,
   cpredBarrierModifiers,
@@ -46,6 +50,7 @@ import { useAimMenuStore } from './stores/aimMenuStore.js';
 import { useAttackStore, type AttackTargeting } from './stores/attackStore.js';
 import { useAuthStore } from './stores/authStore.js';
 import { useCoverStore } from './stores/coverStore.js';
+import { useChaseStore } from './stores/chaseStore.js';
 import { useCharacterStore } from './stores/characterStore.js';
 import { clearNotices, notifyChoice, notifyRefusal } from './notices.js';
 import { useCompendiumStore } from './stores/compendiumStore.js';
@@ -82,6 +87,8 @@ export interface AttackIntent {
   mode: CpredAttackMode;
   /** Aimed Shot and what at (s. 170); absent means an ordinary attack. */
   aimedAt?: CpredAimPoint;
+  /** Celowanie w słaby punkt pojazdu (s. 191, etap 65d1). */
+  weakSpot?: boolean;
   modifier?: number;
   /**
    * The table ruled that the target leaned out from behind the car (stage 16c).
@@ -110,7 +117,9 @@ export interface AttackIntent {
 export type AttackTargetRef =
   | { kind: 'token'; tokenId: string }
   | { kind: 'cover'; coverId: number }
-  | { kind: 'point'; point: ScenePoint };
+  | { kind: 'point'; point: ScenePoint }
+  /** Auto na scenie pościgu, z `window` — szyba kuloodporna burty (etap 65d1). */
+  | { kind: 'vehicle'; sceneVehicleId: string; window?: VehicleWindowSide };
 
 /**
  * A barrier on the line of fire, as far as this viewer may know (19.10.2026).
@@ -175,11 +184,13 @@ export function planAttackPreview(
       ? tokenAim(attackerToken, tokens[ref.tokenId], scene)
       : ref.kind === 'point'
         ? pointAim(attackerToken, ref.point, scene)
-        : coverAim(
-            attackerToken,
-            useCoverStore.getState().covers.find((c) => c.id === ref.coverId),
-            scene,
-          );
+        : ref.kind === 'vehicle'
+          ? vehicleAim(attackerToken, ref, scene)
+          : coverAim(
+              attackerToken,
+              useCoverStore.getState().covers.find((c) => c.id === ref.coverId),
+              scene,
+            );
   if (typeof aim === 'string') return { ok: false, message: aim };
 
   // Where the numbers come from: a sheet, or the token's own combat profile.
@@ -205,6 +216,7 @@ export function planAttackPreview(
     weaponRowId: row.id,
     mode: intent.mode,
     ...(intent.aimedAt ? { aimedAt: intent.aimedAt } : {}),
+    ...(intent.weakSpot ? { weakSpot: true } : {}),
     ...(intent.modifier ? { modifier: intent.modifier } : {}),
     ...(intent.ignoreCover ? { ignoreCover: true } : {}),
     ...(intent.thrown ? { thrown: true } : {}),
@@ -356,7 +368,15 @@ export function barrierLabel(barrier: AttackBarrier): string {
 /** The target's name, distance and defence — whichever kind of target it is. */
 type Aim =
   | string
-  | { target: CpredAttackTarget & { tokenId?: string; coverId?: number }; point: ScenePoint };
+  | {
+      target: CpredAttackTarget & {
+        tokenId?: string;
+        coverId?: number;
+        vehicleId?: string;
+        window?: VehicleWindowSide;
+      };
+      point: ScenePoint;
+    };
 
 function tokenAim(attacker: TokenView, target: TokenView | undefined, scene: SceneView): Aim {
   if (!target) return 'Nie znalazłem celu na tej scenie.';
@@ -393,6 +413,44 @@ function coverAim(attacker: TokenView, cover: CoverView | undefined, scene: Scen
       x: Math.min(Math.max(origin.x, cover.x), cover.x + cover.width),
       y: Math.min(Math.max(origin.y, cover.y), cover.y + cover.height),
     },
+  };
+}
+
+/**
+ * Strzał w auto na scenie pościgu (etap 65d1) — jak w osłonę: w najbliższy
+ * punkt bryły, z tą samą miarą co serwer. Jedzie, gdy droga jedzie, silnik
+ * pracuje i auto nie jest wrakiem — to zmienia PT ciosu bronią białą.
+ */
+function vehicleAim(
+  attacker: TokenView,
+  ref: { sceneVehicleId: string; window?: VehicleWindowSide },
+  scene: SceneView,
+): Aim {
+  const vehicle = useChaseStore
+    .getState()
+    .vehicles.find((entry) => entry.id === ref.sceneVehicleId);
+  if (!vehicle) return 'Tego auta nie ma już na drodze.';
+  if (attacker.vehicleSeat?.sceneVehicleId === vehicle.id) {
+    return 'Nie ostrzeliwujesz auta, w którym siedzisz.';
+  }
+  const origin = tokenCentre(attacker, scene);
+  const point = chaseBodyNearestPoint(
+    vehicle,
+    vehicle,
+    scene.chase.direction,
+    scene.grid.sizePx,
+    origin,
+  );
+  const moving = scene.chase.running && vehicle.started && vehicle.hp > 0;
+  return {
+    target: {
+      name: ref.window ? `${vehicle.name} — ${VEHICLE_WINDOW_LABELS[ref.window]}` : vehicle.name,
+      vehicleId: vehicle.id,
+      ...(ref.window ? { window: ref.window } : {}),
+      metres: metresForRules(metresBetween(origin, point, scene)),
+      vehicle: { moving, ...(ref.window ? { window: true } : {}) },
+    },
+    point,
   };
 }
 
@@ -481,7 +539,12 @@ export function loadAttackFor(intent: AttackIntent, target: string | AttackTarge
       ? { targetTokenId: ref.tokenId }
       : ref.kind === 'point'
         ? { targetPoint: scene ? snapToSquareCentre(ref.point, scene) : ref.point }
-        : { targetCoverId: ref.coverId }),
+        : ref.kind === 'vehicle'
+          ? {
+              targetVehicleId: ref.sceneVehicleId,
+              ...(ref.window ? { targetWindow: ref.window } : {}),
+            }
+          : { targetCoverId: ref.coverId }),
     targetName: attack.targetName,
     request: preview.request,
     title: cupTitle(
@@ -502,10 +565,29 @@ export function loadAttackFor(intent: AttackIntent, target: string | AttackTarge
   if (mayAimShot(intent, ref)) {
     useAimMenuStore.getState().open({
       intent,
-      targetTokenId: ref.tokenId,
+      target: ref,
       ...(intent.aimedAt ? { aimedAt: intent.aimedAt } : {}),
     });
+  } else if (mayAimAtWeakSpot(intent, ref)) {
+    // Słaby punkt pojazdu (s. 191, 65d1) — ten sam kafel przy kursorze,
+    // z jedną sylwetką zamiast trzech.
+    useAimMenuStore.getState().open({
+      intent,
+      target: ref,
+      ...(intent.weakSpot ? { weakSpot: true } : {}),
+    });
   }
+}
+
+/**
+ * Czy w ten atak wolno Celować w słaby punkt pojazdu (s. 191): pojedynczy
+ * strzał albo cios bronią białą w kadłub — nie w szybę.
+ */
+export function mayAimAtWeakSpot(
+  intent: AttackIntent,
+  ref: AttackTargetRef,
+): ref is { kind: 'vehicle'; sceneVehicleId: string } {
+  return ref.kind === 'vehicle' && ref.window === undefined && intent.mode === 'single';
 }
 
 /**
@@ -521,6 +603,45 @@ export function mayAimShot(
   ref: AttackTargetRef,
 ): ref is { kind: 'token'; tokenId: string } {
   return ref.kind === 'token' && intent.mode === 'single';
+}
+
+/**
+ * Szyba kuloodporna między strzelcem a pasażerem (etap 65d1) — ta sama karta
+ * co osłona: ostrzelaj szybę albo strzelaj mimo niej (decyzja stołu).
+ */
+export function offerWindowChoice(
+  intent: AttackIntent,
+  targetTokenId: string,
+  pane: { sceneVehicleId: string; side: string; name: string; hpCurrent: number; hpMax: number },
+): void {
+  const target = useTokenStore.getState().tokens[targetTokenId];
+  const who = target?.name ?? 'Cel';
+  const side = isVehicleWindowSide(pane.side) ? pane.side : undefined;
+  notifyChoice(
+    'attack',
+    `${who} siedzi za szybą kuloodporną: ${pane.name} (${pane.hpCurrent}/${pane.hpMax} PW).`,
+    [
+      {
+        label: 'Ostrzelaj szybę',
+        title: 'Strzał w szybę: obrażenia schodzą z jej PW, nadwyżka przepada',
+        run: () =>
+          loadAttackFor(
+            { ...intent, aimedAt: undefined },
+            {
+              kind: 'vehicle',
+              sceneVehicleId: pane.sceneVehicleId,
+              ...(side ? { window: side } : {}),
+            },
+          ),
+      },
+      {
+        label: 'Strzelaj mimo szyby',
+        title: 'Szyba opuszczona albo cel się wychylił — decyzja stołu, zapisana na karcie rzutu',
+        run: () => loadAttackFor({ ...intent, ignoreCover: true }, targetTokenId),
+      },
+    ],
+    { title: 'Cel za szybą' },
+  );
 }
 
 /**

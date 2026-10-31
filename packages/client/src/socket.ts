@@ -407,7 +407,7 @@ import { useHudStore } from './stores/hudStore.js';
 import { useExchangeStore } from './stores/exchangeStore.js';
 import { useOwnerAiStore } from './stores/ownerAiStore.js';
 import { aiAccessSentence, aiUnavailableMessage } from './ai-status.js';
-import { offerCoverChoice, offerShieldChoice } from './attack-targeting.js';
+import { offerCoverChoice, offerShieldChoice, offerWindowChoice } from './attack-targeting.js';
 import { clearNotices, noteAck, notifyChoice, notifyInfo, notifyRefusal } from './notices.js';
 import { useNoticeStore } from './stores/noticeStore.js';
 
@@ -2326,6 +2326,13 @@ function attackAckErrorText(code: string): string {
       return CPRED_GRAPPLE_PROBLEM_MESSAGES.SHIELD_CANNOT_DODGE;
     case 'DODGE_BLOCKED':
       return 'W tym stanie nie można Unikać.';
+    // Etap 65d1: auto jako cel.
+    case 'OWN_VEHICLE':
+      return 'Nie ostrzeliwujesz auta, w którym siedzisz.';
+    case 'VEHICLE_NOT_FOUND':
+      return 'Tego auta nie ma już na drodze.';
+    case 'NO_BULLETPROOF_GLASS':
+      return 'To auto nie ma szyb kuloodpornych — strzelaj w pasażera albo w kadłub.';
     default:
       return `Błąd ataku: ${code}`;
   }
@@ -2340,7 +2347,13 @@ export function sendAttackRoll(
   /** Sheet firing; omitted for a statist, whose token carries the numbers. */
   characterId: string | undefined,
   /** What is aimed at: a token, a cover (16c) or a square of ground (16d). */
-  target: { tokenId?: string; coverId?: number; point?: ScenePoint },
+  target: {
+    tokenId?: string;
+    coverId?: number;
+    point?: ScenePoint;
+    vehicleId?: string;
+    window?: string;
+  },
   request: CpredAttackRequest,
   attackerTokenId?: string,
   gesture?: RollGesture,
@@ -2351,7 +2364,12 @@ export function sendAttackRoll(
       ? { targetPoint: target.point }
       : target.coverId !== undefined
         ? { targetCoverId: target.coverId }
-        : { targetTokenId: target.tokenId ?? '' }),
+        : target.vehicleId !== undefined
+          ? {
+              targetVehicleId: target.vehicleId,
+              ...(target.window ? { targetWindow: target.window } : {}),
+            }
+          : { targetTokenId: target.tokenId ?? '' }),
     request,
     ...(attackerTokenId ? { attackerTokenId } : {}),
     ...(gesture ? { gesture } : {}),
@@ -2373,6 +2391,12 @@ export function sendAttackRoll(
       ...(request.aimedAt ? { aimedAt: request.aimedAt } : {}),
       ...(request.modifier ? { modifier: request.modifier } : {}),
     };
+    // Etap 65d1: szyba kuloodporna auta między strzelcem a pasażerem.
+    if (blocked.kind === 'window') {
+      if (!target.tokenId) return;
+      offerWindowChoice(intent, target.tokenId, blocked);
+      return;
+    }
     if (blocked.kind === 'cover') {
       if (!target.tokenId) return;
       offerCoverChoice(intent, target.tokenId, {

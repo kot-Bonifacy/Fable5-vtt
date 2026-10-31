@@ -16,6 +16,8 @@ import {
   seatedTokenPosition,
   vehicleSeatCentre,
   type ChaseBody,
+  chaseBodyNearestPoint,
+  vehicleSideFacing,
 } from './chase.js';
 import { sanitizeScenePatch } from './scenes.js';
 
@@ -154,5 +156,33 @@ describe('jazda w pościgu (65c)', () => {
   it('przycina przeciągnięcie do budżetu w linii prostej', () => {
     expect(chaseLimitMove({ x: 0, y: 0 }, { x: 300, y: 400 }, 250)).toEqual({ x: 150, y: 200 });
     expect(chaseLimitMove({ x: 0, y: 0 }, { x: 30, y: 40 }, 250)).toEqual({ x: 30, y: 40 });
+  });
+});
+
+describe('burty auta i punkt celowania (etap 65d1)', () => {
+  const body = { widthSq: 3, lengthSq: 5 };
+  const centre = { x: 500, y: 300 };
+
+  it('burta zwrócona do strzelca liczy się względem kierunku jazdy', () => {
+    // Jazda w prawo: przód w prawo, lewa burta (kierowca) u góry.
+    expect(vehicleSideFacing(centre, body, 'right', { x: 900, y: 310 })).toBe('front');
+    expect(vehicleSideFacing(centre, body, 'right', { x: 100, y: 280 })).toBe('rear');
+    expect(vehicleSideFacing(centre, body, 'right', { x: 520, y: 100 })).toBe('left');
+    expect(vehicleSideFacing(centre, body, 'right', { x: 480, y: 600 })).toBe('right');
+    // Jazda w górę: lewa burta po lewej stronie ekranu.
+    expect(vehicleSideFacing(centre, body, 'up', { x: 100, y: 300 })).toBe('left');
+    expect(vehicleSideFacing(centre, body, 'up', { x: 500, y: 0 })).toBe('front');
+  });
+
+  it('strzał w auto celuje w najbliższy punkt bryły', () => {
+    // 5 × 3 kratki po 50 px, w prawo: połowy 125 × 75.
+    expect(chaseBodyNearestPoint(centre, body, 'right', 50, { x: 900, y: 300 })).toEqual({
+      x: 625,
+      y: 300,
+    });
+    expect(chaseBodyNearestPoint(centre, body, 'right', 50, { x: 0, y: 0 })).toEqual({
+      x: 375,
+      y: 225,
+    });
   });
 });

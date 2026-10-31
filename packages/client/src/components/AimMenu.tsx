@@ -1,6 +1,8 @@
 import { useEffect, useRef } from 'react';
 import {
   CPRED_AIMED_SHOT_PENALTY,
+  CPRED_VEHICLE_WEAK_SPOT_LABEL,
+  CPRED_VEHICLE_WEAK_SPOT_PENALTY,
   CPRED_AIM_BODY_ICON,
   CPRED_AIM_POINTS,
   CPRED_AIM_POINT_ICONS,
@@ -97,13 +99,21 @@ export function AimMenu() {
       return;
     }
     const { aimedAt: _previous, ...bare } = shot.intent;
-    loadAttackFor(point ? { ...bare, aimedAt: point } : bare, {
-      kind: 'token',
-      tokenId: shot.targetTokenId,
-    });
+    loadAttackFor(point ? { ...bare, aimedAt: point } : bare, shot.target);
     // Zdjęcie Celowania kończy sprawę; wybór lokacji zostawia okno otwarte,
     // żeby „jednak w nogę" nie kosztowało ponownego wskazywania celu.
     if (!point) close();
+  }
+
+  /** Auto (65d1): słaby punkt albo zwykły strzał w kadłub. */
+  function aimVehicle(weakSpot: boolean) {
+    if (weakSpot === (shot.weakSpot === true)) {
+      close();
+      return;
+    }
+    const { weakSpot: _previous, ...bare } = shot.intent;
+    loadAttackFor(weakSpot ? { ...bare, weakSpot: true } : bare, shot.target);
+    if (!weakSpot) close();
   }
 
   const left = Math.max(8, Math.min(offer.x + OFFSET, window.innerWidth - ESTIMATED_WIDTH));
@@ -114,6 +124,34 @@ export function AimMenu() {
     above >= 8
       ? above
       : Math.max(8, Math.min(offer.y + OFFSET, window.innerHeight - ESTIMATED_HEIGHT));
+
+  if (shot.target.kind === 'vehicle') {
+    const on = shot.weakSpot === true;
+    return (
+      <div ref={ref} className="aim-menu" style={{ left, top }}>
+        <button
+          type="button"
+          className={`aim-menu-point${on ? '' : ' is-on'}`}
+          aria-pressed={!on}
+          title="Bez celowania — strzał w kadłub, obrażenia minus OB kadłuba"
+          aria-label="Bez celowania"
+          onClick={() => aimVehicle(false)}
+        >
+          <HudIcon name={CPRED_AIM_BODY_ICON} className="aim-menu-icon" />
+        </button>
+        <button
+          type="button"
+          className={`aim-menu-point${on ? ' is-on' : ''}`}
+          aria-pressed={on}
+          title={`${CPRED_VEHICLE_WEAK_SPOT_LABEL} (${CPRED_VEHICLE_WEAK_SPOT_PENALTY}, cała Akcja) — opony, silnik, wlew paliwa: obrażenia, które przejdą przez OB, liczą się podwójnie`}
+          aria-label={CPRED_VEHICLE_WEAK_SPOT_LABEL}
+          onClick={() => aimVehicle(true)}
+        >
+          <HudIcon name="aim-weak-spot" className="aim-menu-icon" />
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div ref={ref} className="aim-menu" style={{ left, top }}>

@@ -486,6 +486,8 @@ async function resolveRollRequest(
   delete request.damageMultiplier;
   delete request.targetTokenId;
   delete request.targetCoverId;
+  delete request.targetVehicleId;
+  delete request.targetWindow;
   delete request.areaTargets;
   delete request.ammo;
   delete request.stabilizeDv;
@@ -576,6 +578,10 @@ async function resolveRollRequest(
     ...(attack.damageMultiplier ? { damageMultiplier: attack.damageMultiplier } : {}),
     ...(attack.targetTokenId ? { targetTokenId: attack.targetTokenId } : {}),
     ...(attack.targetCoverId !== undefined ? { targetCoverId: attack.targetCoverId } : {}),
+    ...(attack.targetVehicleId !== undefined ? { targetVehicleId: attack.targetVehicleId } : {}),
+    ...(attack.targetVehicleId !== undefined && attack.targetWindow
+      ? { targetWindow: attack.targetWindow }
+      : {}),
     // Only the ones the blast actually reached: whoever a wall spared, or who
     // jumped clear, is not on the list „Zastosuj wszystkim" works from.
     ...(attack.area
@@ -1260,6 +1266,12 @@ async function performScopedRoll(
         ...(plan.damage.targetTokenId ? { targetTokenId: plan.damage.targetTokenId } : {}),
         ...(plan.damage.targetCoverId !== undefined
           ? { targetCoverId: plan.damage.targetCoverId }
+          : {}),
+        ...(plan.damage.targetVehicleId !== undefined
+          ? { targetVehicleId: plan.damage.targetVehicleId }
+          : {}),
+        ...(plan.damage.targetVehicleId !== undefined && plan.damage.targetWindow
+          ? { targetWindow: plan.damage.targetWindow }
           : {}),
         ...(plan.damage.areaTargets ? { areaTargets: plan.damage.areaTargets } : {}),
         ...(plan.damage.attackMessageId !== undefined

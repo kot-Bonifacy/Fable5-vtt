@@ -6,6 +6,17 @@ w `POMYSLY.md` („Do sprawdzenia przy stole”), decyzje MG — w `decyzje-i-up
 
 ## Otwarte
 
+**31.10.2026 — etap 65d1 „Ostrzał pojazdów”: oględziny MG i wdrożenie.** Oglądane na instancji
+E2E (spec `99-ogledziny/t99-ostrzal`, nie w repo): Ola w **Firefoksie** strzela w kadłub (kubek
+„→ Wóz Maelstromu · 5 m · PT 13”, okno Celowania z „Słabym punktem”, karta z wierszem
+„Słaby punkt pojazdu −8”), strzał w pasażera wraca kartą „Cel za szybą”, wrak jest
+przyciemniony z podpisem „wrak”; MG w Chromium — panel auta (PUK z paskiem i polem, OB, szyby,
+ulepszenia). Trafienia w kadłub na żywo nie widziałem (dwa strzały w słaby punkt chybiły),
+obrażenia auta i szyby sprawdza `chase-combat.test.ts`. Ulepszone zespolenie — tylko test serwera.
+**Ikony okna Celowania (także dla figury, sprzed 65d1) nie rysują się na zrzutach Firefoksa**:
+maska ma dobry adres (`/icons/hud/aim-body.svg`) i kolor, a kafel jest pusty — sprawdzić przy
+stole w Firefoksie i Chrome, zanim ktoś zacznie szukać błędu w kodzie.
+
 **30.10.2026 — etap 65b „Scena pościgu”: oględziny MG i wdrożenie.** Oglądane na instancji E2E
 (spec `99-ogledziny/t99-poscig`, nie w repo): MG w Chromium, gracz w **Firefoksie** na mapie
 wiaduktu MG — bieżnia jedzie, auta z grafiką, fotel kierowcy klikiem, menu auta, przeciągnięcie

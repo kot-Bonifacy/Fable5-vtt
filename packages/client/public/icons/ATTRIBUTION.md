@@ -52,6 +52,7 @@ Obowiązuje na nie ta sama licencja co na kod repozytorium, a nie CC BY 3.0; w t
 | `hud/aim-hand.svg`          | Hand                 | Lorc          | Celowanie: trzymany przedmiot            |
 | `hud/aim-head.svg`          | Headshot             | Skoll         | Celowanie: głowa                         |
 | `hud/aim-leg.svg`           | Leg                  | Delapouite    | Celowanie: noga                          |
+| `hud/aim-weak-spot.svg`     | Car wheel            | Delapouite    | Celowanie: słaby punkt pojazdu (65d1)    |
 | `hud/ammo.svg`              | Machine gun magazine | Delapouite    | zapas amunicji (rezerwa etapu 27i)       |
 | `hud/armor.svg`             | Kevlar vest          | Skoll         | chip SP w panelu postaci                 |
 | `hud/bow.svg`               | Bow arrow            | Delapouite    | slot broni: łuk                          |

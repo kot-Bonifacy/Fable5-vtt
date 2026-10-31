@@ -43,7 +43,9 @@ export function AttackRow({
    * The defender's sheet, if this viewer may act for it. A player sees only
    * their own characters, so this is empty for everybody else at the table.
    */
-  const targetToken = attack.targetTokenId ? tokens[attack.targetTokenId] : undefined;
+  // Etap 65d1: na motocyklu z Ulepszonym zespoleniem unika kierowca, nie cel.
+  const defenderTokenId = attack.evasionBy ?? attack.targetTokenId;
+  const targetToken = defenderTokenId ? tokens[defenderTokenId] : undefined;
   const defender =
     targetToken?.characterId !== undefined && targetToken.characterId !== null
       ? characters[targetToken.characterId]
@@ -159,9 +161,9 @@ export function AttackRow({
    */
   const mayAnswerDodge =
     isGm &&
-    attack.targetTokenId !== undefined &&
-    pending.includes(attack.targetTokenId) &&
-    !autoEvasion.includes(attack.targetTokenId);
+    defenderTokenId !== undefined &&
+    pending.includes(defenderTokenId) &&
+    !autoEvasion.includes(defenderTokenId);
 
   const verdict =
     attack.hit === undefined
@@ -263,13 +265,12 @@ export function AttackRow({
           !damageRolled &&
           attack.hit !== undefined &&
           (defender ?? statistDefender) &&
-          !(attack.targetTokenId !== undefined && autoEvasion.includes(attack.targetTokenId)) &&
+          !(defenderTokenId !== undefined && autoEvasion.includes(defenderTokenId)) &&
           // Gracz dostaje Unik tylko tam, gdzie serwer na niego czeka (17.10):
           // guzik bez wstrzymanych obrażeń (REF poniżej 8 przy strzale, pudło)
           // znikał po rzucie strzelca i wyglądał na przegapioną szansę. MG
           // zostaje przy swoim — to on orzeka, że cel widział strzał.
-          (isGm ||
-            (attack.targetTokenId !== undefined && pending.includes(attack.targetTokenId))) && (
+          (isGm || (defenderTokenId !== undefined && pending.includes(defenderTokenId))) && (
             <button
               type="button"
               className="small-button"

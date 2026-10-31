@@ -16,7 +16,14 @@ import type {
 import {
   ARMOR_SP_MAX,
   ROLE_GM,
+  VEHICLE_WINDOW_LABELS,
+  cpredVehicleDerived,
+  cpredVehicleHit,
+  cpredVehicleWindowHit,
+  cpredVehicleWindows,
   damageTotal,
+  isVehicleWindowSide,
+  readCpredVehicle,
   isCpredAimPoint,
   isCriticalInjuryEntry,
   nearestPointOfCover,
@@ -44,6 +51,7 @@ import { emitCharacterUpsert, toCharacterView } from './character-io.js';
 import { emitCombatOfScene } from './combat.js';
 import { claimRoundOnce, releaseRoundOnce } from './round-once.js';
 import { emitCovers } from './covers.js';
+import { emitVehicleUpsert } from './vehicles.js';
 import {
   igniteToken,
   oweCarryToToken,
@@ -166,6 +174,121 @@ async function applyDamageToCoverRow(
 }
 
 /**
+ * Trafienie w auto na scenie pościgu (etap 65d1, s. 191): kadłub — obrażenia
+ * minus OB kadłuba (×2 po OB w słaby punkt) z PUK, albo szyba kuloodporna
+ * jednej burty — jak osłona. PUK 0 to wrak: auto staje i dryfuje w tył,
+ * figury zostają w fotelach. Liczby jadą do stołu przez `emitVehicleUpsert`
+ * (karta pojazdu i `chase:sync`). Jak przy osłonie — nic tu nie jest tajne.
+ */
+async function applyDamageToVehicleRow(
+  deps: RealtimeDeps,
+  campaignId: string,
+  sceneVehicleId: unknown,
+  windowSide: unknown,
+  roll: RollResult,
+): Promise<{ sceneVehicleId: string; window?: string; name: string; log: SheetDamageLog }> {
+  if (typeof sceneVehicleId !== 'string') throw new RealtimeError('BAD_REQUEST');
+  if (windowSide !== undefined && !isVehicleWindowSide(windowSide)) {
+    throw new RealtimeError('BAD_REQUEST');
+  }
+  const placed = await deps.ctx.prisma.sceneVehicle.findUnique({
+    where: { id: sceneVehicleId },
+    include: { vehicle: true, scene: true },
+  });
+  if (!placed || placed.scene.campaignId !== campaignId) {
+    throw new RealtimeError('VEHICLE_NOT_FOUND');
+  }
+  const stats = readCpredVehicle(placed.vehicle.system);
+  const rolled = Math.max(0, Math.round(damageTotal(roll)));
+  const named = roll.damage?.targetVehicleId === placed.id;
+  const barrierSp = named
+    ? wholeSp((roll.damage?.system as { barrierSp?: unknown } | undefined)?.barrierSp)
+    : 0;
+
+  if (windowSide !== undefined) {
+    const windows = cpredVehicleWindows(stats);
+    if (!windows) throw new RealtimeError('NO_BULLETPROOF_GLASS');
+    const pane = windows[windowSide];
+    const hit = cpredVehicleWindowHit(pane.hp, rolled, barrierSp);
+    const system = { ...stats, windows: { ...stats.windows, [windowSide]: hit.hpAfter } };
+    const saved = await deps.ctx.prisma.vehicle.update({
+      where: { id: placed.vehicleId },
+      data: { system: JSON.stringify(system) },
+    });
+    await emitVehicleUpsert(deps, campaignId, saved);
+    const label = VEHICLE_WINDOW_LABELS[windowSide];
+    return {
+      sceneVehicleId: placed.id,
+      window: windowSide,
+      name: `${placed.vehicle.name} — ${label}`,
+      log: {
+        location: 'body',
+        locationLabel: label,
+        damageRolled: rolled,
+        ...(barrierSp > 0 ? { barrierSp } : {}),
+        armorSp: 0,
+        damageThrough: Math.max(0, rolled - barrierSp),
+        doubled: false,
+        bonusDamage: 0,
+        hpLost: hit.hpBefore - hit.hpAfter,
+        hp: { before: hit.hpBefore, after: hit.hpAfter, max: pane.max },
+        ...(hit.hpAfter === 0 && hit.hpBefore > 0 ? { woundLabel: 'Szyba rozbita' } : {}),
+      },
+    };
+  }
+
+  const weakSpot = await rollAimedAtWeakSpot(deps, roll);
+  const halvesArmor = readRollHalvesArmor(roll);
+  const hit = cpredVehicleHit(stats, {
+    damage: rolled,
+    ...(weakSpot ? { weakSpot: true } : {}),
+    ...(halvesArmor ? { halvesArmor: true } : {}),
+    ...(barrierSp > 0 ? { barrierSp } : {}),
+  });
+  const saved = await deps.ctx.prisma.vehicle.update({
+    where: { id: placed.vehicleId },
+    data: { system: JSON.stringify({ ...stats, hp: hit.hpAfter }) },
+  });
+  await emitVehicleUpsert(deps, campaignId, saved);
+  const dealt = hit.through * (weakSpot ? 2 : 1);
+  return {
+    sceneVehicleId: placed.id,
+    name: placed.vehicle.name,
+    log: {
+      location: 'body',
+      locationLabel: weakSpot ? 'słaby punkt pojazdu' : 'kadłub',
+      damageRolled: rolled,
+      ...(barrierSp > 0 ? { barrierSp } : {}),
+      armorSp: hit.armorSp,
+      ...(halvesArmor && hit.armorSp > 0 ? { armorHalved: true } : {}),
+      damageThrough: hit.lost,
+      doubled: weakSpot && hit.through > 0,
+      bonusDamage: 0,
+      hpLost: hit.lost,
+      hp: { before: hit.hpBefore, after: hit.hpAfter, max: cpredVehicleDerived(stats).hpMax },
+      ...(hit.wrecked && hit.hpBefore > 0
+        ? {
+            woundLabel:
+              dealt > hit.hpBefore
+                ? `Pojazd zniszczony — nadwyżka ${dealt - hit.hpBefore} przepada`
+                : 'Pojazd zniszczony',
+          }
+        : {}),
+    },
+  };
+}
+
+/** Czy karta ataku, za którą rzucono te obrażenia, celowała w słaby punkt pojazdu. */
+async function rollAimedAtWeakSpot(deps: RealtimeDeps, roll: RollResult): Promise<boolean> {
+  const attackMessageId = roll.damage?.attackMessageId;
+  if (attackMessageId === undefined) return false;
+  const message = await deps.ctx.prisma.chatMessage.findUnique({ where: { id: attackMessageId } });
+  if (!message?.payload) return false;
+  const attack = (JSON.parse(message.payload) as RollResult).attack;
+  return (attack?.system as { vehicleWeakSpot?: unknown } | undefined)?.vehicleWeakSpot === true;
+}
+
+/**
  * „Zastosuj” w toku, po kluczu `karta:cel` — drugie kliknięcie w tę samą kartę,
  * zanim pierwsze zapisze swój wpis, nie przejdzie obok `requireNotApplied`.
  */
@@ -185,7 +308,7 @@ async function requireNotApplied(
   deps: RealtimeDeps,
   campaignId: string,
   sourceMessageId: number,
-  target: { tokenId: unknown } | { coverId: unknown },
+  target: { tokenId: unknown } | { coverId: unknown } | { vehicleId: unknown; window?: unknown },
 ): Promise<void> {
   const logs = await deps.ctx.prisma.chatMessage.findMany({
     where: { campaignId, kind: 'damage', id: { gt: sourceMessageId } },
@@ -198,7 +321,10 @@ async function requireNotApplied(
     const same =
       'tokenId' in target
         ? entry.targetTokenId === target.tokenId
-        : entry.targetCoverId === target.coverId;
+        : 'vehicleId' in target
+          ? entry.targetVehicleId === target.vehicleId &&
+            (entry.targetWindow ?? null) === (target.window ?? null)
+          : entry.targetCoverId === target.coverId;
     if (same) throw new RealtimeError('DAMAGE_ALREADY_APPLIED');
   }
 }
@@ -227,7 +353,14 @@ export async function applyDamageRollTo(
 ): Promise<{ messageId: number }> {
   const sourceMessageId = requireMessageId(payload?.messageId);
   const target =
-    payload?.coverId !== undefined ? { coverId: payload.coverId } : { tokenId: payload?.tokenId };
+    payload?.vehicleId !== undefined
+      ? {
+          vehicleId: payload.vehicleId,
+          ...(payload.window !== undefined ? { window: payload.window } : {}),
+        }
+      : payload?.coverId !== undefined
+        ? { coverId: payload.coverId }
+        : { tokenId: payload?.tokenId };
   const key = `${sourceMessageId}:${JSON.stringify(target)}`;
   if (appliesInFlight.has(key)) throw new RealtimeError('DAMAGE_ALREADY_APPLIED');
   appliesInFlight.add(key);
@@ -261,6 +394,14 @@ function namedTargetsOf(roll: RollResult): Omit<DamageApplyPayload, 'messageId'>
     );
   }
   if (damage.targetCoverId !== undefined) return [{ coverId: damage.targetCoverId }];
+  if (damage.targetVehicleId !== undefined) {
+    return [
+      {
+        vehicleId: damage.targetVehicleId,
+        ...(damage.targetWindow ? { window: damage.targetWindow } : {}),
+      },
+    ];
+  }
   if (damage.targetTokenId) return [{ tokenId: damage.targetTokenId }];
   return [];
 }
@@ -367,6 +508,27 @@ async function applyDamageCard(
   // three lines long and shares nothing with the sheet — no armour, no
   // injury table, no Death Save — so it forks here rather than growing
   // branches inside `applyDamageToSheet`.
+  // Etap 65d1: auto albo jego szyba — droga jak osłony, z OB kadłuba.
+  if (payload?.vehicleId !== undefined) {
+    const view = await applyDamageToVehicleRow(
+      deps,
+      campaignId,
+      payload.vehicleId,
+      payload.window,
+      roll,
+    );
+    const entry: DamageLogEntry = {
+      ...view.log,
+      sourceMessageId,
+      targetVehicleId: view.sceneVehicleId,
+      ...(view.window ? { targetWindow: view.window } : {}),
+      targetName: view.name,
+      characterId: null,
+      targetOwnerId: null,
+    };
+    const logged = await logDamage(deps, campaignId, user.id, entry);
+    return { messageId: logged.id };
+  }
   if (payload?.coverId !== undefined) {
     const view = await applyDamageToCoverRow(deps, campaignId, payload.coverId, roll);
     const entry: DamageLogEntry = {
@@ -917,6 +1079,27 @@ export const damageUndoEvent = defineEvent<DamageUndoPayload, void>({
           data: { hpCurrent: Math.max(0, Math.min(entry.hp.before, cover.hpMax)) },
         });
         await emitCovers(deps, campaignId, cover.scene);
+      }
+    }
+
+    // Auto (65d1): PUK albo szyba burty wracają do stanu sprzed trafienia —
+    // wrak „się skleja” i wraca do jazdy (status liczy się z PUK).
+    if (entry.targetVehicleId !== undefined && entry.hp) {
+      const placed = await deps.ctx.prisma.sceneVehicle.findUnique({
+        where: { id: entry.targetVehicleId },
+        include: { vehicle: true, scene: true },
+      });
+      if (placed && placed.scene.campaignId === campaignId) {
+        const stats = readCpredVehicle(placed.vehicle.system);
+        const system =
+          entry.targetWindow && isVehicleWindowSide(entry.targetWindow)
+            ? { ...stats, windows: { ...stats.windows, [entry.targetWindow]: entry.hp.before } }
+            : { ...stats, hp: entry.hp.before };
+        const saved = await deps.ctx.prisma.vehicle.update({
+          where: { id: placed.vehicleId },
+          data: { system: JSON.stringify(system) },
+        });
+        await emitVehicleUpsert(deps, campaignId, saved);
       }
     }
 

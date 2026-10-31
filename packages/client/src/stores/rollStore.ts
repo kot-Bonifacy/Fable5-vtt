@@ -127,6 +127,10 @@ export interface PendingAttack {
   targetCoverId?: number;
   /** Square the charge is aimed at instead of anybody (stage 16d). */
   targetPoint?: ScenePoint;
+  /** Auto na scenie pościgu (`SceneVehicle.id`) zamiast figury (etap 65d1). */
+  targetVehicleId?: string;
+  /** Szyba kuloodporna tej burty auta (65d1). */
+  targetWindow?: string;
   targetName: string;
   request: CpredAttackRequest;
   /** Cup label, e.g. „Zgrzyt 9 → Ganger · 24 m". */

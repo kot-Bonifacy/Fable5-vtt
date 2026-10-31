@@ -662,7 +662,8 @@ async function executeDecision(
     // innego, bo „strzelaj mimo osłony" jest ruling­iem, nie taktyką.
     if ('blocked' in result && result.blocked) {
       throw new RealtimeError(
-        result.blocked.kind === 'cover' ? 'TARGET_BEHIND_COVER' : 'TARGET_BEHIND_SHIELD',
+        // Szyba kuloodporna auta (65d1) to dla bota osłona jak każda inna.
+        result.blocked.kind === 'shield' ? 'TARGET_BEHIND_SHIELD' : 'TARGET_BEHIND_COVER',
       );
     }
     return;

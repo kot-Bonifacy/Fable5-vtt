@@ -15,6 +15,10 @@ import {
   VEHICLE_LAYOUTS,
   cpredDriverIncapable,
   cpredVehicleChase,
+  cpredVehicleDerived,
+  cpredVehicleUpgradeNames,
+  cpredVehicleWindows,
+  cpredVehicleWrecked,
   readCpredVehicle,
   chaseBodyContains,
   clampChaseVehicle,
@@ -104,18 +108,24 @@ function toSceneVehicleView(
   const body = chaseBodyOf(row.vehicle);
   const drivers = new Set(readDrivers(row.drivers));
   const driverTokens = context.driverTokens;
-  const chase = cpredVehicleChase(readCpredVehicle(row.vehicle.system), {
+  const stats = readCpredVehicle(row.vehicle.system);
+  const chase = cpredVehicleChase(stats, {
     tempo: context.tempo,
     started: row.started,
     nitroUsed: row.nitroUsed,
   });
+  const derived = cpredVehicleDerived(stats);
+  const stored = isSceneVehicleStatus(row.status) ? row.status : 'racing';
+  // Wrak (65d1) to PUK 0, nie kolumna: auto w kadrze z zerem pokazuje się jako
+  // `wrecked`, a za krawędzią zostaje `behind` / `escaped` jak każde inne.
+  const status = stored === 'racing' && cpredVehicleWrecked(stats) ? 'wrecked' : stored;
   return {
     id: row.id,
     sceneId: row.sceneId,
     vehicleId: row.vehicleId,
     x: row.x,
     y: row.y,
-    status: isSceneVehicleStatus(row.status) ? row.status : 'racing',
+    status,
     name: row.vehicle.name,
     imageUrl: row.vehicle.imageUrl,
     widthSq: body.widthSq,
@@ -134,6 +144,11 @@ function toSceneVehicleView(
     moveSq: chase.moveSq,
     driftSq: chase.driftSq,
     nitroLeft: chase.nitroLeft,
+    hp: stats.hp,
+    hpMax: derived.hpMax,
+    armorSp: derived.hullSp,
+    windows: cpredVehicleWindows(stats),
+    upgrades: cpredVehicleUpgradeNames(stats),
   };
 }
 

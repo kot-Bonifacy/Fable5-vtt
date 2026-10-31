@@ -25,6 +25,7 @@ import {
   cpredSkillLevel,
   cpredVehicleChase,
   cpredVehicleSkillId,
+  cpredVehicleWrecked,
   parseCharacterData,
   readCpredTurn,
   readCpredVehicle,
@@ -99,6 +100,10 @@ async function requireOwnDriver(
 
 /** Ta sama kontrola przed ruchem: silnik i panowanie nad autem. */
 function requireControllable(placed: PlacedWithScene): void {
+  // Wrak nie jedzie (s. 191, 65d1) — przed silnikiem, bo to on mówi, dlaczego.
+  if (cpredVehicleWrecked(readCpredVehicle(placed.vehicle.system))) {
+    throw new RealtimeError('VEHICLE_WRECKED');
+  }
   if (!placed.started) throw new RealtimeError('VEHICLE_NOT_STARTED');
   if (placed.lostControl) throw new RealtimeError('VEHICLE_OUT_OF_CONTROL');
 }
@@ -245,6 +250,10 @@ export const vehicleEngineEvent = defineEvent<VehicleEnginePayload, SceneVehicle
     const campaignId = requireChaseCampaignId(socket.data);
     const placed = await requirePlaced(deps.ctx.prisma, campaignId, payload?.sceneVehicleId);
     if (typeof payload?.on !== 'boolean') throw new RealtimeError('BAD_REQUEST');
+    // Wraku nie da się uruchomić, „dopóki nie zostanie naprawiony” (s. 191).
+    if (payload.on && cpredVehicleWrecked(readCpredVehicle(placed.vehicle.system))) {
+      throw new RealtimeError('VEHICLE_WRECKED');
+    }
     if (placed.started === payload.on) {
       return placedView(deps.ctx.prisma, placed.sceneId, placed.id);
     }

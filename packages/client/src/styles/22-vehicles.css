@@ -253,6 +253,50 @@ input.vehicle-card-name {
   text-align: right;
 }
 
+/* Kadłub auta w menu (65d1): PUK z paskiem, OB, szyby, ulepszenia. */
+.chase-menu-hull {
+  margin: 0 0.5rem 0.35rem;
+}
+
+.chase-menu-hull-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+}
+
+.chase-menu-hull-edit input {
+  width: 3.5rem;
+}
+
+.chase-menu-hull-bar {
+  height: 0.35rem;
+  margin: 0.2rem 0 0.25rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--text-dim) 25%, transparent);
+  overflow: hidden;
+}
+
+.chase-menu-hull-bar > span {
+  display: block;
+  height: 100%;
+  background: var(--ok);
+}
+
+.chase-menu-hull-bar.is-wrecked {
+  outline: 1px solid var(--err);
+}
+
+.chase-menu-portrait {
+  width: 1.4rem;
+  height: 1.4rem;
+  margin-right: 0.3rem;
+  border-radius: 50%;
+  object-fit: cover;
+  vertical-align: middle;
+}
+
 /* Stan auta w menu (65c): budżet na turę, dryf i kto panuje nad autem. */
 .chase-menu-state {
   margin: 0 0.5rem 0.25rem;

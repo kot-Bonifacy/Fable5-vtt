@@ -1780,6 +1780,8 @@ export type SheetDamageLog = Omit<
   DamageLogEntry,
   | 'targetTokenId'
   | 'targetCoverId'
+  | 'targetVehicleId'
+  | 'targetWindow'
   | 'targetName'
   | 'sourceMessageId'
   | 'targetOwnerId'

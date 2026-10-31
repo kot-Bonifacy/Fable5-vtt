@@ -359,6 +359,9 @@ export interface CpredRollRequest {
   targetTokenId?: string;
   /** Server-filled: cover the damage is aimed at instead (stage 16c). */
   targetCoverId?: number;
+  /** Server-filled: auto (i szyba burty) zamiast figury (etap 65d1). */
+  targetVehicleId?: string;
+  targetWindow?: string;
   /**
    * Server-filled: everyone an area attack reached (stage 16d), so one roll can
    * be applied to all of them. Read off the stored attack like everything else
@@ -553,6 +556,9 @@ export interface CpredDamagePlan {
   targetTokenId?: string;
   /** Cover the damage is aimed at instead (stage 16c) — a car, not a person. */
   targetCoverId?: number;
+  /** Auto na scenie pościgu (i szyba burty) zamiast figury (etap 65d1). */
+  targetVehicleId?: string;
+  targetWindow?: string;
   /** Attack card the damage is rolled for (#56) — copied from the request. */
   attackMessageId?: number;
   /** Everyone an area attack reached (stage 16d) — each applied separately. */
@@ -1249,6 +1255,7 @@ function planDamageRoll(
     request.attackMessageId === undefined &&
     !request.targetTokenId &&
     request.targetCoverId === undefined &&
+    request.targetVehicleId === undefined &&
     !request.areaTargets?.length;
   const what = standalone ? 'sam rzut obrażeń, bez ataku' : 'obrażenia';
   return {
@@ -1267,6 +1274,12 @@ function planDamageRoll(
         ...(multiplier > 1 ? { multiplier } : {}),
         ...(request.targetTokenId ? { targetTokenId: request.targetTokenId } : {}),
         ...(request.targetCoverId !== undefined ? { targetCoverId: request.targetCoverId } : {}),
+        ...(request.targetVehicleId !== undefined
+          ? { targetVehicleId: request.targetVehicleId }
+          : {}),
+        ...(request.targetVehicleId !== undefined && request.targetWindow
+          ? { targetWindow: request.targetWindow }
+          : {}),
         ...(request.areaTargets ? { areaTargets: request.areaTargets } : {}),
         ...(request.attackMessageId !== undefined
           ? { attackMessageId: request.attackMessageId }

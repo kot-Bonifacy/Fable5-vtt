@@ -344,6 +344,69 @@ export function chaseBodyContains(
   return Math.abs(point.x - centre.x) <= hx && Math.abs(point.y - centre.y) <= hy;
 }
 
+/** Punkt bryły auta najbliższy `point` — tam celuje strzał w auto (65d, jak osłona z 16c). */
+export function chaseBodyNearestPoint(
+  centre: ScenePoint,
+  body: Pick<ChaseBody, 'widthSq' | 'lengthSq'>,
+  direction: ChaseDirection,
+  gridSizePx: number,
+  point: ScenePoint,
+): ScenePoint {
+  const { hx, hy } = chaseBodyHalfExtents(body, direction, gridSizePx);
+  return {
+    x: Math.min(Math.max(point.x, centre.x - hx), centre.x + hx),
+    y: Math.min(Math.max(point.y, centre.y - hy), centre.y + hy),
+  };
+}
+
+export const VEHICLE_WINDOW_SIDES = ['front', 'rear', 'left', 'right'] as const;
+/**
+ * Burta auta względem kierunku jazdy (65d): szyby kuloodporne przyjmują
+ * obrażenia osobno na każdej burcie, a strzał w pasażera idzie przez burtę
+ * zwróconą do strzelca. Lewa burta to strona kierowcy (`VEHICLE_LAYOUTS`).
+ */
+export type VehicleWindowSide = (typeof VEHICLE_WINDOW_SIDES)[number];
+
+export function isVehicleWindowSide(value: unknown): value is VehicleWindowSide {
+  return (VEHICLE_WINDOW_SIDES as readonly unknown[]).includes(value);
+}
+
+export const VEHICLE_WINDOW_LABELS: Record<VehicleWindowSide, string> = {
+  front: 'przednia szyba',
+  rear: 'tylna szyba',
+  left: 'lewe szyby',
+  right: 'prawe szyby',
+};
+
+/**
+ * Burta zwrócona do punktu: współrzędne punktu w układzie auta (przód wzdłuż
+ * kierunku jazdy, lewo — w stronę kierowcy) dzielone przez połowy bryły; wygrywa
+ * oś, w której punkt leży dalej od środka. Punkt w środku bryły (strzelec
+ * w aucie) daje przód — wołający i tak nie pyta o szybę z wnętrza.
+ */
+export function vehicleSideFacing(
+  centre: ScenePoint,
+  body: Pick<ChaseBody, 'widthSq' | 'lengthSq'>,
+  direction: ChaseDirection,
+  point: ScenePoint,
+): VehicleWindowSide {
+  const forward =
+    direction === 'right'
+      ? { x: 1, y: 0 }
+      : direction === 'left'
+        ? { x: -1, y: 0 }
+        : direction === 'up'
+          ? { x: 0, y: -1 }
+          : { x: 0, y: 1 };
+  const left = { x: forward.y, y: -forward.x };
+  const dx = point.x - centre.x;
+  const dy = point.y - centre.y;
+  const along = (dx * forward.x + dy * forward.y) / Math.max(1e-6, body.lengthSq);
+  const across = (dx * left.x + dy * left.y) / Math.max(1e-6, body.widthSq);
+  if (Math.abs(along) >= Math.abs(across)) return along >= 0 ? 'front' : 'rear';
+  return across >= 0 ? 'left' : 'right';
+}
+
 /**
  * Fotel najbliższy punktu, o ile punkt leży w promieniu połowy kratki od jego
  * środka — upuszczenie figury przez MG i klik gracza w znacznik fotela.
@@ -449,6 +512,18 @@ export interface SceneVehicleView {
   driftSq: number;
   /** Zbiorniki Nitro, które jeszcze zostały na ten pościg. */
   nitroLeft: number;
+  /**
+   * Punkty kadłuba (65d) — jawne dla całego stołu, jak PW osłony (16c): każdy
+   * widzi, jak maska się sypie. 0 = wrak (`status: 'wrecked'` w kadrze).
+   */
+  hp: number;
+  hpMax: number;
+  /** OB kadłuba (0 bez opancerzenia). */
+  armorSp: number;
+  /** Szyby, które są osłoną (kuloodporne) — PW każdej burty; `null` = szyby nie chronią. */
+  windows: Record<VehicleWindowSide, { hp: number; max: number }> | null;
+  /** Nazwy ulepszeń do panelu auta — system liczy, rdzeń wypisuje. */
+  upgrades: string[];
 }
 
 export const CHASE_CONTROLS = ['driver', 'none', 'lost'] as const;

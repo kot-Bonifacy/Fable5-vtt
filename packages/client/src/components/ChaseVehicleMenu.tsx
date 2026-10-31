@@ -1,9 +1,12 @@
+import { useState } from 'react';
 import {
   CHASE_CONTROL_LABELS,
   VEHICLE_LAYOUTS,
+  VEHICLE_WINDOW_SIDES,
   ROLE_GM,
   type SceneVehicleView,
   type TokenView,
+  type VehicleWindowSide,
 } from '@vtt/shared';
 import { useAuthStore } from '../stores/authStore.js';
 import { useChaseStore } from '../stores/chaseStore.js';
@@ -18,6 +21,7 @@ import {
   restoreVehicleControl,
   seatInVehicle,
   setVehicleEngine,
+  updateVehicle,
 } from '../socket.js';
 import { notifyRefusal } from '../notices.js';
 
@@ -29,7 +33,15 @@ import { notifyRefusal } from '../notices.js';
  * prowadzona figura, a gdy jej nie ma — jedyna własna figura na scenie.
  */
 
-const MENU_WIDTH = 260;
+const MENU_WIDTH = 280;
+
+/** Krótkie nazwy burt do wiersza szyb w panelu. */
+const WINDOW_SHORT: Record<VehicleWindowSide, string> = {
+  front: 'przód',
+  rear: 'tył',
+  left: 'lewe',
+  right: 'prawe',
+};
 
 /** Zdania odmów `vehicle:seat` i reszty zdarzeń auta. */
 export function chaseErrorText(code: string | undefined): string {
@@ -70,6 +82,9 @@ export function chaseErrorText(code: string | undefined): string {
       return 'To nie jest twoja tura.';
     case 'NO_ACTION_LEFT':
       return 'Nie masz już Akcji w tej turze.';
+    // Etap 65d1: PUK 0.
+    case 'VEHICLE_WRECKED':
+      return 'Auto jest wrakiem — nie pojedzie, dopóki ktoś go nie naprawi.';
     default:
       return `Nie udało się: ${code ?? 'nieznany błąd'}.`;
   }
@@ -148,6 +163,7 @@ export function ChaseVehicleMenu() {
       >
         <p className="context-menu-title">{vehicle.name}</p>
         <p className="chase-menu-state">{vehicleStateLine(vehicle)}</p>
+        <VehicleHull vehicle={vehicle} isGm={isGm} />
         {drives && vehicle.status === 'racing' && (
           <button
             type="button"
@@ -198,7 +214,12 @@ export function ChaseVehicleMenu() {
             <div key={seat} className="chase-menu-seat">
               <span className="chase-menu-seat-label">{label}</span>
               {occupant ? (
-                <span className="chase-menu-seat-who">{occupant.name}</span>
+                <span className="chase-menu-seat-who">
+                  {occupant.imageUrl ? (
+                    <img className="chase-menu-portrait" src={occupant.imageUrl} alt="" />
+                  ) : null}
+                  {occupant.name}
+                </span>
               ) : figure && !here ? (
                 <button type="button" className="context-menu-item" onClick={() => sit(seat)}>
                   {isGm ? `Posadź: ${figure.name}` : 'Usiądź'}
@@ -229,10 +250,87 @@ export function ChaseVehicleMenu() {
   );
 }
 
+/**
+ * Kadłub auta (etap 65d1): PUK z paskiem, OB, szyby kuloodporne, Nitro
+ * i ulepszenia — jawne dla stołu jak PW osłony. MG ustawia PUK ręcznie
+ * (naprawa jest poza etapem — `POMYSLY.md`).
+ */
+function VehicleHull({ vehicle, isGm }: { vehicle: SceneVehicleView; isGm: boolean }) {
+  const [draft, setDraft] = useState<string>(String(vehicle.hp));
+  const share = vehicle.hpMax > 0 ? Math.max(0, Math.min(1, vehicle.hp / vehicle.hpMax)) : 0;
+  const save = () => {
+    const hp = Number.parseInt(draft, 10);
+    if (!Number.isInteger(hp) || hp === vehicle.hp) return;
+    void updateVehicle(vehicle.vehicleId, { system: { hp } }).then((ack) => {
+      if (!ack.ok) notifyRefusal('chase', chaseErrorText(ack.error));
+    });
+  };
+  return (
+    <div className="chase-menu-hull">
+      <div className="chase-menu-hull-row">
+        <span>{vehicle.hp > 0 ? 'PUK' : 'Wrak · PUK'}</span>
+        {isGm ? (
+          <span className="chase-menu-hull-edit">
+            <input
+              type="number"
+              min={0}
+              max={vehicle.hpMax}
+              value={draft}
+              aria-label="PUK auta"
+              onChange={(event) => setDraft(event.target.value)}
+              onBlur={save}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter') save();
+              }}
+            />
+            /{vehicle.hpMax}
+          </span>
+        ) : (
+          <strong>
+            {vehicle.hp}/{vehicle.hpMax}
+          </strong>
+        )}
+        <span title="OB kadłuba — schodzi z każdego trafienia w auto">OB {vehicle.armorSp}</span>
+      </div>
+      <div
+        className={`chase-menu-hull-bar${vehicle.hp > 0 ? '' : ' is-wrecked'}`}
+        role="meter"
+        aria-label="PUK"
+        aria-valuemin={0}
+        aria-valuemax={vehicle.hpMax}
+        aria-valuenow={vehicle.hp}
+      >
+        <span style={{ width: `${Math.round(share * 100)}%` }} />
+      </div>
+      {vehicle.windows && (
+        <p
+          className="chase-menu-state"
+          title="Szyby kuloodporne: osłona pasażera na burcie zwróconej do strzelca, dopóki mają PW"
+        >
+          Szyby:{' '}
+          {VEHICLE_WINDOW_SIDES.map(
+            (side) =>
+              `${WINDOW_SHORT[side]} ${vehicle.windows![side].hp}/${vehicle.windows![side].max}`,
+          ).join(' · ')}
+        </p>
+      )}
+      {vehicle.upgrades.length > 0 && (
+        <p className="chase-menu-state">
+          {vehicle.upgrades.join(', ')}
+          {vehicle.nitroLeft > 0 ? ` · Nitro: ${vehicle.nitroLeft}` : ''}
+        </p>
+      )}
+    </div>
+  );
+}
+
 /** „Ruch 5 kratek/turę · dryf −5 · kierowca prowadzi” — stan auta jednym wierszem. */
 function vehicleStateLine(vehicle: SceneVehicleView): string {
   if (vehicle.status === 'behind') return 'Zostało w tyle — poza pościgiem';
   if (vehicle.status === 'escaped') return 'Uciekło — poza pościgiem';
+  if (vehicle.status === 'wrecked') {
+    return `Wrak — stoi, droga zabiera go w tył · dryf −${formatSq(Math.abs(vehicle.driftSq))}/rundę`;
+  }
   const drift =
     vehicle.driftSq === 0
       ? 'bez dryfu'

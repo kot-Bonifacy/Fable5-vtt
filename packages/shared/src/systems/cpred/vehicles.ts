@@ -1,3 +1,4 @@
+import { VEHICLE_WINDOW_SIDES, isVehicleWindowSide, type VehicleWindowSide } from '../../chase.js';
 import {
   VEHICLE_BODY_SIZES,
   vehicleBodyFor,
@@ -8,6 +9,7 @@ import {
 import type { VehicleEntry } from './compendium.js';
 import type { CpredFleetRow } from './roleability.js';
 import { cpredActionBlock } from './statuses.js';
+import { hasRequiredCyberware } from './attachments.js';
 
 /**
  * Pojazdy CP RED (etap 65a, s. 189–192 i ulepszenia Moto s. 163–165).
@@ -358,6 +360,11 @@ export interface CpredVehicleStats {
   /** Wiersz Taboru Rodziny, którym ten pojazd jest; `null` — pojazd spoza Taboru. */
   fleetRowId: string | null;
   notes: string;
+  /**
+   * Bieżące PW szyb kuloodpornych na każdej burcie (65d) — tylko te, które
+   * oberwały; brak burty znaczy pełne PW (`cpredVehicleWindows`).
+   */
+  windows: Partial<Record<VehicleWindowSide, number>>;
 }
 
 /** Gdy katalogu nie ma (próbka, plik bez wpisu): kompakt z tabeli s. 190. */
@@ -412,11 +419,24 @@ export function readCpredVehicle(raw: unknown): CpredVehicleStats {
     upgrades: readUpgradeRows(input.upgrades),
     fleetRowId: typeof input.fleetRowId === 'string' && input.fleetRowId ? input.fleetRowId : null,
     notes: typeof input.notes === 'string' ? input.notes.slice(0, CPRED_VEHICLE_NOTES_MAX) : '',
+    windows: {},
   };
   // Bieżące PUK liczy się od sufitu z ulepszeniami — Wzmocniona konstrukcja to +20.
-  const ceiling = cpredVehicleDerived(stats).hpMax;
-  stats.hp = clampInt(input.hp, 0, ceiling, ceiling);
+  const derived = cpredVehicleDerived(stats);
+  stats.hp = clampInt(input.hp, 0, derived.hpMax, derived.hpMax);
+  stats.windows = readWindows(input.windows, derived.windowHp);
   return stats;
+}
+
+function readWindows(raw: unknown, max: number): Partial<Record<VehicleWindowSide, number>> {
+  if (max <= 0 || typeof raw !== 'object' || raw === null) return {};
+  const windows: Partial<Record<VehicleWindowSide, number>> = {};
+  for (const [side, value] of Object.entries(raw as Record<string, unknown>)) {
+    if (!isVehicleWindowSide(side)) continue;
+    const hp = clampInt(value, 0, max, max);
+    if (hp < max) windows[side] = hp;
+  }
+  return windows;
 }
 
 function safeParse(text: string): Record<string, unknown> {
@@ -583,6 +603,10 @@ export function cpredVehiclePatch(
     ...('seats' in patch ? { seats: patch.seats } : {}),
     ...('move' in patch ? { move: patch.move } : {}),
     ...('notes' in patch && typeof patch.notes === 'string' ? { notes: patch.notes } : {}),
+    // Szyby (65d): MG wstawia nowe łatą `windows: {}` albo ustawia PW burty.
+    ...('windows' in patch && typeof patch.windows === 'object' && patch.windows !== null
+      ? { windows: patch.windows }
+      : {}),
     upgrades: [...fromFleet, ...own],
   });
   const problem = cpredVehicleUpgradesProblem(next.kind, next.upgrades);
@@ -689,7 +713,8 @@ export function cpredVehicleChase(
   stats: CpredVehicleStats,
   chase: { tempo: number; started: boolean; nitroUsed: number },
 ): { moveSq: number; driftSq: number; nitroLeft: number } {
-  const speed = chase.started ? stats.move : 0;
+  // Wrak nie jedzie (65d1): droga zabiera go w tył z pełnym tempem, jak zgaszone auto.
+  const speed = chase.started && !cpredVehicleWrecked(stats) ? stats.move : 0;
   return {
     moveSq: Math.max(0, speed) / 4,
     driftSq: (Math.max(0, speed) - Math.max(0, chase.tempo)) / 4,
@@ -704,4 +729,122 @@ export function cpredVehicleChase(
  */
 export function cpredDriverIncapable(statuses: readonly string[]): boolean {
   return statuses.includes('mortally-wounded') || cpredActionBlock(statuses) !== null;
+}
+
+// ───────────────────────── Walka pojazdów (etap 65d1, s. 191) ─────────────────────────
+
+/** „Atak … wykonuje się go z modyfikatorem −8” — Celowanie w słaby punkt (s. 191). */
+export const CPRED_VEHICLE_WEAK_SPOT_PENALTY = -8;
+/** „…obrażenia, które przejdą przez OB pancerza, mnoży się ×2” (s. 191). */
+export const CPRED_VEHICLE_WEAK_SPOT_MULTIPLIER = 2;
+/** „…jeśli pojazd porusza się, trafienie atakiem bronią białą w słaby punkt ma PT 13” (s. 191). */
+export const CPRED_VEHICLE_MOVING_MELEE_DV = 13;
+export const CPRED_VEHICLE_WEAK_SPOT_LABEL = 'Słaby punkt pojazdu';
+/** Ulepszone zespolenie: kierowca z REF 8+ unika za siebie, pasażera i motocykl (s. 165). */
+export const CPRED_INTERFACE_LINK_MIN_REF = 8;
+
+/** Szyby każdej burty z bieżącymi PW; `null`, gdy szyby nie są osłoną (bez kuloodpornych). */
+export function cpredVehicleWindows(
+  stats: CpredVehicleStats,
+): Record<VehicleWindowSide, { hp: number; max: number }> | null {
+  const max = cpredVehicleDerived(stats).windowHp;
+  if (max <= 0) return null;
+  const windows = {} as Record<VehicleWindowSide, { hp: number; max: number }>;
+  for (const side of VEHICLE_WINDOW_SIDES) {
+    windows[side] = { hp: Math.min(max, stats.windows[side] ?? max), max };
+  }
+  return windows;
+}
+
+/** Czy pojazd jest wrakiem: „Gdy PUK spadną do zera, pojazd uznaje się za Zniszczony” (s. 191). */
+export function cpredVehicleWrecked(stats: Pick<CpredVehicleStats, 'hp'>): boolean {
+  return stats.hp <= 0;
+}
+
+export interface CpredVehicleHit {
+  /** Co pokazały kości (z mnożnikiem ognia ciągłego). */
+  damage: number;
+  /** Trafienie w słaby punkt: obrażenia po OB ×2. */
+  weakSpot?: boolean;
+  /** Broń biała „ignoruje połowę OB” (s. 176) — także kadłuba. */
+  halvesArmor?: boolean;
+  /** OB barier na linii strzału (42b), odejmowane przed kadłubem. */
+  barrierSp?: number;
+}
+
+export interface CpredVehicleHitResult {
+  hpBefore: number;
+  hpAfter: number;
+  /** OB kadłuba, które zadziałało w tym trafieniu (po połowie dla broni białej). */
+  armorSp: number;
+  /** Ile przeszło przez OB — przed mnożnikiem słabego punktu. */
+  through: number;
+  /** Ile zeszło z PUK. */
+  lost: number;
+  wrecked: boolean;
+}
+
+/**
+ * Trafienie w kadłub (s. 191): obrażenia minus OB barier i kadłuba, ×2 przy
+ * słabym punkcie, z PUK do zera — nadwyżka przepada jak przy osłonie (s. 179).
+ * OB kadłuba się nie zdziera: podręcznik mówi o ablacji pancerza postaci,
+ * pojazdu — nie (rozstrzygnięcie 65d1).
+ */
+export function cpredVehicleHit(
+  stats: Pick<CpredVehicleStats, 'hp' | 'hpMax' | 'seats' | 'upgrades'>,
+  hit: CpredVehicleHit,
+): CpredVehicleHitResult {
+  const hull = cpredVehicleDerived(stats).hullSp;
+  const armorSp = hit.halvesArmor ? Math.ceil(hull / 2) : hull;
+  const afterBarrier = Math.max(0, Math.round(hit.damage) - Math.max(0, hit.barrierSp ?? 0));
+  const through = Math.max(0, afterBarrier - armorSp);
+  const dealt = hit.weakSpot ? through * CPRED_VEHICLE_WEAK_SPOT_MULTIPLIER : through;
+  const hpAfter = Math.max(0, stats.hp - dealt);
+  return {
+    hpBefore: stats.hp,
+    hpAfter,
+    armorSp,
+    through,
+    lost: stats.hp - hpAfter,
+    wrecked: hpAfter <= 0,
+  };
+}
+
+/**
+ * Trafienie w szybę kuloodporną burty: jak w osłonę — PW w dół, nadwyżka
+ * przepada (s. 179). Zwraca nowe PW tej burty.
+ */
+export function cpredVehicleWindowHit(
+  current: number,
+  damage: number,
+  barrierSp = 0,
+): { hpBefore: number; hpAfter: number } {
+  const dealt = Math.max(0, Math.round(damage) - Math.max(0, barrierSp));
+  return { hpBefore: current, hpAfter: Math.max(0, current - dealt) };
+}
+
+/**
+ * Ulepszone zespolenie ze złączem interfejsu (s. 165): motocykl z tym
+ * ulepszeniem i kierowca ze Złączami interfejsu oraz REF 8+ — wtedy kierowca
+ * unika ataków wymierzonych w motocykl i w pasażera.
+ */
+export function cpredInterfaceLinkDodges(
+  stats: Pick<CpredVehicleStats, 'kind' | 'upgrades'>,
+  driver: { ref: number; cyberware: readonly string[] },
+): boolean {
+  if (stats.kind !== 'motorcycle') return false;
+  if (!(
+    cpredVehicleDerived({ hpMax: 1, seats: 1, upgrades: stats.upgrades }).counts.interfaceLink ?? 0
+  )) {
+    return false;
+  }
+  return (
+    driver.ref >= CPRED_INTERFACE_LINK_MIN_REF &&
+    hasRequiredCyberware([CPRED_INTERFACE_PLUGS_NAME], driver.cyberware)
+  );
+}
+
+/** Nazwy ulepszeń pojazdu po kolei — panel auta. */
+export function cpredVehicleUpgradeNames(stats: Pick<CpredVehicleStats, 'upgrades'>): string[] {
+  return stats.upgrades.map((row) => cpredVehicleUpgrade(row.upgradeId)?.name ?? row.upgradeId);
 }

@@ -703,6 +703,106 @@ describe('planCpredAttack — cover (stage 16c)', () => {
   });
 });
 
+describe('planCpredAttack — auto na scenie pościgu (etap 65d1)', () => {
+  const data = sheet({ weapons: [weaponRow()], skills: { handgun: 6, 'melee-weapon': 6 } });
+  const moving = {
+    name: 'Thorton Galena',
+    vehicleId: 'sv1',
+    metres: 12,
+    vehicle: { moving: true },
+  };
+
+  it('celuje w auto jak w osłonę: PT z tabeli zasięgu, bez Uniku, z adresem auta', () => {
+    const shot = planCpredAttack(
+      data,
+      registry,
+      { weaponRowId: weaponRow().id, mode: 'single', aimedAt: 'head' },
+      { row: weaponRow(), resolved: pistol },
+      moving,
+    );
+    expect(shot).toMatchObject({ ok: true });
+    if (!shot.ok) return;
+    expect(shot.plan.attack.dv).toBe(dvForRange(PISTOL_DV, 12));
+    expect(shot.plan.attack.targetVehicleId).toBe('sv1');
+    expect(shot.plan.attack.aimed).toBe(false);
+    expect(shot.plan.attack.vehicleWeakSpot).toBeUndefined();
+  });
+
+  it('słaby punkt: −8 w rzucie, cała Akcja i znacznik na karcie (s. 191)', () => {
+    const plain = planCpredAttack(
+      data,
+      registry,
+      { weaponRowId: weaponRow().id, mode: 'single' },
+      { row: weaponRow(), resolved: pistol },
+      moving,
+    );
+    const shot = planCpredAttack(
+      data,
+      registry,
+      { weaponRowId: weaponRow().id, mode: 'single', weakSpot: true },
+      { row: weaponRow(), resolved: pistol },
+      moving,
+    );
+    expect(shot.ok && plain.ok).toBe(true);
+    if (!shot.ok || !plain.ok) return;
+    expect(shot.plan.modifierTotal).toBe(plain.plan.modifierTotal - 8);
+    expect(shot.plan.breakdown.some((row) => row.label === 'Słaby punkt pojazdu')).toBe(true);
+    expect(shot.plan.attack.vehicleWeakSpot).toBe(true);
+    expect(shot.plan.attack.aimed).toBe(true);
+  });
+
+  it('słaby punkt przepada przy szybie i przy celu, który nie jest autem', () => {
+    const pane = planCpredAttack(
+      data,
+      registry,
+      { weaponRowId: weaponRow().id, mode: 'single', weakSpot: true },
+      { row: weaponRow(), resolved: pistol },
+      { ...moving, window: 'left', vehicle: { moving: true, window: true } },
+    );
+    expect(pane.ok && pane.plan.attack.vehicleWeakSpot).toBeFalsy();
+    expect(pane.ok && pane.plan.attack.targetWindow).toBe('left');
+    const person = planCpredAttack(
+      data,
+      registry,
+      { weaponRowId: weaponRow().id, mode: 'single', weakSpot: true },
+      { row: weaponRow(), resolved: pistol },
+      { name: 'Ganger', tokenId: 't1', metres: 12 },
+    );
+    expect(person.ok && person.plan.attack.vehicleWeakSpot).toBeFalsy();
+  });
+
+  it('cios bronią białą: w jadące auto PT 13, w stojące trafia zawsze (s. 191)', () => {
+    const swing = (still: boolean) =>
+      planCpredAttack(
+        data,
+        registry,
+        { weaponRowId: weaponRow().id, mode: 'single', weakSpot: true },
+        { row: weaponRow(), resolved: blade },
+        { ...moving, metres: 1, vehicle: { moving: !still } },
+      );
+    const atSpeed = swing(false);
+    const parked = swing(true);
+    expect(atSpeed.ok && atSpeed.plan.attack.dv).toBe(13);
+    expect(atSpeed.ok && atSpeed.plan.attack.dvSource).toBe('vehicle-moving');
+    expect(parked.ok && parked.plan.attack.dv).toBe(0);
+    expect(parked.ok && parked.plan.attack.vehicleWeakSpot).toBe(true);
+  });
+
+  it('ognia zaporowego na auto nie ma', () => {
+    const row = weaponRow({ ammoCurrent: 25, ammoMax: 25 });
+    const gunner = sheet({ weapons: [row], skills: { autofire: 6 } });
+    expect(
+      planCpredAttack(
+        gunner,
+        registry,
+        { weaponRowId: row.id, mode: 'suppressive' },
+        { row, resolved: rifle },
+        { ...moving, metres: 20 },
+      ),
+    ).toEqual({ ok: false, error: 'COVER_NOT_SUPPRESSIBLE' });
+  });
+});
+
 describe('problem messages', () => {
   it('has Polish text for every problem the planner can return', () => {
     for (const message of Object.values(CPRED_ATTACK_PROBLEM_MESSAGES)) {

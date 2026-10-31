@@ -106,12 +106,17 @@ function prefersReducedMotion(): boolean {
 
 /** Podpis auta: nazwa i — gdy coś jest nie tak — stan (65c). */
 function vehicleCaption(vehicle: SceneVehicleView): string {
+  // Wrak (65d1) przed silnikiem — to jest powód, dla którego auto stoi.
+  if (vehicle.hp <= 0) return `${vehicle.name} · wrak`;
   if (!vehicle.started) return `${vehicle.name} · silnik zgaszony`;
   if (vehicle.control !== 'driver') {
     return `${vehicle.name} · ${CHASE_CONTROL_LABELS[vehicle.control]}`;
   }
   return vehicle.name;
 }
+
+/** Szarość wraku (65d1) — mnożona przez grafikę auta. */
+const WRECK_TINT = 0x6b6b6b;
 
 export class ChaseLayer {
   /** Bieżnia — stoi w miejscu tła sceny, które na scenie pościgu się chowa. */
@@ -365,7 +370,9 @@ export class ChaseLayer {
     const direction = scene.chase.direction;
     node.root.position.set(centre.x, centre.y);
     node.body.rotation = (chaseHeadingDeg(direction) * Math.PI) / 180;
-    node.root.alpha = vehicle.status === 'racing' ? 1 : 0.45;
+    node.root.alpha = vehicle.status === 'racing' ? 1 : vehicle.status === 'wrecked' ? 0.8 : 0.45;
+    // Wrak (65d1) traci kolor — szary kadłub, który droga zabiera w tył.
+    node.body.tint = vehicle.status === 'wrecked' ? WRECK_TINT : 0xffffff;
 
     // Auto bez grafiki dostaje wbudowaną wg bryły; motocykl zostaje bryłą.
     const art = vehicle.imageUrl ?? defaultVehicleArt(vehicle.layout);

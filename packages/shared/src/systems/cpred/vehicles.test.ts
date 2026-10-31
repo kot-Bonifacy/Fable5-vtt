@@ -17,6 +17,11 @@ import {
   cpredVehicleUpgradeProblem,
   cpredVehicleUpgradesProblem,
   readCpredVehicle,
+  cpredInterfaceLinkDodges,
+  cpredVehicleHit,
+  cpredVehicleWindowHit,
+  cpredVehicleWindows,
+  cpredVehicleWrecked,
 } from './vehicles.js';
 import { VEHICLE_LAYOUTS, vehicleLayoutFor } from '../../vehicles.js';
 
@@ -352,5 +357,74 @@ describe('pojazd w pościgu (65c)', () => {
     expect(cpredDriverIncapable(['mortally-wounded'])).toBe(true);
     expect(cpredDriverIncapable(['unconscious'])).toBe(true);
     expect(cpredDriverIncapable(['prone'])).toBe(false);
+  });
+});
+
+describe('walka pojazdów (etap 65d1, s. 191)', () => {
+  const armored = readCpredVehicle({
+    kind: 'car',
+    hpMax: 50,
+    seats: 4,
+    move: 40,
+    upgrades: [
+      { id: 'u1', upgradeId: 'armoredHull', notes: '' },
+      { id: 'u2', upgradeId: 'bulletproofGlass', notes: '' },
+    ],
+  });
+
+  it('trafienie w kadłub: obrażenia minus OB kadłuba z PUK, nadwyżka przepada', () => {
+    const hit = cpredVehicleHit(armored, { damage: 20 });
+    expect(hit).toMatchObject({ armorSp: 13, through: 7, lost: 7, hpAfter: 43, wrecked: false });
+    const plain = readCpredVehicle({ kind: 'car', hpMax: 50, seats: 4, move: 40, hp: 5 });
+    expect(cpredVehicleHit(plain, { damage: 30 })).toMatchObject({
+      armorSp: 0,
+      lost: 5,
+      hpAfter: 0,
+      wrecked: true,
+    });
+  });
+
+  it('słaby punkt mnoży ×2 to, co przeszło przez OB; broń biała bierze połowę OB', () => {
+    expect(cpredVehicleHit(armored, { damage: 20, weakSpot: true }).lost).toBe(14);
+    expect(cpredVehicleHit(armored, { damage: 20, halvesArmor: true })).toMatchObject({
+      armorSp: 7,
+      lost: 13,
+    });
+    expect(cpredVehicleHit(armored, { damage: 20, barrierSp: 5 }).lost).toBe(2);
+  });
+
+  it('szyby kuloodporne: każda burta osobno, pełne PW tam, gdzie nic nie oberwało', () => {
+    const windows = cpredVehicleWindows({ ...armored, windows: { left: 4 } });
+    expect(windows?.left).toEqual({ hp: 4, max: 15 });
+    expect(windows?.front).toEqual({ hp: 15, max: 15 });
+    expect(cpredVehicleWindows(readCpredVehicle({ kind: 'car' }))).toBeNull();
+    expect(cpredVehicleWindowHit(15, 20)).toEqual({ hpBefore: 15, hpAfter: 0 });
+    // Odczyt przycina do sufitu i gubi burty spoza listy.
+    const read = readCpredVehicle({ ...armored, windows: { left: 99, roof: 1, rear: 3 } });
+    expect(read.windows).toEqual({ rear: 3 });
+  });
+
+  it('wrak nie jedzie: dryf z pełnym tempem, jak zgaszone auto', () => {
+    const wreck = { ...armored, hp: 0 };
+    expect(cpredVehicleWrecked(wreck)).toBe(true);
+    expect(cpredVehicleChase(wreck, { tempo: 40, started: true, nitroUsed: 0 })).toMatchObject({
+      moveSq: 0,
+      driftSq: -10,
+    });
+  });
+
+  it('Ulepszone zespolenie: motocykl, złącza interfejsu i REF 8+ (s. 165)', () => {
+    const bike = readCpredVehicle({
+      kind: 'motorcycle',
+      seats: 2,
+      upgrades: [{ id: 'l', upgradeId: 'interfaceLink', notes: '' }],
+    });
+    const plugs = ['Złącza interfejsu'];
+    expect(cpredInterfaceLinkDodges(bike, { ref: 8, cyberware: plugs })).toBe(true);
+    expect(cpredInterfaceLinkDodges(bike, { ref: 7, cyberware: plugs })).toBe(false);
+    expect(cpredInterfaceLinkDodges(bike, { ref: 9, cyberware: [] })).toBe(false);
+    expect(cpredInterfaceLinkDodges({ ...bike, upgrades: [] }, { ref: 9, cyberware: plugs })).toBe(
+      false,
+    );
   });
 });

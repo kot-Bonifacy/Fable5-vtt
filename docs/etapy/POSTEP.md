@@ -21,7 +21,7 @@ w plikach obok — czytaj je **na żądanie, nigdy rutynowo**:
 
 | stan         | etapy                                                                                          |
 | ------------ | ---------------------------------------------------------------------------------------------- |
-| ⬜ otwarty   | **65** Scena pościgu i walka pojazdów (🟨 65a, 65b ✅ 30.10, 65c ✅ 31.10, dalej 65d); **62** Sieć ze sceny (🟨 zrobione, czeka na oględziny MG na VPS po wdrożeniu); **61** Skradanie się (🟨 zrobione, czeka na słowo MG o rozstrzygnięciach); **28** Wdrożenie na VPS (🟨 działa na `https://vtt.tatanga.eu` z botami od 18.10; zostały off-site, utwardzenie, monitoring); **43b**, **43c** (UI walki); **60** Czytelny czat (zlecenie MG z 24.10; 🟨 60a–60c ✅, czeka na oględziny MG z pierwszego kryterium); T10; refaktoryzacja odłożona (MG 18.10) |
+| ⬜ otwarty   | **65** Scena pościgu i walka pojazdów (🟨 65a, 65b ✅ 30.10, 65c, 65d1 ✅ 31.10, dalej 65d2); **62** Sieć ze sceny (🟨 zrobione, czeka na oględziny MG na VPS po wdrożeniu); **61** Skradanie się (🟨 zrobione, czeka na słowo MG o rozstrzygnięciach); **28** Wdrożenie na VPS (🟨 działa na `https://vtt.tatanga.eu` z botami od 18.10; zostały off-site, utwardzenie, monitoring); **43b**, **43c** (UI walki); **60** Czytelny czat (zlecenie MG z 24.10; 🟨 60a–60c ✅, czeka na oględziny MG z pierwszego kryterium); T10; refaktoryzacja odłożona (MG 18.10) |
 | ✅ ukończone | 01–11, 13–20b, 23a–27f, 27h–27l, 29a–30d, 31–35, 37–42c, 43a, 44a–44d, 45, 46a1, 46a2, 46c1, 46c2, 46b1, 46b2, 47a, 47b, 48a, 48b, 48c, 49a, 49b, 50a, 50b, 50c, 51, 52, 53, 54, 55, 56, 57 (57a–57c), 58 (58a–58d), 59 (59a–59c), 63 (63a–63b; 63c wycofane 29.10), 64 (64a–64c) (ostatni zamknięty: 64, 2026-10-30) |
 | ⛔ wycofane  | 12, 21, 22 (głos), 27g (wydajność), 36 (makra); 27, 29, 30, 38 rozdzielone na etapy literowane |
 
@@ -30,8 +30,15 @@ Pełna tabela z nazwami i datami: `archiwum/tabela-etapow.md`.
 ## Od czego zacząć
 
 **Etap 65 „Scena pościgu i walka pojazdów” (zlecenie MG z 30.10) w toku — 65a i 65b zrobione
-30.10, 65c 31.10, następny jest 65d (walka pojazdów: ostrzał auta i pasażera, słaby punkt,
-Manewr, utrata kontroli, taranowanie).** Od 65c kierowca sam ciągnie swoje auto: poza walką bez
+30.10, 65c i 65d1 31.10, następny jest 65d2 (Manewr, utrata kontroli z ruchem od MG,
+taranowanie, bronie pokładowe; 65d podzielony 31.10 decyzją MG).** Od 65d1 auto jest celem
+ataku: klik w kadłub z bronią w ręku ładuje kubek, a okno Celowania daje „Słaby punkt” (−8,
+po OB ×2). Kadłub bierze obrażenia minus OB kadłuba, PUK 0 to wrak (stoi, dryfuje w tył,
+`VEHICLE_WRECKED`). Szyby kuloodporne to osłona pasażera na burcie zwróconej do strzelca
+(karta „Cel za szybą”). Cios bronią białą w jadące auto ma PT 13, w stojące trafia zawsze. Na
+motocyklu z Ulepszonym zespoleniem unika kierowca (`evasionBy`). Panel auta pokazuje PUK, OB,
+szyby i ulepszenia, a MG wpisuje PUK. Rozstrzygnięcia 65d1 w pliku etapu, zasady domowe
+w `decyzje-i-uproszczenia.md`, umowa na górze `atak`. Od 65c kierowca sam ciągnie swoje auto: poza walką bez
 budżetu, w walce z budżetu tury kierowcy (`Ruch / 4` kratek za Akcję Ruchu, bez Biegu, Nitro za
 Akcję drugi raz), po serwerowym Teście zwykłej jazdy, gdy REF + Prowadzenie ≤ 9. Od rundy 2 auta
 dryfują o `(Ruch − tempo) / 4`, a auto całe za krawędzią odpada (figury z kolejki, MG ma
@@ -551,7 +558,7 @@ a nie do tego pliku.
 | `ui`        | okna pływające, `z-index`, motyw, skróty, dostępność, wejście, panel decyzji MG | 37   | 15      |
 | `kosci`     | kubek, `rollFormula`, wezwania i prośby o Test, tabele losowe, PT od MG | 24   | 2       |
 | `tura`      | budżet Akcji i metrów, kolejka, trasa, ruch przez ściany, skok, walka z zauważenia, pytanie MG o przekroczenie, Percepcja w drodze, ukryte figury, skradanie, kropki ataków, kierowca bez Biegu | 34   | 7       |
-| `atak`      | broń i dodatki, amunicja, obrażenia, pancerz, rany krytyczne, trucizna na ostrzu, auto-unik, strach z Konfrontacji | 51   | 8       |
+| `atak`      | broń i dodatki, amunicja, obrażenia, pancerz, rany krytyczne, trucizna na ostrzu, auto-unik, strach z Konfrontacji, auto jako cel | 52   | 8       |
 | `statysta`  | figura z kartą, `statBlock`, Wartość bojowa, `token:stat`, wzorce | 17   | 3       |
 | `karta`     | strony i zakładki, panele, `sheet.css`, walidacja list, usuwanie przedmiotu | 11   | 12      |
 | `postac`    | kreator, PD i awanse, koszyk i cofanie awansów, Role i Zdolności, cyborgizacje, chrom zmieniający liczby, ekonomia, Test montażu gracza, pojazdy i Tabor | 57   | 3       |
@@ -568,6 +575,32 @@ a nie do tego pliku.
 ## Notatki z dwóch ostatnich sesji
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
+
+### Sesja 31.10, druga — etap 65d1 „Ostrzał pojazdów”
+
+**Plan skorygowany na starcie (decyzja MG):** 65d nie mieścił się w sesji, więc dzieli się na
+65d1 (ostrzał) i 65d2 (Manewr, utrata kontroli, taranowanie, bronie pokładowe) — plik etapu
+i `archiwum/tabela-etapow.md`. **Zrobione wg planu 65d1:** auto jako czwarty cel ataku
+(`targetVehicleId` / `targetWindow` w `attack:roll`, `CpredAttackTarget.vehicle` w planerze,
+nowy `realtime/vehicle-targets.ts`), obrażenia kadłuba i szyb w `applyDamageToVehicleRow` z
+„Cofnij”, wrak z PUK 0 (dryf w tył, `VEHICLE_WRECKED` w jeździe, Nitro i silniku), szyba
+kuloodporna jako odmowa `window` z kartą „Ostrzelaj szybę / Strzelaj mimo szyby”, słaby punkt
+(−8, ×2 po OB z zapisanej karty), cios w jadące auto PT 13 / w stojące PT 0, Ulepszone
+zespolenie (`evasionBy` — kierowca unika za motocykl i pasażera), widok auta z `hp`, `hpMax`,
+`armorSp`, `windows`, `upgrades`, panel auta (pasek PUK, pole PUK dla MG, szyby, ulepszenia,
+portrety), szary wrak na mapie, okno Celowania dla auta (ikona koła z game-icons.net,
+atrybucja), auto w „Zastosuj”. Bot strzela tylko w figury z założenia; szyba to dla niego
+osłona. Rozstrzygnięcia 1–10 w pliku etapu. **Odstępstwa:** szyby na cztery burty zamiast okien,
+OB kadłuba bez ablacji, wybuch nie rusza auta (`POMYSLY.md`) — w `decyzje-i-uproszczenia.md`.
+**Testy:** shared 2823 (+ `vehicles`, `chase`, `attacks` — auto jako cel), serwer 1708/1708
+(nowy `chase-combat.test.ts` 7/7; dwa znane „unhandled” z `walls.test.ts` po teardownie),
+klient 442/443 — dalej tylko znany `theme.test.ts`; tsc, ESLint i Prettier czyste w zmienionych
+plikach. **Oglądane:** tymczasowy spec `99-ogledziny/t99-ostrzal` z `po-T6`: Ola w **Firefoksie**
+(kubek i okno Celowania przy aucie, karta ze słabym punktem, „Cel za szybą”, wrak), MG
+w **Chromium** (panel auta, PUK 0 polem). Złapane: ikony okna Celowania nie rysują się na
+zrzutach Firefoksa — także dla figury, sprzed etapu (`zaleglosci.md`). W drzewie zostały cudze,
+niezacommitowane zmiany sprzed sesji (`MapFxLayer.ts`, `CombatForms.tsx`, `damage.test.ts`,
+`grapple-turns.test.ts`) — nie ruszane. Na VPS nic nie zmieniano.
 
 ### Sesja 31.10 — etap 65c „Jazda, tempo i odpadanie”
 
@@ -592,25 +625,3 @@ poza walką (kamera jedzie za autem), w walce Test zwykłej jazdy z kośćmi 3D 
 przeciągania, która zamieniała „bez limitu” w „nie wolno” (`?? false`) — poprawione. MG
 w Chromium tylko gniazdem (ciągnięcie auta przez MG oglądane w 65b). Na VPS nic nie zmieniano.
 
-### Sesja 30.10, piąta — etap 65b „Scena pościgu: bieżnia, auta, fotele”
-
-**Zrobione wg planu:** migracja `20261031090000_chase_scene` (`Scene.kind` i `chase*`,
-`SceneVehicle`, `Token.sceneVehicleId`/`vehicleSeat`), rdzeń `shared/src/chase.ts` (fotel po
-obrocie, pas jezdni, przycięcie auta, łata ustawień), serwer `realtime/chase.ts` (`chase:place`,
-`chase:move`, `chase:remove`, `vehicle:seat`, `vehicle:allow-driver`, `chase:sync`, fotel przy
-upuszczeniu przez MG, przesadzenie po zmianie pojazdu i sceny), `IN_VEHICLE` w `token:move`
-i `token:walk`, auta i fotele w paczce kampanii. Klient: `ChaseLayer` (bieżnia z przenikającym
-szwem, auta z grafiką, znaczniki wolnych foteli, pas u MG), ciągnięcie auta przez MG, klik
-w fotel i `ChaseVehicleMenu`, „Na drogę” i przeciąganie karty pojazdu na mapę, wybór rodzaju
-przy „Utwórz”, zakładka „Pościg” w Edycji sceny, wybór wbudowanej grafiki na karcie pojazdu.
-Grafiki: 8 aut CC0 (Unlucky Studio, OpenGameArt) w `public/art/vehicles/` z atrybucją.
-Rozstrzygnięcia bez pytań 1–11 w pliku etapu. **Odstępstwa:** motocykl bez grafiki (nie ma
-wolnej w tym stylu), auto w 65b przesuwa tylko MG (jazda kierowcy to 65c), kamera gracza nie
-jedzie za autem (dopisane do 65c). Migracja ma w nazwie 31.10 zamiast 30.10 — zastosowana, więc
-zostaje. **Testy:** shared 2800 (+14 `chase.test.ts`), serwer 1696 (nowy `chase.test.ts` 8/8,
-pięć zdarzeń w macierzy izolacji), klient 442/443 — dalej tylko znany `theme.test.ts`; tsc
-i ESLint czyste. **Oglądane:** tymczasowy spec `99-ogledziny/t99-poscig` z `po-T6`: MG
-w Chromium (nowa scena „Pościg”, zakładka, pas, „Na drogę”, przeciągnięcie auta), Ola
-w **Firefoksie** na mapie wiaduktu MG (bieżnia, auto z grafiką, fotel kierowcy klikiem, menu
-auta, figura jedzie z autem). Oględziny złapały klik w fotel poza kadrem gracza (spec) i za duży
-podpis auta (zmniejszony). Na VPS nic nie zmieniano.

@@ -212,6 +212,10 @@ export interface RollDamageMeta {
    * anything.
    */
   targetCoverId?: number;
+  /** Auto na scenie pościgu, w które idą te obrażenia (etap 65d1). */
+  targetVehicleId?: string;
+  /** Szyba tej burty auta zamiast kadłuba (65d1). */
+  targetWindow?: string;
   /**
    * Everyone an area attack reached (stage 16d), so one damage roll can be
    * applied to all of them.
@@ -323,6 +327,15 @@ export interface RollAttackMeta {
   targetTokenId?: string;
   /** Cover the attack was aimed at instead of a token (stage 16c). */
   targetCoverId?: number;
+  /** Auto na scenie pościgu zamiast figury (etap 65d1). */
+  targetVehicleId?: string;
+  /** Szyba tej burty auta zamiast kadłuba (65d1). */
+  targetWindow?: string;
+  /**
+   * Figura, która unika za cel (etap 65d1, Ulepszone zespolenie s. 165):
+   * kierowca motocykla za motocykl i pasażera. Brak — unika sam cel.
+   */
+  evasionBy?: string;
   /** Follow-up damage the card offers, when the attack landed. */
   damageNotation?: string;
   /** Factor the follow-up damage is multiplied by (autofire). */

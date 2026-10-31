@@ -76,7 +76,8 @@ export function evasionCallsOf(
     if (auto.includes(tokenId)) return [];
     // Pojedynczy cel czeka tylko jako cel tej karty; wiersz wybuchu — jako
     // wiersz z `canEvade`. Cokolwiek innego to lista sprzed zmiany karty.
-    if (!area && attack.targetTokenId !== tokenId) return [];
+    // Etap 65d1: na motocyklu z Ulepszonym zespoleniem unika kierowca (`evasionBy`).
+    if (!area && (attack.evasionBy ?? attack.targetTokenId) !== tokenId) return [];
     const row = attack.area?.targets.find((target) => target.tokenId === tokenId);
     if (area && (!row || row.canEvade !== true || row.spared !== undefined)) return [];
     const token = tokens[tokenId];

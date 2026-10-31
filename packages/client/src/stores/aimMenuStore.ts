@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import type { CpredAimPoint } from '@vtt/shared';
-import type { AttackIntent } from '../attack-targeting.js';
+import type { AttackIntent, AttackTargetRef } from '../attack-targeting.js';
 
 /**
  * Celowanie przy kursorze (naprawa 31.08).
@@ -26,9 +26,15 @@ import type { AttackIntent } from '../attack-targeting.js';
 export interface AimOffer {
   /** Zamiar, którym załadowano kubek — wybór dokłada do niego `aimedAt`. */
   intent: AttackIntent;
-  targetTokenId: string;
+  /**
+   * W co mierzy strzał: figura (głowa, ręka, noga) albo auto na scenie
+   * pościgu (etap 65d1) — wtedy jedyną lokacją jest słaby punkt (s. 191).
+   */
+  target: AttackTargetRef;
   /** Punkt już wybrany dla tego strzału; brak znaczy zwykły strzał w korpus. */
   aimedAt?: CpredAimPoint;
+  /** Słaby punkt pojazdu już wybrany dla tego strzału (65d1). */
+  weakSpot?: boolean;
   /** Współrzędne klienta: okno staje przy kursorze, nie przy mapie. */
   x: number;
   y: number;

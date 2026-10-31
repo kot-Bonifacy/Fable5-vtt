@@ -63,6 +63,12 @@ import {
   type CpredAttachmentProfile,
 } from './attachments.js';
 import { hasCyberarm } from './cyberware.js';
+import type { VehicleWindowSide } from '../../chase.js';
+import {
+  CPRED_VEHICLE_MOVING_MELEE_DV,
+  CPRED_VEHICLE_WEAK_SPOT_LABEL,
+  CPRED_VEHICLE_WEAK_SPOT_PENALTY,
+} from './vehicles.js';
 import { unarmedDamage } from './barehands.js';
 import { CPRED_AIMED_SHOT_PENALTY } from './damage.js';
 import { cpredSheetCombatAwareness } from './roleability.js';
@@ -295,6 +301,12 @@ export interface CpredAttackRequest {
    * to supply `throwProfile` — that line lives in the compendium.
    */
   thrown?: boolean;
+  /**
+   * Celowanie w słaby punkt pojazdu (s. 191, etap 65d1): pojedynczy strzał
+   * albo cios bronią białą w auto, −8, obrażenia po OB ×2. Poza autem jako
+   * celem pole przepada po cichu, jak Celowanie w osłonę.
+   */
+  weakSpot?: boolean;
 }
 
 /** The target's side, as the server measured and read it. */
@@ -332,6 +344,13 @@ export interface CpredAttackTarget {
    * the range table — a badly thrown grenade is badly thrown at a distance.
    */
   point?: boolean;
+  /**
+   * Ten cel to pojazd albo jego szyba (etap 65d1, s. 191). Pojazd nie robi
+   * uników i nie ma głowy — jak osłona — ale wolno w niego Celować w słaby
+   * punkt, a cios bronią białą zależy od tego, czy auto jedzie: w jadące
+   * PT 13, w stojące trafia zawsze.
+   */
+  vehicle?: { moving: boolean; window?: boolean };
 }
 
 export type CpredAttackProblem =
@@ -410,6 +429,12 @@ export interface CpredAttackMeta {
   operatorUserId?: string;
   /** Cover being shot at instead of a token (stage 16c). */
   targetCoverId?: number;
+  /** Auto na scenie pościgu (`SceneVehicle.id`) zamiast figury (etap 65d1). */
+  targetVehicleId?: string;
+  /** Szyba kuloodporna tej burty auta — cel zamiast pasażera za nią (65d1). */
+  targetWindow?: VehicleWindowSide;
+  /** Celowanie w słaby punkt pojazdu (s. 191): −8 w rzucie, obrażenia po OB ×2. */
+  vehicleWeakSpot?: true;
   metres: number;
   /** „13–25 m", or null for melee and suppressive fire. */
   rangeLabel: string | null;
@@ -418,7 +443,17 @@ export interface CpredAttackMeta {
    * the attacker's own total.
    */
   dv: number | null;
-  dvSource: 'range' | 'autofire' | 'evasion' | 'everyday' | 'suppressive' | 'spread';
+  dvSource:
+    | 'range'
+    | 'autofire'
+    | 'evasion'
+    | 'everyday'
+    | 'suppressive'
+    | 'spread'
+    /** Cios w jadący pojazd — PT 13 (s. 191). */
+    | 'vehicle-moving'
+    /** Cios w stojący pojazd trafia zawsze (s. 191) — PT 0. */
+    | 'vehicle-still';
   /** Cap of the burst multiplier, present for `mode: 'autofire'`. */
   autofireMax?: number;
   /** Thrown by hand rather than fired (stage 16d). */
@@ -697,7 +732,12 @@ export function planCpredAttack(
      */
     outsideHands?: CpredOutsideHands;
   },
-  target: CpredAttackTarget & { tokenId?: string; coverId?: number },
+  target: CpredAttackTarget & {
+    tokenId?: string;
+    coverId?: number;
+    vehicleId?: string;
+    window?: VehicleWindowSide;
+  },
   /**
    * Modifiers the world imposes — being Held is −2 (stage 14d). Server-filled:
    * a client must not be able to declare its own (`CpredRollContext`).
@@ -875,7 +915,7 @@ export function planCpredAttack(
   }
   // Suppressive fire sprays an area rather than an object, and an object cannot
   // be made to keep its head down.
-  if (target.cover === true && mode === 'suppressive') {
+  if ((target.cover === true || target.vehicle !== undefined) && mode === 'suppressive') {
     return { ok: false, error: 'COVER_NOT_SUPPRESSIBLE' };
   }
 
@@ -933,10 +973,19 @@ export function planCpredAttack(
     canAimInMode(mode) &&
     ammo?.noAim !== true &&
     target.cover !== true &&
-    target.point !== true
+    target.point !== true &&
+    target.vehicle === undefined
       ? request.aimedAt
       : undefined;
-  const aimed = aimedAt !== undefined;
+  // Słaby punkt pojazdu (s. 191): „pojedynczy strzał lub atak bronią białą”,
+  // nie szyba i nie śrut (`noAim`). Poza tym pole przepada po cichu, jak wyżej.
+  const weakSpot =
+    request.weakSpot === true &&
+    target.vehicle !== undefined &&
+    target.vehicle.window !== true &&
+    canAimInMode(mode) &&
+    ammo?.noAim !== true;
+  const aimed = aimedAt !== undefined || weakSpot;
   const location: CpredHitLocation = aimedAt ? hitLocationForAim(aimedAt) : 'body';
 
   // „każdy … otrzymuje 3k6 obrażeń" — a shell's damage is the shell's, not the
@@ -1082,6 +1131,13 @@ export function planCpredAttack(
       kind: 'situational',
     });
   }
+  if (weakSpot) {
+    breakdown.push({
+      label: CPRED_VEHICLE_WEAK_SPOT_LABEL,
+      value: CPRED_VEHICLE_WEAK_SPOT_PENALTY,
+      kind: 'situational',
+    });
+  }
   if (modifier !== 0) {
     breakdown.push({ label: 'Modyfikator sytuacyjny', value: modifier, kind: 'situational' });
   }
@@ -1108,7 +1164,7 @@ export function planCpredAttack(
     !explosive &&
     !spread &&
     mode !== 'suppressive' &&
-    (target.tokenId !== undefined || target.coverId !== undefined)
+    (target.tokenId !== undefined || target.coverId !== undefined || target.vehicleId !== undefined)
       ? Math.max(0, Math.round(context.barrierSp ?? 0))
       : 0;
   // „Militech »Ronin« · granatnik podwieszany → Bandyta": the host still names
@@ -1142,6 +1198,9 @@ export function planCpredAttack(
         targetName: target.name,
         ...(target.tokenId ? { targetTokenId: target.tokenId } : {}),
         ...(target.coverId !== undefined ? { targetCoverId: target.coverId } : {}),
+        ...(target.vehicleId !== undefined ? { targetVehicleId: target.vehicleId } : {}),
+        ...(target.vehicleId !== undefined && target.window ? { targetWindow: target.window } : {}),
+        ...(weakSpot ? { vehicleWeakSpot: true as const } : {}),
         metres: target.metres,
         rangeLabel: band ? rangeBandLabel(band) : null,
         dv: dvResult.dv,
@@ -1213,6 +1272,15 @@ function attackDv(
   // A spread of shot ignores the range table entirely: „wykonujesz 1 atak
   // dystansowy … przeciwko PT 13" whether the target is at 2 m or at 6 (s. 174).
   if (resolved.spreadDv !== undefined) return { dv: resolved.spreadDv, source: 'spread' };
+  if (melee && target.vehicle) {
+    // „Nieruchomy pojazd nie może robić uników i ataki wręcz … trafiają
+    // automatycznie … jeśli pojazd porusza się, trafienie atakiem bronią białą
+    // w słaby punkt ma PT 13” (s. 191) — i każdy inny cios w jadące auto też
+    // (rozstrzygnięcie 65d1: podręcznik nie daje ciosowi bez Celowania łatwiej).
+    return target.vehicle.moving
+      ? { dv: CPRED_VEHICLE_MOVING_MELEE_DV, source: 'vehicle-moving' }
+      : { dv: 0, source: 'vehicle-still' };
+  }
   if (melee) {
     return target.evasionDv !== undefined
       ? { dv: target.evasionDv, source: 'evasion' }

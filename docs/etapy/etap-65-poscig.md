@@ -68,6 +68,11 @@ wybrał pełną walkę pojazdów z podręcznika (s. 189–192) i ulepszenia Moto
 Każdy podetap to jedna sesja. Kolejność jest zależnością: 65b potrzebuje pojazdu z 65a, 65c
 ruchu z 65b, 65d tury z 65c, 65e taranowania i Manewru z 65d.
 
+**Korekta MG 31.10:** 65d nie mieścił się w jednej sesji (auto jako nowy cel przechodzi przez
+cały planer ataku i rozliczanie obrażeń), więc dzieli się na **65d1 — ostrzał** (cel auto albo
+pasażer, szyby, OB i PUK, wrak, słaby punkt, Ulepszone zespolenie, bot-pasażer, panel auta)
+i **65d2 — manewry** (Manewr, utrata kontroli z ruchem od MG, taranowanie, bronie pokładowe).
+
 ## 65a — pojazd jako własność postaci ✅ (30.10)
 
 **Rdzeń/system:** rdzeń zna wyłącznie „bryłę” pojazdu (nazwa, grafika, rozmiar w kratkach,
@@ -266,18 +271,57 @@ tak jak `Character.sheet`.
     poza walką bez limitu, w walce tylko we własnej turze, przycięte do reszty budżetu w linii
     prostej (`chaseLimitMove`) po przycięciu do pasa.
 
-## 65d — walka pojazdów ⬜
+## 65d1 — ostrzał pojazdów ✅ (31.10)
 
-- [ ] Cel ataku: figura w aucie **albo** auto (wybór w menu celu, jak przy osłonie). Pasażer jest
+- [x] Cel ataku: figura w aucie **albo** auto (wybór w menu celu, jak przy osłonie). Pasażer jest
       celem przez szyby bez osłony, chyba że auto ma Szyby kuloodporne — wtedy szyba po stronie
       strzelca jest osłoną 15/30 PW (każde okno osobno, licznik okien w `system`).
-- [ ] Auto nie robi uniku; figura w aucie unika jak pieszo (auto-unik z 63b działa).
+- [x] Auto nie robi uniku; figura w aucie unika jak pieszo (auto-unik z 63b działa).
       Ulepszone zespolenie: kierowca motocykla ze złączem i REF ≥ 8 unika też za motocykl
       i pasażera.
-- [ ] Trafienie auta: obrażenia − OB kadłuba → PUK. PUK 0 = `wrecked`: auto staje, wypada
+- [x] Trafienie auta: obrażenia − OB kadłuba → PUK. PUK 0 = `wrecked`: auto staje, wypada
       z bieżni (dryf z pełnym tempem), figury zostają w środku.
-- [ ] Słaby punkt (s. 191): Akcja Celowanie na auto, −8, obrażenia po OB ×2; bronią białą
+- [x] Słaby punkt (s. 191): Akcja Celowanie na auto, −8, obrażenia po OB ×2; bronią białą
       w ruchome auto PT 13 i −8.
+- [x] Panel auta (klik w auto): PUK, OB, fotele z portretami, ulepszenia, Nitro (zbiorniki na
+      dziś), stan (`racing` …). MG zmienia PUK ręcznie (naprawa poza zakresem — `POMYSLY.md`).
+- [x] Bot-pasażer: strzela wyłącznie do figur, nie do aut.
+- [x] Testy: `shared` (obrażenia auta, słaby punkt), serwer (atak w auto, szyba kuloodporna,
+      `wrecked`).
+
+### Rozstrzygnięcia 65d1 bez pytań (31.10)
+
+1. **Auto to czwarty cel ataku** obok figury, osłony i pola: `targetVehicleId` (+ `targetWindow`)
+   w `attack:roll`, `CpredAttackTarget.vehicle` w planerze, `targetVehicleId` na karcie ataku,
+   rzucie obrażeń i wpisie obrażeń. Logika celu mieszka w `realtime/vehicle-targets.ts`,
+   obrażenia w `applyDamageToVehicleRow` (`damage.ts`) — droga jak osłony, z OB kadłuba.
+2. **Klik w kadłub z bronią w ręku to strzał w auto** (`shootVehicleAt`, przed fotelem i menu);
+   bez broni klik sadza albo otwiera panel, jak w 65b. Klik w figurę w fotelu celuje w figurę.
+   Własnego auta nie ostrzeliwujesz (`OWN_VEHICLE`).
+3. **Słaby punkt w oknie Celowania przy kursorze** — dla auta dwie sylwetki: „Bez celowania”
+   i „Słaby punkt pojazdu” (ikona koła, game-icons.net CC BY 3.0). Planer daje −8 i znacznik
+   `vehicleWeakSpot`, a ×2 liczy rozliczenie z zapisanej karty ataku, nie z drutu.
+4. **Szyby to cztery burty** (przód, tył, lewa, prawa — `Vehicle.system.windows`, brak = pełne
+   PW). Strzał w pasażera przez kuloodporną szybę z PW wraca kartą „Ostrzelaj szybę / Strzelaj
+   mimo szyby” (`AttackBlocked.kind = 'window'`); strzelec w tym samym aucie szyby nie ma.
+   Szczegóły w `decyzje-i-uproszczenia.md`.
+5. **Cios bronią białą w jadące auto ma PT 13 także bez Celowania, w stojące — PT 0** (trafia
+   zawsze). „Jedzie” = droga jedzie, silnik pracuje, auto nie jest wrakiem.
+6. **Wrak liczy się z PUK**, kolumna `status` dalej mówi tylko „w kadrze / za krawędzią”.
+   Widok pokazuje `wrecked`, wrak dryfuje w tył z pełnym tempem, `chase:move`, Nitro i silnik
+   odmawiają `VEHICLE_WRECKED`. „Cofnij” trafienia przywraca PUK albo szybę.
+7. **Ulepszone zespolenie: kierowca unika zamiast pasażera** (`RollAttackMeta.evasionBy`) —
+   także w wezwaniu do Uniku u klienta i w „Bez uniku” MG.
+8. **Panel auta to rozbudowane menu z 65b** (`ChaseVehicleMenu`): PUK z paskiem (MG wpisuje
+   liczbę), OB, szyby na burtach, ulepszenia z Nitro, portrety w fotelach. PUK, OB i szyby są
+   jawne dla stołu (`SceneVehicleView.hp/hpMax/armorSp/windows/upgrades`), jak PW osłony.
+9. **Bot strzela tylko w figury z założenia** — `bot-combat` zawsze podaje `targetTokenId`;
+   szyba kuloodporna jest dla niego osłoną (`TARGET_BEHIND_COVER`).
+10. **Wybuch nie rusza auta** — granat w auto bije figury w obszarze jak dziś, a kadłub zostaje
+    (`POMYSLY.md`). Ognia zaporowego na auto nie ma (`COVER_NOT_SUPPRESSIBLE`).
+
+## 65d2 — manewry, taranowanie i bronie pokładowe ⬜
+
 - [ ] Manewr (s. 192) za Akcję i Akcję Ruchu kierowcy: Gwałtowny skręt 13, Ostry zakręt 13,
       Nagłe zatrzymanie 13, Zawrót na ręcznym 17, Skok 17. MG wzywa do Manewru przez panel decyzji
       (umowa `ui`) albo kierowca deklaruje go sam. Porażka = utrata kontroli.
@@ -289,11 +333,8 @@ tak jak `Character.sheet`.
       Testem ZW + Unik PT 13.
 - [ ] Pokładowe bronie: wiersz broni na pojeździe, strzela kierowca za Akcję (stanowisko bardzo
       ciężkiej broni — pasażer na swoim fotelu). Bez przeładowania w ruchu, poza stanowiskiem.
-- [ ] Panel auta (klik w auto): PUK, OB, fotele z portretami, ulepszenia, Nitro (zbiorniki na
-      dziś), stan (`racing` …). MG zmienia PUK ręcznie (naprawa poza zakresem — `POMYSLY.md`).
-- [ ] Bot-pasażer: strzela wyłącznie do figur, nie do aut.
-- [ ] Testy: `shared` (obrażenia auta, słaby punkt, Manewr, taranowanie z Pługiem i Nitro),
-      serwer (atak w auto, szyba kuloodporna, `wrecked`).
+- [ ] Testy: `shared` (Manewr, taranowanie z Pługiem i Nitro), serwer (Manewr z panelu decyzji,
+      taranowanie dwóch aut).
 
 ## 65e — przeszkody i ruch uliczny ⬜
 

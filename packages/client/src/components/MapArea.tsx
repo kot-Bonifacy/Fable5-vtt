@@ -125,6 +125,7 @@ import {
   setTokenLocator,
   toggleTarget,
   shootCoverAt,
+  shootVehicleAt,
   throwAtPoint,
 } from '../hud.js';
 import { useAttackStore, type AttackTargeting } from '../stores/attackStore.js';
@@ -263,6 +264,10 @@ function vehicleClickAt(
     .reverse()
     .find((entry) => chaseBodyContains(entry, entry, direction, grid, point));
   if (!vehicle) return false;
+  // Broń w ręku (65d1): klik w cudze auto to strzał w nie, jak w osłonę.
+  const client = toClient(point);
+  if (client) useAimMenuStore.getState().placeAt(client.x, client.y);
+  if (shootVehicleAt(vehicle.id)) return true;
   const tokens = useTokenStore.getState().tokens;
   const user = useAuthStore.getState().user;
   const isGm = user?.role === ROLE_GM;
@@ -284,8 +289,7 @@ function vehicleClickAt(
     });
     return true;
   }
-  const at = toClient(point);
-  if (at) useChaseStore.getState().openMenu(vehicle.id, at.x, at.y);
+  if (client) useChaseStore.getState().openMenu(vehicle.id, client.x, client.y);
   return true;
 }
 
