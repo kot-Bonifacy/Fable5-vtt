@@ -52,7 +52,7 @@ const WEAPON_FREE: readonly (keyof CpredWeaponRow)[] = [
   'attachmentAmmoId',
 ];
 const ARMOR_FREE: readonly (keyof CpredArmorRow)[] = ['notes', 'equipped', 'location', 'spCurrent'];
-const GEAR_FREE: readonly (keyof CpredGearRow)[] = ['notes', 'qty', 'connected'];
+const GEAR_FREE: readonly (keyof CpredGearRow)[] = ['notes', 'qty', 'connected', 'lit'];
 const CYBERWARE_FREE: readonly (keyof CpredCyberwareRow)[] = ['notes', 'bodySlot', 'skillId'];
 
 /** Wiersz bez pól swobodnych, w stałej kolejności kluczy — do porównania. */

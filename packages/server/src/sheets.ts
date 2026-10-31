@@ -31,11 +31,15 @@ import type {
   TokenHp,
   TokenContainerView,
   TokenInjuryRow,
+  TokenLight,
   TurnBudgetView,
   CpredWoundSuspension,
 } from '@vtt/shared';
 import {
   CPRED_STAT_EFFECTS_MAX,
+  cpredIsGearLightShape,
+  cpredSetGearLight,
+  cpredSheetLight,
   cpredExpireStatEffects,
   cpredStatEffectExpired,
   cpredEffectiveStats,
@@ -185,6 +189,13 @@ export interface LinkedSheet {
    * paska PW — skrzynia nie jest ranna.
    */
   container: TokenContainerView | null;
+  /**
+   * Światło, które karta niesie w ekwipunku (31.10.2026 — zapalona latarka),
+   * albo `null`, gdy nic w nim nie świeci. Przy `null` figura zostaje przy
+   * świetle ustawionym ręką przez MG; inaczej `syncSheetLight` pilnuje, żeby
+   * żeton świecił tak, jak mówi karta.
+   */
+  light: TokenLight | null;
 }
 
 /**
@@ -1673,7 +1684,39 @@ export function toLinkedSheet(character: Character, registry: SheetRegistry): Li
     injuries: readSheetInjuries(character, registry) as unknown as TokenInjuryRow[],
     moveM: readSheetMoveBudget(character, registry).metresPerMove,
     container: readSheetContainer(character, registry),
+    light: readSheetLight(character, registry),
   };
+}
+
+/** Czy lampa figury pochodzi z ekwipunku (ma kształt przedmiotu), a nie od MG. */
+export function isSheetLightShape(light: Omit<TokenLight, 'on'>): boolean {
+  return cpredIsGearLightShape(light);
+}
+
+/** Światło z ekwipunku karty albo `null` (pojemnik i karta bez latarki). */
+export function readSheetLight(
+  character: Pick<Character, 'data'>,
+  registry: SheetRegistry,
+): TokenLight | null {
+  if (isContainerCardJson(character.data)) return null;
+  return cpredSheetLight(parseCharacterData(character.data, registry));
+}
+
+/**
+ * Zapala albo gasi światło z ekwipunku karty (przełącznik latarki na mapie).
+ * Zwraca nową kolumnę `data` albo `null`, gdy karta nie ma czego zapalić —
+ * wtedy przełącznik działa na samym żetonie, jak przed 31.10.
+ */
+export function writeSheetLight(
+  character: Pick<Character, 'data'>,
+  on: boolean,
+  registry: SheetRegistry,
+): string | null {
+  if (isContainerCardJson(character.data)) return null;
+  const current = parseCharacterData(character.data, registry);
+  const gear = cpredSetGearLight(current.gear, on);
+  if (!gear) return null;
+  return JSON.stringify(mergeCharacterData(current, { gear }));
 }
 
 /**

@@ -560,7 +560,7 @@ a nie do tego pliku.
 | `statysta`  | figura z kartą, `statBlock`, Wartość bojowa, `token:stat`, wzorce | 17   | 3       |
 | `karta`     | strony i zakładki, panele, `sheet.css`, walidacja list, usuwanie przedmiotu | 11   | 12      |
 | `postac`    | kreator, PD i awanse, koszyk i cofanie awansów, Role i Zdolności, cyborgizacje, chrom zmieniający liczby, ekonomia, Test montażu gracza, pojazdy i Tabor | 58   | 3       |
-| `ekwipunek` | wiersze wyposażenia, przekazanie, łup (także ciała graczy), handel, sklepy, zasięg, amunicja bez dna, egzoszkielet, narkotyki i fiolki, siatka okna „Wymiana”, zgoda z góry | 40   | 3       |
+| `ekwipunek` | wiersze wyposażenia, przekazanie, łup (także ciała graczy), handel, sklepy, zasięg, amunicja bez dna, egzoszkielet, latarka z ekwipunku, narkotyki i fiolki, siatka okna „Wymiana”, zgoda z góry | 41   | 3       |
 | `czas`      | zegar świata, kalendarz, `statEffects`, leczenie po dobie, dawki i uzależnienia (`chems`) | 19   | 2       |
 | `siec`      | Programy, LOD, demony, piętra architektury, dek jako towar, strefy bronione, kamery, rozbrajanie, Sieć ze sceny | 13   | 4       |
 | `boty`      | llama-server, RAG, reindeks, dziennik i baza wiedzy, brama AI  | 10   | 10      |
@@ -573,6 +573,22 @@ a nie do tego pliku.
 ## Notatki z dwóch ostatnich sesji
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
+
+### Sesja 31.10, dziesiąta — latarka z ekwipunku świeci figurą
+
+**Zgłoszenie MG:** „jak postać ma dobyć latarkę, aby działała?” → „napraw to, aby dobyta
+latarka świeciła”. Latarka z karty nie była spięta ze światłem figury; MG ustawiał je ręką
+w „Edytuj…”. **Zrobione:** `CpredGearRow.lit` + `systems/cpred/lightgear.ts` (co świeci:
+latarka, latarka taktyczna, flara, światło chemiczne, ręczne wiersze po nazwie), sekcja
+„Światło” na stronie Ekwipunku z „Zapal”/„Zgaś”, `LinkedSheet.light` → `syncSheetLight`
+(figura dostaje lampę, gdy karta ma latarkę; zapalona latarka zapala figurę), `token:light`
+u takiej figury pisze kartę. Oddana/wyrzucona latarka zdejmuje lampę o kształcie przedmiotu,
+lampa MG zostaje. Ręce nie liczone (latarka nie zajmuje ręki obok broni). Umowa na górze
+`ekwipunek`. **Testy:** shared 2883/2883 (nowy `lightgear.test.ts`), serwer 1736/1736 (nowy
+`light-gear.test.ts` 6/6), `tsc` shared, serwer i klient czysty.
+**Nieoglądane w przeglądarce:** w kampanii na dev („ulice Lublina”) żadna postać nie ma
+latarki, a do prawdziwej kampanii MG nic nie dopisywałem — oględziny przy stole po stronie MG.
+Cudze zmiany w drzewie nie ruszane.
 
 ### Sesja 31.10, dziewiąta — „Fabryka dronów” i wzorzec zwykłej mapy (etap 66b)
 
@@ -594,17 +610,3 @@ notatka wzorca mówi o wartościach domyślnych. **Testy:** shared 2874/2874, se
 Cudze zmiany w drzewie (`MapFxLayer.ts`, `damage.test.ts`, `grapple-turns.test.ts`,
 `99-ogledziny`) nie ruszane.
 
-### Sesja 31.10, ósma — sceny przykładowe i „Pościg na wiadukcie” (etap 66)
-
-**Zlecenie MG:** zaprojektować scenę pościgu na mapie wiaduktu i dodać ją do nowej kategorii
-scen „przykładowe” dla wszystkich MG. **Decyzje MG z pytań:** wzorce w repo, mapa MG do repo,
-gotowe starcie, tylko górna jezdnia, Maelstrom, drużyna ucieka, 1–2 postacie z botami, auto
-drużyny w scenie. **Zrobione:** rdzeń i część CP RED wzorca w `shared`, zdarzenia
-`scene:templates` / `scene:from-template`, sekcja „Przykładowe” w `ScenePanel`, wzorzec
-`data/public/scenes/poscig-wiadukt/` (mapa w WebP 365 KB z PNG 2,8 MB). **Oglądane w Firefoksie**
-(Playwright) na izolowanej instancji E2E z `data/private` — bez braków w kompendium, bieżnia
-jedzie; po oględzinach skrócone imiona gangerów (podpisy nachodziły pod autem). Profil Firefoksa
-na `localhost:5173` był zalogowany jako `mg_primo` w „ulice Lublina” — tam nic nie dodawano.
-**Testy:** shared 2865/2865, serwer 1729/1729 (z dopisaną macierzą izolacji), `tsc` shared,
-serwer i klient czysty. Cudze zmiany w drzewie (`MapFxLayer.ts`, `damage.test.ts`,
-`grapple-turns.test.ts`, `99-ogledziny`) nie ruszane.

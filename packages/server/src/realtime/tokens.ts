@@ -23,6 +23,7 @@ import type {
   TokenUpdatePayload,
   TokenUpsertBroadcast,
   TokenHp,
+  TokenLight,
   TokenView,
   TokenWalkPayload,
 } from '@vtt/shared';
@@ -61,6 +62,7 @@ import {
 import type { PrismaClient } from '../db.js';
 import type { Character, Scene, Token } from '../generated/prisma/client.js';
 import {
+  isSheetLightShape,
   readSheetFearedTokens,
   sheetFromQuickStats,
   sheetQuickStats,
@@ -528,7 +530,8 @@ export async function createCharacterToken(
     return created;
   });
   const linked = toLinkedSheet(character, deps.ctx.cpred);
-  const placed = await syncWoundStatuses(deps, token, linked.hp);
+  const wounded = await syncWoundStatuses(deps, token, linked.hp);
+  const placed = await syncSheetLight(deps, wounded, linked.light);
   await emitTokenUpsert(deps, campaignId, scene, placed, linked);
   return placed;
 }
@@ -815,9 +818,61 @@ export async function emitTokensOfCharacter(
   for (const row of tokens) {
     const { scene, ...token } = row;
     if (scene.campaignId !== campaignId) continue;
-    const synced = await syncWoundStatuses(deps, token as Token, linked.hp);
+    const wounded = await syncWoundStatuses(deps, token as Token, linked.hp);
+    const synced = await syncSheetLight(deps, wounded, linked.light);
     await emitTokenUpsert(deps, campaignId, scene, synced, linked);
   }
+}
+
+/**
+ * Puts the sheet's carried light onto a token (31.10.2026 — a lit torch in the
+ * inventory lights the figure). `null` means the sheet carries nothing that
+ * glows: a lamp the sheet once gave is taken off, one the GM gave by hand stays.
+ *
+ * A token without a lamp gets the sheet's one even while it is off, so the
+ * „Zapal latarkę" switch shows up on the map the moment the torch is bought.
+ * Lighting it takes the lit item's radii and colour; while it stays lit, the
+ * GM's tweaks to the radii in „Edytuj…" are left alone.
+ */
+export async function syncSheetLight(
+  deps: RealtimeDeps,
+  token: Token,
+  light: TokenLight | null,
+): Promise<Token> {
+  const hasLamp = token.lightBrightM > 0 || token.lightDimM > 0;
+  if (!light) {
+    // The torch left the pack (given away, dropped, sold): a lamp shaped like
+    // a carried item goes with it. A lamp the GM shaped by hand stays.
+    const carried =
+      hasLamp &&
+      isSheetLightShape({
+        brightM: token.lightBrightM,
+        dimM: token.lightDimM,
+        color: token.lightColor,
+        flicker: token.lightFlicker,
+      });
+    if (!carried) return token;
+    return deps.ctx.prisma.token.update({
+      where: { id: token.id },
+      data: { lightBrightM: 0, lightDimM: 0, lightOn: false },
+    });
+  }
+  if (hasLamp && token.lightOn === light.on) return token;
+  const reshape = !hasLamp || (light.on && !token.lightOn);
+  return deps.ctx.prisma.token.update({
+    where: { id: token.id },
+    data: {
+      lightOn: light.on,
+      ...(reshape
+        ? {
+            lightBrightM: light.brightM,
+            lightDimM: light.dimM,
+            lightColor: light.color,
+            lightFlicker: light.flicker,
+          }
+        : {}),
+    },
+  });
 }
 
 /**
@@ -1028,7 +1083,9 @@ export const tokenCreateEvent = defineEvent<TokenCreatePayload, TokenView>({
     const linked = character ? toLinkedSheet(character, deps.ctx.cpred) : null;
     // Figura rannej karty staje z naklejką rany od razu, a nie dopiero przy
     // pierwszym zapisie karty (zaległość z 17.10).
-    const placed = linked ? await syncWoundStatuses(deps, token, linked.hp) : token;
+    const placed = linked
+      ? await syncSheetLight(deps, await syncWoundStatuses(deps, token, linked.hp), linked.light)
+      : token;
     await emitTokenUpsert(deps, campaignId, scene, placed, linked);
     await adoptSceneDeviceLive(deps, campaignId, scene.id, placed.glyph);
     return toTokenView(placed, true, linked, scene);

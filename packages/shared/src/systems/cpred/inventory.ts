@@ -194,7 +194,9 @@ function stacksWith(a: CpredGearRow, b: CpredGearRow): boolean {
     a.consumable === b.consumable &&
     a.upgrade === b.upgrade &&
     // Etap 59a: podłączony egzoszkielet nie wchłania drugiego z plecaka.
-    (a.connected === true) === (b.connected === true)
+    (a.connected === true) === (b.connected === true) &&
+    // Zapalona latarka nie wchłania zgaszonej z plecaka.
+    (a.lit === true) === (b.lit === true)
   );
 }
 
@@ -287,6 +289,8 @@ export function cpredTakeRows(
       // Etap 59a: egzoszkielet zdjęty z karty jedzie odłączony — jak pancerz,
       // który ląduje u odbiorcy zdjęty (`cpredLandRows`).
       delete going.connected;
+      // Latarka oddana z ręki ląduje u odbiorcy zgaszona.
+      delete going.lit;
       if (want === gear.qty) rows.splice(index, 1);
       else rows[index] = left;
       taken.push({

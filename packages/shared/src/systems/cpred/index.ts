@@ -36,6 +36,7 @@ export * from './barehands.js';
 export * from './attacks.js';
 export * from './statblock.js';
 export * from './inventory.js';
+export * from './lightgear.js';
 export * from './cyberdeck.js';
 export * from './itemlocks.js';
 export * from './merchant.js';

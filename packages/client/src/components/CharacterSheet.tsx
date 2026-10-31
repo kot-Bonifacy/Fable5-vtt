@@ -43,6 +43,7 @@ import {
   CPRED_STAT_EFFECT_VALUE_MAX,
   cpredEffectiveStats,
   cpredChromeModOf,
+  cpredGearLightProfile,
   cpredChromeRequirementNote,
   cpredChromeSkillBonus,
   cpredChemSkillRows,
@@ -3894,6 +3895,8 @@ function GearTab({ character, data, saveData }: TabProps & { character: Characte
 
       <GearChromeSection data={data} saveData={saveData} />
 
+      <GearLightSection data={data} saveData={saveData} />
+
       <div className="cp-panel cp-plaques">
         {/* Etap 46c: zapas to pudełka w wyposażeniu. Stary tekst zostaje jako
             notatka do przepisania, dopóki ktoś go nie usunie — inaczej „×16”
@@ -4326,6 +4329,65 @@ function GearChromeSection({ data, saveData }: Pick<TabProps, 'data' | 'saveData
                   {row.connected ? 'Odłącz' : 'Podłącz'}
                 </button>
               )}
+            </li>
+          );
+        })}
+      </ul>
+    </div>
+  );
+}
+
+/**
+ * Latarka w ręce (31.10.2026): „Zapal" / „Zgaś" przy każdym wierszu, który
+ * świeci (`cpredGearLightProfile`). Serwer niesie zapaloną latarkę na światło
+ * figur tej karty; przełącznik latarki na mapie zapisuje to samo pole.
+ * Znika, kiedy w plecaku nie ma niczego, co świeci.
+ */
+function GearLightSection({ data, saveData }: Pick<TabProps, 'data' | 'saveData'>) {
+  const rows = data.gear.filter((row) => row.qty > 0 && cpredGearLightProfile(row) !== null);
+  if (rows.length === 0) return null;
+
+  function setLit(rowId: string, lit: boolean) {
+    saveData(
+      {
+        gear: data.gear.map((row) =>
+          row.id === rowId ? ({ ...row, lit: lit || undefined } as CpredGearRow) : row,
+        ),
+      },
+      'gear',
+    );
+  }
+
+  return (
+    <div className="cp-panel cp-doses cp-gear-light">
+      <div className="cp-field cp-field--notch cp-doses-target-field">
+        <span className="cp-label">Światło</span>
+      </div>
+      <ul className="cp-doses-list">
+        {rows.map((row) => {
+          const profile = cpredGearLightProfile(row)!;
+          return (
+            <li key={row.id}>
+              <span className="cp-doses-name">
+                {row.name}
+                <span className="cyberware-effect">
+                  {row.lit ? 'w ręce, świeci' : 'w plecaku'} — jasno {profile.brightM} m, mrok{' '}
+                  {profile.dimM} m
+                </span>
+              </span>
+              <button
+                type="button"
+                className="small-button"
+                title={
+                  row.lit
+                    ? 'Zgaś i schowaj — figura na mapie przestaje świecić'
+                    : 'Wyjmij i zapal — figura na mapie świeci (widać na ciemnych scenach z widzeniem dynamicznym)'
+                }
+                aria-pressed={row.lit === true}
+                onClick={() => setLit(row.id, !row.lit)}
+              >
+                {row.lit ? 'Zgaś' : 'Zapal'}
+              </button>
             </li>
           );
         })}

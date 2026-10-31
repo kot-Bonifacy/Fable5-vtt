@@ -75,6 +75,7 @@ import {
 } from './netrunning.js';
 import { cpredSheetHpMax, sanitizeStatBlock, type CpredStatBlock } from './statblock.js';
 import { cpredChromeModOf } from './chromestats.js';
+import { cpredGearLightProfile } from './lightgear.js';
 import { readCpredContainer, type CpredContainer } from './container.js';
 import { isCpredKeyId } from './lock.js';
 import { cpredIsBareHandsRow, cpredWithBareHands } from './barehands.js';
@@ -431,6 +432,13 @@ export interface CpredGearRow extends CpredItemRow {
    * zapisie. Przełącza go właściciel jak założenie pancerza.
    */
   connected?: boolean;
+  /**
+   * Źródło światła wyjęte i zapalone (31.10.2026) — latarka, flara, światło
+   * chemiczne. Liczy się wyłącznie na wierszu, który `cpredGearLightProfile`
+   * zna; na każdym innym odpada przy zapisie. Przełącza go właściciel jak
+   * podłączenie egzoszkieletu, a serwer niesie go na światło figur karty.
+   */
+  lit?: boolean;
 }
 
 /**
@@ -2294,6 +2302,8 @@ function collectCharacterDataPatch(
       // Etap 59a: „podłączona” ma sens tylko przy egzoszkielecie.
       const connected =
         row.connected === true && cpredChromeModOf(base, 'gear')?.needsConnected === true;
+      // „Zapalona” ma sens tylko przy czymś, co świeci.
+      const lit = row.lit === true && cpredGearLightProfile(base) !== null;
       return {
         ...base,
         qty,
@@ -2301,6 +2311,7 @@ function collectCharacterDataPatch(
         ...(ammo ? { ammo } : {}),
         ...(key ? { key } : {}),
         ...(connected ? { connected: true as const } : {}),
+        ...(lit ? { lit: true as const } : {}),
       };
     });
     if (gear) patch.gear = gear;

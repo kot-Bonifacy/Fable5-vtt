@@ -31,9 +31,12 @@ import { rememberDeletion, scalarRow } from './undo-buffer.js';
 import { fetchSceneWalls } from './walls-io.js';
 import { requireCampaignScene, toSceneView } from './scenes.js';
 import { campaignRoom, gmRoom, sceneRoom } from './state.js';
+import { writeSheetLight } from '../sheets.js';
+import { emitCharacterUpsert, toCharacterView } from './character-io.js';
 import {
   emitSceneTokensToPlayers,
   emitTokenUpsert,
+  emitTokensOfCharacter,
   requireCampaignToken,
   toTokenView,
 } from './tokens.js';
@@ -252,15 +255,33 @@ export const tokenLightToggleEvent = defineEvent<TokenLightTogglePayload, TokenV
       payload?.tokenId,
     );
     const isGm = user.role === ROLE_GM;
+    const character = token.characterId
+      ? await deps.ctx.prisma.character.findUnique({ where: { id: token.characterId } })
+      : null;
     if (!isGm) {
       // A hidden token is refused the way an unseen one is: the rejection must
       // not become a way to learn the token is there.
       if (token.hidden) throw new RealtimeError('TOKEN_NOT_FOUND');
-      const character = token.characterId
-        ? await deps.ctx.prisma.character.findUnique({ where: { id: token.characterId } })
-        : null;
       const controls = token.ownerId === user.id || character?.ownerId === user.id;
       if (!controls) throw new RealtimeError('FORBIDDEN');
+    }
+
+    // A torch carried in the sheet's inventory (31.10.2026): the switch lights
+    // the item on the sheet, and the sheet lights every token of it — so the
+    // sheet's „Zapal" and the map's never disagree.
+    if (character) {
+      const on = typeof payload?.on === 'boolean' ? payload.on : !token.lightOn;
+      const data = writeSheetLight(character, on, deps.ctx.cpred);
+      if (data !== null) {
+        const saved = await deps.ctx.prisma.character.update({
+          where: { id: character.id },
+          data: { data },
+        });
+        await emitCharacterUpsert(deps, campaignId, toCharacterView(saved, deps.ctx.cpred));
+        await emitTokensOfCharacter(deps, campaignId, saved);
+        const after = await deps.ctx.prisma.token.findUniqueOrThrow({ where: { id: token.id } });
+        return toTokenView(after, true);
+      }
     }
     // Nothing to switch: a token without a lamp has no state to flip, and
     // pretending otherwise would let a player conjure light out of a click.

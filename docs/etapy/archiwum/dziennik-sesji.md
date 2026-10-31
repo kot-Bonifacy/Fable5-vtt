@@ -1,5 +1,20 @@
 # Dziennik sesji — archiwum
 
+### Sesja 31.10, ósma — sceny przykładowe i „Pościg na wiadukcie” (etap 66)
+
+**Zlecenie MG:** zaprojektować scenę pościgu na mapie wiaduktu i dodać ją do nowej kategorii
+scen „przykładowe” dla wszystkich MG. **Decyzje MG z pytań:** wzorce w repo, mapa MG do repo,
+gotowe starcie, tylko górna jezdnia, Maelstrom, drużyna ucieka, 1–2 postacie z botami, auto
+drużyny w scenie. **Zrobione:** rdzeń i część CP RED wzorca w `shared`, zdarzenia
+`scene:templates` / `scene:from-template`, sekcja „Przykładowe” w `ScenePanel`, wzorzec
+`data/public/scenes/poscig-wiadukt/` (mapa w WebP 365 KB z PNG 2,8 MB). **Oglądane w Firefoksie**
+(Playwright) na izolowanej instancji E2E z `data/private` — bez braków w kompendium, bieżnia
+jedzie; po oględzinach skrócone imiona gangerów (podpisy nachodziły pod autem). Profil Firefoksa
+na `localhost:5173` był zalogowany jako `mg_primo` w „ulice Lublina” — tam nic nie dodawano.
+**Testy:** shared 2865/2865, serwer 1729/1729 (z dopisaną macierzą izolacji), `tsc` shared,
+serwer i klient czysty. Cudze zmiany w drzewie (`MapFxLayer.ts`, `damage.test.ts`,
+`grapple-turns.test.ts`, `99-ogledziny`) nie ruszane.
+
 ### Sesja 31.10, siódma — zaległości bez MG i bez VPS (druga tura)
 
 **Zlecenie MG:** sprawdzić zaległości poza refaktoryzacją i wdrożeniem na VPS, zrobić kilka.
