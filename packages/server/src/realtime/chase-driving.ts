@@ -55,7 +55,8 @@ import {
   requirePoint,
   type PlacedVehicle,
 } from './chase.js';
-import { firstChaseContact, postServerRoll, resolveRam } from './chase-ram.js';
+import { crossSpikes, driftObstaclesRound, obstaclePendingFor } from './chase-obstacles.js';
+import { firstChaseContact, obstacleBoxId, postServerRoll, resolveRam } from './chase-ram.js';
 import {
   findCombatantForToken,
   loadCombat,
@@ -198,6 +199,10 @@ export const chaseMoveEvent = defineEvent<ChaseMovePayload, SceneVehicleView>({
 
     const driver = await requireOwnDriver(deps.ctx.prisma, placed, user);
     requireControllable(placed);
+    // Przeszkoda przed zderzakiem (65e) czeka na odpowiedź — najpierw Manewr albo taranowanie.
+    if (await obstaclePendingFor(deps.ctx.prisma, placed.id)) {
+      throw new RealtimeError('OBSTACLE_PENDING');
+    }
     const { settings, frame } = chaseGeometry(placed.scene);
     const target = clampChaseVehicle(point, chaseBodyOf(placed.vehicle), settings, frame);
     const pixels = Math.hypot(target.x - placed.x, target.y - placed.y);
@@ -244,10 +249,15 @@ async function driveWithContacts(
 ): Promise<SceneVehicleView> {
   const prisma = deps.ctx.prisma;
   const from = { x: placed.x, y: placed.y };
+  // Kolczatki na przejechanej drodze (65e) rzucają po każdym odcinku jazdy.
+  const done = async (view: SceneVehicleView): Promise<SceneVehicleView> => {
+    await crossSpikes(deps, campaignId, user, placed, from);
+    return placedView(prisma, placed.sceneId, view.id);
+  };
   const contact = await firstChaseContact(prisma, placed, from, target);
-  if (!contact) return moveSceneVehicle(deps, campaignId, placed, target);
+  if (!contact) return done(await moveSceneVehicle(deps, campaignId, placed, target));
   const stopped = await moveSceneVehicle(deps, campaignId, placed, contact.centre);
-  if (!ram) return stopped;
+  if (!ram) return done(stopped);
 
   const atContact = await requirePlaced(prisma, campaignId, placed.id);
   const goesOn = await resolveRam(
@@ -258,17 +268,21 @@ async function driveWithContacts(
     contact.obstacle,
     contact.front,
   );
-  if (!goesOn) return placedView(prisma, placed.sceneId, placed.id);
+  if (!goesOn) return done(await placedView(prisma, placed.sceneId, placed.id));
   const after = await requirePlaced(prisma, campaignId, placed.id);
   // Taranujący, którego zderzenie samo rozbiło, dalej nie jedzie (s. 191).
   if (cpredVehicleWrecked(readCpredVehicle(after.vehicle.system))) {
-    return placedView(prisma, placed.sceneId, placed.id);
+    return done(await placedView(prisma, placed.sceneId, placed.id));
   }
   const skip = new Set([
-    contact.obstacle.kind === 'token' ? `token:${contact.obstacle.id}` : contact.obstacle.id,
+    contact.obstacle.kind === 'token'
+      ? `token:${contact.obstacle.id}`
+      : contact.obstacle.kind === 'obstacle'
+        ? obstacleBoxId(contact.obstacle.id)
+        : contact.obstacle.id,
   ]);
   const next = await firstChaseContact(prisma, after, after, target, skip);
-  return moveSceneVehicle(deps, campaignId, after, next?.centre ?? target);
+  return done(await moveSceneVehicle(deps, campaignId, after, next?.centre ?? target));
 }
 
 /**
@@ -552,13 +566,21 @@ export async function driftChaseRound(
   if (scene.kind !== 'chase') return false;
   const prisma = deps.ctx.prisma;
   const placed = await placedOnScene(prisma, scene.id);
-  if (placed.length === 0) return false;
+  if (placed.length === 0) {
+    // Same przeszkody (65e) też jadą — auta mogą wrócić z „Przywróć”.
+    await driftObstaclesRound(deps, campaignId, scene, round, user, new Map());
+    await emitChase(deps, campaignId, scene.id);
+    return false;
+  }
   const { settings, frame } = chaseGeometry(scene);
   const moved: string[] = [];
   const dropped: { name: string; status: 'behind' | 'escaped'; passengers: string[] }[] = [];
   // Gdzie auta stoją w trakcie dryfu (65d2): auto dryfujące na inne staje przy
   // jego zderzaku bez obrażeń — taranowanie to decyzja kierowcy w jego turze.
   const centres = new Map(placed.map((row) => [row.id, { x: row.x, y: row.y }]));
+  // Skąd auto ruszyło w tej rundzie — tor przeszkód (65e) liczy się ruchem względnym.
+  const starts = new Map<string, ScenePoint>();
+  const gone = new Set<string>();
   for (const row of placed) {
     if (row.status !== 'racing' || row.driftRound >= round) continue;
     const chase = cpredVehicleChase(readCpredVehicle(row.vehicle.system), {
@@ -593,6 +615,7 @@ export async function driftChaseRound(
           );
     const centre = contact?.centre ?? drifted;
     centres.set(row.id, centre);
+    starts.set(row.id, { x: row.x, y: row.y });
     const off =
       squares === 0 || contact ? null : chaseOffscreen(centre, body, settings.direction, frame);
     const updated = await prisma.sceneVehicle.update({
@@ -607,6 +630,7 @@ export async function driftChaseRound(
     });
     moved.push(...(await carryPassengers(prisma, scene, { ...updated, vehicle: row.vehicle })));
     if (off) {
+      gone.add(row.id);
       const passengers = await prisma.token.findMany({
         where: { sceneVehicleId: row.id },
         select: { id: true },
@@ -618,7 +642,16 @@ export async function driftChaseRound(
       });
     }
   }
+  // Przeszkody (65e) po autach: auto w kadrze, które w tej rundzie dryfowało
+  // (albo stało), z miejscem przed i po — stojące ze startu rundy też się liczy.
+  const moves = new Map<string, { from: ScenePoint; to: ScenePoint }>();
+  for (const row of placed) {
+    if (row.status !== 'racing' || gone.has(row.id)) continue;
+    const to = centres.get(row.id)!;
+    moves.set(row.id, { from: starts.get(row.id) ?? to, to });
+  }
   await emitTokensById(deps, campaignId, moved, { moved: true });
+  await driftObstaclesRound(deps, campaignId, scene, round, user, moves);
   await emitChase(deps, campaignId, scene.id);
   if (dropped.length === 0) return false;
 

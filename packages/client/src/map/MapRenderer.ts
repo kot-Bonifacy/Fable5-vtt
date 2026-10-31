@@ -26,6 +26,7 @@ import type {
   CoverView,
   SmokeView,
   SceneVehicleView,
+  ChaseObstacleView,
   DefenseZoneView,
   DrawingShape,
   DrawingStyle,
@@ -6822,6 +6823,17 @@ export class MapRenderer {
     const { x, y } = viewport.center;
     viewport.moveCenter(x + dx, y + dy);
     this.refreshOverlays();
+  }
+
+  /** Przeszkody na scenie pościgu (65e). */
+  setChaseObstacles(obstacles: ChaseObstacleView[]): void {
+    if (this.destroyed) return;
+    this.chase.setObstacles(obstacles);
+  }
+
+  /** Przeszkoda pod punktem sceny (65e). */
+  obstacleAt(x: number, y: number): ChaseObstacleView | null {
+    return this.chase.pickObstacle({ x, y });
   }
 
   /** Auto pod punktem sceny (65b) — klik w auto rozstrzyga `MapArea`. */

@@ -6,6 +6,21 @@ w `POMYSLY.md` („Do sprawdzenia przy stole”), decyzje MG — w `decyzje-i-up
 
 ## Otwarte
 
+**31.10.2026 — `t8a-szew-zaslony` (Firefox) pada sprzed etapu 65e.** „Gracz bez figury
+w firefox: przekątna sceny zostaje czarna” liczy 708 jasnych pikseli zamiast 0 — tak samo na
+kliencie z `HEAD` (`fd078a9d`, zmiany 65e schowane), więc to nie przeszkody pościgu. Chromium
+w tym samym specu zielony. Zacząć od pułapki #53 w sekcji `mapa` `pulapki-dev.md` (szew sprite'a)
+i od tego, który commit od 03.10 ruszał zasłonę albo `MapRenderer`. W tym samym przebiegu
+`@szybkie` raz padł `t9a-konta` „konsola bez nowych błędów” (dwa błędy WebSocketu Firefoksa przy
+zamkniętej sesji — pułapka w `ogledziny`); powtórka zielona.
+
+**31.10.2026 — etap 65e „Przeszkody i ruch uliczny”: oględziny MG i wdrożenie.** Oglądane na
+instancji E2E (spec `99-ogledziny/t99-przeszkody`, skasowany): MG w Chromium, Ola w **Firefoksie**
+na wiadukcie. Do obejrzenia przy stole: czy barierki Kenney (płaskie, kreskówkowe) pasują obok aut
+Unlucky Studio, czy szerokość barykady (3 kratki) zgadza się z pasami prawdziwej mapy i czy
+minięta przeszkoda za autem (zasada domowa) nie przeszkadza. Na VPS: migracja
+`20261031220000_chase_obstacles` wjedzie z `./deploy.sh`.
+
 **31.10.2026 — etap 65d2 „Manewr, taranowanie, broń pokładowa”: oględziny MG i wdrożenie.**
 Oglądane na instancji E2E (spec `99-ogledziny/t99-taranowanie`, skasowany): Ola w **Firefoksie**
 prowadzi auto z Pługiem i karabinem pokładowym. Karabin stoi na pasku (30/30, tylko seria),
@@ -36,7 +51,9 @@ wiaduktu MG — bieżnia jedzie, auta z grafiką, fotel kierowcy klikiem, menu a
 auta przez MG niesie figurę. Szew bieżni oglądany tylko na zrzutach (nie na żywo). Pas jezdni
 ustawiono na oko (wiersze 7–12), prawdziwy pas mapy wiaduktu wyznaczy MG. **Motocykl nie ma
 grafiki** — wolnej licencji w stylu paczki Unlucky Studio nie znalazłem (OpenGameArt „Bikes”
-to 32-pikselowy pixel-art na czarnym tle), rysuje się bryłą. Na VPS: migracja
+to 32-pikselowy pixel-art na czarnym tle), rysuje się bryłą (31.10: Kenney Racing Pack, CC0, ma
+`PNG/Motorcycles/motorcycle_*.png` z góry — styl płaski, kreskówkowy, jak barierki przeszkód 65e;
+do decyzji MG, czy pasuje obok aut Unlucky Studio). Na VPS: migracja
 `20261031090000_chase_scene` wjedzie z `./deploy.sh`; `vehicles.json` z 65a dalej trzeba dograć.
 
 **30.10.2026 — T4b pada na granacie (4.6), niezależnie od etapu 64.** `E2E_FROM=po-T4a`,

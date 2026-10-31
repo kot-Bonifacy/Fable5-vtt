@@ -21,7 +21,7 @@ w plikach obok — czytaj je **na żądanie, nigdy rutynowo**:
 
 | stan         | etapy                                                                                          |
 | ------------ | ---------------------------------------------------------------------------------------------- |
-| ⬜ otwarty   | **65** Scena pościgu i walka pojazdów (🟨 65a, 65b ✅ 30.10, 65c, 65d1, 65d2 ✅ 31.10, dalej 65e); **62** Sieć ze sceny (🟨 zrobione, czeka na oględziny MG na VPS po wdrożeniu); **61** Skradanie się (🟨 zrobione, czeka na słowo MG o rozstrzygnięciach); **28** Wdrożenie na VPS (🟨 działa na `https://vtt.tatanga.eu` z botami od 18.10; zostały off-site, utwardzenie, monitoring); **43b**, **43c** (UI walki); **60** Czytelny czat (zlecenie MG z 24.10; 🟨 60a–60c ✅, czeka na oględziny MG z pierwszego kryterium); T10; refaktoryzacja odłożona (MG 18.10) |
+| ⬜ otwarty   | **65** Scena pościgu i walka pojazdów (🟨 65a–65e ✅ 30–31.10, czeka na oględziny MG przy stole); **62** Sieć ze sceny (🟨 zrobione, czeka na oględziny MG na VPS po wdrożeniu); **61** Skradanie się (🟨 zrobione, czeka na słowo MG o rozstrzygnięciach); **28** Wdrożenie na VPS (🟨 działa na `https://vtt.tatanga.eu` z botami od 18.10; zostały off-site, utwardzenie, monitoring); **43b**, **43c** (UI walki); **60** Czytelny czat (zlecenie MG z 24.10; 🟨 60a–60c ✅, czeka na oględziny MG z pierwszego kryterium); T10; refaktoryzacja odłożona (MG 18.10) |
 | ✅ ukończone | 01–11, 13–20b, 23a–27f, 27h–27l, 29a–30d, 31–35, 37–42c, 43a, 44a–44d, 45, 46a1, 46a2, 46c1, 46c2, 46b1, 46b2, 47a, 47b, 48a, 48b, 48c, 49a, 49b, 50a, 50b, 50c, 51, 52, 53, 54, 55, 56, 57 (57a–57c), 58 (58a–58d), 59 (59a–59c), 63 (63a–63b; 63c wycofane 29.10), 64 (64a–64c) (ostatni zamknięty: 64, 2026-10-30) |
 | ⛔ wycofane  | 12, 21, 22 (głos), 27g (wydajność), 36 (makra); 27, 29, 30, 38 rozdzielone na etapy literowane |
 
@@ -29,42 +29,20 @@ Pełna tabela z nazwami i datami: `archiwum/tabela-etapow.md`.
 
 ## Od czego zacząć
 
-**Etap 65 „Scena pościgu i walka pojazdów” (zlecenie MG z 30.10) w toku — 65a i 65b zrobione
-30.10, 65c, 65d1 i 65d2 31.10, został 65e (przeszkody i ruch uliczny, kolczatka).** Od 65d2
-kierowca ma w menu auta Manewry z PT (w walce za Akcję, porażka to utrata kontroli), a MG
-„Wezwij do Manewru” — kierowca-gracz dostaje pasek z „Wykonaj Manewr” (bez kosztu). W walce droga
-auta przez inne auto albo pieszego pyta „Zderzenie: Taranuj / Zatrzymaj się przed”; taranowanie
-to jawne 6k6 dla obu stron (przez OB), Rana „Odgięciowy uraz…” dla jadących, Pług przodem chroni
-taranującego, pod Nitro +2k6, pieszy uskakuje Testem PT 13. Dryf staje przy zderzaku. Broń
-pokładowa (karabin, miotacz, rakiety, broń biała) stoi na pasku kierowcy jako wiersz składany
-z ulepszenia, magazynek w aucie, przeładowanie tylko na postoju. Rozstrzygnięcia 65d2 w pliku
-etapu, zasady domowe w `decyzje-i-uproszczenia.md`, umowy na górze `mapa` i `atak`. Od 65d1 auto jest celem
-ataku: klik w kadłub z bronią w ręku ładuje kubek, a okno Celowania daje „Słaby punkt” (−8,
-po OB ×2). Kadłub bierze obrażenia minus OB kadłuba, PUK 0 to wrak (stoi, dryfuje w tył,
-`VEHICLE_WRECKED`). Szyby kuloodporne to osłona pasażera na burcie zwróconej do strzelca
-(karta „Cel za szybą”). Cios bronią białą w jadące auto ma PT 13, w stojące trafia zawsze. Na
-motocyklu z Ulepszonym zespoleniem unika kierowca (`evasionBy`). Panel auta pokazuje PUK, OB,
-szyby i ulepszenia, a MG wpisuje PUK. Rozstrzygnięcia 65d1 w pliku etapu, zasady domowe
-w `decyzje-i-uproszczenia.md`, umowa na górze `atak`. Od 65c kierowca sam ciągnie swoje auto: poza walką bez
-budżetu, w walce z budżetu tury kierowcy (`Ruch / 4` kratek za Akcję Ruchu, bez Biegu, Nitro za
-Akcję drugi raz), po serwerowym Teście zwykłej jazdy, gdy REF + Prowadzenie ≤ 9. Od rundy 2 auta
-dryfują o `(Ruch − tempo) / 4`, a auto całe za krawędzią odpada (figury z kolejki, MG ma
-„Przywróć”); kamera gracza jedzie za autem, menu auta ma stan, silnik i Nitro. Rozstrzygnięcia 65c
-w pliku etapu, zasada domowa w `decyzje-i-uproszczenia.md`, umowy na górze `mapa` i `tura`. Od 65b scena ma
-rodzaj „Pościg” (wybór przy „Utwórz”, zakładka „Pościg” w Edycji sceny: kierunek, tempo, pas
-jezdni, „Droga jedzie”): tło przewija się w kółko bez szwu (`ChaseLayer`), auta to `SceneVehicle`
-(MG daje je „Na drogę” albo przeciąga kartę pojazdu na mapę i przesuwa po pasie), a figury siedzą
-w fotelach z prawdziwymi `x`, `y` — gracz klika wolny fotel, kierownica dla właściciela auta albo
-za zgodą z menu auta, MG przesadza upuszczeniem. Grafiki aut: CC0 Unlucky Studio, motocykl bez
-grafiki (zaległość). Rozstrzygnięcia 65b w pliku etapu, umowy na górze `mapa` i `kopie`.
-Pojazd to wiersz `Vehicle` (bryła w rdzeniu,
-liczby CP RED w `system`): MG daje go z katalogu w sekcji „Pojazdy” karty (Ekwipunek) albo
-w zakładce MG „Pojazdy” i zmienia wszystko w „Edytuj…”, gracz nadaje nazwę. Katalog 14 pojazdów
-z s. 190–191 to kategoria kompendium (`parse-vehicles.py` → `data/private`; **na VPS trzeba
-dograć `vehicles.json`**). Wiersz „Pojazd” Taboru Nomady staje się prawdziwym pojazdem,
-„Ulepszenie” ląduje w nim wg reguł s. 163–165; stare wiersze dostają pojazd przy starcie serwera.
-Decyzje MG 1–12, podział i rozstrzygnięcia 65a w `etap-65-poscig.md`, umowy na górze `postac`
-i `kopie`.
+**Etap 65 „Scena pościgu i walka pojazdów” (zlecenie MG z 30.10) zrobiony 30–31.10 (65a–65e)
+— czeka na oględziny MG przy stole (szew bieżni na żywo, prawdziwy pas mapy wiaduktu) i na
+wdrożenie (na VPS dograć `vehicles.json`).** Pojazd to `Vehicle` na karcie (katalog s. 190–191,
+Moto jako prawdziwe pojazdy), scena „Pościg” przewija tło bez szwu, auta to `SceneVehicle`
+z fotelami, kierowca jedzie z budżetu tury (`Ruch / 4`), auta dryfują o `(Ruch − tempo) / 4`
+i odpadają za krawędzią. Auto jest celem ataku (OB kadłuba, PUK, wrak, słaby punkt, szyby
+kuloodporne), ma Manewry, taranowanie i broń pokładową. Od 65e MG wypuszcza w walce przeszkody
+z palety „Przeszkody” (ikona barierki na pasku narzędzi): przy przedniej krawędzi, na pasie pod
+kursorem; przeszkoda jedzie co rundę w tył o `tempo / 4`, a przed autem staje i daje kierowcy
+pasek „Gwałtowny skręt / Taranuj”. Wyrzutnia kolczatki z Moto: „Zrzuć kolczatkę” w menu auta,
+Prowadzenie PT 17 albo 4k6 w słaby punkt. Plik etapu `etap-65-poscig.md` (decyzje MG
+i rozstrzygnięcia każdego podetapu), zasady domowe w `decyzje-i-uproszczenia.md`, umowy na
+górze `mapa`, `tura`, `atak`, `postac` i `kopie`, stały E2E `48-poscig/t65-przeszkody`
+(`@szybkie`).
 
 **Szybka wymiana wzorem BG3 (etap 64, zlecenie MG z 30.10) — czeka na wdrożenie i oględziny
 przy stole.** Każda kolumna okna „Wymiana” to siatka kafli (`ItemGrid`): Ctrl/Shift+klik zaznacza
@@ -559,7 +537,7 @@ a nie do tego pliku.
 
 | obszar      | co obejmuje                                                    | umów | pułapek |
 | ----------- | -------------------------------------------------------------- | ---- | ------- |
-| `mapa`      | figury, zaznaczanie, narzędzia, obiekty sceny, ściany, efekty, zamek drzwi, ukryta figura zauważona, ikony urządzeń, wspólny widok drużyny, scena pościgu, jazda kierowcy i dryf, Manewr i taranowanie | 74   | 27      |
+| `mapa`      | figury, zaznaczanie, narzędzia, obiekty sceny, ściany, efekty, zamek drzwi, ukryta figura zauważona, ikony urządzeń, wspólny widok drużyny, scena pościgu, jazda kierowcy i dryf, Manewr i taranowanie, przeszkody pościgu | 75   | 27      |
 | `czat`      | rodzaje wierszy, `visibleTo`, filtr, `seq`, `gmrecovery`, „to dotyczy mnie”, grupy kart, kolor gracza, czyszczenie | 13   | 3       |
 | `serwer`    | Prisma i migracje, zdarzenia gniazda, zapisy karty, uploady    | 26   | 21      |
 | `ui`        | okna pływające, `z-index`, motyw, skróty, dostępność, wejście, panel decyzji MG | 37   | 15      |
@@ -574,14 +552,46 @@ a nie do tego pliku.
 | `siec`      | Programy, LOD, demony, piętra architektury, dek jako towar, strefy bronione, kamery, rozbrajanie, Sieć ze sceny | 13   | 4       |
 | `boty`      | llama-server, RAG, reindeks, dziennik i baza wiedzy, brama AI  | 10   | 10      |
 | `dane`      | `parse-manual.py`, kompendium poza repo, tabele z podręcznika  | 9    | 12      |
-| `kopie`     | `snapshot`, `archive`, paczki ZIP, wczytanie kampanii, „czeka na gracza”, kopie kampanii i cofnięcie, sklep i bot w paczce, zgłoszenie karty gracza, pojazdy w paczce, auta na scenie pościgu | 21   | 6       |
-| `ogledziny` | CDP i Playwright MCP, zrzuty, dwie sesje, `window.confirm`    | 0    | 115     |
+| `kopie`     | `snapshot`, `archive`, paczki ZIP, wczytanie kampanii, „czeka na gracza”, kopie kampanii i cofnięcie, sklep i bot w paczce, zgłoszenie karty gracza, pojazdy w paczce, auta na scenie pościgu, przeszkody poza paczką | 22   | 6       |
+| `ogledziny` | CDP i Playwright MCP, zrzuty, dwie sesje, `window.confirm`    | 0    | 116     |
 | `testy`     | vitest, migotanie, `tsc --noEmit`, środowisko dev              | 0    | 151     |
 
 
 ## Notatki z dwóch ostatnich sesji
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
+
+### Sesja 31.10, czwarta — etap 65e „Przeszkody i ruch uliczny”
+
+**Zrobione wg planu:** rdzeń `shared/chase-obstacles.ts` (rodzaje z grafikami, wypuszczenie przy
+przedniej krawędzi, `chaseObstacleSweep` — tor przeszkody przez bryły aut ruchem względnym,
+kolczatka), reguły w `vehiclecombat.ts` (Gwałtowny skręt PT 13, kolczatka PT 17 i 4k6,
+`cpredVehicleSpikesLeft`, `cpredSpikesAffect`), akcja `vehicle-spikes`. Serwer: migracja
+`20261031220000_chase_obstacles` (`ChaseObstacle`, `SceneVehicle.spikesUsed`), nowy
+`realtime/chase-obstacles.ts` (`chase:obstacle-spawn` tylko w walce, `-remove`, `-answer`,
+`vehicle:spikes`, `driftObstaclesRound` w haku dryfu, `crossSpikes` po jeździe kierowcy),
+przeszkoda jako cel `resolveRam` (`ramObstacle`), słaby punkt kolczatki znacznikiem serwera
+w `rollAimedAtWeakSpot`, przeszkody w `chase:sync` i `state:sync`, cztery zdarzenia w macierzy
+izolacji. Klient: paleta „Przeszkody” na pasku MG (`ChaseObstacleTools`, wyszarzona poza walką),
+rysunek w `ChaseLayer`, menu przeszkody i pasek kierowcy (`ChaseObstacleMenu`), „Zrzuć
+kolczatkę” w menu auta, przeszkody w pytaniu „Zderzenie”. Grafiki: Kenney Racing Pack (CC0)
+i „Caltrops” z game-icons.net (CC BY 3.0) w `public/art/obstacles/` z atrybucją. Rozstrzygnięcia
+1–10 w pliku etapu, zasady domowe w `decyzje-i-uproszczenia.md`. **Odstępstwa:** paczka aut z 65b
+nie ma przeszkód — barierki z innego źródła; minięta przeszkoda staje za autem także po
+zderzeniu; taranowanie przeszkody bez „Cofnij”; kolczatka liczona jak Nitro. **Testy:** shared
+2854 (nowy `chase-obstacles.test.ts` 14/14, kolczatka w `vehiclecombat.test.ts`), serwer
+1722/1722 (nowy `chase-obstacles.test.ts` 6/6), klient 442/443 — dalej tylko znany
+`theme.test.ts`; tsc, ESLint i Prettier czyste w zmienionych plikach. Stały E2E
+`48-poscig/t65-przeszkody` (`@szybkie`, kości skryptowane) 3/3; cała grupa `@szybkie` 67/71 —
+`t8a-szew-zaslony` (Firefox) pada też na kliencie z `HEAD`, `t9a` raz migotał (`zaleglosci.md`). **Oglądane:** tymczasowy spec
+`99-ogledziny/t99-przeszkody` z `po-T6` (skasowany): Ola w **Firefoksie** (barykada z obrysem,
+pasek „Na drodze”, skręt nieudany → utrata kontroli i zderzenie, skręt udany → barykada za
+autem, kolczatka za autem gangu), MG w **Chromium** (paleta, przycisk wyszarzony poza walką,
+menu przeszkody „Za kierowcę”, menu auta z „Zrzuć kolczatkę”). Oględziny złapały: barykadę
+4-kratkową na dwóch pasach (zwężona do 3), pasek komunikatu nad menu auta (menu podniesione),
+dwuwyrazowe nazwy w palecie łamane w dwie linie. Cudze zmiany w drzewie (`MapFxLayer.ts`,
+`CombatForms.tsx`, `damage.test.ts`, `grapple-turns.test.ts`, stare spece `99-ogledziny`) nie
+ruszane. Na VPS nic nie zmieniano.
 
 ### Sesja 31.10, trzecia — etap 65d2 „Manewr, taranowanie, broń pokładowa”
 
@@ -611,30 +621,3 @@ na pasku, surowy kod `MOUNT_FRONT_ONLY` w odmowie ataku, dryf wpychający auto w
 wyjeżdżające za okno — poprawione. Cudze zmiany w drzewie (`MapFxLayer.ts`, `CombatForms.tsx`,
 `damage.test.ts`, `grapple-turns.test.ts`, stare spece `99-ogledziny`) nie ruszane. Na VPS nic
 nie zmieniano.
-
-### Sesja 31.10, druga — etap 65d1 „Ostrzał pojazdów”
-
-**Plan skorygowany na starcie (decyzja MG):** 65d nie mieścił się w sesji, więc dzieli się na
-65d1 (ostrzał) i 65d2 (Manewr, utrata kontroli, taranowanie, bronie pokładowe) — plik etapu
-i `archiwum/tabela-etapow.md`. **Zrobione wg planu 65d1:** auto jako czwarty cel ataku
-(`targetVehicleId` / `targetWindow` w `attack:roll`, `CpredAttackTarget.vehicle` w planerze,
-nowy `realtime/vehicle-targets.ts`), obrażenia kadłuba i szyb w `applyDamageToVehicleRow` z
-„Cofnij”, wrak z PUK 0 (dryf w tył, `VEHICLE_WRECKED` w jeździe, Nitro i silniku), szyba
-kuloodporna jako odmowa `window` z kartą „Ostrzelaj szybę / Strzelaj mimo szyby”, słaby punkt
-(−8, ×2 po OB z zapisanej karty), cios w jadące auto PT 13 / w stojące PT 0, Ulepszone
-zespolenie (`evasionBy` — kierowca unika za motocykl i pasażera), widok auta z `hp`, `hpMax`,
-`armorSp`, `windows`, `upgrades`, panel auta (pasek PUK, pole PUK dla MG, szyby, ulepszenia,
-portrety), szary wrak na mapie, okno Celowania dla auta (ikona koła z game-icons.net,
-atrybucja), auto w „Zastosuj”. Bot strzela tylko w figury z założenia; szyba to dla niego
-osłona. Rozstrzygnięcia 1–10 w pliku etapu. **Odstępstwa:** szyby na cztery burty zamiast okien,
-OB kadłuba bez ablacji, wybuch nie rusza auta (`POMYSLY.md`) — w `decyzje-i-uproszczenia.md`.
-**Testy:** shared 2823 (+ `vehicles`, `chase`, `attacks` — auto jako cel), serwer 1708/1708
-(nowy `chase-combat.test.ts` 7/7; dwa znane „unhandled” z `walls.test.ts` po teardownie),
-klient 442/443 — dalej tylko znany `theme.test.ts`; tsc, ESLint i Prettier czyste w zmienionych
-plikach. **Oglądane:** tymczasowy spec `99-ogledziny/t99-ostrzal` z `po-T6`: Ola w **Firefoksie**
-(kubek i okno Celowania przy aucie, karta ze słabym punktem, „Cel za szybą”, wrak), MG
-w **Chromium** (panel auta, PUK 0 polem). Złapane: ikony okna Celowania nie rysują się na
-zrzutach Firefoksa — także dla figury, sprzed etapu (`zaleglosci.md`). W drzewie zostały cudze,
-niezacommitowane zmiany sprzed sesji (`MapFxLayer.ts`, `CombatForms.tsx`, `damage.test.ts`,
-`grapple-turns.test.ts`) — nie ruszane. Na VPS nic nie zmieniano.
-

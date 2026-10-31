@@ -43,7 +43,7 @@ import { campaignGameTime } from './gametime.js';
 import { campaignRoom } from './state.js';
 import { targetsForSync } from './target.js';
 import { fetchVehiclesFor } from './vehicles.js';
-import { fetchSceneVehiclesFor } from './chase.js';
+import { fetchSceneVehiclesFor, obstacleViews } from './chase.js';
 
 /**
  * Builds the full room state for one client: current seq, presence and the
@@ -82,6 +82,7 @@ export async function buildStateSync(
       characters: [],
       vehicles: [],
       sceneVehicles: [],
+      sceneObstacles: [],
       bots: [],
       ai: syncedAiStatus(deps, socket, user, null),
       compendium: await buildCompendiumSync(deps, null),
@@ -276,6 +277,7 @@ export async function buildStateSync(
     characters,
     vehicles,
     sceneVehicles,
+    sceneObstacles: viewedSceneId ? await obstacleViews(deps.ctx.prisma, viewedSceneId) : [],
     bots,
     ai: syncedAiStatus(deps, socket, user, campaign.id),
     compendium,

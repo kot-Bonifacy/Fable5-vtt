@@ -7,6 +7,7 @@ export * from './auth.js';
 export * from './sessions.js';
 export * from './bots/index.js';
 export * from './chase.js';
+export * from './chase-obstacles.js';
 export * from './chat.js';
 export * from './checks.js';
 export * from './combat.js';

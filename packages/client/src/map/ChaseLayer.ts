@@ -12,6 +12,7 @@ import {
   defaultVehicleArt,
   vehicleSeatCentre,
   type ChaseDirection,
+  type ChaseObstacleView,
   type SceneVehicleView,
   type SceneView,
   type ScenePoint,
@@ -39,6 +40,19 @@ const SEAT_FREE_COLOR = 0x7fe7ff;
 const SEAT_DRIVER_COLOR = 0xffb547;
 const BODY_FILL = 0x1b2230;
 const BODY_EDGE = 0x7fe7ff;
+
+interface ObstacleNode {
+  root: Container;
+  body: Container;
+  sprite: Sprite | null;
+  shape: Graphics;
+  label: Text;
+  imageUrl: string | null;
+}
+
+/** Obrys przeszkody, która czeka na wybór kierowcy (65e). */
+const OBSTACLE_BLOCK_COLOR = 0xffb547;
+const OBSTACLE_FILL = 0x3a2a1a;
 
 interface VehicleNode {
   root: Container;
@@ -128,6 +142,10 @@ export class ChaseLayer {
   private roadKey: string | null = null;
   private roadTexture: Texture | null = null;
   private readonly nodes = new Map<string, VehicleNode>();
+  /** Przeszkody (65e) — pod autami, nad bieżnią. */
+  private readonly obstacleLayer = new Container();
+  private readonly obstacleNodes = new Map<string, ObstacleNode>();
+  private obstacles: ChaseObstacleView[] = [];
   private vehicles: SceneVehicleView[] = [];
   private occupied = new Map<string, Set<number>>();
   /** Pas jezdni u MG — dwie przerywane linie wzdłuż drogi. */
@@ -149,7 +167,7 @@ export class ChaseLayer {
     this.road.visible = false;
     this.road.eventMode = 'none';
     this.layer.eventMode = 'none';
-    this.layer.addChild(this.band);
+    this.layer.addChild(this.band, this.obstacleLayer);
   }
 
   /** Czy bieżnia zastępuje tło (scena pościgu z tłem). */
@@ -236,6 +254,28 @@ export class ChaseLayer {
     this.redraw();
   }
 
+  /** Przeszkody sceny (65e). */
+  setObstacles(obstacles: ChaseObstacleView[]): void {
+    this.obstacles = obstacles;
+    this.redraw();
+  }
+
+  /** Przeszkoda pod punktem sceny — z wierzchu, czyli z końca listy. */
+  pickObstacle(point: ScenePoint): ChaseObstacleView | null {
+    const scene = this.scene;
+    if (!scene || scene.kind !== 'chase') return null;
+    const horizontal = chaseIsHorizontal(scene.chase.direction);
+    for (let index = this.obstacles.length - 1; index >= 0; index -= 1) {
+      const obstacle = this.obstacles[index]!;
+      const hx = ((horizontal ? obstacle.lengthSq : obstacle.widthSq) * scene.grid.sizePx) / 2;
+      const hy = ((horizontal ? obstacle.widthSq : obstacle.lengthSq) * scene.grid.sizePx) / 2;
+      if (Math.abs(point.x - obstacle.x) <= hx && Math.abs(point.y - obstacle.y) <= hy) {
+        return obstacle;
+      }
+    }
+    return null;
+  }
+
   /** Auto pod punktem sceny — z wierzchu, czyli z końca listy. */
   pick(point: ScenePoint): SceneVehicleView | null {
     const scene = this.scene;
@@ -310,6 +350,105 @@ export class ChaseLayer {
       this.nodes.delete(id);
       node.root.destroy(DESTROY_TREE);
     }
+    const seenObstacles = new Set<string>();
+    if (scene && scene.kind === 'chase') {
+      for (const obstacle of this.obstacles) {
+        seenObstacles.add(obstacle.id);
+        this.drawObstacle(scene, obstacle);
+      }
+    }
+    for (const [id, node] of this.obstacleNodes) {
+      if (seenObstacles.has(id)) continue;
+      this.obstacleNodes.delete(id);
+      node.root.destroy(DESTROY_TREE);
+    }
+  }
+
+  /**
+   * Przeszkoda (65e): grafika przodem do góry, obrócona do kierunku jazdy jak
+   * auto, wrak szary. Bez grafiki — bryła z ukośnymi pasami. Podpis z PW, bo
+   * PW przeszkody to jej odporność na taranowanie; czekająca na kierowcę ma
+   * bursztynowy obrys.
+   */
+  private drawObstacle(scene: SceneView, obstacle: ChaseObstacleView): void {
+    const grid = scene.grid.sizePx;
+    let node = this.obstacleNodes.get(obstacle.id);
+    if (!node) {
+      const root = new Container();
+      const body = new Container();
+      const shape = new Graphics();
+      const label = new Text({
+        text: '',
+        style: {
+          fontFamily: 'system-ui, sans-serif',
+          fontSize: 24,
+          fill: 0xf2f4f8,
+          stroke: { color: 0x000000, width: 5 },
+        },
+      });
+      label.anchor.set(0.5, 1);
+      body.addChild(shape);
+      root.addChild(body, label);
+      this.obstacleLayer.addChild(root);
+      node = { root, body, sprite: null, shape, label, imageUrl: null };
+      this.obstacleNodes.set(obstacle.id, node);
+    }
+    const width = obstacle.widthSq * grid;
+    const length = obstacle.lengthSq * grid;
+    const direction = scene.chase.direction;
+    node.root.position.set(obstacle.x, obstacle.y);
+    node.body.rotation = (chaseHeadingDeg(direction) * Math.PI) / 180;
+    node.body.tint = obstacle.wreckTint ? WRECK_TINT : 0xffffff;
+
+    if (node.imageUrl !== obstacle.imageUrl) {
+      node.imageUrl = obstacle.imageUrl;
+      node.sprite?.destroy();
+      node.sprite = null;
+      const url = obstacle.imageUrl;
+      if (url) {
+        const target = node;
+        void Assets.load<Texture>(url)
+          .then((texture) => {
+            if (this.destroyed || target.imageUrl !== url || target.root.destroyed) return;
+            const sprite = new Sprite(texture);
+            sprite.anchor.set(0.5);
+            target.sprite = sprite;
+            target.body.addChildAt(sprite, 0);
+            this.redraw();
+          })
+          .catch(() => undefined);
+      }
+    }
+    if (node.sprite) {
+      const texture = node.sprite.texture;
+      node.sprite.scale.set(Math.min(width / texture.width, length / texture.height));
+    }
+    node.shape.clear();
+    if (!node.sprite) {
+      node.shape
+        .roundRect(-width / 2, -length / 2, width, length, Math.min(width, length) * 0.15)
+        .fill({ color: OBSTACLE_FILL, alpha: 0.9 })
+        .stroke({ color: SEAT_DRIVER_COLOR, width: Math.max(2, grid * 0.05), alpha: 0.9 });
+      const step = grid * 0.4;
+      for (let x = -width / 2; x < width / 2; x += step * 2) {
+        const end = Math.min(width / 2, x + step);
+        node.shape
+          .moveTo(x, -length / 2 + 2)
+          .lineTo(end, length / 2 - 2)
+          .stroke({ color: SEAT_DRIVER_COLOR, width: Math.max(2, grid * 0.06), alpha: 0.55 });
+      }
+    }
+    if (obstacle.blockingVehicleId) {
+      node.shape
+        .roundRect(-width / 2 - 4, -length / 2 - 4, width + 8, length + 8, grid * 0.1)
+        .stroke({ color: OBSTACLE_BLOCK_COLOR, width: Math.max(3, grid * 0.07), alpha: 1 });
+    }
+
+    node.label.text =
+      obstacle.kind === 'spikes' ? obstacle.name : `${obstacle.name} · ${obstacle.hp} PW`;
+    node.label.style.fontSize = Math.max(11, grid * 0.18);
+    const horizontal = chaseIsHorizontal(direction);
+    node.label.position.set(0, -(horizontal ? width : length) / 2 - grid * 0.06);
   }
 
   private drawBand(): void {
@@ -444,6 +583,8 @@ export class ChaseLayer {
     this.destroyed = true;
     for (const node of this.nodes.values()) node.root.destroy(DESTROY_TREE);
     this.nodes.clear();
+    for (const node of this.obstacleNodes.values()) node.root.destroy(DESTROY_TREE);
+    this.obstacleNodes.clear();
     this.roadTexture?.destroy(true);
     this.roadTexture = null;
   }

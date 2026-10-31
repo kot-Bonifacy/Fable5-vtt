@@ -827,11 +827,54 @@ model SceneVehicle {
   nitroUsed   Int     @default(0)
   /** Wezwanie MG do Manewru czekające na kierowcę — id manewru systemu (65d2). */
   maneuverCall String?
+  /** Kolczatki zrzucone w tym pościgu (65e) — wyrzutnia liczy jak Nitro. */
+  spikesUsed   Int     @default(0)
   createdAt DateTime @default(now())
 
   scene      Scene   @relation(fields: [sceneId], references: [id], onDelete: Cascade)
   vehicle    Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
   passengers Token[]
+  /** Przeszkody, które stanęły przed tym autem i czekają na wybór kierowcy (65e). */
+  blockedBy  ChaseObstacle[]
+
+  @@index([sceneId])
+}
+
+/**
+ * Przeszkoda albo ruch uliczny na scenie pościgu (etap 65e): auto cywilne,
+ * barykada, roboty drogowe, wrak, kolczatka albo własna przeszkoda MG. Stoi
+ * na drodze, więc w kadrze jedzie w tył o `tempo / 4` kratek na rundę; auto,
+ * na którego zderzak trafi, czeka na wybór kierowcy (`blockingId`).
+ * Chwilowy stan walki — nie jedzie w paczkach ani kopiach scen.
+ */
+model ChaseObstacle {
+  id        String @id @default(cuid())
+  sceneId   String
+  /** `CHASE_OBSTACLE_KINDS` z `shared/chase-obstacles.ts`. */
+  kind      String
+  name      String
+  imageUrl  String?
+  /** Środek w pikselach sceny. */
+  x         Float
+  y         Float
+  /** W poprzek jazdy i wzdłuż — w kratkach, jak bryła auta. */
+  widthSq   Float
+  lengthSq  Float
+  /** PW jako osłona przy taranowaniu; kolczatka — 0. */
+  hp        Int
+  hpMax     Int
+  /** Runda walki, w której już dryfowała — raz na rundę, jak auta. */
+  driftRound Int    @default(0)
+  /** Auto, przed którym stanęła i czeka na Manewr albo taranowanie. */
+  blockingId String?
+  /** JSON id aut (`SceneVehicle`), które ją minęły albo przejechały kolczatkę. */
+  passed    String @default("[]")
+  /** Auto, które zrzuciło kolczatkę — jej nie przejeżdża. */
+  droppedById String?
+  createdAt DateTime @default(now())
+
+  scene    Scene         @relation(fields: [sceneId], references: [id], onDelete: Cascade)
+  blocking SceneVehicle? @relation(fields: [blockingId], references: [id], onDelete: SetNull)
 
   @@index([sceneId])
 }
@@ -1053,6 +1096,7 @@ model Scene {
   exploration  SceneExploration?
   playerExplorations PlayerExploration[]
   vehicles     SceneVehicle[]
+  obstacles    ChaseObstacle[]
 
   @@index([campaignId, active])
 }

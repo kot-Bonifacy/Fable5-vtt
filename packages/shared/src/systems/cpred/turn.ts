@@ -171,6 +171,8 @@ export const CPRED_ACTION_DRIVE_TEST = 'vehicle-drive';
 export const CPRED_ACTION_NITRO = 'vehicle-nitro';
 /** Manewr (65d2, s. 192) — `vehicle:maneuver` w `chase-driving.ts`. */
 export const CPRED_ACTION_MANEUVER = 'vehicle-maneuver';
+/** Wyrzutnia kolczatki (65e, s. 165) — `vehicle:spikes` w `chase-obstacles.ts` serwera. */
+export const CPRED_ACTION_SPIKES = 'vehicle-spikes';
 
 /**
  * The catalogue itself (s. 168–169). Mechanics, not rulebook prose: the costs
@@ -360,6 +362,13 @@ export const CPRED_ACTIONS: readonly CpredActionDefinition[] = [
     name: 'Manewr pojazdem',
     cost: 'action',
     hint: 'Niebezpieczny manewr pochłaniający całą uwagę kierowcy.',
+    handledElsewhere: true,
+  },
+  {
+    id: CPRED_ACTION_SPIKES,
+    name: 'Wyrzutnia kolczatki',
+    cost: 'action',
+    hint: 'Kierowca zrzuca kolczatkę za auto: jadący z tyłu rzuca Prowadzenie PT 17 albo 4k6 w słaby punkt.',
     handledElsewhere: true,
   },
   {

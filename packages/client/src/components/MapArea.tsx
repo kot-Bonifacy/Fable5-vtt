@@ -32,6 +32,7 @@ import {
   type SceneObjectRef,
   type SceneObjectShape,
   type ScenePoint,
+  type ChaseObstacleView,
   type SceneView,
   type SceneVehicleView,
   type TokenGlyph,
@@ -103,6 +104,7 @@ import {
   inventoryErrorText,
   moveChaseVehicle,
   placeChaseVehicle,
+  spawnChaseObstacle,
   seatInVehicle,
 } from '../socket.js';
 import { loadAttackAtToken } from '../attack-targeting.js';
@@ -167,6 +169,7 @@ import { useCompendiumStore } from '../stores/compendiumStore.js';
 import { useSmokeStore } from '../stores/smokeStore.js';
 import { useChaseStore } from '../stores/chaseStore.js';
 import { ChaseVehicleMenu, chaseErrorText, seatableFigure } from './ChaseVehicleMenu.js';
+import { ChaseObstacleMenu, useObstacleNotice } from './ChaseObstacleMenu.js';
 import { isVehicleDrag, readVehicleDrag } from '../map/vehicle-drag.js';
 import { useTargetStore } from '../stores/targetStore.js';
 import { NoticeColumn, type PinnedNotice } from './NoticeColumn.js';
@@ -250,6 +253,35 @@ function openSheetOfToken(tokenId: string): void {
  * Klik w auto na scenie pościgu (etap 65b). Wolny fotel pod kursorem i figura
  * do posadzenia (prowadzona albo jedyna własna) — siada; reszta auta — menu.
  */
+/**
+ * Przeszkody na scenie pościgu (etap 65e): przeszkoda w ręku MG wypuszcza się
+ * klikiem w drogę (przy przedniej krawędzi, na pasie pod kursorem), a klik MG
+ * w przeszkodę otwiera jej menu. Gracz przeszkody nie klika — widzi ją i tyle.
+ */
+function obstacleClickAt(
+  worldX: number,
+  worldY: number,
+  toClient: (point: ScenePoint) => ScenePoint | null,
+  obstacleAt: (x: number, y: number) => ChaseObstacleView | null,
+): boolean {
+  const scene = useSceneStore.getState().scene;
+  if (!scene || scene.kind !== 'chase') return false;
+  if (useAuthStore.getState().user?.role !== ROLE_GM) return false;
+  const chase = useChaseStore.getState();
+  if (chase.armed) {
+    const armed = chase.armed;
+    void spawnChaseObstacle({ sceneId: scene.id, x: worldX, y: worldY, ...armed }).then((ack) => {
+      if (!ack.ok) notifyRefusal('chase', chaseErrorText(ack.error));
+    });
+    return true;
+  }
+  const obstacle = obstacleAt(worldX, worldY);
+  if (!obstacle) return false;
+  const client = toClient({ x: worldX, y: worldY });
+  if (client) chase.openObstacleMenu(obstacle.id, client.x, client.y);
+  return true;
+}
+
 function vehicleClickAt(
   worldX: number,
   worldY: number,
@@ -792,6 +824,8 @@ export function MapArea() {
   const rendererRef = useRef<MapRenderer | null>(null);
   const [ready, setReady] = useState(false);
   const [backgroundLoad, setBackgroundLoad] = useState<BackgroundLoad | null>(null);
+  // Etap 65e: pasek „Przeszkoda na drodze” u kierowcy (u MG — za NPC-a).
+  useObstacleNotice();
   const [menu, setMenu] = useState<TokenMenuState | null>(null);
   /** Token walking a planned route right now (stage 16e); null when none is. */
   const [marchingTokenId, setMarchingTokenId] = useState<string | null>(null);
@@ -924,6 +958,16 @@ export function MapArea() {
   const handleMapClick = useCallback(
     (worldX: number, worldY: number): boolean => {
       if (placeToken(worldX, worldY)) return true;
+      if (
+        obstacleClickAt(
+          worldX,
+          worldY,
+          (point) => rendererRef.current?.worldToClient(point) ?? null,
+          (x, y) => rendererRef.current?.obstacleAt(x, y) ?? null,
+        )
+      ) {
+        return true;
+      }
       // Auto na scenie pościgu (65b): klik w wolny fotel sadza w nim figurę,
       // klik w resztę auta otwiera jego menu. Przed granatem i skokiem nie —
       // to one rozbrajają się klikiem obok, a auto jest dużym celem.
@@ -2177,7 +2221,11 @@ export function MapArea() {
       );
     };
     push();
+    rendererRef.current?.setChaseObstacles(useChaseStore.getState().obstacles);
     const offChase = useChaseStore.subscribe((state, previous) => {
+      if (state.obstacles !== previous.obstacles) {
+        rendererRef.current?.setChaseObstacles(state.obstacles);
+      }
       if (state.vehicles === previous.vehicles) return;
       push();
       followOwnVehicle(state.vehicles, previous.vehicles);
@@ -2726,6 +2774,7 @@ export function MapArea() {
       </div>
       <AimMenu />
       <ChaseVehicleMenu />
+      <ChaseObstacleMenu />
       <DrawingTextEditor />
       <SceneObjectCard onDelete={(ref) => void removeSceneObject(ref)} />
       {menu && <TokenContextMenu menu={menu} onClose={() => setMenu(null)} />}

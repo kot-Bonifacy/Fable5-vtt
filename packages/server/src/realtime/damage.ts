@@ -280,6 +280,13 @@ async function applyDamageToVehicleRow(
 
 /** Czy karta ataku, za którą rzucono te obrażenia, celowała w słaby punkt pojazdu. */
 async function rollAimedAtWeakSpot(deps: RealtimeDeps, roll: RollResult): Promise<boolean> {
+  // Kolczatka (65e): kartę bez ataku stawia serwer sam i sam ją znakuje — `system`
+  // obrażeń gracza składa serwer z planu, więc tego znacznika tam nie ma.
+  if (
+    (roll.damage?.system as { vehicleWeakSpot?: unknown } | undefined)?.vehicleWeakSpot === true
+  ) {
+    return true;
+  }
   const attackMessageId = roll.damage?.attackMessageId;
   if (attackMessageId === undefined) return false;
   const message = await deps.ctx.prisma.chatMessage.findUnique({ where: { id: attackMessageId } });

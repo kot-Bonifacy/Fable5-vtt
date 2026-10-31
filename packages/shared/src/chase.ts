@@ -14,6 +14,7 @@
 import type { ScenePoint } from './measure.js';
 import type { VehicleLayoutId } from './vehicles.js';
 import { VEHICLE_LAYOUTS } from './vehicles.js';
+import type { ChaseObstacleView } from './chase-obstacles.js';
 
 export const SCENE_KINDS = ['map', 'chase'] as const;
 /** `map` — zwykła mapa, `chase` — scena pościgu z bieżnią i autami. */
@@ -607,6 +608,8 @@ export interface SceneVehicleView {
   driftSq: number;
   /** Zbiorniki Nitro, które jeszcze zostały na ten pościg. */
   nitroLeft: number;
+  /** Kolczatki w wyrzutni na ten pościg (65e); 0 — brak wyrzutni albo pusta. */
+  spikesLeft: number;
   /**
    * Punkty kadłuba (65d) — jawne dla całego stołu, jak PW osłony (16c): każdy
    * widzi, jak maska się sypie. 0 = wrak (`status: 'wrecked'` w kadrze).
@@ -655,6 +658,8 @@ export interface ChaseSyncBroadcast {
   seq?: number;
   sceneId: string;
   vehicles: SceneVehicleView[];
+  /** Przeszkody tej sceny (65e) — wszyscy widzą wszystkie. */
+  obstacles: ChaseObstacleView[];
 }
 
 /** MG: `chase:place` — auto kampanii na drogę tej sceny (albo przestawienie). */

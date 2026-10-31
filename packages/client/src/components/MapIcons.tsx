@@ -499,3 +499,14 @@ export function IconCrate(props: IconProps) {
     </Svg>
   );
 }
+
+/** Przeszkoda na drodze pościgu (etap 65e) — barierka w pasy na dwóch nogach. */
+export function IconRoadBarrier(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M3 8h18v6H3z" />
+      <path d="M7 8l-3 6M12 8l-3 6M17 8l-3 6M21 9l-2.5 5" />
+      <path d="M6 14v6M18 14v6" />
+    </Svg>
+  );
+}

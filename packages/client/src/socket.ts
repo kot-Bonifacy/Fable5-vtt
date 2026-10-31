@@ -308,6 +308,9 @@ import type {
   VehicleCreatePayload,
   VehicleDeleteBroadcast,
   VehicleRenamePayload,
+  ChaseObstacleChoice,
+  ChaseObstacleSpawnPayload,
+  ChaseObstacleView,
   ChasePlacePayload,
   ChaseSyncBroadcast,
   SceneKind,
@@ -1583,7 +1586,9 @@ export function connectSocket(userId: string): Socket {
   // które odpadły z pościgu), więc bez seq, jak `zone:sync`.
   onPresented('chase:sync', (broadcast: ChaseSyncBroadcast) => {
     if (viewingScene(broadcast.sceneId)) {
-      useChaseStore.getState().setVehicles(broadcast.sceneId, broadcast.vehicles);
+      useChaseStore
+        .getState()
+        .setVehicles(broadcast.sceneId, broadcast.vehicles, broadcast.obstacles);
     }
   });
   onPresented('smoke:sync', (broadcast: SmokeSyncBroadcast & { seq?: number }) => {
@@ -3483,6 +3488,15 @@ export const callVehicleManeuver = (sceneVehicleId: string, maneuverId: string |
   emitSceneAck<SceneVehicleView>('vehicle:maneuver-call', { sceneVehicleId, maneuverId });
 export const reloadVehicleMount = (sceneVehicleId: string, upgradeRowId: string) =>
   emitSceneAck<SceneVehicleView>('vehicle:mount-reload', { sceneVehicleId, upgradeRowId });
+/** Etap 65e: przeszkody MG, wybór kierowcy przed przeszkodą i wyrzutnia kolczatki. */
+export const spawnChaseObstacle = (payload: ChaseObstacleSpawnPayload) =>
+  emitSceneAck<ChaseObstacleView>('chase:obstacle-spawn', payload);
+export const removeChaseObstacle = (obstacleId: string) =>
+  emitSceneAck('chase:obstacle-remove', { obstacleId });
+export const answerChaseObstacle = (obstacleId: string, choice: ChaseObstacleChoice) =>
+  emitSceneAck<SceneVehicleView>('chase:obstacle-answer', { obstacleId, choice });
+export const dropVehicleSpikes = (sceneVehicleId: string) =>
+  emitSceneAck<SceneVehicleView>('vehicle:spikes', { sceneVehicleId });
 
 function emitSceneAck<T = undefined>(event: string, payload: unknown): Promise<SocketAck<T>> {
   return new Promise((resolve) => {

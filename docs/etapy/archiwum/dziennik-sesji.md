@@ -1,5 +1,31 @@
 # Dziennik sesji — archiwum
 
+### Sesja 31.10, druga — etap 65d1 „Ostrzał pojazdów”
+
+**Plan skorygowany na starcie (decyzja MG):** 65d nie mieścił się w sesji, więc dzieli się na
+65d1 (ostrzał) i 65d2 (Manewr, utrata kontroli, taranowanie, bronie pokładowe) — plik etapu
+i `archiwum/tabela-etapow.md`. **Zrobione wg planu 65d1:** auto jako czwarty cel ataku
+(`targetVehicleId` / `targetWindow` w `attack:roll`, `CpredAttackTarget.vehicle` w planerze,
+nowy `realtime/vehicle-targets.ts`), obrażenia kadłuba i szyb w `applyDamageToVehicleRow` z
+„Cofnij”, wrak z PUK 0 (dryf w tył, `VEHICLE_WRECKED` w jeździe, Nitro i silniku), szyba
+kuloodporna jako odmowa `window` z kartą „Ostrzelaj szybę / Strzelaj mimo szyby”, słaby punkt
+(−8, ×2 po OB z zapisanej karty), cios w jadące auto PT 13 / w stojące PT 0, Ulepszone
+zespolenie (`evasionBy` — kierowca unika za motocykl i pasażera), widok auta z `hp`, `hpMax`,
+`armorSp`, `windows`, `upgrades`, panel auta (pasek PUK, pole PUK dla MG, szyby, ulepszenia,
+portrety), szary wrak na mapie, okno Celowania dla auta (ikona koła z game-icons.net,
+atrybucja), auto w „Zastosuj”. Bot strzela tylko w figury z założenia; szyba to dla niego
+osłona. Rozstrzygnięcia 1–10 w pliku etapu. **Odstępstwa:** szyby na cztery burty zamiast okien,
+OB kadłuba bez ablacji, wybuch nie rusza auta (`POMYSLY.md`) — w `decyzje-i-uproszczenia.md`.
+**Testy:** shared 2823 (+ `vehicles`, `chase`, `attacks` — auto jako cel), serwer 1708/1708
+(nowy `chase-combat.test.ts` 7/7; dwa znane „unhandled” z `walls.test.ts` po teardownie),
+klient 442/443 — dalej tylko znany `theme.test.ts`; tsc, ESLint i Prettier czyste w zmienionych
+plikach. **Oglądane:** tymczasowy spec `99-ogledziny/t99-ostrzal` z `po-T6`: Ola w **Firefoksie**
+(kubek i okno Celowania przy aucie, karta ze słabym punktem, „Cel za szybą”, wrak), MG
+w **Chromium** (panel auta, PUK 0 polem). Złapane: ikony okna Celowania nie rysują się na
+zrzutach Firefoksa — także dla figury, sprzed etapu (`zaleglosci.md`). W drzewie zostały cudze,
+niezacommitowane zmiany sprzed sesji (`MapFxLayer.ts`, `CombatForms.tsx`, `damage.test.ts`,
+`grapple-turns.test.ts`) — nie ruszane. Na VPS nic nie zmieniano.
+
 ### Sesja 31.10 — etap 65c „Jazda, tempo i odpadanie”
 
 **Zrobione wg planu** (sesja przerwana limitem 30.10 i dokończona 31.10): budżet auta jako budżet

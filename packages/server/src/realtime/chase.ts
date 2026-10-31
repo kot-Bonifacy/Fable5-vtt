@@ -1,4 +1,5 @@
 import type {
+  ChaseObstacleView,
   ChasePlacePayload,
   ChaseRemovePayload,
   ChaseSettings,
@@ -22,6 +23,8 @@ import {
   cpredManeuversFor,
   cpredMountDefinition,
   cpredVehicleManeuver,
+  cpredVehicleSpikesLeft,
+  isChaseObstacleKind,
   readCpredVehicle,
   chaseBodyContains,
   clampChaseVehicle,
@@ -34,7 +37,13 @@ import {
   type ScenePoint,
 } from '@vtt/shared';
 import type { PrismaClient } from '../db.js';
-import type { Scene, SceneVehicle, Token, Vehicle } from '../generated/prisma/client.js';
+import type {
+  ChaseObstacle,
+  Scene,
+  SceneVehicle,
+  Token,
+  Vehicle,
+} from '../generated/prisma/client.js';
 import { RealtimeError, defineEvent, type RealtimeDeps } from './registry.js';
 import { chaseSettingsOf, requireCampaignScene } from './scenes.js';
 import { campaignRoom, gmRoom } from './state.js';
@@ -148,6 +157,7 @@ function toSceneVehicleView(
     moveSq: chase.moveSq,
     driftSq: chase.driftSq,
     nitroLeft: chase.nitroLeft,
+    spikesLeft: cpredVehicleSpikesLeft(stats, row.spikesUsed),
     hp: stats.hp,
     hpMax: derived.hpMax,
     armorSp: derived.hullSp,
@@ -261,22 +271,61 @@ function visibleToPlayers(view: SceneVehicleView): boolean {
   return view.status === 'racing' || view.status === 'wrecked';
 }
 
-/** Rozsyła listę aut sceny: MG całą, graczom oglądającym scenę — przyciętą. */
+/** Przeszkoda sceny pościgu (65e) jako widok — jawna dla całego stołu. */
+export function toObstacleView(row: ChaseObstacle): ChaseObstacleView {
+  return {
+    id: row.id,
+    sceneId: row.sceneId,
+    kind: isChaseObstacleKind(row.kind) ? row.kind : 'custom',
+    name: row.name,
+    x: row.x,
+    y: row.y,
+    widthSq: row.widthSq,
+    lengthSq: row.lengthSq,
+    hp: row.hp,
+    hpMax: row.hpMax,
+    imageUrl: row.imageUrl,
+    wreckTint: row.kind === 'wreck',
+    blockingVehicleId: row.blockingId,
+  };
+}
+
+/** Przeszkody sceny po kolei wstawienia. */
+export async function obstacleViews(
+  prisma: PrismaClient,
+  sceneId: string,
+): Promise<ChaseObstacleView[]> {
+  const rows = await prisma.chaseObstacle.findMany({
+    where: { sceneId },
+    orderBy: { createdAt: 'asc' },
+  });
+  return rows.map(toObstacleView);
+}
+
+/**
+ * Rozsyła listę aut sceny: MG całą, graczom oglądającym scenę — przyciętą.
+ * Przeszkody (65e) jadą tym samym zdarzeniem, całe do wszystkich.
+ */
 export async function emitChase(
   deps: RealtimeDeps,
   campaignId: string,
   sceneId: string,
 ): Promise<void> {
   const views = await placedViews(deps.ctx.prisma, sceneId);
+  const obstacles = await obstacleViews(deps.ctx.prisma, sceneId);
   deps.io
     .to(gmRoom(campaignId))
-    .emit('chase:sync', { sceneId, vehicles: views } satisfies ChaseSyncBroadcast);
+    .emit('chase:sync', { sceneId, vehicles: views, obstacles } satisfies ChaseSyncBroadcast);
   const players = views.filter(visibleToPlayers);
   const sockets = await deps.io.in(campaignRoom(campaignId)).fetchSockets();
   for (const member of sockets) {
     const data = member.data as { user: SessionUser; viewedSceneId: string | null };
     if (data.user.role === ROLE_GM || data.viewedSceneId !== sceneId) continue;
-    member.emit('chase:sync', { sceneId, vehicles: players } satisfies ChaseSyncBroadcast);
+    member.emit('chase:sync', {
+      sceneId,
+      vehicles: players,
+      obstacles,
+    } satisfies ChaseSyncBroadcast);
   }
 }
 
@@ -364,6 +413,13 @@ export async function settleChaseAfterSceneChange(
   campaignId: string,
   after: Scene,
 ): Promise<void> {
+  if (after.kind !== 'chase') {
+    // Przeszkody (65e) żyją tylko na drodze pościgu.
+    const cleared = await deps.ctx.prisma.chaseObstacle.deleteMany({
+      where: { sceneId: after.id },
+    });
+    if (cleared.count > 0) await emitChase(deps, campaignId, after.id);
+  }
   const placed = await placedOnScene(deps.ctx.prisma, after.id);
   if (placed.length === 0) return;
   if (after.kind !== 'chase') {

@@ -3,7 +3,12 @@ import { chaseFirstContact, chaseHitsWithFront } from '../../chase.js';
 import { cpredWeaponInHands } from './character.js';
 import { cpredIsMountRowId, cpredMountRowId, cpredParseMountRowId } from './mountrows.js';
 import {
+  CPRED_OBSTACLE_MANEUVER_ID,
   CPRED_RAM_DAMAGE,
+  CPRED_SPIKES_DAMAGE,
+  CPRED_SPIKES_DV,
+  cpredSpikesAffect,
+  cpredVehicleSpikesLeft,
   cpredManeuversFor,
   cpredMountRowInfo,
   cpredMountWeaponRows,
@@ -167,5 +172,41 @@ describe('bronie pokładowe (s. 163–164)', () => {
     const data = cpredWithMountWeapons({ weapons: [], drawnWeaponRowIds: [] }, rows);
     expect(data.weapons).toHaveLength(3);
     expect(cpredWeaponInHands(data, rows[0]!.id)).toBe(true);
+  });
+});
+
+describe('kolczatka (65e, s. 165)', () => {
+  it('jedna kolczatka na każde wykupienie, na pościg', () => {
+    const stats = readCpredVehicle({
+      kind: 'car',
+      upgrades: [
+        { id: 'a', upgradeId: 'spikes' },
+        { id: 'b', upgradeId: 'spikes' },
+        { id: 'c', upgradeId: 'nitro' },
+      ],
+    });
+    expect(cpredVehicleSpikesLeft(stats, 0)).toBe(2);
+    expect(cpredVehicleSpikesLeft(stats, 2)).toBe(0);
+    expect(cpredVehicleSpikesLeft(readCpredVehicle({ kind: 'car' }), 0)).toBe(0);
+  });
+
+  it('rusza tylko pojazdy z oponami', () => {
+    expect(cpredSpikesAffect(readCpredVehicle({ kind: 'car' }))).toBe(true);
+    expect(cpredSpikesAffect(readCpredVehicle({ kind: 'motorcycle' }))).toBe(true);
+    expect(cpredSpikesAffect(readCpredVehicle({ kind: 'boat' }))).toBe(false);
+    expect(
+      cpredSpikesAffect(
+        readCpredVehicle({ kind: 'car', upgrades: [{ id: 'h', upgradeId: 'hovercraft' }] }),
+      ),
+    ).toBe(false);
+  });
+
+  it('przeszkodę omija się Gwałtownym skrętem PT 13, kolczatkę — Testem PT 17 i 4k6', () => {
+    expect(cpredVehicleManeuver(CPRED_OBSTACLE_MANEUVER_ID)).toMatchObject({
+      name: 'Gwałtowny skręt',
+      dv: 13,
+    });
+    expect(CPRED_SPIKES_DV).toBe(17);
+    expect(CPRED_SPIKES_DAMAGE).toBe('4k6');
   });
 });

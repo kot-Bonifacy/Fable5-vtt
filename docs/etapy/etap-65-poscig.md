@@ -387,36 +387,86 @@ do Manewru z menu auta** zamiast panelu decyzji po każdym ruchu. Reszta bez pyt
 12. **Menu auta mierzy swoją wysokość** (`useMenuTop` z menu figury, oględziny: z Manewrami
     wyjeżdżało za okno) — nie mieści się pod kursorem, staje nad nim.
 
-## 65e — przeszkody i ruch uliczny ⬜
+## 65e — przeszkody i ruch uliczny ✅ (31.10)
 
-- [ ] Prisma `ChaseObstacle`: `sceneId`, rodzaj (`civilian-car`, `barricade`, `roadwork`,
+- [x] Prisma `ChaseObstacle`: `sceneId`, rodzaj (`civilian-car`, `barricade`, `roadwork`,
       `wreck`, `spikes`, własny z grafiką), pozycja, rozmiar, PW (jako osłona do taranowania).
-- [ ] MG wypuszcza przeszkodę na wybrany pas przy przedniej krawędzi (pasek narzędzi sceny
+- [x] MG wypuszcza przeszkodę na wybrany pas przy przedniej krawędzi (pasek narzędzi sceny
       pościgu). Tylko w walce — poza nią przycisk wyszarzony z podpowiedzią.
-- [ ] Na początku rundy przeszkoda jedzie w tył o `tempo / 4` kratek (w kadrze stoi względem
+- [x] Na początku rundy przeszkoda jedzie w tył o `tempo / 4` kratek (w kadrze stoi względem
       drogi). Gdy jej droga przetnie bryłę auta, kierowca dostaje wybór: Manewr (Gwałtowny skręt,
       PT 13 — porażka = utrata kontroli i zderzenie) albo taranowanie. Przeszkoda za tylną
       krawędzią znika.
-- [ ] Wyrzutnia kolczatki: kierowca za Akcję zostawia `spikes` za autem; każde auto, które
+- [x] Wyrzutnia kolczatki: kierowca za Akcję zostawia `spikes` za autem; każde auto, które
       w nią wjedzie, rzuca Prowadzenie PT 17, porażka = 4k6 w słaby punkt.
-- [ ] Grafiki przeszkód z tego samego źródła co auta (65b).
-- [ ] Testy: `shared` (przecięcie toru z bryłą, kolczatka), serwer (wypuszczenie poza walką
-      odmówione, zderzenie wzywa kierowcę).
+- [x] Grafiki przeszkód ~~z tego samego źródła co auta (65b)~~ — auta cywilne i wraki z paczki
+      aut z 65b, barierki, pachołki i beczki z Kenney Racing Pack (CC0), kolczatka z ikony
+      „Caltrops” (game-icons.net, CC BY 3.0): paczka z 65b ma tylko auta.
+- [x] Testy: `shared` (przecięcie toru z bryłą, kolczatka), serwer (wypuszczenie poza walką
+      odmówione, zderzenie wzywa kierowcę — `chase-obstacles.test.ts`), E2E `@szybkie`
+      (`48-poscig/t65-przeszkody`).
+
+### Rozstrzygnięcia 65e bez pytań (31.10)
+
+1. **Zderzenie liczy ruch względny** (`chaseObstacleSweep`): w układzie auta przeszkoda jedzie
+   z `from − auto.from` do `to − auto.to`. Auto z Ruchem = tempo spotyka ją po `Ruch / 4`
+   kratek, a auto stojące na drodze (zgaszone, wrak) jedzie z nią i nigdy nie wjeżdża.
+   Przeszkody dryfują po autach w tym samym haku (`driftObstaclesRound` z `driftChaseRound`),
+   także gdy na scenie nie ma żadnego auta.
+2. **„Wybrany pas” to punkt kliknięcia**: MG bierze rodzaj z palety „Przeszkody” (ikona
+   barierki na pasku narzędzi, tylko na scenie pościgu) i klika drogę — przeszkoda staje przy
+   przedniej krawędzi, w poprzek tam, gdzie kliknął, przycięta do pasa jezdni. Esc odkłada.
+   Własna przeszkoda: nazwa, PW i grafika z „Grafik” w tym samym rzędzie.
+3. **Rozmiary i PW domyślne**: auto cywilne 3×5 i 25 PW (grafika losowana z czterech aut
+   z 65b), barykada 3×1 i 30 PW, roboty drogowe 3×2 i 15 PW, wrak 3×5 i 40 PW (szare auto),
+   kolczatka 3×1, własna 3×2 i 20 PW. Barykada i roboty mają szerokość auta — oględziny: 4
+   kratki na jezdni wiaduktu zajmowały dwa pasy naraz.
+4. **Czekająca przeszkoda** (`ChaseObstacle.blockingId`) stoi przy zderzaku i jedzie z autem,
+   dopóki ktoś nie odpowie (`chase:obstacle-answer`) — bez limitu i bez kosztu, jak wezwanie do
+   Manewru. Kierowca-gracz dostaje bursztynowy pasek „Na drodze: …” (temat `obstacle`), MG —
+   pasek przy aucie NPC-a i dwie pozycje w menu przeszkody („Za kierowcę: …”). Do odpowiedzi
+   gracz auta nie przesunie (`OBSTACLE_PENDING`).
+5. **Auto bez kontroli** (pusty fotel, kierowca leży, utrata kontroli) wjeżdża w przeszkodę od
+   razu, bez pytania.
+6. **Skręt nieudany = utrata kontroli i zderzenie** przez `resolveRam` (przeszkoda trafia
+   w przód, więc Pług działa). Po skręcie i po zderzeniu, którego przeszkoda nie przetrwała
+   w całości, przeszkoda staje za tylnym zderzakiem i to auto jej drugi raz nie spotka
+   (`passed`) — zasada domowa w `decyzje-i-uproszczenia.md`.
+7. **Taranowanie przeszkody: 6k6 w PW jawnie na czacie, bez OB i bez „Cofnij”** (`ramObstacle`),
+   PW 0 — „Przeszkoda rozbita” i znika. Auto bierze swoje 6k6 kartą obrażeń z „Cofnij”.
+   Kierowca może też wjechać w przeszkodę sam w swojej turze — pasek „Zderzenie” z 65d2 zna
+   przeszkody MG (bez kolczatki).
+8. **Kolczatka**: `vehicle:spikes` za Akcję kierowcy (MG za NPC-a z jego budżetu), tylko
+   w walce, jedna na każde wykupienie wyrzutni na pościg (`spikesUsed`, „Zrzuć kolczatkę (n)”
+   w menu auta). Ląduje za tylnym zderzakiem; auto, które ją zrzuciło, jej nie przejeżdża.
+   Przejazd to tor przeszkody przez bryłę (dryf) albo jazda kierowcy po niej
+   (`chaseSpikesCrossed` w `driveWithContacts`). Test Prowadzenia PT 17 rzuca serwer, porażka
+   albo brak zdolnego kierowcy — 4k6 w słaby punkt (`damage.system.vehicleWeakSpot`, stawia
+   tylko serwer). Bez opon (łódź, poduszkowiec, latające) — nic.
+9. **Przeszkody nie jadą w paczkach ani kopiach** (chwilowy stan walki), `chase → map` je
+   kasuje, a koniec walki zostawia — MG zdejmuje je z menu przeszkody.
+10. **Menu auta i przeszkody stoją nad kolumną komunikatów** (`z-index` 460 > 450) —
+    oględziny: pasek przeszkody u MG zasłaniał „Zrzuć kolczatkę” w menu auta tuż pod nim.
 
 ## Kryteria ukończenia
 
+Stan 31.10 (po 65e): wszystko zrobione i oglądane na instancji E2E (spece oględzin 65b–65e,
+MG w Chromium, gracz w Firefoksie); **etap czeka na oględziny MG przy stole** — pierwsze
+kryterium (szew bieżni na żywo, prawdziwy pas mapy wiaduktu) zostaje MG.
+
 - [ ] MG zakłada scenę „Pościg” z mapą wiaduktu, droga jedzie bez widocznego szwu, a dwa auta
-      drużyny i auto wroga stoją na jezdni.
-- [ ] Gracze sami siadają w fotelach, figury jadą z autem; pasażer przejmuje kierownicę po
-      kierowcy.
-- [ ] W walce kierowca przesuwa auto w budżecie, wolniejsze auto traci dystans co rundę, a auto
-      za tylną krawędzią odpada z pościgu.
-- [ ] Ostrzał auta i pasażera, słaby punkt, Manewr, utrata kontroli i taranowanie działają wg
-      s. 189–192, a ulepszenia Moto zmieniają wynik.
-- [ ] MG wypuszcza przeszkodę, kierowca wybiera Manewr albo taranowanie.
-- [ ] Pojazd Nomady z Moto i pojazd z karty wjeżdżają do pościgu i wracają z niego z PUK.
-- [ ] Testy `shared` i serwera przechodzą, E2E pościgu (`@szybkie`), oględziny w Firefoksie
-      i Chromium.
+      drużyny i auto wroga stoją na jezdni. _(65b: oglądane na zrzutach, nie na żywo — MG)_
+- [x] Gracze sami siadają w fotelach, figury jadą z autem; pasażer przejmuje kierownicę po
+      kierowcy. _(65b, 65c)_
+- [x] W walce kierowca przesuwa auto w budżecie, wolniejsze auto traci dystans co rundę, a auto
+      za tylną krawędzią odpada z pościgu. _(65c)_
+- [x] Ostrzał auta i pasażera, słaby punkt, Manewr, utrata kontroli i taranowanie działają wg
+      s. 189–192, a ulepszenia Moto zmieniają wynik. _(65d1, 65d2)_
+- [x] MG wypuszcza przeszkodę, kierowca wybiera Manewr albo taranowanie. _(65e)_
+- [x] Pojazd Nomady z Moto i pojazd z karty wjeżdżają do pościgu i wracają z niego z PUK.
+      _(65a — PUK mieszka na `Vehicle`, 65d1 — obrażenia kadłuba)_
+- [x] Testy `shared` i serwera przechodzą, E2E pościgu (`@szybkie`, `48-poscig/t65-przeszkody`),
+      oględziny w Firefoksie i Chromium.
 
 ## Rozstrzygnięcia bez pytań
 

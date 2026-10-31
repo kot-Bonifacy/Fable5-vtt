@@ -45,6 +45,16 @@ export function chaseObstacleAhead(vehicle: SceneVehicleView, to: ScenePoint): s
     });
     names.set(token.id, token.name);
   }
+  // Przeszkody MG (65e) poza kolczatką — po niej się przejeżdża.
+  for (const obstacle of useChaseStore.getState().obstacles) {
+    if (obstacle.sceneId !== scene.id || obstacle.kind === 'spikes') continue;
+    boxes.push({
+      id: `obstacle:${obstacle.id}`,
+      centre: { x: obstacle.x, y: obstacle.y },
+      ...chaseBodyHalfExtents(obstacle, direction, grid),
+    });
+    names.set(`obstacle:${obstacle.id}`, obstacle.name);
+  }
   const contact = chaseFirstContact(
     { x: vehicle.x, y: vehicle.y },
     to,

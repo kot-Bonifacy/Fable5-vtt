@@ -19,10 +19,16 @@ import {
   type ChaseObstacleBox,
 } from '@vtt/shared';
 import type { PrismaClient } from '../db.js';
-import type { Scene, Token } from '../generated/prisma/client.js';
+import type { ChaseObstacle as ObstacleRow, Scene, Token } from '../generated/prisma/client.js';
 import { buildCompendiumSync } from './compendium.js';
 import { createMixedRng } from './dice-rng.js';
-import { chaseBodyOf, chaseGeometry, placedOnScene, type PlacedVehicle } from './chase.js';
+import {
+  chaseBodyOf,
+  chaseGeometry,
+  emitChase,
+  placedOnScene,
+  type PlacedVehicle,
+} from './chase.js';
 import { findCombatantForToken } from './combat.js';
 import { logSpentAction } from './combat-log.js';
 import { rollServerSkillTest } from './character-rolls.js';
@@ -42,10 +48,16 @@ import type { RealtimeDeps } from './registry.js';
 
 type Placed = PlacedVehicle & { scene: Scene };
 
-/** Przeszkoda na drodze: auto z tej sceny albo pieszy. */
+/** Przeszkoda na drodze: auto z tej sceny, pieszy albo przeszkoda MG (65e). */
 export type ChaseObstacle =
   | { kind: 'vehicle'; id: string; vehicle: PlacedVehicle }
-  | { kind: 'token'; id: string; token: Token };
+  | { kind: 'token'; id: string; token: Token }
+  | { kind: 'obstacle'; id: string; obstacle: ObstacleRow };
+
+/** Id pudełka przeszkody MG w geometrii zderzenia — obok id aut i `token:<id>`. */
+export function obstacleBoxId(obstacleId: string): string {
+  return `obstacle:${obstacleId}`;
+}
 
 /**
  * Co stoi na jezdni dla tego auta: inne auta w kadrze (także wraki — kadłub
@@ -78,6 +90,15 @@ export async function chaseObstaclesFor(
       hy: half,
     });
     byId.set(`token:${token.id}`, { kind: 'token', id: token.id, token });
+  }
+  // Przeszkody MG (65e) poza kolczatką — po niej się przejeżdża (`chaseSpikesCrossed`).
+  const obstacles = await prisma.chaseObstacle.findMany({ where: { sceneId: placed.sceneId } });
+  for (const obstacle of obstacles) {
+    if (obstacle.kind === 'spikes') continue;
+    const { hx, hy } = chaseBodyHalfExtents(obstacle, settings.direction, grid);
+    const id = obstacleBoxId(obstacle.id);
+    boxes.push({ id, centre: { x: obstacle.x, y: obstacle.y }, hx, hy });
+    byId.set(id, { kind: 'obstacle', id: obstacle.id, obstacle });
   }
   return { boxes, byId };
 }
@@ -153,8 +174,10 @@ export async function driverUsedNitro(prisma: PrismaClient, placed: Placed): Pro
 /**
  * Kości obrażeń wypadku jako karta obrażeń wymierzona w auto albo pieszego,
  * rozliczona od razu drogą „Zastosuj” — „Cofnij” zdejmuje ją jak każdą inną.
+ * Kolczatka (65e) bije w słaby punkt: znacznik `vehicleWeakSpot` stawia tylko
+ * serwer (karta gracza nie ma jak go nieść), a rozliczenie mnoży po OB ×2.
  */
-async function rollRamDamage(
+export async function rollRamDamage(
   deps: RealtimeDeps,
   campaignId: string,
   user: SessionUser,
@@ -162,19 +185,21 @@ async function rollRamDamage(
   notation: string,
   title: string,
   target: { vehicleId: string } | { tokenId: string },
+  source: { name: string; weakSpot?: boolean } = { name: 'Taranowanie' },
 ): Promise<void> {
   const parsed = parseRollNotation(notation);
   if (!parsed.ok) return;
   const roll = rollFormula(parsed.formula, createMixedRng());
   roll.title = title;
-  roll.actor = 'Taranowanie';
+  roll.actor = source.name;
   roll.damage = {
     location: 'body',
-    locationLabel: 'taranowanie',
-    weaponName: 'Taranowanie',
+    locationLabel: source.weakSpot ? 'słaby punkt pojazdu' : source.name.toLocaleLowerCase('pl'),
+    weaponName: source.name,
     ...('vehicleId' in target
       ? { targetVehicleId: target.vehicleId }
       : { targetTokenId: target.tokenId }),
+    ...(source.weakSpot ? { system: { vehicleWeakSpot: true } } : {}),
   };
   const messageId = await postServerRoll(deps, campaignId, user, scene.id, roll);
   await applyDamageRollTo(
@@ -241,7 +266,9 @@ export async function resolveRam(
   const struckName =
     obstacle.kind === 'vehicle'
       ? obstacle.vehicle.vehicle.name
-      : tokenTableName(obstacle.token, obstacle.token.name);
+      : obstacle.kind === 'obstacle'
+        ? obstacle.obstacle.name
+        : tokenTableName(obstacle.token, obstacle.token.name);
   const line: CombatActionLogEntry = {
     combatantId: '',
     actorName: rammer.vehicle.name,
@@ -268,15 +295,23 @@ export async function resolveRam(
   }
 
   const title = `Taranowanie: ${rammer.vehicle.name} → ${struckName}`;
-  await rollRamDamage(
-    deps,
-    campaignId,
-    user,
-    scene,
-    outcome.struckDamage,
-    title,
-    obstacle.kind === 'vehicle' ? { vehicleId: obstacle.id } : { tokenId: obstacle.id },
-  );
+  let obstacleBroken = false;
+  if (obstacle.kind === 'obstacle') {
+    obstacleBroken = await ramObstacle(deps, campaignId, user, scene, obstacle.obstacle, {
+      notation: outcome.struckDamage,
+      title,
+    });
+  } else {
+    await rollRamDamage(
+      deps,
+      campaignId,
+      user,
+      scene,
+      outcome.struckDamage,
+      title,
+      obstacle.kind === 'vehicle' ? { vehicleId: obstacle.id } : { tokenId: obstacle.id },
+    );
+  }
   if (outcome.rammerDamage) {
     await rollRamDamage(
       deps,
@@ -292,16 +327,59 @@ export async function resolveRam(
   const injured: Token[] = [];
   if (outcome.rammerInjured) injured.push(...(await passengersOf(prisma, rammer.id)));
   if (obstacle.kind === 'vehicle') injured.push(...(await passengersOf(prisma, obstacle.id)));
-  else {
+  else if (obstacle.kind === 'token') {
     const fresh = await prisma.token.findUnique({ where: { id: obstacle.id } });
     if (fresh) injured.push(fresh);
   }
   await injureParticipants(deps, campaignId, user, injured);
 
   if (obstacle.kind === 'token') return true;
+  if (obstacle.kind === 'obstacle') return obstacleBroken;
   const struck = await prisma.vehicle.findUnique({ where: { id: obstacle.vehicle.vehicleId } });
   return cpredRamContinues({
     pedestrian: false,
     hpAfter: struck ? readCpredVehicle(struck.system).hp : 0,
   });
+}
+
+/**
+ * Kości uderzonej przeszkody MG (65e): jawna karta rzutu, a suma schodzi z PW
+ * jak przy osłonie (s. 179, bez OB i bez „Cofnij” — przeszkoda to chwilowa
+ * dekoracja walki). PW 0 — przeszkoda rozbita i znika z drogi. Zwraca, czy
+ * się rozbiła.
+ */
+async function ramObstacle(
+  deps: RealtimeDeps,
+  campaignId: string,
+  user: SessionUser,
+  scene: Scene,
+  obstacle: ObstacleRow,
+  dice: { notation: string; title: string },
+): Promise<boolean> {
+  const prisma = deps.ctx.prisma;
+  const parsed = parseRollNotation(dice.notation);
+  if (!parsed.ok) return false;
+  const roll = rollFormula(parsed.formula, createMixedRng());
+  roll.title = dice.title;
+  roll.actor = 'Taranowanie';
+  await postServerRoll(deps, campaignId, user, scene.id, roll);
+  const fresh = await prisma.chaseObstacle.findUnique({ where: { id: obstacle.id } });
+  if (!fresh) return true;
+  const hp = Math.max(0, fresh.hp - Math.max(0, Math.round(roll.total)));
+  if (hp > 0) {
+    await prisma.chaseObstacle.update({ where: { id: fresh.id }, data: { hp } });
+    await emitChase(deps, campaignId, scene.id);
+    return false;
+  }
+  await prisma.chaseObstacle.delete({ where: { id: fresh.id } });
+  const line: CombatActionLogEntry = {
+    combatantId: '',
+    actorName: fresh.name,
+    actionId: 'chase-obstacle-broken',
+    actionName: 'Przeszkoda rozbita',
+    note: 'znika z drogi',
+  };
+  await logSpentAction(deps, campaignId, user, line);
+  await emitChase(deps, campaignId, scene.id);
+  return true;
 }

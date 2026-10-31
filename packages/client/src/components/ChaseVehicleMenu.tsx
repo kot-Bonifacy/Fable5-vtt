@@ -18,6 +18,7 @@ import { useTokenStore } from '../stores/tokenStore.js';
 import {
   allowVehicleDriver,
   callVehicleManeuver,
+  dropVehicleSpikes,
   fireVehicleNitro,
   performVehicleManeuver,
   reloadVehicleMount,
@@ -102,6 +103,19 @@ export function chaseErrorText(code: string | undefined): string {
       return 'Ta broń pokładowa razi tylko cele przed pojazdem.';
     case 'MOUNT_RELOAD_MOVING':
       return 'Broni pokładowej nie da się przeładować w czasie jazdy — zgaś silnik albo zatrzymaj drogę.';
+    // Etap 65e: przeszkody i kolczatka.
+    case 'OBSTACLE_COMBAT_ONLY':
+      return 'Przeszkody wypuszcza się w walce — poza nią nie ma rund, więc droga ich nie przesuwa.';
+    case 'OBSTACLE_PENDING':
+      return 'Przed autem stoi przeszkoda — najpierw Gwałtowny skręt albo taranowanie.';
+    case 'OBSTACLE_NOT_BLOCKING':
+      return 'Ta przeszkoda już na nikogo nie czeka.';
+    case 'OBSTACLE_NOT_FOUND':
+      return 'Tej przeszkody już nie ma na drodze.';
+    case 'NO_SPIKES':
+      return 'W wyrzutni nie zostało kolczatek na ten pościg.';
+    case 'SPIKES_COMBAT_ONLY':
+      return 'Kolczatkę zrzuca się w walce, z tury kierowcy.';
     default:
       return `Nie udało się: ${code ?? 'nieznany błąd'}.`;
   }
@@ -203,6 +217,16 @@ export function ChaseVehicleMenu() {
             onClick={() => act(() => fireVehicleNitro(vehicle.id))}
           >
             {`Nitro (${vehicle.nitroLeft})`}
+          </button>
+        )}
+        {drives && vehicle.status === 'racing' && vehicle.spikesLeft > 0 && (
+          <button
+            type="button"
+            className="context-menu-item"
+            title="Za Akcję kierowca zrzuca kolczatkę za auto: kto po niej przejedzie, rzuca Prowadzenie PT 17 albo bierze 4k6 w słaby punkt (w walce)."
+            onClick={() => act(() => dropVehicleSpikes(vehicle.id))}
+          >
+            {`Zrzuć kolczatkę (${vehicle.spikesLeft})`}
           </button>
         )}
         {vehicle.status === 'racing' && (

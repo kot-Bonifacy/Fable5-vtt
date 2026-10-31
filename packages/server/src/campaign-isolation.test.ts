@@ -122,6 +122,7 @@ interface World {
   merchantId: string;
   vehicleId: string;
   sceneVehicleId: string;
+  obstacleId: string;
 }
 
 let A: World;
@@ -306,6 +307,21 @@ async function seedWorld(campaignId: string, gmId: string, label: string): Promi
   const sceneVehicle = await p.sceneVehicle.create({
     data: { sceneId: scene.id, vehicleId: vehicle.id, x: 500, y: 500 },
   });
+  // Etap 65e: przeszkoda na drodze — stoi przed autem i czeka na kierowcę.
+  const obstacle = await p.chaseObstacle.create({
+    data: {
+      sceneId: scene.id,
+      kind: 'barricade',
+      name,
+      x: 900,
+      y: 500,
+      widthSq: 4,
+      lengthSq: 1,
+      hp: 30,
+      hpMax: 30,
+      blockingId: sceneVehicle.id,
+    },
+  });
   return {
     campaignId,
     gmId,
@@ -341,6 +357,7 @@ async function seedWorld(campaignId: string, gmId: string, label: string): Promi
     merchantId: merchant.id,
     vehicleId: vehicle.id,
     sceneVehicleId: sceneVehicle.id,
+    obstacleId: obstacle.id,
   };
 }
 
@@ -884,6 +901,11 @@ const CASES: Record<string, Case> = {
     maneuverId: 'swerve',
   })),
   'vehicle:mount-reload': foreign((a) => ({ sceneVehicleId: a.sceneVehicleId, upgradeRowId: 'x' })),
+  // przeszkody i kolczatka (etap 65e)
+  'chase:obstacle-spawn': foreign((a) => ({ sceneId: a.sceneId, kind: 'barricade', x: 1, y: 1 })),
+  'chase:obstacle-remove': foreign((a) => ({ obstacleId: a.obstacleId })),
+  'chase:obstacle-answer': foreign((a) => ({ obstacleId: a.obstacleId, choice: 'ram' })),
+  'vehicle:spikes': foreign((a) => ({ sceneVehicleId: a.sceneVehicleId })),
   // team
   'character:team-hire': foreign((a) => ({
     characterId: a.characterId,

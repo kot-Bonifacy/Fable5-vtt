@@ -9,6 +9,38 @@ czytany na starcie każdej sesji został listą zadań, a nie archiwum ustaleń.
 inaczej, niż mówi podręcznik, albo gdy dotykasz wymienionego tu kodu. Jeśli któraś z tych decyzji
 przestanie się bronić, przenieś ją stąd do `POMYSLY.md` jako zadanie — nie odwrotnie.
 
+## Przeszkody, ruch uliczny i kolczatka (etap 65e, 31.10.2026)
+
+- **Przeszkoda stoi na drodze, więc w kadrze jedzie w tył o `tempo / 4` kratek na rundę**
+  (decyzja MG 12). Ruch uliczny też: auta cywilne nie jadą swoim tempem, tylko stoją względem
+  drogi jak wraki. Zderzenie liczy się ruchem względnym (`chaseObstacleSweep`): auto
+  z Ruchem 40 zbliża się do przeszkody o 10 kratek na rundę, a auto stojące na drodze
+  (zgaszone, wrak) nigdy w nią nie wjedzie. Przeszkody są tylko w walce — poza nią nie ma rund.
+- **Przeszkoda na torze staje przy zderzaku i czeka na kierowcę bez limitu czasu.** Wybór
+  („Gwałtowny skręt” — Manewr PT 13 z tabeli s. 192, albo „Taranuj”) nic nie kosztuje:
+  przychodzi na początku rundy, poza czyjąkolwiek turą, tak jak Manewr na wezwanie MG (65d2).
+  Do odpowiedzi kierowca-gracz nie przesunie auta (`OBSTACLE_PENDING`), a przeszkoda jedzie
+  przy zderzaku. Za kierowcę-NPC-a odpowiada MG (pasek i menu przeszkody).
+- **Auto bez kontroli wjeżdża w przeszkodę samo** — pusty fotel kierowcy, kierowca leży albo
+  utrata kontroli. Nikt nie skręca.
+- **Po minięciu przeszkoda staje za tylnym zderzakiem auta** — po udanym skręcie, ale też po
+  zderzeniu, którego nie rozbiła: auto ją odepchnęło i jedzie dalej. Podręcznik każe
+  taranującemu stanąć przy przeszkodzie, która przetrwała (s. 192), ale na bieżni auto, które
+  stanie, wypada z kadru — więc szkodą są kości, a nie zatrzymanie. To samo auto tej przeszkody
+  drugi raz nie spotka (`passed`).
+- **Taranowanie przeszkody to 6k6 w jej PW bez OB i bez „Cofnij”**, jak w osłonę (s. 179):
+  przeszkoda to chwilowa dekoracja walki, nie wiersz z historią. Auto bierze swoje 6k6 jak przy
+  taranowaniu auta (przez OB kadłuba, z „Cofnij”), Pług bojowy działa — przeszkoda zawsze trafia
+  w przód. PW 0 — przeszkoda rozbita, znika z drogi.
+- **Wyrzutnia kolczatki: jedna kolczatka na każde wykupienie, na pościg.** Podręcznik mówi
+  tylko, że kolejne wykupienie „zwiększa liczbę kolczatek”, a uzupełnić ich nie można w czasie
+  jazdy — VTT liczy je jak zbiorniki Nitro (`SceneVehicle.spikesUsed`). Zrzut za Akcję
+  kierowcy, w walce.
+- **Kolczatkę przejeżdża każde auto z oponami raz** — także kierowca-gracz w swojej turze
+  (`chaseSpikesCrossed`), z wyjątkiem auta, które ją zrzuciło. Test Prowadzenia PT 17 rzuca
+  serwer; auto bez zdolnego kierowcy Testu nie ma i bierze 4k6 w słaby punkt (po OB ×2).
+  Poduszkowiec, łódź i maszyny latające kolczatki nie czują.
+
 ## Manewr, taranowanie i broń pokładowa (etap 65d2, 31.10.2026)
 
 - **Manewr płaci Akcją, a Akcją Ruchu jest sama jazda.** „Manewr zabiera obie Akcje” (s. 192):

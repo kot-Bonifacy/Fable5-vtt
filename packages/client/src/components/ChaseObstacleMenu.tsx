@@ -1,0 +1,169 @@
+import { useEffect } from 'react';
+import {
+  CHASE_OBSTACLE_PRESETS,
+  ROLE_GM,
+  type ChaseObstacleChoice,
+  type ChaseObstacleView,
+  type SceneVehicleView,
+  type TokenView,
+} from '@vtt/shared';
+import { useAuthStore } from '../stores/authStore.js';
+import { useChaseStore } from '../stores/chaseStore.js';
+import { useTokenStore } from '../stores/tokenStore.js';
+import { answerChaseObstacle, removeChaseObstacle } from '../socket.js';
+import { clearNotices, notifyChoice, notifyRefusal } from '../notices.js';
+import { chaseErrorText } from './ChaseVehicleMenu.js';
+import { useMenuTop } from './TokenContextMenu.js';
+
+/**
+ * Przeszkody na scenie pościgu (etap 65e) — menu przeszkody u MG i pasek
+ * wyboru dla kierowcy, przed którego zderzakiem przeszkoda stanęła.
+ */
+
+const MENU_WIDTH = 260;
+
+function answer(obstacleId: string, choice: ChaseObstacleChoice): void {
+  void answerChaseObstacle(obstacleId, choice).then((ack) => {
+    if (!ack.ok) notifyRefusal('chase', chaseErrorText(ack.error));
+  });
+}
+
+/** Kierowca auta: figura w fotelu 0 albo `undefined`. */
+function driverOf(
+  tokens: Record<string, TokenView>,
+  sceneVehicleId: string,
+): TokenView | undefined {
+  return Object.values(tokens).find(
+    (token) => token.vehicleSeat?.sceneVehicleId === sceneVehicleId && token.vehicleSeat.seat === 0,
+  );
+}
+
+/** Menu przeszkody u MG: PW, auto, przed którym czeka, odpowiedź za kierowcę, zdjęcie z drogi. */
+export function ChaseObstacleMenu() {
+  const menu = useChaseStore((s) => s.obstacleMenu);
+  const obstacles = useChaseStore((s) => s.obstacles);
+  const vehicles = useChaseStore((s) => s.vehicles);
+  const close = useChaseStore((s) => s.closeObstacleMenu);
+  const isGm = useAuthStore((s) => s.user?.role === ROLE_GM);
+  const placement = useMenuTop((menu?.clientY ?? 0) + 12);
+  const obstacle = menu ? obstacles.find((entry) => entry.id === menu.obstacleId) : undefined;
+  if (!menu || !obstacle || !isGm) return null;
+  const blocked = obstacle.blockingVehicleId
+    ? vehicles.find((entry) => entry.id === obstacle.blockingVehicleId)
+    : undefined;
+  const left = Math.max(8, Math.min(menu.clientX + 12, window.innerWidth - MENU_WIDTH - 8));
+  const act = (run: () => void) => {
+    run();
+    close();
+  };
+  return (
+    <>
+      <div
+        className="context-menu-backdrop"
+        onClick={close}
+        onContextMenu={(e) => e.preventDefault()}
+      />
+      <div
+        ref={placement.ref}
+        className="context-menu chase-menu"
+        style={{ left, top: placement.top, width: MENU_WIDTH }}
+        role="menu"
+        aria-label={`Przeszkoda: ${obstacle.name}`}
+      >
+        <p className="context-menu-title">{obstacle.name}</p>
+        <p className="chase-menu-state">{obstacleStateLine(obstacle, blocked)}</p>
+        {blocked && (
+          <>
+            <p className="context-menu-section">{`Za kierowcę: ${blocked.name}`}</p>
+            <button
+              type="button"
+              className="context-menu-item"
+              title="Test REF + Prowadzenie przeciw PT 13. Porażka — utrata kontroli i zderzenie."
+              onClick={() => act(() => answer(obstacle.id, 'swerve'))}
+            >
+              Gwałtowny skręt (PT 13)
+            </button>
+            <button
+              type="button"
+              className="context-menu-item"
+              title="Zderzenie: po 6k6 dla auta i przeszkody, Rana Krytyczna dla jadących"
+              onClick={() => act(() => answer(obstacle.id, 'ram'))}
+            >
+              Taranuj
+            </button>
+          </>
+        )}
+        <button
+          type="button"
+          className="context-menu-item context-menu-item--danger"
+          onClick={() =>
+            act(() => {
+              void removeChaseObstacle(obstacle.id).then((ack) => {
+                if (!ack.ok) notifyRefusal('chase', chaseErrorText(ack.error));
+              });
+            })
+          }
+        >
+          Zdejmij z drogi
+        </button>
+      </div>
+    </>
+  );
+}
+
+/** „Barykada · 30/30 PW · czeka na: Furgon Vex” — stan przeszkody jednym wierszem. */
+function obstacleStateLine(
+  obstacle: ChaseObstacleView,
+  blocked: SceneVehicleView | undefined,
+): string {
+  const kind = CHASE_OBSTACLE_PRESETS[obstacle.kind].label;
+  const hp =
+    obstacle.kind === 'spikes' ? 'po niej się przejeżdża' : `${obstacle.hp}/${obstacle.hpMax} PW`;
+  const wait = blocked ? ` · czeka na: ${blocked.name}` : '';
+  return `${kind} · ${hp}${wait}`;
+}
+
+/**
+ * Pasek „Przeszkoda na drodze” (65e): stoi u kierowcy-gracza, przed którego
+ * autem przeszkoda stanęła, a u MG — przy aucie, którego kierowcy nie prowadzi
+ * żaden gracz (NPC). Jedna sprawa naraz, jak wezwanie do Manewru.
+ */
+export function useObstacleNotice(): void {
+  const obstacles = useChaseStore((s) => s.obstacles);
+  const vehicles = useChaseStore((s) => s.vehicles);
+  const tokens = useTokenStore((s) => s.tokens);
+  const user = useAuthStore((s) => s.user);
+  let call: { obstacle: ChaseObstacleView; vehicle: SceneVehicleView } | null = null;
+  for (const obstacle of obstacles) {
+    if (!obstacle.blockingVehicleId || !user) continue;
+    const vehicle = vehicles.find((entry) => entry.id === obstacle.blockingVehicleId);
+    if (!vehicle) continue;
+    const driver = driverOf(tokens, vehicle.id);
+    const playerDriven = typeof driver?.ownerId === 'string' && driver.ownerId.length > 0;
+    const mine =
+      user.role === ROLE_GM ? !playerDriven : driver !== undefined && driver.ownerId === user.id;
+    if (mine) {
+      call = { obstacle, vehicle };
+      break;
+    }
+  }
+  const key = call ? `${call.obstacle.id}:${call.vehicle.id}` : null;
+  useEffect(() => {
+    if (!call) {
+      clearNotices('obstacle');
+      return;
+    }
+    const { obstacle, vehicle } = call;
+    const hp = obstacle.hp > 0 ? ` (${obstacle.hp} PW)` : '';
+    notifyChoice(
+      'obstacle',
+      `Na drodze: ${obstacle.name}${hp}. Gwałtowny skręt to Test PT 13 — porażka to utrata kontroli i zderzenie. Taranowanie to 6k6 dla auta i przeszkody.`,
+      [
+        { label: 'Gwałtowny skręt', run: () => answer(obstacle.id, 'swerve') },
+        { label: 'Taranuj', run: () => answer(obstacle.id, 'ram') },
+      ],
+      { title: vehicle.name },
+    );
+    // Klucz mówi wszystko, co pasek pokazuje — nowa przeszkoda to nowy pasek.
+  }, [key]);
+}

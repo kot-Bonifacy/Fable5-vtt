@@ -255,3 +255,40 @@ export function cpredMountReloaded(
 ): Record<string, number> {
   return { ...stats.mountAmmo, [upgradeRowId]: magazine };
 }
+
+// ───────────────────────── Przeszkody i kolczatka (etap 65e, s. 165 i 192) ─────────────────────────
+
+/**
+ * Przeszkoda na drodze to sytuacja z tabeli Manewrów (s. 192): kierowca omija
+ * ją Gwałtownym skrętem, a porażka to utrata kontroli i zderzenie.
+ */
+export const CPRED_OBSTACLE_MANEUVER_ID: CpredVehicleManeuverId = 'swerve';
+
+/** „…Test Prowadzenia pojazdów lądowych o PT 17, by ominąć wyrzuconą kolczatkę” (s. 165). */
+export const CPRED_SPIKES_DV = 17;
+/** „…pojazdy otrzymują 4k6 obrażeń w słaby punkt” (s. 165). */
+export const CPRED_SPIKES_DAMAGE = '4k6';
+
+/**
+ * Kolczatki, które auto ma jeszcze na ten pościg. Podręcznik nie mówi, ile
+ * kolczatek mieści wyrzutnia — „każde dodatkowe wykupienie zwiększa liczbę” —
+ * więc zasada domowa liczy jak Nitro: jedna na każde wykupienie, na pościg
+ * (uzupełnienie „nie w czasie jazdy”, czyli po pościgu).
+ */
+export function cpredVehicleSpikesLeft(
+  stats: Pick<CpredVehicleStats, 'upgrades'>,
+  used: number,
+): number {
+  const owned = stats.upgrades.filter((row) => row.upgradeId === 'spikes').length;
+  return Math.max(0, owned - Math.max(0, used));
+}
+
+/**
+ * Czy kolczatka rusza ten pojazd: „inne pojazdy z oponami” (s. 165) — auto
+ * i motocykl, ale nie poduszkowiec (ulepszenie `hovercraft`), łódź ani maszyna
+ * latająca.
+ */
+export function cpredSpikesAffect(stats: Pick<CpredVehicleStats, 'kind' | 'upgrades'>): boolean {
+  if (stats.kind !== 'car' && stats.kind !== 'motorcycle') return false;
+  return !stats.upgrades.some((row) => row.upgradeId === 'hovercraft');
+}

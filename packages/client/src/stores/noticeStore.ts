@@ -23,6 +23,8 @@ export type NoticeTopic =
   | 'move'
   /** Wezwanie MG do Manewru u kierowcy (etap 65d2). */
   | 'maneuver'
+  /** Przeszkoda przed zderzakiem auta — Gwałtowny skręt albo taranowanie (etap 65e). */
+  | 'obstacle'
   /** „Ruch graczy: Stop” — osobno od `move`, bo każdy krok marszu zamyka tamten temat. */
   | 'player-move'
   | 'attack'

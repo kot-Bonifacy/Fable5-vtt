@@ -222,6 +222,14 @@ input.vehicle-card-name {
   flex: 1;
 }
 
+/* Menu auta i przeszkody (65e) nad kolumną komunikatów (450): pasek „Przeszkoda
+   na drodze” stoi na górze-środku mapy, a auto, w które klika MG, bywa tuż pod
+   nim — menu otwarte kliknięciem jest świeższe niż pasek. Tło menu zostaje pod
+   paskami, więc klik w pasek dalej działa. */
+.context-menu.chase-menu {
+  z-index: 460;
+}
+
 /* Menu auta na scenie pościgu (65b): fotel, kto w nim siedzi albo „Usiądź”. */
 .chase-menu-seat {
   display: flex;
