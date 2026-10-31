@@ -1643,6 +1643,7 @@ function RowTable<T extends CpredItemRow>({
   columns,
   onChange,
   lead,
+  below,
 }: {
   rows: T[];
   columns: {
@@ -1661,6 +1662,8 @@ function RowTable<T extends CpredItemRow>({
   onChange: (rows: T[]) => void;
   /** Co stoi przed polem pierwszej kolumny — miniatura rodzaju (24.09). */
   lead?: (row: T) => ReactNode;
+  /** Co stoi pod polem pierwszej kolumny — „Dobądź” latarki (31.10). */
+  below?: (row: T) => ReactNode;
 }) {
   const askRemoval = useAskRemoval();
   // Usunięcie liczy listę z chwili „Usuń”, nie z chwili pytania — w tym
@@ -1723,6 +1726,7 @@ function RowTable<T extends CpredItemRow>({
                     ) : (
                       field
                     )}
+                    {index === 0 ? below?.(row) : null}
                   </td>
                 );
               })}
@@ -3889,13 +3893,12 @@ function GearTab({ character, data, saveData }: TabProps & { character: Characte
             </MapDropHandle>
           );
         }}
+        below={(row) => <GearLightHands row={row} data={data} saveData={saveData} />}
       />
 
       <DosesSection character={character} data={data} />
 
       <GearChromeSection data={data} saveData={saveData} />
-
-      <GearLightSection data={data} saveData={saveData} />
 
       <div className="cp-panel cp-plaques">
         {/* Etap 46c: zapas to pudełka w wyposażeniu. Stary tekst zostaje jako
@@ -4338,60 +4341,63 @@ function GearChromeSection({ data, saveData }: Pick<TabProps, 'data' | 'saveData
 }
 
 /**
- * Latarka w ręce (31.10.2026): „Zapal" / „Zgaś" przy każdym wierszu, który
- * świeci (`cpredGearLightProfile`). Serwer niesie zapaloną latarkę na światło
- * figur tej karty; przełącznik latarki na mapie zapisuje to samo pole.
- * Znika, kiedy w plecaku nie ma niczego, co świeci.
+ * Latarka w ręce (31.10.2026): „Dobądź” / „Schowaj” pod nazwą każdego wiersza,
+ * który świeci (`cpredGearLightProfile`), jak przy broni (zlecenie MG — panel
+ * „Światło” pod tabelą był nie do znalezienia). Serwer niesie zapaloną latarkę
+ * na światło figur tej karty; przełącznik latarki na mapie zapisuje to samo
+ * pole. W ręce świeci jedna: dobycie drugiej chowa pierwszą. Bez kosztu Akcji —
+ * latarka nie zajmuje ręki w `CPRED_HANDS` (patrz `lightgear.ts`).
  */
-function GearLightSection({ data, saveData }: Pick<TabProps, 'data' | 'saveData'>) {
-  const rows = data.gear.filter((row) => row.qty > 0 && cpredGearLightProfile(row) !== null);
-  if (rows.length === 0) return null;
+function GearLightHands({
+  row,
+  data,
+  saveData,
+}: { row: CpredGearRow } & Pick<TabProps, 'data' | 'saveData'>) {
+  const profile = row.qty > 0 ? cpredGearLightProfile(row) : null;
+  if (!profile) return null;
 
-  function setLit(rowId: string, lit: boolean) {
+  function setLit(lit: boolean) {
     saveData(
       {
-        gear: data.gear.map((row) =>
-          row.id === rowId ? ({ ...row, lit: lit || undefined } as CpredGearRow) : row,
-        ),
+        gear: data.gear.map((other) => {
+          if (other.id === row.id && lit) return { ...other, lit: true };
+          if (other.id !== row.id && !lit) return other;
+          if (other.lit !== true) return other;
+          const { lit: _lit, ...rest } = other;
+          return rest as CpredGearRow;
+        }),
       },
       'gear',
     );
   }
 
+  const range = `jasno ${profile.brightM} m, mrok ${profile.dimM} m`;
   return (
-    <div className="cp-panel cp-doses cp-gear-light">
-      <div className="cp-field cp-field--notch cp-doses-target-field">
-        <span className="cp-label">Światło</span>
-      </div>
-      <ul className="cp-doses-list">
-        {rows.map((row) => {
-          const profile = cpredGearLightProfile(row)!;
-          return (
-            <li key={row.id}>
-              <span className="cp-doses-name">
-                {row.name}
-                <span className="cyberware-effect">
-                  {row.lit ? 'w ręce, świeci' : 'w plecaku'} — jasno {profile.brightM} m, mrok{' '}
-                  {profile.dimM} m
-                </span>
-              </span>
-              <button
-                type="button"
-                className="small-button"
-                title={
-                  row.lit
-                    ? 'Zgaś i schowaj — figura na mapie przestaje świecić'
-                    : 'Wyjmij i zapal — figura na mapie świeci (widać na ciemnych scenach z widzeniem dynamicznym)'
-                }
-                aria-pressed={row.lit === true}
-                onClick={() => setLit(row.id, !row.lit)}
-              >
-                {row.lit ? 'Zgaś' : 'Zapal'}
-              </button>
-            </li>
-          );
-        })}
-      </ul>
+    <div className="gear-hands">
+      {row.lit === true ? (
+        <span className="weapon-hands">
+          <span className="weapon-hands-badge" title={`Świeci: ${range}`}>
+            ✊ W ręce, świeci
+          </span>
+          <button
+            type="button"
+            className="small-button"
+            title="Zgaś i schowaj — figura na mapie przestaje świecić"
+            onClick={() => setLit(false)}
+          >
+            Schowaj
+          </button>
+        </span>
+      ) : (
+        <button
+          type="button"
+          className="small-button weapon-draw"
+          title={`Wyjmij i zapal — figura na mapie świeci (${range}); widać to na ciemnych scenach`}
+          onClick={() => setLit(true)}
+        >
+          Dobądź
+        </button>
+      )}
     </div>
   );
 }

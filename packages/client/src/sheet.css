@@ -1524,6 +1524,14 @@
   gap: 0.4rem;
 }
 
+/* „Dobądź” / „Schowaj” latarki pod nazwą wiersza wyposażenia, jak przy broni
+   (31.10.2026, zlecenie MG) — wcięte do pola nazwy, nie pod uchwyt. */
+.gear-hands {
+  margin-top: 0.15rem;
+  padding-left: 1.95rem;
+  line-height: 1;
+}
+
 /* Czynności przy pancerzu to od 24.10.2026 plakietki z napisem jak „Atak”
    i „Dobądź” przy broni, nie znaki ⤓ ⤒ ⊕ ⚒ ⌫, których trzeba było się
    domyślać. Wysokość kosza obok, żeby rząd stał równo. */

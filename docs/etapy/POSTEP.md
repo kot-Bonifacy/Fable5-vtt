@@ -588,6 +588,11 @@ lampa MG zostaje. Ręce nie liczone (latarka nie zajmuje ręki obok broni). Umow
 `light-gear.test.ts` 6/6), `tsc` shared, serwer i klient czysty.
 **Nieoglądane w przeglądarce:** w kampanii na dev („ulice Lublina”) żadna postać nie ma
 latarki, a do prawdziwej kampanii MG nic nie dopisywałem — oględziny przy stole po stronie MG.
+**Poprawka tego wieczoru (MG: „nie wiadomo, jak włożyć ją do dłoni”):** sekcja „Światło” pod
+tabelą zniknęła — „Dobądź” / „Schowaj” stoi pod nazwą latarki w wierszu wyposażenia, jak przy
+broni (`GearLightHands`, `RowTable.below`). Oglądane w Firefoksie (Playwright) na Heńku z latarką
+z kompendium; latarkę potem usunąłem. Przy okazji siatka „Fabryki dronów” 2× gęstsza (48×36,
+hala 96×72 m, kamery 60 m).
 Cudze zmiany w drzewie nie ruszane.
 
 ### Sesja 31.10, dziewiąta — „Fabryka dronów” i wzorzec zwykłej mapy (etap 66b)

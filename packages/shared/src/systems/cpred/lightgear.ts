@@ -3,7 +3,7 @@
  *
  * Latarka na karcie była zwykłym wierszem wyposażenia, a światło figury
  * ustawiał MG ręką w „Edytuj…" każdej figurze z osobna. Teraz wiersz, który
- * świeci (`cpredGearLightProfile`), ma na karcie „Zapal" / „Zgaś" — pole
+ * świeci (`cpredGearLightProfile`), ma na karcie „Dobądź" / „Schowaj" pod nazwą, jak broń — pole
  * `lit` na wierszu, przełączane jak `connected` egzoszkieletu — a serwer
  * przenosi ten stan na światło każdej figury tej karty (`readSheetLight`
  * w `sheets.ts`, `syncSheetLight` w `tokens.ts`).
