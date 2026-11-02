@@ -200,7 +200,12 @@ describe('etap 65b: scena pościgu, auta i fotele', () => {
       await emitAck<SceneView>(gm, 'scene:create', { name: 'Wiadukt', kind: 'chase' }),
       'scene:create',
     );
-    expect(scene).toMatchObject({ kind: 'chase', visibility: 'open', metersPerSquare: 1 });
+    expect(scene).toMatchObject({
+      kind: 'chase',
+      visibility: 'open',
+      metersPerSquare: 1,
+      ambience: 'car',
+    });
     scene = data(
       await emitAck<SceneView>(gm, 'scene:update', {
         sceneId: scene.id,
@@ -228,6 +233,7 @@ describe('etap 65b: scena pościgu, auta i fotele', () => {
       'scene:create map',
     );
     expect(plain.kind).toBe('map');
+    expect(plain.ambience).toBe('none');
 
     const hero = data(
       await emitAck<CharacterView>(gm, 'character:create', { name: 'Iskra', ownerId }),
@@ -488,10 +494,12 @@ describe('etap 65b: scena pościgu, auta i fotele', () => {
       'chase:sync',
       (payload) => payload.vehicles.length === 0,
     );
-    data(
+    const asMap = data(
       await emitAck<SceneView>(gm, 'scene:update', { sceneId: scene.id, patch: { kind: 'map' } }),
       'scene:update kind',
     );
+    // Mapa nie słyszy jazdy, którą dał jej pościg.
+    expect(asMap.ambience).toBe('none');
     await emptied;
     const after = await tokenRow(riderToken.id);
     expect(after).toMatchObject({ sceneVehicleId: null, x: before.x, y: before.y });
@@ -499,7 +507,11 @@ describe('etap 65b: scena pościgu, auta i fotele', () => {
   });
 
   it('skasowany pojazd schodzi z drogi', async () => {
-    await emitAck(gm, 'scene:update', { sceneId: scene.id, patch: { kind: 'chase' } });
+    const back = data(
+      await emitAck<SceneView>(gm, 'scene:update', { sceneId: scene.id, patch: { kind: 'chase' } }),
+      'scene:update kind chase',
+    );
+    expect(back.ambience).toBe('car');
     data(
       await emitAck<SceneVehicleView>(gm, 'chase:place', {
         sceneId: scene.id,

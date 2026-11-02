@@ -574,7 +574,7 @@ a nie do tego pliku.
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
 
-### Sesja 02.11, czwarta — wpięta figura nie rusza się (zgłoszenie „hakowanie się wyłączyło”)
+### Sesja 02.11, piąta — wpięta figura nie rusza się (zgłoszenie „hakowanie się wyłączyło”)
 
 **Zgłoszenie gracza (przez MG):** „hackowanie się wyłączyło przy włączeniu trybu turowego”.
 **Weryfikacja:** test na żywych gniazdach (podłączenie przed walką, `combat:start`, inicjatywa,
@@ -589,14 +589,18 @@ i skoku. Zasada domowa w `decyzje-i-uproszczenia.md` („Sieć i walka”). **Te
 `netcombat.test.ts` (wyniesienie ręką MG); shared 2901, klient 443, serwer 1720 — zielone.
 **Nieoglądane w przeglądarce** (sesja w chmurze, Playwright MCP nie wstał).
 
-### Sesja 02.11, trzecia — na lewej belce HUD tylko broń w rękach
+### Sesja 02.11, czwarta — w pościgu słychać jazdę autem, nie ulicę
 
-**Zlecenie MG:** „w lewej belce HUD-a powinny być widoczne tylko używane/dobyte bronie, a nie
-wszystkie — to bałagan”. **Zrobione:** `cpredHotbarInHand` (`shared/.../hotbar.ts`) zdejmuje
-z grup paska broń z `outOfHand` razem z jej „Przeładuj” i „Usuń usterkę”; klawisze 1–9 liczą
-tylko to, co widać. Pod bronią szara linijka „Schowane: … — dobądź na karcie postaci” (przy
-pustych rękach z „Nie trzymasz broni.”). Pięść, Sztuki walki, granat i broń statysty zostają
-(nie mają pojęcia „w ręku”). `slots` i `hotbarSlotsFor` bez zmian — boty i kursor czytają
-pełną listę. Umowa na górze `atak`. **Testy:** shared +4 (`hotbar.test.ts`), shared 2901/2901,
-klient 443/443, `tsc` klienta czysty. **Nieoglądane w przeglądarce** (sesja w chmurze,
-Playwright MCP nie wstał) — oględziny paska przy stole.
+**Zlecenie MG:** „pobrać i dołączyć do wszystkich scen pościgu dźwięk jazdy samochodem (obecnie
+podczas sceny pościgu odtwarzany jest dźwięk ruchu ulicznego)”. **Zrobione:** nowy preset
+otoczenia `car` („Jazda samochodem”, `public/ambience/car.wav`, 29,5 s pętli tym samym torem
+co reszta — `tools/audio/prepare-natural.py`) i stała `CHASE_AMBIENCE`. Bierze ją nowa scena
+„Pościg”, przełączenie rodzaju na pościg (z ciszy albo ulicy; powrót do mapy gasi `car`), wzorzec
+pościgu bez własnego odgłosu, wzorzec „Pościg na wiadukcie” i migracja
+`20261102120000_chase_car_ambience` (istniejące pościgi z ulicą/ciszą). **Źródło:** „Car Driving
+Interior”, squareal, freesound 237374, CC0 1.0 — freesound był z tej sesji zablokowany, więc
+licencja wg spisu `ASSET_LICENSES.md` projektu hillbomb-sf, a plik z kopii w repo
+Escape-To-Moscow2 (zgodny bajt w bajt ze wskaźnikiem LFS); **do potwierdzenia na stronie autora**
+przy okazji (`sources.json`, `ATTRIBUTION.md`). **Testy:** shared i serwer — asercje otoczenia
+w `music`, `scene-templates`, `chase` (tworzenie, mapa ↔ pościg); shared 2901, klient 443,
+serwer 1720. **Nieodsłuchane w przeglądarce** (sesja w chmurze, Playwright MCP nie wstał).

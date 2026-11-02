@@ -26,7 +26,7 @@ import {
   CHASE_TEMPO_MIN,
   type ChaseDirection,
 } from './chase.js';
-import { isAmbiencePreset, type AmbiencePreset } from './music.js';
+import { CHASE_AMBIENCE, isAmbiencePreset, type AmbiencePreset } from './music.js';
 import { NOTE_ICONS, NOTE_TEXT_MAX_LENGTH, type NoteIcon } from './notes.js';
 import {
   SCENE_NAME_MAX_LENGTH,
@@ -344,7 +344,11 @@ function readScene(raw: unknown): SceneTemplateScene | null {
     explore: kind === 'map' && raw.explore !== false,
     partySight: raw.partySight === true,
     playerMove: isPlayerMoveMode(raw.playerMove) ? raw.playerMove : 'stop',
-    ambience: isAmbiencePreset(raw.ambience) ? raw.ambience : 'none',
+    ambience: isAmbiencePreset(raw.ambience)
+      ? raw.ambience
+      : kind === 'chase'
+        ? CHASE_AMBIENCE
+        : 'none',
     spawn,
     chase: kind === 'chase' ? chase : null,
   };

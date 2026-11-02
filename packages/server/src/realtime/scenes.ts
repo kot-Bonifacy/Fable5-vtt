@@ -13,6 +13,7 @@ import type {
   SessionUser,
 } from '@vtt/shared';
 import {
+  CHASE_AMBIENCE,
   ROLE_GM,
   defaultChaseDirection,
   isAmbiencePreset,
@@ -197,7 +198,14 @@ export const sceneCreateEvent = defineEvent<SceneCreatePayload, SceneView>({
         name,
         campaignId,
         ...(chase
-          ? { kind: 'chase', visibility: 'open', dark: false, explore: false, metersPerSquare: 1 }
+          ? {
+              kind: 'chase',
+              visibility: 'open',
+              dark: false,
+              explore: false,
+              metersPerSquare: 1,
+              ambience: CHASE_AMBIENCE,
+            }
           : {}),
       },
     });
@@ -246,6 +254,15 @@ export const sceneUpdateEvent = defineEvent<SceneUpdatePayload, SceneView>({
     if (patch.playerMove !== undefined) data.playerMove = patch.playerMove;
     if (patch.ambience !== undefined) data.ambience = patch.ambience;
     if (patch.kind !== undefined) data.kind = patch.kind;
+    // Scena przełączona na pościg rusza z odgłosem jazdy, chyba że łata sama
+    // ustawia otoczenie; powrót do mapy gasi jazdę, której mapa nie wybrała.
+    if (patch.kind !== undefined && patch.kind !== scene.kind && patch.ambience === undefined) {
+      if (patch.kind === 'chase' && (scene.ambience === 'none' || scene.ambience === 'street')) {
+        data.ambience = CHASE_AMBIENCE;
+      } else if (patch.kind !== 'chase' && scene.ambience === CHASE_AMBIENCE) {
+        data.ambience = 'none';
+      }
+    }
     if (patch.chase !== undefined) {
       const chase = patch.chase;
       if (chase.direction !== undefined) data.chaseDirection = chase.direction;
