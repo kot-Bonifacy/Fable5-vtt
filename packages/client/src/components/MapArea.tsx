@@ -358,6 +358,9 @@ function moveErrorText(code: string | undefined): string {
     // Etap 65b: figura w fotelu jedzie z autem.
     case 'IN_VEHICLE':
       return chaseErrorText(code);
+    // 02.11.2026 (MG): podłączony netrunner stoi, dopóki się nie odłączy.
+    case 'NET_JACKED_IN_MOVE':
+      return netErrorText(code);
     default:
       return `Nie udało się przesunąć tokenu: ${code ?? 'nieznany błąd'}.`;
   }

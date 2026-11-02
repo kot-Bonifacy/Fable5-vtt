@@ -574,6 +574,21 @@ a nie do tego pliku.
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
 
+### Sesja 02.11, czwarta — wpięta figura nie rusza się (zgłoszenie „hakowanie się wyłączyło”)
+
+**Zgłoszenie gracza (przez MG):** „hackowanie się wyłączyło przy włączeniu trybu turowego”.
+**Weryfikacja:** test na żywych gniazdach (podłączenie przed walką, `combat:start`, inicjatywa,
+tury) — Ajdi, zjazd, Kontrola, Zwiad, odłączenie i ponowne podłączenie w walce działały; w cudzej
+turze odmowa `NOT_YOUR_TURN`. Błędu w trybie turowym nie ma. MG: gracz pewnie ruszył postacią —
+wyjście poza 6 m odłącza awaryjnie (s. 198), a ruch „nie powinien być możliwy w trakcie
+podłączenia”. **Zrobione:** `refuseMoveWhileJackedIn` (`netrun-io.ts`) w `performTokenMove`
+(każda klatka; przepuszcza tylko rękę MG), w `token:walk` i w odmowie skoku (`jump.ts`); kod
+`NET_JACKED_IN_MOVE` z tekstem w `NET_RUN_PROBLEM_MESSAGES`, klient pokazuje go przy ruchu
+i skoku. Zasada domowa w `decyzje-i-uproszczenia.md` („Sieć i walka”). **Testy:** serwer
+`netrun.test.ts` (odmowa przeciągnięcia, klatki, marszu, skoku; ręka MG wynosi i odłącza),
+`netcombat.test.ts` (wyniesienie ręką MG); shared 2901, klient 443, serwer 1720 — zielone.
+**Nieoglądane w przeglądarce** (sesja w chmurze, Playwright MCP nie wstał).
+
 ### Sesja 02.11, trzecia — na lewej belce HUD tylko broń w rękach
 
 **Zlecenie MG:** „w lewej belce HUD-a powinny być widoczne tylko używane/dobyte bronie, a nie
@@ -585,20 +600,3 @@ pustych rękach z „Nie trzymasz broni.”). Pięść, Sztuki walki, granat i b
 pełną listę. Umowa na górze `atak`. **Testy:** shared +4 (`hotbar.test.ts`), shared 2901/2901,
 klient 443/443, `tsc` klienta czysty. **Nieoglądane w przeglądarce** (sesja w chmurze,
 Playwright MCP nie wstał) — oględziny paska przy stole.
-
-### Sesja 02.11, druga — jedna próba na zdolność, pamięć sukcesów w Sieci
-
-**Zlecenia MG (trzy, jedno po drugim):** „netrunner na danej scenie powinien móc tylko raz
-hackować dany element” → „zwiad, maskowanie, wirus też” → udane „powinny być zapamiętywane, aby
-przy ponownym połączeniu nie trzeba było ich na danej scenie powtarzać dla danej postaci”.
-**Zrobione:** tabela `NET_TRY_LIMITS` (Backdoor, Ajdi, Kontrola, Wirus — raz na piętro, zużywa
-porażka; Zwiad raz z piętra, Maskowanie raz na Architekturę — zużywa każdy rzut), odmowa
-`NET_HACK_FAILED` / `NET_TRY_SPENT` bez kosztu Akcji Sieciowej, pamięć sukcesów na postać +
-scenę składana do runu przy `netrun:start` (złamane, rozpoznane, skopiowane, ze Zwiadu,
-przejęte węzły), okno runu wyszarza zużyte i już udane zdolności, MG ma „Oddaj próby”
-(`netrun:hacks:reset`). **Przy okazji naprawione:** Wirus nie mógł się nie udać — PT podane przy
-pisaniu nie trafiało do rzutu. Umowa na górze `siec`, zasady domowe w
-`decyzje-i-uproszczenia.md` („Sieć i walka”). **Testy:** shared `netrun.test.ts` +6, serwer
-`netrun.test.ts` +2 (PT 30 — porażka pewna), dwa testy „odłączenie resetuje” (`netrun`,
-`netdevices`) przepisane na pamięć, macierz izolacji z nowym zdarzeniem. **Nieoglądane
-w przeglądarce** (sesja w chmurze, Playwright MCP nie wstał) — oględziny okna runu przy stole.

@@ -1,5 +1,22 @@
 # Dziennik sesji — archiwum
 
+### Sesja 02.11, druga — jedna próba na zdolność, pamięć sukcesów w Sieci
+
+**Zlecenia MG (trzy, jedno po drugim):** „netrunner na danej scenie powinien móc tylko raz
+hackować dany element” → „zwiad, maskowanie, wirus też” → udane „powinny być zapamiętywane, aby
+przy ponownym połączeniu nie trzeba było ich na danej scenie powtarzać dla danej postaci”.
+**Zrobione:** tabela `NET_TRY_LIMITS` (Backdoor, Ajdi, Kontrola, Wirus — raz na piętro, zużywa
+porażka; Zwiad raz z piętra, Maskowanie raz na Architekturę — zużywa każdy rzut), odmowa
+`NET_HACK_FAILED` / `NET_TRY_SPENT` bez kosztu Akcji Sieciowej, pamięć sukcesów na postać +
+scenę składana do runu przy `netrun:start` (złamane, rozpoznane, skopiowane, ze Zwiadu,
+przejęte węzły), okno runu wyszarza zużyte i już udane zdolności, MG ma „Oddaj próby”
+(`netrun:hacks:reset`). **Przy okazji naprawione:** Wirus nie mógł się nie udać — PT podane przy
+pisaniu nie trafiało do rzutu. Umowa na górze `siec`, zasady domowe w
+`decyzje-i-uproszczenia.md` („Sieć i walka”). **Testy:** shared `netrun.test.ts` +6, serwer
+`netrun.test.ts` +2 (PT 30 — porażka pewna), dwa testy „odłączenie resetuje” (`netrun`,
+`netdevices`) przepisane na pamięć, macierz izolacji z nowym zdarzeniem. **Nieoglądane
+w przeglądarce** (sesja w chmurze, Playwright MCP nie wstał) — oględziny okna runu przy stole.
+
 ### Sesja 02.11 — hakowanie w „Fabryce dronów”: szyb Sieci znikał graczowi
 
 **Zgłoszenie gracza (przez MG):** netrunner (Interfejs 4, konsola sterowni wschodniej) nie

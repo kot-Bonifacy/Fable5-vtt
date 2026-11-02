@@ -1,5 +1,5 @@
 import type { ScenePoint, TokenJumpOption } from '@vtt/shared';
-import { CPRED_DEATH_SAVE_PENDING_MESSAGE } from '@vtt/shared';
+import { CPRED_DEATH_SAVE_PENDING_MESSAGE, NET_RUN_PROBLEM_MESSAGES } from '@vtt/shared';
 import { PLAYER_MOVE_STOP_NOTE } from './map/player-move.js';
 import { COMBAT_PENDING_NOTE } from './walk-halt.js';
 import { noteAck, notifyRefusal } from './notices.js';
@@ -133,6 +133,8 @@ export function jumpErrorText(code: string): string {
       return 'Nie możesz ruszać tym tokenem.';
     case 'TOKEN_NOT_FOUND':
       return 'Nie znaleziono tokenu — odśwież stronę.';
+    case 'NET_JACKED_IN_MOVE':
+      return NET_RUN_PROBLEM_MESSAGES.NET_JACKED_IN_MOVE;
     default:
       return `Skok się nie udał: ${code}.`;
   }

@@ -627,7 +627,38 @@ describe('run netrunnera na żywych gniazdach', () => {
 
   it('tears the run down when the figure walks out of range', async () => {
     expect((await roundTrip(player)).netRuns).toHaveLength(1);
-    await emitAck(player, 'token:move', {
+    // Zasada domowa MG z 02.11: podłączona figura gracza nie rusza się wcale —
+    // ani poza zasięg, ani o krok w jego obrębie, ani marszem, ani skokiem.
+    expect(
+      errorOf(
+        await emitAck(player, 'token:move', {
+          tokenId: netrunnerTokenId,
+          x: 20 * PX_PER_M,
+          y: 0,
+          final: true,
+        }),
+      ),
+    ).toBe('NET_JACKED_IN_MOVE');
+    expect(
+      errorOf(await emitAck(player, 'token:move', { tokenId: netrunnerTokenId, x: 100, y: 0 })),
+    ).toBe('NET_JACKED_IN_MOVE');
+    expect(
+      errorOf(
+        await emitAck(player, 'token:walk', {
+          tokenId: netrunnerTokenId,
+          route: [{ x: 100, y: 0 }],
+        }),
+      ),
+    ).toBe('NET_JACKED_IN_MOVE');
+    const jump = await emitAck<{ refusal: string | null }>(player, 'token:jump-options', {
+      tokenId: netrunnerTokenId,
+    });
+    expect(jump.ok && jump.data?.refusal).toContain('podłączona do Sieci');
+    expect((await roundTrip(player)).netRuns).toHaveLength(1);
+
+    // Ręka MG (sędzia) dalej przenosi figurę — a wyniesiona poza 6 m
+    // odłącza się awaryjnie, jak w podręczniku (s. 198).
+    await emitAck(gm, 'token:move', {
       tokenId: netrunnerTokenId,
       x: 20 * PX_PER_M,
       y: 0,

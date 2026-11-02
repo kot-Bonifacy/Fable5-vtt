@@ -12,6 +12,7 @@ import {
   CPRED_ACTION_JUMP,
   JUMP_COST_M,
   JUMP_DIRECTIONS,
+  NET_RUN_PROBLEM_MESSAGES,
   PACE_SLACK_M,
   ROLE_GM,
   firstClosedFloorStep,
@@ -138,6 +139,12 @@ async function jumpRefusalFor(
   // Etap 56: drużyna zobaczyła wroga — przed walką nikt nie skacze.
   if (!isGm && (await sightedFightPending(deps, scene.id))) {
     return { code: COMBAT_PENDING, message: COMBAT_PENDING_MESSAGE };
+  }
+  // 02.11.2026 (MG): podłączona figura nie skacze — ani gracza, ani MG.
+  if (
+    await deps.ctx.prisma.netRun.findUnique({ where: { tokenId: token.id }, select: { id: true } })
+  ) {
+    return { code: 'NET_JACKED_IN_MOVE', message: NET_RUN_PROBLEM_MESSAGES.NET_JACKED_IN_MOVE };
   }
   if (!isGm) {
     const statuses = readTokenStatuses(token.statuses);
