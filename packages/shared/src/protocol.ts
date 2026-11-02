@@ -16,6 +16,7 @@ import type {
 } from './systems/cpred/compendium.js';
 import type { LedgerEntryView } from './systems/cpred/economy.js';
 import type { CpredShopRoleTools } from './systems/cpred/shop.js';
+import type { CpredMerchantAssortment } from './systems/cpred/assortment.js';
 import type { RollResult, RollToss } from './dice.js';
 import type { DrawingView } from './drawings.js';
 import type { ExplorationMask } from './exploration.js';
@@ -883,6 +884,8 @@ export interface MerchantShelfRowView extends CpredItemViewWire {
   hidden?: boolean;
   /** Tylko u MG: cena wpisana ręką przy wierszu (bez mnożnika). */
   priceOverride?: number;
+  /** Wiersz z asortymentu kompendium (`kat:<wpis>`), nie z karty handlarza. */
+  catalog?: true;
 }
 
 /** Sklep tak, jak widzi go jeden patrzący (`merchant:view`, `merchant:update`). */
@@ -898,6 +901,11 @@ export interface MerchantView {
   buyBackPct: number;
   /** Kasa handlarza; `null` — „bez dna”. */
   cash: number | null;
+  /**
+   * Asortyment z kompendium (02.11.2026); `null` — półka to wyłącznie ekwipunek
+   * karty. Gracz też go dostaje: okno liczy nim, co handlarz skupi.
+   */
+  assortment: CpredMerchantAssortment | null;
   rows: MerchantShelfRowView[];
   /** Tylko u MG: karta handlarza i surowe ustawienia. */
   characterId?: string;
@@ -963,6 +971,8 @@ export interface MerchantDealResult {
 export interface MerchantConfigPayload {
   characterId: string;
   merchant: Partial<MerchantSettings> | null;
+  /** Asortyment z kompendium: brak — bez zmian, `null` — wyłączony (02.11.2026). */
+  assortment?: CpredMerchantAssortment | null;
 }
 
 export interface MerchantConfigResult {

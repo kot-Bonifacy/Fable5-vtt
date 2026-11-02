@@ -495,6 +495,63 @@ describe('handlarze', () => {
     ).toEqual({ ok: false, error: 'ROW_NOT_FOUND' });
   });
 
+  it('asortyment z kompendium: półka „∞” z katalogu i skup tylko w zakresie', async () => {
+    const config = (assortment: unknown) =>
+      emitAck(gm, 'merchant:config', { characterId: paserId, merchant: {}, assortment });
+    expect(await config({ base: 5 })).toEqual({ ok: false, error: 'BAD_REQUEST' });
+    expect((await config({ base: 0, categories: { gear: 4, chems: 4 } })).ok).toBe(true);
+
+    const forVex = data(
+      await emitAck<MerchantViewResult>(vex, 'merchant:view', { merchantId }),
+      'merchant:view',
+    ).merchant;
+    expect(forVex.assortment).toEqual({ base: 0, categories: { gear: 4, chems: 4 } });
+    const offers = forVex.rows.filter((row) => row.catalog);
+    expect(offers.length).toBeGreaterThan(0);
+    expect(offers.every((row) => row.list === 'gear' && row.infinite)).toBe(true);
+    const kit = offers.find((row) => row.rowId === 'kat:gear.apteczka-polowa')!;
+    expect(kit.price).toBe(180);
+
+    const before = (await sheetOf(gm, vexId)).eddies;
+    expect(
+      data(
+        await deal(vex, vexId, {
+          buy: [{ list: 'gear', rowId: kit.rowId, qty: 2 }],
+          expectTotal: 360,
+        }),
+        'deal',
+      ).balance,
+    ).toBe(before - 360);
+    const vexSheet = await sheetOf(gm, vexId);
+    expect(vexSheet.gear.find((row) => row.compendiumId === 'gear.apteczka-polowa')?.qty).toBe(4);
+    // Kupione z kompendium nie zdejmuje niczego z karty handlarza.
+    expect((await sheetOf(gm, paserId)).gear.find((row) => row.id === 'g-apt')?.qty).toBe(3);
+
+    // Handlarz samego sprzętu nie skupuje broni — a broń spoza zakresu nie stoi na półce.
+    expect((await config({ base: 0, categories: { weapon: 4 } })).ok).toBe(true);
+    const kitRow = vexSheet.gear.find((row) => row.compendiumId === 'gear.apteczka-polowa')!;
+    expect(
+      await deal(vex, vexId, {
+        sell: [{ list: 'gear', rowId: kitRow.id, qty: 1 }],
+        expectTotal: -75,
+      }),
+    ).toEqual({ ok: false, error: 'NOT_IN_RANGE' });
+    expect(
+      await deal(vex, vexId, {
+        buy: [{ list: 'gear', rowId: kit.rowId, qty: 1 }],
+        expectTotal: 180,
+      }),
+    ).toEqual({ ok: false, error: 'ROW_NOT_FOUND' });
+
+    expect((await config(null)).ok).toBe(true);
+    const plain = data(
+      await emitAck<MerchantViewResult>(vex, 'merchant:view', { merchantId }),
+      'merchant:view',
+    ).merchant;
+    expect(plain.assortment).toBeNull();
+    expect(plain.rows.some((row) => row.catalog)).toBe(false);
+  });
+
   it('z drugiego końca sali: wyszarzony „Za daleko” i OUT_OF_REACH', async () => {
     const forRico = data(
       await emitAck<ExchangeCounterpartsResult>(rico, 'exchange:counterparts', {

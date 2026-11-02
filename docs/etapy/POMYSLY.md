@@ -1,5 +1,13 @@
 # Pomysły poza zakresem etapów
 
+**02.11.2026 (asortyment handlarza) — czego półka z kompendium jeszcze nie umie.** (1) **Amunicja
+z kompendium** — pudełko wymaga kalibru (46c); półka mogłaby wystawiać granaty i rakiety dla
+kalibrów broni w zakresie. (2) **Ripperdok** — cyborgizacje nie są wierszem karty, więc nie
+stoją na półce; sklep z chromem potrzebowałby zakupu z montażem (Test montażu, 25.10).
+(3) **Wyjątki po wpisie** — „ten jeden karabin tak, reszta wojskowych nie” jako lista
+dopisków/wykreśleń przy asortymencie. (4) **Asortyment z poziomu kampanii** — przełącznik
+„nie wyżej niż odblokowane w kampanii” dla sklepów, które mają rosnąć razem z drużyną.
+
 **31.10.2026 (etap 66b) — uśpione urządzenie na mapie.** Dron wyłączony w Sieci (`runtime.devices` z `on: false`)
 stoi na mapie jak każda figura — MG go po prostu nie rusza. Automat: naklejka „Wyłączony” na figurze urządzenia
 (szary krążek, bez tury w kolejce, bez Percepcji w drodze), zdejmowana przy „Włącz”; prototyp z drzazgą dałby się
