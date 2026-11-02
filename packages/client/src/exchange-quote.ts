@@ -1,5 +1,6 @@
 import type {
   CompendiumEntry,
+  CpredMerchantAssortment,
   CpredCharacterData,
   CpredItemRef,
   CpredMerchantBuyLine,
@@ -7,8 +8,10 @@ import type {
   CpredPriceContext,
   CpredShelfRow,
   MerchantView,
+  ShopTierContext,
 } from '@vtt/shared';
 import {
+  cpredAssortmentCovers,
   cpredBuyBackPiece,
   cpredMerchantQuote,
   cpredRowCatalogPrice,
@@ -28,6 +31,26 @@ export function clientPriceContext(entries: Record<string, CompendiumEntry>): Cp
     priceOf: (id) => {
       const entry = entries[id];
       return entry ? entryPrice(entry) : null;
+    },
+  };
+}
+
+/**
+ * Ceny sklepu z asortymentem (02.11.2026): skup tylko w zakresie handlarza —
+ * ta sama reguła, którą serwer stawia w `merchant:deal` (`NOT_IN_RANGE`).
+ */
+export function merchantPriceContext(
+  entries: Record<string, CompendiumEntry>,
+  assortment: CpredMerchantAssortment | null,
+  tierContext: ShopTierContext,
+): CpredPriceContext {
+  const base = clientPriceContext(entries);
+  if (!assortment) return base;
+  return {
+    ...base,
+    buysBack: (id) => {
+      const entry = entries[id];
+      return entry !== undefined && cpredAssortmentCovers(entry, assortment, tierContext);
     },
   };
 }

@@ -29,6 +29,12 @@ Pełna tabela z nazwami i datami: `archiwum/tabela-etapow.md`.
 
 ## Od czego zacząć
 
+**Asortyment handlarza z kompendium (zlecenie MG z 02.11) — czeka na wdrożenie (migracja bazy)
+i oględziny MG przy stole.** MG w sekcji „Sklep” karty NPC-a ustawia poziom dostępności dla
+pozostałych kategorii i osobno dla Broni, Dodatków, Pancerza, Sprzętu, Używek i leków
+i Programów; wpisy kompendium w zakresie stoją u gracza na półce jako „∞”, a skup bierze tylko
+rzeczy z zakresu. Rozstrzygnięcia bez pytań — w notatce sesji. Umowa na górze `ekwipunek`.
+
 **Sceny przykładowe (etap 66, zlecenie MG z 31.10) — czekają na oględziny MG przy stole
 i na wdrożenie.** W panelu scen MG pod listą stoi zwijana sekcja „Przykładowe”: wzorce
 z `data/public/scenes/<id>/scene.json`, wspólne dla każdego MG, a „Dodaj do kampanii” zakłada
@@ -560,7 +566,7 @@ a nie do tego pliku.
 | `statysta`  | figura z kartą, `statBlock`, Wartość bojowa, `token:stat`, wzorce | 17   | 3       |
 | `karta`     | strony i zakładki, panele, `sheet.css`, walidacja list, usuwanie przedmiotu | 11   | 12      |
 | `postac`    | kreator, PD i awanse, koszyk i cofanie awansów, Role i Zdolności, cyborgizacje, chrom zmieniający liczby, ekonomia, Test montażu gracza, pojazdy i Tabor | 58   | 3       |
-| `ekwipunek` | wiersze wyposażenia, przekazanie, łup (także ciała graczy), handel, sklepy, zasięg, amunicja bez dna, egzoszkielet, latarka z ekwipunku, narkotyki i fiolki, siatka okna „Wymiana”, zgoda z góry | 41   | 3       |
+| `ekwipunek` | wiersze wyposażenia, przekazanie, łup (także ciała graczy), handel, sklepy, asortyment handlarza z kompendium, zasięg, amunicja bez dna, egzoszkielet, latarka z ekwipunku, narkotyki i fiolki, siatka okna „Wymiana”, zgoda z góry | 42   | 3       |
 | `czas`      | zegar świata, kalendarz, `statEffects`, leczenie po dobie, dawki i uzależnienia (`chems`) | 19   | 2       |
 | `siec`      | Programy, LOD, demony, piętra architektury, dek jako towar, strefy bronione, kamery, rozbrajanie, Sieć ze sceny, jedna próba i pamięć sukcesów | 14   | 5       |
 | `boty`      | llama-server, RAG, reindeks, dziennik i baza wiedzy, brama AI  | 10   | 10      |
@@ -574,6 +580,28 @@ a nie do tego pliku.
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
 
+### Sesja 02.11, czwarta — asortyment handlarza z kompendium
+
+**Zlecenie MG:** „dodaj handlarzowi możliwość ustawiania poziomu dostępu do kompendium (zakres
+przedmiotów, którymi będzie handlował) wraz z kategoriami — np. aptekarzowi 4 poziom Używek
+i leków, a 1 poziom pozostałych, podrzędnemu sklepowi z bronią 3 poziom Broń, Pancerz, a 1
+pozostałe”. **Zrobione:** w sekcji „Sklep” karty NPC-a (MG) blok „Asortyment z kompendium”:
+poziom „Pozostałe kategorie” i osobny poziom (albo „jak pozostałe”) dla Broni, Dodatków do
+broni, Pancerza, Sprzętu, Używek i leków i Programów; „— nie handluje” wyłącza kategorię,
+licznik mówi, ile pozycji stoi na półce. Gracz widzi na półce wszystko z kompendium w zakresie
+jako „∞” obok towaru z karty (cena × „Cena %”), linijkę „Asortyment: …” i szukajkę przy dużej
+półce; handlarz skupuje tylko rzeczy z zakresu (`NOT_IN_RANGE`, kafel wyszarzony). Kolumna
+`Merchant.assortment` (migracja `20261102200000_merchant_assortment`), jedzie w kopiach sklepu
+i kampanii. **Rozstrzygnięcia bez pytań (do słowa MG):** poziom handlarza nie zależy od poziomu
+odblokowanego w kampanii; skup też ogranicza zakres; amunicji z kompendium półka nie wystawia
+(MG kładzie ją na karcie jako „∞”), a jej skup idzie poziomem pozostałych; własne wpisy MG
+z ceną też trafiają na półkę. **Przy okazji:** podpowiedzi sekcji „Sklep” (`.cp-shop-hint`)
+były nieczytelne na czerwonym tle panelu — teraz kolor napisów panelu. Umowa na górze
+`ekwipunek`, reszta w `POMYSLY.md`. **Testy:** shared `assortment.test.ts` (+16), shared
+2917/2917, klient 443/443, serwer 1721/1721 (+1 w `merchant.test.ts`), `tsc` i ESLint czyste.
+**Oglądane w Chromium (Playwright, instancja E2E)** — sekcja MG szeroko i na 420 px, okno
+gracza z półką aptekarza; Firefoksa w kontenerze nie ma. **Do wdrożenia:** migracja bazy na VPS.
+
 ### Sesja 02.11, trzecia — na lewej belce HUD tylko broń w rękach
 
 **Zlecenie MG:** „w lewej belce HUD-a powinny być widoczne tylko używane/dobyte bronie, a nie
@@ -585,20 +613,3 @@ pustych rękach z „Nie trzymasz broni.”). Pięść, Sztuki walki, granat i b
 pełną listę. Umowa na górze `atak`. **Testy:** shared +4 (`hotbar.test.ts`), shared 2901/2901,
 klient 443/443, `tsc` klienta czysty. **Nieoglądane w przeglądarce** (sesja w chmurze,
 Playwright MCP nie wstał) — oględziny paska przy stole.
-
-### Sesja 02.11, druga — jedna próba na zdolność, pamięć sukcesów w Sieci
-
-**Zlecenia MG (trzy, jedno po drugim):** „netrunner na danej scenie powinien móc tylko raz
-hackować dany element” → „zwiad, maskowanie, wirus też” → udane „powinny być zapamiętywane, aby
-przy ponownym połączeniu nie trzeba było ich na danej scenie powtarzać dla danej postaci”.
-**Zrobione:** tabela `NET_TRY_LIMITS` (Backdoor, Ajdi, Kontrola, Wirus — raz na piętro, zużywa
-porażka; Zwiad raz z piętra, Maskowanie raz na Architekturę — zużywa każdy rzut), odmowa
-`NET_HACK_FAILED` / `NET_TRY_SPENT` bez kosztu Akcji Sieciowej, pamięć sukcesów na postać +
-scenę składana do runu przy `netrun:start` (złamane, rozpoznane, skopiowane, ze Zwiadu,
-przejęte węzły), okno runu wyszarza zużyte i już udane zdolności, MG ma „Oddaj próby”
-(`netrun:hacks:reset`). **Przy okazji naprawione:** Wirus nie mógł się nie udać — PT podane przy
-pisaniu nie trafiało do rzutu. Umowa na górze `siec`, zasady domowe w
-`decyzje-i-uproszczenia.md` („Sieć i walka”). **Testy:** shared `netrun.test.ts` +6, serwer
-`netrun.test.ts` +2 (PT 30 — porażka pewna), dwa testy „odłączenie resetuje” (`netrun`,
-`netdevices`) przepisane na pamięć, macierz izolacji z nowym zdarzeniem. **Nieoglądane
-w przeglądarce** (sesja w chmurze, Playwright MCP nie wstał) — oględziny okna runu przy stole.

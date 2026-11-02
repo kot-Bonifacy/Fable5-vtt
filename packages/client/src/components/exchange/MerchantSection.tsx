@@ -1,7 +1,19 @@
 import { useEffect, useState } from 'react';
-import type { MerchantRowOverlay, MerchantSettings, MerchantShelfRowView } from '@vtt/shared';
+import type {
+  CpredAssortmentCategory,
+  CpredAssortmentLevel,
+  CpredMerchantAssortment,
+  MerchantRowOverlay,
+  MerchantSettings,
+  MerchantShelfRowView,
+} from '@vtt/shared';
 import {
+  CPRED_ASSORTMENT_CATEGORIES,
+  CPRED_ASSORTMENT_CATEGORY_LABELS,
+  CPRED_ASSORTMENT_DEFAULT,
   ITEM_ROWS_MAX,
+  SHOP_TIERS,
+  SHOP_TIER_LABELS,
   MERCHANT_BUY_BACK_MAX,
   MERCHANT_PRICE_MUL_MAX,
   MERCHANT_SIGN_MAX,
@@ -47,6 +59,13 @@ export function MerchantSection({ characterId }: { characterId: string }) {
   async function config(merchant: Partial<MerchantSettings> | null) {
     setBusy(true);
     const ack = await configMerchant({ characterId, merchant });
+    setBusy(false);
+    noteAck('character', ack, merchantErrorText);
+  }
+
+  async function configAssortment(assortment: CpredMerchantAssortment | null) {
+    setBusy(true);
+    const ack = await configMerchant({ characterId, merchant: {}, assortment });
     setBusy(false);
     noteAck('character', ack, merchantErrorText);
   }
@@ -97,7 +116,15 @@ export function MerchantSection({ characterId }: { characterId: string }) {
         </button>
       </div>
       {settings && <SettingsFields settings={settings} busy={busy} onChange={config} />}
-      {view && <ShopRows merchantId={shop.id} rows={view.rows} />}
+      {view && (
+        <AssortmentFields
+          assortment={view.assortment}
+          offered={view.rows.filter((row) => row.catalog && row.price !== null).length}
+          busy={busy}
+          onChange={configAssortment}
+        />
+      )}
+      {view && <ShopRows merchantId={shop.id} rows={view.rows.filter((row) => !row.catalog)} />}
       <p className="cp-shop-hint">
         Towar to ekwipunek tej karty — dopisujesz go w Broni, Pancerzu i Wyposażeniu. Broń i pancerz
         nie mają ilości: pięć pistoletów to pięć wierszy albo jeden wiersz „∞”. Karta mieści{' '}
@@ -239,6 +266,121 @@ function SettingsFields({
         />
         Między sesjami
       </label>
+    </div>
+  );
+}
+
+/** „1 pozycja”, „3 pozycje”, „12 pozycji”. */
+function positionsWord(count: number): string {
+  if (count === 1) return 'pozycja';
+  const tens = count % 100;
+  const units = count % 10;
+  return units >= 2 && units <= 4 && (tens < 12 || tens > 14) ? 'pozycje' : 'pozycji';
+}
+
+/** „—” (nie handluje) i poziomy dostępności 1–4 z nazwami z Kompendium. */
+function LevelOptions() {
+  return (
+    <>
+      <option value={0}>— nie handluje</option>
+      {SHOP_TIERS.map((tier) => (
+        <option key={tier} value={tier}>
+          {tier} · {SHOP_TIER_LABELS[tier]}
+        </option>
+      ))}
+    </>
+  );
+}
+
+/**
+ * Asortyment z kompendium (zlecenie MG z 02.11.2026): poziom dostępności dla
+ * „pozostałych” i — po kategorii — własny, który go zastępuje. Wpisy w zakresie
+ * stoją u gracza na półce jako „∞” obok towaru z karty, a skup bierze tylko
+ * rzeczy z zakresu. Wyłączony — półka to wyłącznie ekwipunek karty.
+ */
+function AssortmentFields({
+  assortment,
+  offered,
+  busy,
+  onChange,
+}: {
+  assortment: CpredMerchantAssortment | null;
+  offered: number;
+  busy: boolean;
+  onChange: (assortment: CpredMerchantAssortment | null) => Promise<void>;
+}) {
+  function setCategory(category: CpredAssortmentCategory, raw: string) {
+    if (!assortment) return;
+    const categories = { ...assortment.categories };
+    if (raw === '') delete categories[category];
+    else categories[category] = Number(raw) as CpredAssortmentLevel;
+    void onChange({ ...assortment, categories });
+  }
+
+  return (
+    <div className="cp-shop-assortment" data-testid="merchant-assortment">
+      <label
+        className="cp-shop-toggle"
+        title="Handlarz sprzedaje z kompendium wszystko w swoim zakresie (bez dna) i skupuje tylko rzeczy z zakresu"
+      >
+        <input
+          type="checkbox"
+          checked={assortment !== null}
+          disabled={busy}
+          onChange={(e) => void onChange(e.target.checked ? CPRED_ASSORTMENT_DEFAULT : null)}
+        />
+        Asortyment z kompendium
+      </label>
+      {assortment && (
+        <>
+          <span className="cp-shop-assortment-count">
+            {offered} {positionsWord(offered)} na półce
+          </span>
+          <div className="cp-shop-assortment-grid">
+            <label
+              className="cp-shop-access"
+              title="Poziom każdej kategorii, której nie ustawiasz osobno"
+            >
+              Pozostałe kategorie
+              <select
+                value={assortment.base}
+                disabled={busy}
+                aria-label="Poziom: pozostałe kategorie"
+                onChange={(e) =>
+                  void onChange({
+                    ...assortment,
+                    base: Number(e.target.value) as CpredAssortmentLevel,
+                  })
+                }
+              >
+                <LevelOptions />
+              </select>
+            </label>
+            {CPRED_ASSORTMENT_CATEGORIES.map((category) => {
+              const level = assortment.categories[category];
+              return (
+                <label key={category} className="cp-shop-access">
+                  {CPRED_ASSORTMENT_CATEGORY_LABELS[category]}
+                  <select
+                    value={level === undefined ? '' : String(level)}
+                    disabled={busy}
+                    aria-label={`Poziom: ${CPRED_ASSORTMENT_CATEGORY_LABELS[category]}`}
+                    onChange={(e) => setCategory(category, e.target.value)}
+                  >
+                    <option value="">jak pozostałe</option>
+                    <LevelOptions />
+                  </select>
+                </label>
+              );
+            })}
+          </div>
+          <p className="cp-shop-hint">
+            Poziom handlarza nie zależy od poziomu odblokowanego w kampanii. Amunicji z kompendium
+            handlarz nie wystawia — połóż ją na karcie jako wiersz „∞”; jej skup idzie poziomem
+            pozostałych.
+          </p>
+        </>
+      )}
     </div>
   );
 }

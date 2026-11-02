@@ -25,6 +25,7 @@ function view(patch: Partial<MerchantView> = {}): MerchantView {
     priceMul: 120,
     buyBackPct: 50,
     cash: 500,
+    assortment: null,
     rows: [
       {
         list: 'gear',

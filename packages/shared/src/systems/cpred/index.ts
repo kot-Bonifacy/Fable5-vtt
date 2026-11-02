@@ -40,6 +40,7 @@ export * from './lightgear.js';
 export * from './cyberdeck.js';
 export * from './itemlocks.js';
 export * from './merchant.js';
+export * from './assortment.js';
 export * from './lock.js';
 export * from './container.js';
 export * from './trapdisarm.js';
