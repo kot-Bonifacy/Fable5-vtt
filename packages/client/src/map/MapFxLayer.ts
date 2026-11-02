@@ -714,12 +714,10 @@ export class MapFxLayer {
       if (flash < 0.3) {
         // A Critical Injury burns gold at the core — the one mark it gets
         // since the shock rings went (17.10, MG: „bez efektów fal").
-        this.graphics
-          .circle(at.x, at.y, item.radius * (0.5 + flash))
-          .fill({
-            color: crit ? HIT_CRIT : 0xffffff,
-            alpha: (crit ? 0.85 : 0.5) * (1 - flash / 0.3),
-          });
+        this.graphics.circle(at.x, at.y, item.radius * (0.5 + flash)).fill({
+          color: crit ? HIT_CRIT : 0xffffff,
+          alpha: (crit ? 0.85 : 0.5) * (1 - flash / 0.3),
+        });
       }
     }
 
