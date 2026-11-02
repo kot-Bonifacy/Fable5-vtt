@@ -39,6 +39,7 @@ describe('readSceneTemplate (etap 66)', () => {
       metersPerSquare: 1,
       visibility: 'open',
       playerMove: 'stop',
+      ambience: 'car',
       chase: { direction: 'right', tempo: 30, running: true, road: { from: 2, to: 8 } },
     });
     expect(template.figures[0]!.vehicle).toEqual({ key: 'a', seat: 0 });

@@ -11,3 +11,4 @@ Przetwarzanie: `tools/audio/prepare-natural.py`; pobrane publiczne podglądy HQ 
 - wind: https://freesound.org/people/Aeonemi/sounds/180328/ (CC0-1.0)
 - fire: https://freesound.org/people/soundofsong/sounds/650574/ (CC0-1.0)
 - street: https://freesound.org/people/mzui/sounds/135095/ (CC0-1.0)
+- car: https://freesound.org/people/squareal/sounds/237374/ (CC0-1.0; freesound niedostępny przy pobieraniu 02.11.2026: licencja wg spisu innego projektu, plik z kopii `mirror` (OGG zgodny co do bajtu z jej wskaźnikiem LFS))

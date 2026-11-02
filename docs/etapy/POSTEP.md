@@ -574,6 +574,22 @@ a nie do tego pliku.
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
 
+### Sesja 02.11, czwarta — w pościgu słychać jazdę autem, nie ulicę
+
+**Zlecenie MG:** „pobrać i dołączyć do wszystkich scen pościgu dźwięk jazdy samochodem (obecnie
+podczas sceny pościgu odtwarzany jest dźwięk ruchu ulicznego)”. **Zrobione:** nowy preset
+otoczenia `car` („Jazda samochodem”, `public/ambience/car.wav`, 29,5 s pętli tym samym torem
+co reszta — `tools/audio/prepare-natural.py`) i stała `CHASE_AMBIENCE`. Bierze ją nowa scena
+„Pościg”, przełączenie rodzaju na pościg (z ciszy albo ulicy; powrót do mapy gasi `car`), wzorzec
+pościgu bez własnego odgłosu, wzorzec „Pościg na wiadukcie” i migracja
+`20261102120000_chase_car_ambience` (istniejące pościgi z ulicą/ciszą). **Źródło:** „Car Driving
+Interior”, squareal, freesound 237374, CC0 1.0 — freesound był z tej sesji zablokowany, więc
+licencja wg spisu `ASSET_LICENSES.md` projektu hillbomb-sf, a plik z kopii w repo
+Escape-To-Moscow2 (zgodny bajt w bajt ze wskaźnikiem LFS); **do potwierdzenia na stronie autora**
+przy okazji (`sources.json`, `ATTRIBUTION.md`). **Testy:** shared i serwer — asercje otoczenia
+w `music`, `scene-templates`, `chase` (tworzenie, mapa ↔ pościg); shared 2901, klient 443,
+serwer 1720. **Nieodsłuchane w przeglądarce** (sesja w chmurze, Playwright MCP nie wstał).
+
 ### Sesja 02.11, trzecia — na lewej belce HUD tylko broń w rękach
 
 **Zlecenie MG:** „w lewej belce HUD-a powinny być widoczne tylko używane/dobyte bronie, a nie
@@ -585,20 +601,3 @@ pustych rękach z „Nie trzymasz broni.”). Pięść, Sztuki walki, granat i b
 pełną listę. Umowa na górze `atak`. **Testy:** shared +4 (`hotbar.test.ts`), shared 2901/2901,
 klient 443/443, `tsc` klienta czysty. **Nieoglądane w przeglądarce** (sesja w chmurze,
 Playwright MCP nie wstał) — oględziny paska przy stole.
-
-### Sesja 02.11, druga — jedna próba na zdolność, pamięć sukcesów w Sieci
-
-**Zlecenia MG (trzy, jedno po drugim):** „netrunner na danej scenie powinien móc tylko raz
-hackować dany element” → „zwiad, maskowanie, wirus też” → udane „powinny być zapamiętywane, aby
-przy ponownym połączeniu nie trzeba było ich na danej scenie powtarzać dla danej postaci”.
-**Zrobione:** tabela `NET_TRY_LIMITS` (Backdoor, Ajdi, Kontrola, Wirus — raz na piętro, zużywa
-porażka; Zwiad raz z piętra, Maskowanie raz na Architekturę — zużywa każdy rzut), odmowa
-`NET_HACK_FAILED` / `NET_TRY_SPENT` bez kosztu Akcji Sieciowej, pamięć sukcesów na postać +
-scenę składana do runu przy `netrun:start` (złamane, rozpoznane, skopiowane, ze Zwiadu,
-przejęte węzły), okno runu wyszarza zużyte i już udane zdolności, MG ma „Oddaj próby”
-(`netrun:hacks:reset`). **Przy okazji naprawione:** Wirus nie mógł się nie udać — PT podane przy
-pisaniu nie trafiało do rzutu. Umowa na górze `siec`, zasady domowe w
-`decyzje-i-uproszczenia.md` („Sieć i walka”). **Testy:** shared `netrun.test.ts` +6, serwer
-`netrun.test.ts` +2 (PT 30 — porażka pewna), dwa testy „odłączenie resetuje” (`netrun`,
-`netdevices`) przepisane na pamięć, macierz izolacji z nowym zdarzeniem. **Nieoglądane
-w przeglądarce** (sesja w chmurze, Playwright MCP nie wstał) — oględziny okna runu przy stole.
