@@ -31,7 +31,7 @@ describe('YouTube links', () => {
   });
 });
 it('accepts only built-in natural ambience, including explicit silence', () => {
-  for (const ambience of ['none', 'rain', 'wind', 'fire', 'street'])
+  for (const ambience of ['none', 'rain', 'wind', 'fire', 'street', 'car'])
     expect(sanitizeScenePatch({ ambience })).toEqual({ ambience });
   for (const ambience of ['constructor', '../private', 'https://example.com/audio.mp3', 100, null])
     expect(sanitizeScenePatch({ ambience })).toBeNull();

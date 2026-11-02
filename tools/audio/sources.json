@@ -47,5 +47,13 @@
     "url": "https://freesound.org/people/mzui/sounds/135095/",
     "preview": "https://cdn.freesound.org/previews/135/135095_658546-hq.mp3",
     "license": "CC0-1.0"
+  },
+  {
+    "name": "car",
+    "url": "https://freesound.org/people/squareal/sounds/237374/",
+    "preview": "https://cdn.freesound.org/previews/237/237374_1502374-hq.mp3",
+    "mirror": "https://media.githubusercontent.com/media/mephi1984/Escape-To-Moscow2/HEAD/game/ambience/237374__squareal__car-driving-interior.ogg",
+    "license": "CC0-1.0",
+    "note": "freesound niedostępny przy pobieraniu 02.11.2026: licencja wg spisu innego projektu, plik z kopii `mirror` (OGG zgodny co do bajtu z jej wskaźnikiem LFS)"
   }
 ]

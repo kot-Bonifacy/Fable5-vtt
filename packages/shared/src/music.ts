@@ -56,8 +56,16 @@ export const AMBIENCE_PRESETS = {
   wind: 'Wiatr',
   fire: 'Ogień',
   street: 'Ulica',
+  car: 'Jazda samochodem',
 } as const;
 export type AmbiencePreset = keyof typeof AMBIENCE_PRESETS;
+/**
+ * Otoczenie, z którym rusza każda scena pościgu (02.11.2026, decyzja MG):
+ * warkot jadącego auta zamiast ruchu ulicznego. Nowa scena, przełączenie
+ * rodzaju na „Pościg” i szablon bez własnego odgłosu biorą ten preset;
+ * MG zmienia go dalej w ustawieniach jak każdy inny.
+ */
+export const CHASE_AMBIENCE = 'car' satisfies AmbiencePreset;
 export function isAmbiencePreset(value: unknown): value is AmbiencePreset {
   return typeof value === 'string' && Object.hasOwn(AMBIENCE_PRESETS, value);
 }
