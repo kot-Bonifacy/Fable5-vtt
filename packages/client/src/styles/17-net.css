@@ -312,6 +312,13 @@
   overflow-y: auto;
 }
 
+/* Przewija się całe ciało, nie sekcje. Bez tego szyb (`overflow-x: auto`
+   zeruje mu minimalną wysokość) kurczył się do zera, gdy lista urządzeń Sieci
+   była długa — w „Fabryce dronów” gracz nie widział pięter (02.11). */
+.net-run-body > * {
+  flex-shrink: 0;
+}
+
 /* Własny pasek zamiast `.cp-bar`: ten skleja dzieci w jeden ciąg i pisze je
    Wielkimi Literami (poprawka z 26a) — „Punkt Dostępu" na pasku statusu runa
    wyglądałoby jak nazwa własna. */
@@ -391,7 +398,7 @@
   padding: 0.28rem 0.4rem;
   border: 0;
   background: none;
-  color: inherit;
+  color: var(--net-ink);
   font: inherit;
   text-align: left;
   cursor: pointer;
@@ -401,10 +408,21 @@
   cursor: default;
 }
 
+/* Piętro, na którym netrunner stoi, ma przycisk wyłączony (nie ma dokąd
+   jechać), ale nie może przez to blednąć — to ma być najwyraźniejszy wiersz
+   szybu (zgłoszenie gracza z 02.11: „nie wiem, na którym jestem poziomie”). */
+.net-run-floor--here > .net-run-floor-body:disabled {
+  opacity: 1;
+}
+
+.net-run-floor--here .net-run-floor-label {
+  font-weight: 700;
+}
+
 .net-run-floor-depth {
   flex: 0 0 1.4rem;
   font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
-  color: var(--text-dim);
+  color: var(--net-ink);
   font-size: 0.78rem;
 }
 
@@ -435,6 +453,12 @@
   border-radius: 3px;
   padding: 0 0.25rem;
   color: var(--net-ink);
+}
+
+.net-run-floor-flag--here {
+  border-color: var(--net-here);
+  color: var(--net-here);
+  font-weight: 700;
 }
 
 .net-run-floor-flag--ice {
@@ -696,6 +720,25 @@
   align-items: baseline;
   gap: 0.35rem;
   padding: 0 0.4rem;
+}
+
+/* Lista bywa długa (fabryka: 19 urządzeń), więc idzie w rzędach, żeby szyb
+   i zdolności zostały w zasięgu wzroku. */
+.net-sighted .net-node-list {
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 0.2rem 0.6rem;
+}
+
+.net-sighted .net-sighted-device {
+  padding: 0;
+}
+
+.net-run-hint {
+  margin: 0;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text);
 }
 
 /* Nazwa urządzenia z figurą na oglądanej scenie — klik przewozi kadr (20.10). */

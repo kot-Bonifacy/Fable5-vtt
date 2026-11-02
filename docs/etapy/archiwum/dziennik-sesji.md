@@ -1,5 +1,25 @@
 # Dziennik sesji — archiwum
 
+### Sesja 31.10, dziewiąta — „Fabryka dronów” i wzorzec zwykłej mapy (etap 66b)
+
+**Zlecenie MG:** scenariusz przykładowy do mapy fabryki dronów — bez oświetlenia, dwóch graczy
+widzi tylko to, co sami dostrzegą, drony za przeciwników, gniazda Sieci do wyłączania dronów
+i podglądu kamer, drzazga z danymi po drugiej stronie hali. **Decyzje MG z pytań:** wejście
+dolną bramą, drzazga w dronie na górnych lądowiskach (zleceniodawca wie, w którym), ciemność
+z latarkami, patrol + uśpione drony, alarm tylko budzi drony, jedna Sieć z kilkoma gniazdami,
+netrunner + bojowiec graczy, mapa publiczna. MG zgodził się na etap 66b (format + wzorzec).
+**Zrobione:** format wzorca rozszerzony o ciemność, ściany, osłony, ikonę/kierunek/wzrok figury,
+gniazda i Architektury z uśpionymi urządzeniami (`system.net`), dodatki karty NPC-a (plecak,
+Wartość bojowa); wzorzec `data/public/scenes/fabryka-dronow/`. **Poprawka w projekcie:**
+lądowisk jest 12, nie 14 (pomyliłem się w opisie dla MG). **Oglądane:** Ola/Iskra w
+**Firefoksie** (sterownia, podłączenie, 19 urządzeń), MG i Marek/Kowal w Chromium (ciemno,
+latarka, brak przecieku wrogów do gniazda gracza) — spec `99-ogledziny/t99-fabryka` 6/6, nie w
+repo. **Po sesji (MG):** domyślne światło figury 6 m jasno / 12 m przyćmione (było 6/14),
+notatka wzorca mówi o wartościach domyślnych. **Testy:** shared 2874/2874, serwer 1730/1730,
+`tsc` shared, serwer i klient czysty.
+Cudze zmiany w drzewie (`MapFxLayer.ts`, `damage.test.ts`, `grapple-turns.test.ts`,
+`99-ogledziny`) nie ruszane.
+
 ### Sesja 31.10, ósma — sceny przykładowe i „Pościg na wiadukcie” (etap 66)
 
 **Zlecenie MG:** zaprojektować scenę pościgu na mapie wiaduktu i dodać ją do nowej kategorii

@@ -842,6 +842,7 @@ oględzinach, trzeba najpierw ustawić `recovery.stabilized`.
 
 ## siec — Sieć (netrunning)
 
+- **Okno Sieci gracza „bez pięter” to szyb zgnieciony do zera, nie brak danych (02.11)** — `.net-run-body` jest kolumną flex z `overflow-y: auto`, a `.net-run-shaft` ma `overflow-x: auto`, co zeruje mu minimalną wysokość; przy długiej liście „Urządzenia w tej Sieci” (fabryka: 19) szyb znikał i gracz nie widział ani piętra, ani „złamane”, ani jak zjechać. Dzieci ciała mają `flex-shrink: 0` — nowa sekcja okna nie może tego zdejmować. Wynik zdolności (`notifyInfo`) i karta rzutu przychodzą **po animacji kości** (w Firefoksie > 4,5 s), więc oględziny czekają ~9 s.
 - **Lista urządzeń węzła (i kadr na nich) przychodzi po animacji kości, nie z potwierdzeniem Kontroli (20.10)** — `emitRuns` idzie przez `deferView`, więc `netrun:sync` z urządzeniami dochodzi, gdy kości staną; z surowym gniazdem MG w E2E to kilka sekund. Drugi klik „Kontrola” w tym czasie robi drugi Test i drugi kadr — czekaj na `.net-node-device` (15 s), nie klikaj w pętli co 700 ms.
 - **Ślizg i Paf są w wierszu Czarnego LOD-a**, nie w rządku zdolności — pojawiają się dopiero, gdy jakiś LOD stanie w szybie.
 - **Czarny LOD nie spawnuje się drugi raz na tym samym piętrze** (`metIce`); dołóż go na piętro jeszcze nieodwiedzone albo przerób `empty` → `ice`.

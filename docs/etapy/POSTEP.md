@@ -562,7 +562,7 @@ a nie do tego pliku.
 | `postac`    | kreator, PD i awanse, koszyk i cofanie awansów, Role i Zdolności, cyborgizacje, chrom zmieniający liczby, ekonomia, Test montażu gracza, pojazdy i Tabor | 58   | 3       |
 | `ekwipunek` | wiersze wyposażenia, przekazanie, łup (także ciała graczy), handel, sklepy, zasięg, amunicja bez dna, egzoszkielet, latarka z ekwipunku, narkotyki i fiolki, siatka okna „Wymiana”, zgoda z góry | 41   | 3       |
 | `czas`      | zegar świata, kalendarz, `statEffects`, leczenie po dobie, dawki i uzależnienia (`chems`) | 19   | 2       |
-| `siec`      | Programy, LOD, demony, piętra architektury, dek jako towar, strefy bronione, kamery, rozbrajanie, Sieć ze sceny | 13   | 4       |
+| `siec`      | Programy, LOD, demony, piętra architektury, dek jako towar, strefy bronione, kamery, rozbrajanie, Sieć ze sceny | 13   | 5       |
 | `boty`      | llama-server, RAG, reindeks, dziennik i baza wiedzy, brama AI  | 10   | 10      |
 | `dane`      | `parse-manual.py`, kompendium poza repo, tabele z podręcznika  | 9    | 12      |
 | `kopie`     | `snapshot`, `archive`, paczki ZIP, wczytanie kampanii, „czeka na gracza”, kopie kampanii i cofnięcie, sklep i bot w paczce, zgłoszenie karty gracza, pojazdy w paczce, auta na scenie pościgu, przeszkody poza paczką | 22   | 6       |
@@ -573,6 +573,23 @@ a nie do tego pliku.
 ## Notatki z dwóch ostatnich sesji
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
+
+### Sesja 02.11 — hakowanie w „Fabryce dronów”: szyb Sieci znikał graczowi
+
+**Zgłoszenie gracza (przez MG):** netrunner (Interfejs 4, konsola sterowni wschodniej) nie
+wiedział, czy Backdoor zadziałał, czy może zjechać niżej i na którym jest poziomie.
+**Diagnoza:** silnik działał (Backdoor łamie hasło, zjazd przed złamaniem odmawia z nazwą hasła
+i PT, po złamaniu jest wolny), ale w oknie runu **nie było widać szybu** — kolumna flex
+z przewijaniem zgniatała go do zera przy 19 urządzeniach fabryki (pułapka na górze `siec`).
+Do tego piętro „tu” bladło (wyłączony przycisk, `opacity: 0.5`), a numery pięter ginęły na
+ciemnym tle. **Zrobione (tylko klient):** `flex-shrink: 0` dla dzieci `.net-run-body`, lista
+„Urządzenia w tej Sieci” w rzędach, „Piętro N” na pasku statusu, chip „tu jesteś” i pełna
+jasność bieżącego piętra, podpowiedź pod szybem (hasło niezłamane / złamane, węzeł do
+Kontroli), numery i etykiety pięter w `--net-ink`. **Oglądane w Firefoksie** (Playwright, spec
+`99-ogledziny/t99-fabryka-hak` 8/8, nie w repo): podłączenie, odmowa zjazdu, Backdoor nieudany
+(„Hasło się broni.”) i udany („Hasło złamane — droga w dół wolna.”, chip „złamane”), zjazd,
+Kontrola węzła kamer, zjazd na Czarny LOD i dalej. **Testy:** klient 443/443, `tsc` klienta
+czysty. Cudze zmiany w drzewie nie ruszane.
 
 ### Sesja 31.10, dziesiąta — latarka z ekwipunku świeci figurą
 
@@ -597,24 +614,3 @@ hala 96×72 m, kamery 60 m).
 także jej figury na wszystkich scenach (`removeCharacterFigures`, umowa na górze `serwer`); test
 `character-rolls` przepisany z „odpina figurę” na „zabiera figurę”. Serwer 1736/1736.
 Cudze zmiany w drzewie nie ruszane.
-
-### Sesja 31.10, dziewiąta — „Fabryka dronów” i wzorzec zwykłej mapy (etap 66b)
-
-**Zlecenie MG:** scenariusz przykładowy do mapy fabryki dronów — bez oświetlenia, dwóch graczy
-widzi tylko to, co sami dostrzegą, drony za przeciwników, gniazda Sieci do wyłączania dronów
-i podglądu kamer, drzazga z danymi po drugiej stronie hali. **Decyzje MG z pytań:** wejście
-dolną bramą, drzazga w dronie na górnych lądowiskach (zleceniodawca wie, w którym), ciemność
-z latarkami, patrol + uśpione drony, alarm tylko budzi drony, jedna Sieć z kilkoma gniazdami,
-netrunner + bojowiec graczy, mapa publiczna. MG zgodził się na etap 66b (format + wzorzec).
-**Zrobione:** format wzorca rozszerzony o ciemność, ściany, osłony, ikonę/kierunek/wzrok figury,
-gniazda i Architektury z uśpionymi urządzeniami (`system.net`), dodatki karty NPC-a (plecak,
-Wartość bojowa); wzorzec `data/public/scenes/fabryka-dronow/`. **Poprawka w projekcie:**
-lądowisk jest 12, nie 14 (pomyliłem się w opisie dla MG). **Oglądane:** Ola/Iskra w
-**Firefoksie** (sterownia, podłączenie, 19 urządzeń), MG i Marek/Kowal w Chromium (ciemno,
-latarka, brak przecieku wrogów do gniazda gracza) — spec `99-ogledziny/t99-fabryka` 6/6, nie w
-repo. **Po sesji (MG):** domyślne światło figury 6 m jasno / 12 m przyćmione (było 6/14),
-notatka wzorca mówi o wartościach domyślnych. **Testy:** shared 2874/2874, serwer 1730/1730,
-`tsc` shared, serwer i klient czysty.
-Cudze zmiany w drzewie (`MapFxLayer.ts`, `damage.test.ts`, `grapple-turns.test.ts`,
-`99-ogledziny`) nie ruszane.
-

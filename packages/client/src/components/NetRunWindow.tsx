@@ -304,6 +304,9 @@ function FloorRow({
           {unknown ? '?' : (FLOOR_GLYPHS[floor.kind as string] ?? '·')}
         </span>
         <span className="net-run-floor-label">{label}</span>
+        {floor.here && (
+          <span className="net-run-floor-flag net-run-floor-flag--here">tu jesteś</span>
+        )}
         {floor.dv !== undefined && <span className="net-run-floor-dv">PT {floor.dv}</span>}
         {floor.broken && <span className="net-run-floor-flag">złamane</span>}
         {floor.controlledDv !== undefined && (
@@ -976,6 +979,18 @@ function NetRunWindowBody() {
    * 26a wypisuje w „Uwagach" pod szybem. Serwer i tak odmówi; przycisk ma
    * o tym powiedzieć wcześniej, zamiast otwierać formularz do kosza.
    */
+  /*
+   * Co dalej z piętra, na którym netrunner stoi (zgłoszenie gracza z 02.11:
+   * „nie wiedziałem, czy Backdoor zadziałał i czy mogę zjechać niżej”).
+   */
+  const floorHint =
+    here?.kind === 'password'
+      ? here.broken
+        ? 'Hasło złamane — droga w dół wolna: kliknij piętro niżej.'
+        : 'Hasło blokuje zjazd niżej — najpierw złam je Backdoorem.'
+      : here?.kind === 'controlNode' && here.controlledDv === undefined
+        ? 'Węzeł kontrolny — Kontrola daje władzę nad jego urządzeniami.'
+        : null;
   const deepest = floors.reduce((max, floor) => Math.max(max, floor.depth), -1);
   const atBottom =
     here !== undefined &&
@@ -1036,6 +1051,7 @@ function NetRunWindowBody() {
             na Turę
           </span>
           <span>Punkt dostępu: {run.accessPointName}</span>
+          {here && <span>Piętro {here.depth + 1}</span>}
           {fightState.netActionDebt > 0 && (
             <span className="net-run-debt">
               W kolejnej Turze −{fightState.netActionDebt} Akcji Sieciowej
@@ -1085,6 +1101,8 @@ function NetRunWindowBody() {
             />
           ))}
         </div>
+
+        {floorHint && <p className="net-run-hint">{floorHint}</p>}
 
         {run.run.sightedDevices.length > 0 && (
           <div className="net-sighted">
