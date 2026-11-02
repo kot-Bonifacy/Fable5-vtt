@@ -18,7 +18,7 @@
     "metersPerSquare": 1,
     "visibility": "open",
     "playerMove": "stop",
-    "ambience": "street",
+    "ambience": "car",
     "spawn": { "x": 6.5, "y": 11.5 },
     "chase": {
       "direction": "left",

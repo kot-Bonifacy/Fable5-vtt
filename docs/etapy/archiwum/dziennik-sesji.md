@@ -1,5 +1,17 @@
 # Dziennik sesji — archiwum
 
+### Sesja 02.11, trzecia — na lewej belce HUD tylko broń w rękach
+
+**Zlecenie MG:** „w lewej belce HUD-a powinny być widoczne tylko używane/dobyte bronie, a nie
+wszystkie — to bałagan”. **Zrobione:** `cpredHotbarInHand` (`shared/.../hotbar.ts`) zdejmuje
+z grup paska broń z `outOfHand` razem z jej „Przeładuj” i „Usuń usterkę”; klawisze 1–9 liczą
+tylko to, co widać. Pod bronią szara linijka „Schowane: … — dobądź na karcie postaci” (przy
+pustych rękach z „Nie trzymasz broni.”). Pięść, Sztuki walki, granat i broń statysty zostają
+(nie mają pojęcia „w ręku”). `slots` i `hotbarSlotsFor` bez zmian — boty i kursor czytają
+pełną listę. Umowa na górze `atak`. **Testy:** shared +4 (`hotbar.test.ts`), shared 2901/2901,
+klient 443/443, `tsc` klienta czysty. **Nieoglądane w przeglądarce** (sesja w chmurze,
+Playwright MCP nie wstał) — oględziny paska przy stole.
+
 ### Sesja 02.11, druga — jedna próba na zdolność, pamięć sukcesów w Sieci
 
 **Zlecenia MG (trzy, jedno po drugim):** „netrunner na danej scenie powinien móc tylko raz

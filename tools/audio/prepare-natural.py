@@ -1,6 +1,7 @@
 """Prepare licensed recordings; pip install numpy soundfile, then pass the MP3 cache folder.
 
 Source files in cache: vtt-wood.mp3, vtt-paper.mp3, etc.; URLs in sources.json.
+A source with a `mirror` (car) is that file, saved as vtt-<name>.ogg.
 A source shipped as a ZIP (doorlock) is the named `file` from it, saved as vtt-<name>.wav.
 No synthesized tones or pitch changes. Output PCM16 mono WAV for browser compatibility.
 """
@@ -18,8 +19,9 @@ public = root / "packages/client/public"
 
 def read(name, start, end):
     path = cache / f"vtt-{name}.mp3"
-    if not path.exists():
-        path = cache / f"vtt-{name}.wav"
+    for ext in ("wav", "ogg"):
+        if not path.exists():
+            path = cache / f"vtt-{name}.{ext}"
     data, rate = sf.read(path, always_2d=True)
     return data[int(start * rate):int(end * rate)].mean(axis=1), rate
 
@@ -70,7 +72,14 @@ for name, source, start, end, peak in [
     data, rate = cue(source, start, end)
     save("notifications", name, data, rate, peak)
 
-for name, start, end in [("rain", 2, 30), ("wind", 0.5, 8.5), ("fire", 0, 5), ("street", 10, 40)]:
+# Jazda samochodem (02.11.2026): domyślne otoczenie scen pościgu zamiast ulicy.
+for name, start, end in [
+    ("rain", 2, 30),
+    ("wind", 0.5, 8.5),
+    ("fire", 0, 5),
+    ("street", 10, 40),
+    ("car", 2, 32),
+]:
     data, rate = read(name, start, end)
     # Resample without changing speed; half-second overlap joins the loop seamlessly.
     data = np.interp(np.arange(0, len(data), rate / 32000), np.arange(len(data)), data)
@@ -81,5 +90,7 @@ for name, start, end in [("rain", 2, 30), ("wind", 0.5, 8.5), ("fire", 0, 5), ("
 
 sources = json.loads((pathlib.Path(__file__).parent / "sources.json").read_text(encoding="utf-8"))
 credits = "# Naturalne nagrania\n\nWszystkie źródła: CC0-1.0, zweryfikowane 20.09.2026 na stronie autora.\nPrzetwarzanie: `tools/audio/prepare-natural.py`; pobrane publiczne podglądy HQ MP3.\n\n"
-credits += "\n".join(f"- {s['name']}: {s['url']} (CC0-1.0)" for s in sources)
+credits += "\n".join(
+    f"- {s['name']}: {s['url']} (CC0-1.0{'; ' + s['note'] if 'note' in s else ''})" for s in sources
+)
 (public / "ambience/ATTRIBUTION.md").write_text(credits + "\n", encoding="utf-8")
