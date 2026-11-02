@@ -759,6 +759,7 @@ const CASES: Record<string, Case> = {
   'netrun:ice:detect': foreign((a) => ({ runId: a.runId, iceId: 'x' })),
   'netrun:ice:turn': foreign((a) => ({ runId: a.runId, iceId: 'x' })),
   'netrun:glue': foreign((a) => ({ runId: a.runId, iceId: 'x' })),
+  'netrun:hacks:reset': foreign((a) => ({ runId: a.runId })),
   // netdemons
   'netrun:demon:detect': foreign((a) => ({ runId: a.runId, demonId: 'x' })),
   'netrun:demon:turn': foreign((a) => ({ runId: a.runId, demonId: 'x' })),

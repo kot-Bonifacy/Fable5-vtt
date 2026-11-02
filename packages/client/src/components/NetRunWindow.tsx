@@ -29,6 +29,7 @@ import {
 import {
   attackInNet,
   clearNetGlue,
+  resetNetHacks,
   copyNetFile,
   demonDetects,
   demonTakesTurn,
@@ -313,6 +314,14 @@ function FloorRow({
           <span className="net-run-floor-flag">przejęty · PT {floor.controlledDv}</span>
         )}
         {floor.identified && <span className="net-run-floor-flag">rozpoznany</span>}
+        {floor.hackFailed && (
+          <span
+            className="net-run-floor-flag"
+            title="Ta postać już raz poległa tu na tej scenie — drugiej próby nie ma"
+          >
+            próba zużyta
+          </span>
+        )}
         {floor.copied && <span className="net-run-floor-flag">kopia na deku</span>}
         {floor.knowledge === 'scouted' && <span className="net-run-floor-flag">ze Zwiadu</span>}
       </button>
@@ -983,8 +992,9 @@ function NetRunWindowBody() {
    * Co dalej z piętra, na którym netrunner stoi (zgłoszenie gracza z 02.11:
    * „nie wiedziałem, czy Backdoor zadziałał i czy mogę zjechać niżej”).
    */
-  const floorHint =
-    here?.kind === 'password'
+  const floorHint = here?.hackFailed
+    ? 'Na tym piętrze ta postać już raz poległa — na tej scenie drugiej próby nie ma.'
+    : here?.kind === 'password'
       ? here.broken
         ? 'Hasło złamane — droga w dół wolna: kliknij piętro niżej.'
         : 'Hasło blokuje zjazd niżej — najpierw złam je Backdoorem.'
@@ -1104,6 +1114,21 @@ function NetRunWindowBody() {
 
         {floorHint && <p className="net-run-hint">{floorHint}</p>}
 
+        {isGm && run.run.spentTries > 0 && (
+          <p className="net-run-hint">
+            Zużyte próby tej postaci na scenie: {run.run.spentTries}.{' '}
+            <button
+              type="button"
+              className="small-button"
+              disabled={busy}
+              title="Ta postać na tej scenie znów ma po jednej próbie każdej zdolności"
+              onClick={() => void guard(resetNetHacks(run.runId))}
+            >
+              Oddaj próby
+            </button>
+          </p>
+        )}
+
         {run.run.sightedDevices.length > 0 && (
           <div className="net-sighted">
             <h4 className="net-run-column-title">
@@ -1218,13 +1243,26 @@ function NetRunWindowBody() {
             const wrongFloor =
               (entry.floorKind !== undefined && here?.kind !== entry.floorKind) ||
               (entry.id === 'virus' && !atBottom);
+            // Zlecenia MG z 02.11: zdolność, której jedyną próbę ta postać już
+            // tu wykorzystała na tej scenie (`NET_TRY_LIMITS`; serwer i tak odmówi),
+            // i włamanie, które już się udało (pamiętane po ponownym połączeniu).
+            const spent = run.run.spentAbilities.includes(entry.id);
+            const done =
+              (entry.id === 'backdoor' && here?.broken === true) ||
+              (entry.id === 'eyed' && here?.identified === true);
             return (
               <button
                 key={entry.id}
                 type="button"
                 className="small-button net-ability"
-                title={entry.hint}
-                disabled={busy || wrongFloor}
+                title={
+                  spent
+                    ? 'Próba już zużyta na tej scenie'
+                    : done
+                      ? 'Już się udało — nie trzeba powtarzać'
+                      : entry.hint
+                }
+                disabled={busy || wrongFloor || spent || done}
                 onClick={() => {
                   if (entry.id === 'virus' && !virusPending) setVirusOpen(true);
                   else void ability(entry.id);

@@ -562,7 +562,7 @@ a nie do tego pliku.
 | `postac`    | kreator, PD i awanse, koszyk i cofanie awansów, Role i Zdolności, cyborgizacje, chrom zmieniający liczby, ekonomia, Test montażu gracza, pojazdy i Tabor | 58   | 3       |
 | `ekwipunek` | wiersze wyposażenia, przekazanie, łup (także ciała graczy), handel, sklepy, zasięg, amunicja bez dna, egzoszkielet, latarka z ekwipunku, narkotyki i fiolki, siatka okna „Wymiana”, zgoda z góry | 41   | 3       |
 | `czas`      | zegar świata, kalendarz, `statEffects`, leczenie po dobie, dawki i uzależnienia (`chems`) | 19   | 2       |
-| `siec`      | Programy, LOD, demony, piętra architektury, dek jako towar, strefy bronione, kamery, rozbrajanie, Sieć ze sceny | 13   | 5       |
+| `siec`      | Programy, LOD, demony, piętra architektury, dek jako towar, strefy bronione, kamery, rozbrajanie, Sieć ze sceny, jedna próba i pamięć sukcesów | 14   | 5       |
 | `boty`      | llama-server, RAG, reindeks, dziennik i baza wiedzy, brama AI  | 10   | 10      |
 | `dane`      | `parse-manual.py`, kompendium poza repo, tabele z podręcznika  | 9    | 12      |
 | `kopie`     | `snapshot`, `archive`, paczki ZIP, wczytanie kampanii, „czeka na gracza”, kopie kampanii i cofnięcie, sklep i bot w paczce, zgłoszenie karty gracza, pojazdy w paczce, auta na scenie pościgu, przeszkody poza paczką | 22   | 6       |
@@ -573,6 +573,23 @@ a nie do tego pliku.
 ## Notatki z dwóch ostatnich sesji
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
+
+### Sesja 02.11, druga — jedna próba na zdolność, pamięć sukcesów w Sieci
+
+**Zlecenia MG (trzy, jedno po drugim):** „netrunner na danej scenie powinien móc tylko raz
+hackować dany element” → „zwiad, maskowanie, wirus też” → udane „powinny być zapamiętywane, aby
+przy ponownym połączeniu nie trzeba było ich na danej scenie powtarzać dla danej postaci”.
+**Zrobione:** tabela `NET_TRY_LIMITS` (Backdoor, Ajdi, Kontrola, Wirus — raz na piętro, zużywa
+porażka; Zwiad raz z piętra, Maskowanie raz na Architekturę — zużywa każdy rzut), odmowa
+`NET_HACK_FAILED` / `NET_TRY_SPENT` bez kosztu Akcji Sieciowej, pamięć sukcesów na postać +
+scenę składana do runu przy `netrun:start` (złamane, rozpoznane, skopiowane, ze Zwiadu,
+przejęte węzły), okno runu wyszarza zużyte i już udane zdolności, MG ma „Oddaj próby”
+(`netrun:hacks:reset`). **Przy okazji naprawione:** Wirus nie mógł się nie udać — PT podane przy
+pisaniu nie trafiało do rzutu. Umowa na górze `siec`, zasady domowe w
+`decyzje-i-uproszczenia.md` („Sieć i walka”). **Testy:** shared `netrun.test.ts` +6, serwer
+`netrun.test.ts` +2 (PT 30 — porażka pewna), dwa testy „odłączenie resetuje” (`netrun`,
+`netdevices`) przepisane na pamięć, macierz izolacji z nowym zdarzeniem. **Nieoglądane
+w przeglądarce** (sesja w chmurze, Playwright MCP nie wstał) — oględziny okna runu przy stole.
 
 ### Sesja 02.11 — hakowanie w „Fabryce dronów”: szyb Sieci znikał graczowi
 
@@ -590,27 +607,3 @@ Kontroli), numery i etykiety pięter w `--net-ink`. **Oglądane w Firefoksie** (
 („Hasło się broni.”) i udany („Hasło złamane — droga w dół wolna.”, chip „złamane”), zjazd,
 Kontrola węzła kamer, zjazd na Czarny LOD i dalej. **Testy:** klient 443/443, `tsc` klienta
 czysty. Cudze zmiany w drzewie nie ruszane.
-
-### Sesja 31.10, dziesiąta — latarka z ekwipunku świeci figurą
-
-**Zgłoszenie MG:** „jak postać ma dobyć latarkę, aby działała?” → „napraw to, aby dobyta
-latarka świeciła”. Latarka z karty nie była spięta ze światłem figury; MG ustawiał je ręką
-w „Edytuj…”. **Zrobione:** `CpredGearRow.lit` + `systems/cpred/lightgear.ts` (co świeci:
-latarka, latarka taktyczna, flara, światło chemiczne, ręczne wiersze po nazwie), sekcja
-„Światło” na stronie Ekwipunku z „Zapal”/„Zgaś”, `LinkedSheet.light` → `syncSheetLight`
-(figura dostaje lampę, gdy karta ma latarkę; zapalona latarka zapala figurę), `token:light`
-u takiej figury pisze kartę. Oddana/wyrzucona latarka zdejmuje lampę o kształcie przedmiotu,
-lampa MG zostaje. Ręce nie liczone (latarka nie zajmuje ręki obok broni). Umowa na górze
-`ekwipunek`. **Testy:** shared 2883/2883 (nowy `lightgear.test.ts`), serwer 1736/1736 (nowy
-`light-gear.test.ts` 6/6), `tsc` shared, serwer i klient czysty.
-**Nieoglądane w przeglądarce:** w kampanii na dev („ulice Lublina”) żadna postać nie ma
-latarki, a do prawdziwej kampanii MG nic nie dopisywałem — oględziny przy stole po stronie MG.
-**Poprawka tego wieczoru (MG: „nie wiadomo, jak włożyć ją do dłoni”):** sekcja „Światło” pod
-tabelą zniknęła — „Dobądź” / „Schowaj” stoi pod nazwą latarki w wierszu wyposażenia, jak przy
-broni (`GearLightHands`, `RowTable.below`). Oglądane w Firefoksie (Playwright) na Heńku z latarką
-z kompendium; latarkę potem usunąłem. Przy okazji siatka „Fabryki dronów” 2× gęstsza (48×36,
-hala 96×72 m, kamery 60 m).
-**I jeszcze (MG: „klikam usuń na postaci Bob, a token wciąż stoi”):** ✕ przy postaci kasuje teraz
-także jej figury na wszystkich scenach (`removeCharacterFigures`, umowa na górze `serwer`); test
-`character-rolls` przepisany z „odpina figurę” na „zabiera figurę”. Serwer 1736/1736.
-Cudze zmiany w drzewie nie ruszane.

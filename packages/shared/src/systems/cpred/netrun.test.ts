@@ -20,6 +20,14 @@ import {
   netShaftRungs,
   readNetRunState,
   readNetRuntime,
+  netClearTries,
+  netForgetHold,
+  netRememberRun,
+  netRestoreRun,
+  netTriesOf,
+  netTrySpent,
+  netTrySpentBy,
+  netRecordTry,
 } from './netrun.js';
 import { freshNetCombat, netCombatView, type NetCombatView } from './netcombat.js';
 import { buildCpredRegistry } from './character.js';
@@ -447,5 +455,88 @@ describe('odczyt stanu z bazy', () => {
     expect(runtime.maskDv).toBe(16);
     expect(runtime.viruses).toHaveLength(1);
     expect(runtime.viruses[0]?.dv).toBe(15);
+  });
+});
+
+describe('jedna próba na zdolność i pamięć sukcesów (zlecenia MG z 02.11)', () => {
+  const kolec = { characterId: 'c-kolec', sceneId: 's-magazyn' };
+  const empty = () => readNetRuntime('{}');
+
+  it('spends a DV Check on a failure only, an open roll on every roll', () => {
+    expect(netTrySpentBy('backdoor', false)).toBe(true);
+    expect(netTrySpentBy('backdoor', true)).toBe(false);
+    expect(netTrySpentBy('virus', false)).toBe(true);
+    expect(netTrySpentBy('virus', true)).toBe(false);
+    expect(netTrySpentBy('scout', true)).toBe(true);
+    expect(netTrySpentBy('cloak', true)).toBe(true);
+    // No limit: the Scanner works in meatspace, Ślizg and Paf are a fight.
+    expect(netTrySpentBy('scanner', false)).toBe(false);
+    expect(netTrySpentBy('slide', false)).toBe(false);
+  });
+
+  it('keys a try by character, scene, ability and floor', () => {
+    const runtime = netRecordTry(empty(), kolec, 'backdoor', 'f1');
+    expect(netTrySpent(runtime, kolec, 'backdoor', 'f1')).toBe(true);
+    expect(netTrySpent(runtime, kolec, 'backdoor', 'f2')).toBe(false);
+    expect(netTrySpent(runtime, kolec, 'scout', 'f1')).toBe(false);
+    expect(netTrySpent(runtime, { ...kolec, characterId: 'c-inny' }, 'backdoor', 'f1')).toBe(false);
+    expect(netTrySpent(runtime, { ...kolec, sceneId: 's-inna' }, 'backdoor', 'f1')).toBe(false);
+  });
+
+  it('counts Maskowanie once per Architecture, Zwiad once per floor', () => {
+    let runtime = netRecordTry(empty(), kolec, 'cloak', 'f0');
+    expect(netTrySpent(runtime, kolec, 'cloak', 'f3')).toBe(true);
+    runtime = netRecordTry(runtime, kolec, 'scout', 'f0');
+    expect(netTrySpent(runtime, kolec, 'scout', 'f0')).toBe(true);
+    expect(netTrySpent(runtime, kolec, 'scout', 'f3')).toBe(false);
+  });
+
+  it('writes a try once, reads it back and gives back only this character', () => {
+    let runtime = netRecordTry(netRecordTry(empty(), kolec, 'eyed', 'f2'), kolec, 'eyed', 'f2');
+    expect(runtime.spentTries).toHaveLength(1);
+    runtime = netRecordTry(runtime, { ...kolec, characterId: 'c-inny' }, 'eyed', 'f2');
+    const read = readNetRuntime(
+      JSON.stringify({ ...runtime, spentTries: [...runtime.spentTries!, { floorId: 7 }] }),
+    );
+    expect(read.spentTries).toHaveLength(2);
+    const cleared = netClearTries(read, kolec);
+    expect(netTriesOf(cleared, kolec)).toEqual([]);
+    expect(netTrySpent(cleared, { ...kolec, characterId: 'c-inny' }, 'eyed', 'f2')).toBe(true);
+  });
+
+  it('remembers what a run achieved and folds it into the next one', () => {
+    const run = {
+      ...freshNetRun({ branchId: 'trunk', floor: 3 }, 'f0'),
+      broken: ['f1'],
+      identified: ['f2'],
+      scouted: ['f4'],
+      controlled: [{ floorId: 'f3', dv: 17 }],
+    };
+    const runtime = readNetRuntime(JSON.stringify(netRememberRun(empty(), kolec, run)));
+    const next = netRestoreRun(freshNetRun({ branchId: 'trunk', floor: 0 }, 'f0'), runtime, kolec);
+    expect(next.state.broken).toEqual(['f1']);
+    expect(next.state.identified).toEqual(['f2']);
+    expect(next.state.scouted).toEqual(['f4']);
+    expect(next.state.controlled).toEqual([{ floorId: 'f3', dv: 17 }]);
+    expect(next.state.entered).toEqual(expect.arrayContaining(['f0', 'f1', 'f2', 'f3']));
+    expect(next.restoredHolds).toEqual(['f3']);
+    // Another character, another scene: nothing comes back.
+    const stranger = netRestoreRun(freshNetRun({ branchId: 'trunk', floor: 0 }, 'f0'), runtime, {
+      ...kolec,
+      sceneId: 's-inna',
+    });
+    expect(stranger.state.broken).toEqual([]);
+  });
+
+  it('does not hand back a node somebody else holds or took away', () => {
+    const run = {
+      ...freshNetRun({ branchId: 'trunk', floor: 3 }, 'f0'),
+      controlled: [{ floorId: 'f3', dv: 17 }],
+    };
+    const runtime = netRememberRun(empty(), kolec, run);
+    const fresh = freshNetRun({ branchId: 'trunk', floor: 0 }, 'f0');
+    expect(netRestoreRun(fresh, runtime, kolec, (id) => id === 'f3').state.controlled).toEqual([]);
+    const forgotten = netForgetHold(runtime, kolec, 'f3');
+    expect(netRestoreRun(fresh, forgotten, kolec).state.controlled).toEqual([]);
   });
 });

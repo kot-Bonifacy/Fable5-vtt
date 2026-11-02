@@ -39,6 +39,8 @@ import {
   readNetDemonState,
   readNetRunState,
   readNetRuntime,
+  netRememberRun,
+  netTriesOf,
   tokenCentre,
   tokenTableName,
   validateNetArchitecture,
@@ -317,6 +319,10 @@ export async function runPayloadFor(
       devicesOf: (floor) => devices.get(floor.id) ?? [],
       sightedDevices: await sightedDevicesOf(deps.ctx.prisma, architecture),
       round: combatRow && combatRow.round > 0 ? combatRow.round : null,
+      tries: netTriesOf(runtime, {
+        characterId: row.characterId,
+        sceneId: row.token.sceneId,
+      }),
     }),
   };
 }
@@ -582,6 +588,56 @@ export async function saveRuntime(
     where: { id: architectureId },
     data: { runtime: JSON.stringify(runtime) },
   });
+}
+
+/** Read-modify-write of an Architecture's runtime, always from the fresh row. */
+export async function updateRuntime(
+  prisma: PrismaClient,
+  architectureId: string,
+  change: (runtime: CpredNetRuntime) => CpredNetRuntime,
+): Promise<void> {
+  const fresh = await prisma.netArchitecture.findUnique({
+    where: { id: architectureId },
+    select: { runtime: true },
+  });
+  if (!fresh) return;
+  await saveRuntime(prisma, architectureId, change(readNetRuntime(fresh.runtime)));
+}
+
+/** Who a run's tries and memory belong to: its character, on its figure's scene. */
+export async function runOwnerOf(
+  prisma: PrismaClient,
+  runId: string,
+): Promise<{ architectureId: string; characterId: string; sceneId: string; data: string } | null> {
+  const row = await prisma.netRun.findUnique({
+    where: { id: runId },
+    select: {
+      architectureId: true,
+      characterId: true,
+      data: true,
+      token: { select: { sceneId: true } },
+    },
+  });
+  if (!row) return null;
+  return {
+    architectureId: row.architectureId,
+    characterId: row.characterId,
+    sceneId: row.token.sceneId,
+    data: row.data,
+  };
+}
+
+/**
+ * Writes what this run has achieved into its character's memory (zlecenie MG
+ * z 02.11) — called after every success that changes the shaft.
+ */
+export async function rememberRun(prisma: PrismaClient, runId: string): Promise<void> {
+  const owner = await runOwnerOf(prisma, runId);
+  const state = owner ? readNetRunState(owner.data) : null;
+  if (!owner || !state) return;
+  await updateRuntime(prisma, owner.architectureId, (runtime) =>
+    netRememberRun(runtime, owner, state),
+  );
 }
 
 // ───────────────────────────── zasięg punktu dostępu ─────────────────────────────

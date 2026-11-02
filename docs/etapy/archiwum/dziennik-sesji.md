@@ -1,5 +1,29 @@
 # Dziennik sesji — archiwum
 
+### Sesja 31.10, dziesiąta — latarka z ekwipunku świeci figurą
+
+**Zgłoszenie MG:** „jak postać ma dobyć latarkę, aby działała?” → „napraw to, aby dobyta
+latarka świeciła”. Latarka z karty nie była spięta ze światłem figury; MG ustawiał je ręką
+w „Edytuj…”. **Zrobione:** `CpredGearRow.lit` + `systems/cpred/lightgear.ts` (co świeci:
+latarka, latarka taktyczna, flara, światło chemiczne, ręczne wiersze po nazwie), sekcja
+„Światło” na stronie Ekwipunku z „Zapal”/„Zgaś”, `LinkedSheet.light` → `syncSheetLight`
+(figura dostaje lampę, gdy karta ma latarkę; zapalona latarka zapala figurę), `token:light`
+u takiej figury pisze kartę. Oddana/wyrzucona latarka zdejmuje lampę o kształcie przedmiotu,
+lampa MG zostaje. Ręce nie liczone (latarka nie zajmuje ręki obok broni). Umowa na górze
+`ekwipunek`. **Testy:** shared 2883/2883 (nowy `lightgear.test.ts`), serwer 1736/1736 (nowy
+`light-gear.test.ts` 6/6), `tsc` shared, serwer i klient czysty.
+**Nieoglądane w przeglądarce:** w kampanii na dev („ulice Lublina”) żadna postać nie ma
+latarki, a do prawdziwej kampanii MG nic nie dopisywałem — oględziny przy stole po stronie MG.
+**Poprawka tego wieczoru (MG: „nie wiadomo, jak włożyć ją do dłoni”):** sekcja „Światło” pod
+tabelą zniknęła — „Dobądź” / „Schowaj” stoi pod nazwą latarki w wierszu wyposażenia, jak przy
+broni (`GearLightHands`, `RowTable.below`). Oglądane w Firefoksie (Playwright) na Heńku z latarką
+z kompendium; latarkę potem usunąłem. Przy okazji siatka „Fabryki dronów” 2× gęstsza (48×36,
+hala 96×72 m, kamery 60 m).
+**I jeszcze (MG: „klikam usuń na postaci Bob, a token wciąż stoi”):** ✕ przy postaci kasuje teraz
+także jej figury na wszystkich scenach (`removeCharacterFigures`, umowa na górze `serwer`); test
+`character-rolls` przepisany z „odpina figurę” na „zabiera figurę”. Serwer 1736/1736.
+Cudze zmiany w drzewie nie ruszane.
+
 ### Sesja 31.10, dziewiąta — „Fabryka dronów” i wzorzec zwykłej mapy (etap 66b)
 
 **Zlecenie MG:** scenariusz przykładowy do mapy fabryki dronów — bez oświetlenia, dwóch graczy
