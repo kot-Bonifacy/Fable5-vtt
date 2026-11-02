@@ -290,7 +290,7 @@ export const economyBuyEvent = defineEvent<EconomyBuyPayload, { balance: number 
     // the damage flow — neither is bought here, and a wallet emptied for a row
     // nobody can carry would be the worst possible way to find that out.
     // Ammunition lands as a box (stage 46c), glued onto one of its kind.
-    const purchased = ammoBox ? null : purchasedSheetRow(entry, resolved, nextRowId());
+    const purchased = ammoBox ? null : purchasedSheetRow(entry, resolved, nextRowId(), data.armor);
     if (!ammoBox && !purchased) throw new RealtimeError('NOT_PURCHASABLE');
     const goods: Partial<CpredCharacterData> = ammoBox
       ? { gear: cpredPutAmmo(data.gear, ammoBox.row, ammoBox.row.qty, nextRowId) }

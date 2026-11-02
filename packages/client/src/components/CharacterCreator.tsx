@@ -30,6 +30,7 @@ import type {
 } from '@vtt/shared';
 import {
   ARMOR_LOCATION_LABELS,
+  armorWornOnLabel,
   NET_PROGRAM_CLASS_LABELS,
   cyberdeckSlotsUsed,
   netProgramSlots,
@@ -2613,8 +2614,8 @@ function CreatorShopDetails({
   } else if (entry.category === 'armor') {
     facts.push({ label: 'OB', value: String(entry.sp) });
     facts.push({
-      label: 'Chroni',
-      value: entry.locations.map((location) => ARMOR_LOCATION_LABELS[location]).join(', '),
+      label: 'Zakładasz na',
+      value: armorWornOnLabel(entry.locations),
     });
     facts.push({
       label: 'Kara',

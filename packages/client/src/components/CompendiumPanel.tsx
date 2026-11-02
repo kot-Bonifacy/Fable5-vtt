@@ -17,7 +17,7 @@ import {
   NET_PROGRAM_TARGET_LABELS,
   describeNetProgramEffects,
   netProgramSlots,
-  ARMOR_LOCATION_LABELS,
+  armorWornOnLabel,
   cpredBladeToxinOfRow,
   cpredDrugOfRow,
   CPRED_RANGE_BANDS,
@@ -794,8 +794,10 @@ function EntryCard({
               hint="Ile obrażeń zatrzymuje pancerz — na karcie postaci pole OB."
             />
             <Stat
-              label="Chroni"
-              value={entry.locations.map((l) => ARMOR_LOCATION_LABELS[l]).join(', ')}
+              label="Zakładasz na"
+              value={armorWornOnLabel(entry.locations)}
+              wide={entry.locations.length > 1}
+              hint="Pancerz kupuje się osobno na głowę i na korpus — jedna sztuka chroni jedną lokację."
             />
             {entry.penalty ? (
               <Stat

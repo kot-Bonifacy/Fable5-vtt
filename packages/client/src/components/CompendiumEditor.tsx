@@ -570,7 +570,7 @@ export function CompendiumEditor() {
                 </label>
               </div>
               <fieldset className="bot-field">
-                <legend>Lokacje</legend>
+                <legend>Gdzie można założyć (każda sztuka chroni jedną lokację)</legend>
                 {ARMOR_LOCATIONS.map((location) => (
                   <label key={location} className="bot-checkbox">
                     <input

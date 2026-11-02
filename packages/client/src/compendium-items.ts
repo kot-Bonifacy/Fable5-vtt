@@ -109,7 +109,7 @@ export async function addCompendiumItemToCharacter(
     );
   }
 
-  const purchased = purchasedSheetRow(entry, resolved, nextRowId());
+  const purchased = purchasedSheetRow(entry, resolved, nextRowId(), data.armor);
   if (!purchased) return refused('Tego wpisu nie dodaje się na kartę.');
   if (data[purchased.list].length >= ITEM_ROWS_MAX)
     return refused('Ta lista na karcie jest pełna.');

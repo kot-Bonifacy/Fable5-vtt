@@ -17,6 +17,31 @@ export const ARMOR_LOCATION_LABELS: Record<ArmorLocation, string> = {
   shield: 'Tarcza',
 };
 
+/** The same locations as the object of „zakładasz na…" (accusative). */
+const ARMOR_LOCATION_TARGETS: Record<ArmorLocation, string> = {
+  head: 'głowę',
+  body: 'korpus',
+  shield: 'rękę (tarcza)',
+};
+
+/**
+ * Where one catalogue piece may be worn, phrased for a reader (02.11.2026).
+ *
+ * A catalogue entry lists **every** location the piece fits, but one bought
+ * piece covers exactly one of them: „Pancerz należy kupować osobno na głowę
+ * i ciało" (rozdz. 6) and „Pancerz można kupić albo na głowę, albo na ciało"
+ * (rozdz. 10). Printing the list as „Chroni: Głowa, Korpus" made a player
+ * expect one jacket to cover the head too, and the sheet's honest 0 on the
+ * head looked like a bug — so the list reads as a choice, not a sum.
+ */
+export function armorWornOnLabel(locations: readonly ArmorLocation[]): string {
+  const targets = ARMOR_LOCATIONS.filter((location) => locations.includes(location)).map(
+    (location) => ARMOR_LOCATION_TARGETS[location],
+  );
+  if (targets.length <= 1) return targets[0] ?? '—';
+  return `${targets.join(' albo ')} — jedna sztuka chroni jedną lokację, na obie kupujesz dwie`;
+}
+
 /** Highest SP the rules allow on one piece of armor. */
 export const ARMOR_SP_MAX = 30;
 

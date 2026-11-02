@@ -987,7 +987,8 @@ export function creationKitSheetRows(
     const entry = lookup(line.entryId);
     if (!entry) continue;
     const resolved = entry.category === 'weapon' ? resolveWeapon(entry, compendium) : null;
-    const row = purchasedSheetRow(entry, resolved, nextRowId());
+    const worn = rows.flatMap((done) => (done.list === 'armor' ? [done.row] : []));
+    const row = purchasedSheetRow(entry, resolved, nextRowId(), worn);
     if (row) rows.push(row);
   }
   return rows;
@@ -1949,7 +1950,7 @@ export function creationOutcome(
     const resolved = entry.category === 'weapon' ? resolveWeapon(entry, compendium) : null;
     for (let copy = 0; copy < line.qty; copy += 1) {
       rows += 1;
-      const purchased = purchasedSheetRow(entry, resolved, `creation-${rows}`);
+      const purchased = purchasedSheetRow(entry, resolved, `creation-${rows}`, armor);
       if (!purchased) continue;
       if (purchased.list === 'weapons') weapons.push(purchased.row);
       else if (purchased.list === 'armor') armor.push(purchased.row);

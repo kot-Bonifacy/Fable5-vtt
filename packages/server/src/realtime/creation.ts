@@ -1433,7 +1433,7 @@ async function payStartingKit(
         : null;
     let withGoods = sheet;
     for (let copy = 0; copy < line.qty; copy += 1) {
-      const purchased = purchasedSheetRow(entry, resolved, nextRowId());
+      const purchased = purchasedSheetRow(entry, resolved, nextRowId(), withGoods.armor);
       if (!purchased) throw new RealtimeError('NOT_PURCHASABLE');
       const merged = mergeCharacterData(withGoods, addPurchasedRow(withGoods, purchased));
       if (merged[purchased.list].length !== withGoods[purchased.list].length + 1)

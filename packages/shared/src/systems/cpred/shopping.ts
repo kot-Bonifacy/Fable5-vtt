@@ -1,5 +1,6 @@
 import type { CompendiumEntry, ResolvedWeapon } from './compendium.js';
 import type { CpredArmorRow, CpredGearRow, CpredWeaponRow } from './character.js';
+import type { ArmorLocation } from './locations.js';
 import { cpredPharmaOfEntryId } from './pharma.js';
 
 /**
@@ -11,6 +12,25 @@ import { cpredPharmaOfEntryId } from './pharma.js';
  * gun nowhere. The GM's free „Dodaj postaci" calls exactly this function, so a
  * looted rifle and a bought one are the same row.
  */
+
+/** Order in which a new piece looks for a bare spot: the body is hit most. */
+const ARMOR_FILL_ORDER: readonly ArmorLocation[] = ['body', 'head', 'shield'];
+
+/**
+ * Where a newly acquired piece is worn (02.11.2026): the first location it fits
+ * that no worn piece covers yet; when every one is taken, the first it fits
+ * (it then waits in „Reszta pancerza" as the weaker or equal piece).
+ */
+export function purchasedArmorLocation(
+  fits: readonly ArmorLocation[],
+  wornArmor: readonly CpredArmorRow[],
+): ArmorLocation {
+  const ordered = ARMOR_FILL_ORDER.filter((location) => fits.includes(location));
+  const bare = ordered.find(
+    (location) => !wornArmor.some((row) => row.location === location && row.equipped !== false),
+  );
+  return bare ?? ordered[0] ?? 'body';
+}
 
 /** The three sheet lists a bought entry can land in. */
 export type PurchaseList = 'weapons' | 'armor' | 'gear';
@@ -36,6 +56,8 @@ export function purchasedSheetRow(
   entry: CompendiumEntry,
   resolved: ResolvedWeapon | null,
   rowId: string,
+  /** Armor already on the sheet — a new piece goes where nothing is worn. */
+  wornArmor: readonly CpredArmorRow[] = [],
 ): PurchasedRow | null {
   const base = { id: rowId, name: entry.name, compendiumId: entry.id };
   switch (entry.category) {
@@ -63,8 +85,10 @@ export function purchasedSheetRow(
           sp: entry.sp,
           spCurrent: entry.sp,
           // Fresh armor is undamaged and worn where the catalogue says it sits
-          // (stage 15); a piece covering several spots lands on the body.
-          location: entry.locations.includes('body') ? 'body' : (entry.locations[0] ?? 'body'),
+          // (stage 15). One piece covers one spot („osobno na głowę i ciało"),
+          // so a piece that fits several goes to the first one left bare —
+          // body first — and the second jacket bought covers the head.
+          location: purchasedArmorLocation(entry.locations, wornArmor),
           // Stage 14c: heavy armor slows its wearer, and the turn budget reads
           // the number off the row — so it is copied like SP, not looked up.
           ...(entry.penalty ? { penalty: entry.penalty } : {}),
