@@ -634,7 +634,9 @@ describe('walka w Sieci na żywych gniazdach', () => {
     const hpBefore = await hpOf(characterId);
 
     // Wyjście poza 6 m bez odłączenia — awaryjne odłączenie z rachunkiem.
-    await emitAck(player, 'token:move', { tokenId, x: 1200, y: 0, final: true });
+    // Od 02.11 gracz wpiętą figurą nie ruszy (zasada domowa MG), więc
+    // wynosi ją ręka MG.
+    await emitAck(gm, 'token:move', { tokenId, x: 1200, y: 0, final: true });
     await new Promise((done) => setTimeout(done, 200));
 
     expect(await hpOf(characterId)).toBeLessThanOrEqual(hpBefore);

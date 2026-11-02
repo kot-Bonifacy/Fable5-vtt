@@ -1199,7 +1199,8 @@ export type NetRunProblem =
   | 'NET_ABILITY_UNKNOWN'
   | 'NET_ABILITY_LATER'
   | 'NET_ARCHITECTURE_EMPTY'
-  | 'NET_NO_ACCESS_POINT';
+  | 'NET_NO_ACCESS_POINT'
+  | 'NET_JACKED_IN_MOVE';
 
 export const NET_RUN_PROBLEM_MESSAGES: Record<NetRunProblem, string> = {
   NET_NO_INTERFACE: 'Ta postać nie ma zdolności Interfejs — bez niej nie da się sieciować.',
@@ -1221,6 +1222,8 @@ export const NET_RUN_PROBLEM_MESSAGES: Record<NetRunProblem, string> = {
   NET_ABILITY_LATER: 'Ślizg i Paf to testy sporne — najpierw wskaż Czarnego LOD-a.',
   NET_ARCHITECTURE_EMPTY: 'Ta Architektura nie ma ani jednego piętra.',
   NET_NO_ACCESS_POINT: 'Nie ma tu punktu dostępu do Sieci.',
+  NET_JACKED_IN_MOVE:
+    'Postać jest podłączona do Sieci — żeby się ruszyć, najpierw odłącz się w oknie Sieci.',
 };
 
 /** „Hasło (PT 12) blokuje drogę" — the refusal with the floor named. */

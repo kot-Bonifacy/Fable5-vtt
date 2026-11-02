@@ -157,6 +157,13 @@ przestanie się bronić, przenieś ją stąd do `POMYSLY.md` jako zadanie — ni
 
 ## Sieć i walka — czytanie RAW
 
+- **Podłączona figura stoi (02.11.2026, zasada domowa MG).** Podręcznik pozwala chodzić
+  w promieniu 6 m od punktu dostępu, a wyjście dalej odłącza awaryjnie (s. 198). Gracz zgłosił,
+  że „hakowanie się wyłączyło przy włączeniu trybu turowego” — najpewniej przypadkiem ruszył
+  postacią i wypadł z zasięgu. MG: ruch „nie powinien być możliwy w trakcie podłączenia”.
+  Serwer odmawia `NET_JACKED_IN_MOVE` każdego ruchu wpiętej figury (przeciąganie, marsz klikiem,
+  skok, ruch bota) — także w zasięgu. Przepuszcza tylko przeciągnięcie ręką MG (sędzia), a takie
+  wyniesienie poza 6 m dalej odłącza awaryjnie z rachunkiem za Czarny LOD.
 - **Jedna próba na zdolność i pamięć sukcesów na scenie (02.11.2026, zasady domowe MG).**
   Podręcznik nie zabrania ponawiać Testów Interfejsu, więc netrunner rzucał do skutku. MG:
   „netrunner na danej scenie powinien móc tylko raz hackować dany element”, potem „zwiad,

@@ -48,7 +48,7 @@ import {
 import type { PrismaClient } from '../db.js';
 import type { NetAccessPoint, NetRun, Scene, Token } from '../generated/prisma/client.js';
 import type { FullRunState } from './netice.js';
-import type { RealtimeDeps } from './registry.js';
+import { RealtimeError, type RealtimeDeps } from './registry.js';
 import { campaignRoom } from './state.js';
 import { campaignEntry } from './compendium.js';
 import {
@@ -183,6 +183,24 @@ export async function loadRunForToken(
 ): Promise<RunRow | null> {
   const row = await prisma.netRun.findUnique({ where: { tokenId }, include: RUN_INCLUDE });
   return (row as RunRow | null) ?? null;
+}
+
+/**
+ * Zasada domowa MG z 02.11.2026: podłączona figura stoi. Podręcznik (s. 198)
+ * pozwala chodzić w promieniu 6 m od gniazda, ale przypadkowe przeciągnięcie
+ * kończyło się awaryjnym odłączeniem z rachunkiem za Czarny LOD (zgłoszenie
+ * gracza: „hakowanie się wyłączyło”). Odmawia się więc każdego ruchu — gracza
+ * i bota; przepuszcza tylko ręka MG (`gmHand`), która dalej podlega
+ * `enforceNetRunRange`.
+ */
+export async function refuseMoveWhileJackedIn(
+  prisma: PrismaClient,
+  tokenId: string,
+  gmHand: boolean,
+): Promise<void> {
+  if (gmHand) return;
+  const run = await prisma.netRun.findUnique({ where: { tokenId }, select: { id: true } });
+  if (run) throw new RealtimeError('NET_JACKED_IN_MOVE');
 }
 
 /**

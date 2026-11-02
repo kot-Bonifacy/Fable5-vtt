@@ -580,6 +580,21 @@ a nie do tego pliku.
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
 
+### Sesja 02.11, szósta — wpięta figura nie rusza się (zgłoszenie „hakowanie się wyłączyło”)
+
+**Zgłoszenie gracza (przez MG):** „hackowanie się wyłączyło przy włączeniu trybu turowego”.
+**Weryfikacja:** test na żywych gniazdach (podłączenie przed walką, `combat:start`, inicjatywa,
+tury) — Ajdi, zjazd, Kontrola, Zwiad, odłączenie i ponowne podłączenie w walce działały; w cudzej
+turze odmowa `NOT_YOUR_TURN`. Błędu w trybie turowym nie ma. MG: gracz pewnie ruszył postacią —
+wyjście poza 6 m odłącza awaryjnie (s. 198), a ruch „nie powinien być możliwy w trakcie
+podłączenia”. **Zrobione:** `refuseMoveWhileJackedIn` (`netrun-io.ts`) w `performTokenMove`
+(każda klatka; przepuszcza tylko rękę MG), w `token:walk` i w odmowie skoku (`jump.ts`); kod
+`NET_JACKED_IN_MOVE` z tekstem w `NET_RUN_PROBLEM_MESSAGES`, klient pokazuje go przy ruchu
+i skoku. Zasada domowa w `decyzje-i-uproszczenia.md` („Sieć i walka”). **Testy:** serwer
+`netrun.test.ts` (odmowa przeciągnięcia, klatki, marszu, skoku; ręka MG wynosi i odłącza),
+`netcombat.test.ts` (wyniesienie ręką MG); shared 2901, klient 443, serwer 1720 — zielone.
+**Nieoglądane w przeglądarce** (sesja w chmurze, Playwright MCP nie wstał).
+
 ### Sesja 02.11, piąta — asortyment handlarza z kompendium
 
 **Zlecenie MG:** „dodaj handlarzowi możliwość ustawiania poziomu dostępu do kompendium (zakres
@@ -601,19 +616,3 @@ były nieczytelne na czerwonym tle panelu — teraz kolor napisów panelu. Umowa
 2917/2917, klient 443/443, serwer 1721/1721 (+1 w `merchant.test.ts`), `tsc` i ESLint czyste.
 **Oglądane w Chromium (Playwright, instancja E2E)** — sekcja MG szeroko i na 420 px, okno
 gracza z półką aptekarza; Firefoksa w kontenerze nie ma. **Do wdrożenia:** migracja bazy na VPS.
-
-### Sesja 02.11, czwarta — w pościgu słychać jazdę autem, nie ulicę
-
-**Zlecenie MG:** „pobrać i dołączyć do wszystkich scen pościgu dźwięk jazdy samochodem (obecnie
-podczas sceny pościgu odtwarzany jest dźwięk ruchu ulicznego)”. **Zrobione:** nowy preset
-otoczenia `car` („Jazda samochodem”, `public/ambience/car.wav`, 29,5 s pętli tym samym torem
-co reszta — `tools/audio/prepare-natural.py`) i stała `CHASE_AMBIENCE`. Bierze ją nowa scena
-„Pościg”, przełączenie rodzaju na pościg (z ciszy albo ulicy; powrót do mapy gasi `car`), wzorzec
-pościgu bez własnego odgłosu, wzorzec „Pościg na wiadukcie” i migracja
-`20261102120000_chase_car_ambience` (istniejące pościgi z ulicą/ciszą). **Źródło:** „Car Driving
-Interior”, squareal, freesound 237374, CC0 1.0 — freesound był z tej sesji zablokowany, więc
-licencja wg spisu `ASSET_LICENSES.md` projektu hillbomb-sf, a plik z kopii w repo
-Escape-To-Moscow2 (zgodny bajt w bajt ze wskaźnikiem LFS); **do potwierdzenia na stronie autora**
-przy okazji (`sources.json`, `ATTRIBUTION.md`). **Testy:** shared i serwer — asercje otoczenia
-w `music`, `scene-templates`, `chase` (tworzenie, mapa ↔ pościg); shared 2901, klient 443,
-serwer 1720. **Nieodsłuchane w przeglądarce** (sesja w chmurze, Playwright MCP nie wstał).

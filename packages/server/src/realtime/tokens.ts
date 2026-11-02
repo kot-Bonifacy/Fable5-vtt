@@ -117,6 +117,7 @@ import {
 import { releaseTokenTargets } from './target.js';
 import { forgetPace } from './pace.js';
 import { enforceNetRunRange } from './netice.js';
+import { refuseMoveWhileJackedIn } from './netrun-io.js';
 import { adoptSceneDeviceLive } from './net-scene.js';
 import { runZonesAfterMove } from './zones.js';
 import { runHiddenFiguresAfterMove } from './hidden-figures.js';
@@ -1894,6 +1895,8 @@ export const tokenWalkEvent = defineEvent<TokenWalkPayload, { tokenId: string }>
     if (!isGm && scene.playerMove === 'stop') throw new RealtimeError('MOVE_LOCKED');
     // Etap 65b: figura w fotelu jedzie z autem, nie chodzi.
     if (!isGm && token.sceneVehicleId !== null) throw new RealtimeError('IN_VEHICLE');
+    // 02.11.2026 (MG): podłączony netrunner stoi, dopóki się nie odłączy.
+    await refuseMoveWhileJackedIn(deps.ctx.prisma, token.id, isGm);
     await refuseMoveBeforeSightedFight(deps, scene.id, user);
     const points = sanitizeTokenPath(payload?.route);
     if (!points) throw new RealtimeError('BAD_REQUEST');
@@ -2072,6 +2075,14 @@ export async function performTokenMove(
     if (token.sceneVehicleId !== null && !(isGm && options.hand === true && !judged)) {
       throw new RealtimeError('IN_VEHICLE');
     }
+    // 02.11.2026 (MG): podłączona figura stoi — każda klatka, nie tylko
+    // upuszczenie, bo ruch w zasięgu też jest zakazany. Ręka MG przechodzi
+    // (sędzia), a bot pożycza konto MG, ale `hand` ma tylko gniazdo.
+    await refuseMoveWhileJackedIn(
+      deps.ctx.prisma,
+      token.id,
+      isGm && options.hand === true && !judged,
+    );
     // Etap 56: drużyna zobaczyła wroga — do „Rozpocznij walkę” albo „Odwołaj”
     // gracze stoją, także z klatkami marszu, które były już w drodze.
     await refuseMoveBeforeSightedFight(deps, scene.id, user);
