@@ -1742,6 +1742,9 @@ model Merchant {
   /// JSON `{ "lista:id wiersza": { infinite?, hidden?, price? } }` — nakładka MG
   /// na wiersze karty (`readMerchantRows`).
   rows            String   @default("{}")
+  /// JSON `{ base, categories }` — asortyment z kompendium (02.11.2026,
+  /// `readCpredMerchantAssortment`); null = półka to wyłącznie ekwipunek karty.
+  assortment      String?
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 

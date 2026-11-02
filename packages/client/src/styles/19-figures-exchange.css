@@ -484,6 +484,11 @@
   border-radius: 6px;
 }
 
+.trade-shelf-search {
+  width: 100%;
+  margin: 0.2rem 0;
+}
+
 .trade-column-title {
   display: flex;
   align-items: baseline;

@@ -2318,7 +2318,41 @@
 .cp-shop-hint {
   margin: 0.25rem 0.35rem;
   font-size: 0.72rem;
-  color: var(--cp-ink-dim);
+  /* Panel sklepu ma czerwone tło — przygaszony atrament ginął na nim (02.11). */
+  color: inherit;
+  opacity: 0.85;
+}
+
+/* Asortyment z kompendium (02.11.2026): poziom pozostałych i poziomy kategorii. */
+.cp-shop-assortment {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem 0.8rem;
+  padding: 0.3rem 0.35rem;
+  font-size: 0.75rem;
+}
+
+.cp-shop-assortment-count {
+  font-style: italic;
+  font-variant-numeric: tabular-nums;
+}
+
+.cp-shop-assortment-grid {
+  flex-basis: 100%;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 16rem), 1fr));
+  gap: 0.3rem 0.8rem;
+}
+
+.cp-shop-assortment-grid label {
+  justify-content: space-between;
+  white-space: nowrap;
+}
+
+.cp-shop-assortment .cp-shop-hint {
+  flex-basis: 100%;
+  margin: 0;
 }
 
 /* --- ekwipunek: plakietki i pola z dołu strony drugiej --- */

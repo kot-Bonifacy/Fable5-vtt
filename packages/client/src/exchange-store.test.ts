@@ -101,6 +101,7 @@ describe('exchangeStore — sklepy', () => {
       priceMul: 120,
       buyBackPct: 50,
       cash: 500,
+      assortment: null,
       rows: [],
     };
     store().applyShelf(shelf);

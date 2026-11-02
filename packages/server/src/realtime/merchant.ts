@@ -1,5 +1,7 @@
 import type {
   CatalogShoppingBroadcast,
+  CompendiumEntry,
+  CpredMerchantAssortment,
   CatalogShoppingPayload,
   CpredCharacterData,
   CpredItemRef,
@@ -23,13 +25,17 @@ import type {
   MerchantView,
   MerchantViewPayload,
   MerchantViewResult,
+  PurchasedRow,
   SessionUser,
+  ShopTier,
   TokenCondition,
 } from '@vtt/shared';
 import {
   CPRED_MELEE_REACH_M,
   INVENTORY_ITEMS_MAX,
   ROLE_GM,
+  cpredAssortmentCovers,
+  cpredAssortmentOffers,
   cpredItemLine,
   cpredMerchantDeal,
   cpredMerchantShelf,
@@ -45,6 +51,8 @@ import {
   parseCharacterData,
   pruneMerchantRows,
   readCatalogShopping,
+  readCpredAssortmentPatch,
+  readCpredMerchantAssortment,
   readMerchantRowOverlay,
   readMerchantRows,
   readMerchantSettingsPatch,
@@ -60,6 +68,7 @@ import { requireCampaignId } from './combat.js';
 import { emitCharacterUpsert, toCharacterView } from './character-io.js';
 import { fetchCustomEntries } from './compendium.js';
 import { applyBalance } from './economy.js';
+import { campaignShopTierOverrides } from './shop.js';
 import {
   conditionsOf,
   findCampaignCharacter,
@@ -122,20 +131,61 @@ export function merchantSettingsOf(row: Merchant): MerchantSettings {
 }
 
 /**
- * Ceny katalogu kampanii: własne wpisy MG wygrywają z plikami (ta sama reguła
- * co `campaignEntry`), cena to liczba z tabeli albo pasmo (`entryPrice`).
+ * Katalog kampanii dla sklepów: własne wpisy MG wygrywają z plikami (ta sama
+ * reguła co `campaignEntry`), cena to liczba z tabeli albo pasmo
+ * (`entryPrice`), a poziom wpisu liczy się z nadpisaniami MG w kampanii.
  */
-export async function priceContextFor(
-  deps: RealtimeDeps,
-  campaignId: string,
-): Promise<CpredPriceContext> {
+interface ShopCatalog {
+  entries: CompendiumEntry[];
+  entryOf(id: string): CompendiumEntry | undefined;
+  overrides: Record<string, ShopTier>;
+  priceCtx: CpredPriceContext;
+}
+
+async function shopCatalogFor(deps: RealtimeDeps, campaignId: string): Promise<ShopCatalog> {
   const custom = await fetchCustomEntries(deps.ctx.prisma, campaignId);
   const byId = new Map(custom.map((entry) => [entry.id, entry]));
+  const entryOf = (id: string) => byId.get(id) ?? deps.ctx.compendium.entryById.get(id);
+  const entries = [
+    ...deps.ctx.compendium.entries.filter((entry) => !byId.has(entry.id)),
+    ...custom,
+  ];
   return {
-    priceOf: (id) => {
-      const entry = byId.get(id) ?? deps.ctx.compendium.entryById.get(id);
-      return entry ? entryPrice(entry) : null;
+    entries,
+    entryOf,
+    overrides: await campaignShopTierOverrides(deps.ctx.prisma, campaignId),
+    priceCtx: {
+      priceOf: (id) => {
+        const entry = entryOf(id);
+        return entry ? entryPrice(entry) : null;
+      },
     },
+  };
+}
+
+/** Ceny i — przy asortymencie — skup ograniczony do zakresu handlarza. */
+interface MerchantPricing {
+  ctx: CpredPriceContext;
+  /** Wiersze z kompendium na półce; pusto bez asortymentu. */
+  catalog: PurchasedRow[];
+}
+
+function merchantPricing(
+  deps: RealtimeDeps,
+  catalog: ShopCatalog,
+  assortment: CpredMerchantAssortment | null,
+): MerchantPricing {
+  if (!assortment) return { ctx: catalog.priceCtx, catalog: [] };
+  const context = { overrides: catalog.overrides };
+  return {
+    ctx: {
+      ...catalog.priceCtx,
+      buysBack: (id) => {
+        const entry = catalog.entryOf(id);
+        return entry !== undefined && cpredAssortmentCovers(entry, assortment, context);
+      },
+    },
+    catalog: cpredAssortmentOffers(catalog.entries, assortment, deps.ctx.compendium, context),
   };
 }
 
@@ -152,6 +202,8 @@ interface LoadedMerchant {
   row: Merchant;
   settings: MerchantSettings;
   overlays: MerchantRowOverlays;
+  /** Asortyment z kompendium; `null` — półka to wyłącznie ekwipunek karty. */
+  assortment: CpredMerchantAssortment | null;
   card: Character;
   data: CpredCharacterData;
   placed: PlacedToken[];
@@ -202,6 +254,7 @@ async function loadMerchant(
     row,
     settings,
     overlays: readMerchantRows(row.rows),
+    assortment: readCpredMerchantAssortment(row.assortment),
     card,
     data,
     placed,
@@ -309,15 +362,15 @@ function listItemFor(viewer: Viewer, merchant: LoadedMerchant): MerchantListItem
  */
 export function merchantViewFor(
   merchant: LoadedMerchant,
-  ctx: CpredPriceContext,
+  pricing: MerchantPricing,
   isGm: boolean,
 ): MerchantView {
   const rows: MerchantShelfRowView[] = cpredMerchantShelf(
     merchant.data,
     merchant.overlays,
     merchant.settings.priceMul,
-    ctx,
-    { forGm: isGm },
+    pricing.ctx,
+    { forGm: isGm, catalog: pricing.catalog },
   ).map((row) => ({
     list: row.list,
     rowId: row.rowId,
@@ -331,6 +384,7 @@ export function merchantViewFor(
     infinite: row.infinite,
     ...(isGm ? { hidden: row.hidden } : {}),
     ...(isGm && row.priceOverride !== undefined ? { priceOverride: row.priceOverride } : {}),
+    ...(row.catalog ? { catalog: true as const } : {}),
   }));
   return {
     id: merchant.row.id,
@@ -341,6 +395,7 @@ export function merchantViewFor(
     priceMul: merchant.settings.priceMul,
     buyBackPct: merchant.settings.buyBackPct,
     cash: merchant.settings.cashInfinite ? null : merchant.data.eddies,
+    assortment: merchant.assortment,
     rows,
     ...(isGm ? { characterId: merchant.card.id, settings: merchant.settings } : {}),
   };
@@ -366,7 +421,9 @@ export async function emitMerchantUpdate(
   if (sockets.length === 0) return;
   const row = await deps.ctx.prisma.merchant.findUnique({ where: { id: merchantId } });
   const merchant = row ? await loadMerchant(deps, row).catch(() => null) : null;
-  const ctx = await priceContextFor(deps, campaignId);
+  const pricing = merchant
+    ? merchantPricing(deps, await shopCatalogFor(deps, campaignId), merchant.assortment)
+    : null;
   for (const socket of sockets) {
     const viewer = viewerOf(socket as never);
     if (!merchant || !(await mayOpenMerchant(deps.ctx.prisma, viewer, merchant))) {
@@ -376,7 +433,7 @@ export async function emitMerchantUpdate(
       continue;
     }
     const payload: MerchantUpdateBroadcast = {
-      merchant: merchantViewFor(merchant, ctx, viewer.isGm),
+      merchant: merchantViewFor(merchant, pricing!, viewer.isGm),
     };
     socket.emit('merchant:update', payload);
   }
@@ -461,8 +518,12 @@ export const merchantViewEvent = defineEvent<MerchantViewPayload, MerchantViewRe
     const viewer = viewerOf(socket as never);
     await requireMerchantAccess(deps.ctx.prisma, viewer, merchant);
     watchMerchant(socket.id, row.id);
-    const ctx = await priceContextFor(deps, campaignId);
-    return { merchant: merchantViewFor(merchant, ctx, viewer.isGm) };
+    const pricing = merchantPricing(
+      deps,
+      await shopCatalogFor(deps, campaignId),
+      merchant.assortment,
+    );
+    return { merchant: merchantViewFor(merchant, pricing, viewer.isGm) };
   },
 });
 
@@ -528,7 +589,7 @@ export const merchantDealEvent = defineEvent<MerchantDealPayload, MerchantDealRe
     if (typeof expectTotal !== 'number' || !Number.isInteger(expectTotal)) {
       throw new RealtimeError('BAD_REQUEST');
     }
-    const ctx = await priceContextFor(deps, campaignId);
+    const catalog = await shopCatalogFor(deps, campaignId);
 
     const outcome = await withCampaignLock(campaignId, () =>
       prisma.$transaction(async (tx) => {
@@ -554,6 +615,8 @@ export const merchantDealEvent = defineEvent<MerchantDealPayload, MerchantDealRe
         }
 
         const buyerData = parseCharacterData(buyerCard.data, deps.ctx.cpred);
+        // Asortyment czytany z wiersza w transakcji — MG mógł go właśnie zmienić.
+        const pricing = merchantPricing(deps, catalog, merchant.assortment);
         const deal = cpredMerchantDeal({
           buyer: buyerData,
           merchant: merchant.data,
@@ -563,7 +626,8 @@ export const merchantDealEvent = defineEvent<MerchantDealPayload, MerchantDealRe
           cashInfinite: merchant.settings.cashInfinite,
           buy,
           sell,
-          ctx,
+          ctx: pricing.ctx,
+          catalog: pricing.catalog,
         });
         if (!deal.ok) throw new RealtimeError(deal.error);
         const { quote } = deal.result;
@@ -707,9 +771,21 @@ export const merchantConfigEvent = defineEvent<MerchantConfigPayload, MerchantCo
     if (sheetIsContainer(card)) throw new RealtimeError('NOT_NPC');
     const patch = readMerchantSettingsPatch(payload?.merchant);
     if (!patch) throw new RealtimeError('BAD_REQUEST');
+    // Asortyment z kompendium (02.11.2026): `undefined` — bez zmian, `null` — wyłączony.
+    const assortment =
+      payload?.assortment === undefined ? undefined : readCpredAssortmentPatch(payload.assortment);
+    if (payload?.assortment !== undefined && assortment === undefined) {
+      throw new RealtimeError('BAD_REQUEST');
+    }
+    const data = {
+      ...patch,
+      ...(assortment !== undefined
+        ? { assortment: assortment === null ? null : JSON.stringify(assortment) }
+        : {}),
+    };
     const saved = existing
-      ? await prisma.merchant.update({ where: { id: existing.id }, data: patch })
-      : await prisma.merchant.create({ data: { campaignId, characterId: card.id, ...patch } });
+      ? await prisma.merchant.update({ where: { id: existing.id }, data })
+      : await prisma.merchant.create({ data: { campaignId, characterId: card.id, ...data } });
     await emitMerchantUpdate(deps, campaignId, saved.id);
     await emitMerchantShops(deps, campaignId);
     return { merchantId: saved.id };

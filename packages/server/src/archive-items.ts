@@ -5,6 +5,7 @@ import {
   matchArchiveName,
   parseBotData,
   sanitizeBotName,
+  readCpredMerchantAssortment,
 } from '@vtt/shared';
 import type { PrismaClient } from './db.js';
 import {
@@ -62,14 +63,19 @@ export async function exportShop(
       buyBackPct: true,
       cashInfinite: true,
       rows: true,
+      assortment: true,
     },
   });
   if (!row) return null;
   const card = await exportCharacter(prisma, row.characterId);
   if (!card) return null;
-  const { characterId: _card, rows, ...settings } = row;
+  const { characterId: _card, rows, assortment, ...settings } = row;
   const payload: ShopArchive = {
-    merchant: { ...settings, rows: parseJsonColumn(rows) },
+    merchant: {
+      ...settings,
+      rows: parseJsonColumn(rows),
+      assortment: parseJsonColumn(assortment),
+    },
     character: card.payload,
   };
   const manifest = buildManifest(
@@ -124,6 +130,11 @@ export async function importShop(
       cashInfinite: bool(source.cashInfinite),
       // Nakładka jest kluczowana id wierszy karty, a te jadą w `data` bez zmian.
       rows: stringifyJsonColumn(source.rows, '{}'),
+      // Asortyment z kompendium (02.11.2026); plik sprzed niego — sklep bez asortymentu.
+      assortment: (() => {
+        const read = readCpredMerchantAssortment(source.assortment);
+        return read ? JSON.stringify(read) : null;
+      })(),
     },
     select: { id: true },
   });

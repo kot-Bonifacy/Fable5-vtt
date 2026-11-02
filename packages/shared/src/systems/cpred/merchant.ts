@@ -45,10 +45,16 @@ import {
 import { cpredAmmoPiecePrice } from './ammostock.js';
 import { cpredIsBareHandsRow } from './barehands.js';
 import { cpredHaggledPrice } from './roleability.js';
+import type { PurchasedRow } from './shopping.js';
 
 /** Cena wpisu katalogu po id — serwer i klient podają ją z własnego kompendium. */
 export interface CpredPriceContext {
   priceOf(compendiumId: string): number | null;
+  /**
+   * Asortyment handlarza (02.11.2026): czy skupuje rzecz z tego wpisu. Brak —
+   * skupuje wszystko, co ma cenę (sklep bez asortymentu, jak od 46a).
+   */
+  buysBack?(compendiumId: string): boolean;
 }
 
 /* ------------------------------------------------------------------ *
@@ -121,6 +127,8 @@ export interface CpredShelfRow extends CpredItemView {
   hidden: boolean;
   /** Cena wpisana ręką przez MG. */
   priceOverride?: number;
+  /** Wiersz z asortymentu kompendium (`kat:<wpis>`), nie z karty handlarza. */
+  catalog?: true;
 }
 
 /**
@@ -135,7 +143,11 @@ export function cpredMerchantShelf(
   overlays: MerchantRowOverlays,
   priceMul: number,
   ctx: CpredPriceContext,
-  options: { forGm: boolean },
+  options: {
+    forGm: boolean;
+    /** Wiersze z asortymentu kompendium (`cpredAssortmentOffers`) — zawsze „∞”. */
+    catalog?: readonly PurchasedRow[];
+  },
 ): CpredShelfRow[] {
   const rows: CpredShelfRow[] = [];
   for (const list of CPRED_ITEM_LISTS) {
@@ -154,6 +166,21 @@ export function cpredMerchantShelf(
         ...(overlay?.price !== undefined ? { priceOverride: overlay.price } : {}),
       });
     }
+  }
+  for (const offer of options.catalog ?? []) {
+    const price = cpredShelfPrice(
+      cpredRowCatalogPrice(offer.list, offer.row, ctx),
+      undefined,
+      priceMul,
+    );
+    if (!options.forGm && price === null) continue;
+    rows.push({
+      ...cpredItemView(offer.list, offer.row),
+      price,
+      infinite: true,
+      hidden: false,
+      catalog: true,
+    });
   }
   return rows;
 }
@@ -175,6 +202,7 @@ export type CpredMerchantProblemCode =
   | 'BAD_QTY'
   | 'NO_PRICE'
   | 'NOT_BUYING'
+  | 'NOT_IN_RANGE'
   | 'ITEM_NOT_FOUND'
   | 'NOT_ENOUGH_EDDIES'
   | 'MERCHANT_NO_CASH'
@@ -288,6 +316,10 @@ export function cpredMerchantQuote(input: CpredMerchantQuoteInput): CpredMerchan
       problems.push({ code: 'NO_PRICE', side: 'sell', key });
       continue;
     }
+    if (ctx.buysBack && !(row.compendiumId && ctx.buysBack(row.compendiumId))) {
+      problems.push({ code: 'NOT_IN_RANGE', side: 'sell', key });
+      continue;
+    }
     sellSum += piece * qty;
   }
 
@@ -319,6 +351,8 @@ export interface CpredMerchantDealInput {
   buy: readonly CpredMerchantBuyLine[];
   sell: readonly CpredItemRef[];
   ctx: CpredPriceContext;
+  /** Wiersze z asortymentu kompendium — te same, które pokazała półka. */
+  catalog?: readonly PurchasedRow[];
   makeId?: () => string;
 }
 
@@ -357,6 +391,7 @@ export function cpredMerchantDeal(
   const makeId = input.makeId ?? cpredRowId;
   const shelf = cpredMerchantShelf(input.merchant, input.overlays, input.priceMul, input.ctx, {
     forGm: false,
+    ...(input.catalog ? { catalog: input.catalog } : {}),
   });
   const quote = cpredMerchantQuote({
     shelf,
@@ -381,9 +416,11 @@ export function cpredMerchantDeal(
       (candidate) => candidate.list === line.list && candidate.rowId === line.rowId,
     )!;
     if (row.infinite) {
-      const source = rowsOfList(input.merchant, line.list).find(
-        (candidate) => candidate.id === line.rowId,
-      )!;
+      // Wiersz z kompendium nie leży na karcie — jego wzorem jest oferta.
+      const source = row.catalog
+        ? input.catalog!.find((offer) => offer.list === line.list && offer.row.id === line.rowId)!
+            .row
+        : rowsOfList(input.merchant, line.list).find((candidate) => candidate.id === line.rowId)!;
       // Broń i pancerz „bez dna” to osobne kopie; wyposażenie — jeden stos.
       const copies = line.list === 'gear' ? 1 : line.qty;
       for (let index = 0; index < copies; index += 1) {
@@ -444,6 +481,7 @@ export const CPRED_MERCHANT_PROBLEM_TEXTS: Record<CpredMerchantDealError, string
   BAD_QTY: 'Zła ilość.',
   NO_PRICE: 'Ta rzecz nie ma ceny w katalogu — handlarz jej nie wyceni.',
   NOT_BUYING: 'Ten handlarz nic nie skupuje.',
+  NOT_IN_RANGE: 'Tego handlarz nie skupuje — to poza jego asortymentem.',
   ITEM_NOT_FOUND: 'Tej rzeczy nie ma już na twojej karcie.',
   NOT_ENOUGH_EDDIES: 'Nie stać cię na to.',
   MERCHANT_NO_CASH: 'Handlarza nie stać na tyle.',

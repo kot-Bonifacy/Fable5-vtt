@@ -9,14 +9,15 @@ import type {
 import {
   CPRED_MERCHANT_PROBLEM_TEXTS,
   MERCHANT_CLOSED_LABELS,
+  cpredAssortmentSummary,
   cpredInventoryView,
 } from '@vtt/shared';
-import { buyBackOf, clientPriceContext, merchantQuote } from '../../exchange-quote.js';
+import { buyBackOf, merchantPriceContext, merchantQuote } from '../../exchange-quote.js';
 import { clearNotices, notifyInfo, notifyRefusal } from '../../notices.js';
 import { dealMerchant, merchantErrorText, viewMerchant } from '../../socket.js';
 import { useCharacterStore } from '../../stores/characterStore.js';
 import { COMBAT_LOCKED_HINT, useCombatLocked } from '../../stores/combatStore.js';
-import { useCompendiumStore } from '../../stores/compendiumStore.js';
+import { shopTierContextOf, useCompendiumStore } from '../../stores/compendiumStore.js';
 import { useExchangeStore } from '../../stores/exchangeStore.js';
 import { InlineNotice } from '../NoticeColumn.js';
 import { useExchangeDrag } from './drag.js';
@@ -44,6 +45,9 @@ type DragSource = { from: 'inventory' | 'sell' | 'shelf' | 'basket'; keys: strin
 /** Najwięcej kopii z wiersza „∞” w jednym koszyku — tyle przyjmie serwer. */
 const BUY_QTY_MAX = 999;
 
+/** Od ilu wierszy półki okno pokazuje szukajkę. */
+const SHELF_SEARCH_FROM = 24;
+
 function maxBuy(row: MerchantShelfRowView): number {
   return row.infinite ? BUY_QTY_MAX : row.qty;
 }
@@ -58,7 +62,20 @@ export function MerchantPane({ anchorId, merchantId }: { anchorId: string; merch
   const data = anchor?.data as CpredCharacterData | undefined;
   const view = useExchangeStore((s) => s.shelves[merchantId]);
   const entries = useCompendiumStore((s) => s.entries);
-  const ctx = useMemo(() => clientPriceContext(entries), [entries]);
+  const shopTierOverrides = useCompendiumStore((s) => s.shopTierOverrides);
+  const weaponTypeById = useCompendiumStore((s) => s.weaponTypeById);
+  const assortment = view?.assortment ?? null;
+  const ctx = useMemo(
+    () =>
+      merchantPriceContext(
+        entries,
+        assortment,
+        shopTierContextOf(shopTierOverrides, weaponTypeById),
+      ),
+    [entries, assortment, shopTierOverrides, weaponTypeById],
+  );
+  // Półka z asortymentem kompendium potrafi mieć setki wierszy — szukajka nad nią.
+  const [shelfQuery, setShelfQuery] = useState('');
 
   const [basket, setBasket] = useState<Record<string, number>>({});
   // 21.10.2026: w walce gracz nie handluje — koszyk zostaje na po starciu.
@@ -169,6 +186,7 @@ export function MerchantPane({ anchorId, merchantId }: { anchorId: string; merch
 
   function addToSell(item: CpredItemViewWire) {
     if (buyBack(item) === null || (view?.buyBackPct ?? 0) <= 0) return;
+    if (ctx.buysBack && !(item.compendiumId && ctx.buysBack(item.compendiumId))) return;
     setSelling((current) => ({ ...current, [itemKey(item)]: item.qty }));
   }
 
@@ -226,14 +244,17 @@ export function MerchantPane({ anchorId, merchantId }: { anchorId: string; merch
     .filter((item) => item.qty > 0);
   const inventoryTiles: GridTile[] = inventory.map((item) => {
     const piece = buyBack(item);
-    const sellable = piece !== null && (view?.buyBackPct ?? 0) > 0;
+    const inRange = !item.compendiumId || !ctx.buysBack || ctx.buysBack(item.compendiumId);
+    const sellable = piece !== null && (view?.buyBackPct ?? 0) > 0 && inRange;
     return tile(item, {
       ...(sellable ? { price: formatEd(piece) } : {}),
       blocked: !sellable,
       blockedHint:
         (view?.buyBackPct ?? 0) <= 0
           ? 'Ten handlarz nic nie skupuje.'
-          : 'Bez ceny w katalogu — handlarz tego nie wyceni.',
+          : piece === null
+            ? 'Bez ceny w katalogu — handlarz tego nie wyceni.'
+            : 'Poza asortymentem — tego handlarz nie skupuje.',
     });
   });
   const sellTiles: GridTile[] = Object.entries(selling).flatMap(([key, qty]) => {
@@ -258,7 +279,12 @@ export function MerchantPane({ anchorId, merchantId }: { anchorId: string; merch
       }),
     ];
   });
-  const shelfTiles: GridTile[] = shelf.map((row) => {
+  const needle = shelfQuery.trim().toLocaleLowerCase('pl');
+  const shelfShown =
+    needle === ''
+      ? shelf
+      : shelf.filter((row) => row.name.toLocaleLowerCase('pl').includes(needle));
+  const shelfTiles: GridTile[] = shelfShown.map((row) => {
     const left = row.infinite ? Infinity : row.qty - (basket[itemKey(row)] ?? 0);
     return tile(row, {
       ...(row.infinite ? { badge: '∞' } : {}),
@@ -435,11 +461,29 @@ export function MerchantPane({ anchorId, merchantId }: { anchorId: string; merch
           data-exchange-drop="shelf"
         >
           <p className="trade-column-title">Towar: {view.name}</p>
+          {view.assortment && (
+            <p
+              className="inventory-hint"
+              title="Poziomy dostępności, do których handlarz prowadzi kategorie"
+            >
+              Asortyment: {cpredAssortmentSummary(view.assortment)}
+            </p>
+          )}
+          {shelf.length > SHELF_SEARCH_FROM && (
+            <input
+              type="search"
+              className="trade-shelf-search"
+              placeholder="Szukaj na półce…"
+              aria-label="Szukaj na półce"
+              value={shelfQuery}
+              onChange={(e) => setShelfQuery(e.target.value)}
+            />
+          )}
           <ItemGrid
             tiles={shelfTiles}
             selection={shelfSelection}
             label={`Towar: ${view.name}`}
-            emptyText="Półka jest pusta."
+            emptyText={needle === '' ? 'Półka jest pusta.' : 'Nic nie pasuje do szukanego.'}
             hint="Dwuklik albo przeciągnięcie wkłada do koszyka · Ctrl/Shift+klik — kilka"
             action={{
               label: '← Do koszyka',

@@ -673,6 +673,8 @@ export async function importCampaign(
             buyBackPct: num(row.buyBackPct, 50),
             cashInfinite: bool(row.cashInfinite),
             rows: jsonText(remap(row.rows), '{}'),
+            // Asortyment (02.11.2026) niesie id wpisów kompendium, nie id kampanii.
+            assortment: typeof row.assortment === 'string' ? row.assortment : null,
           })),
         });
       }
