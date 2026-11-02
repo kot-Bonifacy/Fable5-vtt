@@ -3,6 +3,7 @@ import {
   CPRED_HOTBAR_KEYED_SLOTS,
   cpredFireModes,
   cpredHotbarGroups,
+  cpredHotbarInHand,
   cpredNextWeaponMode,
   cpredWeaponIcon,
   cpredWeaponModeSlot,
@@ -192,6 +193,51 @@ describe('broń spoza rąk na pasku akcji (etap 41, zdania z 13.09)', () => {
     );
     expect(empty[0]!.disabled).not.toBeNull();
     expect(empty.every((slot) => !slot.outOfHand)).toBe(true);
+  });
+});
+
+describe('cpredHotbarInHand — na pasku tylko broń w rękach (02.11.2026)', () => {
+  const twoGuns = (drawn: string[]) =>
+    hotbarSlotsFor(
+      input({
+        sheet: {
+          weapons: [weaponRow(), weaponRow({ id: 'row-2', name: 'Drugi pistolet' })],
+          drawnWeaponRowIds: drawn,
+        },
+      }),
+    );
+
+  it('zdejmuje schowaną broń razem z jej przeładowaniem', () => {
+    const { slots, holstered } = cpredHotbarInHand(twoGuns(['row-2']));
+    const weaponRows = new Set(weaponSlots(slots).map((slot) => slot.weaponRowId));
+    expect([...weaponRows]).toEqual(['row-2']);
+    expect(slots.filter((slot) => slot.kind === 'reload').map((slot) => slot.id)).toEqual([
+      'reload:row-2',
+    ]);
+    expect(holstered).toEqual(['Ciężki pistolet']);
+    // Akcje z katalogu zostają.
+    expect(slots.some((slot) => slot.kind === 'action')).toBe(true);
+  });
+
+  it('klawisz 1 trafia w broń w ręku, a nie w schowaną', () => {
+    const groups = cpredHotbarGroups(cpredHotbarInHand(twoGuns(['row-2'])).slots);
+    const first = groups[0]!;
+    expect(first.kind).toBe('weapon');
+    expect(first.kind === 'weapon' && first.weaponRowId).toBe('row-2');
+    expect(first.key).toBe('1');
+  });
+
+  it('przy pustych rękach nie zostaje żadna broń, ale zostaje lista schowanych', () => {
+    const { slots, holstered } = cpredHotbarInHand(twoGuns([]));
+    expect(weaponSlots(slots)).toEqual([]);
+    expect(holstered).toEqual(['Ciężki pistolet', 'Drugi pistolet']);
+  });
+
+  it('nie rusza paska, gdy wszystko jest w rękach', () => {
+    const all = hotbarSlotsFor(input());
+    const { slots, holstered } = cpredHotbarInHand(all);
+    expect(slots).toEqual(all);
+    expect(holstered).toEqual([]);
   });
 });
 

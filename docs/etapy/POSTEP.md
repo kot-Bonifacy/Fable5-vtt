@@ -574,6 +574,18 @@ a nie do tego pliku.
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
 
+### Sesja 02.11, trzecia — na lewej belce HUD tylko broń w rękach
+
+**Zlecenie MG:** „w lewej belce HUD-a powinny być widoczne tylko używane/dobyte bronie, a nie
+wszystkie — to bałagan”. **Zrobione:** `cpredHotbarInHand` (`shared/.../hotbar.ts`) zdejmuje
+z grup paska broń z `outOfHand` razem z jej „Przeładuj” i „Usuń usterkę”; klawisze 1–9 liczą
+tylko to, co widać. Pod bronią szara linijka „Schowane: … — dobądź na karcie postaci” (przy
+pustych rękach z „Nie trzymasz broni.”). Pięść, Sztuki walki, granat i broń statysty zostają
+(nie mają pojęcia „w ręku”). `slots` i `hotbarSlotsFor` bez zmian — boty i kursor czytają
+pełną listę. Umowa na górze `atak`. **Testy:** shared +4 (`hotbar.test.ts`), shared 2901/2901,
+klient 443/443, `tsc` klienta czysty. **Nieoglądane w przeglądarce** (sesja w chmurze,
+Playwright MCP nie wstał) — oględziny paska przy stole.
+
 ### Sesja 02.11, druga — jedna próba na zdolność, pamięć sukcesów w Sieci
 
 **Zlecenia MG (trzy, jedno po drugim):** „netrunner na danej scenie powinien móc tylko raz
@@ -590,20 +602,3 @@ pisaniu nie trafiało do rzutu. Umowa na górze `siec`, zasady domowe w
 `netrun.test.ts` +2 (PT 30 — porażka pewna), dwa testy „odłączenie resetuje” (`netrun`,
 `netdevices`) przepisane na pamięć, macierz izolacji z nowym zdarzeniem. **Nieoglądane
 w przeglądarce** (sesja w chmurze, Playwright MCP nie wstał) — oględziny okna runu przy stole.
-
-### Sesja 02.11 — hakowanie w „Fabryce dronów”: szyb Sieci znikał graczowi
-
-**Zgłoszenie gracza (przez MG):** netrunner (Interfejs 4, konsola sterowni wschodniej) nie
-wiedział, czy Backdoor zadziałał, czy może zjechać niżej i na którym jest poziomie.
-**Diagnoza:** silnik działał (Backdoor łamie hasło, zjazd przed złamaniem odmawia z nazwą hasła
-i PT, po złamaniu jest wolny), ale w oknie runu **nie było widać szybu** — kolumna flex
-z przewijaniem zgniatała go do zera przy 19 urządzeniach fabryki (pułapka na górze `siec`).
-Do tego piętro „tu” bladło (wyłączony przycisk, `opacity: 0.5`), a numery pięter ginęły na
-ciemnym tle. **Zrobione (tylko klient):** `flex-shrink: 0` dla dzieci `.net-run-body`, lista
-„Urządzenia w tej Sieci” w rzędach, „Piętro N” na pasku statusu, chip „tu jesteś” i pełna
-jasność bieżącego piętra, podpowiedź pod szybem (hasło niezłamane / złamane, węzeł do
-Kontroli), numery i etykiety pięter w `--net-ink`. **Oglądane w Firefoksie** (Playwright, spec
-`99-ogledziny/t99-fabryka-hak` 8/8, nie w repo): podłączenie, odmowa zjazdu, Backdoor nieudany
-(„Hasło się broni.”) i udany („Hasło złamane — droga w dół wolna.”, chip „złamane”), zjazd,
-Kontrola węzła kamer, zjazd na Czarny LOD i dalej. **Testy:** klient 443/443, `tsc` klienta
-czysty. Cudze zmiany w drzewie nie ruszane.
