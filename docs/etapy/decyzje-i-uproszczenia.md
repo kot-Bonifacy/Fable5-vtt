@@ -157,13 +157,19 @@ przestanie się bronić, przenieś ją stąd do `POMYSLY.md` jako zadanie — ni
 
 ## Sieć i walka — czytanie RAW
 
-- **Jedna próba włamania na piętro na scenie (02.11.2026, zasada domowa MG).** Podręcznik nie
-  zabrania ponawiać Backdoora, Ajdi ani Kontroli na tym samym piętrze, więc netrunner mógł rzucać
-  do skutku. MG: „netrunner na danej scenie powinien móc tylko raz hackować dany element”. VTT
-  pamięta nieudaną próbę postaci na piętrze tej Architektury na tej scenie — także po odłączeniu
-  i ponownym wejściu. Udana nie zamyka piętra (węzeł odebrany przez rywala można odbić). Inna
-  postać, inna scena albo „Oddaj próby” MG w oknie runu dają nową próbę. Zwiad, Maskowanie
-  i Wirus nie są ograniczone — nie hakują konkretnego piętra.
+- **Jedna próba na zdolność i pamięć sukcesów na scenie (02.11.2026, zasady domowe MG).**
+  Podręcznik nie zabrania ponawiać Testów Interfejsu, więc netrunner rzucał do skutku. MG:
+  „netrunner na danej scenie powinien móc tylko raz hackować dany element”, potem „zwiad,
+  maskowanie, wirus też”. Backdoor, Ajdi, Kontrola i Wirus — raz na piętro, próbę zużywa
+  porażka; Zwiad — raz z piętra, Maskowanie — raz na Architekturę, bo wynik jest odpowiedzią
+  i każdy rzut zużywa próbę. Skaner, Ślizg i Paf bez limitu (świat fizyczny, walka w Sieci).
+  Druga połowa: **udane próby są pamiętane** — „powinny być zapamiętywane, aby przy ponownym
+  połączeniu nie trzeba było ich na danej scenie powtarzać dla danej postaci”. Złamane hasła,
+  rozpoznane i skopiowane Pliki, piętra ze Zwiadu i przejęte węzły wracają po ponownym
+  podłączeniu, świadomie wbrew „Odłączenie resetuje obronę” (s. 198) i „Tracisz kontrolę nad
+  wszystkimi węzłami” (s. 199). Węzeł, który w międzyczasie trzyma inny netrunner albo który
+  rywal odebrał, nie wraca. Wszystko na postać + scenę: inna postać albo inna scena zaczyna od
+  zera. „Oddaj próby” MG w oknie runu zwraca próby, pamięci nie rusza.
 - **Szczęście: nie do Inicjatywy, a pula wraca sama na starcie sesji (22.10.2026, decyzje MG).**
   „Punkty te dodajesz do wyniku Testu” (s. 74), a czy 1k10 + REF w Inicjatywie jest Testem,
   podręcznik nie mówi wprost — MG rozstrzygnął: nie, kubek inicjatywy nie ma licznika Szczęścia.

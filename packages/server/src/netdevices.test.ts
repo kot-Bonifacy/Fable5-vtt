@@ -454,8 +454,9 @@ describe('węzły kontrolne na żywych gniazdach', () => {
     ).runId;
     const back = await runOf(gm);
     expect(nodeOf(back!)?.devices?.[0]?.turned).toBe(true);
-    // Sama kontrola nad węzłem — nie.
-    expect(nodeOf((await runOf(player))!)?.controlledDv).toBeUndefined();
+    // Zasada domowa MG z 02.11: przejęty węzeł też wraca z postacią na tej
+    // scenie („Tracisz kontrolę…" z s. 199 świadomie nie obowiązuje).
+    expect(nodeOf((await runOf(player))!)?.controlledDv).toBeGreaterThan(0);
   });
 
   it('odmawia obsługi, której to urządzenie nie zna, i strzału bez figury', async () => {

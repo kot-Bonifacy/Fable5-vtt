@@ -570,7 +570,11 @@ describe('run netrunnera na żywych gniazdach', () => {
         }),
         'netrun:ability',
       );
-      if (!result.success) continue;
+      if (!result.success) {
+        // A failed Virus spends the try on this floor until the GM gives it back.
+        await emitAck(gm, 'netrun:hacks:reset', { runId });
+        continue;
+      }
       const run = await runOf(player);
       expect(run?.run.viruses[0]?.description).toBe('Co pięć minut zmienia hasła');
       // „PT zniszczenia tego Wirusa jest równe wynikowi rzutu" — the total.
@@ -578,6 +582,36 @@ describe('run netrunnera na żywych gniazdach', () => {
       return;
     }
     throw new Error('dziesięć Wirusów z PT 1 nie przeszło');
+  });
+
+  it('gives Zwiad one roll per floor, Maskowanie one per Architecture, a failed Virus none', async () => {
+    const open = async (ability: string, extra: object = {}) =>
+      emitAck<NetRunAbilityResult>(player, 'netrun:ability', { runId, ability, ...extra });
+
+    data(await open('scout'), 'netrun:ability');
+    expect(errorOf(await open('scout'))).toBe('NET_TRY_SPENT');
+    expect((await runOf(player))!.run.spentAbilities).toContain('scout');
+
+    data(await open('cloak'), 'netrun:ability');
+    expect(errorOf(await open('cloak'))).toBe('NET_TRY_SPENT');
+
+    // PT 30 for a Virus no roll can beat: the failure spends the try, and the
+    // refusal comes before a single step of the next one is written.
+    const lost = data(
+      await open('virus', { virus: { description: 'Nie przejdzie', dv: 30, actions: 1 } }),
+      'netrun:ability',
+    );
+    expect(lost.success).toBe(false);
+    expect(
+      errorOf(await open('virus', { virus: { description: 'Drugi raz', dv: 1, actions: 1 } })),
+    ).toBe('NET_TRY_SPENT');
+
+    const before = (await runOf(gm))!;
+    expect(before.run.spentTries).toBe(3);
+    await emitAck(gm, 'netrun:hacks:reset', { runId });
+    const after = (await runOf(player))!;
+    expect(after.run.spentAbilities).toEqual([]);
+    expect(after.run.spentTries).toBe(0);
   });
 
   it('refuses a Virus anywhere but the bottom', async () => {
@@ -612,8 +646,15 @@ describe('run netrunnera na żywych gniazdach', () => {
     );
     runId = again.runId;
     expect(again.run.viruses).toHaveLength(1);
-    // „Odłączenie resetuje obronę Architektury" — the broken password is not.
-    expect(floorOf(again, 'f1')?.broken).toBeUndefined();
+    // Zasada domowa MG z 02.11 (wbrew „Odłączenie resetuje obronę", s. 198):
+    // what this character achieved on this scene comes back with them — the
+    // broken password and the node, with the DV of taking it back.
+    expect(floorOf(again, 'f1')?.broken).toBe(true);
+    expect(floorOf(again, 'f1')?.knowledge).toBe('entered');
+    expect(floorOf(again, 'f3')?.controlledDv).toBeGreaterThan(1);
+    // The one try of Zwiad-free floors is untouched, the Virus try was spent
+    // by no failure: nothing is greyed out at the entrance.
+    expect(again.run.spentAbilities).toEqual([]);
   });
 
   it('finds a hidden socket with the Scanner', async () => {

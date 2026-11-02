@@ -517,81 +517,262 @@ export interface CpredNetRuntime {
    */
   devices?: CpredNetDeviceState[];
   /**
-   * Failed hacks of one floor (password, File, control node) — zlecenie MG
-   * z 02.11: „netrunner na danej scenie powinien móc tylko raz hackować dany
-   * element". Kept here and not in the run because a jack-out and a fresh
-   * jack-in must not buy a second try. Keyed by character, floor and scene: the
-   * same Architecture wired on another scene is another place. A success is not
-   * written down — the run remembers it, and a node lost to a rival can be
-   * taken back.
+   * Spent tries of the abilities a netrunner could otherwise reroll until they
+   * land — zlecenia MG z 02.11: „netrunner na danej scenie powinien móc tylko raz
+   * hackować dany element”, then „zwiad, maskowanie, wirus też”. Kept here and
+   * not in the run because a jack-out and a fresh jack-in must not buy a second
+   * try. Keyed by character, scene, ability and floor (`NET_TRY_LIMITS`): the
+   * same Architecture wired on another scene is another place.
    */
-  failedHacks?: CpredNetFailedHack[];
+  spentTries?: CpredNetTry[];
+  /**
+   * What a netrunner already achieved here, so a reconnection does not make
+   * them do it again (zlecenie MG z 02.11: udane próby „powinny być
+   * zapamiętywane, aby przy ponownym połączeniu nie trzeba było ich na danej
+   * scenie powtarzać dla danej postaci”). One entry per character and scene;
+   * `netrun:start` folds it into the fresh run (`netRestoreRun`). This bends
+   * „Odłączenie resetuje obronę” (s. 198) on purpose — a house rule.
+   */
+  memories?: CpredNetMemory[];
 }
 
-/** One failed Backdoor, Ajdi or Kontrola — see `CpredNetRuntime.failedHacks`. */
-export interface CpredNetFailedHack {
+/** One character's achievements in one Architecture on one scene. */
+export interface CpredNetMemory {
   characterId: string;
   sceneId: string;
+  broken: string[];
+  identified: string[];
+  copied: string[];
+  scouted: string[];
+  /** Nodes held, with the DV of taking them back — the Check's own total. */
+  controlled: CpredNetHold[];
+}
+
+function memoryOf(runtime: CpredNetRuntime, who: NetTryWho): CpredNetMemory | undefined {
+  return (runtime.memories ?? []).find(
+    (entry) => entry.characterId === who.characterId && entry.sceneId === who.sceneId,
+  );
+}
+
+const union = (a: string[], b: string[]) => [...new Set([...a, ...b])];
+
+/**
+ * Folds what a run has achieved into the character's memory. Only ever adds:
+ * a node held is written with the run's latest DV, a node the run no longer
+ * holds stays remembered until a rival takes it (`netForgetHold`).
+ */
+export function netRememberRun(
+  runtime: CpredNetRuntime,
+  who: NetTryWho,
+  state: Pick<CpredNetRunState, 'broken' | 'identified' | 'copied' | 'scouted' | 'controlled'>,
+): CpredNetRuntime {
+  const before = memoryOf(runtime, who);
+  const holds = new Map((before?.controlled ?? []).map((hold) => [hold.floorId, hold.dv]));
+  for (const hold of state.controlled) holds.set(hold.floorId, hold.dv);
+  const next: CpredNetMemory = {
+    characterId: who.characterId,
+    sceneId: who.sceneId,
+    broken: union(before?.broken ?? [], state.broken),
+    identified: union(before?.identified ?? [], state.identified),
+    copied: union(before?.copied ?? [], state.copied),
+    scouted: union(before?.scouted ?? [], state.scouted),
+    controlled: [...holds].map(([floorId, dv]) => ({ floorId, dv })),
+  };
+  const others = (runtime.memories ?? []).filter((entry) => entry !== before);
+  return { ...runtime, memories: [...others, next] };
+}
+
+/** A rival took this node: the character no longer gets it back on reconnecting. */
+export function netForgetHold(
+  runtime: CpredNetRuntime,
+  who: NetTryWho,
+  floorId: string,
+): CpredNetRuntime {
+  const before = memoryOf(runtime, who);
+  if (!before) return runtime;
+  const next = {
+    ...before,
+    controlled: before.controlled.filter((hold) => hold.floorId !== floorId),
+  };
+  return {
+    ...runtime,
+    memories: (runtime.memories ?? []).map((entry) => (entry === before ? next : entry)),
+  };
+}
+
+/**
+ * A fresh run with the character's memory folded in. Every remembered floor
+ * was stood on, so it comes back entered. A node somebody else holds right now
+ * (`heldElsewhere`) is not handed back — it was taken off them fair and square.
+ */
+export function netRestoreRun<T extends CpredNetRunState>(
+  state: T,
+  runtime: CpredNetRuntime,
+  who: NetTryWho,
+  heldElsewhere: (floorId: string) => boolean = () => false,
+): { state: T; restoredHolds: string[] } {
+  const memory = memoryOf(runtime, who);
+  if (!memory) return { state, restoredHolds: [] };
+  const holds = memory.controlled.filter(
+    (hold) =>
+      !heldElsewhere(hold.floorId) && !state.controlled.some((h) => h.floorId === hold.floorId),
+  );
+  const standing = [
+    ...memory.broken,
+    ...memory.identified,
+    ...memory.copied,
+    ...memory.controlled.map((hold) => hold.floorId),
+  ];
+  return {
+    state: {
+      ...state,
+      entered: union(state.entered, standing),
+      scouted: union(state.scouted, memory.scouted),
+      broken: union(state.broken, memory.broken),
+      identified: union(state.identified, memory.identified),
+      copied: union(state.copied, memory.copied),
+      controlled: [...state.controlled, ...holds],
+    },
+    restoredHolds: holds.map((hold) => hold.floorId),
+  };
+}
+
+function readMemories(raw: unknown): CpredNetMemory[] {
+  return (Array.isArray(raw) ? raw : [])
+    .map((entry) => entry as Record<string, unknown>)
+    .filter((entry) => typeof entry?.characterId === 'string' && typeof entry?.sceneId === 'string')
+    .map((entry) => ({
+      characterId: entry.characterId as string,
+      sceneId: entry.sceneId as string,
+      broken: stringList(entry.broken),
+      identified: stringList(entry.identified),
+      copied: stringList(entry.copied),
+      scouted: stringList(entry.scouted),
+      controlled: (Array.isArray(entry.controlled) ? entry.controlled : [])
+        .map((hold) => hold as Record<string, unknown>)
+        .filter((hold) => typeof hold?.floorId === 'string' && Number.isInteger(hold?.dv))
+        .map((hold) => ({ floorId: hold.floorId as string, dv: hold.dv as number })),
+    }));
+}
+
+/** One spent try — see `CpredNetRuntime.spentTries`. */
+export interface CpredNetTry {
+  characterId: string;
+  sceneId: string;
+  ability: NetAbilityId;
+  /** The floor it was used on; '' for an ability limited per Architecture. */
   floorId: string;
 }
 
-/** Has this character already failed this floor on this scene? */
-export function netHackFailed(
+export interface CpredNetTryLimit {
+  /** What one try covers: the floor stood on, or the whole Architecture. */
+  per: 'floor' | 'architecture';
+  /**
+   * When the try is spent. A Check against a DV is spent by a failure only — a
+   * success is the run's to remember (a node lost to a rival can be taken
+   * back, a second Virus is a second change). An open roll (Zwiad, Maskowanie)
+   * has no failure: every roll is the answer, so every roll spends the try.
+   */
+  spentOn: 'failure' | 'always';
+}
+
+/**
+ * The one table of who may try what how often (zasada domowa MG z 02.11). An
+ * ability missing here has no limit: Skaner works in meatspace, Ślizg and Paf
+ * are contested in a fight that has its own rhythm.
+ */
+export const NET_TRY_LIMITS: Partial<Record<NetAbilityId, CpredNetTryLimit>> = {
+  backdoor: { per: 'floor', spentOn: 'failure' },
+  eyed: { per: 'floor', spentOn: 'failure' },
+  control: { per: 'floor', spentOn: 'failure' },
+  scout: { per: 'floor', spentOn: 'always' },
+  cloak: { per: 'architecture', spentOn: 'always' },
+  virus: { per: 'floor', spentOn: 'failure' },
+};
+
+type NetTryWho = { characterId: string; sceneId: string };
+
+function tryFloorOf(ability: NetAbilityId, floorId: string | null | undefined): string | null {
+  const limit = NET_TRY_LIMITS[ability];
+  if (!limit) return null;
+  if (limit.per === 'architecture') return '';
+  return floorId ?? null;
+}
+
+/** Has this character already spent the try of this ability here, on this scene? */
+export function netTrySpent(
   runtime: CpredNetRuntime,
-  who: { characterId: string; sceneId: string },
-  floorId: string,
+  who: NetTryWho,
+  ability: NetAbilityId,
+  floorId: string | null | undefined,
 ): boolean {
-  return (runtime.failedHacks ?? []).some(
+  const key = tryFloorOf(ability, floorId);
+  if (key === null) return false;
+  return (runtime.spentTries ?? []).some(
     (entry) =>
       entry.characterId === who.characterId &&
       entry.sceneId === who.sceneId &&
-      entry.floorId === floorId,
+      entry.ability === ability &&
+      entry.floorId === key,
   );
 }
 
-/** Floors this character has failed on this scene — for the run's view. */
-export function netFailedFloors(
-  runtime: CpredNetRuntime,
-  who: { characterId: string; sceneId: string },
-): string[] {
-  return (runtime.failedHacks ?? [])
-    .filter((entry) => entry.characterId === who.characterId && entry.sceneId === who.sceneId)
-    .map((entry) => entry.floorId);
+/** Does this outcome spend the try? False for an ability with no limit. */
+export function netTrySpentBy(ability: NetAbilityId, success: boolean): boolean {
+  const limit = NET_TRY_LIMITS[ability];
+  if (!limit) return false;
+  return limit.spentOn === 'always' || !success;
 }
 
-/** Writes a failed hack down (once — a second entry would change nothing). */
-export function netRecordFailedHack(
+/** Writes a spent try down (once — a second entry would change nothing). */
+export function netRecordTry(
   runtime: CpredNetRuntime,
-  entry: CpredNetFailedHack,
+  who: NetTryWho,
+  ability: NetAbilityId,
+  floorId: string | null | undefined,
 ): CpredNetRuntime {
-  if (netHackFailed(runtime, entry, entry.floorId)) return runtime;
-  return { ...runtime, failedHacks: [...(runtime.failedHacks ?? []), entry] };
+  const key = tryFloorOf(ability, floorId);
+  if (key === null || netTrySpent(runtime, who, ability, floorId)) return runtime;
+  const entry: CpredNetTry = {
+    characterId: who.characterId,
+    sceneId: who.sceneId,
+    ability,
+    floorId: key,
+  };
+  return { ...runtime, spentTries: [...(runtime.spentTries ?? []), entry] };
 }
 
-/** The GM's „Zeruj próby": this character on this scene gets every floor back. */
-export function netClearFailedHacks(
-  runtime: CpredNetRuntime,
-  who: { characterId: string; sceneId: string },
-): CpredNetRuntime {
-  const rest = (runtime.failedHacks ?? []).filter(
+/** Every try this character spent on this scene — for the run's view. */
+export function netTriesOf(runtime: CpredNetRuntime, who: NetTryWho): CpredNetTry[] {
+  return (runtime.spentTries ?? []).filter(
+    (entry) => entry.characterId === who.characterId && entry.sceneId === who.sceneId,
+  );
+}
+
+/** The GM's „Oddaj próby": this character on this scene gets every try back. */
+export function netClearTries(runtime: CpredNetRuntime, who: NetTryWho): CpredNetRuntime {
+  const rest = (runtime.spentTries ?? []).filter(
     (entry) => !(entry.characterId === who.characterId && entry.sceneId === who.sceneId),
   );
-  const { failedHacks: _dropped, ...without } = runtime;
-  return rest.length > 0 ? { ...without, failedHacks: rest } : without;
+  const { spentTries: _dropped, ...without } = runtime;
+  return rest.length > 0 ? { ...without, spentTries: rest } : without;
 }
 
-function readFailedHacks(raw: unknown): CpredNetFailedHack[] {
+function readSpentTries(raw: unknown): CpredNetTry[] {
   return (Array.isArray(raw) ? raw : [])
     .map((entry) => entry as Record<string, unknown>)
     .filter(
       (entry) =>
         typeof entry?.characterId === 'string' &&
         typeof entry?.sceneId === 'string' &&
-        typeof entry?.floorId === 'string',
+        typeof entry?.floorId === 'string' &&
+        typeof entry?.ability === 'string' &&
+        NET_TRY_LIMITS[entry.ability as NetAbilityId] !== undefined,
     )
     .map((entry) => ({
       characterId: entry.characterId as string,
       sceneId: entry.sceneId as string,
+      ability: entry.ability as NetAbilityId,
       floorId: entry.floorId as string,
     }));
 }
@@ -624,13 +805,15 @@ export function readNetRuntime(raw: unknown): CpredNetRuntime {
       createdAt: typeof entry.createdAt === 'string' ? entry.createdAt : '',
     }));
   const devices = readNetDeviceStates(input.devices);
-  const failedHacks = readFailedHacks(input.failedHacks);
+  const spentTries = readSpentTries(input.spentTries);
+  const memories = readMemories(input.memories);
   return {
     viruses,
     ...(Number.isInteger(input.maskDv) ? { maskDv: input.maskDv as number } : {}),
     ...(typeof input.maskedBy === 'string' ? { maskedBy: input.maskedBy } : {}),
     ...(devices.length > 0 ? { devices } : {}),
-    ...(failedHacks.length > 0 ? { failedHacks } : {}),
+    ...(spentTries.length > 0 ? { spentTries } : {}),
+    ...(memories.length > 0 ? { memories } : {}),
   };
 }
 
@@ -775,7 +958,7 @@ export interface NetFloorView {
   devices?: NetDeviceView[];
   /** Set when this node was already activated in the current round. */
   nodeUsed?: boolean;
-  /** This netrunner already failed this floor on this scene — no second try. */
+  /** This netrunner already failed this floor's hack on this scene — no second try. */
   hackFailed?: boolean;
   here?: boolean;
 }
@@ -816,6 +999,13 @@ export interface NetRunView {
    * the figure's place, state and buttons still wait for Control.
    */
   sightedDevices: NetSightedDevice[];
+  /**
+   * Abilities whose one try this netrunner already spent where they stand, on
+   * this scene (`NET_TRY_LIMITS`) — the window greys them out.
+   */
+  spentAbilities: NetAbilityId[];
+  /** How many tries this netrunner spent on this scene, for the GM's „Oddaj próby". */
+  spentTries: number;
 }
 
 /**
@@ -846,11 +1036,25 @@ export function netRunView(
     round?: number | null;
     /** Etap 62: the whole device list, already named for this pair of eyes. */
     sightedDevices?: NetSightedDevice[];
-    /** Floors this run's character already failed on this scene (`netFailedFloors`). */
-    failedFloors?: string[];
+    /** Tries this run's character spent on this scene (`netTriesOf`). */
+    tries?: CpredNetTry[];
   },
 ): NetRunView {
-  const failed = new Set(options.failedFloors ?? []);
+  const tries = options.tries ?? [];
+  // A floor hack (Backdoor, Ajdi, Kontrola) lost on a floor marks the floor itself.
+  const failed = new Set(
+    tries
+      .filter((entry) => NET_ABILITIES.some((a) => a.id === entry.ability && a.floorKind))
+      .map((entry) => entry.floorId),
+  );
+  const hereFloorId = netFloorAt(architecture, state.position)?.id ?? null;
+  // `tries` is already this character's on this scene, so only the key is left.
+  const spentAbilities = NET_ABILITIES.filter((entry) => {
+    const key = tryFloorOf(entry.id, hereFloorId);
+    return (
+      key !== null && tries.some((spent) => spent.ability === entry.id && spent.floorId === key)
+    );
+  }).map((entry) => entry.id);
   const entered = new Set(state.entered);
   const scouted = new Set(state.scouted);
   const broken = new Set(state.broken);
@@ -938,6 +1142,8 @@ export function netRunView(
     combat: options.combat,
     demons: options.demons ?? [],
     sightedDevices: options.sightedDevices ?? [],
+    spentAbilities,
+    spentTries: tries.length,
   };
 }
 
@@ -987,6 +1193,7 @@ export type NetRunProblem =
   | 'NET_PASSWORD_BLOCKS'
   | 'NET_WRONG_FLOOR'
   | 'NET_HACK_FAILED'
+  | 'NET_TRY_SPENT'
   | 'NET_NOT_BOTTOM'
   | 'NET_NO_ACTIONS'
   | 'NET_ABILITY_UNKNOWN'
@@ -1006,6 +1213,8 @@ export const NET_RUN_PROBLEM_MESSAGES: Record<NetRunProblem, string> = {
   NET_WRONG_FLOOR: 'Na tym piętrze nie ma czego użyć tą zdolnością.',
   NET_HACK_FAILED:
     'Ta postać już raz poległa na tym piętrze na tej scenie — drugiej próby nie ma (MG może ją oddać).',
+  NET_TRY_SPENT:
+    'Ta postać już raz użyła tu tej zdolności na tej scenie — drugiej próby nie ma (MG może ją oddać).',
   NET_NOT_BOTTOM: 'Wirusa zostawia się wyłącznie na dnie Architektury.',
   NET_NO_ACTIONS: 'Nie masz już Akcji Sieciowych w tej turze.',
   NET_ABILITY_UNKNOWN: 'Nie znam takiej zdolności Interfejsu.',

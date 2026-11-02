@@ -44,9 +44,13 @@ import {
   netScoutReveal,
   parseCharacterData,
   readNetRuntime,
-  netHackFailed,
-  netRecordFailedHack,
-  netClearFailedHacks,
+  netTrySpent,
+  netTrySpentBy,
+  netRecordTry,
+  netClearTries,
+  netRestoreRun,
+  readNetRunState,
+  netForgetHold,
   rollFormula,
   tokenCentre,
   tokenTableName,
@@ -80,6 +84,9 @@ import {
   runnerOwnerOf,
   saveRunState,
   saveRuntime,
+  updateRuntime,
+  runOwnerOf,
+  rememberRun,
   toAccessPointView,
 } from './netrun-io.js';
 import { dropRunFromQueue, emergencyJackOut, type FullRunState } from './netice.js';
@@ -348,6 +355,30 @@ export const netRunStartEvent = defineEvent<NetRunStartPayload, NetRunPayload>({
     // moment somebody jacks in — „wie o wszystkim, co dzieje się w jego
     // Architekturze" (s. 212). The netrunner does not see it until it hunts.
     state = await spawnDemons(deps, campaignId, architecture, state);
+    // Zlecenie MG z 02.11: what this character already did here on this scene
+    // comes back — broken passwords, read Files, scouted floors, held nodes
+    // (unless another run holds one now; the Demon lets go of the rest).
+    const others = await deps.ctx.prisma.netRun.findMany({
+      where: { architectureId: architecture.id },
+      select: { data: true },
+    });
+    const heldByOthers = new Set(
+      others.flatMap(
+        (other) => readNetRunState(other.data)?.controlled.map((h) => h.floorId) ?? [],
+      ),
+    );
+    const architectureRow = await deps.ctx.prisma.netArchitecture.findUnique({
+      where: { id: architecture.id },
+      select: { runtime: true },
+    });
+    const restored = netRestoreRun(
+      state,
+      readNetRuntime(architectureRow?.runtime ?? '{}'),
+      { characterId: character.id, sceneId: scene.id },
+      (floorId) => heldByOthers.has(floorId),
+    );
+    state = restored.state;
+    for (const floorId of restored.restoredHolds) state = releaseDemonHold(state, floorId);
     await deps.ctx.prisma.netRun.create({
       data: {
         campaignId,
@@ -470,6 +501,7 @@ export const netRunCopyEvent = defineEvent<NetRunCopyPayload, NetRunPayload>({
         ...state,
         copied: [...state.copied, floor.id],
       });
+      await rememberRun(deps.ctx.prisma, row.id);
     }
     // Etykieta Pliku to zawartość Architektury — widzą ją MG i netrunner (#37).
     await logNetLineWithSecret(deps, campaignId, user, {
@@ -535,15 +567,12 @@ export const netRunAbilityEvent = defineEvent<NetRunAbilityPayload, NetRunAbilit
     if (ability.id === 'virus' && !netIsBottom(architecture, state.position)) {
       throw new RealtimeError('NET_NOT_BOTTOM');
     }
-    // Zlecenie MG z 02.11: one try per floor, per character, per scene. Checked
-    // before the Net Action is spent, so the refusal costs nothing.
+    // Zlecenia MG z 02.11: one try per character and scene, as `NET_TRY_LIMITS`
+    // counts it. Checked before the Net Action is spent — and for the Virus
+    // before the first step is written — so the refusal costs nothing.
     const hacker = { characterId: row.characterId, sceneId: scene.id };
-    if (
-      ability.floorKind &&
-      floor &&
-      netHackFailed(readNetRuntime(row.architecture.runtime), hacker, floor.id)
-    ) {
-      throw new RealtimeError('NET_HACK_FAILED');
+    if (netTrySpent(readNetRuntime(row.architecture.runtime), hacker, ability.id, floor?.id)) {
+      throw new RealtimeError(ability.floorKind ? 'NET_HACK_FAILED' : 'NET_TRY_SPENT');
     }
 
     const rank = readInterfaceRank(deps, character);
@@ -587,10 +616,15 @@ export const netRunAbilityEvent = defineEvent<NetRunAbilityPayload, NetRunAbilit
       ability.id === 'control' && floor
         ? await rivalNodeHold(deps.ctx.prisma, row.architectureId, floor.id, row.id)
         : null;
+    // The Virus is rolled against the DV the GM named when writing began
+    // („PT określa MG", s. 200) — `advanceVirus` has just put it on `state`.
+    // Before 02.11 it fell through to `abilityDv` as null and never failed.
     const dv =
       ability.id === 'control' && floor
         ? netrunnerControlDv(state, floor.id, floor.dv, rival?.dv)
-        : abilityDv(ability.id, floor?.dv);
+        : ability.id === 'virus'
+          ? (state.virus?.dv ?? null)
+          : abilityDv(ability.id, floor?.dv);
     const roll = performInterfaceRoll(
       deps,
       character,
@@ -616,21 +650,14 @@ export const netRunAbilityEvent = defineEvent<NetRunAbilityPayload, NetRunAbilit
       ...(rival ? { rival } : {}),
     });
 
-    if (!success && ability.floorKind && floor) {
-      // Read fresh: `applyAbility` may have just written the runtime itself.
-      const fresh = await deps.ctx.prisma.netArchitecture.findUnique({
-        where: { id: row.architectureId },
-        select: { runtime: true },
-      });
-      await saveRuntime(
-        deps.ctx.prisma,
-        row.architectureId,
-        netRecordFailedHack(readNetRuntime(fresh?.runtime ?? '{}'), {
-          ...hacker,
-          floorId: floor.id,
-        }),
+    if (netTrySpentBy(ability.id, success)) {
+      // Fresh row: `applyAbility` may have just written the runtime itself.
+      await updateRuntime(deps.ctx.prisma, row.architectureId, (runtime) =>
+        netRecordTry(runtime, hacker, ability.id, floor?.id),
       );
     }
+    // …and a success is remembered, so a reconnection does not undo it.
+    if (success) await rememberRun(deps.ctx.prisma, row.id);
 
     roll.outcome = {
       success,
@@ -866,7 +893,16 @@ async function applyAbility(
     });
     // „Odebranie kontroli" is exactly that: the previous holder stops holding
     // it. Their own run keeps running — only this one node changes hands.
-    if (context.rival) await releaseNodeHold(deps.ctx.prisma, context.rival.runId, floor.id);
+    if (context.rival) {
+      await releaseNodeHold(deps.ctx.prisma, context.rival.runId, floor.id);
+      // The rival's character does not get the node back by reconnecting.
+      const loser = await runOwnerOf(deps.ctx.prisma, context.rival.runId);
+      if (loser) {
+        await updateRuntime(deps.ctx.prisma, loser.architectureId, (runtime) =>
+          netForgetHold(runtime, loser, floor.id),
+        );
+      }
+    }
     return {
       summary: context.rival
         ? `Węzeł odebrany — PT odebrania go tobie: ${total}.`
@@ -1087,17 +1123,8 @@ export const netHackResetEvent = defineEvent<{ runId: string }, void>({
   handler: async ({ deps, socket, user, payload }) => {
     const campaignId = requireCampaignId(socket.data);
     const { row } = await requireRun(deps, campaignId, user, payload?.runId);
-    const fresh = await deps.ctx.prisma.netArchitecture.findUnique({
-      where: { id: row.architectureId },
-      select: { runtime: true },
-    });
-    await saveRuntime(
-      deps.ctx.prisma,
-      row.architectureId,
-      netClearFailedHacks(readNetRuntime(fresh?.runtime ?? '{}'), {
-        characterId: row.characterId,
-        sceneId: row.token.sceneId,
-      }),
+    await updateRuntime(deps.ctx.prisma, row.architectureId, (runtime) =>
+      netClearTries(runtime, { characterId: row.characterId, sceneId: row.token.sceneId }),
     );
     await logNetLine(
       deps,

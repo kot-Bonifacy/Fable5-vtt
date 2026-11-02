@@ -1114,14 +1114,14 @@ function NetRunWindowBody() {
 
         {floorHint && <p className="net-run-hint">{floorHint}</p>}
 
-        {isGm && floors.some((floor) => floor.hackFailed) && (
+        {isGm && run.run.spentTries > 0 && (
           <p className="net-run-hint">
-            Zużyte próby włamań: {floors.filter((floor) => floor.hackFailed).length}.{' '}
+            Zużyte próby tej postaci na scenie: {run.run.spentTries}.{' '}
             <button
               type="button"
               className="small-button"
               disabled={busy}
-              title="Ta postać na tej scenie znów może raz spróbować każdego piętra"
+              title="Ta postać na tej scenie znów ma po jednej próbie każdej zdolności"
               onClick={() => void guard(resetNetHacks(run.runId))}
             >
               Oddaj próby
@@ -1243,16 +1243,26 @@ function NetRunWindowBody() {
             const wrongFloor =
               (entry.floorKind !== undefined && here?.kind !== entry.floorKind) ||
               (entry.id === 'virus' && !atBottom);
-            // Zlecenie MG z 02.11: piętro, na którym ta postać już poległa, nie
-            // daje drugiej próby na tej scenie (serwer i tak odmówi).
-            const spent = entry.floorKind !== undefined && here?.hackFailed === true;
+            // Zlecenia MG z 02.11: zdolność, której jedyną próbę ta postać już
+            // tu wykorzystała na tej scenie (`NET_TRY_LIMITS`; serwer i tak odmówi),
+            // i włamanie, które już się udało (pamiętane po ponownym połączeniu).
+            const spent = run.run.spentAbilities.includes(entry.id);
+            const done =
+              (entry.id === 'backdoor' && here?.broken === true) ||
+              (entry.id === 'eyed' && here?.identified === true);
             return (
               <button
                 key={entry.id}
                 type="button"
                 className="small-button net-ability"
-                title={spent ? 'Próba na tym piętrze już zużyta' : entry.hint}
-                disabled={busy || wrongFloor || spent}
+                title={
+                  spent
+                    ? 'Próba już zużyta na tej scenie'
+                    : done
+                      ? 'Już się udało — nie trzeba powtarzać'
+                      : entry.hint
+                }
+                disabled={busy || wrongFloor || spent || done}
                 onClick={() => {
                   if (entry.id === 'virus' && !virusPending) setVirusOpen(true);
                   else void ability(entry.id);

@@ -562,7 +562,7 @@ a nie do tego pliku.
 | `postac`    | kreator, PD i awanse, koszyk i cofanie awansów, Role i Zdolności, cyborgizacje, chrom zmieniający liczby, ekonomia, Test montażu gracza, pojazdy i Tabor | 58   | 3       |
 | `ekwipunek` | wiersze wyposażenia, przekazanie, łup (także ciała graczy), handel, sklepy, zasięg, amunicja bez dna, egzoszkielet, latarka z ekwipunku, narkotyki i fiolki, siatka okna „Wymiana”, zgoda z góry | 41   | 3       |
 | `czas`      | zegar świata, kalendarz, `statEffects`, leczenie po dobie, dawki i uzależnienia (`chems`) | 19   | 2       |
-| `siec`      | Programy, LOD, demony, piętra architektury, dek jako towar, strefy bronione, kamery, rozbrajanie, Sieć ze sceny, jedna próba na piętro | 14   | 5       |
+| `siec`      | Programy, LOD, demony, piętra architektury, dek jako towar, strefy bronione, kamery, rozbrajanie, Sieć ze sceny, jedna próba i pamięć sukcesów | 14   | 5       |
 | `boty`      | llama-server, RAG, reindeks, dziennik i baza wiedzy, brama AI  | 10   | 10      |
 | `dane`      | `parse-manual.py`, kompendium poza repo, tabele z podręcznika  | 9    | 12      |
 | `kopie`     | `snapshot`, `archive`, paczki ZIP, wczytanie kampanii, „czeka na gracza”, kopie kampanii i cofnięcie, sklep i bot w paczce, zgłoszenie karty gracza, pojazdy w paczce, auta na scenie pościgu, przeszkody poza paczką | 22   | 6       |
@@ -574,19 +574,22 @@ a nie do tego pliku.
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
 
-### Sesja 02.11, druga — jedna próba włamania na piętro
+### Sesja 02.11, druga — jedna próba na zdolność, pamięć sukcesów w Sieci
 
-**Zlecenie MG:** „netrunner na danej scenie powinien móc tylko raz hackować dany element” —
-Backdoor, Ajdi i Kontrolę dało się ponawiać do skutku, także po odłączeniu i ponownym wejściu.
-**Zrobione:** nieudana próba postaci na piętrze zapisuje się w runtime Architektury (postać +
-piętro + scena), `netrun:ability` odmawia drugiej (`NET_HACK_FAILED`, bez kosztu Akcji
-Sieciowej), okno runu pokazuje chip „próba zużyta” i wyszarza zdolności piętra, a MG ma „Oddaj
-próby” (`netrun:hacks:reset`). Sukces nie zamyka piętra. Umowa na górze `siec`, zasada domowa
-w `decyzje-i-uproszczenia.md` („Sieć i walka”). **Testy:** shared `netrun.test.ts` +3, serwer
-`netrun.test.ts` +1 (PT 30 — porażka pewna, odmowa, `FORBIDDEN` gracza na zerowaniu, zerowanie
-MG), macierz izolacji z nowym zdarzeniem; pętle Backdoora i Kontroli w teście zerują próby po
-porażce. **Nieoglądane w przeglądarce** (sesja w chmurze, serwery Playwright MCP nie wstały) —
-oględziny okna runu przy stole po stronie MG.
+**Zlecenia MG (trzy, jedno po drugim):** „netrunner na danej scenie powinien móc tylko raz
+hackować dany element” → „zwiad, maskowanie, wirus też” → udane „powinny być zapamiętywane, aby
+przy ponownym połączeniu nie trzeba było ich na danej scenie powtarzać dla danej postaci”.
+**Zrobione:** tabela `NET_TRY_LIMITS` (Backdoor, Ajdi, Kontrola, Wirus — raz na piętro, zużywa
+porażka; Zwiad raz z piętra, Maskowanie raz na Architekturę — zużywa każdy rzut), odmowa
+`NET_HACK_FAILED` / `NET_TRY_SPENT` bez kosztu Akcji Sieciowej, pamięć sukcesów na postać +
+scenę składana do runu przy `netrun:start` (złamane, rozpoznane, skopiowane, ze Zwiadu,
+przejęte węzły), okno runu wyszarza zużyte i już udane zdolności, MG ma „Oddaj próby”
+(`netrun:hacks:reset`). **Przy okazji naprawione:** Wirus nie mógł się nie udać — PT podane przy
+pisaniu nie trafiało do rzutu. Umowa na górze `siec`, zasady domowe w
+`decyzje-i-uproszczenia.md` („Sieć i walka”). **Testy:** shared `netrun.test.ts` +6, serwer
+`netrun.test.ts` +2 (PT 30 — porażka pewna), dwa testy „odłączenie resetuje” (`netrun`,
+`netdevices`) przepisane na pamięć, macierz izolacji z nowym zdarzeniem. **Nieoglądane
+w przeglądarce** (sesja w chmurze, Playwright MCP nie wstał) — oględziny okna runu przy stole.
 
 ### Sesja 02.11 — hakowanie w „Fabryce dronów”: szyb Sieci znikał graczowi
 
