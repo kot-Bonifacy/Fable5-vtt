@@ -47,6 +47,7 @@ function context(slots: CpredHotbarWeaponSlot[]): HudContext {
     turn: null,
     slots,
     groups: [],
+    holstered: [],
     vitals: null,
     acting: false,
     isGm: true,

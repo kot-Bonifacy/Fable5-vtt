@@ -1202,6 +1202,50 @@ export function cpredHotbarGroups(slots: readonly CpredHotbarSlot[]): CpredHotba
 }
 
 /**
+ * Pasek HUD pokazuje tylko broń w rękach (02.11.2026, MG: „wszystkie bronie
+ * na lewej belce to bałagan”).
+ *
+ * Broń schowana albo wypchnięta z rąk znika z paska razem ze swoim
+ * przeładowaniem i usuwaniem usterki — dobywa się ją na karcie postaci.
+ * Granat i broń statysty nie mają pojęcia „w ręku” (`outOfHand` zawsze false),
+ * więc zostają. Filtr działa na płaskiej liście *przed* `cpredHotbarGroups`,
+ * żeby klawisze 1–9 liczyły to, co widać. `hotbarSlotsFor` zostaje pełne:
+ * bot i serwer czytają z niego odmowy po id.
+ */
+export function cpredHotbarInHand(slots: readonly CpredHotbarSlot[]): {
+  slots: CpredHotbarSlot[];
+  /** Nazwy broni zdjętych z paska, w kolejności karty, bez powtórzeń. */
+  holstered: string[];
+} {
+  const away = new Set<string>();
+  const kept = new Set<string>();
+  const names = new Map<string, string>();
+  for (const slot of slots) {
+    if (slot.kind !== 'weapon') continue;
+    const key = weaponOptionKey(slot.weaponRowId, slot.attachmentId);
+    if (slot.outOfHand) {
+      away.add(key);
+      if (!names.has(key)) names.set(key, slot.label);
+    } else kept.add(key);
+  }
+  for (const key of kept) away.delete(key);
+  if (away.size === 0) return { slots: [...slots], holstered: [] };
+  const hidden = (slot: CpredHotbarSlot): boolean => {
+    if (slot.kind === 'weapon')
+      return away.has(weaponOptionKey(slot.weaponRowId, slot.attachmentId));
+    if (slot.kind === 'reload' || slot.kind === 'clear-jam') {
+      const key = slot.id.slice(slot.id.indexOf(':') + 1);
+      return away.has(key);
+    }
+    return false;
+  };
+  return {
+    slots: slots.filter((slot) => !hidden(slot)),
+    holstered: [...new Set([...away].map((key) => names.get(key)!))],
+  };
+}
+
+/**
  * The mode a weapon group should fire in, given what the user last picked.
  *
  * Falls back to the first mode rather than to `'single'`: the list comes from
