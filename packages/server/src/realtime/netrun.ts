@@ -44,6 +44,9 @@ import {
   netScoutReveal,
   parseCharacterData,
   readNetRuntime,
+  netHackFailed,
+  netRecordFailedHack,
+  netClearFailedHacks,
   rollFormula,
   tokenCentre,
   tokenTableName,
@@ -532,6 +535,16 @@ export const netRunAbilityEvent = defineEvent<NetRunAbilityPayload, NetRunAbilit
     if (ability.id === 'virus' && !netIsBottom(architecture, state.position)) {
       throw new RealtimeError('NET_NOT_BOTTOM');
     }
+    // Zlecenie MG z 02.11: one try per floor, per character, per scene. Checked
+    // before the Net Action is spent, so the refusal costs nothing.
+    const hacker = { characterId: row.characterId, sceneId: scene.id };
+    if (
+      ability.floorKind &&
+      floor &&
+      netHackFailed(readNetRuntime(row.architecture.runtime), hacker, floor.id)
+    ) {
+      throw new RealtimeError('NET_HACK_FAILED');
+    }
 
     const rank = readInterfaceRank(deps, character);
     const { actions } = await netActionsForRun(deps.ctx.prisma, deps.ctx.cpred, row.characterId);
@@ -602,6 +615,22 @@ export const netRunAbilityEvent = defineEvent<NetRunAbilityPayload, NetRunAbilit
       dv,
       ...(rival ? { rival } : {}),
     });
+
+    if (!success && ability.floorKind && floor) {
+      // Read fresh: `applyAbility` may have just written the runtime itself.
+      const fresh = await deps.ctx.prisma.netArchitecture.findUnique({
+        where: { id: row.architectureId },
+        select: { runtime: true },
+      });
+      await saveRuntime(
+        deps.ctx.prisma,
+        row.architectureId,
+        netRecordFailedHack(readNetRuntime(fresh?.runtime ?? '{}'), {
+          ...hacker,
+          floorId: floor.id,
+        }),
+      );
+    }
 
     roll.outcome = {
       success,
@@ -1047,3 +1076,37 @@ async function requireMyRun(
   if (!run) throw new RealtimeError('NET_NOT_JACKED');
   return run;
 }
+
+/**
+ * The GM gives a netrunner their tries back (zlecenie MG z 02.11): every floor
+ * this run's character failed on this scene may be hacked once more.
+ */
+export const netHackResetEvent = defineEvent<{ runId: string }, void>({
+  name: 'netrun:hacks:reset',
+  role: ROLE_GM,
+  handler: async ({ deps, socket, user, payload }) => {
+    const campaignId = requireCampaignId(socket.data);
+    const { row } = await requireRun(deps, campaignId, user, payload?.runId);
+    const fresh = await deps.ctx.prisma.netArchitecture.findUnique({
+      where: { id: row.architectureId },
+      select: { runtime: true },
+    });
+    await saveRuntime(
+      deps.ctx.prisma,
+      row.architectureId,
+      netClearFailedHacks(readNetRuntime(fresh?.runtime ?? '{}'), {
+        characterId: row.characterId,
+        sceneId: row.token.sceneId,
+      }),
+    );
+    await logNetLine(
+      deps,
+      campaignId,
+      user,
+      tokenTableName(row.token, row.token.character?.name ?? row.token.name),
+      'Próby włamań',
+      'oddane przez MG',
+    );
+    await emitRuns(deps, campaignId);
+  },
+});

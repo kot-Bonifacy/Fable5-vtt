@@ -39,6 +39,7 @@ import {
   readNetDemonState,
   readNetRunState,
   readNetRuntime,
+  netFailedFloors,
   tokenCentre,
   tokenTableName,
   validateNetArchitecture,
@@ -317,6 +318,10 @@ export async function runPayloadFor(
       devicesOf: (floor) => devices.get(floor.id) ?? [],
       sightedDevices: await sightedDevicesOf(deps.ctx.prisma, architecture),
       round: combatRow && combatRow.round > 0 ? combatRow.round : null,
+      failedFloors: netFailedFloors(runtime, {
+        characterId: row.characterId,
+        sceneId: row.token.sceneId,
+      }),
     }),
   };
 }

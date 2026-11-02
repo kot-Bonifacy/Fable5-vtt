@@ -157,6 +157,13 @@ przestanie się bronić, przenieś ją stąd do `POMYSLY.md` jako zadanie — ni
 
 ## Sieć i walka — czytanie RAW
 
+- **Jedna próba włamania na piętro na scenie (02.11.2026, zasada domowa MG).** Podręcznik nie
+  zabrania ponawiać Backdoora, Ajdi ani Kontroli na tym samym piętrze, więc netrunner mógł rzucać
+  do skutku. MG: „netrunner na danej scenie powinien móc tylko raz hackować dany element”. VTT
+  pamięta nieudaną próbę postaci na piętrze tej Architektury na tej scenie — także po odłączeniu
+  i ponownym wejściu. Udana nie zamyka piętra (węzeł odebrany przez rywala można odbić). Inna
+  postać, inna scena albo „Oddaj próby” MG w oknie runu dają nową próbę. Zwiad, Maskowanie
+  i Wirus nie są ograniczone — nie hakują konkretnego piętra.
 - **Szczęście: nie do Inicjatywy, a pula wraca sama na starcie sesji (22.10.2026, decyzje MG).**
   „Punkty te dodajesz do wyniku Testu” (s. 74), a czy 1k10 + REF w Inicjatywie jest Testem,
   podręcznik nie mówi wprost — MG rozstrzygnął: nie, kubek inicjatywy nie ma licznika Szczęścia.

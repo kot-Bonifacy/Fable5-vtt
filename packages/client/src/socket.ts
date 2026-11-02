@@ -3123,6 +3123,7 @@ export const iceTakesTurn = (payload: NetIceActPayload) =>
   emitSceneAck<NetRunAbilityResult>('netrun:ice:turn', payload);
 
 export const clearNetGlue = (runId: string) => emitSceneAck('netrun:glue', { runId });
+export const resetNetHacks = (runId: string) => emitSceneAck('netrun:hacks:reset', { runId });
 
 /* ── węzły kontrolne (etap 26d) ── */
 

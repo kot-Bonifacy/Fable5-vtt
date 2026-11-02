@@ -516,6 +516,84 @@ export interface CpredNetRuntime {
    * switched off. The same reasoning that put the Virus on this shelf.
    */
   devices?: CpredNetDeviceState[];
+  /**
+   * Failed hacks of one floor (password, File, control node) — zlecenie MG
+   * z 02.11: „netrunner na danej scenie powinien móc tylko raz hackować dany
+   * element". Kept here and not in the run because a jack-out and a fresh
+   * jack-in must not buy a second try. Keyed by character, floor and scene: the
+   * same Architecture wired on another scene is another place. A success is not
+   * written down — the run remembers it, and a node lost to a rival can be
+   * taken back.
+   */
+  failedHacks?: CpredNetFailedHack[];
+}
+
+/** One failed Backdoor, Ajdi or Kontrola — see `CpredNetRuntime.failedHacks`. */
+export interface CpredNetFailedHack {
+  characterId: string;
+  sceneId: string;
+  floorId: string;
+}
+
+/** Has this character already failed this floor on this scene? */
+export function netHackFailed(
+  runtime: CpredNetRuntime,
+  who: { characterId: string; sceneId: string },
+  floorId: string,
+): boolean {
+  return (runtime.failedHacks ?? []).some(
+    (entry) =>
+      entry.characterId === who.characterId &&
+      entry.sceneId === who.sceneId &&
+      entry.floorId === floorId,
+  );
+}
+
+/** Floors this character has failed on this scene — for the run's view. */
+export function netFailedFloors(
+  runtime: CpredNetRuntime,
+  who: { characterId: string; sceneId: string },
+): string[] {
+  return (runtime.failedHacks ?? [])
+    .filter((entry) => entry.characterId === who.characterId && entry.sceneId === who.sceneId)
+    .map((entry) => entry.floorId);
+}
+
+/** Writes a failed hack down (once — a second entry would change nothing). */
+export function netRecordFailedHack(
+  runtime: CpredNetRuntime,
+  entry: CpredNetFailedHack,
+): CpredNetRuntime {
+  if (netHackFailed(runtime, entry, entry.floorId)) return runtime;
+  return { ...runtime, failedHacks: [...(runtime.failedHacks ?? []), entry] };
+}
+
+/** The GM's „Zeruj próby": this character on this scene gets every floor back. */
+export function netClearFailedHacks(
+  runtime: CpredNetRuntime,
+  who: { characterId: string; sceneId: string },
+): CpredNetRuntime {
+  const rest = (runtime.failedHacks ?? []).filter(
+    (entry) => !(entry.characterId === who.characterId && entry.sceneId === who.sceneId),
+  );
+  const { failedHacks: _dropped, ...without } = runtime;
+  return rest.length > 0 ? { ...without, failedHacks: rest } : without;
+}
+
+function readFailedHacks(raw: unknown): CpredNetFailedHack[] {
+  return (Array.isArray(raw) ? raw : [])
+    .map((entry) => entry as Record<string, unknown>)
+    .filter(
+      (entry) =>
+        typeof entry?.characterId === 'string' &&
+        typeof entry?.sceneId === 'string' &&
+        typeof entry?.floorId === 'string',
+    )
+    .map((entry) => ({
+      characterId: entry.characterId as string,
+      sceneId: entry.sceneId as string,
+      floorId: entry.floorId as string,
+    }));
 }
 
 export const EMPTY_NET_RUNTIME: CpredNetRuntime = { viruses: [] };
@@ -546,11 +624,13 @@ export function readNetRuntime(raw: unknown): CpredNetRuntime {
       createdAt: typeof entry.createdAt === 'string' ? entry.createdAt : '',
     }));
   const devices = readNetDeviceStates(input.devices);
+  const failedHacks = readFailedHacks(input.failedHacks);
   return {
     viruses,
     ...(Number.isInteger(input.maskDv) ? { maskDv: input.maskDv as number } : {}),
     ...(typeof input.maskedBy === 'string' ? { maskedBy: input.maskedBy } : {}),
     ...(devices.length > 0 ? { devices } : {}),
+    ...(failedHacks.length > 0 ? { failedHacks } : {}),
   };
 }
 
@@ -695,6 +775,8 @@ export interface NetFloorView {
   devices?: NetDeviceView[];
   /** Set when this node was already activated in the current round. */
   nodeUsed?: boolean;
+  /** This netrunner already failed this floor on this scene — no second try. */
+  hackFailed?: boolean;
   here?: boolean;
 }
 
@@ -764,8 +846,11 @@ export function netRunView(
     round?: number | null;
     /** Etap 62: the whole device list, already named for this pair of eyes. */
     sightedDevices?: NetSightedDevice[];
+    /** Floors this run's character already failed on this scene (`netFailedFloors`). */
+    failedFloors?: string[];
   },
 ): NetRunView {
+  const failed = new Set(options.failedFloors ?? []);
   const entered = new Set(state.entered);
   const scouted = new Set(state.scouted);
   const broken = new Set(state.broken);
@@ -835,6 +920,7 @@ export function netRunView(
           ...(holds.has(floor.id) ? { controlledDv: holds.get(floor.id)! } : {}),
           ...(devices.length > 0 ? { devices } : {}),
           ...(usedNodes.has(floor.id) ? { nodeUsed: true } : {}),
+          ...(failed.has(floor.id) ? { hackFailed: true } : {}),
           ...here,
         };
       }),
@@ -900,6 +986,7 @@ export type NetRunProblem =
   | 'NET_NO_SUCH_FLOOR'
   | 'NET_PASSWORD_BLOCKS'
   | 'NET_WRONG_FLOOR'
+  | 'NET_HACK_FAILED'
   | 'NET_NOT_BOTTOM'
   | 'NET_NO_ACTIONS'
   | 'NET_ABILITY_UNKNOWN'
@@ -917,6 +1004,8 @@ export const NET_RUN_PROBLEM_MESSAGES: Record<NetRunProblem, string> = {
   NET_NO_SUCH_FLOOR: 'Nie ma takiego piętra w tej Architekturze.',
   NET_PASSWORD_BLOCKS: 'Hasło blokuje drogę — nie da się go ominąć.',
   NET_WRONG_FLOOR: 'Na tym piętrze nie ma czego użyć tą zdolnością.',
+  NET_HACK_FAILED:
+    'Ta postać już raz poległa na tym piętrze na tej scenie — drugiej próby nie ma (MG może ją oddać).',
   NET_NOT_BOTTOM: 'Wirusa zostawia się wyłącznie na dnie Architektury.',
   NET_NO_ACTIONS: 'Nie masz już Akcji Sieciowych w tej turze.',
   NET_ABILITY_UNKNOWN: 'Nie znam takiej zdolności Interfejsu.',

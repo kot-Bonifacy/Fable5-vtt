@@ -20,6 +20,10 @@ import {
   netShaftRungs,
   readNetRunState,
   readNetRuntime,
+  netClearFailedHacks,
+  netFailedFloors,
+  netHackFailed,
+  netRecordFailedHack,
 } from './netrun.js';
 import { freshNetCombat, netCombatView, type NetCombatView } from './netcombat.js';
 import { buildCpredRegistry } from './character.js';
@@ -447,5 +451,39 @@ describe('odczyt stanu z bazy', () => {
     expect(runtime.maskDv).toBe(16);
     expect(runtime.viruses).toHaveLength(1);
     expect(runtime.viruses[0]?.dv).toBe(15);
+  });
+});
+
+describe('jedna próba włamania na piętro (zlecenie MG z 02.11)', () => {
+  const kolec = { characterId: 'c-kolec', sceneId: 's-magazyn' };
+
+  it('remembers a failure per character, floor and scene', () => {
+    const runtime = netRecordFailedHack(readNetRuntime('{}'), { ...kolec, floorId: 'f1' });
+    expect(netHackFailed(runtime, kolec, 'f1')).toBe(true);
+    expect(netHackFailed(runtime, kolec, 'f2')).toBe(false);
+    expect(netHackFailed(runtime, { ...kolec, characterId: 'c-inny' }, 'f1')).toBe(false);
+    expect(netHackFailed(runtime, { ...kolec, sceneId: 's-inna' }, 'f1')).toBe(false);
+    expect(netFailedFloors(runtime, kolec)).toEqual(['f1']);
+  });
+
+  it('writes a floor down once and survives the round trip through the row', () => {
+    const once = netRecordFailedHack(readNetRuntime('{}'), { ...kolec, floorId: 'f1' });
+    const twice = netRecordFailedHack(once, { ...kolec, floorId: 'f1' });
+    expect(twice.failedHacks).toHaveLength(1);
+    const read = readNetRuntime(
+      JSON.stringify({ ...twice, failedHacks: [...twice.failedHacks!, { floorId: 7 }] }),
+    );
+    expect(read.failedHacks).toEqual([{ ...kolec, floorId: 'f1' }]);
+  });
+
+  it('gives back only this character on this scene', () => {
+    let runtime = netRecordFailedHack(readNetRuntime('{}'), { ...kolec, floorId: 'f1' });
+    runtime = netRecordFailedHack(runtime, { ...kolec, characterId: 'c-inny', floorId: 'f1' });
+    const cleared = netClearFailedHacks(runtime, kolec);
+    expect(netHackFailed(cleared, kolec, 'f1')).toBe(false);
+    expect(netHackFailed(cleared, { ...kolec, characterId: 'c-inny' }, 'f1')).toBe(true);
+    expect(netClearFailedHacks(cleared, { ...kolec, characterId: 'c-inny' })).not.toHaveProperty(
+      'failedHacks',
+    );
   });
 });

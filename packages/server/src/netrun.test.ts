@@ -471,6 +471,8 @@ describe('run netrunnera na żywych gniazdach', () => {
       const run = await runOf(player);
       expect(floorOf(run!, 'f1')?.broken === true).toBe(result.success);
       if (result.success) return;
+      // Zlecenie MG z 02.11: a failed floor is spent until the GM gives it back.
+      await emitAck(gm, 'netrun:hacks:reset', { runId });
     }
     throw new Error('ten Backdoorów z PT 1 nie przeszło — to nie jest pech, to błąd');
   });
@@ -521,8 +523,41 @@ describe('run netrunnera na żywych gniazdach', () => {
         return;
       }
       expect(held).toBeUndefined();
+      await emitAck(gm, 'netrun:hacks:reset', { runId });
     }
     throw new Error('dziesięć Kontroli z PT 1 nie przeszło');
+  });
+
+  it('gives one try per floor: a failed Ajdi is spent until the GM hands it back', async () => {
+    // A DV no roll can beat: Interfejs 10 + d10 with a critical tops out at 30,
+    // and a Check has to beat the DV, not meet it.
+    const hard = sampleArchitecture();
+    hard.branches[0]!.floors[2]!.dv = 30;
+    data(await emitAck(gm, 'net:save', { id: architectureId, architecture: hard }), 'net:save');
+    await emitAck(player, 'netrun:move', { runId, to: { branchId: 'trunk', floor: 2 } });
+
+    const failed = data(
+      await emitAck<NetRunAbilityResult>(player, 'netrun:ability', { runId, ability: 'eyed' }),
+      'netrun:ability',
+    );
+    expect(failed.success).toBe(false);
+    expect(floorOf((await runOf(player))!, 'f2')?.hackFailed).toBe(true);
+    // The other floors are untouched.
+    expect(floorOf((await runOf(player))!, 'f3')?.hackFailed).toBeUndefined();
+
+    const again = await emitAck(player, 'netrun:ability', { runId, ability: 'eyed' });
+    expect(errorOf(again)).toBe('NET_HACK_FAILED');
+
+    // Only the GM gives the try back.
+    expect(errorOf(await emitAck(player, 'netrun:hacks:reset', { runId }))).toBe('FORBIDDEN');
+    await emitAck(gm, 'netrun:hacks:reset', { runId });
+    expect(floorOf((await runOf(player))!, 'f2')?.hackFailed).toBeUndefined();
+
+    data(
+      await emitAck(gm, 'net:save', { id: architectureId, architecture: sampleArchitecture() }),
+      'net:save',
+    );
+    await emitAck(player, 'netrun:move', { runId, to: { branchId: 'trunk', floor: 3 } });
   });
 
   it('leaves a Virus on the bottom floor and keeps it past the disconnection', async () => {
