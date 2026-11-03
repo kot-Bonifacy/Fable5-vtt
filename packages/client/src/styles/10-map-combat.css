@@ -716,11 +716,11 @@
   align-items: center;
 }
 
-/* The attack card under a roll on the chat. */
+/* The attack card under a roll on the chat. Od 03.11 bez kreski nad sobą:
+   jej pierwszy wiersz to wspólny wiersz plakietek rzutu (krytyk, wynik)
+   i werdyktu, więc niczego już nie oddziela. */
 .chat-attack {
-  margin-top: 0.35rem;
-  padding-top: 0.35rem;
-  border-top: 1px solid var(--border);
+  display: contents;
 }
 
 .chat-attack-detail {
@@ -733,14 +733,30 @@
   color: var(--accent);
 }
 
+/* Cele ognia zaporowego, granatu i stożka jako kafle obok siebie (03.11) —
+   przy szerokiej belce trzy cele to jedna linia, nie trzy. */
 .chat-attack-checks {
   list-style: none;
   margin: 0.35rem 0 0;
   padding: 0;
   display: flex;
-  flex-direction: column;
-  gap: 0.15rem;
+  flex-wrap: wrap;
+  gap: 0.25rem;
   font-size: 0.8rem;
+}
+
+/* Wnętrze kafla to zwykły tekst w linii, nie flex: flex rozbijał „<strong>
+   Zbir</strong> — 2 m od środka” na osobne kawałki i łamał kafel na nazwie. */
+.chat-attack-checks > li {
+  max-width: 100%;
+  padding: 0.1rem 0.4rem;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--bg-panel);
+}
+
+.chat-attack-checks > li > .small-button {
+  margin-left: 0.35rem;
 }
 
 .chat-attack-check--held {

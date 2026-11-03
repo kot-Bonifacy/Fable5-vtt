@@ -61,6 +61,7 @@ import { SightingRow } from './SightingRow.js';
 import { RollTableRow } from './RollTableCard.js';
 import { useAuthStore } from '../stores/authStore.js';
 import { chatContinuations } from '../chat-grouping.js';
+import { rollShowsTotal } from '../chat-roll-total.js';
 import { gmAttentionKey } from '../gm-attention.js';
 import { useChatFilterStore } from '../stores/chatFilterStore.js';
 import { useChatStore, type ChatItem } from '../stores/chatStore.js';
@@ -133,6 +134,15 @@ function RollDice({ roll }: { roll: RollResult }) {
       </span>,
     );
   }
+  // Suma w rozmiarze tekstu za kośćmi (03.11) — chyba że plakietka wyniku
+  // już ją podaje (`rollShowsTotal`).
+  if (rollShowsTotal(roll)) {
+    parts.push(
+      <span key="sum" className="chat-roll-sum">
+        = {roll.total}
+      </span>,
+    );
+  }
   return <div className="chat-roll-dice">{parts}</div>;
 }
 
@@ -155,7 +165,16 @@ function RollBreakdown({ roll }: { roll: RollResult }) {
   );
 }
 
-/** A roll result card — visually distinct from plain chat messages. */
+/**
+ * A roll result card — visually distinct from plain chat messages.
+ *
+ * Gęsty układ (03.11, zlecenie MG): tytuł rzutu stoi w nagłówku obok postaci,
+ * kości i nazwane modyfikatory dzielą jeden wiersz, a wszystkie plakietki —
+ * krytyk, wynik Testu, werdykt ataku albo starcia — drugi. Szeroka belka
+ * składa więc kartę w trzy linie, wąska zawija je jak dawniej. Dużej sumy nie
+ * ma: Test podaje ją w plakietce, reszta pisze „= N” za kośćmi. `data-total`
+ * niesie sumę dla testów E2E niezależnie od tego, gdzie ją widać.
+ */
 function RollRow({ message, isGm }: { message: ChatMessageView; isGm: boolean }) {
   const roll = message.roll;
   if (!roll) return null;
@@ -165,74 +184,93 @@ function RollRow({ message, isGm }: { message: ChatMessageView; isGm: boolean })
   // A car's hull and a cover take no Critical Injury (65d2 zaległość).
   const wounds = rollWoundsCritically(roll);
 
+  const badges: ReactNode[] = [];
+  if (roll.critical?.type === 'crit') {
+    badges.push(
+      <span key="crit" className="chat-roll-badge chat-roll-badge--crit">
+        Krytyk! dorzut +{roll.critical.extraRoll}
+      </span>,
+    );
+  }
+  // Wyjście z opresji (etap 30a, s. 146): jedynka padła i nic nie
+  // kosztowała. Milczące pominięcie kary czytałoby się jak błąd w kościach,
+  // więc kafel mówi, co ją zdjęło.
+  if (roll.critical?.type === 'fumble') {
+    badges.push(
+      <span
+        key="fumble"
+        className={
+          roll.critical.ignored
+            ? 'chat-roll-badge chat-roll-badge--fumble chat-roll-badge--shrugged'
+            : 'chat-roll-badge chat-roll-badge--fumble'
+        }
+        title={
+          roll.critical.ignored
+            ? 'Wyjście z opresji: ignorujesz Krytyczne porażki w Testach ataku. Wynik nadal liczy się jako 1.'
+            : undefined
+        }
+      >
+        {roll.critical.ignored
+          ? 'Fumble zignorowany (Wyjście z opresji)'
+          : `Fumble! dorzut −${roll.critical.extraRoll}`}
+      </span>,
+    );
+  }
+  if (wounds) {
+    badges.push(
+      <span key="injury" className="chat-roll-badge chat-roll-badge--injury">
+        Rana krytyczna!
+      </span>,
+    );
+  }
+  if (roll.outcome) {
+    badges.push(
+      <span
+        key="outcome"
+        className={`chat-roll-badge chat-roll-badge--${roll.outcome.success ? 'success' : 'failure'}`}
+      >
+        {roll.outcome.label}
+        {roll.outcome.detail ? ` · ${roll.outcome.detail}` : ''}
+      </span>,
+    );
+  }
+  /** Atak i starcie dokładają do tego wiersza własny werdykt. */
+  const verdictRow = roll.attack !== undefined || roll.opposed !== undefined;
+
   return (
-    <div className={`chat-message chat-roll${isGmRoll ? ' chat-roll--gm' : ''}`}>
+    <div
+      className={`chat-message chat-roll${isGmRoll ? ' chat-roll--gm' : ''}`}
+      data-total={roll.total}
+    >
       <div className="chat-message-meta">
         <span className="chat-message-author">{label}</span>
         {roll.actor && <span className="chat-roll-actor-by">({message.authorName})</span>}
         {isGmRoll && <span className="chat-roll-gm-label">rzut do MG</span>}
+        <span className="chat-roll-notation">
+          {roll.title ?? displayDiceNotation(roll.notation)}
+          {roll.title && (
+            <span className="chat-roll-formula"> · {displayDiceNotation(roll.notation)}</span>
+          )}
+          {message.text && !roll.title && (
+            <span className="chat-roll-flavor"> — {message.text}</span>
+          )}
+        </span>
         <span className="chat-message-time">{formatTime(message.createdAt)}</span>
       </div>
       <div className="chat-roll-body">
-        <div className="chat-roll-header">
-          <span className="chat-roll-notation">
-            {roll.title ?? displayDiceNotation(roll.notation)}
-            {roll.title && (
-              <span className="chat-roll-formula"> · {displayDiceNotation(roll.notation)}</span>
-            )}
-            {message.text && !roll.title && (
-              <span className="chat-roll-flavor"> — {message.text}</span>
-            )}
-          </span>
-          <span className="chat-roll-total">{roll.total}</span>
+        <div className="chat-roll-line">
+          <RollDice roll={roll} />
+          <RollBreakdown roll={roll} />
         </div>
-        <RollDice roll={roll} />
-        <RollBreakdown roll={roll} />
-        {(roll.critical || wounds) && (
-          <div className="chat-roll-badges">
-            {roll.critical?.type === 'crit' && (
-              <span className="chat-roll-badge chat-roll-badge--crit">
-                Krytyk! dorzut +{roll.critical.extraRoll}
-              </span>
-            )}
-            {/* Wyjście z opresji (etap 30a, s. 146): jedynka padła i nic nie
-                kosztowała. Milczące pominięcie kary czytałoby się jak błąd
-                w kościach, więc kafel mówi, co ją zdjęło. */}
-            {roll.critical?.type === 'fumble' && (
-              <span
-                className={
-                  roll.critical.ignored
-                    ? 'chat-roll-badge chat-roll-badge--fumble chat-roll-badge--shrugged'
-                    : 'chat-roll-badge chat-roll-badge--fumble'
-                }
-                title={
-                  roll.critical.ignored
-                    ? 'Wyjście z opresji: ignorujesz Krytyczne porażki w Testach ataku. Wynik nadal liczy się jako 1.'
-                    : undefined
-                }
-              >
-                {roll.critical.ignored
-                  ? 'Fumble zignorowany (Wyjście z opresji)'
-                  : `Fumble! dorzut −${roll.critical.extraRoll}`}
-              </span>
-            )}
-            {wounds && (
-              <span className="chat-roll-badge chat-roll-badge--injury">Rana krytyczna!</span>
-            )}
-          </div>
+        {!verdictRow && badges.length > 0 && <div className="chat-roll-badges">{badges}</div>}
+        {roll.attack && <AttackRow message={message} attack={roll.attack} leadBadges={badges} />}
+        {roll.opposed && (
+          <OpposedRow
+            message={message}
+            opposed={roll.opposed}
+            leadBadges={roll.attack ? [] : badges}
+          />
         )}
-        {roll.outcome && (
-          <div className="chat-roll-badges">
-            <span
-              className={`chat-roll-badge chat-roll-badge--${roll.outcome.success ? 'success' : 'failure'}`}
-            >
-              {roll.outcome.label}
-              {roll.outcome.detail ? ` · ${roll.outcome.detail}` : ''}
-            </span>
-          </div>
-        )}
-        {roll.attack && <AttackRow message={message} attack={roll.attack} />}
-        {roll.opposed && <OpposedRow message={message} opposed={roll.opposed} />}
         {/* Damage is applied by the GM only — players never see the button. */}
         {isGm && roll.damage && <DamageApplyControls message={message} roll={roll} />}
       </div>

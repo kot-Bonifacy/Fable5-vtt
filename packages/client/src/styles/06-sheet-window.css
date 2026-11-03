@@ -881,7 +881,6 @@
   display: flex;
   flex-wrap: wrap;
   gap: 0.25rem;
-  margin-top: 0.3rem;
   font-size: 0.72rem;
   color: var(--text-dim);
 }
