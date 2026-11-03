@@ -829,6 +829,12 @@ model SceneVehicle {
   maneuverCall String?
   /** Kolczatki zrzucone w tym pościgu (65e) — wyrzutnia liczy jak Nitro. */
   spikesUsed   Int     @default(0)
+  /**
+   * Auto stojące na drodze (wrak, zgaszony silnik), które dryfem stanęło przed
+   * jadącym autem — id tego auta; czeka na wybór jego kierowcy (przegląd 03.11).
+   * Gołe id bez relacji: auto zdjęte z drogi kod rozpoznaje i zwalnia sam.
+   */
+  blockingId   String?
   createdAt DateTime @default(now())
 
   scene      Scene   @relation(fields: [sceneId], references: [id], onDelete: Cascade)

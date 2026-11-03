@@ -638,6 +638,22 @@ export interface SceneVehicleView {
   mounts: { id: string; upgradeId: string; ammo?: number }[];
   /** Auto jedzie: silnik pracuje, droga jedzie, auto nie jest wrakiem (przeładowanie broni pokładowej). */
   moving: boolean;
+  /**
+   * To auto stoi na drodze (wrak, zgaszony silnik) i dryfem stanęło przed
+   * zderzakiem auta o tym id — czeka na wybór jego kierowcy, jak przeszkoda
+   * z 65e (przegląd 03.11). `null` — nikogo nie blokuje.
+   */
+  blockingVehicleId: string | null;
+}
+
+/**
+ * `chase:vehicle-answer` — kierowca auta, przed którym stanęło stojące auto
+ * (`blockingVehicleId`), wybiera Gwałtowny skręt albo taranowanie; MG za każdego.
+ */
+export interface ChaseVehicleAnswerPayload {
+  /** Auto stojące na drodze — to, które blokuje. */
+  sceneVehicleId: string;
+  choice: 'swerve' | 'ram';
 }
 
 /** Manewr pojazdu na liście menu auta: id systemu i podpis z PT. */

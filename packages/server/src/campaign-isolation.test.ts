@@ -911,6 +911,7 @@ const CASES: Record<string, Case> = {
   'chase:obstacle-spawn': foreign((a) => ({ sceneId: a.sceneId, kind: 'barricade', x: 1, y: 1 })),
   'chase:obstacle-remove': foreign((a) => ({ obstacleId: a.obstacleId })),
   'chase:obstacle-answer': foreign((a) => ({ obstacleId: a.obstacleId, choice: 'ram' })),
+  'chase:vehicle-answer': foreign((a) => ({ sceneVehicleId: a.sceneVehicleId, choice: 'ram' })),
   'vehicle:spikes': foreign((a) => ({ sceneVehicleId: a.sceneVehicleId })),
   // team
   'character:team-hire': foreign((a) => ({

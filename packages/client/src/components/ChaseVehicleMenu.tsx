@@ -30,6 +30,7 @@ import {
   seatInVehicle,
   setVehicleEngine,
   updateVehicle,
+  answerChaseVehicle,
 } from '../socket.js';
 import { clearNotices, notifyChoice, notifyRefusal } from '../notices.js';
 import { useMenuTop } from './TokenContextMenu.js';
@@ -78,8 +79,6 @@ export function chaseErrorText(code: string | undefined): string {
       return 'Silnik jest zgaszony — najpierw uruchom auto.';
     case 'VEHICLE_OUT_OF_CONTROL':
       return 'Kierowca stracił panowanie nad autem — do następnej rundy prowadzi je MG.';
-    case 'DRIVING_TEST_NEEDS_ACTION':
-      return 'Zwykła jazda wymaga Testu w ramach Akcji, a Akcja tej tury już poszła.';
     case 'NO_NITRO':
       return 'W tym aucie nie zostało Nitro.';
     case 'NITRO_COMBAT_ONLY':
@@ -168,6 +167,10 @@ export function ChaseVehicleMenu() {
   const mayGrantWheel = isGm || ownsVehicle;
   const driver = bySeat.get(0);
   const drives = isGm || (driver !== undefined && driver.ownerId === user.id);
+  // Stojące auto przed czyimś zderzakiem (przegląd 03.11) — MG odpowiada za kierowcę.
+  const blockedVehicle = vehicle.blockingVehicleId
+    ? vehicles.find((entry) => entry.id === vehicle.blockingVehicleId)
+    : undefined;
   const act = (call: () => Promise<{ ok: boolean; error?: string }>) => {
     void call().then((ack) => {
       if (!ack.ok) notifyRefusal('chase', chaseErrorText(ack.error));
@@ -260,6 +263,27 @@ export function ChaseVehicleMenu() {
           >
             Uzupełnij Nitro i kolczatki
           </button>
+        )}
+        {isGm && blockedVehicle && (
+          <>
+            <p className="context-menu-section">{`Za kierowcę: ${blockedVehicle.name}`}</p>
+            <button
+              type="button"
+              className="context-menu-item"
+              title="Test REF + Prowadzenie przeciw PT 13. Porażka — utrata kontroli i zderzenie."
+              onClick={() => act(() => answerChaseVehicle(vehicle.id, 'swerve'))}
+            >
+              Gwałtowny skręt (PT 13)
+            </button>
+            <button
+              type="button"
+              className="context-menu-item"
+              title="Zderzenie: po 6k6 dla obu aut, Rana Krytyczna dla jadących"
+              onClick={() => act(() => answerChaseVehicle(vehicle.id, 'ram'))}
+            >
+              Taranuj
+            </button>
+          </>
         )}
         {isGm && vehicle.control === 'lost' && (
           <button

@@ -1,6 +1,9 @@
 import type { CombatActionLogEntry, RollResult, ScenePoint, SessionUser } from '@vtt/shared';
 import {
   CPRED_ACTION_NITRO,
+  chaseObstaclePastVehicle,
+  clampChaseVehicle,
+  chaseIsHorizontal,
   CPRED_RAM_DODGE_DV,
   CPRED_RAM_DODGE_SKILL_ID,
   CPRED_RAM_INJURY_NAME,
@@ -23,12 +26,14 @@ import type { ChaseObstacle as ObstacleRow, Scene, Token } from '../generated/pr
 import { buildCompendiumSync } from './compendium.js';
 import { createMixedRng } from './dice-rng.js';
 import {
+  carryPassengers,
   chaseBodyOf,
   chaseGeometry,
   emitChase,
   placedOnScene,
   type PlacedVehicle,
 } from './chase.js';
+import { emitTokensById } from './tokens.js';
 import { findCombatantForToken } from './combat.js';
 import { logSpentAction } from './combat-log.js';
 import { rollServerSkillTest } from './character-rolls.js';
@@ -262,6 +267,7 @@ export async function resolveRam(
     plow: cpredVehicleHasPlow(rammerStats),
     front,
     nitro: await driverUsedNitro(prisma, rammer),
+    pedestrian: obstacle.kind === 'token',
   });
   const struckName =
     obstacle.kind === 'vehicle'
@@ -382,4 +388,49 @@ async function ramObstacle(
   await logSpentAction(deps, campaignId, user, line);
   await emitChase(deps, campaignId, scene.id);
   return true;
+}
+
+/**
+ * Auto, które po zderzeniu zostało z tyłu (wrak, przez który taranujący
+ * przejechał, albo stojące auto po Gwałtownym skręcie lub taranowaniu), staje
+ * tuż za tylnym zderzakiem `pastId` w tym samym miejscu w poprzek — jak
+ * przeszkoda z 65e (decyzja MG z 03.11). Figury w fotelach jadą z nim. Za tylną
+ * krawędź wypada dryfem następnej rundy.
+ */
+export async function pushVehicleBehind(
+  deps: RealtimeDeps,
+  campaignId: string,
+  scene: Scene,
+  sceneVehicleId: string,
+  pastId: string,
+): Promise<void> {
+  const prisma = deps.ctx.prisma;
+  const moving = await prisma.sceneVehicle.findUnique({
+    where: { id: sceneVehicleId },
+    include: { vehicle: true },
+  });
+  const past = await prisma.sceneVehicle.findUnique({
+    where: { id: pastId },
+    include: { vehicle: true },
+  });
+  if (!moving || !past) return;
+  const { settings, frame } = chaseGeometry(scene);
+  const body = chaseBodyOf(moving.vehicle);
+  const behind = chaseObstaclePastVehicle(
+    { x: moving.x, y: moving.y, ...body },
+    { x: past.x, y: past.y, ...chaseBodyOf(past.vehicle) },
+    settings.direction,
+    scene.gridSizePx,
+  );
+  const across = clampChaseVehicle(behind, body, settings, frame);
+  const centre = chaseIsHorizontal(settings.direction)
+    ? { x: behind.x, y: across.y }
+    : { x: across.x, y: behind.y };
+  const updated = await prisma.sceneVehicle.update({
+    where: { id: moving.id },
+    data: { ...centre, blockingId: null },
+  });
+  const carried = await carryPassengers(prisma, scene, { ...updated, vehicle: moving.vehicle });
+  await emitTokensById(deps, campaignId, carried, { moved: true });
+  await emitChase(deps, campaignId, scene.id);
 }

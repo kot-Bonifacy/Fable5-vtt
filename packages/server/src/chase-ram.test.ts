@@ -557,6 +557,14 @@ describe('etap 65d2: Manewr, taranowanie i broń pokładowa', () => {
 
   it('dryf nie przepycha auta przez auto — staje przy zderzaku, bez obrażeń', async () => {
     // A ma zgaszony silnik (dryf −10), B stoi kratkę za nim w tym samym pasie.
+    // B ma kierowcę (przegląd 03.11: auto bez kontroli wjechałoby w A od razu).
+    const ganger = await built.prisma.token.findFirstOrThrow({
+      where: { sceneVehicleId: carB.id },
+    });
+    expect(
+      (await emitAck(gm, 'vehicle:seat', { tokenId: ganger.id, sceneVehicleId: carB.id, seat: 0 }))
+        .ok,
+    ).toBe(true);
     const a = await placedRow(carA.id);
     await built.prisma.sceneVehicle.update({
       where: { id: carB.id },
@@ -568,5 +576,7 @@ describe('etap 65d2: Manewr, taranowanie i broń pokładowa', () => {
     // A staje przy przednim zderzaku B (środki o 500 px), zanim B sam dryfuje.
     expect(afterA.x).toBeCloseTo(a.x - 100, 0);
     expect((await statsOf(theirs.id)).hp).toBe(hpBefore);
+    // Stojące A czeka na wybór kierowcy B: Gwałtowny skręt albo taranowanie.
+    expect(afterA.blockingId).toBe(carB.id);
   });
 });

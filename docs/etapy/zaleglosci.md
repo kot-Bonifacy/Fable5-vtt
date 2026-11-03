@@ -6,6 +6,15 @@ w `POMYSLY.md` („Do sprawdzenia przy stole”), decyzje MG — w `decyzje-i-up
 
 ## Otwarte
 
+**03.11.2026 — przegląd mechanik pościgu: oględziny w przeglądarce i wdrożenie (migracja
+`20261103210000_chase_vehicle_blocking`).** Z kontenera nie oglądane (brak punktu `po-T6`, mapy
+wiaduktu z `C:\AI\materialy` i Firefoksa; Playwright MCP niepodłączony), E2E
+`48-poscig/t65-przeszkody` się pominęło z tych samych powodów. Przy stole (Firefox): zgaś silnik
+auta NPC-a przed autem gracza w tym samym pasie — w następnej rundzie gracz dostaje pasek „Na
+drodze: … (stoi na drodze)” z „Gwałtowny skręt / Taranuj”, a po wyborze auto NPC-a stoi za
+tylnym zderzakiem; to samo z wrakiem (PUK 0) i menu MG „Za kierowcę: …” na stojącym aucie. Słaby kierowca (REF + Prowadzenie ≤ 9): Nitro, potem jazda — karta „Zwykła jazda”
+raz, auto jedzie podwójny budżet.
+
 **03.11.2026 — przegląd ulepszeń pojazdów: oględziny w przeglądarce i wdrożenie.** Z kontenera
 nie oglądane (brak punktu `po-T6`, Playwright MCP niepodłączony). Przy stole (Firefox):
 w oknie pojazdu „Zamontuj” Wzmocnioną konstrukcję — „PUK teraz” rośnie o 20; Ulepszenie foteli

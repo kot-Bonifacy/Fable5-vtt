@@ -237,6 +237,7 @@ import {
 import { vehicleMountReloadEvent } from './vehicle-mounts.js';
 import {
   chaseObstacleAnswerEvent,
+  chaseVehicleAnswerEvent,
   chaseObstacleRemoveEvent,
   chaseObstacleSpawnEvent,
   vehicleSpikesEvent,
@@ -440,6 +441,7 @@ export const EVENTS: RealtimeEvent<never, unknown>[] = [
   chaseObstacleSpawnEvent,
   chaseObstacleRemoveEvent,
   chaseObstacleAnswerEvent,
+  chaseVehicleAnswerEvent,
   vehicleSpikesEvent,
   vehicleEngineEvent,
   vehicleNitroEvent,

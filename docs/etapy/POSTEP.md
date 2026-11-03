@@ -29,6 +29,14 @@ Pełna tabela z nazwami i datami: `archiwum/tabela-etapow.md`.
 
 ## Od czego zacząć
 
+**Przegląd mechanik pościgu (zlecenie MG z 03.11) — czeka na wdrożenie (migracja bazy)
+i oględziny przy stole (Firefox).** Test zwykłej jazdy idzie w ramach Akcji Ruchu (słaby kierowca
+odpala Nitro i strzela), taranowanie pieszego bije tylko pieszego, wrak albo zgaszone auto,
+które dryfem stanie przed jadącym, czeka na jego kierowcę jak przeszkoda („Gwałtowny skręt /
+Taranuj”, auto bez kontroli wjeżdża samo), taranowany wrak ląduje za autem, utrata kontroli
+naprawdę wjeżdża w przeszkodę, a MG przestawiający auto zwalnia przeszkodę. Tempo, dryf i budżet
+bez zmian (MG potwierdził). Umowy na górze `mapa` i `tura`, zaległość w `zaleglosci.md`.
+
 **Ulepszenia pojazdów po przeglądzie (zlecenie MG z 03.11) — czekają na wdrożenie i oględziny
 przy stole (Firefox).** Ulepszenie foteli z okna MG dokłada fotele na mapie, Wzmocniona
 konstrukcja dodaje 20 także do bieżących PUK, MG ma w menu auta „Uzupełnij Nitro i kolczatki”,
@@ -598,12 +606,12 @@ a nie do tego pliku.
 
 | obszar      | co obejmuje                                                    | umów | pułapek |
 | ----------- | -------------------------------------------------------------- | ---- | ------- |
-| `mapa`      | figury, zaznaczanie, narzędzia, obiekty sceny, ściany, efekty, zamek drzwi, ukryta figura zauważona, ikony urządzeń, wspólny widok drużyny, scena pościgu, jazda kierowcy i dryf, Manewr i taranowanie, przeszkody pościgu, sceny przykładowe, wzorzec zwykłej mapy, ulepszenia pojazdu | 78   | 27      |
+| `mapa`      | figury, zaznaczanie, narzędzia, obiekty sceny, ściany, efekty, zamek drzwi, ukryta figura zauważona, ikony urządzeń, wspólny widok drużyny, scena pościgu, jazda kierowcy i dryf, Manewr i taranowanie, przeszkody pościgu, sceny przykładowe, wzorzec zwykłej mapy, ulepszenia pojazdu, stojące auto na drodze | 79   | 27      |
 | `czat`      | rodzaje wierszy, `visibleTo`, filtr, `seq`, `gmrecovery`, „to dotyczy mnie”, grupy kart, kolor gracza, czyszczenie, gęsta karta rzutu, przebieg ataku | 15   | 3       |
 | `serwer`    | Prisma i migracje, zdarzenia gniazda, zapisy karty, uploady    | 26   | 21      |
 | `ui`        | okna pływające, `z-index`, motyw, skróty, dostępność, wejście, panel decyzji MG | 37   | 15      |
 | `kosci`     | kubek, `rollFormula`, wezwania i prośby o Test, tabele losowe, PT od MG | 24   | 2       |
-| `tura`      | budżet Akcji i metrów, kolejka, trasa, ruch przez ściany, skok, walka z zauważenia, pytanie MG o przekroczenie, Percepcja w drodze, ukryte figury, skradanie, kropki ataków, kierowca bez Biegu | 34   | 7       |
+| `tura`      | budżet Akcji i metrów, kolejka, trasa, ruch przez ściany, skok, walka z zauważenia, pytanie MG o przekroczenie, Percepcja w drodze, ukryte figury, skradanie, kropki ataków, kierowca bez Biegu, Test jazdy w Akcji Ruchu | 35   | 7       |
 | `atak`      | broń i dodatki, amunicja, obrażenia, pancerz, rany krytyczne, trucizna na ostrzu, auto-unik, strach z Konfrontacji, auto jako cel, broń pokładowa, wybór celu ze stosu, skutki amunicji po karcie ataku, ikona gołych rąk | 56   | 8       |
 | `statysta`  | figura z kartą, `statBlock`, Wartość bojowa, `token:stat`, wzorce | 17   | 3       |
 | `karta`     | strony i zakładki, panele, `sheet.css`, walidacja list, usuwanie przedmiotu, „Używane” i „Plecak” | 12   | 12      |
@@ -621,6 +629,32 @@ a nie do tego pliku.
 ## Notatki z dwóch ostatnich sesji
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
+
+### Sesja 03.11, siódma — przegląd mechanik pościgu
+
+**Zlecenie MG:** sprawdzić mechaniki sceny pościgu (bez ulepszeń pojazdów), czy mają sens
+i czy działają, z pytaniami przy wątpliwościach. **Przegląd:** kod `shared` i serwera etapu
+65 (jazda, dryf, Manewr, taranowanie, ostrzał, przeszkody, kolczatka); testy pościgu zielone,
+ale sondy na żywym serwerze potwierdziły pięć problemów: (1) słaby kierowca nie mógł użyć Nitro
+(Test zwykłej jazdy zabierał Akcję); (2) wrak / zgaszone auto przyklejało się dryfem do zderzaka
+auta za nim i jechało z nim bez obrażeń; (3) taranowanie wraku przejeżdżało przez niego;
+(4) reguła „auto bez kontroli wjeżdża w przeszkodę” nigdy nie działała (dryf zerował
+`lostControl` przed przeszkodami); (5) przeszkoda czekała w kadrze na auto, które MG odsunął.
+**Odpowiedzi MG (03.11):** naprawić oczywiste błędy; tempo + dryf + budżet zostają; stojące auto
+jak przeszkoda; taranowany wrak za autem; Test jazdy w ramach Akcji Ruchu; taranowanie pieszego
+bije tylko pieszego. **Zrobione:** `CpredTurnState.drivingTested` (+ `cpredMarkDrivingTested`,
+Test po wydatku na sucho, bez `DRIVING_TEST_NEEDS_ACTION`), `CpredRamInput.pedestrian`,
+`SceneVehicle.blockingId` (migracja) + `blockingVehicleId` w widoku + `chase:vehicle-answer`
+(do macierzy izolacji), `riders` i `lostBefore` w `driftChaseRound`, `pushVehicleBehind`,
+`releaseBlocking` w `moveSceneVehicle`; klient — wspólny pasek w `useObstacleNotice`, „Za
+kierowcę: …” w menu stojącego auta u MG. Umowy na górze `mapa` i `tura`, decyzje na górze
+`decyzje-i-uproszczenia.md`, opis w `etap-65-poscig.md` („Przegląd mechanik 03.11”). Stary test
+dryfu w `chase-ram.test.ts` sadza kierowcę w aucie za zgaszonym (bez kierowcy jest teraz
+zderzenie). **Testy:** `shared` 2928/2928 (+2), serwer 1731/1731 (+8 w nowym
+`chase-review.test.ts`), klient 467/467, `tsc` w trzech
+pakietach, `vite build`, ESLint i Prettier czyste. **W przeglądarce nieoglądane** — brak
+`po-T6`, mapy wiaduktu i Firefoksa, Playwright MCP niepodłączony (E2E `48-poscig` pominięte);
+zaległość w `zaleglosci.md`.
 
 ### Sesja 03.11, szósta — przegląd ulepszeń pojazdów
 
@@ -645,28 +679,3 @@ MG przy stole. **Testy:** `shared` 2926/2926 (+4), serwer 1723/1723 (+1, macierz
 z `vehicle:refill`), klient 467/467, `tsc` w trzech pakietach, ESLint i Prettier czyste.
 **W przeglądarce nieoglądane** — brak `po-T6` w kontenerze, Playwright MCP niepodłączony;
 zaległość w `zaleglosci.md`.
-
-### Sesja 03.11, piąta — Ekwipunek: „Używane” i „Plecak”
-
-**Zlecenie MG:** linijka „Schowane: Lekka broń biała, Pistolet…” w lewej belce HUD niepotrzebna
-— skasować, a w ekwipunku wyraźnie pokazać, co jest używane, a co w plecaku, tak jak zwykle
-w cRPG. **Pytania i odpowiedzi MG (03.11):** układ — panel slotów nad plecakiem (rzecz
-przechodzi między sekcjami); stany broni — dwa, jak dotąd (bez kabury); zasięg — także okno
-„Wymiana” (znaczek na kaflu); HUD — nic w zamian. **Zrobione:** HUD bez `hud-holstered`
-i `HudContext.holstered`; `GearTab` — sekcje `.cp-loadout--equipped` / `--pack`, `WeaponStrip`
-i `ArmorStrip` z `scope`, `GearInUse`, `cpredGearInUse`, `withRowsInUse`, `GearLightHands` tylko
-z „Dobądź”, plakietka granatu „pod ręką”, „Zdejmij” przy słabszej sztuce „Pod spodem”; `Arsenal`
-i `.cp-arsenal` usunięte. `shared`: `CpredItemEquipped`, `cpredInventoryView(data, outside?)`
-z `equipped` (+ `CpredItemViewWire.equipped`); serwer `exchange:counterparts` liczy granaty raz
-(`outsideHandsOf`); klient `useOutsideHands` w pięciu kolumnach okna, znaczek w `ItemGrid`.
-**Rozstrzygnięcia bez pytań (do słowa MG):** nazwy sekcji „Używane” / „Plecak” (słowa MG;
-„Wyposażenie” zostaje nagłówkiem tabeli z wydruku); gołe ręce stoją w „Rękach” zawsze; noszona
-słabsza sztuka pancerza jest „na sobie”, nie w plecaku; podłączony egzoszkielet to sprzęt
-w użyciu (znika z „Sprzętu z premią”); „Upuść” zostaje jak było (tylko opróżnia ręce — pomysł
-w `POMYSLY.md`). **Testy:** `shared` 2922/2922 (+3 `inventory.test.ts`), serwer 1722/1722,
-klient 467/467, `tsc` (klient, serwer), ESLint i Prettier czyste. **Oglądane w Chromium**
-(tymczasowy spec na instancji E2E, skasowany; Chromium kontenera podpięty dowiązaniem
-`chromium-1246`): karta NPC-a z bronią, granatem, kurtką, hełmem w plecaku i dwiema latarkami —
-dobycie z zamianą, schowanie do pustych rąk, okno „Wymiana” ze znaczkami; konsola bez błędów.
-Dwóch kolumn od 1350 px nie oglądano (okno karty się nie rozciągnęło). Firefoksa w kontenerze
-nie ma — oględziny w nim przy stole.
