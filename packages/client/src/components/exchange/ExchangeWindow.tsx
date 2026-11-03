@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { ExchangeCounterpartView, TradeView } from '@vtt/shared';
 import {
   EXCHANGE_KIND_LABELS,
@@ -6,10 +6,11 @@ import {
   ROLE_GM,
   isTradeActive,
 } from '@vtt/shared';
-import { clearNotices, notifyRefusal } from '../../notices.js';
+import { clearNotices, notifyInfo, notifyRefusal } from '../../notices.js';
 import { fetchExchangeCounterparts, inventoryErrorText } from '../../socket.js';
 import { useAuthStore } from '../../stores/authStore.js';
 import { useCharacterStore } from '../../stores/characterStore.js';
+import { useTokenStore } from '../../stores/tokenStore.js';
 import {
   GM_ANY_KEY,
   liveTradeKey,
@@ -70,6 +71,26 @@ function tradeLabel(trade: TradeView): string {
   return `🤝 ${other.name} — ${state}`;
 }
 
+/** Czy któraś figura obecna w obu podpisach (`id:naklejki;…`) zmieniła naklejki. */
+function changedSticker(before: string, after: string): boolean {
+  const parse = (text: string) =>
+    new Map(
+      text
+        .split(';')
+        .filter(Boolean)
+        .map((part) => {
+          const at = part.indexOf(':');
+          return [part.slice(0, at), part.slice(at + 1)] as const;
+        }),
+    );
+  const old = parse(before);
+  for (const [id, stickers] of parse(after)) {
+    const was = old.get(id);
+    if (was !== undefined && was !== stickers) return true;
+  }
+  return false;
+}
+
 export function ExchangeWindow() {
   const win = useExchangeStore((s) => s.window);
   if (!win) return null;
@@ -106,8 +127,24 @@ function ExchangeWindowBody({ win }: { win: ExchangeWindowState }) {
       notifyRefusal('exchange', inventoryErrorText(ack.error));
       return;
     }
-    setCounterparts(ack.data?.counterparts ?? []);
+    const rows = ack.data?.counterparts ?? [];
+    setCounterparts(rows);
     setTargets(ack.data?.targets ?? []);
+    // Ciało wstało (MG zdjął „Ogłuszony”, postać odzyskała PW): łupu na liście
+    // już nie ma, więc okno schodzi do wyboru drugiej strony — tam stoi ta sama
+    // figura jako handel. Handlu nie zaczynamy sami, bo wybór handlu zaprasza.
+    const selected = useExchangeStore.getState().window?.selected ?? null;
+    if (selected?.startsWith('loot:') && !rows.some((row) => row.key === selected)) {
+      const tokenId = selected.slice('loot:'.length);
+      const now = rows.find((row) => row.tokenId === tokenId);
+      useExchangeStore.getState().select(null);
+      notifyInfo(
+        now
+          ? `${now.name} już nie leży — przeszukanie się skończyło.`
+          : 'Ciała nie ma już w zasięgu — przeszukanie się skończyło.',
+        { topic: 'exchange' },
+      );
+    }
   }, [anchorId, win.tokenId]);
 
   // Odświeżenie po każdym zapisie mojej karty: `updatedAt` jest stemplem
@@ -116,6 +153,29 @@ function ExchangeWindowBody({ win }: { win: ExchangeWindowState }) {
   useEffect(() => {
     void refresh();
   }, [refresh, savedAt]);
+
+  // Naklejki stanu (Ogłuszony, Pochwycony, rany) siedzą na figurze, a nie na
+  // karcie — to one rozstrzygają, czy figura to łup, czy handel. Zmiana naklejek
+  // którejkolwiek figury z listy (albo tej, od której otwarto okno) przynosi
+  // listę od nowa (zaległość z 31.10: ciało wstało, okno dalej było łupem).
+  const watched = [
+    ...new Set([
+      ...(win.tokenId ? [win.tokenId] : []),
+      ...counterparts.flatMap((row) => (row.tokenId ? [row.tokenId] : [])),
+    ]),
+  ];
+  const stickers = useTokenStore((s) =>
+    watched.map((id) => `${id}:${(s.tokens[id]?.statuses ?? []).join(',')}`).join(';'),
+  );
+  const seenStickers = useRef<string | null>(null);
+  useEffect(() => {
+    const before = seenStickers.current;
+    seenStickers.current = stickers;
+    // Lista figur zmienia się też z samym odświeżeniem — liczy się tylko zmiana
+    // naklejek figury, którą widzieliśmy już wcześniej.
+    if (before === null || !changedSticker(before, stickers)) return;
+    void refresh();
+  }, [stickers, refresh]);
 
   const placement = useWindowPlacement('exchange', () => ({ x: 160, y: 96 }));
 
@@ -177,6 +237,16 @@ function ExchangeWindowBody({ win }: { win: ExchangeWindowState }) {
       aria-label="Wymiana"
       data-exchange-mode={kind ?? 'none'}
       data-owns-keys
+      // Klik w puste miejsce okna też bierze fokus — inaczej `Esc` szedłby do mapy.
+      tabIndex={-1}
+      onKeyDown={(event) => {
+        // `Esc` w oknie zamyka okno (zaległość z 31.10), jak w `SceneObjectCard`
+        // — chyba że zjadła go siatka kafli, czyszcząc zaznaczenie
+        // (`stopPropagation`). Trwający handel czeka w doku.
+        if (event.key !== 'Escape') return;
+        event.stopPropagation();
+        close();
+      }}
     >
       <div className="inventory-window-header" {...placement.dragProps}>
         <span className="inventory-window-title">{title}</span>

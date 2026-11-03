@@ -57,6 +57,7 @@ import {
   CPRED_NOT_DRAWN_REFUSAL,
   type CpredAttackMode,
 } from './attacks.js';
+import { cpredBareHandsIcon } from './barehands.js';
 import { cpredActionBlock, cpredMovementBlock } from './statuses.js';
 import type { TurnBudgetView } from '../../combat.js';
 import { JUMP_COST_M } from '../../jump.js';
@@ -825,7 +826,10 @@ export function hotbarSlotsFor(input: CpredHotbarInput): CpredHotbarSlot[] {
       const attacksMax = mode === 'single' && (option.resolved?.rof ?? 1) >= 2 ? 2 : 1;
       slots.push({
         kind: 'weapon',
-        icon: cpredWeaponIcon(option.resolved),
+        // Gołe ręce bez wpisu w kompendium — pięść, nie pistol z ostatniego szczebla.
+        icon: option.resolved
+          ? cpredWeaponIcon(option.resolved)
+          : (cpredBareHandsIcon(option.rowId) ?? cpredWeaponIcon(null)),
         id: `${weaponSlotBase(option)}:${mode}`,
         label: option.name,
         modeLabel: CPRED_ATTACK_MODE_SHORT[mode],

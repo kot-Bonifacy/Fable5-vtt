@@ -9,6 +9,21 @@ go czytać.
 albo gdy chcesz sprawdzić, czy pozycja, która wygląda na nową, nie jest wracającą starą.
 Treść wpisów jest niezmieniona — łącznie z datami i odsyłaczami do notatek sesji.
 
+## Zamknięte 2026-11-03, czwarta sesja (zaległości bez MG i bez VPS)
+
+**31.10.2026 — Otwarte okno łupu nie wraca do handlu po zdjęciu naklejki.** Oględziny łupu
+z ciała gracza (sesja siódma, Ola w **Firefoksie**): MG zdejmuje Kowalowi „Ogłuszony”, a okno
+Oli dalej stoi w trybie „loot” z „Zabierz wszystko” (serwer i tak odmówi `STILL_STANDING`).
+Okno nie odświeża listy drugich stron, gdy zmienia się naklejka figury; `Esc` go nie zamyka.
+Drobne — ponowne otwarcie z menu figury daje handel.
+**Naprawa (03.11):** okno pytało o listę drugich stron tylko przy zapisie własnej karty i przy
+fokusie pola, a naklejka stanu siedzi na figurze, nie na karcie. `ExchangeWindow` podpisuje
+naklejki figury, od której otwarto okno, i figur z listy — zmiana u figury widzianej wcześniej
+odświeża listę. Gdy wybrany `loot:<tokenId>` znika, okno schodzi do „wybierz, z kim” z informacją
+„X już nie leży — przeszukanie się skończyło.” (handlu samo nie zaczyna). `Esc` w oknie zamyka
+okno (`tabIndex={-1}`, żeby klik w puste miejsce brał fokus). Umowa na górze `ekwipunek`.
+Sprawdzone tymczasowym specem Chromium na instancji E2E; Firefox przy stole.
+
 ## Zamknięte 2026-10-31, siódma sesja (zaległości bez MG i bez VPS, druga tura)
 
 **31.10.2026 — Karta prośby o operację mówi „Zoperowane” po nieudanym Teście montażu.**

@@ -1,5 +1,24 @@
 # Dziennik sesji — archiwum
 
+### Sesja 03.11, druga — gęsta karta rzutu na czacie
+
+**Zlecenie MG:** czat w prawej belce przeładowany — największa liczba (suma) zbędna, a przy
+mechanikach z wieloma Testami wpisy piętrzą się w pionie; gracze rozciągają belkę, więc elementy
+jednej kategorii mogą stać w jednym wierszu. **Pytania i odpowiedzi MG (03.11):** suma — usunąć,
+Test ma ją w plakietce, rzut bez PT pisze „= N” za kośćmi; w jednym wierszu — nagłówek z tytułem,
+kości + źródła modyfikatorów, wszystkie plakietki razem, wymuszone Testy/cele jako kafle; sklejanie
+kart jednej mechaniki — nie teraz (`POMYSLY.md`); zakres — rzuty i karty walki. **Zrobione:**
+`RollRow` przebudowany (tytuł w `.chat-message-meta`, `.chat-roll-line`, tablica plakietek
+oddawana `AttackRow` / `OpposedRow` jako `leadBadges`), `rollShowsTotal` (`chat-roll-total.ts`
++ test), kafle `.chat-attack-checks`, `.chat-attack` bez kreski, `.chat-damage-body` wierszem,
+pusty `.chat-roll-badges` znika. E2E `rollTotals` czyta `data-total`. **Rozstrzygnięcie bez
+pytań (do słowa MG):** czy suma stoi w plakietce, rozstrzyga jej tekst (zaczyna się sumą), nie
+rodzaj rzutu — wyniki składa kilkanaście miejsc serwera, a „Skaner” czy „Targ dobity” sumy nie
+podają. **Testy:** klient 454/454 (+5), `tsc`, ESLint, Prettier czyste. **Oglądane w Chromium
+(biblioteka `playwright`, instancja E2E, karty wstrzyknięte do magazynu czatu):** belka 320 px
+704 → 583 px, 620 px 686 → 441 px dla tych samych czterech kart. Firefoksa w kontenerze nie ma —
+oględziny w nim przy stole.
+
 ### Sesja 03.11 — wybór celu, gdy na jednym polu stoi kilku wrogów
 
 **Zlecenie MG:** „gdy na jednym hexie jest więcej niż jeden z wrogów, gracz powinien mieć

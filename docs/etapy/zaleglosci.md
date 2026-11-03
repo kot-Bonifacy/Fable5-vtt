@@ -6,18 +6,17 @@ w `POMYSLY.md` („Do sprawdzenia przy stole”), decyzje MG — w `decyzje-i-up
 
 ## Otwarte
 
-**31.10.2026 — Otwarte okno łupu nie wraca do handlu po zdjęciu naklejki.** Oględziny łupu
-z ciała gracza (sesja siódma, Ola w **Firefoksie**): MG zdejmuje Kowalowi „Ogłuszony”, a okno
-Oli dalej stoi w trybie „loot” z „Zabierz wszystko” (serwer i tak odmówi `STILL_STANDING`).
-Okno nie odświeża listy drugich stron, gdy zmienia się naklejka figury; `Esc` go nie zamyka.
-Drobne — ponowne otwarcie z menu figury daje handel.
-
 **31.10.2026 — T4b 4.8 „pięść, która trafia” raz spudłowała.** Na trzy przebiegi T4b od
 `po-T4a` (sesja piąta 31.10) jeden padł w 4.8 na `punch.attack?.hit === false` (kość
 skryptowana 8, Iskra pod Rzeźnikiem); powtórka bez zmian w kodzie 20/20. Adnotacji z rozbiciem
 rzutu tamten przebieg nie zostawił (bez raportu JSON). Przy kolejnej porażce sprawdzić, czy kości
 skryptu nie zjada wcześniej ukryta Percepcja z marszu Iskry („Iskra przystanęła: ukryta rzecz
 po drodze” w 4.9).
+**03.11: przyczyna ustalona z kodu, naprawa w teście — do potwierdzenia przebiegiem.** Lądowanie
+marszu zapisuje pozycję w bazie przed ukrytą Percepcją (`runZonesAfterMove` /
+`runHiddenFiguresAfterMove`), a 4.8 wpisywał kość 8 zaraz po `waitAt`; teraz czeka na klatkę
+`final` u MG (`finalFrameOf`). Pułapka na górze sekcji `testy`. Zamknąć po kilku zielonych
+przebiegach T4b od `po-T4a`.
 
 **31.10.2026 — etap 65e „Przeszkody i ruch uliczny”: oględziny MG i wdrożenie.** Oglądane na
 instancji E2E (spec `99-ogledziny/t99-przeszkody`, skasowany): MG w Chromium, Ola w **Firefoksie**

@@ -1,6 +1,7 @@
 import { cpredChromeStats, cpredSkillLevel } from './chromestats.js';
 import { hasCyberarm } from './cyberware.js';
 import type { CpredCharacterData, CpredWeaponRow } from './character.js';
+import type { CpredWeaponIcon } from './weaponicons.js';
 
 /**
  * Gołe ręce z urzędu (decyzja MG z 10.10.2026, etap 47b).
@@ -60,6 +61,23 @@ export function cpredIsBareHandsRow(row: { id: string } | string): boolean {
 /** Czy wpis katalogu to gołe ręce — tego się nie kupuje ani nie daje. */
 export function cpredIsBareHandsEntry(entryId: string): boolean {
   return BARE_HANDS_ENTRY_IDS.has(entryId);
+}
+
+/**
+ * Sylwetka gołych rąk po id wiersza albo wpisu — `null` dla każdej innej broni.
+ *
+ * Ikonę broni rozstrzyga zwykle wpis kompendium (typ „Bijatyka” → pięść), ale
+ * wiersze gołych rąk są stałe i stoją na każdej karcie także wtedy, gdy
+ * kompendium wpisu nie ma (publiczna próbka, instancja E2E). Bez tego pasek
+ * i karta rysowały przy „Bijatyce” pistolet — ostatni szczebel
+ * `cpredWeaponIcon` (03.11, pytanie MG).
+ */
+export function cpredBareHandsIcon(id: string | undefined): CpredWeaponIcon | null {
+  if (id === CPRED_BARE_HANDS_ROW_IDS.brawling || id === CPRED_BRAWLING_ENTRY_ID) return 'fist';
+  if (id === CPRED_BARE_HANDS_ROW_IDS.martialArts || id === CPRED_MARTIAL_ARTS_ENTRY_ID) {
+    return 'martial-arts';
+  }
+  return null;
 }
 
 /** Lista broni bez stałych wierszy — to, co niesie łata karty. */

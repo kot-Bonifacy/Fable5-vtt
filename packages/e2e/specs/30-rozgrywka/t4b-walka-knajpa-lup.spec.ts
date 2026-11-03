@@ -126,6 +126,43 @@ test.describe.serial('T4b: walka pierwsza w „Knajpie” — rany, granat, zwar
     await walkOnMap(actor.page, to);
   }
 
+  /**
+   * Ostatnia klatka marszu figury na polu, widziana gniazdem MG. Serwer wysyła ją
+   * po rzutach lądowania (ukryta Percepcja), więc po niej kość skryptu czeka na
+   * rzut, który wywoła test. Nasłuch trzeba założyć **przed** marszem — funkcja
+   * oddaje go w obiekcie, żeby `await` na gnieździe nie czekał od razu na klatkę.
+   */
+  async function finalFrameOf(
+    name: string,
+    column: number,
+    row: number,
+  ): Promise<{ landed: () => Promise<void> }> {
+    const socket = await mg.socket();
+    const tokenId = token(name).id;
+    let seen = false;
+    socket.on('token:move', (move: { tokenId: string; x: number; y: number; final?: boolean }) => {
+      if (
+        move.tokenId === tokenId &&
+        move.final === true &&
+        Math.round(move.x / cell) === column &&
+        Math.round(move.y / cell) === row
+      ) {
+        seen = true;
+      }
+    });
+    return {
+      landed: async () => {
+        try {
+          await expect
+            .poll(() => seen, { timeout: 30_000, message: `final ${name} → ${column},${row}` })
+            .toBe(true);
+        } finally {
+          socket.disconnect();
+        }
+      },
+    };
+  }
+
   async function waitAt(name: string, column: number, row: number) {
     await expect
       .poll(() => [Math.round(token(name).x / cell), Math.round(token(name).y / cell)], {
@@ -418,8 +455,15 @@ test.describe.serial('T4b: walka pierwsza w „Knajpie” — rany, granat, zwar
     const page = ola.page;
     // Z tarasu na pole pod Rzeźnikiem (5, 19), który stoi w drzwiach (5, 18).
     await clientsSeeTurn(ola);
+    // Lądowanie zapisuje figurę w bazie, a dopiero potem rzuca ukrytą Percepcję
+    // o rzeczy przy drodze (`runZonesAfterMove`, `runHiddenFiguresAfterMove`)
+    // i wysyła ostatnią klatkę. Kość skryptu wpisana zaraz po `waitAt` potrafiła
+    // trafić do tej Percepcji, a pięść dostawała losową — stąd jedno pudło na
+    // trzy przebiegi (zaległość z 31.10). Czekamy na klatkę `final` u MG.
+    const frame = await finalFrameOf('Iskra', 5, 19);
     await walk(ola, 'Iskra', floorOf(5, 19));
     await waitAt('Iskra', 5, 19);
+    await frame.landed();
     const turn = JSON.parse(combatantOf('Iskra').turnState!) as {
       metresUsed: number;
       metresPerMove: number;

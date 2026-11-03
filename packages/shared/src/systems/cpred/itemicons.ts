@@ -16,6 +16,7 @@
  */
 
 import type { CpredAmmoPattern } from './ammo.js';
+import { cpredBareHandsIcon } from './barehands.js';
 import type { CpredAttachmentEffect } from './attachments.js';
 import type { CompendiumEntry, CompendiumRegistry, WeaponEntry } from './compendium.js';
 import { resolveWeapon } from './compendium.js';
@@ -148,7 +149,7 @@ export function cpredItemRowIcon(
   const entry = row.compendiumId ? lookup(row.compendiumId) : undefined;
   const byEntry = entry ? cpredEntryIcon(entry, registry) : null;
   if (byEntry) return byEntry;
-  if (list === 'weapons') return cpredWeaponIcon(null);
+  if (list === 'weapons') return cpredBareHandsIcon(row.compendiumId) ?? cpredWeaponIcon(null);
   if (list === 'armor') return cpredArmorIcon(row.armorLocation);
   return null;
 }

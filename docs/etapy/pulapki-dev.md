@@ -1773,6 +1773,7 @@ w górę i „nie ma karty" na zrzucie znaczy najczęściej „nie doskrolowano"
 
 ## testy — Testy i środowisko dev
 
+- **Kość skryptu wpisana zaraz po `waitAt` marszu bywa zjedzona przez ukrytą Percepcję lądowania (03.11, T4b 4.8)** — `performTokenMove` zapisuje pozycję w bazie (`tokens.ts`, `prisma.token.update`), a dopiero potem `runZonesAfterMove` / `runHiddenFiguresAfterMove` rzucają Percepcję w ukryciu i lecą klatką `final`. `waitAt` czyta bazę, więc `scriptDice([...])` po nim ścigał się z tym rzutem — pięść w 4.8 raz dostała losową kość. Czekaj na klatkę `final` u MG (`finalFrameOf` w `t4b-walka-knajpa-lup.spec.ts`; nasłuch zakładasz **przed** marszem), zanim wpiszesz skrypt kości po marszu gracza.
 - **`brightPixelsAlong` liczy piksele zrzutu całej strony, nie płótna — plakat nad mapą też jest „jasny” (31.10, `t8a-szew-zaslony`)** — od 30.10 gracz bez figury na scenie bez „Gracze dzielą się widokiem” dostaje plakat „Jeszcze bez postaci” (`NoFigurePoster`), a pomiar szwu zasłony wziął go za przeciek mapy (708 jasnych pikseli). Przed szukaniem błędu w Pixi obejrzyj zrzut z `test-results`: DOM nad płótnem (plakat, kolumna komunikatów, pasek ładowania mapy) wchodzi do pomiaru. Druga połowa tej samej pułapki: w `test.describe.serial` po porażce pierwszego testu reszta jest **pomijana**, więc „drugi silnik zielony” z listy przebiegu bywa niepuszczony — sprawdź status w raporcie, zanim uznasz błąd za jednosilnikowy.
 - **Krok przygotowania, w którym MG przestawia NPC-a w walce, dostaje `GM_OVER_BUDGET` (24.10, T4b)** — od 19.10 wydatek NPC-a MG ponad budżet tury pyta MG paskiem; surowe `token:move` z `mg.socket()` odpowiada odmową, a pytanie (`combat:overspend-ask` z `askId`) idzie **do tego samego gniazda**. Woła się `emitAckOverBudget` z `fixtures/socket.ts` — odpowiada „Wykonaj poza budżetem” (`combat:overspend`). Asercja ack z `JSON.stringify(ack)` w komunikacie oszczędza zgadywania kodu.
 - **Pierwszy `Esc` po celu wskazanym na mapie zdejmuje okno Celowania, nie kubek (24.10, T4b 4.8)** — `AimMenu` słucha `keydown` w fazie capture i robi `stopPropagation`, więc drabinka `Esc` mapy i kubka nie słyszy pierwszego naciśnięcia. Kubek z ciosem zostaje i zasłania „Kończę turę” (`.dice-cup-luck` przechwytuje klik). Krok naciska `Esc`, aż `store('roll').attack` jest `null`.
@@ -1935,6 +1936,14 @@ $//'` na zmienionych plikach). Sprawdzenie: `file <plik>` mówi „with CRLF lin
 - **Test rzutu, który „ma się udać", migocze na fumble'u** — naturalna 1 odejmuje 1k10 i przebija każdy modyfikator; powtarzaj rzut w pętli.
 
 ---
+
+**Kość skryptu po marszu — wyścig z ukrytą Percepcją lądowania (03.11.2026, zaległość z 31.10).**
+Na trzy przebiegi T4b od `po-T4a` jeden padł w 4.8 na `punch.attack?.hit === false`. Kod
+lądowania zapisuje pozycję figury przed rzutami Percepcji o rzeczy przy drodze, a test czekał
+właśnie na pozycję w bazie i od razu wpisywał kość 8. Gdy Percepcja wypadła później niż zapis
+skryptu, brała ósemkę, a pięść dostawała losową kość. Naprawa w teście (czekanie na klatkę
+`final` gniazdem MG); przyczyna ustalona z kodu, przebiegiem T4b niepotwierdzona — kontener
+nie ma punktu `po-T4a`.
 
 - **Odsłanianie mapy spod okna karty w E2E (46b2).** Trzy przebiegi `t46b-` padły na tym samym
   kroku: (1) chwyt belki karty w lewym rogu trafia w portret, który Firefox zaczyna ciągnąć

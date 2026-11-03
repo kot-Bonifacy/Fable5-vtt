@@ -197,6 +197,10 @@ describe('cpredItemRowIcon', () => {
 
   it('broń bez wpisu — jak na pasku broni; pancerz — z miejsca; sprzęt — nic', () => {
     expect(cpredItemRowIcon('weapons', {}, lookup, registry)).toBe('pistol');
+    // Gołe ręce bez wpisu w kompendium (publiczna próbka) — pięść, nie pistolet.
+    expect(cpredItemRowIcon('weapons', { compendiumId: 'weapon.brawling' }, lookup, registry)).toBe(
+      'fist',
+    );
     expect(cpredItemRowIcon('armor', { armorLocation: 'shield' }, lookup, registry)).toBe('shield');
     expect(cpredItemRowIcon('gear', { compendiumId: 'gear.lina' }, lookup, registry)).toBeNull();
   });

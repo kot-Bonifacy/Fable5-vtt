@@ -1225,3 +1225,40 @@ describe('cpredTurnExhausted — kiedy „Kończę turę” pulsuje (etap 63a)',
     expect(cpredTurnExhausted(cpredTurnBudget(dying))).toBe(false);
   });
 });
+
+describe('gołe ręce bez wpisu w kompendium (03.11.2026, pytanie MG)', () => {
+  // Publiczna próbka kompendium (instancja E2E) nie ma `weapon.brawling` —
+  // wiersz rozwiązuje się do `null`, a ostatni szczebel ikony to pistolet.
+  it('Bijatyka rysuje pięść, Sztuki walki — swoją sylwetkę', () => {
+    const slots = weaponSlots(
+      hotbarSlotsFor(
+        input({
+          sheet: {
+            weapons: [
+              weaponRow({
+                id: 'bare-hands.brawling',
+                name: 'Bijatyka',
+                compendiumId: 'weapon.brawling',
+                ammoMax: 0,
+              }),
+              weaponRow({
+                id: 'bare-hands.martial-arts',
+                name: 'Sztuki walki',
+                compendiumId: 'weapon.martial-arts',
+                ammoMax: 0,
+              }),
+            ],
+          },
+          resolve: () => null,
+        }),
+      ),
+    );
+    expect(slots.find((slot) => slot.label === 'Bijatyka')?.icon).toBe('fist');
+    expect(slots.find((slot) => slot.label === 'Sztuki walki')?.icon).toBe('martial-arts');
+  });
+
+  it('broń wpisana ręcznie bez wpisu dalej ma pistolet', () => {
+    const slots = weaponSlots(hotbarSlotsFor(input({ resolve: () => null })));
+    expect(slots[0]?.icon).toBe(cpredWeaponIcon(null));
+  });
+});
