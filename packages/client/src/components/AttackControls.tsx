@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import type { ChatMessageView, RollAttackMeta } from '@vtt/shared';
 import { ROLE_GM, formatMetres } from '@vtt/shared';
 import { useAuthStore } from '../stores/authStore.js';
@@ -21,9 +22,12 @@ import { attackAwaitsDamage, attackShooterFor, damageRollFor } from '../attack-d
 export function AttackRow({
   message,
   attack,
+  leadBadges,
 }: {
   message: ChatMessageView;
   attack: RollAttackMeta;
+  /** Plakietki samego rzutu (krytyk, wynik) — stoją w tym samym wierszu co werdykt (03.11). */
+  leadBadges?: ReactNode;
 }) {
   const characters = useCharacterStore((s) => s.characters);
   const tokens = useTokenStore((s) => s.tokens);
@@ -177,6 +181,7 @@ export function AttackRow({
   return (
     <div className="chat-attack">
       <div className="chat-roll-badges">
+        {leadBadges}
         <span className={`chat-roll-badge chat-roll-badge--${verdict.className}`}>
           {verdict.text}
         </span>

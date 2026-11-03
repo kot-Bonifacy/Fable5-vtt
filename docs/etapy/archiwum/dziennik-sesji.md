@@ -1,5 +1,20 @@
 # Dziennik sesji — archiwum
 
+### Sesja 02.11, szósta — wpięta figura nie rusza się (zgłoszenie „hakowanie się wyłączyło”)
+
+**Zgłoszenie gracza (przez MG):** „hackowanie się wyłączyło przy włączeniu trybu turowego”.
+**Weryfikacja:** test na żywych gniazdach (podłączenie przed walką, `combat:start`, inicjatywa,
+tury) — Ajdi, zjazd, Kontrola, Zwiad, odłączenie i ponowne podłączenie w walce działały; w cudzej
+turze odmowa `NOT_YOUR_TURN`. Błędu w trybie turowym nie ma. MG: gracz pewnie ruszył postacią —
+wyjście poza 6 m odłącza awaryjnie (s. 198), a ruch „nie powinien być możliwy w trakcie
+podłączenia”. **Zrobione:** `refuseMoveWhileJackedIn` (`netrun-io.ts`) w `performTokenMove`
+(każda klatka; przepuszcza tylko rękę MG), w `token:walk` i w odmowie skoku (`jump.ts`); kod
+`NET_JACKED_IN_MOVE` z tekstem w `NET_RUN_PROBLEM_MESSAGES`, klient pokazuje go przy ruchu
+i skoku. Zasada domowa w `decyzje-i-uproszczenia.md` („Sieć i walka”). **Testy:** serwer
+`netrun.test.ts` (odmowa przeciągnięcia, klatki, marszu, skoku; ręka MG wynosi i odłącza),
+`netcombat.test.ts` (wyniesienie ręką MG); shared 2901, klient 443, serwer 1720 — zielone.
+**Nieoglądane w przeglądarce** (sesja w chmurze, Playwright MCP nie wstał).
+
 ### Sesja 02.11, piąta — asortyment handlarza z kompendium
 
 **Zlecenie MG:** „dodaj handlarzowi możliwość ustawiania poziomu dostępu do kompendium (zakres

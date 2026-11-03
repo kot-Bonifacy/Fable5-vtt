@@ -601,19 +601,20 @@ body:has(.creator-window) .dice-overlay {
   font-style: italic;
 }
 
-/* Baseline alignment was right while the total was the same size as the text
-   beside it. Now that it is two lines tall, a shared baseline would hang it
-   off the first line and leave the second one under its belly — centring keeps
-   the number level with however many lines the notation wraps to. */
-.chat-roll-header {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
+/* Gęsta karta rzutu (03.11, zlecenie MG): tytuł rzutu stoi w nagłówku obok
+   postaci, więc nagłówek się zawija — przy wąskiej belce tytuł schodzi pod
+   imię, a godzina (`margin-left: auto`) trzyma prawą krawędź tej linii, na
+   której wylądowała. */
+.chat-roll .chat-message-meta {
+  flex-wrap: wrap;
+  column-gap: 0.45rem;
+  row-gap: 0.1rem;
 }
 
 .chat-roll-notation {
+  min-width: 0;
   font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
-  font-size: 0.82rem;
+  font-size: 0.78rem;
   color: var(--text-dim);
   overflow-wrap: anywhere;
 }
@@ -623,19 +624,26 @@ body:has(.creator-window) .dice-overlay {
   font-style: italic;
 }
 
-/* The result of the roll — the one number the whole card exists for. Sized to
-   about two lines of the notation next to it, because every roll card carries
-   at least two lines anyway, and at text size the figure read as a footnote of
-   its own dice. `line-height: 1` is what makes „two lines tall" true rather
-   than approximate; tabular figures stop 11 from sitting narrower than 10. */
-.chat-roll-total {
-  margin-left: auto;
-  flex: none;
-  font-size: 2.1rem;
-  line-height: 1;
+/* Kości i nazwane modyfikatory w jednym wierszu — rozchodzą się dopiero, gdy
+   belka jest za wąska na oba. */
+.chat-roll-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  column-gap: 0.6rem;
+  row-gap: 0.3rem;
+}
+
+/* Suma bez PT (obrażenia, `/r`, atak): w rozmiarze tekstu, pogrubiona, za
+   kośćmi. Dawna duża liczba (2,1 rem) zniknęła — przy Teście dublowała
+   plakietkę wyniku, a sama zajmowała dwie linie. */
+.chat-roll-sum {
+  margin-left: 0.1rem;
   font-weight: 700;
+  font-size: 0.95rem;
   font-variant-numeric: tabular-nums;
   color: var(--text);
+  white-space: nowrap;
 }
 
 .chat-roll-dice {
@@ -643,7 +651,6 @@ body:has(.creator-window) .dice-overlay {
   flex-wrap: wrap;
   align-items: center;
   gap: 0.25rem;
-  margin-top: 0.3rem;
 }
 
 .chat-die {
@@ -697,8 +704,14 @@ body:has(.creator-window) .dice-overlay {
 .chat-roll-badges {
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
   gap: 0.3rem;
   margin-top: 0.35rem;
+}
+
+/* Karta obrażeń rysuje wiersz plakietek zawsze — pusty nie dokłada szczeliny. */
+.chat-roll-badges:empty {
+  display: none;
 }
 
 .chat-roll-badge {

@@ -42,9 +42,15 @@ export async function shakeCup(page: Page): Promise<void> {
   await page.mouse.up();
 }
 
-/** Wyniki kart rzutów na czacie, od najstarszej. */
+/**
+ * Wyniki kart rzutów na czacie, od najstarszej. Suma jedzie w `data-total`,
+ * bo od 03.11 karta nie ma już jednej dużej liczby: Test podaje ją w plakietce
+ * wyniku, reszta pisze „= N” za kośćmi.
+ */
 export async function rollTotals(page: Page): Promise<string[]> {
-  return page.locator('.chat-roll .chat-roll-total').allTextContents();
+  return page
+    .locator('.chat-roll[data-total]')
+    .evaluateAll((cards) => cards.map((card) => card.getAttribute('data-total') ?? ''));
 }
 
 /**

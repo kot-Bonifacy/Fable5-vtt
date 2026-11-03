@@ -29,6 +29,13 @@ Pełna tabela z nazwami i datami: `archiwum/tabela-etapow.md`.
 
 ## Od czego zacząć
 
+**Gęsta karta rzutu na czacie (zlecenie MG z 03.11) — czeka na wdrożenie i oględziny przy stole
+(Firefox).** Duża suma zniknęła (Test podaje ją w plakietce, reszta „= N” za kośćmi), tytuł rzutu
+stoi w nagłówku obok postaci, kości i źródła modyfikatorów dzielą wiersz, wszystkie plakietki
+(krytyk, wynik, werdykt ataku/starcia) — drugi; cele granatu i ognia zaporowego to kafle,
+karta obrażeń płynie wierszem. Przy belce 620 px Test + obrażenia + granat z trzema celami
++ nałożenie obrażeń: 441 px zamiast 686. Umowa na górze `czat`, sklejanie kart w `POMYSLY.md`.
+
 **Wybór celu ze stosu figur (zlecenie MG z 03.11) — czeka na wdrożenie i oględziny przy stole.**
 Klik celownika w pole, na którym stoi więcej niż jeden cel, nie strzela w figurę z wierzchu:
 przy kursorze staje „Kilka celów na tym polu — w kogo?” z listą (nazwa, powtórzona z numerem,
@@ -563,7 +570,7 @@ a nie do tego pliku.
 | obszar      | co obejmuje                                                    | umów | pułapek |
 | ----------- | -------------------------------------------------------------- | ---- | ------- |
 | `mapa`      | figury, zaznaczanie, narzędzia, obiekty sceny, ściany, efekty, zamek drzwi, ukryta figura zauważona, ikony urządzeń, wspólny widok drużyny, scena pościgu, jazda kierowcy i dryf, Manewr i taranowanie, przeszkody pościgu, sceny przykładowe, wzorzec zwykłej mapy | 77   | 27      |
-| `czat`      | rodzaje wierszy, `visibleTo`, filtr, `seq`, `gmrecovery`, „to dotyczy mnie”, grupy kart, kolor gracza, czyszczenie | 13   | 3       |
+| `czat`      | rodzaje wierszy, `visibleTo`, filtr, `seq`, `gmrecovery`, „to dotyczy mnie”, grupy kart, kolor gracza, czyszczenie, gęsta karta rzutu | 14   | 3       |
 | `serwer`    | Prisma i migracje, zdarzenia gniazda, zapisy karty, uploady    | 26   | 21      |
 | `ui`        | okna pływające, `z-index`, motyw, skróty, dostępność, wejście, panel decyzji MG | 37   | 15      |
 | `kosci`     | kubek, `rollFormula`, wezwania i prośby o Test, tabele losowe, PT od MG | 24   | 2       |
@@ -585,6 +592,25 @@ a nie do tego pliku.
 ## Notatki z dwóch ostatnich sesji
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
+
+### Sesja 03.11, druga — gęsta karta rzutu na czacie
+
+**Zlecenie MG:** czat w prawej belce przeładowany — największa liczba (suma) zbędna, a przy
+mechanikach z wieloma Testami wpisy piętrzą się w pionie; gracze rozciągają belkę, więc elementy
+jednej kategorii mogą stać w jednym wierszu. **Pytania i odpowiedzi MG (03.11):** suma — usunąć,
+Test ma ją w plakietce, rzut bez PT pisze „= N” za kośćmi; w jednym wierszu — nagłówek z tytułem,
+kości + źródła modyfikatorów, wszystkie plakietki razem, wymuszone Testy/cele jako kafle; sklejanie
+kart jednej mechaniki — nie teraz (`POMYSLY.md`); zakres — rzuty i karty walki. **Zrobione:**
+`RollRow` przebudowany (tytuł w `.chat-message-meta`, `.chat-roll-line`, tablica plakietek
+oddawana `AttackRow` / `OpposedRow` jako `leadBadges`), `rollShowsTotal` (`chat-roll-total.ts`
++ test), kafle `.chat-attack-checks`, `.chat-attack` bez kreski, `.chat-damage-body` wierszem,
+pusty `.chat-roll-badges` znika. E2E `rollTotals` czyta `data-total`. **Rozstrzygnięcie bez
+pytań (do słowa MG):** czy suma stoi w plakietce, rozstrzyga jej tekst (zaczyna się sumą), nie
+rodzaj rzutu — wyniki składa kilkanaście miejsc serwera, a „Skaner” czy „Targ dobity” sumy nie
+podają. **Testy:** klient 454/454 (+5), `tsc`, ESLint, Prettier czyste. **Oglądane w Chromium
+(biblioteka `playwright`, instancja E2E, karty wstrzyknięte do magazynu czatu):** belka 320 px
+704 → 583 px, 620 px 686 → 441 px dla tych samych czterech kart. Firefoksa w kontenerze nie ma —
+oględziny w nim przy stole.
 
 ### Sesja 03.11 — wybór celu, gdy na jednym polu stoi kilku wrogów
 
@@ -608,17 +634,3 @@ nie pytają, bo celują w pole; dymek celownika przy najechaniu dalej wycenia fi
 z trzema pozycjami, wybór spodniego „Gangera” ładuje kubek „Zgrzyt 9 → Ganger” i okno
 Celowania. Firefoksa w kontenerze nie ma — oględziny w nim przy stole.
 
-### Sesja 02.11, szósta — wpięta figura nie rusza się (zgłoszenie „hakowanie się wyłączyło”)
-
-**Zgłoszenie gracza (przez MG):** „hackowanie się wyłączyło przy włączeniu trybu turowego”.
-**Weryfikacja:** test na żywych gniazdach (podłączenie przed walką, `combat:start`, inicjatywa,
-tury) — Ajdi, zjazd, Kontrola, Zwiad, odłączenie i ponowne podłączenie w walce działały; w cudzej
-turze odmowa `NOT_YOUR_TURN`. Błędu w trybie turowym nie ma. MG: gracz pewnie ruszył postacią —
-wyjście poza 6 m odłącza awaryjnie (s. 198), a ruch „nie powinien być możliwy w trakcie
-podłączenia”. **Zrobione:** `refuseMoveWhileJackedIn` (`netrun-io.ts`) w `performTokenMove`
-(każda klatka; przepuszcza tylko rękę MG), w `token:walk` i w odmowie skoku (`jump.ts`); kod
-`NET_JACKED_IN_MOVE` z tekstem w `NET_RUN_PROBLEM_MESSAGES`, klient pokazuje go przy ruchu
-i skoku. Zasada domowa w `decyzje-i-uproszczenia.md` („Sieć i walka”). **Testy:** serwer
-`netrun.test.ts` (odmowa przeciągnięcia, klatki, marszu, skoku; ręka MG wynosi i odłącza),
-`netcombat.test.ts` (wyniesienie ręką MG); shared 2901, klient 443, serwer 1720 — zielone.
-**Nieoglądane w przeglądarce** (sesja w chmurze, Playwright MCP nie wstał).

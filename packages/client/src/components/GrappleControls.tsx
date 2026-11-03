@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import type { ChatMessageView, RollOpposedMeta } from '@vtt/shared';
 import { CPRED_FACEDOWN_PENALTY, ROLE_GM } from '@vtt/shared';
 import { useAuthStore } from '../stores/authStore.js';
@@ -40,9 +41,12 @@ function facedownSystem(
 export function OpposedRow({
   message,
   opposed,
+  leadBadges,
 }: {
   message: ChatMessageView;
   opposed: RollOpposedMeta;
+  /** Plakietki samego rzutu (krytyk, wynik) — stoją w tym samym wierszu co werdykt (03.11). */
+  leadBadges?: ReactNode;
 }) {
   const characters = useCharacterStore((s) => s.characters);
   const tokens = useTokenStore((s) => s.tokens);
@@ -100,6 +104,7 @@ export function OpposedRow({
   return (
     <div className="chat-attack">
       <div className="chat-roll-badges">
+        {leadBadges}
         <span className={`chat-roll-badge chat-roll-badge--${verdict.className}`}>
           {verdict.text}
         </span>

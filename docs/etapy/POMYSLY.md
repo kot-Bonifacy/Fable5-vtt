@@ -1,5 +1,11 @@
 # Pomysły poza zakresem etapów
 
+**03.11.2026 (gęsta karta rzutu) — sklejanie kart jednej mechaniki.** MG odłożył (03.11): atak,
+Unik, rzut obrażeń i nałożenie obrażeń to dziś cztery osobne wpisy czatu. Jeden wpis „przebieg
+ataku” zbierałby je w miarę, jak przychodzą (karty powstają w różnych chwilach, więc to zmiana
+po stronie serwera — wiersz-matka i `chat:update`, wzorem Uniku, który już ląduje na karcie
+ataku). Do rozważenia razem: zwijanie rozliczonego przebiegu do jednej linii z werdyktem.
+
 **02.11.2026 (asortyment handlarza) — czego półka z kompendium jeszcze nie umie.** (1) **Amunicja
 z kompendium** — pudełko wymaga kalibru (46c); półka mogłaby wystawiać granaty i rakiety dla
 kalibrów broni w zakresie. (2) **Ripperdok** — cyborgizacje nie są wierszem karty, więc nie
