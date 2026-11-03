@@ -625,6 +625,12 @@ interface TabProps {
   saveData: (patch: Partial<CpredCharacterData>, fieldKey: string) => void;
 }
 
+/** Część ekwipunku, którą rysuje pas broni (03.11.2026): ręce albo plecak. */
+type WeaponScope = 'hands' | 'pack';
+
+/** Część pancerza, którą rysuje pas pancerza (03.11.2026): na sobie albo w plecaku. */
+type ArmorScope = 'worn' | 'pack';
+
 /**
  * Jak wiersz karty zaczyna rzut: Umiejętność albo Cecha, `Shift` (kubek od
  * ręki) i `Alt` (prośba o Test, etap 40). Alias, bo ten sam podpis wędruje
@@ -898,30 +904,6 @@ function RoleAbilityStrip({ character, data }: TabProps & { character: Character
         )}
       </div>
     </div>
-  );
-}
-
-/**
- * Dolny pas strony pierwszej: „Broń i pancerz" (etap 27b).
- *
- * Na wydruku to jeden blok pod trzema kolumnami i tak samo jest tutaj — pas
- * rozciąga się przez całą szerokość siatki strony.
- */
-function Arsenal({
-  character,
-  data,
-  saveData,
-  startRoll,
-}: TabProps & {
-  character: CharacterSheetView;
-  startRoll: StartRoll;
-}) {
-  return (
-    <section className="cp-arsenal">
-      <h3 className="cp-section">Broń i pancerz</h3>
-      <WeaponStrip character={character} data={data} saveData={saveData} startRoll={startRoll} />
-      <ArmorStrip character={character} data={data} saveData={saveData} />
-    </section>
   );
 }
 
@@ -1991,11 +1973,20 @@ function WeaponStrip({
   data,
   saveData,
   startRoll,
+  scope,
 }: {
   character: CharacterSheetView;
   data: CpredCharacterData;
   saveData: TabProps['saveData'];
   startRoll: StartRoll;
+  /**
+   * Którą część listy broni rysuje ten pas (03.11.2026, zlecenie MG — wzór
+   * z cRPG): `hands` — slot „Ręce” w sekcji „Używane” (broń dobyta i gołe
+   * ręce), `pack` — „Plecak” (cała reszta, z „Dobądź”). Ta sama tabela
+   * z tymi samymi czynnościami, żeby broń w rękach nie traciła ataku,
+   * magazynka ani dodatków przez to, że stoi w innej sekcji.
+   */
+  scope: WeaponScope;
 }) {
   const entries = useCompendiumStore((s) => s.entries);
   const weaponTypeById = useCompendiumStore((s) => s.weaponTypeById);
@@ -2048,6 +2039,9 @@ function WeaponStrip({
    */
   const outsideHands = cpredGrenadesOutsideHands(resolvedOf);
   const inHands = cpredDrawnWeapons(data, outsideHands).map((row) => row.id);
+  const shownRows = data.weapons.filter(
+    (row) => (cpredIsBareHandsRow(row) || inHands.includes(row.id)) === (scope === 'hands'),
+  );
 
   function updateRow(rowId: string, patch: Partial<CpredWeaponRow>) {
     saveData(
@@ -2156,420 +2150,444 @@ function WeaponStrip({
   }
 
   return (
-    <div className="cp-strip cp-weapons">
-      <table className="cp-table weapon-table">
-        <thead>
-          {/* Nagłówki dokładnie z wydruku; „Atak" i kosz to nasze dwie kolumny
+    <div className={`cp-strip cp-weapons cp-weapons--${scope}`}>
+      {scope === 'hands' && inHands.length === 0 && (
+        <p className="cp-loadout-empty" data-testid="hands-empty">
+          Puste ręce — broń dobywa się z plecaka niżej (bez Akcji, póki ręce są wolne).
+        </p>
+      )}
+      {scope === 'pack' && shownRows.length === 0 && (
+        <p className="cp-loadout-empty">W plecaku nie ma broni.</p>
+      )}
+      {shownRows.length > 0 && (
+        <table className="cp-table weapon-table">
+          <thead>
+            {/* Nagłówki dokładnie z wydruku; „Atak" i kosz to nasze dwie kolumny
               więcej — karta papierowa nie ma czym strzelać. */}
-          <tr>
-            <th>Broń</th>
-            <th style={{ width: '5.5rem' }}>Obr.</th>
-            <th style={{ width: '7rem' }}>Amunicja</th>
-            <th style={{ width: '3.5rem' }}>LA</th>
-            <th>Uwagi</th>
-            <th className="weapon-actions-head">Atak</th>
-            <th style={{ width: '2rem' }} />
-          </tr>
-        </thead>
-        <tbody>
-          {data.weapons.flatMap((row) => {
-            const resolved = resolvedOf(row);
-            const tracksAmmo = row.ammoMax > 0;
-            const empty = tracksAmmo && row.ammoCurrent <= 0;
-            const stock = stockOf(row, resolved, row.ammoType);
-            const throwsFromStock = cpredThrowsFromStock(row, resolved);
-            // Etap 47b: Bijatyka (i Sztuki walki) z urzędu — nie przedmiot, więc
-            // bez pól do wpisania, uchwytu „na mapę”, dodatków i kosza.
-            const innate = cpredIsBareHandsRow(row);
-            return [
-              <tr key={row.id} className={innate ? 'weapon-innate' : undefined}>
-                <td>
-                  <span className="item-name-cell">
-                    {innate ? (
-                      <>
-                        <ItemIcon icon={rowIcon('weapons', row)} />
-                        <span
-                          className="weapon-innate-name"
-                          title="Gołe ręce ma każda postać — tego się nie kupuje, nie oddaje ani nie traci."
-                        >
-                          {row.name}
-                        </span>
-                      </>
-                    ) : (
-                      <>
-                        <MapDropHandle
-                          characterId={character.id}
-                          source={{ ref: { list: 'weapons', rowId: row.id }, name: row.name }}
-                        >
+            <tr>
+              <th>Broń</th>
+              <th style={{ width: '5.5rem' }}>Obr.</th>
+              <th style={{ width: '7rem' }}>Amunicja</th>
+              <th style={{ width: '3.5rem' }}>LA</th>
+              <th>Uwagi</th>
+              <th className="weapon-actions-head">Atak</th>
+              <th style={{ width: '2rem' }} />
+            </tr>
+          </thead>
+          <tbody>
+            {shownRows.flatMap((row) => {
+              const resolved = resolvedOf(row);
+              const tracksAmmo = row.ammoMax > 0;
+              const empty = tracksAmmo && row.ammoCurrent <= 0;
+              const stock = stockOf(row, resolved, row.ammoType);
+              const throwsFromStock = cpredThrowsFromStock(row, resolved);
+              // Etap 47b: Bijatyka (i Sztuki walki) z urzędu — nie przedmiot, więc
+              // bez pól do wpisania, uchwytu „na mapę”, dodatków i kosza.
+              const innate = cpredIsBareHandsRow(row);
+              return [
+                <tr key={row.id} className={innate ? 'weapon-innate' : undefined}>
+                  <td>
+                    <span className="item-name-cell">
+                      {innate ? (
+                        <>
                           <ItemIcon icon={rowIcon('weapons', row)} />
-                        </MapDropHandle>
-                        <input
-                          type="text"
-                          maxLength={64}
-                          value={row.name}
-                          readOnly={!isGm}
-                          {...(isGm
-                            ? {}
-                            : { title: 'Nazwę broni zmienia MG — przezwisko daj w uwagach.' })}
-                          onChange={(e) => updateRow(row.id, { name: e.target.value })}
-                        />
-                      </>
-                    )}
-                  </span>
-                  {/* Wiersz bez wpisu z katalogu nie ma tabeli zasięgów, więc
+                          <span
+                            className="weapon-innate-name"
+                            title="Gołe ręce ma każda postać — tego się nie kupuje, nie oddaje ani nie traci."
+                          >
+                            {row.name}
+                          </span>
+                        </>
+                      ) : (
+                        <>
+                          <MapDropHandle
+                            characterId={character.id}
+                            source={{ ref: { list: 'weapons', rowId: row.id }, name: row.name }}
+                          >
+                            <ItemIcon icon={rowIcon('weapons', row)} />
+                          </MapDropHandle>
+                          <input
+                            type="text"
+                            maxLength={64}
+                            value={row.name}
+                            readOnly={!isGm}
+                            {...(isGm
+                              ? {}
+                              : { title: 'Nazwę broni zmienia MG — przezwisko daj w uwagach.' })}
+                            onChange={(e) => updateRow(row.id, { name: e.target.value })}
+                          />
+                        </>
+                      )}
+                    </span>
+                    {/* Wiersz bez wpisu z katalogu nie ma tabeli zasięgów, więc
                       nie strzela. Do 31.08 mówił to dopiero planer, w chwili
                       gdy strzał już się nie udał — teraz mówi to karta. */}
-                  {/* Etap 48c: wiązanie z katalogiem zmienia liczby broni, więc
+                    {/* Etap 48c: wiązanie z katalogiem zmienia liczby broni, więc
                       robi je MG; gracz widzi tylko, czemu broń nie strzeli. */}
-                  {!resolved && !innate && isGm && (
-                    <button
-                      type="button"
-                      className="small-button weapon-unbound"
-                      title="Ta broń nie ma wpisu z katalogu, więc nie zna tabeli zasięgów i nie wystrzeli. Wskaż model — obrażenia, magazynek i szybkostrzelność uzupełnią się z kompendium, nazwa i uwagi zostaną."
-                      onClick={() => setPicking({ rowId: row.id })}
-                    >
-                      ⚠ Wskaż broń z katalogu
-                    </button>
-                  )}
-                  {!resolved && !innate && !isGm && (
-                    <span
-                      className="small-button weapon-unbound"
-                      title="Ta broń nie ma wpisu z katalogu, więc nie zna tabeli zasięgów i nie wystrzeli. Model wskazuje MG."
-                    >
-                      ⚠ Bez wpisu z katalogu
-                    </span>
-                  )}
-                  {/* „Broń niskiej jakości … nie nadaje się do użytku"
+                    {!resolved && !innate && isGm && (
+                      <button
+                        type="button"
+                        className="small-button weapon-unbound"
+                        title="Ta broń nie ma wpisu z katalogu, więc nie zna tabeli zasięgów i nie wystrzeli. Wskaż model — obrażenia, magazynek i szybkostrzelność uzupełnią się z kompendium, nazwa i uwagi zostaną."
+                        onClick={() => setPicking({ rowId: row.id })}
+                      >
+                        ⚠ Wskaż broń z katalogu
+                      </button>
+                    )}
+                    {!resolved && !innate && !isGm && (
+                      <span
+                        className="small-button weapon-unbound"
+                        title="Ta broń nie ma wpisu z katalogu, więc nie zna tabeli zasięgów i nie wystrzeli. Model wskazuje MG."
+                      >
+                        ⚠ Bez wpisu z katalogu
+                      </span>
+                    )}
+                    {/* „Broń niskiej jakości … nie nadaje się do użytku"
                       (s. 244). Guzik, a nie sam chip: usterkę usuwa się Akcją
                       i bez Testu, więc karta ma umieć to, co pasek akcji —
                       inaczej gracz, który patrzy na kartę, widzi wyłącznie
                       zdanie o tym, że broń nie działa. */}
-                  {row.jammed === true && (
-                    <button
-                      type="button"
-                      className="small-button weapon-jammed"
-                      title="Broń niskiej jakości zacięła się po Krytycznej Porażce. Usunięcie usterki kosztuje Akcję i nie wymaga Testu."
-                      onClick={() => clearWeaponJam(character.id, row.id)}
-                    >
-                      ⚠ Zacięta — usuń usterkę
-                    </button>
-                  )}
-                  {/* Etap 41: co jest w rękach, a co w ekwipunku.
+                    {row.jammed === true && (
+                      <button
+                        type="button"
+                        className="small-button weapon-jammed"
+                        title="Broń niskiej jakości zacięła się po Krytycznej Porażce. Usunięcie usterki kosztuje Akcję i nie wymaga Testu."
+                        onClick={() => clearWeaponJam(character.id, row.id)}
+                      >
+                        ⚠ Zacięta — usuń usterkę
+                      </button>
+                    )}
+                    {/* Etap 41: co jest w rękach, a co w ekwipunku.
                       Guzik, a nie plakietka, bo to jest **czynność** z ceną
                       z podręcznika (s. 168): dobycie za darmo, schowanie za
                       Akcję. Od 29.10.2026 w rękach jest jedna broń, więc
                       dobycie przy pełnej ręce jest zamianą za Akcję. Pięść
-                      i granat są zawsze pod ręką — bez guzików. */}
-                  {cpredWeaponOutsideHands(row, outsideHands) ? null : inHands.includes(row.id) ? (
-                    <span className="weapon-hands">
-                      <span className="weapon-hands-badge" title="Ta broń jest w rękach">
-                        ✊ W rękach
+                      jest zawsze pod ręką — bez guzików. Od 03.11.2026 o tym,
+                      że broń jest w rękach, mówi sekcja („Używane” → „Ręce”),
+                      a nie plakietka przy wierszu. */}
+                    {innate ? null : scope === 'hands' ? (
+                      <span className="weapon-hands">
+                        <button
+                          type="button"
+                          className="small-button"
+                          title="Broń wraca do plecaka. Schowanie do kabury zabiera Akcję (s. 168)."
+                          onClick={() => drawWeapon(character.id, row.id, 'holster')}
+                        >
+                          Schowaj (Akcja)
+                        </button>
+                        <button
+                          type="button"
+                          className="small-button"
+                          title="Upuszczenie trzymanej broni nie wymaga Akcji (s. 168)."
+                          onClick={() => drawWeapon(character.id, row.id, 'drop')}
+                        >
+                          Upuść
+                        </button>
                       </span>
-                      <button
-                        type="button"
-                        className="small-button"
-                        title="Schowanie broni do kabury zabiera Akcję (s. 168)."
-                        onClick={() => drawWeapon(character.id, row.id, 'holster')}
+                    ) : cpredWeaponOutsideHands(row, outsideHands) ? (
+                      <span
+                        className="weapon-ready-badge"
+                        title="Granat ręczny rzuca się prosto z oporządzenia — nie trzeba go dobywać i nie zajmuje rąk."
                       >
-                        Schowaj (Akcja)
-                      </button>
+                        pod ręką
+                      </span>
+                    ) : (
                       <button
                         type="button"
-                        className="small-button"
-                        title="Upuszczenie trzymanej broni nie wymaga Akcji (s. 168)."
-                        onClick={() => drawWeapon(character.id, row.id, 'drop')}
-                      >
-                        Upuść
-                      </button>
-                    </span>
-                  ) : (
-                    <button
-                      type="button"
-                      className="small-button weapon-draw"
-                      title={
-                        inHands.length > 0
-                          ? 'W ręku masz inną broń: wraca do ekwipunku, a zamiana kosztuje Akcję.'
-                          : 'Sięgnięcie wolną ręką po łatwo dostępną broń nie wymaga Akcji (s. 168).'
-                      }
-                      onClick={() => drawWeapon(character.id, row.id, 'draw')}
-                    >
-                      {inHands.length > 0 ? 'Dobądź (Akcja)' : 'Dobądź'}
-                    </button>
-                  )}
-                  {/* Etap 31: trzy gniazda i to, co w nich siedzi. */}
-                  {!innate && (
-                    <WeaponAttachments
-                      characterId={character.id}
-                      row={row}
-                      resolved={resolved}
-                      gear={data.gear}
-                    />
-                  )}
-                </td>
-                <td>
-                  {innate ? (
-                    <span title="Obrażenia gołych rąk zależą od Budowy Ciała (s. 176).">
-                      {row.damage}
-                    </span>
-                  ) : (
-                    <input
-                      type="text"
-                      maxLength={32}
-                      value={row.damage}
-                      readOnly={!isGm}
-                      {...(isGm ? {} : { title: 'Obrażenia broni zmienia MG.' })}
-                      onChange={(e) => updateRow(row.id, { damage: e.target.value })}
-                    />
-                  )}
-                </td>
-                <td className="weapon-ammo-cell">
-                  {tracksAmmo ? (
-                    <>
-                      <NumberStepper
-                        className={`weapon-ammo-input${empty ? ' weapon-ammo-input--empty' : ''}`}
-                        min={0}
-                        max={handLocked ? Math.min(row.ammoCurrent, row.ammoMax) : row.ammoMax}
-                        value={Math.min(row.ammoCurrent, row.ammoMax)}
-                        label={`Stan magazynka: ${row.name}`}
-                        onChange={(value) => updateRow(row.id, { ammoCurrent: value })}
-                      />
-                      <span className="weapon-ammo-max">/{row.ammoMax}</span>
-                      <button
-                        type="button"
-                        className="small-button small-button--icon"
-                        disabled={row.ammoCurrent >= row.ammoMax || stock === 0}
+                        className="small-button weapon-draw"
                         title={
-                          stock === 0
-                            ? 'Brak zapasu tej amunicji w ekwipunku.'
-                            : `Przeładuj do pełna${row.ammoType ? ` (${row.ammoType})` : ''}`
+                          inHands.length > 0
+                            ? 'Bierzesz tę broń do rąk, a ta z rąk wraca do plecaka — zamiana kosztuje Akcję.'
+                            : 'Sięgnięcie wolną ręką po łatwo dostępną broń nie wymaga Akcji (s. 168).'
                         }
-                        aria-label={`Przeładuj do pełna${row.ammoType ? ` (${row.ammoType})` : ''}`}
-                        onClick={() => reloadWeapon(character.id, row.id)}
+                        onClick={() => drawWeapon(character.id, row.id, 'draw')}
                       >
-                        ⟳
-                      </button>
-                      {stock !== null && <AmmoStockNote stock={stock} />}
-                    </>
-                  ) : throwsFromStock && stock !== null ? (
-                    <AmmoStockNote stock={stock} />
-                  ) : (
-                    <span className="weapon-ammo-none" title="Ta broń nie liczy amunicji">
-                      —
-                    </span>
-                  )}
-                  <AmmoPicker
-                    characterId={character.id}
-                    row={row}
-                    resolved={resolved}
-                    stockGear={stockGear}
-                  />
-                </td>
-                <td>
-                  {innate ? (
-                    row.rof
-                  ) : (
-                    <input
-                      type="text"
-                      maxLength={32}
-                      value={row.rof}
-                      readOnly={!isGm}
-                      {...(isGm ? {} : { title: 'Szybkostrzelność broni zmienia MG.' })}
-                      onChange={(e) => updateRow(row.id, { rof: e.target.value })}
-                    />
-                  )}
-                </td>
-                <td>
-                  {innate ? (
-                    <span className="weapon-innate-note">{row.notes}</span>
-                  ) : (
-                    <input
-                      type="text"
-                      maxLength={200}
-                      value={row.notes}
-                      onChange={(e) => updateRow(row.id, { notes: e.target.value })}
-                    />
-                  )}
-                </td>
-                <td className="weapon-actions">
-                  <div className="weapon-actions-row">
-                    <button
-                      type="button"
-                      className="small-button"
-                      disabled={empty || !resolved}
-                      title={
-                        !resolved
-                          ? 'Ta broń nie ma wpisu z katalogu — wskaż model, żeby poznała tabelę zasięgów'
-                          : empty
-                            ? 'Pusty magazynek — przeładuj'
-                            : resolved.melee
-                              ? 'Atak wręcz — wskaż cel na mapie (do 2 m)'
-                              : 'Atak — wskaż cel na mapie'
-                      }
-                      onClick={() => aim(row, 'single', resolved)}
-                    >
-                      Atak
-                    </button>
-                    {resolved?.autofire && (
-                      <button
-                        type="button"
-                        className="small-button"
-                        disabled={row.ammoCurrent < CPRED_BURST_AMMO_COST}
-                        title={`Ogień ciągły — ${CPRED_BURST_AMMO_COST} naboi, obrażenia 2k6 × przerzut (do ×${resolved.autofire.max})`}
-                        onClick={() => aim(row, 'autofire', resolved)}
-                      >
-                        Seria
+                        {inHands.length > 0 ? 'Dobądź (Akcja)' : 'Dobądź'}
                       </button>
                     )}
-                    {resolved?.suppressive && (
-                      <button
-                        type="button"
-                        className="small-button"
-                        disabled={row.ammoCurrent < CPRED_BURST_AMMO_COST}
-                        title={`Ogień zaporowy — ${CPRED_BURST_AMMO_COST} naboi, testy SW u wszystkich w ${CPRED_SUPPRESSIVE_RANGE_M} m`}
-                        onClick={() => aim(row, 'suppressive', resolved)}
-                      >
-                        Zapora
-                      </button>
+                    {/* Etap 31: trzy gniazda i to, co w nich siedzi. */}
+                    {!innate && (
+                      <WeaponAttachments
+                        characterId={character.id}
+                        row={row}
+                        resolved={resolved}
+                        gear={data.gear}
+                      />
                     )}
-                    {/* Pierścienie PT to podpowiedź MG — gracz ich nie widzi (11.10.2026). */}
-                    {isGm && resolved?.rangeDv && (
-                      <button
-                        type="button"
-                        className="small-button small-button--icon"
-                        title="Pokaż na 10 s pierścienie przedziałów PT wokół swojego tokenu (kliknij ponownie, by schować wcześniej)"
-                        aria-label="Pokaż na 10 s pierścienie przedziałów PT wokół swojego tokenu (kliknij ponownie, by schować wcześniej)"
-                        onClick={() => showRangeRings(row, resolved)}
-                      >
-                        ◎
-                      </button>
-                    )}
-                    <button
-                      type="button"
-                      className="small-button"
-                      disabled={!isValidDamageNotation(row.damage)}
-                      title={
-                        isValidDamageNotation(row.damage)
-                          ? 'Sam rzut na obrażenia, bez testu trafienia (Shift — bez okna)'
-                          : 'Uzupełnij obrażenia notacją kości, np. 3k6'
-                      }
-                      onClick={(event: MouseEvent) =>
-                        startRoll({ kind: 'damage', weaponRowId: row.id }, event.shiftKey)
-                      }
-                    >
-                      OBR.
-                    </button>
-                  </div>
-                </td>
-                <td className="cp-remove-cell">
-                  {!innate && (
-                    <RemoveItemButton
-                      label={`Usuń: ${row.name}`}
-                      onClick={() =>
-                        askRemoval(row.name, () =>
-                          saveData(
-                            {
-                              weapons: latestData(character.id, data).weapons.filter(
-                                (r) => r.id !== row.id,
-                              ),
-                            },
-                            'weapons',
-                          ),
-                        )
-                      }
-                    />
-                  )}
-                </td>
-              </tr>,
-              // Etap 31: bagnet i broń podwieszana to ta sama sztuka żelastwa,
-              // ale drugi sposób zrobienia komuś krzywdy — więc drugi wiersz
-              // pod tym samym wierszem, a nie druga pozycja na liście broni.
-              ...secondaryRowsOf(row).map(({ attachment, weapon }) => (
-                <tr key={`${row.id}:${attachment.id}`} className="weapon-secondary">
-                  <td>
-                    <span className="weapon-secondary-name">↳ {attachment.name}</span>
                   </td>
-                  <td>{weapon.damage}</td>
+                  <td>
+                    {innate ? (
+                      <span title="Obrażenia gołych rąk zależą od Budowy Ciała (s. 176).">
+                        {row.damage}
+                      </span>
+                    ) : (
+                      <input
+                        type="text"
+                        maxLength={32}
+                        value={row.damage}
+                        readOnly={!isGm}
+                        {...(isGm ? {} : { title: 'Obrażenia broni zmienia MG.' })}
+                        onChange={(e) => updateRow(row.id, { damage: e.target.value })}
+                      />
+                    )}
+                  </td>
                   <td className="weapon-ammo-cell">
-                    {(weapon.magazine ?? 0) > 0 ? (
+                    {tracksAmmo ? (
                       <>
-                        <span className="weapon-ammo-max">
-                          {row.attachmentAmmo?.[attachment.id] ?? weapon.magazine}/{weapon.magazine}
-                        </span>
+                        <NumberStepper
+                          className={`weapon-ammo-input${empty ? ' weapon-ammo-input--empty' : ''}`}
+                          min={0}
+                          max={handLocked ? Math.min(row.ammoCurrent, row.ammoMax) : row.ammoMax}
+                          value={Math.min(row.ammoCurrent, row.ammoMax)}
+                          label={`Stan magazynka: ${row.name}`}
+                          onChange={(value) => updateRow(row.id, { ammoCurrent: value })}
+                        />
+                        <span className="weapon-ammo-max">/{row.ammoMax}</span>
                         <button
                           type="button"
                           className="small-button small-button--icon"
-                          disabled={
-                            (row.attachmentAmmo?.[attachment.id] ?? weapon.magazine ?? 0) >=
-                              (weapon.magazine ?? 0) ||
-                            stockOf(
-                              row.attachmentAmmoId?.[attachment.id]
-                                ? { ammoId: row.attachmentAmmoId[attachment.id] }
-                                : {},
-                              weapon,
-                            ) === 0
+                          disabled={row.ammoCurrent >= row.ammoMax || stock === 0}
+                          title={
+                            stock === 0
+                              ? 'Brak zapasu tej amunicji w ekwipunku.'
+                              : `Przeładuj do pełna${row.ammoType ? ` (${row.ammoType})` : ''}`
                           }
-                          title="Przeładuj podwieszaną broń — własny magazynek, ta sama Akcja"
-                          aria-label={`Przeładuj: ${attachment.name}`}
-                          onClick={() =>
-                            reloadWeapon(character.id, row.id, undefined, undefined, attachment.id)
-                          }
+                          aria-label={`Przeładuj do pełna${row.ammoType ? ` (${row.ammoType})` : ''}`}
+                          onClick={() => reloadWeapon(character.id, row.id)}
                         >
                           ⟳
                         </button>
+                        {stock !== null && <AmmoStockNote stock={stock} />}
                       </>
+                    ) : throwsFromStock && stock !== null ? (
+                      <AmmoStockNote stock={stock} />
                     ) : (
                       <span className="weapon-ammo-none" title="Ta broń nie liczy amunicji">
                         —
                       </span>
                     )}
-                    {/* Ten sam wybór naboju, co w wierszu głównym (02.09) —
-                        bez niego z granatnika podwieszanego nie dało się
-                        wystrzelić dymu ani gazu, choć katalog je oferuje. */}
                     <AmmoPicker
                       characterId={character.id}
                       row={row}
-                      resolved={weapon}
-                      attachment={{ id: attachment.id, name: attachment.name }}
+                      resolved={resolved}
                       stockGear={stockGear}
                     />
                   </td>
-                  <td>{weapon.rof}</td>
-                  <td className="weapon-secondary-note">
-                    {weapon.melee ? 'broń biała — do 2 m' : (weapon.typeName ?? '')}
+                  <td>
+                    {innate ? (
+                      row.rof
+                    ) : (
+                      <input
+                        type="text"
+                        maxLength={32}
+                        value={row.rof}
+                        readOnly={!isGm}
+                        {...(isGm ? {} : { title: 'Szybkostrzelność broni zmienia MG.' })}
+                        onChange={(e) => updateRow(row.id, { rof: e.target.value })}
+                      />
+                    )}
+                  </td>
+                  <td>
+                    {innate ? (
+                      <span className="weapon-innate-note">{row.notes}</span>
+                    ) : (
+                      <input
+                        type="text"
+                        maxLength={200}
+                        value={row.notes}
+                        onChange={(e) => updateRow(row.id, { notes: e.target.value })}
+                      />
+                    )}
                   </td>
                   <td className="weapon-actions">
                     <div className="weapon-actions-row">
                       <button
                         type="button"
                         className="small-button"
-                        disabled={
-                          (weapon.magazine ?? 0) > 0 &&
-                          (row.attachmentAmmo?.[attachment.id] ?? 0) <= 0
-                        }
+                        disabled={empty || !resolved}
                         title={
-                          weapon.melee
-                            ? 'Atak wręcz — wskaż cel na mapie (do 2 m)'
-                            : 'Atak podwieszaną bronią — wskaż cel na mapie'
+                          !resolved
+                            ? 'Ta broń nie ma wpisu z katalogu — wskaż model, żeby poznała tabelę zasięgów'
+                            : empty
+                              ? 'Pusty magazynek — przeładuj'
+                              : resolved.melee
+                                ? 'Atak wręcz — wskaż cel na mapie (do 2 m)'
+                                : 'Atak — wskaż cel na mapie'
                         }
-                        onClick={() =>
-                          aim(row, 'single', resolved, { attachment, resolved: weapon })
-                        }
+                        onClick={() => aim(row, 'single', resolved)}
                       >
                         Atak
                       </button>
+                      {resolved?.autofire && (
+                        <button
+                          type="button"
+                          className="small-button"
+                          disabled={row.ammoCurrent < CPRED_BURST_AMMO_COST}
+                          title={`Ogień ciągły — ${CPRED_BURST_AMMO_COST} naboi, obrażenia 2k6 × przerzut (do ×${resolved.autofire.max})`}
+                          onClick={() => aim(row, 'autofire', resolved)}
+                        >
+                          Seria
+                        </button>
+                      )}
+                      {resolved?.suppressive && (
+                        <button
+                          type="button"
+                          className="small-button"
+                          disabled={row.ammoCurrent < CPRED_BURST_AMMO_COST}
+                          title={`Ogień zaporowy — ${CPRED_BURST_AMMO_COST} naboi, testy SW u wszystkich w ${CPRED_SUPPRESSIVE_RANGE_M} m`}
+                          onClick={() => aim(row, 'suppressive', resolved)}
+                        >
+                          Zapora
+                        </button>
+                      )}
+                      {/* Pierścienie PT to podpowiedź MG — gracz ich nie widzi (11.10.2026). */}
+                      {isGm && resolved?.rangeDv && (
+                        <button
+                          type="button"
+                          className="small-button small-button--icon"
+                          title="Pokaż na 10 s pierścienie przedziałów PT wokół swojego tokenu (kliknij ponownie, by schować wcześniej)"
+                          aria-label="Pokaż na 10 s pierścienie przedziałów PT wokół swojego tokenu (kliknij ponownie, by schować wcześniej)"
+                          onClick={() => showRangeRings(row, resolved)}
+                        >
+                          ◎
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        className="small-button"
+                        disabled={!isValidDamageNotation(row.damage)}
+                        title={
+                          isValidDamageNotation(row.damage)
+                            ? 'Sam rzut na obrażenia, bez testu trafienia (Shift — bez okna)'
+                            : 'Uzupełnij obrażenia notacją kości, np. 3k6'
+                        }
+                        onClick={(event: MouseEvent) =>
+                          startRoll({ kind: 'damage', weaponRowId: row.id }, event.shiftKey)
+                        }
+                      >
+                        OBR.
+                      </button>
                     </div>
                   </td>
-                  <td />
-                </tr>
-              )),
-            ];
-          })}
-        </tbody>
-      </table>
+                  <td className="cp-remove-cell">
+                    {!innate && (
+                      <RemoveItemButton
+                        label={`Usuń: ${row.name}`}
+                        onClick={() =>
+                          askRemoval(row.name, () =>
+                            saveData(
+                              {
+                                weapons: latestData(character.id, data).weapons.filter(
+                                  (r) => r.id !== row.id,
+                                ),
+                              },
+                              'weapons',
+                            ),
+                          )
+                        }
+                      />
+                    )}
+                  </td>
+                </tr>,
+                // Etap 31: bagnet i broń podwieszana to ta sama sztuka żelastwa,
+                // ale drugi sposób zrobienia komuś krzywdy — więc drugi wiersz
+                // pod tym samym wierszem, a nie druga pozycja na liście broni.
+                ...secondaryRowsOf(row).map(({ attachment, weapon }) => (
+                  <tr key={`${row.id}:${attachment.id}`} className="weapon-secondary">
+                    <td>
+                      <span className="weapon-secondary-name">↳ {attachment.name}</span>
+                    </td>
+                    <td>{weapon.damage}</td>
+                    <td className="weapon-ammo-cell">
+                      {(weapon.magazine ?? 0) > 0 ? (
+                        <>
+                          <span className="weapon-ammo-max">
+                            {row.attachmentAmmo?.[attachment.id] ?? weapon.magazine}/
+                            {weapon.magazine}
+                          </span>
+                          <button
+                            type="button"
+                            className="small-button small-button--icon"
+                            disabled={
+                              (row.attachmentAmmo?.[attachment.id] ?? weapon.magazine ?? 0) >=
+                                (weapon.magazine ?? 0) ||
+                              stockOf(
+                                row.attachmentAmmoId?.[attachment.id]
+                                  ? { ammoId: row.attachmentAmmoId[attachment.id] }
+                                  : {},
+                                weapon,
+                              ) === 0
+                            }
+                            title="Przeładuj podwieszaną broń — własny magazynek, ta sama Akcja"
+                            aria-label={`Przeładuj: ${attachment.name}`}
+                            onClick={() =>
+                              reloadWeapon(
+                                character.id,
+                                row.id,
+                                undefined,
+                                undefined,
+                                attachment.id,
+                              )
+                            }
+                          >
+                            ⟳
+                          </button>
+                        </>
+                      ) : (
+                        <span className="weapon-ammo-none" title="Ta broń nie liczy amunicji">
+                          —
+                        </span>
+                      )}
+                      {/* Ten sam wybór naboju, co w wierszu głównym (02.09) —
+                        bez niego z granatnika podwieszanego nie dało się
+                        wystrzelić dymu ani gazu, choć katalog je oferuje. */}
+                      <AmmoPicker
+                        characterId={character.id}
+                        row={row}
+                        resolved={weapon}
+                        attachment={{ id: attachment.id, name: attachment.name }}
+                        stockGear={stockGear}
+                      />
+                    </td>
+                    <td>{weapon.rof}</td>
+                    <td className="weapon-secondary-note">
+                      {weapon.melee ? 'broń biała — do 2 m' : (weapon.typeName ?? '')}
+                    </td>
+                    <td className="weapon-actions">
+                      <div className="weapon-actions-row">
+                        <button
+                          type="button"
+                          className="small-button"
+                          disabled={
+                            (weapon.magazine ?? 0) > 0 &&
+                            (row.attachmentAmmo?.[attachment.id] ?? 0) <= 0
+                          }
+                          title={
+                            weapon.melee
+                              ? 'Atak wręcz — wskaż cel na mapie (do 2 m)'
+                              : 'Atak podwieszaną bronią — wskaż cel na mapie'
+                          }
+                          onClick={() =>
+                            aim(row, 'single', resolved, { attachment, resolved: weapon })
+                          }
+                        >
+                          Atak
+                        </button>
+                      </div>
+                    </td>
+                    <td />
+                  </tr>
+                )),
+              ];
+            })}
+          </tbody>
+        </table>
+      )}
       {/* Etap 48c (decyzja MG z 10.10): broń przychodzi graczowi z zakupu,
           wymiany, łupu, kreatora i od MG — „+ Broń z katalogu” to skrót MG
-          (to samo co „Dodaj za darmo” w Kompendium). */}
-      {isGm && (
+          (to samo co „Dodaj za darmo” w Kompendium). Nowa broń trafia do
+          plecaka, więc guzik stoi tam (03.11.2026). */}
+      {isGm && scope === 'pack' && (
         <button
           type="button"
           className="cp-add"
@@ -2721,7 +2739,20 @@ function WeaponCatalogPicker({
  * nimi taką kolumnę drukuje — dwie tabele jednego pasa czyta się lepiej, gdy
  * kończą się w tym samym miejscu.
  */
-function ArmorStrip({ character, data, saveData }: TabProps & { character: CharacterSheetView }) {
+function ArmorStrip({
+  character,
+  data,
+  saveData,
+  scope,
+}: TabProps & {
+  character: CharacterSheetView;
+  /**
+   * 03.11.2026 (zlecenie MG — wzór z cRPG): `worn` — trzy sloty wydruku
+   * i sztuki noszone pod spodem (sekcja „Używane”), `pack` — sztuki zdjęte
+   * (sekcja „Plecak”).
+   */
+  scope: ArmorScope;
+}) {
   const isGm = useAuthStore((s) => s.user?.role === ROLE_GM);
   const registry = useCharacterStore((s) => s.registry);
   const rowIcon = useRowIcon();
@@ -2765,140 +2796,157 @@ function ArmorStrip({ character, data, saveData }: TabProps & { character: Chara
     row: effectiveArmor(data.armor, location),
   }));
   const printedIds = new Set(printed.map((slot) => slot.row?.id).filter(Boolean));
-  const rest = data.armor.filter((row) => !printedIds.has(row.id));
+  // Noszona, ale słabsza od wpisanej w slot — jest na postaci, więc stoi
+  // w „Używanych”; zdjęta — w plecaku.
+  const rest = data.armor.filter(
+    (row) => !printedIds.has(row.id) && (row.equipped === false) === (scope === 'pack'),
+  );
+
+  if (scope === 'pack' && rest.length === 0) {
+    return <p className="cp-loadout-empty">W plecaku nie ma pancerza.</p>;
+  }
 
   return (
-    <div className="cp-strip cp-armor">
-      <table className="cp-table armor-table">
-        <thead>
-          <tr>
-            <th className="armor-name-head">Pancerz</th>
-            <th style={{ width: '5rem' }}>OB</th>
-            <th style={{ width: '3.5rem' }}>Kara</th>
-            <th>Uwagi</th>
-            <th style={{ width: '3.4rem' }} />
-          </tr>
-        </thead>
-        <tbody>
-          {printed.map(({ location, row }) => (
-            <tr key={location}>
-              <td className="armor-slot-cell">
-                <span className="cp-armor-slot">{ARMOR_LOCATION_LABELS[location]}</span>
-                {row ? (
-                  <span className="item-name-cell">
-                    <MapDropHandle
-                      characterId={character.id}
-                      source={{ ref: { list: 'armor', rowId: row.id }, name: row.name }}
-                    >
-                      <ItemIcon icon={rowIcon('armor', { ...row, armorLocation: row.location })} />
-                    </MapDropHandle>
-                    <input
-                      type="text"
-                      maxLength={64}
-                      value={row.name}
-                      readOnly={!isGm}
-                      {...(isGm ? {} : { title: 'Nazwę pancerza zmienia MG.' })}
-                      onChange={(e) => update(row.id, { name: e.target.value })}
-                      aria-label={`Pancerz: ${ARMOR_LOCATION_LABELS[location]}`}
-                    />
-                  </span>
-                ) : null}
-                {/* Pod nazwą, jak „Dobądź” przy broni (24.10.2026): zdjęcie
+    <div className={`cp-strip cp-armor cp-armor--${scope}`}>
+      {scope === 'worn' && (
+        <table className="cp-table armor-table">
+          <thead>
+            <tr>
+              <th className="armor-name-head">Pancerz</th>
+              <th style={{ width: '5rem' }}>OB</th>
+              <th style={{ width: '3.5rem' }}>Kara</th>
+              <th>Uwagi</th>
+              <th style={{ width: '3.4rem' }} />
+            </tr>
+          </thead>
+          <tbody>
+            {printed.map(({ location, row }) => (
+              <tr key={location}>
+                <td className="armor-slot-cell">
+                  <span className="cp-armor-slot">{ARMOR_LOCATION_LABELS[location]}</span>
+                  {row ? (
+                    <span className="item-name-cell">
+                      <MapDropHandle
+                        characterId={character.id}
+                        source={{ ref: { list: 'armor', rowId: row.id }, name: row.name }}
+                      >
+                        <ItemIcon
+                          icon={rowIcon('armor', { ...row, armorLocation: row.location })}
+                        />
+                      </MapDropHandle>
+                      <input
+                        type="text"
+                        maxLength={64}
+                        value={row.name}
+                        readOnly={!isGm}
+                        {...(isGm ? {} : { title: 'Nazwę pancerza zmienia MG.' })}
+                        onChange={(e) => update(row.id, { name: e.target.value })}
+                        aria-label={`Pancerz: ${ARMOR_LOCATION_LABELS[location]}`}
+                      />
+                    </span>
+                  ) : null}
+                  {/* Pod nazwą, jak „Dobądź” przy broni (24.10.2026): zdjęcie
                     zmienia to, co postać ma na sobie, a nie samą sztukę. */}
+                  {row ? (
+                    <div className="armor-wear">
+                      <button
+                        type="button"
+                        className="small-button"
+                        title="Sztuka wraca do plecaka i przestaje chronić"
+                        onClick={() => update(row.id, { equipped: false })}
+                      >
+                        Zdejmij
+                      </button>
+                    </div>
+                  ) : null}
+                </td>
                 {row ? (
-                  <div className="armor-wear">
-                    <button
-                      type="button"
-                      className="small-button"
-                      title="Sztuka schodzi do „Reszty pancerza” i przestaje chronić"
-                      onClick={() => update(row.id, { equipped: false })}
-                    >
-                      Zdejmij
-                    </button>
-                  </div>
-                ) : null}
-              </td>
-              {row ? (
-                <>
-                  <td className="armor-sp-cell">
-                    <ArmorSp row={row} update={update} />
-                  </td>
-                  <td>
-                    <ArmorPenalty row={row} update={update} />
-                  </td>
-                  <td>
-                    <input
-                      type="text"
-                      maxLength={200}
-                      value={row.notes}
-                      onChange={(e) => update(row.id, { notes: e.target.value })}
-                      aria-label="Uwagi o pancerzu"
-                    />
-                  </td>
-                  <td className="armor-actions">
-                    {/* Etap 30b — Prowizorka Technika (s. 147). Guzik pojawia
+                  <>
+                    <td className="armor-sp-cell">
+                      <ArmorSp row={row} update={update} />
+                    </td>
+                    <td>
+                      <ArmorPenalty row={row} update={update} />
+                    </td>
+                    <td>
+                      <input
+                        type="text"
+                        maxLength={200}
+                        value={row.notes}
+                        onChange={(e) => update(row.id, { notes: e.target.value })}
+                        aria-label="Uwagi o pancerzu"
+                      />
+                    </td>
+                    <td className="armor-actions">
+                      {/* Etap 30b — Prowizorka Technika (s. 147). Guzik pojawia
                         się tylko przy starciu OB i tylko Technikowi z punktem
                         w Naprawie; drugi klik oddaje sztuce jej starte OB. */}
-                    {row.fieldRepair ? (
-                      <button
-                        type="button"
-                        className="small-button"
-                        title={`Prowizorka na ${row.fieldRepair.minutes} min — kliknij, gdy puści (OB wraca do ${row.fieldRepair.restoredFrom})`}
-                        onClick={() => void endFieldRepair(character.id, row.id)}
-                      >
-                        Koniec prowizorki
-                      </button>
-                    ) : repair > 0 && row.spCurrent < row.sp ? (
-                      <button
-                        type="button"
-                        className="small-button"
-                        title={`Prowizorka: pełne OB na ${cpredFieldRepairMinutes(repair)} min. Kosztuje Akcję, gdy trwa walka.`}
-                        onClick={() => void makeFieldRepair(character.id, row.id, ownToken?.id)}
-                      >
-                        Prowizorka
-                      </button>
-                    ) : null}
-                    {/* Etap 48c: OB zmienia MG — także po Ulepszaniu Technika. */}
-                    {!row.upgrade && isGm && (
-                      <button
-                        type="button"
-                        className="small-button"
-                        title="Ulepszanie: +1 OB (s. 148). Jeden przedmiot można ulepszyć tylko raz."
-                        aria-label="Ulepsz: +1 OB"
-                        onClick={() => upgradeSp(row)}
-                      >
-                        +1 OB
-                      </button>
-                    )}
-                    <RemoveItemButton
-                      label={`Usuń: ${row.name}`}
-                      onClick={() =>
-                        askRemoval(row.name, () =>
-                          write(
-                            latestData(character.id, data).armor.filter((r) => r.id !== row.id),
-                          ),
-                        )
-                      }
-                    />
+                      {row.fieldRepair ? (
+                        <button
+                          type="button"
+                          className="small-button"
+                          title={`Prowizorka na ${row.fieldRepair.minutes} min — kliknij, gdy puści (OB wraca do ${row.fieldRepair.restoredFrom})`}
+                          onClick={() => void endFieldRepair(character.id, row.id)}
+                        >
+                          Koniec prowizorki
+                        </button>
+                      ) : repair > 0 && row.spCurrent < row.sp ? (
+                        <button
+                          type="button"
+                          className="small-button"
+                          title={`Prowizorka: pełne OB na ${cpredFieldRepairMinutes(repair)} min. Kosztuje Akcję, gdy trwa walka.`}
+                          onClick={() => void makeFieldRepair(character.id, row.id, ownToken?.id)}
+                        >
+                          Prowizorka
+                        </button>
+                      ) : null}
+                      {/* Etap 48c: OB zmienia MG — także po Ulepszaniu Technika. */}
+                      {!row.upgrade && isGm && (
+                        <button
+                          type="button"
+                          className="small-button"
+                          title="Ulepszanie: +1 OB (s. 148). Jeden przedmiot można ulepszyć tylko raz."
+                          aria-label="Ulepsz: +1 OB"
+                          onClick={() => upgradeSp(row)}
+                        >
+                          +1 OB
+                        </button>
+                      )}
+                      <RemoveItemButton
+                        label={`Usuń: ${row.name}`}
+                        onClick={() =>
+                          askRemoval(row.name, () =>
+                            write(
+                              latestData(character.id, data).armor.filter((r) => r.id !== row.id),
+                            ),
+                          )
+                        }
+                      />
+                    </td>
+                  </>
+                ) : (
+                  <td colSpan={4} className="armor-empty">
+                    nic tu nie chroni
                   </td>
-                </>
-              ) : (
-                <td colSpan={4} className="armor-empty">
-                  nic tu nie chroni
-                </td>
-              )}
-            </tr>
-          ))}
-        </tbody>
-      </table>
+                )}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
 
-      <p className="cp-note">Kara dotyczy REF, ZW i RUCHU</p>
+      {scope === 'worn' && <p className="cp-note">Kara dotyczy REF, ZW i RUCHU</p>}
 
       {rest.length > 0 && (
         <>
-          <div className="cp-bar cp-bar--sub" title="Zdjęte i zapasowe sztuki — nie chronią">
-            Reszta pancerza ({rest.length})
-          </div>
+          {scope === 'worn' && (
+            <div
+              className="cp-bar cp-bar--sub"
+              title="Noszone, ale słabsze od sztuki w tym samym miejscu — kulę zatrzymuje mocniejsza"
+            >
+              Pod spodem ({rest.length})
+            </div>
+          )}
           <table className="cp-table armor-table armor-table--rest">
             <tbody>
               {rest.map((row) => (
@@ -2945,18 +2993,28 @@ function ArmorStrip({ character, data, saveData }: TabProps & { character: Chara
                         <button
                           type="button"
                           className="small-button"
-                          title="Sztuka wraca na swoją lokację i chroni"
+                          title="Zakładasz sztukę — wraca na swoje miejsce w „Używanych” i chroni"
                           onClick={() => update(row.id, { equipped: true })}
                         >
                           Załóż
                         </button>
                       ) : (
-                        <span
-                          className="armor-weaker"
-                          title="Noszona, ale słabsza od wpisanej wyżej"
-                        >
-                          słabsza
-                        </span>
+                        <>
+                          <span
+                            className="armor-weaker"
+                            title="Noszona, ale słabsza od wpisanej wyżej"
+                          >
+                            słabsza
+                          </span>
+                          <button
+                            type="button"
+                            className="small-button"
+                            title="Sztuka wraca do plecaka"
+                            onClick={() => update(row.id, { equipped: false })}
+                          >
+                            Zdejmij
+                          </button>
+                        </>
                       )}
                     </div>
                   </td>
@@ -3851,54 +3909,103 @@ function GearTab({ character, data, saveData }: TabProps & { character: Characte
       </div>
       {/* Etap 46a: karta NPC-a bywa sklepem — ustawienia ma wyłącznie MG. */}
       {isGm && character.ownerId === null && <MerchantSection characterId={character.id} />}
-      {/* 22.10.2026 (decyzja MG): broń i pancerz to też ekwipunek — przyszły
-          tu ze strony pierwszej, nad resztę wyposażenia. */}
-      <Arsenal character={character} data={data} saveData={saveData} startRoll={startRoll} />
-      <RowTable<CpredGearRow>
-        rows={data.gear}
-        columns={[
-          // Etap 48c (decyzje MG z 10.10): gracz nie przemianowuje przedmiotów
-          // i ilości mu tylko ubywa (zużycie) — przybywa z zakupu, wymiany,
-          // łupu i od MG. Uwagi są jego.
-          {
-            key: 'name',
-            label: 'Wyposażenie',
-            // Bez szerokości nazwa dzieliła tabelę po równo z „Uwagami”.
-            width: '35%',
-            readOnly: !isGm,
-            ...(isGm
-              ? {}
-              : { title: 'Nazwę przedmiotu zmienia MG — własny dopisek daj w uwagach.' }),
-          },
-          {
-            key: 'qty',
-            label: 'Ilość',
-            numeric: true,
-            width: '4rem',
-            maxFor: (row) => (isGm ? undefined : row.qty),
-          },
-          { key: 'notes', label: 'Uwagi', maxLength: 200 },
-        ]}
-        onChange={(rows) => saveData({ gear: rows }, 'gear')}
-        lead={(row) => {
-          // Sprzęt bez rodzaju nie ma miniatury — uchwytem do przeciągnięcia
-          // na mapę (46b2) jest wtedy sam „⠿”.
-          const icon = rowIcon('gear', row);
-          return (
-            <MapDropHandle
-              characterId={character.id}
-              source={{ ref: { list: 'gear', rowId: row.id }, name: row.name }}
-            >
-              {icon ? <ItemIcon icon={icon} /> : undefined}
-            </MapDropHandle>
-          );
-        }}
-        below={(row) => <GearLightHands row={row} data={data} saveData={saveData} />}
-      />
+      {/* 03.11.2026 (zlecenie MG, wzór z cRPG — Pillars, Divinity, BG3): na
+          górze to, czego postać używa (ręce, pancerz na sobie, sprzęt
+          w użyciu), pod spodem plecak. Rzecz przechodzi między sekcjami
+          guzikiem — „Dobądź” / „Schowaj”, „Załóż” / „Zdejmij” — więc o tym,
+          co jest w użyciu, mówi miejsce na karcie, a nie plakietka. Do 03.11
+          broń w rękach i schowana stały na jednej liście, a pasek HUD
+          dopisywał „Schowane: …”. */}
+      <section className="cp-loadout cp-loadout--equipped" data-sheet-panel="equipped">
+        <h3 className="cp-section">Używane</h3>
+        <div className="cp-loadout-slot">
+          <div className="cp-bar cp-bar--sub cp-loadout-slot-title">Ręce</div>
+          <WeaponStrip
+            character={character}
+            data={data}
+            saveData={saveData}
+            startRoll={startRoll}
+            scope="hands"
+          />
+        </div>
+        <div className="cp-loadout-slot">
+          <div className="cp-bar cp-bar--sub cp-loadout-slot-title">Na sobie</div>
+          <ArmorStrip character={character} data={data} saveData={saveData} scope="worn" />
+        </div>
+        <GearInUse character={character} data={data} saveData={saveData} />
+      </section>
 
-      <DosesSection character={character} data={data} />
+      <section className="cp-loadout cp-loadout--pack" data-sheet-panel="pack">
+        <h3 className="cp-section">Plecak</h3>
+        <div className="cp-loadout-slot">
+          <div className="cp-bar cp-bar--sub cp-loadout-slot-title">Broń</div>
+          <WeaponStrip
+            character={character}
+            data={data}
+            saveData={saveData}
+            startRoll={startRoll}
+            scope="pack"
+          />
+        </div>
+        <div className="cp-loadout-slot">
+          <div className="cp-bar cp-bar--sub cp-loadout-slot-title">Pancerz</div>
+          <ArmorStrip character={character} data={data} saveData={saveData} scope="pack" />
+        </div>
+        <RowTable<CpredGearRow>
+          rows={data.gear.filter((row) => !cpredGearInUse(row))}
+          columns={[
+            // Etap 48c (decyzje MG z 10.10): gracz nie przemianowuje przedmiotów
+            // i ilości mu tylko ubywa (zużycie) — przybywa z zakupu, wymiany,
+            // łupu i od MG. Uwagi są jego.
+            {
+              key: 'name',
+              label: 'Wyposażenie',
+              // Bez szerokości nazwa dzieliła tabelę po równo z „Uwagami”.
+              width: '35%',
+              readOnly: !isGm,
+              ...(isGm
+                ? {}
+                : { title: 'Nazwę przedmiotu zmienia MG — własny dopisek daj w uwagach.' }),
+            },
+            {
+              key: 'qty',
+              label: 'Ilość',
+              numeric: true,
+              width: '4rem',
+              maxFor: (row) => (isGm ? undefined : row.qty),
+            },
+            { key: 'notes', label: 'Uwagi', maxLength: 200 },
+          ]}
+          // Sprzęt w użyciu stoi wyżej, w „Używanych” — tabela go nie widzi, więc
+          // zapis wkłada go z powrotem na jego miejsce na liście.
+          onChange={(rows) =>
+            saveData(
+              { gear: withRowsInUse(latestData(character.id, data).gear, rows, cpredGearInUse) },
+              'gear',
+            )
+          }
+          lead={(row) => {
+            // Sprzęt bez rodzaju nie ma miniatury — uchwytem do przeciągnięcia
+            // na mapę (46b2) jest wtedy sam „⠿”.
+            const icon = rowIcon('gear', row);
+            return (
+              <MapDropHandle
+                characterId={character.id}
+                source={{ ref: { list: 'gear', rowId: row.id }, name: row.name }}
+              >
+                {icon ? <ItemIcon icon={icon} /> : undefined}
+              </MapDropHandle>
+            );
+          }}
+          below={(row) => (
+            <GearLightHands row={row} data={data} saveData={saveData} characterId={character.id} />
+          )}
+        />
 
-      <GearChromeSection data={data} saveData={saveData} />
+        <DosesSection character={character} data={data} />
+
+        <GearChromeSection data={data} saveData={saveData} />
+      </section>
 
       <div className="cp-panel cp-plaques">
         {/* Etap 46c: zapas to pudełka w wyposażeniu. Stary tekst zostaje jako
@@ -4275,9 +4382,11 @@ function Addictions({ data, characterId }: { data: CpredCharacterData; character
  */
 function GearChromeSection({ data, saveData }: Pick<TabProps, 'data' | 'saveData'>) {
   const registry = useCharacterStore((s) => s.registry);
+  // Podłączony egzoszkielet stoi w „Używanych” (`GearInUse`) — tu zostaje
+  // to, co działa z plecaka, i egzoszkielet do podłączenia.
   const rows = data.gear.flatMap((row) => {
     const mod = cpredChromeModOf(row, 'gear');
-    return mod && row.qty > 0 ? [{ row, mod }] : [];
+    return mod && row.qty > 0 && row.connected !== true ? [{ row, mod }] : [];
   });
   if (rows.length === 0) return null;
   const skillName = (id: string) => registry.skills.find((skill) => skill.id === id)?.name ?? id;
@@ -4341,27 +4450,143 @@ function GearChromeSection({ data, saveData }: Pick<TabProps, 'data' | 'saveData
 }
 
 /**
- * Latarka w ręce (31.10.2026): „Dobądź” / „Schowaj” pod nazwą każdego wiersza,
+ * Czy wiersz wyposażenia jest w użyciu (03.11.2026): zapalona latarka w ręce
+ * albo podłączony egzoszkielet. Taki wiersz stoi w „Używanych”, nie w plecaku.
+ */
+function cpredGearInUse(row: CpredGearRow): boolean {
+  return row.lit === true || row.connected === true;
+}
+
+/**
+ * Zapis tabeli, która widzi tylko część listy: wiersze ukryte (`hidden`) wracają
+ * na swoje miejsca z `current`, widoczne biorą postać z `shown` (zmienione,
+ * usunięte), a nowe w `shown` idą na koniec.
+ */
+function withRowsInUse<T extends { id: string }>(
+  current: readonly T[],
+  shown: readonly T[],
+  hidden: (row: T) => boolean,
+): T[] {
+  const byId = new Map(shown.map((row) => [row.id, row]));
+  const known = new Set(current.map((row) => row.id));
+  const merged: T[] = [];
+  for (const row of current) {
+    if (hidden(row)) merged.push(row);
+    else if (byId.has(row.id)) merged.push(byId.get(row.id)!);
+  }
+  for (const row of shown) if (!known.has(row.id)) merged.push(row);
+  return merged;
+}
+
+/**
+ * Slot „Sprzęt w użyciu” sekcji „Używane” (03.11.2026): latarka w ręce
+ * i podłączony egzoszkielet, z guzikiem, który odkłada je do plecaka. Znika,
+ * gdy nic takiego nie jest w użyciu — dobywa się je z tabeli wyposażenia.
+ */
+function GearInUse({ character, data, saveData }: TabProps & { character: CharacterSheetView }) {
+  const registry = useCharacterStore((s) => s.registry);
+  const rowIcon = useRowIcon();
+  const rows = data.gear.filter((row) => row.qty > 0 && cpredGearInUse(row));
+  if (rows.length === 0) return null;
+  const skillName = (id: string) => registry.skills.find((skill) => skill.id === id)?.name ?? id;
+
+  function putAway(rowId: string) {
+    saveData(
+      {
+        gear: latestData(character.id, data).gear.map((row) => {
+          if (row.id !== rowId) return row;
+          const { lit: _lit, connected: _connected, ...rest } = row;
+          return rest as CpredGearRow;
+        }),
+      },
+      'gear',
+    );
+  }
+
+  return (
+    <div className="cp-loadout-slot cp-loadout-slot--wide">
+      <div className="cp-bar cp-bar--sub cp-loadout-slot-title">Sprzęt w użyciu</div>
+      <div className="cp-strip">
+        <table className="cp-table cp-table--items cp-loadout-gear">
+          <thead>
+            <tr>
+              <th style={{ width: '35%' }}>Wyposażenie</th>
+              <th>Działanie</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((row) => {
+              const light = row.lit === true ? cpredGearLightProfile(row) : null;
+              const mod = row.connected === true ? cpredChromeModOf(row, 'gear') : null;
+              const icon = rowIcon('gear', row);
+              return (
+                <tr key={row.id}>
+                  <td>
+                    <span className="item-name-cell">
+                      <MapDropHandle
+                        characterId={character.id}
+                        source={{ ref: { list: 'gear', rowId: row.id }, name: row.name }}
+                      >
+                        {icon ? <ItemIcon icon={icon} /> : undefined}
+                      </MapDropHandle>
+                      <span className="cp-loadout-gear-name">{row.name}</span>
+                    </span>
+                    {/* Pod nazwą, jak „Schowaj (Akcja)” przy broni w rękach. */}
+                    <div className="gear-hands">
+                      <button
+                        type="button"
+                        className="small-button"
+                        title={
+                          light
+                            ? 'Zgaś i schowaj do plecaka — figura na mapie przestaje świecić'
+                            : 'Odłącz egzoszkielet — BC wraca do tej z karty'
+                        }
+                        onClick={() => putAway(row.id)}
+                      >
+                        {light ? 'Schowaj' : 'Odłącz'}
+                      </button>
+                    </div>
+                  </td>
+                  <td className="cp-loadout-gear-state">
+                    {light
+                      ? `W ręce, świeci — jasno ${light.brightM} m, mrok ${light.dimM} m.`
+                      : mod
+                        ? `Podłączony — ${describeCpredChromeMod(mod, skillName)}.`
+                        : 'W użyciu.'}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Latarka w ręce (31.10.2026): „Dobądź” pod nazwą każdego wiersza plecaka,
  * który świeci (`cpredGearLightProfile`), jak przy broni (zlecenie MG — panel
  * „Światło” pod tabelą był nie do znalezienia). Serwer niesie zapaloną latarkę
  * na światło figur tej karty; przełącznik latarki na mapie zapisuje to samo
  * pole. W ręce świeci jedna: dobycie drugiej chowa pierwszą. Bez kosztu Akcji —
- * latarka nie zajmuje ręki w `CPRED_HANDS` (patrz `lightgear.ts`).
+ * latarka nie zajmuje ręki w `CPRED_HANDS` (patrz `lightgear.ts`). Zapalona
+ * stoi od 03.11.2026 w „Używanych” (`GearInUse`) i tam ma „Schowaj”.
  */
 function GearLightHands({
   row,
   data,
   saveData,
-}: { row: CpredGearRow } & Pick<TabProps, 'data' | 'saveData'>) {
-  const profile = row.qty > 0 ? cpredGearLightProfile(row) : null;
+  characterId,
+}: { row: CpredGearRow; characterId: string } & Pick<TabProps, 'data' | 'saveData'>) {
+  const profile = row.qty > 0 && row.lit !== true ? cpredGearLightProfile(row) : null;
   if (!profile) return null;
 
-  function setLit(lit: boolean) {
+  function light() {
     saveData(
       {
-        gear: data.gear.map((other) => {
-          if (other.id === row.id && lit) return { ...other, lit: true };
-          if (other.id !== row.id && !lit) return other;
+        gear: latestData(characterId, data).gear.map((other) => {
+          if (other.id === row.id) return { ...other, lit: true };
           if (other.lit !== true) return other;
           const { lit: _lit, ...rest } = other;
           return rest as CpredGearRow;
@@ -4374,30 +4599,14 @@ function GearLightHands({
   const range = `jasno ${profile.brightM} m, mrok ${profile.dimM} m`;
   return (
     <div className="gear-hands">
-      {row.lit === true ? (
-        <span className="weapon-hands">
-          <span className="weapon-hands-badge" title={`Świeci: ${range}`}>
-            ✊ W ręce, świeci
-          </span>
-          <button
-            type="button"
-            className="small-button"
-            title="Zgaś i schowaj — figura na mapie przestaje świecić"
-            onClick={() => setLit(false)}
-          >
-            Schowaj
-          </button>
-        </span>
-      ) : (
-        <button
-          type="button"
-          className="small-button weapon-draw"
-          title={`Wyjmij i zapal — figura na mapie świeci (${range}); widać to na ciemnych scenach`}
-          onClick={() => setLit(true)}
-        >
-          Dobądź
-        </button>
-      )}
+      <button
+        type="button"
+        className="small-button weapon-draw"
+        title={`Wyjmij i zapal — latarka przechodzi do „Używanych”, a figura na mapie świeci (${range}); widać to na ciemnych scenach`}
+        onClick={light}
+      >
+        Dobądź
+      </button>
     </div>
   );
 }

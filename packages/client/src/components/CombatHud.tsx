@@ -902,14 +902,9 @@ export function CombatHud() {
             </section>
           )}
 
-          {/* 02.11.2026 (MG): schowana broń nie stoi na pasku — jedna linijka
-              mówi, że jest i gdzie się jej dobywa. */}
-          {context.holstered.length > 0 && (
-            <p className="hud-holstered" data-testid="hud-holstered">
-              {weapons.length === 0 ? 'Nie trzymasz broni. ' : ''}
-              Schowane: {context.holstered.join(', ')} — dobądź na karcie postaci.
-            </p>
-          )}
+          {/* 03.11.2026 (MG): schowanej broni pasek nie wymienia wcale — co jest
+              w rękach, a co w plecaku, mówi „Ekwipunek” karty (sekcje „Używane”
+              i „Plecak”). */}
 
           {actions.length > 0 && (
             <section className="hud-group">

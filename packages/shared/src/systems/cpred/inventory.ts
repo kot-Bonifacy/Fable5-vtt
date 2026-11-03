@@ -25,11 +25,13 @@ import { cpredIsBareHandsRow, cpredWithoutBareHands } from './barehands.js';
 import {
   ITEM_QTY_MAX,
   ITEM_ROWS_MAX,
+  cpredDrawnWeapons,
   type CpredArmorRow,
   type CpredCharacterData,
   type CpredGearAmmo,
   type CpredGearRow,
   type CpredItemRow,
+  type CpredOutsideHands,
   type CpredWeaponRow,
 } from './character.js';
 import type { ArmorLocation } from './locations.js';
@@ -64,6 +66,13 @@ export interface CpredItemRef {
   qty?: number;
 }
 
+/**
+ * Czy przedmiot jest w użyciu (03.11.2026, wzór z cRPG) — okno „Wymiana”
+ * stawia na takim kaflu znaczek: broń w rękach (`hands`), pancerz na sobie
+ * (`worn`), zapalona latarka albo podłączony egzoszkielet (`in-use`).
+ */
+export type CpredItemEquipped = 'hands' | 'worn' | 'in-use';
+
 /** Wiersz ekwipunku tak, jak pokazuje go okno wymiany i karta czatu. */
 export interface CpredItemView {
   list: CpredItemList;
@@ -85,6 +94,8 @@ export interface CpredItemView {
   armorLocation?: ArmorLocation;
   /** Etap 46c: kształt naboju w pudełku — miniatura pudełka bez wpisu. */
   ammo?: Pick<CpredGearAmmo, 'pattern'>;
+  /** W użyciu na karcie (03.11.2026) — tylko z `cpredInventoryView`. */
+  equipped?: CpredItemEquipped;
 }
 
 export type CpredItemMoveError = 'ITEM_NOT_FOUND' | 'BAD_QTY' | 'TOO_MANY_ROWS' | 'NO_ITEMS';
@@ -158,13 +169,36 @@ export function cpredItemView(list: CpredItemList, row: CpredItemRow): CpredItem
   }
 }
 
-/** Cały ekwipunek karty jednym ciągiem — lewa kolumna okna wymiany. */
-export function cpredInventoryView(data: CpredCharacterData): CpredItemView[] {
+/**
+ * Cały ekwipunek karty jednym ciągiem — lewa kolumna okna wymiany.
+ *
+ * Od 03.11.2026 każdy widok niesie `equipped`, gdy rzecz jest w użyciu — jak
+ * znaczek „wyposażone” na kaflu w handlu z cRPG: kto oddaje broń z ręki albo
+ * kurtkę z grzbietu, widzi to przed przeciągnięciem. `outside` — granaty
+ * spoza limitu rąk (`cpredGrenadesOutsideHands`); bez niego granat pierwszy
+ * na liście karty, której nikt nie pytał o ręce, wyglądałby na dobyty.
+ */
+export function cpredInventoryView(
+  data: CpredCharacterData,
+  outside?: CpredOutsideHands,
+): CpredItemView[] {
+  const inHands = new Set(cpredDrawnWeapons(data, outside).map((row) => row.id));
+  const mark = (view: CpredItemView, equipped: CpredItemEquipped | null): CpredItemView =>
+    equipped ? { ...view, equipped } : view;
   return [
     // Gołe ręce z urzędu (47b) nie są przedmiotem — nie ma ich w żadnym oknie wymiany.
-    ...cpredWithoutBareHands(data.weapons).map((row) => cpredItemView('weapons', row)),
-    ...data.armor.map((row) => cpredItemView('armor', row)),
-    ...data.gear.map((row) => cpredItemView('gear', row)),
+    ...cpredWithoutBareHands(data.weapons).map((row) =>
+      mark(cpredItemView('weapons', row), inHands.has(row.id) ? 'hands' : null),
+    ),
+    ...data.armor.map((row) =>
+      mark(cpredItemView('armor', row), row.equipped === false ? null : 'worn'),
+    ),
+    ...data.gear.map((row) =>
+      mark(
+        cpredItemView('gear', row),
+        row.lit === true || row.connected === true ? 'in-use' : null,
+      ),
+    ),
   ];
 }
 

@@ -1,5 +1,13 @@
 # Pomysły poza zakresem etapów
 
+**03.11.2026 (Ekwipunek „Używane” / „Plecak”) — czego podział jeszcze nie robi.** (1) **„Upuść”
+kładzie broń na ziemi** — dziś `weapon:draw` z `drop` tylko opróżnia ręce za darmo, więc broń
+ląduje w plecaku, czyli tak, jakby „Schowaj” nie kosztowało Akcji; uczciwie byłoby zrobić z niej
+„Stos” pod figurą (jak upuszczenie z okna „Wymiana”, 46b2). (2) **Przeciąganie z plecaka na
+slot** (i z powrotem) zamiast guzika, jak w cRPG — z tą samą ceną Akcji. (3) **Trzeci stan broni
+„w kaburze”** (szybkie sloty) — MG 03.11 wybrał dwa stany, jak dotąd. (4) **Wiersz latarki
+w użyciu** nie ma pól ilości i uwag — edytuje się je po schowaniu.
+
 **03.11.2026 (przebieg ataku) — czego sklejanie jeszcze nie robi.** Sklejanie kart jednej
 mechaniki zrobione 03.11 (umowa na górze `czat`). Zostało: (1) **Duszenie i Rzut pod kartą
 Pochwycenia** — MG zdecydował, że zostają osobno, bo to nowe Akcje w kolejnych rundach; gdyby

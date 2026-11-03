@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import type { InventoryItemRefWire } from '@vtt/shared';
 import { cpredInventoryView } from '@vtt/shared';
 import { useCharacterStore } from '../../stores/characterStore.js';
+import { useOutsideHands } from '../../outside-hands.js';
 import { MAP_DROP_ZONE, useExchangeDrag } from './drag.js';
 import { ItemGrid, countLabel, useGridSelection, useItemTile } from './ItemGrid.js';
 import { clampQty, formatEd, itemKey, refOf } from './items.js';
@@ -45,7 +46,11 @@ export function OwnInventoryColumn({
   const [qty, setQty] = useState<Record<string, string>>({});
   const [money, setMoney] = useState('');
 
-  const items = useMemo(() => (anchor ? cpredInventoryView(anchor.data) : []), [anchor]);
+  const outside = useOutsideHands();
+  const items = useMemo(
+    () => (anchor ? cpredInventoryView(anchor.data, outside) : []),
+    [anchor, outside],
+  );
   const wallet = anchor?.data.eddies ?? 0;
   const tile = useItemTile();
   const tiles = useMemo(() => items.map((item) => tile(item)), [items, tile]);

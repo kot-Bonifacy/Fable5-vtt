@@ -1,4 +1,6 @@
 import type {
+  CpredCharacterData,
+  CpredOutsideHands,
   ExchangeCounterpartView,
   ExchangeCounterpartsPayload,
   ExchangeCounterpartsResult,
@@ -16,6 +18,7 @@ import {
 } from '@vtt/shared';
 import type { Character } from '../generated/prisma/client.js';
 import { defineEvent } from './registry.js';
+import { outsideHandsOf } from './attacks.js';
 import { requireCampaignId } from './combat.js';
 import {
   closestMetres,
@@ -146,6 +149,18 @@ export const exchangeCounterpartsEvent = defineEvent<
         nearest.set(characterId, { placed, metres });
       }
 
+      // Granaty spoza limitu rąk — katalog kampanii czytany raz na żądanie,
+      // dopiero gdy któraś karta pokazuje zawartość (znaczek „w rękach” na
+      // kaflu, 03.11.2026). Wynik nie zależy od karty, tylko od katalogu.
+      let grenades: Promise<CpredOutsideHands> | null = null;
+      const itemsOf = async (data: CpredCharacterData) =>
+        cpredInventoryView(
+          data,
+          data.weapons.some((row) => row.compendiumId)
+            ? await (grenades ??= outsideHandsOf(deps, campaignId, data))
+            : undefined,
+        );
+
       for (const [characterId, { placed, metres }] of nearest) {
         const card = await prisma.character.findUnique({ where: { id: characterId } });
         if (!card || card.campaignId !== campaignId) continue;
@@ -164,6 +179,11 @@ export const exchangeCounterpartsEvent = defineEvent<
           merchant: merchant ? { closed: merchant.closed } : null,
           container: container ? { lock: container.lock } : null,
         });
+        const items =
+          options.some((option) => option.kind === 'loot') ||
+          (container && (container.lock === 'open' || isGm))
+            ? await itemsOf(data)
+            : [];
         const far = metres === null || metres > CPRED_MELEE_REACH_M;
         const tableName =
           card.ownerId !== null ? card.name : isGm ? token.name : tokenTableName(token, token.name);
@@ -192,17 +212,13 @@ export const exchangeCounterpartsEvent = defineEvent<
             ...(shop ? { merchantId: merchant.row.id } : {}),
             ...(isGm || card.ownerId !== null ? { characterId: card.id } : {}),
             ...(unavailable ? { unavailable } : {}),
-            ...(option.kind === 'loot'
-              ? { items: cpredInventoryView(data), eddies: data.eddies }
-              : {}),
+            ...(option.kind === 'loot' ? { items, eddies: data.eddies } : {}),
             // Zawartość pojemnika jedzie wyłącznie otwartego (decyzja MG 14);
             // MG widzi ją zawsze — to jego skrzynia.
             ...(option.kind === 'container' && container
               ? {
                   lock: container.lock,
-                  ...(container.lock === 'open' || isGm
-                    ? { items: cpredInventoryView(data), eddies: data.eddies }
-                    : {}),
+                  ...(container.lock === 'open' || isGm ? { items, eddies: data.eddies } : {}),
                   ...(container.lock === 'locked'
                     ? {
                         lockSkills: [...container.skills],

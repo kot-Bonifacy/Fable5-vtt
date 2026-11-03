@@ -555,6 +555,8 @@ export interface CpredItemViewWire {
   compendiumId?: string;
   /** Lokacja pancerza: tarcza ma inną miniaturę niż kurtka. */
   armorLocation?: 'head' | 'body' | 'shield';
+  /** W użyciu na karcie (03.11.2026): w rękach, na sobie, zapalone/podłączone. */
+  equipped?: 'hands' | 'worn' | 'in-use';
 }
 
 /* ------------------------------------------------------------------ *

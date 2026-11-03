@@ -15,6 +15,7 @@ import {
 import { noteAck, notifyInfo, notifyRefusal } from '../../notices.js';
 import { configContainer, inventoryErrorText } from '../../socket.js';
 import { useCharacterStore, type CharacterSheetView } from '../../stores/characterStore.js';
+import { useOutsideHands } from '../../outside-hands.js';
 import { ItemViewIcon } from '../ItemIcons.js';
 import { NumberStepper } from '../NumberStepper.js';
 import { ContainerItemPicker } from './ContainerItemPicker.js';
@@ -49,7 +50,8 @@ export function ContainerSheet({
   const [keyHolder, setKeyHolder] = useState('');
   const [picking, setPicking] = useState(false);
   const data = character.data;
-  const items = cpredInventoryView(data);
+  const outside = useOutsideHands();
+  const items = cpredInventoryView(data, outside);
 
   // Klucz dostaje karta, która może go nieść — każda poza pojemnikami.
   const holders = useMemo(

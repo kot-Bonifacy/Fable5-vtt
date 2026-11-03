@@ -1,5 +1,32 @@
 # Dziennik sesji — archiwum
 
+### Sesja 03.11, trzecia — przebieg ataku na czacie
+
+**Zlecenie MG:** sklejanie kart jednej mechaniki (atak → Unik → obrażenia → nałożenie) z
+`POMYSLY.md`. **Pytania i odpowiedzi MG (03.11):** miejsce — karta zjeżdża na dół, na miejsce
+najnowszego kroku; zwijanie — rozliczony przebieg zwinięty sam, klik rozwija; zakres — strzał
+i cios, obszar, ogień zaporowy, zwarcie i Konfrontacja; droga — klient, nie wiersz-matka na
+serwerze; zwarcie — tylko zwijanie, Duszenie i Rzut osobno; gaz i EMP — dowiązać na serwerze;
+filtr — „Rzuty” lub „Walka”; linia — werdykt + skutek (przebicie, PW, rany, stan ran).
+**Zrobione:** `chat-attack-thread.ts` (`foldAttackThreads`, `attackThreadSettled`,
+`attackThreadSummary`, `isCombatThreadRoot`) + test (13); `ChatPanel` — `threads`,
+`rowInvolvements`, `AttackThreadRow`, `AttackThreadLine`, stan `threadOpen`; style
+`.chat-thread*` w `02-chat-dice.css`. Serwer: `DamageLogEntry.attackMessageId`,
+`AmmoFailureCard` + `postAmmoFailureCards` (`ammo-effects.ts`), `performAttackRoll` wysyła karty
+skutków po karcie ataku (w `catch` bez id); test w `ammo-effects.test.ts` (+1). Odłożone do
+`POMYSLY.md`: Duszenie/Rzut pod Pochwyceniem, krótszy nagłówek kroku, zapamiętane zwinięcie,
+liczby Uniku w linii, Test Przeżywalności. **Rozstrzygnięcia bez pytań (do słowa MG):** zwija się
+też pojedyncza karta ataku bez kroków (pudło, ogień zaporowy); rzut obrażeń bez ataku (z karty,
+`/r` + „Zastosuj”) skleja się ze swoim nałożeniem tą samą drogą; cofnięte nałożenie zostaje
+w rozwiniętym przebiegu przekreślone, a znika ze zwiniętej linii; zwinięte karty zostają w DOM-ie
+pod `hidden`, żeby E2E (`.chat-roll`, `data-total`, `chatCards`) czytało je jak dawniej.
+**Testy:** klient 467/467 (+13), serwer 1722/1722 (+1), `shared` 2917/2917, `tsc` (klient, serwer),
+ESLint i Prettier czyste. **Oglądane w Chromium (biblioteka `playwright`, instancja E2E, karty
+wstrzyknięte do magazynu czatu):** belka 420 i 620 px — rozliczony strzał z raną, granat z dwoma
+celami i odskokiem, pudło, ogień zaporowy i starcie zwinięte do linii, atak czekający na Unik
+rozwinięty; rozwinięcie pokazuje rzut obrażeń i kartę nałożenia z „Cofnij” i „Zwiń”. Firefoksa
+w kontenerze nie ma — oględziny w nim przy stole.
+
 ### Sesja 03.11, druga — gęsta karta rzutu na czacie
 
 **Zlecenie MG:** czat w prawej belce przeładowany — największa liczba (suma) zbędna, a przy

@@ -781,17 +781,6 @@
   border-radius: 2px;
 }
 
-/* Broń schowana (02.11.2026, MG): zamiast kafelka na każdą — jedna szara
-   linijka pod bronią w ręku. Cichsza niż plakietka podglądu, bo nic nie blokuje. */
-.hud-holstered {
-  margin: 0;
-  padding: 0 0.15rem;
-  font-size: 0.7rem;
-  line-height: 1.3;
-  color: var(--text-dim);
-  overflow-wrap: anywhere;
-}
-
 .hud-preview svg {
   flex: none;
   color: var(--info);

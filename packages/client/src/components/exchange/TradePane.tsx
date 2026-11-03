@@ -19,6 +19,7 @@ import {
 } from '../../socket.js';
 import { noteAck, notifyRefusal } from '../../notices.js';
 import { useCharacterStore } from '../../stores/characterStore.js';
+import { useOutsideHands } from '../../outside-hands.js';
 import { InlineNotice } from '../NoticeColumn.js';
 import { useExchangeDrag } from './drag.js';
 import { ItemGrid, countLabel, useGridSelection, useItemTile } from './ItemGrid.js';
@@ -90,12 +91,13 @@ export function TradePane({ trade }: { trade: TradeView }) {
 
   // Ekwipunek pomniejszony o to, co już leży w polu — ta sama sztuka nie może
   // leżeć w dwóch miejscach naraz.
+  const outside = useOutsideHands();
   const inventory = useMemo(() => {
     if (!data) return [];
-    return cpredInventoryView(data)
+    return cpredInventoryView(data, outside)
       .map((item) => ({ ...item, qty: item.qty - (offered.get(itemKey(item)) ?? 0) }))
       .filter((item) => item.qty > 0 && (item.stackable || !offered.has(itemKey(item))));
-  }, [data, offered]);
+  }, [data, offered, outside]);
 
   const wallet = data?.eddies ?? 0;
   const stale = mine && data ? offerIsStale(data, mine) : false;
