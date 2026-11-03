@@ -206,13 +206,13 @@
   flex-wrap: wrap;
 }
 
-/* Plakietka, nie guzik: „to trzymam" jest stanem, a obok stoją dwie czynności,
-   którymi się go zmienia. */
-.weapon-hands-badge {
+/* Granat w plecaku (03.11.2026): plakietka, nie guzik — rzuca się go prosto
+   z oporządzenia, więc nie ma czego dobywać. */
+.weapon-ready-badge {
   padding: 0.05rem 0.3rem;
   font-size: 0.8rem;
-  color: var(--ok);
-  border: 1px solid currentColor;
+  color: var(--cp-ink-dim, var(--text-dim));
+  border: 1px dashed currentColor;
   border-radius: 3px;
   white-space: nowrap;
 }
@@ -1023,6 +1023,32 @@
   font-size: 0.68rem;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
+}
+
+/* Rzecz w użyciu na karcie (03.11.2026, wzór z cRPG): zielony znaczek w lewym
+   górnym rogu (pięść — w rękach, pancerz — na sobie, dłoń — latarka albo
+   egzoszkielet) i zielony brzeg u dołu. Zieleń, bo czerwień nosi zaznaczenie,
+   a ta sama barwa stała przy „✊ W rękach” na karcie. */
+.item-tile--equipped {
+  border-bottom: 2px solid var(--ok);
+}
+
+.item-tile-equipped {
+  position: absolute;
+  top: 2px;
+  left: 3px;
+  display: grid;
+  place-items: center;
+  width: 1.05rem;
+  height: 1.05rem;
+  border-radius: 50%;
+  background: var(--ok);
+  color: var(--bg, #000);
+}
+
+.item-tile-equipped .hud-icon {
+  width: 0.75rem;
+  height: 0.75rem;
 }
 
 .item-tile-price {

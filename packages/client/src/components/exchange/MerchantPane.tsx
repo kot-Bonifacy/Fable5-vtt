@@ -16,6 +16,7 @@ import { buyBackOf, merchantPriceContext, merchantQuote } from '../../exchange-q
 import { clearNotices, notifyInfo, notifyRefusal } from '../../notices.js';
 import { dealMerchant, merchantErrorText, viewMerchant } from '../../socket.js';
 import { useCharacterStore } from '../../stores/characterStore.js';
+import { useOutsideHands } from '../../outside-hands.js';
 import { COMBAT_LOCKED_HINT, useCombatLocked } from '../../stores/combatStore.js';
 import { shopTierContextOf, useCompendiumStore } from '../../stores/compendiumStore.js';
 import { useExchangeStore } from '../../stores/exchangeStore.js';
@@ -128,7 +129,8 @@ export function MerchantPane({ anchorId, merchantId }: { anchorId: string; merch
     });
   }, [rowByKey]);
 
-  const myItems = useMemo(() => (data ? cpredInventoryView(data) : []), [data]);
+  const outside = useOutsideHands();
+  const myItems = useMemo(() => (data ? cpredInventoryView(data, outside) : []), [data, outside]);
   const myByKey = useMemo(() => new Map(myItems.map((item) => [itemKey(item), item])), [myItems]);
 
   useEffect(() => {

@@ -186,6 +186,44 @@ describe('cpredMoveItems', () => {
   });
 });
 
+describe('cpredInventoryView — rzeczy w użyciu (03.11.2026)', () => {
+  const second: CpredWeaponRow = { ...weapon, id: 'w2', name: 'Drugi' };
+  const grenade: CpredWeaponRow = { ...weapon, id: 'w0', name: 'Granat', compendiumId: 'g' };
+  const equippedOf = (data: CpredCharacterData, outside?: (row: CpredWeaponRow) => boolean) =>
+    Object.fromEntries(
+      cpredInventoryView(data, outside).map((view) => [view.rowId, view.equipped ?? null]),
+    );
+
+  it('znaczy broń w rękach, pancerz na sobie i zapaloną latarkę', () => {
+    const lamp: CpredGearRow = { id: 'g2', name: 'Latarka', notes: '', qty: 1, lit: true };
+    const stowed: CpredArmorRow = { ...armor, id: 'a2', equipped: false };
+    const data = sheet({
+      weapons: [weapon, second],
+      drawnWeaponRowIds: ['w2'],
+      armor: [armor, stowed],
+      gear: [stimpak, lamp],
+    });
+    expect(equippedOf(data)).toEqual({
+      w1: null,
+      w2: 'hands',
+      a1: 'worn',
+      a2: null,
+      g1: null,
+      g2: 'in-use',
+    });
+  });
+
+  it('karta, której nikt nie pytał o ręce, trzyma pierwszą broń — ale nie granat', () => {
+    const data = sheet({ weapons: [grenade, weapon] });
+    expect(equippedOf(data)).toMatchObject({ w0: 'hands', w1: null });
+    expect(equippedOf(data, (row) => row.id === 'w0')).toMatchObject({ w0: null, w1: 'hands' });
+  });
+
+  it('puste ręce — żadna broń nie ma znaczka', () => {
+    expect(equippedOf(sheet({ weapons: [weapon], drawnWeaponRowIds: [] }))).toEqual({ w1: null });
+  });
+});
+
 describe('cpredItemLine', () => {
   it('nazywa broń razem ze stanem magazynka', () => {
     const [view] = cpredInventoryView(sheet({ weapons: [weapon] }));

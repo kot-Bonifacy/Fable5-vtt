@@ -29,6 +29,16 @@ Pełna tabela z nazwami i datami: `archiwum/tabela-etapow.md`.
 
 ## Od czego zacząć
 
+**Ekwipunek „Używane” nad „Plecakiem” (zlecenie MG z 03.11, wzór z cRPG) — czeka na wdrożenie
+i oględziny przy stole (Firefox).** Linijka „Schowane: …” z lewej belki HUD zniknęła. Zakładka
+„Ekwipunek” zaczyna się sekcją „Używane” (czerwony brzeg): „Ręce” (broń dobyta i gołe ręce,
+„Schowaj (Akcja)” / „Upuść”), „Na sobie” (Głowa, Korpus, Tarcza i słabsze „Pod spodem”)
+i „Sprzęt w użyciu” (zapalona latarka, podłączony egzoszkielet). Pod nią „Plecak”: broń
+z „Dobądź”, zdjęty pancerz z „Załóż”, wyposażenie bez rzeczy w użyciu, dawki. Okno „Wymiana”
+znaczy kafle rzeczy w użyciu zielonym kółkiem (pięść / pancerz / dłoń). Mechanika bez zmian
+(dwa stany broni). Umowy na górze `karta` i `ekwipunek`, pomysły (m.in. „Upuść” na ziemię)
+w `POMYSLY.md`.
+
 **Zaległości bez MG (03.11, czwarta sesja) — czekają na wdrożenie.** Okno „Wymiana” odświeża
 listę, gdy zmienią się naklejki figur z listy: ciało, które wstało, nie zostaje łupem, a `Esc`
 zamyka okno. Przy „Bijatyce” bez wpisu w kompendium stoi pięść, nie pistolet. T4b 4.8 czeka na
@@ -590,9 +600,9 @@ a nie do tego pliku.
 | `tura`      | budżet Akcji i metrów, kolejka, trasa, ruch przez ściany, skok, walka z zauważenia, pytanie MG o przekroczenie, Percepcja w drodze, ukryte figury, skradanie, kropki ataków, kierowca bez Biegu | 34   | 7       |
 | `atak`      | broń i dodatki, amunicja, obrażenia, pancerz, rany krytyczne, trucizna na ostrzu, auto-unik, strach z Konfrontacji, auto jako cel, broń pokładowa, wybór celu ze stosu, skutki amunicji po karcie ataku, ikona gołych rąk | 56   | 8       |
 | `statysta`  | figura z kartą, `statBlock`, Wartość bojowa, `token:stat`, wzorce | 17   | 3       |
-| `karta`     | strony i zakładki, panele, `sheet.css`, walidacja list, usuwanie przedmiotu | 11   | 12      |
+| `karta`     | strony i zakładki, panele, `sheet.css`, walidacja list, usuwanie przedmiotu, „Używane” i „Plecak” | 12   | 12      |
 | `postac`    | kreator, PD i awanse, koszyk i cofanie awansów, Role i Zdolności, cyborgizacje, chrom zmieniający liczby, ekonomia, Test montażu gracza, pojazdy i Tabor | 58   | 3       |
-| `ekwipunek` | wiersze wyposażenia, przekazanie, łup (także ciała graczy), handel, sklepy, asortyment handlarza z kompendium, zasięg, amunicja bez dna, egzoszkielet, latarka z ekwipunku, narkotyki i fiolki, siatka okna „Wymiana”, zgoda z góry, odświeżanie po naklejkach | 43   | 3       |
+| `ekwipunek` | wiersze wyposażenia, przekazanie, łup (także ciała graczy), handel, sklepy, asortyment handlarza z kompendium, zasięg, amunicja bez dna, egzoszkielet, latarka z ekwipunku, narkotyki i fiolki, siatka okna „Wymiana”, zgoda z góry, odświeżanie po naklejkach, znaczek „w użyciu” | 44   | 3       |
 | `czas`      | zegar świata, kalendarz, `statEffects`, leczenie po dobie, dawki i uzależnienia (`chems`) | 19   | 2       |
 | `siec`      | Programy, LOD, demony, piętra architektury, dek jako towar, strefy bronione, kamery, rozbrajanie, Sieć ze sceny, jedna próba i pamięć sukcesów | 14   | 5       |
 | `boty`      | llama-server, RAG, reindeks, dziennik i baza wiedzy, brama AI  | 10   | 10      |
@@ -605,6 +615,31 @@ a nie do tego pliku.
 ## Notatki z dwóch ostatnich sesji
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
+
+### Sesja 03.11, piąta — Ekwipunek: „Używane” i „Plecak”
+
+**Zlecenie MG:** linijka „Schowane: Lekka broń biała, Pistolet…” w lewej belce HUD niepotrzebna
+— skasować, a w ekwipunku wyraźnie pokazać, co jest używane, a co w plecaku, tak jak zwykle
+w cRPG. **Pytania i odpowiedzi MG (03.11):** układ — panel slotów nad plecakiem (rzecz
+przechodzi między sekcjami); stany broni — dwa, jak dotąd (bez kabury); zasięg — także okno
+„Wymiana” (znaczek na kaflu); HUD — nic w zamian. **Zrobione:** HUD bez `hud-holstered`
+i `HudContext.holstered`; `GearTab` — sekcje `.cp-loadout--equipped` / `--pack`, `WeaponStrip`
+i `ArmorStrip` z `scope`, `GearInUse`, `cpredGearInUse`, `withRowsInUse`, `GearLightHands` tylko
+z „Dobądź”, plakietka granatu „pod ręką”, „Zdejmij” przy słabszej sztuce „Pod spodem”; `Arsenal`
+i `.cp-arsenal` usunięte. `shared`: `CpredItemEquipped`, `cpredInventoryView(data, outside?)`
+z `equipped` (+ `CpredItemViewWire.equipped`); serwer `exchange:counterparts` liczy granaty raz
+(`outsideHandsOf`); klient `useOutsideHands` w pięciu kolumnach okna, znaczek w `ItemGrid`.
+**Rozstrzygnięcia bez pytań (do słowa MG):** nazwy sekcji „Używane” / „Plecak” (słowa MG;
+„Wyposażenie” zostaje nagłówkiem tabeli z wydruku); gołe ręce stoją w „Rękach” zawsze; noszona
+słabsza sztuka pancerza jest „na sobie”, nie w plecaku; podłączony egzoszkielet to sprzęt
+w użyciu (znika z „Sprzętu z premią”); „Upuść” zostaje jak było (tylko opróżnia ręce — pomysł
+w `POMYSLY.md`). **Testy:** `shared` 2922/2922 (+3 `inventory.test.ts`), serwer 1722/1722,
+klient 467/467, `tsc` (klient, serwer), ESLint i Prettier czyste. **Oglądane w Chromium**
+(tymczasowy spec na instancji E2E, skasowany; Chromium kontenera podpięty dowiązaniem
+`chromium-1246`): karta NPC-a z bronią, granatem, kurtką, hełmem w plecaku i dwiema latarkami —
+dobycie z zamianą, schowanie do pustych rąk, okno „Wymiana” ze znaczkami; konsola bez błędów.
+Dwóch kolumn od 1350 px nie oglądano (okno karty się nie rozciągnęło). Firefoksa w kontenerze
+nie ma — oględziny w nim przy stole.
 
 ### Sesja 03.11, czwarta — zaległości bez MG i bez VPS
 
@@ -626,30 +661,3 @@ na instancji E2E, skasowany; przeglądarka kontenera przez `executablePath`, pop
 `actors.ts` niezacommitowana): łup → MG zdejmuje „Ogłuszony” → okno w trybie `none`
 z „🤝 Kowal”, ponowne ogłuszenie przynosi „🎒 Kowal” bez fokusu, `Esc` zamyka; pięść na panelu.
 T4b nieuruchomiony (brak `po-T4a` w kontenerze). Firefoksa w kontenerze nie ma.
-
-### Sesja 03.11, trzecia — przebieg ataku na czacie
-
-**Zlecenie MG:** sklejanie kart jednej mechaniki (atak → Unik → obrażenia → nałożenie) z
-`POMYSLY.md`. **Pytania i odpowiedzi MG (03.11):** miejsce — karta zjeżdża na dół, na miejsce
-najnowszego kroku; zwijanie — rozliczony przebieg zwinięty sam, klik rozwija; zakres — strzał
-i cios, obszar, ogień zaporowy, zwarcie i Konfrontacja; droga — klient, nie wiersz-matka na
-serwerze; zwarcie — tylko zwijanie, Duszenie i Rzut osobno; gaz i EMP — dowiązać na serwerze;
-filtr — „Rzuty” lub „Walka”; linia — werdykt + skutek (przebicie, PW, rany, stan ran).
-**Zrobione:** `chat-attack-thread.ts` (`foldAttackThreads`, `attackThreadSettled`,
-`attackThreadSummary`, `isCombatThreadRoot`) + test (13); `ChatPanel` — `threads`,
-`rowInvolvements`, `AttackThreadRow`, `AttackThreadLine`, stan `threadOpen`; style
-`.chat-thread*` w `02-chat-dice.css`. Serwer: `DamageLogEntry.attackMessageId`,
-`AmmoFailureCard` + `postAmmoFailureCards` (`ammo-effects.ts`), `performAttackRoll` wysyła karty
-skutków po karcie ataku (w `catch` bez id); test w `ammo-effects.test.ts` (+1). Odłożone do
-`POMYSLY.md`: Duszenie/Rzut pod Pochwyceniem, krótszy nagłówek kroku, zapamiętane zwinięcie,
-liczby Uniku w linii, Test Przeżywalności. **Rozstrzygnięcia bez pytań (do słowa MG):** zwija się
-też pojedyncza karta ataku bez kroków (pudło, ogień zaporowy); rzut obrażeń bez ataku (z karty,
-`/r` + „Zastosuj”) skleja się ze swoim nałożeniem tą samą drogą; cofnięte nałożenie zostaje
-w rozwiniętym przebiegu przekreślone, a znika ze zwiniętej linii; zwinięte karty zostają w DOM-ie
-pod `hidden`, żeby E2E (`.chat-roll`, `data-total`, `chatCards`) czytało je jak dawniej.
-**Testy:** klient 467/467 (+13), serwer 1722/1722 (+1), `shared` 2917/2917, `tsc` (klient, serwer),
-ESLint i Prettier czyste. **Oglądane w Chromium (biblioteka `playwright`, instancja E2E, karty
-wstrzyknięte do magazynu czatu):** belka 420 i 620 px — rozliczony strzał z raną, granat z dwoma
-celami i odskokiem, pudło, ogień zaporowy i starcie zwinięte do linii, atak czekający na Unik
-rozwinięty; rozwinięcie pokazuje rzut obrażeń i kartę nałożenia z „Cofnij” i „Zwiń”. Firefoksa
-w kontenerze nie ma — oględziny w nim przy stole.

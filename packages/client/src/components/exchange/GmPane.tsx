@@ -4,6 +4,7 @@ import { INVENTORY_NOTE_MAX, cpredInventoryView } from '@vtt/shared';
 import { clearNotices, notifyInfo, notifyRefusal } from '../../notices.js';
 import { giveInventory, inventoryErrorText } from '../../socket.js';
 import { useCharacterStore } from '../../stores/characterStore.js';
+import { useOutsideHands } from '../../outside-hands.js';
 import { useExchangeDrag } from './drag.js';
 import { ItemGrid, countLabel, useGridSelection, useItemTile } from './ItemGrid.js';
 import { clampQty, formatEd, itemKey, refOf } from './items.js';
@@ -33,7 +34,11 @@ export function GmPane({
   const [note, setNote] = useState('');
   const [busy, setBusy] = useState(false);
 
-  const items = useMemo(() => (anchor ? cpredInventoryView(anchor.data) : []), [anchor]);
+  const outside = useOutsideHands();
+  const items = useMemo(
+    () => (anchor ? cpredInventoryView(anchor.data, outside) : []),
+    [anchor, outside],
+  );
   const tile = useItemTile();
   const tiles = useMemo(() => items.map((item) => tile(item)), [items, tile]);
   const byKey = useMemo(() => new Map(items.map((item) => [itemKey(item), item])), [items]);

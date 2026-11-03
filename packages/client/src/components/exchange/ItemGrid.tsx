@@ -8,7 +8,12 @@ import {
   type KeyboardEvent as ReactKeyboardEvent,
   type PointerEvent as ReactPointerEvent,
 } from 'react';
-import type { CpredItemIcon, CpredItemList, CpredItemIconSource } from '@vtt/shared';
+import type {
+  CpredItemEquipped,
+  CpredItemIcon,
+  CpredItemList,
+  CpredItemIconSource,
+} from '@vtt/shared';
 import { CPRED_ITEM_LIST_LABELS } from '@vtt/shared';
 import { HudIcon } from '../HudIcon.js';
 import { useRowIcon } from '../ItemIcons.js';
@@ -56,7 +61,26 @@ export interface GridTile {
   stackable?: boolean;
   /** Ile sztuk ma stos — pole ilości na pasku ma taki sufit. */
   qty?: number;
+  /**
+   * Rzecz w użyciu na karcie (03.11.2026, wzór z cRPG): znaczek w rogu kafla
+   * i słowo na pasku — oddajesz broń z ręki albo kurtkę z grzbietu.
+   */
+  equipped?: CpredItemEquipped;
 }
+
+/** Sylwetka znaczka „w użyciu” w lewym górnym rogu kafla. */
+const EQUIPPED_ICONS: Record<CpredItemEquipped, string> = {
+  hands: 'fist',
+  worn: 'armor',
+  'in-use': 'grab',
+};
+
+/** Słowo znaczka „w użyciu” — dymek kafla i pasek pod siatką. */
+export const ITEM_EQUIPPED_LABELS: Record<CpredItemEquipped, string> = {
+  hands: 'w rękach',
+  worn: 'na sobie',
+  'in-use': 'w użyciu',
+};
 
 /** Kafel z wiersza ekwipunku albo półki: klucz, sylwetka, liczba sztuk. */
 export function useItemTile(): (
@@ -67,6 +91,7 @@ export function useItemTile(): (
     qty: number;
     stackable: boolean;
     detail: string;
+    equipped?: CpredItemEquipped;
   },
   extra?: Partial<GridTile>,
 ) => GridTile {
@@ -81,6 +106,7 @@ export function useItemTile(): (
       ...(item.stackable && item.qty > 1 ? { badge: `×${item.qty}` } : {}),
       ...(item.stackable ? {} : { detail: item.detail }),
       kind: CPRED_ITEM_LIST_LABELS[item.list],
+      ...(item.equipped ? { equipped: item.equipped } : {}),
       ...extra,
     }),
     [rowIcon],
@@ -315,11 +341,19 @@ export function ItemGrid({
             const selected = selection.isSelected(tile.key);
             const title = tile.blocked
               ? `${tile.name} — ${tile.blockedHint ?? 'niedostępne'}`
-              : [tile.name, tile.detail, tile.price, tile.kind].filter(Boolean).join(' — ');
+              : [
+                  tile.name,
+                  tile.equipped ? ITEM_EQUIPPED_LABELS[tile.equipped] : '',
+                  tile.detail,
+                  tile.price,
+                  tile.kind,
+                ]
+                  .filter(Boolean)
+                  .join(' — ');
             return (
               <li
                 key={tile.key}
-                className={`item-tile${selected ? ' item-tile--selected' : ''}${tile.blocked ? ' item-tile--blocked' : drag ? ' trade-draggable' : ''}`}
+                className={`item-tile${selected ? ' item-tile--selected' : ''}${tile.equipped ? ' item-tile--equipped' : ''}${tile.blocked ? ' item-tile--blocked' : drag ? ' trade-draggable' : ''}`}
                 role="option"
                 aria-selected={selected}
                 aria-disabled={tile.blocked || undefined}
@@ -339,6 +373,15 @@ export function ItemGrid({
               >
                 <HudIcon name={tile.icon ?? 'swap-bag'} className="item-tile-glyph" />
                 <span className="item-tile-name">{tile.name}</span>
+                {tile.equipped && (
+                  <span
+                    className={`item-tile-equipped item-tile-equipped--${tile.equipped}`}
+                    aria-label={ITEM_EQUIPPED_LABELS[tile.equipped]}
+                    data-equipped={tile.equipped}
+                  >
+                    <HudIcon name={EQUIPPED_ICONS[tile.equipped]} />
+                  </span>
+                )}
                 {tile.badge && <span className="item-tile-badge">{tile.badge}</span>}
                 {tile.price && <span className="item-tile-price">{tile.price}</span>}
               </li>
@@ -360,6 +403,7 @@ export function ItemGrid({
             ) : count === 1 && focus ? (
               <>
                 <strong>{focus.name}</strong>
+                {focus.equipped ? ` · ${ITEM_EQUIPPED_LABELS[focus.equipped]}` : ''}
                 {focus.detail ? ` · ${focus.detail}` : ''}
                 {focus.price ? ` · ${focus.price}` : ''}
               </>

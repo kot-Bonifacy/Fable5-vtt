@@ -124,11 +124,6 @@ export interface HudContext {
    * keeps its own for nobody, because the bot reads that list by id.
    */
   groups: CpredHotbarGroup[];
-  /**
-   * Broń zdjęta z paska, bo nie jest w rękach (02.11.2026) — tylko nazwy, do
-   * podpowiedzi „dobądź na karcie”. `slots` dalej ją ma (kursor i sygnatura).
-   */
-  holstered: string[];
   /** Portrait numbers; null for a token with neither sheet nor profile. */
   vitals: HudVitals | null;
   /**
@@ -298,7 +293,6 @@ export function hudContextFor(tokenId: string | null): HudContext {
       turn: null,
       slots: [],
       groups: [],
-      holstered: [],
       vitals: null,
       acting: false,
       isGm,
@@ -378,7 +372,6 @@ export function hudContextFor(tokenId: string | null): HudContext {
     // reason on the button has to be the one that will actually refuse it.
     slots: shown,
     groups: cpredHotbarGroups(inHand.slots),
-    holstered: inHand.holstered,
     isGm,
     isActiveTurn: refusal === null,
     refusal,

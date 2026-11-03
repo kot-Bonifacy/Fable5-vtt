@@ -1288,36 +1288,84 @@
 
 /* ===== Pas „Broń i pancerz" i tabele arkusza (etap 27b) ===== */
 
-/* Pas stoi od 22.10.2026 na górze zakładki „Ekwipunek" (wcześniej dół strony
-   pierwszej, przez całą szerokość siatki — stąd `grid-column`). */
-.cp-arsenal {
-  grid-column: 1 / -1;
+/* Ekwipunek wzorem cRPG (03.11.2026, zlecenie MG): sekcja „Używane” (ręce,
+   pancerz na sobie, sprzęt w użyciu) nad „Plecakiem”. Do 03.11 broń i pancerz
+   stały jednym pasem `.cp-arsenal`, a broń w rękach i schowana mieszały się na
+   jednej liście. „Używane” ma czerwony brzeg i podkład — to, co postać trzyma,
+   ma być widać z drugiego końca okna; plecak stoi na gołym papierze. */
+.cp-loadout {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   gap: 0.4rem;
   align-items: start;
   min-width: 0;
-}
-
-.sheet-gear > .cp-arsenal {
   margin-bottom: 0.8rem;
 }
 
-/* Szerokie okno: pancerz obok broni, nie pod nią (zlecenie MG z 10.10). Pod
-   sobą obie tabele ciągnęły się na pełne 1500 px, a trzy wiersze pancerza
+.cp-loadout > .cp-section,
+.cp-loadout > .cp-strip,
+.cp-loadout > .cp-panel {
+  grid-column: 1 / -1;
+}
+
+.cp-loadout--equipped {
+  padding: 0 0.4rem 0.45rem 0.5rem;
+  border-left: 4px solid var(--cp-red);
+  background: color-mix(in srgb, var(--cp-red) 7%, transparent);
+}
+
+.cp-loadout--equipped > .cp-section {
+  margin-left: -0.5rem;
+  margin-right: -0.4rem;
+}
+
+.cp-loadout-slot {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  min-width: 0;
+}
+
+.cp-loadout-slot--wide {
+  grid-column: 1 / -1;
+}
+
+.cp-loadout-slot-title {
+  margin: 0;
+}
+
+/* Pusty slot mówi, gdzie leży to, czego w nim brak — jak szara sylwetka
+   w pustym slocie lalki z cRPG. */
+.cp-loadout-empty {
+  margin: 0;
+  padding: 0.25rem 0.4rem;
+  font-size: 0.9rem;
+  font-style: italic;
+  color: var(--cp-ink-dim);
+  border: 1px dashed color-mix(in srgb, var(--cp-ink-dim) 60%, transparent);
+}
+
+.cp-loadout-gear-name {
+  padding: 0 0.2rem;
+  font-weight: 600;
+}
+
+.cp-loadout-gear-state {
+  color: var(--cp-ink-dim);
+}
+
+/* Szerokie okno: pancerz obok broni, nie pod nią (zlecenie MG z 10.10) —
+   w „Używanych” ręce obok tego, co na sobie, w plecaku broń obok pancerza.
+   Pod sobą obie tabele ciągnęły się na pełne 1500 px, a trzy wiersze pancerza
    z krótką nazwą („Skóry") zostawiały w kolumnie nazwy kilkaset pikseli
    pustego papieru. Próg trzyma tabelę broni przy ~54 rem — mniej i kolumna
    „Uwagi" broni schodzi do kilku znaków. */
 @container (min-width: 1350px) {
-  .cp-arsenal {
+  .cp-loadout {
     grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr);
   }
 
-  .cp-arsenal > .cp-section {
-    grid-column: 1 / -1;
-  }
-
-  .cp-arsenal .armor-name-head {
+  .cp-loadout .armor-name-head {
     width: 52%;
   }
 }
