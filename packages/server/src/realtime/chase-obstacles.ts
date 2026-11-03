@@ -3,6 +3,7 @@ import type {
   ChaseObstacleRemovePayload,
   ChaseObstacleSpawnPayload,
   ChaseObstacleView,
+  ChaseVehicleAnswerPayload,
   CombatActionLogEntry,
   ScenePoint,
   SceneVehicleView,
@@ -52,7 +53,7 @@ import {
   toObstacleView,
   type PlacedVehicle,
 } from './chase.js';
-import { postServerRoll, resolveRam, rollRamDamage } from './chase-ram.js';
+import { postServerRoll, pushVehicleBehind, resolveRam, rollRamDamage } from './chase-ram.js';
 import { findCombatantForToken, loadCombat } from './combat.js';
 import { requireTurnSpend } from './combat-actions.js';
 import { logSpentAction } from './combat-log.js';
@@ -451,12 +452,85 @@ export async function obstaclePendingFor(
     where: { blockingId: sceneVehicleId },
     select: { id: true },
   });
-  return row !== null;
+  if (row !== null) return true;
+  // Stojące auto przed zderzakiem (przegląd 03.11) czeka tak samo.
+  const stalled = await prisma.sceneVehicle.findFirst({
+    where: { blockingId: sceneVehicleId },
+    select: { id: true },
+  });
+  return stalled !== null;
 }
 
 /**
+ * `chase:vehicle-answer` — przed autem dryfem stanęło auto stojące na drodze
+ * (wrak, zgaszony silnik; przegląd 03.11). Kierowca wybiera jak przy
+ * przeszkodzie MG: Gwałtowny skręt (PT 13, porażka — utrata kontroli
+ * i zderzenie) albo taranowanie (`resolveRam`, auto z auto). Po obu stojące auto
+ * zostaje za tylnym zderzakiem. Odpowiedź nic nie kosztuje; MG za każdego.
+ */
+export const chaseVehicleAnswerEvent = defineEvent<ChaseVehicleAnswerPayload, SceneVehicleView>({
+  name: 'chase:vehicle-answer',
+  handler: async ({ deps, socket, user, payload }) => {
+    const campaignId = requireChaseCampaignId(socket.data);
+    const prisma = deps.ctx.prisma;
+    const stalled = await requirePlaced(prisma, campaignId, payload?.sceneVehicleId);
+    const choice = payload?.choice;
+    if (choice !== 'swerve' && choice !== 'ram') throw new RealtimeError('BAD_REQUEST');
+    if (!stalled.blockingId) throw new RealtimeError('OBSTACLE_NOT_BLOCKING');
+    const placed = await requirePlaced(prisma, campaignId, stalled.blockingId);
+    const driver = await driverOf(prisma, placed.id);
+    if (user.role !== ROLE_GM && (!driver || driver.hidden || driver.ownerId !== user.id)) {
+      throw new RealtimeError('NOT_DRIVER');
+    }
+    const crash = async () => {
+      await resolveRam(
+        deps,
+        campaignId,
+        user,
+        placed,
+        { kind: 'vehicle', id: stalled.id, vehicle: stalled },
+        true,
+      );
+      await pushVehicleBehind(deps, campaignId, placed.scene, stalled.id, placed.id);
+    };
+    if (choice === 'ram') {
+      await crash();
+      await emitChase(deps, campaignId, placed.sceneId);
+      return placedView(prisma, placed.sceneId, placed.id);
+    }
+    if (!driver) throw new RealtimeError('NOT_DRIVER');
+    if (!driverCapable(driver)) throw new RealtimeError('DRIVER_INCAPABLE');
+    const maneuver = cpredVehicleManeuver(CPRED_OBSTACLE_MANEUVER_ID)!;
+    const skillId = cpredVehicleSkillId(readCpredVehicle(placed.vehicle.system).kind);
+    const roll = await rollServerSkillTest(deps, driver, skillId, maneuver.dv);
+    if (roll) {
+      roll.title = `${cpredManeuverTitle(maneuver)} — ${roll.title ?? ''}`.trim();
+      await postServerRoll(deps, campaignId, user, placed.sceneId, roll);
+    }
+    if (roll?.outcome?.success === true) {
+      await pushVehicleBehind(deps, campaignId, placed.scene, stalled.id, placed.id);
+    } else {
+      await prisma.sceneVehicle.update({ where: { id: placed.id }, data: { lostControl: true } });
+      const line: CombatActionLogEntry = {
+        combatantId: '',
+        actorName: placed.vehicle.name,
+        actionId: 'chase-lost-control',
+        actionName: 'Utrata kontroli',
+        note: `${maneuver.name} nieudany — wjeżdża w: ${stalled.vehicle.name}`,
+      };
+      await logSpentAction(deps, campaignId, user, line);
+      await crash();
+    }
+    await emitChase(deps, campaignId, placed.sceneId);
+    return placedView(prisma, placed.sceneId, placed.id);
+  },
+});
+
+/**
  * Początek rundy (65e), po dryfie aut: każda przeszkoda jedzie w kadrze w tył
- * o `tempo / 4` kratek, raz na rundę (`driftRound`). `moves` to auta w kadrze
+ * o `tempo / 4` kratek, raz na rundę (`driftRound`). `lostBefore` to auta,
+ * które weszły w rundę bez kontroli — dryf już ją oddał, ale przeszkoda tej
+ * chwili jeszcze ich nie omija (przegląd 03.11). `moves` to auta w kadrze
  * z miejscem przed i po dryfie — tor przeszkody przecina się z ich bryłami
  * ruchem względnym. Przeszkoda czekająca na kierowcę jedzie przy zderzaku
  * swojego auta. Kolczatka przejeżdża pod autami i wzywa Testy; reszta staje
@@ -470,6 +544,7 @@ export async function driftObstaclesRound(
   round: number,
   user: SessionUser,
   moves: ReadonlyMap<string, { from: ScenePoint; to: ScenePoint }>,
+  lostBefore: ReadonlySet<string> = new Set(),
 ): Promise<void> {
   const prisma = deps.ctx.prisma;
   const obstacles = await prisma.chaseObstacle.findMany({
@@ -534,7 +609,11 @@ export async function driftObstaclesRound(
       if (vehicle) {
         const driver = await driverOf(prisma, vehicle.id);
         const controlled =
-          driver !== null && driverCapable(driver) && !vehicle.lostControl && vehicle.started;
+          driver !== null &&
+          driverCapable(driver) &&
+          !vehicle.lostControl &&
+          !lostBefore.has(vehicle.id) &&
+          vehicle.started;
         if (controlled) {
           blockingId = vehicle.id;
           blocked.push({ vehicle, obstacle });

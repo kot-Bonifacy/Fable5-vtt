@@ -7,6 +7,7 @@ import {
   CPRED_ACTION_STAND_UP,
   CPRED_ATTACKS_PER_ACTION,
   cpredAction,
+  cpredMarkDrivingTested,
   cpredMetresLeft,
   cpredMoveRefusal,
   cpredMoveTookRun,
@@ -686,5 +687,15 @@ describe('kierowca w pościgu (65c, s. 192)', () => {
     const walker = withCpredMoveAllowance(freshCpredTurn(driving), { metresPerMove: 8 });
     expect(walker.runBlocked).toBeUndefined();
     expect(readCpredTurn(JSON.stringify(freshCpredTurn(driving))).runBlocked).toBe(true);
+  });
+
+  it('Test zwykłej jazdy idzie w ramach Akcji Ruchu: Akcja zostaje wolna na Nitro (03.11)', () => {
+    const tested = cpredMarkDrivingTested(freshCpredTurn(driving));
+    expect(tested.action).toBeNull();
+    const stored = readCpredTurn(JSON.stringify(tested));
+    expect(stored.drivingTested).toBe(true);
+    expect(readCpredTurn(JSON.stringify(freshCpredTurn(driving))).drivingTested).toBeUndefined();
+    const nitro = spendCpredTurn(stored, { kind: 'action', actionId: 'vehicle-nitro' });
+    expect(nitro.ok && nitro.state.drivingTested).toBe(true);
   });
 });

@@ -176,6 +176,7 @@ function toSceneVehicleView(
         ...(stats.mountAmmo[upgrade.id] !== undefined ? { ammo: stats.mountAmmo[upgrade.id] } : {}),
       })),
     moving: vehicleMoving(row, stats, context.running),
+    blockingVehicleId: row.blockingId,
   };
 }
 
@@ -553,15 +554,35 @@ export async function moveSceneVehicle(
 ): Promise<SceneVehicleView> {
   const { scene, ...row } = placed;
   const centre = clampOnScene(scene, chaseBodyOf(row.vehicle), target);
+  const shifted = Math.hypot(centre.x - row.x, centre.y - row.y) >= 0.5;
   const updated = await deps.ctx.prisma.sceneVehicle.update({
     where: { id: row.id },
-    data: centre,
+    // Auto stojące na drodze, które ktoś przestawił, nikogo już nie blokuje.
+    data: { ...centre, ...(shifted ? { blockingId: null } : {}) },
   });
+  if (shifted) await releaseBlocking(deps.ctx.prisma, row.id);
   const current = { ...updated, vehicle: row.vehicle };
   const moved = await carryPassengers(deps.ctx.prisma, scene, current);
   await emitChase(deps, campaignId, scene.id);
   await emitTokensById(deps, campaignId, moved, { moved: true });
   return placedView(deps.ctx.prisma, scene.id, row.id);
+}
+
+/**
+ * Auto, które ruszyło (MG przeciągnął je w walce), zostawia przeszkody i stojące
+ * auta, które czekały przed jego zderzakiem — inaczej zostałyby w kadrze tam,
+ * gdzie stanęły, z wezwaniem do kierowcy, którego już przed nimi nie ma
+ * (przegląd 03.11). Jeśli dalej stoją mu na torze, następna runda zawoła znowu.
+ */
+export async function releaseBlocking(prisma: PrismaClient, sceneVehicleId: string): Promise<void> {
+  await prisma.chaseObstacle.updateMany({
+    where: { blockingId: sceneVehicleId },
+    data: { blockingId: null },
+  });
+  await prisma.sceneVehicle.updateMany({
+    where: { blockingId: sceneVehicleId },
+    data: { blockingId: null },
+  });
 }
 
 /** MG stawia auto kampanii na drodze sceny pościgu (albo przestawia je z innej). */

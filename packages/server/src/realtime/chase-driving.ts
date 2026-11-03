@@ -14,7 +14,6 @@ import type {
   ScenePoint,
 } from '@vtt/shared';
 import {
-  CPRED_ACTION_DRIVE_TEST,
   CPRED_ACTION_MANEUVER,
   CPRED_ACTION_MOVE,
   CPRED_ACTION_NITRO,
@@ -30,6 +29,7 @@ import {
   cpredDrivingTestNeeded,
   cpredEffectiveStat,
   cpredManeuverTitle,
+  cpredMarkDrivingTested,
   cpredManeuversFor,
   cpredSkillLevel,
   cpredVehicleChase,
@@ -57,12 +57,19 @@ import {
   type PlacedVehicle,
 } from './chase.js';
 import { crossSpikes, driftObstaclesRound, obstaclePendingFor } from './chase-obstacles.js';
-import { firstChaseContact, obstacleBoxId, postServerRoll, resolveRam } from './chase-ram.js';
+import {
+  firstChaseContact,
+  obstacleBoxId,
+  postServerRoll,
+  pushVehicleBehind,
+  resolveRam,
+} from './chase-ram.js';
 import {
   findCombatantForToken,
   loadCombat,
   loadCombatById,
   renumberOrder,
+  spendTurnForCombatant,
   toCombatView,
   upcomingTurn,
   type CombatRow,
@@ -124,16 +131,20 @@ export function requireControllable(placed: PlacedWithScene): void {
 
 /**
  * „Zwykła jazda” (s. 192): kierowca z REF + Prowadzenie ≤ 9 w każdej swojej
- * Turze rzuca w ramach Akcji Test PT 10 — serwer rzuca go sam przy pierwszym
- * ruchu auta w turze, karta rzutu leci do stołu z kośćmi 3D. Porażka to
- * utrata kontroli do następnej rundy (MG prowadzi auto).
+ * Turze rzuca Test PT 10 — serwer rzuca go sam przy pierwszym ruchu auta
+ * w turze, karta rzutu leci do stołu z kośćmi 3D. Porażka to utrata kontroli
+ * do następnej rundy (MG prowadzi auto).
+ *
+ * Test idzie **w ramach Akcji Ruchu** (decyzja MG z 03.11): Akcja zostaje
+ * wolna, więc słaby kierowca dalej strzela jedną ręką albo odpala Nitro.
+ * Turę z rzuconym Testem pamięta `drivingTested` w budżecie tury.
  */
 async function requireDrivingTest(
   deps: RealtimeDeps,
   campaignId: string,
   placed: PlacedWithScene,
   driver: Token,
-  turnState: string | null,
+  combatant: { id: string; turnState: string | null },
   user: SessionUser,
 ): Promise<void> {
   if (!driver.characterId) return;
@@ -146,22 +157,13 @@ async function requireDrivingTest(
   if (!cpredDrivingTestNeeded(cpredEffectiveStat(data, 'ref'), cpredSkillLevel(data, skillId))) {
     return;
   }
-  const turn = readCpredTurn(turnState ?? undefined);
+  const turn = readCpredTurn(combatant.turnState ?? undefined);
   // Manewr (65d2) to Test prowadzenia trudniejszy od zwykłej jazdy — zastępuje go.
-  if (turn.action?.id === CPRED_ACTION_DRIVE_TEST || turn.action?.id === CPRED_ACTION_MANEUVER) {
-    return;
-  }
-  if (turn.action !== null) throw new RealtimeError('DRIVING_TEST_NEEDS_ACTION');
-  await requireTurnSpend(
-    deps,
-    campaignId,
-    placed.scene,
-    driver.id,
-    { kind: 'action', actionId: CPRED_ACTION_DRIVE_TEST },
-    user,
-    CPRED_ACTION_DRIVE_TEST,
-    { silent: true },
-  );
+  if (turn.drivingTested === true || turn.action?.id === CPRED_ACTION_MANEUVER) return;
+  await deps.ctx.prisma.combatant.update({
+    where: { id: combatant.id },
+    data: { turnState: JSON.stringify(cpredMarkDrivingTested(turn)) },
+  });
   const roll = await rollServerSkillTest(deps, driver, skillId, CPRED_DRIVING_TEST_DV);
   if (roll) {
     roll.title = `Zwykła jazda: ${roll.title ?? ''}`.trim();
@@ -211,7 +213,6 @@ export const chaseMoveEvent = defineEvent<ChaseMovePayload, SceneVehicleView>({
     const found = await findCombatantForToken(deps.ctx.prisma, placed.sceneId, driver.id);
     if (!found) return moveSceneVehicle(deps, campaignId, placed, target);
 
-    await requireDrivingTest(deps, campaignId, placed, driver, found.combatant.turnState, user);
     // Bez taranowania auto staje przed przeszkodą i płaci tylko za drogę do
     // niej; z taranowaniem płaci za całą drogę — jeśli zderzenie je zatrzyma,
     // reszta Akcji Ruchu przepada razem z jazdą.
@@ -220,6 +221,19 @@ export const chaseMoveEvent = defineEvent<ChaseMovePayload, SceneVehicleView>({
     const metres =
       (Math.hypot(paidTo.x - placed.x, paidTo.y - placed.y) / placed.scene.gridSizePx) *
       placed.scene.metersPerSquare;
+    // Test zwykłej jazdy idzie w ramach Akcji Ruchu — rzuca się tylko, gdy ten
+    // ruch zmieści się w budżecie; odmowę z powodem daje wydatek niżej.
+    const dry = await spendTurnForCombatant(
+      deps,
+      found.combat,
+      found.combatant,
+      { kind: 'move', metres },
+      user,
+      { dryRun: true },
+    );
+    if (dry.kind !== 'refused') {
+      await requireDrivingTest(deps, campaignId, placed, driver, found.combatant, user);
+    }
     await requireTurnSpend(
       deps,
       campaignId,
@@ -283,7 +297,13 @@ async function driveWithContacts(
         : contact.obstacle.id,
   ]);
   const next = await firstChaseContact(prisma, after, after, target, skip);
-  return done(await moveSceneVehicle(deps, campaignId, after, next?.centre ?? target));
+  const view = await moveSceneVehicle(deps, campaignId, after, next?.centre ?? target);
+  // Auto, przez które taranujący przejechał (wrak), nie zostaje pod nim: ląduje
+  // za jego tylnym zderzakiem, jak przeszkoda z 65e (decyzja MG z 03.11).
+  if (contact.obstacle.kind === 'vehicle') {
+    await pushVehicleBehind(deps, campaignId, placed.scene, contact.obstacle.id, placed.id);
+  }
+  return done(view);
 }
 
 /**
@@ -598,14 +618,31 @@ export async function driftChaseRound(
   const { settings, frame } = chaseGeometry(scene);
   const moved: string[] = [];
   const dropped: { name: string; status: 'behind' | 'escaped'; passengers: string[] }[] = [];
+  // Utrata kontroli mija z początkiem rundy — ale zderzenia tej chwili (stojące
+  // auto, przeszkoda) jeszcze widzą auto, które jej nie odzyskało (przegląd 03.11).
+  const lostBefore = new Set(placed.filter((row) => row.lostControl).map((row) => row.id));
   // Gdzie auta stoją w trakcie dryfu (65d2): auto dryfujące na inne staje przy
   // jego zderzaku bez obrażeń — taranowanie to decyzja kierowcy w jego turze.
   const centres = new Map(placed.map((row) => [row.id, { x: row.x, y: row.y }]));
   // Skąd auto ruszyło w tej rundzie — tor przeszkód (65e) liczy się ruchem względnym.
   const starts = new Map<string, ScenePoint>();
   const gone = new Set<string>();
+  const byId = new Map(placed.map((row) => [row.id, row] as const));
+  const racing = (id: string | null) =>
+    id !== null && byId.get(id)?.status === 'racing' ? byId.get(id)! : null;
+  // Stojące auto, które czeka przed czyimś zderzakiem, jedzie z tym autem (jak przeszkoda).
+  const riders = placed.filter(
+    (row) =>
+      row.status === 'racing' &&
+      row.driftRound < round &&
+      row.blockingId !== row.id &&
+      racing(row.blockingId) !== null,
+  );
+  const riding = new Set(riders.map((row) => row.id));
+  const crashes: { rammerId: string; struckId: string }[] = [];
+  const blockedNow: { stalled: PlacedVehicle; driven: PlacedVehicle }[] = [];
   for (const row of placed) {
-    if (row.status !== 'racing' || row.driftRound >= round) continue;
+    if (row.status !== 'racing' || row.driftRound >= round || riding.has(row.id)) continue;
     const chase = cpredVehicleChase(readCpredVehicle(row.vehicle.system), {
       tempo: scene.chaseTempo,
       started: row.started,
@@ -639,6 +676,23 @@ export async function driftChaseRound(
     const centre = contact?.centre ?? drifted;
     centres.set(row.id, centre);
     starts.set(row.id, { x: row.x, y: row.y });
+    // Stojące auto (wrak, zgaszony silnik) wjechało dryfem przed jadące auto:
+    // jego kierowca wybiera Gwałtowny skręt albo taranowanie, a auto bez
+    // kontroli wjeżdża w nie od razu — jak w przeszkodę MG (decyzja MG z 03.11).
+    let blockingId: string | null = null;
+    const struckBy = contact ? racing(contact.id) : null;
+    if (contact && struckBy && chase.moveSq === 0 && squares < 0) {
+      const driven = readCpredVehicle(struckBy.vehicle.system);
+      const driver = await driverOf(prisma, struckBy.id);
+      const stalledToo = !struckBy.started || cpredVehicleWrecked(driven);
+      if (!stalledToo) {
+        const controlled = driver !== null && driverCapable(driver) && !lostBefore.has(struckBy.id);
+        if (controlled) {
+          blockingId = struckBy.id;
+          blockedNow.push({ stalled: row, driven: struckBy });
+        } else crashes.push({ rammerId: struckBy.id, struckId: row.id });
+      }
+    }
     const off =
       squares === 0 || contact ? null : chaseOffscreen(centre, body, settings.direction, frame);
     const updated = await prisma.sceneVehicle.update({
@@ -648,6 +702,7 @@ export async function driftChaseRound(
         y: centre.y,
         driftRound: round,
         lostControl: false,
+        blockingId,
         ...(off ? { status: off } : {}),
       },
     });
@@ -665,6 +720,24 @@ export async function driftChaseRound(
       });
     }
   }
+  for (const row of riders) {
+    const target = row.blockingId!;
+    const from = starts.get(target) ?? centres.get(target)!;
+    const to = centres.get(target)!;
+    const centre = { x: row.x + to.x - from.x, y: row.y + to.y - from.y };
+    centres.set(row.id, centre);
+    starts.set(row.id, { x: row.x, y: row.y });
+    const updated = await prisma.sceneVehicle.update({
+      where: { id: row.id },
+      data: {
+        ...centre,
+        driftRound: round,
+        lostControl: false,
+        ...(gone.has(target) ? { blockingId: null } : {}),
+      },
+    });
+    moved.push(...(await carryPassengers(prisma, scene, { ...updated, vehicle: row.vehicle })));
+  }
   // Przeszkody (65e) po autach: auto w kadrze, które w tej rundzie dryfowało
   // (albo stało), z miejscem przed i po — stojące ze startu rundy też się liczy.
   const moves = new Map<string, { from: ScenePoint; to: ScenePoint }>();
@@ -674,7 +747,37 @@ export async function driftChaseRound(
     moves.set(row.id, { from: starts.get(row.id) ?? to, to });
   }
   await emitTokensById(deps, campaignId, moved, { moved: true });
-  await driftObstaclesRound(deps, campaignId, scene, round, user, moves);
+  for (const { stalled, driven } of blockedNow) {
+    const line: CombatActionLogEntry = {
+      combatantId: '',
+      actorName: driven.vehicle.name,
+      actionId: 'chase-obstacle',
+      actionName: 'Przeszkoda na drodze',
+      note: `${stalled.vehicle.name} — Gwałtowny skręt albo taranowanie`,
+    };
+    await logSpentAction(deps, campaignId, user, line);
+  }
+  for (const crash of crashes) {
+    const rammer = await prisma.sceneVehicle.findUnique({
+      where: { id: crash.rammerId },
+      include: { vehicle: true, scene: true },
+    });
+    const struck = await prisma.sceneVehicle.findUnique({
+      where: { id: crash.struckId },
+      include: { vehicle: true },
+    });
+    if (!rammer || !struck) continue;
+    await resolveRam(
+      deps,
+      campaignId,
+      user,
+      rammer,
+      { kind: 'vehicle', id: struck.id, vehicle: struck },
+      true,
+    );
+    await pushVehicleBehind(deps, campaignId, scene, struck.id, rammer.id);
+  }
+  await driftObstaclesRound(deps, campaignId, scene, round, user, moves, lostBefore);
   await emitChase(deps, campaignId, scene.id);
   if (dropped.length === 0) return false;
 

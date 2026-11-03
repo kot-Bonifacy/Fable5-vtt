@@ -56,6 +56,14 @@ describe('taranowanie (s. 192, Pług bojowy s. 164)', () => {
     expect(cpredRamOutcome({ plow: true, front: true, nitro: true }).struckDamage).toBe('6k6+2k6');
   });
 
+  it('pieszego bierze tylko pieszy — auto bez PUK, jadący bez Rany (decyzja MG z 03.11)', () => {
+    expect(cpredRamOutcome({ plow: false, front: true, nitro: false, pedestrian: true })).toEqual({
+      rammerDamage: null,
+      rammerInjured: false,
+      struckDamage: '6k6',
+    });
+  });
+
   it('Pług nie działa przy uderzeniu bokiem ani tyłem', () => {
     expect(cpredRamOutcome({ plow: true, front: false, nitro: true })).toEqual({
       rammerDamage: '6k6',

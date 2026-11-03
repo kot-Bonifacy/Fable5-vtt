@@ -3501,6 +3501,9 @@ export const removeChaseObstacle = (obstacleId: string) =>
   emitSceneAck('chase:obstacle-remove', { obstacleId });
 export const answerChaseObstacle = (obstacleId: string, choice: ChaseObstacleChoice) =>
   emitSceneAck<SceneVehicleView>('chase:obstacle-answer', { obstacleId, choice });
+/** Przegląd 03.11: stojące auto (wrak, zgaszony silnik) przed zderzakiem — wybór kierowcy. */
+export const answerChaseVehicle = (sceneVehicleId: string, choice: ChaseObstacleChoice) =>
+  emitSceneAck<SceneVehicleView>('chase:vehicle-answer', { sceneVehicleId, choice });
 export const dropVehicleSpikes = (sceneVehicleId: string) =>
   emitSceneAck<SceneVehicleView>('vehicle:spikes', { sceneVehicleId });
 

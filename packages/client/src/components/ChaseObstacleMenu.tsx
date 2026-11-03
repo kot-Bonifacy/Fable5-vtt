@@ -10,7 +10,7 @@ import {
 import { useAuthStore } from '../stores/authStore.js';
 import { useChaseStore } from '../stores/chaseStore.js';
 import { useTokenStore } from '../stores/tokenStore.js';
-import { answerChaseObstacle, removeChaseObstacle } from '../socket.js';
+import { answerChaseObstacle, answerChaseVehicle, removeChaseObstacle } from '../socket.js';
 import { clearNotices, notifyChoice, notifyRefusal } from '../notices.js';
 import { chaseErrorText } from './ChaseVehicleMenu.js';
 import { useMenuTop } from './TokenContextMenu.js';
@@ -133,34 +133,62 @@ export function useObstacleNotice(): void {
   const vehicles = useChaseStore((s) => s.vehicles);
   const tokens = useTokenStore((s) => s.tokens);
   const user = useAuthStore((s) => s.user);
-  let call: { obstacle: ChaseObstacleView; vehicle: SceneVehicleView } | null = null;
-  for (const obstacle of obstacles) {
-    if (!obstacle.blockingVehicleId || !user) continue;
-    const vehicle = vehicles.find((entry) => entry.id === obstacle.blockingVehicleId);
+  // Przeszkoda MG (65e) albo stojące auto — wrak, zgaszony silnik (przegląd 03.11).
+  type Blocker = { id: string; name: string; hp: number; kind: 'obstacle' | 'vehicle' };
+  const blockers: { blocker: Blocker; vehicleId: string }[] = [
+    ...obstacles
+      .filter((entry) => entry.blockingVehicleId !== null)
+      .map((entry) => ({
+        blocker: { id: entry.id, name: entry.name, hp: entry.hp, kind: 'obstacle' as const },
+        vehicleId: entry.blockingVehicleId!,
+      })),
+    ...vehicles
+      .filter((entry) => entry.blockingVehicleId !== null)
+      .map((entry) => ({
+        blocker: { id: entry.id, name: entry.name, hp: entry.hp, kind: 'vehicle' as const },
+        vehicleId: entry.blockingVehicleId!,
+      })),
+  ];
+  let call: { blocker: Blocker; vehicle: SceneVehicleView } | null = null;
+  for (const { blocker, vehicleId } of blockers) {
+    if (!user) break;
+    const vehicle = vehicles.find((entry) => entry.id === vehicleId);
     if (!vehicle) continue;
     const driver = driverOf(tokens, vehicle.id);
     const playerDriven = typeof driver?.ownerId === 'string' && driver.ownerId.length > 0;
     const mine =
       user.role === ROLE_GM ? !playerDriven : driver !== undefined && driver.ownerId === user.id;
     if (mine) {
-      call = { obstacle, vehicle };
+      call = { blocker, vehicle };
       break;
     }
   }
-  const key = call ? `${call.obstacle.id}:${call.vehicle.id}` : null;
+  const key = call ? `${call.blocker.kind}:${call.blocker.id}:${call.vehicle.id}` : null;
   useEffect(() => {
     if (!call) {
       clearNotices('obstacle');
       return;
     }
-    const { obstacle, vehicle } = call;
-    const hp = obstacle.hp > 0 ? ` (${obstacle.hp} PW)` : '';
+    const { blocker, vehicle } = call;
+    const run = (choice: ChaseObstacleChoice) =>
+      blocker.kind === 'obstacle'
+        ? answer(blocker.id, choice)
+        : void answerChaseVehicle(blocker.id, choice).then((ack) => {
+            if (!ack.ok) notifyRefusal('chase', chaseErrorText(ack.error));
+          });
+    const hp =
+      blocker.kind === 'obstacle'
+        ? blocker.hp > 0
+          ? ` (${blocker.hp} PW)`
+          : ''
+        : ` (${blocker.hp > 0 ? 'stoi na drodze' : 'wrak'})`;
+    const what = blocker.kind === 'obstacle' ? 'auta i przeszkody' : 'obu aut';
     notifyChoice(
       'obstacle',
-      `Na drodze: ${obstacle.name}${hp}. Gwałtowny skręt to Test PT 13 — porażka to utrata kontroli i zderzenie. Taranowanie to 6k6 dla auta i przeszkody.`,
+      `Na drodze: ${blocker.name}${hp}. Gwałtowny skręt to Test PT 13 — porażka to utrata kontroli i zderzenie. Taranowanie to 6k6 dla ${what}.`,
       [
-        { label: 'Gwałtowny skręt', run: () => answer(obstacle.id, 'swerve') },
-        { label: 'Taranuj', run: () => answer(obstacle.id, 'ram') },
+        { label: 'Gwałtowny skręt', run: () => run('swerve') },
+        { label: 'Taranuj', run: () => run('ram') },
       ],
       { title: vehicle.name },
     );

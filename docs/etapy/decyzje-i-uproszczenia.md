@@ -9,6 +9,30 @@ czytany na starcie każdej sesji został listą zadań, a nie archiwum ustaleń.
 inaczej, niż mówi podręcznik, albo gdy dotykasz wymienionego tu kodu. Jeśli któraś z tych decyzji
 przestanie się bronić, przenieś ją stąd do `POMYSLY.md` jako zadanie — nie odwrotnie.
 
+## Przegląd mechanik pościgu (03.11.2026, decyzje MG)
+
+- **Test zwykłej jazdy idzie w ramach Akcji Ruchu, nie Akcji.** Słaby kierowca (REF +
+  Prowadzenie ≤ 9) dalej strzela jedną ręką albo odpala Nitro w tej samej turze — wcześniej Test
+  zabierał Akcję, więc Nitro było dla niego martwe (po Nitro jazda odmawiała). Test rzuca serwer
+  raz na turę przy pierwszym ruchu auta, tylko gdy ten ruch mieści się w budżecie; turę z Testem
+  pamięta budżet (`drivingTested`). Manewr dalej go zastępuje.
+- **Taranowanie pieszego bije tylko pieszego.** Auto nie traci PUK, a jadący nie dostają
+  „Odgięciowego urazu kręgosłupa szyjnego” — 6k6 i Rana zostają przy zderzeniu z autem
+  i przeszkodą.
+- **Auto stojące na drodze (wrak, zgaszony silnik) jest jak przeszkoda z 65e.** Dryfuje w tył
+  z pełnym tempem; gdy trafi na zderzak jadącego auta, staje przy nim i czeka na jego kierowcę:
+  Gwałtowny skręt (PT 13, porażka — utrata kontroli i zderzenie) albo taranowanie (oba auta po
+  6k6). Auto bez kontroli (pusty fotel, kierowca leży, utrata kontroli z poprzedniej rundy)
+  wjeżdża w nie od razu. Po skręcie i po zderzeniu stojące auto ląduje za tylnym zderzakiem.
+  Wcześniej przyklejało się do zderzaka bez obrażeń i jechało z autem rundę po rundzie. Wolniejsze,
+  ale jadące auto dalej staje przy zderzaku bez pytania (65d2).
+- **Taranowany wrak ląduje za autem, które przez niego przejechało** — jak przeszkoda. Podręcznik
+  każe jechać dalej po zniszczonym pojeździe, a na bieżni bryły nachodziły na siebie.
+- **Tempo, dryf i budżet zostają, jak są (decyzja MG 12 z 30.10 potwierdzona).** Kierowca, który
+  co turę jedzie całym Ruchem do przodu, równoważy dryf: kompakt (Ruch 20) przy tempie 40 trzyma
+  się w kadrze, a sportowy (40) zyskuje 10 kratek na rundę. Wolne auto odpada, gdy kierowca nie
+  jedzie (albo strzela zamiast jechać — wtedy płaci tylko dryf).
+
 ## Przeszkody, ruch uliczny i kolczatka (etap 65e, 31.10.2026)
 
 - **Przeszkoda stoi na drodze, więc w kadrze jedzie w tył o `tempo / 4` kratek na rundę**
@@ -58,7 +82,7 @@ przestanie się bronić, przenieś ją stąd do `POMYSLY.md` jako zadanie — ni
   przed”. Bez taranowania auto staje przy przeszkodzie i płaci tylko za dojazd. Z taranowaniem
   płaci za całą drogę, a jeśli zderzenie je zatrzyma, reszta Akcji Ruchu przepada.
 - **Dryf nie przepycha auta przez auto.** Auto, które na początku rundy dryfuje na inne, staje
-  przy jego zderzaku bez obrażeń. To nie taranowanie, tylko szybszy dogania wolniejszego. Czy
+  przy jego zderzaku bez obrażeń (od 03.11 wyjątek: auto stojące na drodze — wpis na górze). To nie taranowanie, tylko szybszy dogania wolniejszego. Czy
   w nie wjechać, decyduje kierowca w swojej turze. Auta dryfują po kolei (kolejność postawienia).
 - **6k6 taranowania idzie przez OB kadłuba** jak każde trafienie w auto (pieszy — przez
   pancerz). Podręcznik mówi tylko „otrzymujecie po 6k6 obrażeń”. Kości lecą jawnie na czacie,
@@ -117,8 +141,9 @@ przestanie się bronić, przenieś ją stąd do `POMYSLY.md` jako zadanie — ni
   s. 205), a kolejka wraca potem do tego, kto był następny. Auto postawione przez MG już pracuje,
   więc w zwykłym pościgu nikt nie „startuje” i kolejka zostaje taka, jaką wyrzuciły kości.
 - **Test zwykłej jazdy rzuca serwer przy pierwszym ruchu auta w turze**, nie na początku tury —
-  kierowca, który nie rusza auta, nie płaci Akcji. Bez Szczęścia. Porażka to utrata kontroli do
-  następnej rundy (auto prowadzi MG); zderzenia i taranowanie dochodzą w 65d.
+  kierowca, który nie rusza auta, nie rzuca. Od 03.11 w ramach Akcji Ruchu (wpis na górze).
+  Bez Szczęścia. Porażka to utrata kontroli do następnej rundy (auto prowadzi MG); zderzenia
+  i taranowanie dochodzą w 65d.
 - **Ręka na kierownicy odmawia broni dwuręcznej** (`WHEEL_TWO_HANDED`); świadome „zdjęcie ręki”
   z utratą kontroli na początku następnej tury (s. 191) nie ma osobnego gestu.
 - **Nitro: zbiornik na pościg, nie na dobę** — liczy go auto na scenie (`SceneVehicle.nitroUsed`),

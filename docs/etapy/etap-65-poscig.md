@@ -448,6 +448,35 @@ do Manewru z menu auta** zamiast panelu decyzji po każdym ruchu. Reszta bez pyt
 10. **Menu auta i przeszkody stoją nad kolumną komunikatów** (`z-index` 460 > 450) —
     oględziny: pasek przeszkody u MG zasłaniał „Zrzuć kolczatkę” w menu auta tuż pod nim.
 
+## Przegląd mechanik 03.11 (zlecenie MG, bez ulepszeń pojazdów)
+
+MG: „przeprowadź sprawdzanie mechanik sceny pościgu (za wyjątkiem ulepszeń pojazdów), czy mają
+one sens i czy działają”. Testy `shared` i serwera pościgu przechodziły; sondy na żywym serwerze
+potwierdziły pięć problemów, których testy nie łapały:
+
+1. **Nitro martwe dla słabego kierowcy** — Test zwykłej jazdy zabierał Akcję, Nitro też jest
+   Akcją, więc po Nitro jazda odmawiała `DRIVING_TEST_NEEDS_ACTION`. **MG: Test w ramach Akcji
+   Ruchu.** Zrobione: `CpredTurnState.drivingTested`, `cpredMarkDrivingTested`, Test tylko gdy
+   ruch mieści się w budżecie (wydatek na sucho), odmowa `DRIVING_TEST_NEEDS_ACTION` zniknęła.
+2. **Wrak przyklejony do zderzaka** — stojące auto dryfowało w tył, stawało przy aucie za sobą
+   i jechało z nim rundę po rundzie bez obrażeń. **MG: jak przeszkoda.** Zrobione:
+   `SceneVehicle.blockingId` (migracja `20261103210000_chase_vehicle_blocking`), widok
+   `blockingVehicleId`, `chase:vehicle-answer` (skręt / taranowanie), auto bez kontroli wjeżdża
+   od razu; pasek kierowcy w `useObstacleNotice`, MG odpowiada z menu stojącego auta.
+3. **Taranowanie wraku przejeżdżało przez niego** (bryły nachodziły na 450 z 500 px). **MG:
+   wrak odepchnięty za auto.** Zrobione: `pushVehicleBehind` w `chase-ram.ts`.
+4. **Utrata kontroli nie wjeżdżała w przeszkodę** — dryf zerował `lostControl`, zanim przeszkody
+   pytały o kontrolę, więc reguła z 65e (rozstrzygnięcie 5) nigdy nie działała. Błąd kodu:
+   `driftObstaclesRound` dostaje `lostBefore`.
+5. **Przeszkoda zawieszona po ruchu MG** — MG odsunął auto NPC-a, a przeszkoda zostawała w kadrze
+   z wezwaniem do kierowcy, którego przed nią nie było. Błąd kodu: `moveSceneVehicle` woła
+   `releaseBlocking`.
+
+Do tego decyzja MG bez błędu w kodzie: **taranowanie pieszego bije tylko pieszego**
+(`CpredRamInput.pedestrian`). **Tempo + dryf + budżet zostają** (kierowca jadący pełnym Ruchem
+równoważy dryf — MG potwierdził decyzję 12). Wpisy w `decyzje-i-uproszczenia.md`, test serwera
+`chase-review.test.ts`.
+
 ## Kryteria ukończenia
 
 Stan 31.10 (po 65e): wszystko zrobione i oglądane na instancji E2E (spece oględzin 65b–65e,

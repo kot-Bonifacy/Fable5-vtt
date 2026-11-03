@@ -1,5 +1,30 @@
 # Dziennik sesji — archiwum
 
+### Sesja 03.11, piąta — Ekwipunek: „Używane” i „Plecak”
+
+**Zlecenie MG:** linijka „Schowane: Lekka broń biała, Pistolet…” w lewej belce HUD niepotrzebna
+— skasować, a w ekwipunku wyraźnie pokazać, co jest używane, a co w plecaku, tak jak zwykle
+w cRPG. **Pytania i odpowiedzi MG (03.11):** układ — panel slotów nad plecakiem (rzecz
+przechodzi między sekcjami); stany broni — dwa, jak dotąd (bez kabury); zasięg — także okno
+„Wymiana” (znaczek na kaflu); HUD — nic w zamian. **Zrobione:** HUD bez `hud-holstered`
+i `HudContext.holstered`; `GearTab` — sekcje `.cp-loadout--equipped` / `--pack`, `WeaponStrip`
+i `ArmorStrip` z `scope`, `GearInUse`, `cpredGearInUse`, `withRowsInUse`, `GearLightHands` tylko
+z „Dobądź”, plakietka granatu „pod ręką”, „Zdejmij” przy słabszej sztuce „Pod spodem”; `Arsenal`
+i `.cp-arsenal` usunięte. `shared`: `CpredItemEquipped`, `cpredInventoryView(data, outside?)`
+z `equipped` (+ `CpredItemViewWire.equipped`); serwer `exchange:counterparts` liczy granaty raz
+(`outsideHandsOf`); klient `useOutsideHands` w pięciu kolumnach okna, znaczek w `ItemGrid`.
+**Rozstrzygnięcia bez pytań (do słowa MG):** nazwy sekcji „Używane” / „Plecak” (słowa MG;
+„Wyposażenie” zostaje nagłówkiem tabeli z wydruku); gołe ręce stoją w „Rękach” zawsze; noszona
+słabsza sztuka pancerza jest „na sobie”, nie w plecaku; podłączony egzoszkielet to sprzęt
+w użyciu (znika z „Sprzętu z premią”); „Upuść” zostaje jak było (tylko opróżnia ręce — pomysł
+w `POMYSLY.md`). **Testy:** `shared` 2922/2922 (+3 `inventory.test.ts`), serwer 1722/1722,
+klient 467/467, `tsc` (klient, serwer), ESLint i Prettier czyste. **Oglądane w Chromium**
+(tymczasowy spec na instancji E2E, skasowany; Chromium kontenera podpięty dowiązaniem
+`chromium-1246`): karta NPC-a z bronią, granatem, kurtką, hełmem w plecaku i dwiema latarkami —
+dobycie z zamianą, schowanie do pustych rąk, okno „Wymiana” ze znaczkami; konsola bez błędów.
+Dwóch kolumn od 1350 px nie oglądano (okno karty się nie rozciągnęło). Firefoksa w kontenerze
+nie ma — oględziny w nim przy stole.
+
 ### Sesja 03.11, czwarta — zaległości bez MG i bez VPS
 
 **Zlecenie MG:** „zweryfikuj, czy są jakieś istotne zaległości, i je wykonaj”, a w trakcie

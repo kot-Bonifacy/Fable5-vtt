@@ -345,8 +345,8 @@ export const CPRED_ACTIONS: readonly CpredActionDefinition[] = [
   {
     id: CPRED_ACTION_DRIVE_TEST,
     name: 'Zwykła jazda',
-    cost: 'action',
-    hint: 'Kierowca z REF + Prowadzenie ≤ 9 rzuca w każdej turze Test PT 10, inaczej traci kontrolę.',
+    cost: 'move',
+    hint: 'Kierowca z REF + Prowadzenie ≤ 9 rzuca w każdej turze Test PT 10 w ramach Akcji Ruchu, inaczej traci kontrolę.',
     handledElsewhere: true,
   },
   {
@@ -547,6 +547,13 @@ export interface CpredTurnState {
    * follows the seat rather than the turn it began in.
    */
   runBlocked?: boolean;
+  /**
+   * The driver already rolled this turn's „Zwykła jazda” Test (przegląd
+   * pościgu 03.11, decyzja MG): the Test is part of the Move Action, not of the
+   * Action, so it is remembered here instead of booking the Action — a weak
+   * driver can still fire one-handed or light the Nitro.
+   */
+  drivingTested?: boolean;
 }
 
 /**
@@ -847,6 +854,7 @@ export function readCpredTurn(raw: unknown): CpredTurnState {
   const blockedMove = typeof raw.blockedMove === 'string' ? raw.blockedMove : null;
   const deathSavePending = raw.deathSavePending === true;
   const runBlocked = raw.runBlocked === true;
+  const drivingTested = raw.drivingTested === true;
 
   let action: CpredSpentAction | null = null;
   if (isReadable(raw.action) && typeof raw.action.id === 'string') {
@@ -898,7 +906,13 @@ export function readCpredTurn(raw: unknown): CpredTurnState {
     blockedMove,
     deathSavePending,
     ...(runBlocked ? { runBlocked: true } : {}),
+    ...(drivingTested ? { drivingTested: true } : {}),
   };
+}
+
+/** The turn after the driver's „Zwykła jazda” Test — it is not rolled again this turn. */
+export function cpredMarkDrivingTested(state: CpredTurnState): CpredTurnState {
+  return { ...state, drivingTested: true };
 }
 
 /** The Death Save was rolled: the turn is the participant's to play (or not). */

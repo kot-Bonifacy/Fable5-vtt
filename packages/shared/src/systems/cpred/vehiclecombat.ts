@@ -85,6 +85,11 @@ export interface CpredRamInput {
   front: boolean;
   /** W tej turze kierowca odpalił Nitro (s. 164: „…był pod działaniem Nitro”). */
   nitro: boolean;
+  /**
+   * Uderzony to pieszy (przegląd 03.11, decyzja MG): obrywa tylko on — auto
+   * nie traci PUK, a jadący nie dostają Rany.
+   */
+  pedestrian?: boolean;
 }
 
 export interface CpredRamOutcome {
@@ -98,14 +103,15 @@ export interface CpredRamOutcome {
 
 /**
  * Kto ile bierze przy taranowaniu (s. 192): oba pojazdy po 6k6 i Rana Krytyczna
- * dla każdego jadącego. Pług bojowy przy uderzeniu przodem zdejmuje obrażenia
+ * dla każdego jadącego. Pieszego bierze tylko pieszy (decyzja MG z 03.11). Pług bojowy przy uderzeniu przodem zdejmuje obrażenia
  * i Ranę z taranującego, a pod Nitro dokłada uderzonemu 2k6 (s. 164).
  */
 export function cpredRamOutcome(input: CpredRamInput): CpredRamOutcome {
   const plowed = input.plow && input.front;
+  const spared = plowed || input.pedestrian === true;
   return {
-    rammerDamage: plowed ? null : CPRED_RAM_DAMAGE,
-    rammerInjured: !plowed,
+    rammerDamage: spared ? null : CPRED_RAM_DAMAGE,
+    rammerInjured: !spared,
     struckDamage:
       plowed && input.nitro
         ? `${CPRED_RAM_DAMAGE}+${CPRED_RAM_PLOW_NITRO_BONUS}`
