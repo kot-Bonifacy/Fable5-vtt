@@ -118,7 +118,12 @@ import {
   type AreaShape,
   type BlastTarget,
 } from './areas.js';
-import { resolveAmmoChecks, type AmmoCheckTarget } from './ammo-effects.js';
+import {
+  postAmmoFailureCards,
+  resolveAmmoChecks,
+  type AmmoCheckTarget,
+  type AmmoFailureCard,
+} from './ammo-effects.js';
 import { planStockReload, planThrowFromStock } from './ammo-stock.js';
 import { placeSmoke, smokeModifiersAt } from './smoke.js';
 import { emitMapFx, fxCentre } from './fx.js';
@@ -1371,108 +1376,121 @@ export async function performAttackRoll(
       if (gesture && gesture.strength > 0) result.tossStrength = gesture.strength;
       if (gesture?.toss) result.toss = gesture.toss;
 
-      result.attack = await buildAttackMeta(
-        deps,
-        campaignId,
-        registry,
-        result,
-        meta,
-        scene,
-        attacker,
-        fire,
-        target,
-        user.id,
-        // An explosion is judged where it went off, so the blast needs the aim
-        // point and the stat that threw — the one the scatter is measured
-        // against when the throw misses. A spread of shot is judged from the
-        // muzzle instead, and the target only sets the direction (stage 16g).
-        meta.blastSideM !== undefined
-          ? {
-              kind: 'blast' as const,
-              aim: aimPoint,
-              sideM: meta.blastSideM,
-              stat: cpredEffectiveStats(data)[meta.statId],
-              statLabel: CPRED_STAT_LABELS[meta.statId].abbr,
-            }
-          : meta.coneRangeM !== undefined
-            ? {
-                kind: 'cone' as const,
-                origin,
-                towards: aimPoint,
-                rangeM: meta.coneRangeM,
-              }
-            : undefined,
-      );
-      // Netrunner na spuście wieżyczki rzuca też jej obrażenia (#38): karta
-      // pamięta, czyje to było ramię, bo żeton wieżyczki nie ma właściciela.
-      if (device?.operator) {
-        result.attack.system = { ...result.attack.system, operatorUserId: user.id };
-      }
-      // Whoever fired past a cover said so out loud (stage 16c): the card carries
-      // the decision, because „he leaned out" is a ruling the table made and the
-      // log is where rulings live.
-      if (payload?.request?.ignoreCover === true) {
-        result.attack.detail = `${result.attack.detail} · strzał mimo osłony`;
-      }
-      // „Broń niskiej jakości zaczyna źle działać zawsze, gdy dojdzie do
-      // Krytycznej Porażki" (s. 244). After the card is built and before it is
-      // stored, so the line the table reads and the flag on the sheet come from
-      // the same die.
-      if (await jamPoorWeapon(deps, campaignId, source, meta, weapon.resolved, result)) {
-        result.attack.detail = `${result.attack.detail} · ${CPRED_JAM_DETAIL}`;
-      }
-      // Atak ze skradania (etap 61, decyzja MG 6 — zasada domowa): w trybie
-      // nikt atakującego nie zauważył, więc cel nie dostaje Uniku. Wybuch
-      // zostaje przy swoich odskokach — liczy się jeden cel, w który mierzono.
-      const sneakAttack = attackFromSneak(attacker);
-      if (sneakAttack && target && !result.attack.area) {
-        result.attack.noEvade = true;
-        result.attack.detail = `${result.attack.detail} · atak z ukrycia — bez Uniku`;
-      }
-      const evasionPending = await evasionPendingOf(
-        deps,
-        campaignId,
-        registry,
-        result.attack,
-        result.attack.system as unknown as CpredAttackMeta,
-      );
-      if (evasionPending.length > 0) result.attack.evasionPending = evasionPending;
-      const autoEvasions = await markAutoEvasions(deps, campaignId, result.attack);
-
-      const stored = await deps.ctx.prisma.chatMessage.create({
-        data: {
+      // Karty skutków amunicji z Testem czekają na kartę ataku (03.11). Gdyby
+      // ta nie powstała, idą bez niej — PW i stany już zeszły, a „Cofnij”
+      // mieszka na karcie skutku.
+      const ammoCards: AmmoFailureCard[] = [];
+      let ammoPosted = false;
+      try {
+        result.attack = await buildAttackMeta(
+          deps,
           campaignId,
-          authorId: user.id,
-          kind: 'roll',
-          text: plan.title,
-          payload: JSON.stringify(result),
-        },
-        include: INCLUDE_CHAT_NAMES,
-      });
-      const view: ChatMessageView = toChatMessageView(stored);
-      await deliverRollMessage(deps, campaignId, user.id, view);
-      // The shooter turns to look at what they shot at (stage 27j). After the
-      // card, for the same reason the bang is after it: an attack that never
-      // happened must not leave the figure staring down a corridor it never
-      // fired into.
-      await turnTokenToward(deps, campaignId, scene, attacker, aimPoint);
-      // The map hears about it *after* the card has been sent, and holds the
-      // bang until that card is revealed (stage 27i): the dice are still
-      // rolling on everybody's screen, and a shot that landed before them
-      // would tell the table the verdict early. Emitting second also means
-      // every client already has the message the batch is waiting for.
-      await emitMapFx(
-        deps,
-        campaignId,
-        scene,
-        attackMapFx(meta, result.attack, weapon.resolved, origin, aimPoint),
-        view.id,
-      );
-      // Atak zdradza skradającego się (decyzja MG 5) — po karcie, jak huk.
-      if (sneakAttack) await endSneak(deps, campaignId, scene, attacker, 'attack');
-      // Unik obrońcy po huku — kości lecą, gdy kości ataku już leżą (etap 63b).
-      await runAutoEvasions(deps, campaignId, view.id, autoEvasions);
-      return { messageId: view.id };
+          registry,
+          result,
+          meta,
+          scene,
+          attacker,
+          fire,
+          target,
+          ammoCards,
+          // An explosion is judged where it went off, so the blast needs the aim
+          // point and the stat that threw — the one the scatter is measured
+          // against when the throw misses. A spread of shot is judged from the
+          // muzzle instead, and the target only sets the direction (stage 16g).
+          meta.blastSideM !== undefined
+            ? {
+                kind: 'blast' as const,
+                aim: aimPoint,
+                sideM: meta.blastSideM,
+                stat: cpredEffectiveStats(data)[meta.statId],
+                statLabel: CPRED_STAT_LABELS[meta.statId].abbr,
+              }
+            : meta.coneRangeM !== undefined
+              ? {
+                  kind: 'cone' as const,
+                  origin,
+                  towards: aimPoint,
+                  rangeM: meta.coneRangeM,
+                }
+              : undefined,
+        );
+        // Netrunner na spuście wieżyczki rzuca też jej obrażenia (#38): karta
+        // pamięta, czyje to było ramię, bo żeton wieżyczki nie ma właściciela.
+        if (device?.operator) {
+          result.attack.system = { ...result.attack.system, operatorUserId: user.id };
+        }
+        // Whoever fired past a cover said so out loud (stage 16c): the card carries
+        // the decision, because „he leaned out" is a ruling the table made and the
+        // log is where rulings live.
+        if (payload?.request?.ignoreCover === true) {
+          result.attack.detail = `${result.attack.detail} · strzał mimo osłony`;
+        }
+        // „Broń niskiej jakości zaczyna źle działać zawsze, gdy dojdzie do
+        // Krytycznej Porażki" (s. 244). After the card is built and before it is
+        // stored, so the line the table reads and the flag on the sheet come from
+        // the same die.
+        if (await jamPoorWeapon(deps, campaignId, source, meta, weapon.resolved, result)) {
+          result.attack.detail = `${result.attack.detail} · ${CPRED_JAM_DETAIL}`;
+        }
+        // Atak ze skradania (etap 61, decyzja MG 6 — zasada domowa): w trybie
+        // nikt atakującego nie zauważył, więc cel nie dostaje Uniku. Wybuch
+        // zostaje przy swoich odskokach — liczy się jeden cel, w który mierzono.
+        const sneakAttack = attackFromSneak(attacker);
+        if (sneakAttack && target && !result.attack.area) {
+          result.attack.noEvade = true;
+          result.attack.detail = `${result.attack.detail} · atak z ukrycia — bez Uniku`;
+        }
+        const evasionPending = await evasionPendingOf(
+          deps,
+          campaignId,
+          registry,
+          result.attack,
+          result.attack.system as unknown as CpredAttackMeta,
+        );
+        if (evasionPending.length > 0) result.attack.evasionPending = evasionPending;
+        const autoEvasions = await markAutoEvasions(deps, campaignId, result.attack);
+
+        const stored = await deps.ctx.prisma.chatMessage.create({
+          data: {
+            campaignId,
+            authorId: user.id,
+            kind: 'roll',
+            text: plan.title,
+            payload: JSON.stringify(result),
+          },
+          include: INCLUDE_CHAT_NAMES,
+        });
+        const view: ChatMessageView = toChatMessageView(stored);
+        await deliverRollMessage(deps, campaignId, user.id, view);
+        // Skutki gazu, łzawiącego, EMP — po karcie ataku i z jej id (03.11).
+        ammoPosted = true;
+        await postAmmoFailureCards(deps, campaignId, user.id, ammoCards, view.id);
+        // The shooter turns to look at what they shot at (stage 27j). After the
+        // card, for the same reason the bang is after it: an attack that never
+        // happened must not leave the figure staring down a corridor it never
+        // fired into.
+        await turnTokenToward(deps, campaignId, scene, attacker, aimPoint);
+        // The map hears about it *after* the card has been sent, and holds the
+        // bang until that card is revealed (stage 27i): the dice are still
+        // rolling on everybody's screen, and a shot that landed before them
+        // would tell the table the verdict early. Emitting second also means
+        // every client already has the message the batch is waiting for.
+        await emitMapFx(
+          deps,
+          campaignId,
+          scene,
+          attackMapFx(meta, result.attack, weapon.resolved, origin, aimPoint),
+          view.id,
+        );
+        // Atak zdradza skradającego się (decyzja MG 5) — po karcie, jak huk.
+        if (sneakAttack) await endSneak(deps, campaignId, scene, attacker, 'attack');
+        // Unik obrońcy po huku — kości lecą, gdy kości ataku już leżą (etap 63b).
+        await runAutoEvasions(deps, campaignId, view.id, autoEvasions);
+        return { messageId: view.id };
+      } catch (error) {
+        if (!ammoPosted) await postAmmoFailureCards(deps, campaignId, user.id, ammoCards);
+        throw error;
+      }
     }
   }
 }
@@ -1502,8 +1520,8 @@ async function buildAttackMeta(
   fire: FireContext,
   /** The figure being shot at, when the target is one (stage 16h needs the row). */
   target: Token | null,
-  /** Who fired — the author of the cards the round's effects post. */
-  authorId: string,
+  /** Karty skutków amunicji z Testem — wysyła je wołający, po karcie ataku (03.11). */
+  ammoCards: AmmoFailureCard[],
   blast?: AreaRequest,
 ): Promise<RollAttackMeta> {
   const label = `${meta.weaponName} → ${meta.targetName}`;
@@ -1605,7 +1623,7 @@ async function buildAttackMeta(
   }
   const forcedChecks =
     ammo?.check && reached.length > 0
-      ? await resolveAmmoChecks(deps, campaignId, registry, scene, ammo, reached, authorId)
+      ? await resolveAmmoChecks(deps, campaignId, registry, scene, ammo, reached, ammoCards)
       : undefined;
   if (ammo?.check) {
     const skill = registry.skills.find((entry) => entry.id === ammo.check!.skillId);

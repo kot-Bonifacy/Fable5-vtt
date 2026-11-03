@@ -1,10 +1,16 @@
 # Pomysły poza zakresem etapów
 
-**03.11.2026 (gęsta karta rzutu) — sklejanie kart jednej mechaniki.** MG odłożył (03.11): atak,
-Unik, rzut obrażeń i nałożenie obrażeń to dziś cztery osobne wpisy czatu. Jeden wpis „przebieg
-ataku” zbierałby je w miarę, jak przychodzą (karty powstają w różnych chwilach, więc to zmiana
-po stronie serwera — wiersz-matka i `chat:update`, wzorem Uniku, który już ląduje na karcie
-ataku). Do rozważenia razem: zwijanie rozliczonego przebiegu do jednej linii z werdyktem.
+**03.11.2026 (przebieg ataku) — czego sklejanie jeszcze nie robi.** Sklejanie kart jednej
+mechaniki zrobione 03.11 (umowa na górze `czat`). Zostało: (1) **Duszenie i Rzut pod kartą
+Pochwycenia** — MG zdecydował, że zostają osobno, bo to nowe Akcje w kolejnych rundach; gdyby
+wróciło, serwer musi dopisać karcie obrażeń z `logGrappleDamage` id karty starcia.
+(2) **Nagłówek kroku** — rzut obrażeń w przebiegu powtarza „Kowal (MG)” i nazwę broni, które
+stoją już nad nim; dałoby się go skrócić do „obrażenia · 3k6”. (3) **Zwinięcie zapamiętane** —
+dziś rozwinięty ręką przebieg wraca do zwiniętego po przeładowaniu strony. (4) **Unik w linii
+z liczbami** — zwinięta linia mówi „Trafienie mimo uniku”, ale bez „Unik 12 vs 17”, bo liczby
+stoją dziś tylko w tekście `attack.detail`; osobne pole na karcie ataku dałoby je bez parsowania.
+(5) **Test Przeżywalności** po trafieniu Śmiertelnie Rannego przychodzi później i osobno — nie
+ma powiązania z atakiem.
 
 **02.11.2026 (asortyment handlarza) — czego półka z kompendium jeszcze nie umie.** (1) **Amunicja
 z kompendium** — pudełko wymaga kalibru (46c); półka mogłaby wystawiać granaty i rakiety dla

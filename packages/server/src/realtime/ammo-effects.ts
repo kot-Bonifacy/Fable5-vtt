@@ -1,5 +1,4 @@
 import type {
-  ChatMessageView,
   CpredAmmoCheck,
   CpredAmmoProfile,
   CpredRegistry,
@@ -89,7 +88,12 @@ export async function resolveAmmoChecks(
   scene: Scene,
   ammo: CpredAmmoProfile,
   targets: readonly AmmoCheckTarget[],
-  authorId: string,
+  /**
+   * Karty skutków zbiera tu, zamiast je wysyłać (03.11, przebieg ataku na
+   * czacie): karta ataku jeszcze nie istnieje, a skutek ma nieść jej id
+   * i przyjść po niej — `postAmmoFailureCards`.
+   */
+  cards: AmmoFailureCard[],
 ): Promise<RollForcedCheck[]> {
   const check = ammo.check;
   if (!check) return [];
@@ -136,7 +140,7 @@ export async function resolveAmmoChecks(
       timed,
       compendium,
       rng,
-      authorId,
+      cards,
     });
     rows.push({
       name: tokenTableName(target.token, target.token.name),
@@ -207,10 +211,10 @@ async function applyAmmoFailure(
     timed: CpredTimedInjury | null;
     compendium: Awaited<ReturnType<typeof buildCompendiumSync>>['entries'];
     rng: (sides: number) => number;
-    authorId: string;
+    cards: AmmoFailureCard[];
   },
 ): Promise<string> {
-  const { token, ammo, check, timed, compendium, rng, authorId } = input;
+  const { token, ammo, check, timed, compendium, rng, cards } = input;
   const tableName = tokenTableName(token, token.name);
   const failure: SheetForcedFailure = {
     damage: rollFailureDamage(check.failure.damage, rng),
@@ -350,7 +354,7 @@ async function applyAmmoFailure(
         }
       : {}),
   };
-  await logAmmoFailure(deps, campaignId, authorId, entry, `${tableName} — ${ammo.name}`);
+  cards.push({ entry, text: `${tableName} — ${ammo.name}` });
   return disabledNote ? `${summary} · ${disabledNote}` : summary;
 }
 
@@ -405,21 +409,36 @@ async function applyFailureStatuses(
   return added;
 }
 
-/** The undoable card, in the stage 15 shape „Cofnij" already understands. */
-async function logAmmoFailure(
+/** Karta skutku, która czeka na kartę ataku (03.11) — wysyła ją `postAmmoFailureCards`. */
+export interface AmmoFailureCard {
+  entry: DamageLogEntry;
+  text: string;
+}
+
+/**
+ * The undoable cards, in the stage 15 shape „Cofnij" already understands.
+ *
+ * Posted after the attack card and stamped with its id (03.11, przebieg ataku
+ * na czacie): the client folds them into that card, and — like the damage of
+ * a hit — they now queue behind its dice instead of arriving before them.
+ * `attackMessageId` is absent only when the card was never stored.
+ */
+export async function postAmmoFailureCards(
   deps: RealtimeDeps,
   campaignId: string,
   authorId: string,
-  entry: DamageLogEntry,
-  text: string,
-): Promise<ChatMessageView> {
-  const stored = await deps.ctx.prisma.chatMessage.create({
-    data: { campaignId, authorId, kind: 'damage', text, payload: JSON.stringify(entry) },
-    include: INCLUDE_CHAT_NAMES,
-  });
-  const view = toChatMessageView(stored);
-  await broadcastRedactedChatMessage(deps, campaignId, view);
-  return view;
+  cards: readonly AmmoFailureCard[],
+  attackMessageId?: number,
+): Promise<void> {
+  for (const { entry, text } of cards) {
+    const linked: DamageLogEntry =
+      attackMessageId === undefined ? entry : { ...entry, attackMessageId };
+    const stored = await deps.ctx.prisma.chatMessage.create({
+      data: { campaignId, authorId, kind: 'damage', text, payload: JSON.stringify(linked) },
+      include: INCLUDE_CHAT_NAMES,
+    });
+    await broadcastRedactedChatMessage(deps, campaignId, toChatMessageView(stored));
+  }
 }
 
 /** A failure that cost no hit points still needs a card to carry the wound. */
