@@ -29,6 +29,13 @@ Pełna tabela z nazwami i datami: `archiwum/tabela-etapow.md`.
 
 ## Od czego zacząć
 
+**Ikona strefy bronionej zostaje, gdy kamera zniknie z oczu (zgłoszenie MG z 03.11) — czeka na
+wdrożenie (migracja bazy) i oględziny przy stole.** Gracz w „Fabryce dronów” widział w miejscu
+kamery bursztynowy prostokąt: figura znika z pola widzenia, a strefa pod nią zostaje. Strefa
+rysuje teraz sylwetkę urządzenia: wybraną przez MG na karcie („Ikona na mapie”) albo podpowiedź
+wpisu (dron, wieżyczka dla stanowiska, które strzela, kamera dla wpisu z „kamer” w nazwie).
+Umowa na górze `siec`.
+
 **Zaległości bez MG (03.11, czwarta sesja) — czekają na wdrożenie.** Okno „Wymiana” odświeża
 listę, gdy zmienią się naklejki figur z listy: ciało, które wstało, nie zostaje łupem, a `Esc`
 zamyka okno. Przy „Bijatyce” bez wpisu w kompendium stoi pięść, nie pistolet. T4b 4.8 czeka na
@@ -594,7 +601,7 @@ a nie do tego pliku.
 | `postac`    | kreator, PD i awanse, koszyk i cofanie awansów, Role i Zdolności, cyborgizacje, chrom zmieniający liczby, ekonomia, Test montażu gracza, pojazdy i Tabor | 58   | 3       |
 | `ekwipunek` | wiersze wyposażenia, przekazanie, łup (także ciała graczy), handel, sklepy, asortyment handlarza z kompendium, zasięg, amunicja bez dna, egzoszkielet, latarka z ekwipunku, narkotyki i fiolki, siatka okna „Wymiana”, zgoda z góry, odświeżanie po naklejkach | 43   | 3       |
 | `czas`      | zegar świata, kalendarz, `statEffects`, leczenie po dobie, dawki i uzależnienia (`chems`) | 19   | 2       |
-| `siec`      | Programy, LOD, demony, piętra architektury, dek jako towar, strefy bronione, kamery, rozbrajanie, Sieć ze sceny, jedna próba i pamięć sukcesów | 14   | 5       |
+| `siec`      | Programy, LOD, demony, piętra architektury, dek jako towar, strefy bronione, kamery, rozbrajanie, Sieć ze sceny, jedna próba i pamięć sukcesów, ikona strefy | 15   | 5       |
 | `boty`      | llama-server, RAG, reindeks, dziennik i baza wiedzy, brama AI  | 10   | 10      |
 | `dane`      | `parse-manual.py`, kompendium poza repo, tabele z podręcznika  | 9    | 12      |
 | `kopie`     | `snapshot`, `archive`, paczki ZIP, wczytanie kampanii, „czeka na gracza”, kopie kampanii i cofnięcie, sklep i bot w paczce, zgłoszenie karty gracza, pojazdy w paczce, auta na scenie pościgu, przeszkody poza paczką | 22   | 6       |
@@ -605,6 +612,30 @@ a nie do tego pliku.
 ## Notatki z dwóch ostatnich sesji
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
+
+### Sesja 03.11, piąta — znikająca ikona kamery
+
+**Zgłoszenie MG:** gracz w „Fabryce dronów” na `vtt.tatanga.eu` widział kamerę, odszedł, a w jej
+miejscu został żółty prostokąt; po powrocie wszystko wracało. **Diagnoza:** figura kamery znika
+graczowi z pola widzenia (tak ma być: pamięć mapy trzyma teren, nie figury), a strefa broniona,
+którą MG postawił na kamerze (potwierdził), jest dla gracza zawsze. Bursztyn z kreskowaniem
+rysuje tylko warstwa stref, a ikonę miały tylko strefy dronów. Odtworzone w Chromium na
+instancji E2E (biblioteka `playwright`, MG przez gniazdo, gracz w przeglądarce): bez strefy
+po odejściu zostaje tylko przyciemniona posadzka. **Pytania i odpowiedzi MG (03.11):** ikona ma
+zostawać razem ze strefą; skąd ją brać — MG wybiera na karcie, domyślnie podpowiedź wpisu.
+**Zrobione:** kolumna `DefenseZone.glyph` (migracja `20261103120000_zone_glyph`), pola `glyph`
+w `DefenseZoneView` i ładunkach `zone:create` / `zone:update`, `zoneGlyphOf` w `zones.ts`,
+`toZoneView` wysyła ikonę także graczowi, paczka kampanii ją niesie; `netDefenseGlyph`
+podpowiada też wieżyczkę i kamerę (dotąd tylko lista narzędzia stref, mapa nie); pole „Ikona na
+mapie” na karcie strefy; `MapArea.pushZones` bierze `zone.glyph ?? podpowiedź`. Testy: `shared`
+(podpowiedź), serwer (`zones.test.ts`: ikona u gracza, `null` wraca do wpisu, `ufo` odrzucone;
+`archive-package.test.ts`: ikona w paczce). **Rozstrzygnięcie bez pytań (do słowa MG):** strefa
+z wpisem „kamer…” albo stanowiskiem dostaje ikonę od razu po wdrożeniu, także już stojąca — bez
+ruszania kart; „bez ikony” dla takiego wpisu nie ma. **Testy:** `shared` 2920/2920 (+1), serwer
+1723/1723 (+1), klient 467/467, `tsc` (klient, serwer, `shared`), ESLint i Prettier czyste na
+zmienionych plikach. **Oglądane w Chromium** (ten sam skrypt, strefa z `glyph: 'camera'` na
+„Kamerze nad bramą”): przy kamerze i po odejściu na strefie stoi sylwetka kamery, po powrocie
+przykrywa ją figura. Karty strefy u MG nie oglądano. Firefoksa w kontenerze nie ma.
 
 ### Sesja 03.11, czwarta — zaległości bez MG i bez VPS
 
@@ -626,30 +657,3 @@ na instancji E2E, skasowany; przeglądarka kontenera przez `executablePath`, pop
 `actors.ts` niezacommitowana): łup → MG zdejmuje „Ogłuszony” → okno w trybie `none`
 z „🤝 Kowal”, ponowne ogłuszenie przynosi „🎒 Kowal” bez fokusu, `Esc` zamyka; pięść na panelu.
 T4b nieuruchomiony (brak `po-T4a` w kontenerze). Firefoksa w kontenerze nie ma.
-
-### Sesja 03.11, trzecia — przebieg ataku na czacie
-
-**Zlecenie MG:** sklejanie kart jednej mechaniki (atak → Unik → obrażenia → nałożenie) z
-`POMYSLY.md`. **Pytania i odpowiedzi MG (03.11):** miejsce — karta zjeżdża na dół, na miejsce
-najnowszego kroku; zwijanie — rozliczony przebieg zwinięty sam, klik rozwija; zakres — strzał
-i cios, obszar, ogień zaporowy, zwarcie i Konfrontacja; droga — klient, nie wiersz-matka na
-serwerze; zwarcie — tylko zwijanie, Duszenie i Rzut osobno; gaz i EMP — dowiązać na serwerze;
-filtr — „Rzuty” lub „Walka”; linia — werdykt + skutek (przebicie, PW, rany, stan ran).
-**Zrobione:** `chat-attack-thread.ts` (`foldAttackThreads`, `attackThreadSettled`,
-`attackThreadSummary`, `isCombatThreadRoot`) + test (13); `ChatPanel` — `threads`,
-`rowInvolvements`, `AttackThreadRow`, `AttackThreadLine`, stan `threadOpen`; style
-`.chat-thread*` w `02-chat-dice.css`. Serwer: `DamageLogEntry.attackMessageId`,
-`AmmoFailureCard` + `postAmmoFailureCards` (`ammo-effects.ts`), `performAttackRoll` wysyła karty
-skutków po karcie ataku (w `catch` bez id); test w `ammo-effects.test.ts` (+1). Odłożone do
-`POMYSLY.md`: Duszenie/Rzut pod Pochwyceniem, krótszy nagłówek kroku, zapamiętane zwinięcie,
-liczby Uniku w linii, Test Przeżywalności. **Rozstrzygnięcia bez pytań (do słowa MG):** zwija się
-też pojedyncza karta ataku bez kroków (pudło, ogień zaporowy); rzut obrażeń bez ataku (z karty,
-`/r` + „Zastosuj”) skleja się ze swoim nałożeniem tą samą drogą; cofnięte nałożenie zostaje
-w rozwiniętym przebiegu przekreślone, a znika ze zwiniętej linii; zwinięte karty zostają w DOM-ie
-pod `hidden`, żeby E2E (`.chat-roll`, `data-total`, `chatCards`) czytało je jak dawniej.
-**Testy:** klient 467/467 (+13), serwer 1722/1722 (+1), `shared` 2917/2917, `tsc` (klient, serwer),
-ESLint i Prettier czyste. **Oglądane w Chromium (biblioteka `playwright`, instancja E2E, karty
-wstrzyknięte do magazynu czatu):** belka 420 i 620 px — rozliczony strzał z raną, granat z dwoma
-celami i odskokiem, pudło, ogień zaporowy i starcie zwinięte do linii, atak czekający na Unik
-rozwinięty; rozwinięcie pokazuje rzut obrażeń i kartę nałożenia z „Cofnij” i „Zwiń”. Firefoksa
-w kontenerze nie ma — oględziny w nim przy stole.

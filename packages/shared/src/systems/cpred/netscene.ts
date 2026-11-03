@@ -37,18 +37,29 @@ export const NET_DEVICE_KIND_BY_GLYPH: Partial<Record<TokenGlyph, NetDeviceKind>
 };
 
 /**
- * Ikona strefy bronionej na mapie (29.10, zlecenie MG) — sylwetka z tego samego
- * kompletu co ikony figur. Dron jest robotem, a jego strefa bez ikony była
- * zwykłym prostokątem pułapki; stanowiska i systemy środowiskowe ikony nie
- * dostają, bo wieżyczka stoi figurą, a podłoga to podłoga. Tabela s. 213 nie
- * ma kolumny „latający/naziemny”, więc naziemnego rozpoznaje nazwa wpisu.
+ * Ikona, którą wpis kompendium podpowiada strefie bronionej (29.10, od 03.11
+ * także na mapie) — sylwetka z tego samego kompletu co ikony figur.
+ *
+ * Dron jest robotem, a jego strefa bez ikony była zwykłym prostokątem pułapki.
+ * Tabela s. 213 nie ma kolumny „latający/naziemny”, więc naziemnego rozpoznaje
+ * nazwa wpisu. Stanowisko, które strzela, to wieżyczka, a wpis z „kamer”
+ * w nazwie — kamera. Do 03.11 te dwie podpowiadała tylko lista w narzędziu
+ * stref, bo „na mapie stoją figurą”; figura znika jednak graczowi z pola
+ * widzenia, a strefa zostaje, i gracz widział w miejscu kamery goły bursztynowy
+ * prostokąt (zgłoszenie MG z 03.11). Podłoga to podłoga — bez ikony.
+ * MG może podpowiedź zmienić na karcie strefy (`DefenseZoneView.glyph`).
  */
 export function netDefenseGlyph(entry: {
   defenseKind: NetDefenseKind;
   name: string;
+  effects?: { fires?: boolean } | null;
 }): TokenGlyph | null {
-  if (entry.defenseKind !== 'drone') return null;
-  return /naziemn/i.test(entry.name) ? 'ground-drone' : 'drone';
+  if (entry.defenseKind === 'drone') {
+    return /naziemn/i.test(entry.name) ? 'ground-drone' : 'drone';
+  }
+  if (entry.defenseKind === 'emplacement' && entry.effects?.fires) return 'turret';
+  if (/kamer/i.test(entry.name)) return 'camera';
+  return null;
 }
 
 /** PT Kontroli węzła Sieci ze sceny, gdy tabele podręcznika nie podają innego. */

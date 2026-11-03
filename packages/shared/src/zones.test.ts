@@ -27,6 +27,7 @@ function zone(patch: Partial<DefenseZoneView> = {}): DefenseZoneView {
     height: 100,
     armed: true,
     hidden: true,
+    glyph: null,
     hpMax: 20,
     hpCurrent: 20,
     ...patch,

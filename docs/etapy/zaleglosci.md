@@ -6,6 +6,12 @@ w `POMYSLY.md` („Do sprawdzenia przy stole”), decyzje MG — w `decyzje-i-up
 
 ## Otwarte
 
+**03.11.2026 — ikona strefy bronionej: wdrożenie i oględziny przy stole.** Na VPS migracja
+`20261103120000_zone_glyph` wjedzie z `./deploy.sh`. Do sprawdzenia w „Fabryce dronów”: strefa na
+kamerze pokazuje sylwetkę (podpowiedź wpisu z „kamer” w nazwie albo wybór MG w „Ikona na
+mapie”), gracz po odejściu widzi ją zamiast gołego prostokąta. Kartę strefy u MG i mapę gracza
+obejrzeć w **Firefoksie** — w kontenerze oglądano tylko mapę gracza w Chromium.
+
 **31.10.2026 — T4b 4.8 „pięść, która trafia” raz spudłowała.** Na trzy przebiegi T4b od
 `po-T4a` (sesja piąta 31.10) jeden padł w 4.8 na `punch.attack?.hit === false` (kość
 skryptowana 8, Iskra pod Rzeźnikiem); powtórka bez zmian w kodzie 20/20. Adnotacji z rozbiciem

@@ -11,6 +11,10 @@ import {
   netDefenseActs,
   netDefenseTrigger,
   NET_DEFENSE_TRIGGER_LABELS,
+  netDefenseGlyph,
+  sanitizeTokenGlyph,
+  TOKEN_GLYPH_LABELS,
+  TOKEN_GLYPHS,
   tokenCentre,
   type DefenseZoneView,
 } from '@vtt/shared';
@@ -160,6 +164,7 @@ export function SceneCardZone({ zone }: { zone: DefenseZoneView }) {
   }
   const effects = profile?.effects;
   const trigger = netDefenseTrigger(effects);
+  const suggested = profile ? netDefenseGlyph(profile) : null;
   // Etap 58b: kto już próbował rozbroić i mu się nie udało.
   const disarmTried = (zone.disarmTried ?? []).map(
     (id) => characters[id]?.name ?? 'postać spoza kampanii',
@@ -227,6 +232,33 @@ export function SceneCardZone({ zone }: { zone: DefenseZoneView }) {
           defaultValue={zone.name}
           onBlur={(event) => void patch({ name: event.target.value })}
         />
+      </label>
+
+      {/* Ikona strefy (03.11, zgłoszenie MG): figura kamery znika graczowi
+          z pola widzenia, strefa zostaje — więc ikona ma zostać z nią. */}
+      <label
+        className="bot-field"
+        title="Sylwetka na środku strefy, widoczna też dla graczy. Zostaje na mapie, gdy figura urządzenia wyjdzie im z pola widzenia"
+      >
+        <span className="auth-label">Ikona na mapie</span>
+        <select
+          value={zone.glyph ?? ''}
+          onChange={(event) => {
+            const glyph = event.target.value === '' ? null : sanitizeTokenGlyph(event.target.value);
+            if (glyph !== undefined) void patch({ glyph });
+          }}
+        >
+          <option value="">
+            {suggested
+              ? `Z wpisu — ${TOKEN_GLYPH_LABELS[suggested].toLowerCase()}`
+              : 'Z wpisu — bez ikony'}
+          </option>
+          {TOKEN_GLYPHS.map((glyph) => (
+            <option key={glyph} value={glyph}>
+              {TOKEN_GLYPH_LABELS[glyph]}
+            </option>
+          ))}
+        </select>
       </label>
 
       {effects?.fires && zone.tokenId && (

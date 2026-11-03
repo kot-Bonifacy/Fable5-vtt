@@ -10,7 +10,6 @@ import {
   NET_DEFENSE_SYSTEM_KINDS,
   netDefenseGlyph,
   type NetDefenseEntry,
-  type TokenGlyph,
 } from '@vtt/shared';
 import { IconHazard } from './MapIcons.js';
 
@@ -18,21 +17,12 @@ import { IconHazard } from './MapIcons.js';
  * Wybór systemu obronnego dla narzędzia stref (29.10, zlecenie MG) — z ikoną
  * przy każdym wpisie, czego zwykły `<select>` nie umie.
  *
- * Drony biorą sylwetkę strefy na mapie (`netDefenseGlyph`); w liście dochodzi
- * wieżyczka dla stanowisk, które strzelają, i kamera — na mapie stoją figurą,
- * ale w liście ikona pomaga trafić we właściwy wiersz. Reszta to trójkąt
+ * Ikona to podpowiedź wpisu (`netDefenseGlyph`) — ta sama, którą strefa
+ * dostaje na mapie, dopóki MG nie wybierze innej na karcie. Reszta to trójkąt
  * zagrożenia z przycisku narzędzia.
  */
-function pickerGlyph(entry: NetDefenseEntry): TokenGlyph | null {
-  const glyph = netDefenseGlyph(entry);
-  if (glyph) return glyph;
-  if (entry.defenseKind === 'emplacement' && entry.effects?.fires) return 'turret';
-  if (/kamer/i.test(entry.name)) return 'camera';
-  return null;
-}
-
 function EntryIcon({ entry }: { entry: NetDefenseEntry | undefined }) {
-  const glyph = entry ? pickerGlyph(entry) : null;
+  const glyph = entry ? netDefenseGlyph(entry) : null;
   if (!glyph) {
     return (
       <span className="zone-picker-icon zone-picker-icon--hazard" aria-hidden>

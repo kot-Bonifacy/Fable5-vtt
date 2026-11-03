@@ -453,6 +453,39 @@ describe('defended zones on a scene', () => {
     await emitAck(gm, 'zone:delete', { zoneId: zone.id });
   });
 
+  it('carries the GM’s device icon to players too, and refuses one it does not know (03.11)', async () => {
+    const zone = data(
+      await emitAck<DefenseZoneView>(gm, 'zone:create', {
+        sceneId,
+        entryId: 'defense.podloga-elektryczna',
+        x: 0,
+        y: 3000,
+        width: 2 * PX_PER_M,
+        height: 2 * PX_PER_M,
+        hidden: false,
+        glyph: 'camera',
+      }),
+      'zone:create (ikona)',
+    );
+    expect(zone.glyph).toBe('camera');
+    // Figura kamery gracz traci z oczu, strefę nie — ikona jedzie z nią.
+    const seen = (await roundTrip(player)).zones.find((row) => row.id === zone.id);
+    expect(seen?.glyph).toBe('camera');
+
+    const cleared = data(
+      await emitAck<DefenseZoneView>(gm, 'zone:update', {
+        zoneId: zone.id,
+        patch: { glyph: null },
+      }),
+      'zone:update (ikona z wpisu)',
+    );
+    expect(cleared.glyph).toBeNull();
+    const refused = await emitAck(gm, 'zone:update', { zoneId: zone.id, patch: { glyph: 'ufo' } });
+    expect(refused.ok).toBe(false);
+    if (!refused.ok) expect(refused.error).toBe('BAD_REQUEST');
+    await emitAck(gm, 'zone:delete', { zoneId: zone.id });
+  });
+
   it('never lets a player near a hidden zone, or near the GM’s plan for a visible one', async () => {
     const hiddenView = await roundTrip(player);
     expect(hiddenView.zones).toHaveLength(0);

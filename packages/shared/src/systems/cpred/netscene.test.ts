@@ -181,9 +181,21 @@ describe('netDefenseGlyph', () => {
       'ground-drone',
     );
     expect(netDefenseGlyph({ defenseKind: 'drone', name: 'Rój dronów' })).toBe('drone');
-    expect(netDefenseGlyph({ defenseKind: 'emplacement', name: 'Automatyczna wieżyczka' })).toBe(
-      null,
+  });
+
+  it('strzelające stanowisko to wieżyczka, „kamer” w nazwie — kamera, podłoga nic (03.11)', () => {
+    expect(
+      netDefenseGlyph({
+        defenseKind: 'emplacement',
+        name: 'Automatyczna wieżyczka',
+        effects: { fires: true },
+      }),
+    ).toBe('turret');
+    expect(netDefenseGlyph({ defenseKind: 'emplacement', name: 'Zapora' })).toBe(null);
+    expect(netDefenseGlyph({ defenseKind: 'environment', name: 'Kamera z czujnikiem ruchu' })).toBe(
+      'camera',
     );
+    expect(netDefenseGlyph({ defenseKind: 'environment', name: 'Podłoga elektryczna' })).toBe(null);
   });
 
   it('figura z ikoną drona naziemnego jest urządzeniem Sieci', () => {

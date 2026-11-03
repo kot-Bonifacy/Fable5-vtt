@@ -57,6 +57,7 @@ const cover: CoverView = {
 
 const zone: DefenseZoneView = {
   id: 20,
+  glyph: null,
   sceneId: 's',
   entryId: 'defense.podloga',
   name: 'Podłoga',

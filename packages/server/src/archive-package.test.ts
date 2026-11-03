@@ -303,6 +303,7 @@ describe('zrzut kampanii → nowa kampania', () => {
         architectureId: architecture.id,
         floorId: 'f1',
         deviceId: 'd2',
+        glyph: 'turret',
       },
     });
     const bot = await built.prisma.botProfile.create({
@@ -426,7 +427,12 @@ describe('zrzut kampanii → nowa kampania', () => {
     expect(devices[1]!.tokenId).toBe(wieza.id);
     expect(freshScene.accessPoints[0]!.architectureId).toBe(freshArch.id);
     const zone = freshScene.defenseZones[0]!;
-    expect(zone).toMatchObject({ tokenId: wieza.id, architectureId: freshArch.id, deviceId: 'd2' });
+    expect(zone).toMatchObject({
+      tokenId: wieza.id,
+      architectureId: freshArch.id,
+      deviceId: 'd2',
+      glyph: 'turret',
+    });
     expect(JSON.parse(zone.exempt)).toEqual([kowal.id]);
     expect(JSON.parse(zone.sightings)).toEqual({ users: [playerId], tried: [byName('Kowal').id] });
 

@@ -1631,6 +1631,11 @@ model DefenseZone {
   spotDv   Int?
   /// JSON array of character ids that tried to disarm it and failed (58b).
   disarmTried String @default("[]")
+  /// Device icon drawn in the middle of the rectangle (`TokenGlyph`, 03.11,
+  /// GM's request); null = whatever the compendium entry suggests. Public, like
+  /// a figure's glyph: the zone stays on the map when its camera figure is out
+  /// of sight, and the icon has to stay with it.
+  glyph String?
 
   createdAt DateTime @default(now())
 

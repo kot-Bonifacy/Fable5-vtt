@@ -1,5 +1,5 @@
 import type { DefenseZoneView, SessionUser } from '@vtt/shared';
-import { ROLE_GM } from '@vtt/shared';
+import { ROLE_GM, sanitizeTokenGlyph } from '@vtt/shared';
 import type { PrismaClient } from '../db.js';
 import type { DefenseZone as ZoneRow } from '../generated/prisma/client.js';
 import { campaignRoom } from './state.js';
@@ -112,6 +112,9 @@ export function toZoneView(row: ZoneRow, gm: boolean, spotted: boolean): Defense
         }
       : {}),
     ...(!gm && spotted ? { spotted: true } : {}),
+    // Publiczna jak ikona figury (03.11): strefa zostaje graczowi, gdy kamera
+    // wyjdzie z pola widzenia, więc ikona musi zostać razem z nią.
+    glyph: sanitizeTokenGlyph(row.glyph) ?? null,
   };
 }
 

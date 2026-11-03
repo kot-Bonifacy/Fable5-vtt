@@ -28,6 +28,7 @@ import {
   segmentDistanceToRect,
   type Rect,
 } from './rects.js';
+import type { TokenGlyph } from './tokens.js';
 
 /** One stored zone as it goes over the wire, already cut for one pair of eyes. */
 export interface DefenseZoneView {
@@ -99,6 +100,14 @@ export interface DefenseZoneView {
   spotDv?: number | null;
   /** Characters that tried to disarm it and failed (stage 58b) — GM only. */
   disarmTried?: string[];
+  /**
+   * Device icon the GM picked for this zone (03.11) — `null` lets the client
+   * fall back on the compendium entry (a drone zone gets a drone). **Public**,
+   * like `Token.glyph`: a camera figure leaves a player's map the moment it is
+   * out of sight, while its zone stays, and a bare amber rectangle where the
+   * camera stood a second ago read at the table as a broken icon.
+   */
+  glyph: TokenGlyph | null;
 }
 
 /** Rectangles only, and axis-aligned — the covers' bargain exactly. */
@@ -142,6 +151,8 @@ export interface DefenseZoneCreatePayload {
   spotDv?: number;
   /** Disarm DV; absent keeps the entry's (23.10). */
   disarmDv?: number;
+  /** Device icon on the zone (03.11); absent or null = the entry's suggestion. */
+  glyph?: TokenGlyph | null;
 }
 
 /** Client → server `zone:update` — move, rename, arm, reveal, repair or wire one. */
@@ -171,6 +182,8 @@ export interface DefenseZoneUpdatePayload {
     spotDv?: number | null;
     /** „Pozwól spróbować znowu” — clears the list of failed disarm attempts. */
     resetDisarmTries?: true;
+    /** Device icon on the zone (03.11); null goes back to the entry's suggestion. */
+    glyph?: TokenGlyph | null;
   };
 }
 

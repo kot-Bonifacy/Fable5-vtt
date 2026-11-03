@@ -2257,15 +2257,17 @@ export function MapArea() {
 
   // Strefy bronione (26f) jadą tą samą drogą co osłony: rozbrojenie systemu ma
   // zgasić szrafirunek od razu, a nie po najbliższym renderze Reacta.
-  // Ikona strefy (29.10) bierze się z wpisu kompendium, więc strefy jadą
-  // ponownie także wtedy, gdy kompendium dojdzie po nich.
+  // Ikona strefy: wybrana przez MG na karcie (03.11), a bez niej podpowiedź
+  // wpisu kompendium (29.10) — więc strefy jadą ponownie także wtedy, gdy
+  // kompendium dojdzie po nich.
   const pushZones = useCallback(() => {
     const { zones } = useZoneStore.getState();
     const { entries } = useCompendiumStore.getState();
     const glyphs = new Map<number, TokenGlyph>();
     for (const zone of zones) {
       const entry = entries[zone.entryId];
-      const glyph = entry && isNetDefenseEntry(entry) ? netDefenseGlyph(entry) : null;
+      const glyph =
+        zone.glyph ?? (entry && isNetDefenseEntry(entry) ? netDefenseGlyph(entry) : null);
       if (glyph) glyphs.set(zone.id, glyph);
     }
     rendererRef.current?.setZones(zones, glyphs);

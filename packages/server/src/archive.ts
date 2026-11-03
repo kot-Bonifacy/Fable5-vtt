@@ -1222,6 +1222,7 @@ export async function exportCampaign(
           disarmDv: true,
           spotDv: true,
           disarmTried: true,
+          glyph: true,
         },
       }),
     ]);

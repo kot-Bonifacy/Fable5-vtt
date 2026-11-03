@@ -35,6 +35,7 @@ import {
   netDefenseTrigger,
   netDeviceStateOf,
   readNetRuntime,
+  sanitizeTokenGlyph,
   sanitizeZoneName,
   sanitizeZoneRect,
   segmentCrossesRect,
@@ -168,6 +169,14 @@ export function zoneProfileOf(
   };
 }
 
+/** Ikona strefy z gniazda (03.11): brak albo null — z wpisu, nieznana nazwa — odmowa. */
+function zoneGlyphOf(raw: unknown): string | null {
+  if (raw === undefined) return null;
+  const glyph = sanitizeTokenGlyph(raw);
+  if (glyph === undefined) throw new RealtimeError('BAD_REQUEST');
+  return glyph;
+}
+
 // ─────────────────────────────── zdarzenia MG ───────────────────────────────
 
 export const zoneCreateEvent = defineEvent<DefenseZoneCreatePayload, DefenseZoneView>({
@@ -195,6 +204,7 @@ export const zoneCreateEvent = defineEvent<DefenseZoneCreatePayload, DefenseZone
     // PT od MG przy stawianiu (23.10) — brak pola zostawia PT wpisu.
     const spotDv = zoneDvOf(payload.spotDv);
     const disarmDv = zoneDvOf(payload.disarmDv);
+    const glyph = zoneGlyphOf(payload.glyph);
 
     // A system with a Perception DV is a trap and starts hidden; a turret bolted
     // to the ceiling is a machine everybody can see. The GM's toggle overrides
@@ -216,6 +226,7 @@ export const zoneCreateEvent = defineEvent<DefenseZoneCreatePayload, DefenseZone
         hpCurrent: hp,
         spotDv,
         disarmDv,
+        glyph,
       },
     });
     await emitZones(deps, campaignId, scene.id);
@@ -296,6 +307,8 @@ export const zoneUpdateEvent = defineEvent<DefenseZoneUpdatePayload, DefenseZone
     // PT Percepcji tej strefy (23.10) — null wraca do PT wpisu.
     if (patch.spotDv !== undefined) data.spotDv = zoneDvOf(patch.spotDv);
     if (patch.resetDisarmTries === true) data.disarmTried = '[]';
+    // Ikona strefy (03.11) — null wraca do podpowiedzi z wpisu.
+    if (patch.glyph !== undefined) data.glyph = zoneGlyphOf(patch.glyph);
 
     if (Object.keys(data).length === 0) return toZoneView(row, true, false);
     const updated = await deps.ctx.prisma.defenseZone.update({ where: { id: row.id }, data });

@@ -1,6 +1,6 @@
 import { randomBytes } from 'node:crypto';
 import type { ArchiveFile, CpredRegistry } from '@vtt/shared';
-import { archiveRefusal, parseCharacterData } from '@vtt/shared';
+import { archiveRefusal, parseCharacterData, sanitizeTokenGlyph } from '@vtt/shared';
 import type { PrismaClient } from './db.js';
 import { importVehicles } from './vehicles.js';
 import type { Prisma } from './generated/prisma/client.js';
@@ -507,6 +507,8 @@ export async function importCampaign(
               disarmDv: typeof row.disarmDv === 'number' ? Math.round(row.disarmDv) : null,
               spotDv: typeof row.spotDv === 'number' ? Math.round(row.spotDv) : null,
               disarmTried: jsonText(remap(row.disarmTried), '[]'),
+              // Ikona strefy (03.11); paczka sprzed niej — z wpisu.
+              glyph: sanitizeTokenGlyph(row.glyph) ?? null,
             })),
           });
         }
