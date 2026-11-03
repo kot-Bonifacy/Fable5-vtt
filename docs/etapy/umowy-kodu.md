@@ -1709,6 +1709,7 @@ nie zapisuje — grupa staje od razu.
 
 ## atak — Broń, atak, obrażenia, rany
 
+- **Ikona gołych rąk nie zależy od kompendium — `cpredBareHandsIcon` (`barehands.ts`) (03.11, pytanie MG)** — stałe wiersze `bare-hands.*` (i wpisy `weapon.brawling` / `weapon.martial-arts`) dają pięść i sylwetkę sztuk walki na pasku (`hotbarSlotsFor`, gdy `resolved` jest `null`) i w wierszu karty (`cpredItemRowIcon`). Bez tego publiczna próbka kompendium (instancja E2E) rysowała przy „Bijatyce” pistolet — ostatni szczebel `cpredWeaponIcon`. Wpis w kompendium dalej wygrywa (ikona modelu z edytora MG).
 - **Karty skutków amunicji z Testem idą po karcie ataku, z jej id — `postAmmoFailureCards` (03.11, przebieg ataku)** — `resolveAmmoChecks` nie wysyła kart, tylko wkłada je do `AmmoFailureCard[]` od wołającego; `performAttackRoll` wysyła je zaraz po `deliverRollMessage` z `DamageLogEntry.attackMessageId`, a gdy karta ataku nie powstała (wyjątek po rozliczeniu Testów) — w `catch`, bez id. Nowy skutek ataku zapisywany przed kartą ataku idzie tą samą drogą, inaczej klient nie włoży go do przebiegu (umowa na górze `czat`).
 - **Klik celownika w figurę idzie przez `emitTokenTarget` (`MapRenderer`) — stos to pytanie „w kogo?” (03.11, zlecenie MG)** — Pixi oddaje klik figurze z wierzchu, więc wrogowie na jednym polu (kratka albo heks) byli nieosiągalni poza górnym. `emitTokenTarget` zbiera figury pod punktem kliknięcia czystą `stackedTargetsAt` (`map/stacked-targets.ts`, kliknięta pierwsza, reszta od wierzchu) z regułą `aimTargetFor`; bez strzelca, a u gracza bez własnych figur (chyba że `Alt`). Więcej niż jedna i brak ładunku obszarowego (`areaPreview`) → `onTokenTargetChoice` → `useTargetPickStore` → `TargetPickMenu` przy kursorze (nazwa, powtórzona z numerem, stan ran); wybór wraca przez `fireAtToken` w `MapArea` — tę samą funkcję co `onTokenTarget`, więc kubek, `AimMenu` i odmowy są wspólne. Nowa droga „klik w figurę = cel” woła `emitTokenTarget`, nie `onTokenTarget` wprost (pilnuje `map-click.test.ts`).
 - **Pasek HUD rysuje tylko broń w rękach — `cpredHotbarInHand` (02.11, zlecenie MG)** — filtr w `hud.ts` zdejmuje z `groups` broń z `outOfHand` razem z jej `reload:` i `clear-jam:` (klawisze 1–9 liczą to, co widać), a nazwy podaje w `HudContext.holstered` do szarej linijki „Schowane: … — dobądź na karcie postaci”. `slots` i `hotbarSlotsFor` zostają pełne (kursor, sygnatura, boty). Dobywa się wyłącznie na karcie.
@@ -1769,6 +1770,11 @@ nie zapisuje — grupa staje od razu.
 - **Jakość broni** — `quality` jedzie z **wpisu** kompendium, nie z typu; `poor` po Krytycznej Porażce zapala `CpredWeaponRow.jammed`, a usterkę zdejmuje **własna Akcja** (`weapon:clear-jam`), nie `weapon:reload`. Nie zacina się dodatek podwieszany, statysta ani porażka pominięta przez „Wyjście z opresji".
 
 ---
+
+**Pięść przy „Bijatyce” także bez wpisu w kompendium (03.11.2026, pytanie MG).** MG zobaczył na
+zrzucie z instancji E2E pistolet przy Bijatyce. Instancja E2E i kontener chmurowy nie mają
+`data/private`, a publiczna próbka nie zna `weapon.brawling`, więc wiersz rozwiązywał się do
+`null`. Przy stole z prywatnym kompendium typ „brawling” dawał pięść i tak.
 
 **Trafienie Śmiertelnie Rannego (17.10, decyzje MG).** Tabela progów ran (s. 187, 220) mówi:
 „Gdy śmiertelnie ranna postać otrzyma obrażenia z ataku bronią białą lub dystansową, otrzymuje
@@ -2886,6 +2892,7 @@ inaczej odziedziczy dokładnie ten sam potrzask.
 
 ## ekwipunek — Ekwipunek i przedmioty między kartami
 
+- **Okno „Wymiana” odświeża listę po zmianie naklejek figur z listy (03.11, zaległość z 31.10)** — `ExchangeWindow` podpisuje naklejki (`TokenView.statuses`) figury, od której otwarto okno, i każdej figury z listy drugich stron; zmiana u figury widzianej wcześniej woła `refresh`. Gdy po odświeżeniu wybrany `loot:<tokenId>` znika (ciało wstało), okno schodzi do wyboru drugiej strony z informacją — handlu samo nie zaczyna, bo wybór handlu zaprasza. `Esc` w oknie (`tabIndex={-1}`, klik w puste miejsce bierze fokus) zamyka okno, chyba że siatka kafli zjadła go czyszczeniem zaznaczenia. Nowy stan, który zmienia rodzaj drugiej strony, musi siedzieć na figurze albo przyjść nowym odświeżeniem — cudza karta do gracza nie jedzie.
 - **Asortyment handlarza z kompendium — `Merchant.assortment` + `systems/cpred/assortment.ts` (02.11, zlecenie MG)** — `{ base, categories }`: poziom dostępności 0–4 (0 = nie handluje) dla „pozostałych” i osobno dla `CPRED_ASSORTMENT_CATEGORIES` (Broń, Dodatki, Pancerz, Sprzęt, Używki i leki, Programy; `chems` rozpoznaje `cpredIsChemEntry` jak półka Kompendium). Zakres rozstrzyga **jedno** `cpredAssortmentCovers` (poziom wpisu z `shopTierOf` z nadpisaniami MG kampanii; poziomu odblokowanego w kampanii **nie** czyta). Półka: `cpredAssortmentOffers` buduje wiersze `purchasedSheetRow` z id `kat:<wpis>` (`cpredCatalogRowId`), a `cpredMerchantShelf` / `cpredMerchantDeal` dostają je w `catalog` — wiersz `catalog: true` jest zawsze „∞”, kupiony dostaje świeże id, karta handlarza się nie zmienia. Skup: `CpredPriceContext.buysBack` → `NOT_IN_RANGE` (serwer `merchantPricing` w `realtime/merchant.ts`, klient `merchantPriceContext` w `exchange-quote.ts`). `null` = sklep jak od 46a. Ustawia `merchant:config` z polem `assortment` (brak — bez zmian, `null` — wyłącz; zły kształt — `BAD_REQUEST`), widz dostaje go w `MerchantView.assortment`. Amunicji z kompendium półka nie wystawia (kaliber, 46c). Kopie: kolumna jedzie w paczce sklepu i kampanii. Test: `assortment.test.ts`, `merchant.test.ts` › „asortyment z kompendium…”.
 - **Latarka w ręce to wiersz wyposażenia z `lit`, a karta steruje światłem figury (31.10, zgłoszenie MG)** — co świeci, mówi **jedno** `cpredGearLightProfile` (`systems/cpred/lightgear.ts`: wpisy `gear.latarka`, `gear.latarka-taktyczna`, `gear.flara-alarmowa`, `gear.swiatlo-chemiczne`, ręczne wiersze po nazwie); `lit` zostaje przy zapisie tylko na takim wierszu, jest w `GEAR_FREE`, `cpredTakeRows` go zdejmuje, `stacksWith` nie skleja zapalonej ze zgaszoną. Rdzeń widzi to jako `LinkedSheet.light` (`readSheetLight` w `sheets.ts`), a `syncSheetLight` (`realtime/tokens.ts`) nakłada je na figurę w `emitTokensOfCharacter`, `token:create` i stawianiu figury z karty: karta z latarką daje figurze lampę (zgaszoną, żeby był przycisk „Zapal latarkę”), zapalenie bierze promienie przedmiotu. `token:light` u figury z taką kartą pisze `lit` przez `writeSheetLight` zamiast samego żetonu. Gdy w plecaku nic nie świeci, lampa o kształcie przedmiotu (`cpredIsGearLightShape`) znika, a lampa MG z „Edytuj…” zostaje. Nowa droga zapisu karty, która może zabrać latarkę, musi kończyć się `emitTokensOfCharacter`. Karta: „Dobądź” / „Schowaj” pod nazwą wiersza wyposażenia, jak przy broni (`GearLightHands` przez `below` w `RowTable`; do 31.10 osobna sekcja „Światło” pod tabelą, której MG nie umiał znaleźć); dobycie jednej chowa pozostałe. Test: `server/src/light-gear.test.ts`.
 - **Figura wskazana klikiem mówi za swoją kartę w `exchange:counterparts` (31.10)** — `realtime/exchange.ts`: dla każdej karty lista bierze najbliższą parę figur, **z wyjątkiem** figury z `payload.tokenId`, która wygrywa zawsze. Postać gracza stoi zwykle na kilku scenach, a stan (Ogłuszony, Pochwycony) jest naklejką figury — bez wyjątku najbliższa para ze starej sceny dawała handel zamiast łupu, a `openExchangeAtToken` szuka wpisu po id klikniętej figury. Test: `inventory.test.ts` › „figura wskazana klikiem…”.
@@ -2930,6 +2937,14 @@ inaczej odziedziczy dokładnie ten sam potrzask.
 - **Przedmiot zużywalny** — `CpredGearRow.consumable` + `qty` na wierszu ekwipunku, katalog w `systems/cpred/pharma.ts` (moduł **bez importów**). Nowy środek = wpis w `CPRED_PHARMACEUTICALS` + gałąź w `applyDose`.
 
 ---
+
+**Łup wraca do wyboru po zdjęciu naklejki (03.11.2026, zaległość z 31.10).** Rodzaj drugiej
+strony (łup czy handel) rozstrzyga serwer z naklejek figury, a okno pytało o listę tylko przy
+zapisie mojej karty i przy fokusie pola. MG zdejmował Kowalowi „Ogłuszony”, a okno Oli dalej
+stało w trybie `loot` z „Zabierz wszystko”, na które serwer odpowiadał `STILL_STANDING`. Teraz
+naklejki figur z listy są częścią tego, na co okno patrzy (tak samo w drugą stronę: ogłuszenie
+kogoś z listy przynosi łup bez ruszania pola). Sprawdzone tymczasowym specem Chromium (MG zdejmuje
+i nakłada naklejkę NPC-owi przy otwartym oknie gracza, `Esc` zamyka).
 
 **Okno „Wymiana” to siatki kafli (30.10.2026, etap 64).** MG chciał szybciej oddawać wiele rzeczy
 jednej osobie, wzorem BG3. Każda kolumna okna — mój ekwipunek, pole wymiany, ciało, pojemnik,

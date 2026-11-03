@@ -29,6 +29,11 @@ Pełna tabela z nazwami i datami: `archiwum/tabela-etapow.md`.
 
 ## Od czego zacząć
 
+**Zaległości bez MG (03.11, czwarta sesja) — czekają na wdrożenie.** Okno „Wymiana” odświeża
+listę, gdy zmienią się naklejki figur z listy: ciało, które wstało, nie zostaje łupem, a `Esc`
+zamyka okno. Przy „Bijatyce” bez wpisu w kompendium stoi pięść, nie pistolet. T4b 4.8 czeka na
+ostatnią klatkę marszu przed kością skryptu — zamknąć zaległość po zielonych przebiegach T4b.
+
 **Przebieg ataku na czacie (sklejanie kart jednej mechaniki z `POMYSLY.md`, MG 03.11) — czeka
 na wdrożenie i oględziny przy stole (Firefox).** Atak, rzut obrażeń i każde ich nałożenie (także
 skutki gazu i EMP) to jedna karta, która stoi na miejscu najnowszego kroku. Rozliczona zwija się
@@ -583,23 +588,44 @@ a nie do tego pliku.
 | `ui`        | okna pływające, `z-index`, motyw, skróty, dostępność, wejście, panel decyzji MG | 37   | 15      |
 | `kosci`     | kubek, `rollFormula`, wezwania i prośby o Test, tabele losowe, PT od MG | 24   | 2       |
 | `tura`      | budżet Akcji i metrów, kolejka, trasa, ruch przez ściany, skok, walka z zauważenia, pytanie MG o przekroczenie, Percepcja w drodze, ukryte figury, skradanie, kropki ataków, kierowca bez Biegu | 34   | 7       |
-| `atak`      | broń i dodatki, amunicja, obrażenia, pancerz, rany krytyczne, trucizna na ostrzu, auto-unik, strach z Konfrontacji, auto jako cel, broń pokładowa, wybór celu ze stosu, skutki amunicji po karcie ataku | 55   | 8       |
+| `atak`      | broń i dodatki, amunicja, obrażenia, pancerz, rany krytyczne, trucizna na ostrzu, auto-unik, strach z Konfrontacji, auto jako cel, broń pokładowa, wybór celu ze stosu, skutki amunicji po karcie ataku, ikona gołych rąk | 56   | 8       |
 | `statysta`  | figura z kartą, `statBlock`, Wartość bojowa, `token:stat`, wzorce | 17   | 3       |
 | `karta`     | strony i zakładki, panele, `sheet.css`, walidacja list, usuwanie przedmiotu | 11   | 12      |
 | `postac`    | kreator, PD i awanse, koszyk i cofanie awansów, Role i Zdolności, cyborgizacje, chrom zmieniający liczby, ekonomia, Test montażu gracza, pojazdy i Tabor | 58   | 3       |
-| `ekwipunek` | wiersze wyposażenia, przekazanie, łup (także ciała graczy), handel, sklepy, asortyment handlarza z kompendium, zasięg, amunicja bez dna, egzoszkielet, latarka z ekwipunku, narkotyki i fiolki, siatka okna „Wymiana”, zgoda z góry | 42   | 3       |
+| `ekwipunek` | wiersze wyposażenia, przekazanie, łup (także ciała graczy), handel, sklepy, asortyment handlarza z kompendium, zasięg, amunicja bez dna, egzoszkielet, latarka z ekwipunku, narkotyki i fiolki, siatka okna „Wymiana”, zgoda z góry, odświeżanie po naklejkach | 43   | 3       |
 | `czas`      | zegar świata, kalendarz, `statEffects`, leczenie po dobie, dawki i uzależnienia (`chems`) | 19   | 2       |
 | `siec`      | Programy, LOD, demony, piętra architektury, dek jako towar, strefy bronione, kamery, rozbrajanie, Sieć ze sceny, jedna próba i pamięć sukcesów | 14   | 5       |
 | `boty`      | llama-server, RAG, reindeks, dziennik i baza wiedzy, brama AI  | 10   | 10      |
 | `dane`      | `parse-manual.py`, kompendium poza repo, tabele z podręcznika  | 9    | 12      |
 | `kopie`     | `snapshot`, `archive`, paczki ZIP, wczytanie kampanii, „czeka na gracza”, kopie kampanii i cofnięcie, sklep i bot w paczce, zgłoszenie karty gracza, pojazdy w paczce, auta na scenie pościgu, przeszkody poza paczką | 22   | 6       |
 | `ogledziny` | CDP i Playwright MCP, zrzuty, dwie sesje, `window.confirm`    | 0    | 117     |
-| `testy`     | vitest, migotanie, `tsc --noEmit`, środowisko dev              | 0    | 152     |
+| `testy`     | vitest, migotanie, `tsc --noEmit`, środowisko dev              | 0    | 153     |
 
 
 ## Notatki z dwóch ostatnich sesji
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
+
+### Sesja 03.11, czwarta — zaległości bez MG i bez VPS
+
+**Zlecenie MG:** „zweryfikuj, czy są jakieś istotne zaległości, i je wykonaj”, a w trakcie
+pytanie, czemu przy „Bijatyce” na zrzucie stoi pistolet. Prawie wszystkie otwarte zaległości
+to oględziny MG przy stole i wdrożenie na VPS — z kontenera nie do zrobienia. **Zrobione:**
+(1) **okno łupu wraca do wyboru po zdjęciu naklejki** (`ExchangeWindow`: podpis naklejek figur
+z listy → `refresh`; zniknięty `loot:` → `select(null)` + informacja „X już nie leży”; `Esc`
+zamyka okno, `tabIndex={-1}`) — zaległość zamknięta; (2) **T4b 4.8** — przyczyna z kodu:
+lądowanie zapisuje pozycję przed ukrytą Percepcją, a test wpisywał kość zaraz po `waitAt`;
+4.8 czeka teraz na klatkę `final` u MG (`finalFrameOf`), zaległość zostaje do potwierdzenia
+przebiegiem; (3) **pięść przy Bijatyce bez wpisu w kompendium** (`cpredBareHandsIcon`) — na
+stole z prywatnym kompendium pięść była i tak, pistolet rysowała publiczna próbka E2E.
+**Rozstrzygnięcie bez pytań (do słowa MG):** okno po wstaniu ciała nie zaprasza samo do handlu
+(wybór handlu zaprasza, a tego nikt nie kliknął) — schodzi do „wybierz, z kim”. **Testy:**
+`shared` 2919/2919 (+2), serwer 1722/1722, klient 467/467, `tsc` (klient, `shared`, e2e),
+ESLint i Prettier czyste. **Oglądane w Chromium** (tymczasowy spec `99-ogledziny/t99-lup-wstaje`
+na instancji E2E, skasowany; przeglądarka kontenera przez `executablePath`, poprawka
+`actors.ts` niezacommitowana): łup → MG zdejmuje „Ogłuszony” → okno w trybie `none`
+z „🤝 Kowal”, ponowne ogłuszenie przynosi „🎒 Kowal” bez fokusu, `Esc` zamyka; pięść na panelu.
+T4b nieuruchomiony (brak `po-T4a` w kontenerze). Firefoksa w kontenerze nie ma.
 
 ### Sesja 03.11, trzecia — przebieg ataku na czacie
 
@@ -627,22 +653,3 @@ wstrzyknięte do magazynu czatu):** belka 420 i 620 px — rozliczony strzał z 
 celami i odskokiem, pudło, ogień zaporowy i starcie zwinięte do linii, atak czekający na Unik
 rozwinięty; rozwinięcie pokazuje rzut obrażeń i kartę nałożenia z „Cofnij” i „Zwiń”. Firefoksa
 w kontenerze nie ma — oględziny w nim przy stole.
-
-### Sesja 03.11, druga — gęsta karta rzutu na czacie
-
-**Zlecenie MG:** czat w prawej belce przeładowany — największa liczba (suma) zbędna, a przy
-mechanikach z wieloma Testami wpisy piętrzą się w pionie; gracze rozciągają belkę, więc elementy
-jednej kategorii mogą stać w jednym wierszu. **Pytania i odpowiedzi MG (03.11):** suma — usunąć,
-Test ma ją w plakietce, rzut bez PT pisze „= N” za kośćmi; w jednym wierszu — nagłówek z tytułem,
-kości + źródła modyfikatorów, wszystkie plakietki razem, wymuszone Testy/cele jako kafle; sklejanie
-kart jednej mechaniki — nie teraz (`POMYSLY.md`); zakres — rzuty i karty walki. **Zrobione:**
-`RollRow` przebudowany (tytuł w `.chat-message-meta`, `.chat-roll-line`, tablica plakietek
-oddawana `AttackRow` / `OpposedRow` jako `leadBadges`), `rollShowsTotal` (`chat-roll-total.ts`
-+ test), kafle `.chat-attack-checks`, `.chat-attack` bez kreski, `.chat-damage-body` wierszem,
-pusty `.chat-roll-badges` znika. E2E `rollTotals` czyta `data-total`. **Rozstrzygnięcie bez
-pytań (do słowa MG):** czy suma stoi w plakietce, rozstrzyga jej tekst (zaczyna się sumą), nie
-rodzaj rzutu — wyniki składa kilkanaście miejsc serwera, a „Skaner” czy „Targ dobity” sumy nie
-podają. **Testy:** klient 454/454 (+5), `tsc`, ESLint, Prettier czyste. **Oglądane w Chromium
-(biblioteka `playwright`, instancja E2E, karty wstrzyknięte do magazynu czatu):** belka 320 px
-704 → 583 px, 620 px 686 → 441 px dla tych samych czterech kart. Firefoksa w kontenerze nie ma —
-oględziny w nim przy stole.
