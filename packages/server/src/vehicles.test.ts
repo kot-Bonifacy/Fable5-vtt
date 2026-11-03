@@ -281,6 +281,72 @@ describe('etap 65a: pojazd jako własność postaci', () => {
     const derived = cpredVehicleDerived(statsOf(upgraded));
     expect(derived).toMatchObject({ hpMax: 65, seats: 6 });
     expect(upgraded.layout).toBe('car-6');
+    // Wzmocniona konstrukcja dokłada 20 także do bieżących PUK (MG 03.11).
+    expect(statsOf(upgraded).hp).toBe(65);
+  });
+
+  it('okno MG wysyła układ zawsze, a fotele i tak idą za ulepszeniami', async () => {
+    // Łata dokładnie taka, jak z `VehicleEditor`: wszystkie pola naraz.
+    const editorPatch = (view: VehicleView, upgrades: CpredVehicleStats['upgrades']) => {
+      const stats = statsOf(view);
+      return {
+        vehicleId: view.id,
+        patch: {
+          name: view.name,
+          layout: view.layout,
+          widthSq: view.widthSq,
+          lengthSq: view.lengthSq,
+          system: { ...stats, upgrades },
+        },
+      };
+    };
+    const current = data(
+      await emitAck<VehicleView>(gm, 'vehicle:update', { vehicleId: carId, patch: {} }),
+      'vehicle:update noop',
+    );
+    const without = data(
+      await emitAck<VehicleView>(
+        gm,
+        'vehicle:update',
+        editorPatch(
+          current,
+          statsOf(current).upgrades.filter((row) => row.upgradeId !== 'extraSeats'),
+        ),
+      ),
+      'vehicle:update editor -seats',
+    );
+    expect(without.layout).toBe('car-4');
+    const back = data(
+      await emitAck<VehicleView>(
+        gm,
+        'vehicle:update',
+        editorPatch(without, [
+          ...statsOf(without).upgrades,
+          { id: 'c2', upgradeId: 'extraSeats', notes: '' },
+        ]),
+      ),
+      'vehicle:update editor +seats',
+    );
+    expect(back.layout).toBe('car-6');
+    // Układ wybrany ręką w tej samej łacie wygrywa z fotelami.
+    const chosen = data(
+      await emitAck<VehicleView>(gm, 'vehicle:update', {
+        ...editorPatch(
+          back,
+          statsOf(back).upgrades.filter((row) => row.id !== 'c2'),
+        ),
+        patch: {
+          ...editorPatch(
+            back,
+            statsOf(back).upgrades.filter((row) => row.id !== 'c2'),
+          ).patch,
+          layout: 'van-8',
+        },
+      }),
+      'vehicle:update editor chosen layout',
+    );
+    expect(chosen.layout).toBe('van-8');
+    await emitAck(gm, 'vehicle:update', { vehicleId: carId, patch: { layout: 'car-4' } });
   });
 
   it('wiersz „Pojazd” Taboru staje się pojazdem, a ulepszenie Moto ląduje w nim', async () => {

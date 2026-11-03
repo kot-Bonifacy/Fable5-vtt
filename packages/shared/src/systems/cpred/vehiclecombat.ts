@@ -214,6 +214,30 @@ export function cpredMountWeaponRows(
   return rows;
 }
 
+/**
+ * Bronie pokładowe auta, których broni katalog nie zna — `cpredMountWeaponRows`
+ * pomija je po cichu, więc kierowca nie ma ich na pasku. Okno pojazdu i menu
+ * auta pokazują je MG jako ostrzeżenie (decyzja MG z 03.11). Każde ulepszenie
+ * raz, w kolejności montażu.
+ */
+export function cpredMissingMountWeapons(
+  stats: Pick<CpredVehicleStats, 'upgrades'>,
+  known: (entryId: string) => boolean,
+): { upgradeId: CpredMountUpgradeId; name: string; entryId: string }[] {
+  const missing: { upgradeId: CpredMountUpgradeId; name: string; entryId: string }[] = [];
+  for (const upgrade of stats.upgrades) {
+    const definition = cpredMountDefinition(upgrade.upgradeId);
+    if (!definition || known(definition.entryId)) continue;
+    if (missing.some((entry) => entry.upgradeId === upgrade.upgradeId)) continue;
+    missing.push({
+      upgradeId: upgrade.upgradeId as CpredMountUpgradeId,
+      name: cpredVehicleUpgrade(upgrade.upgradeId)?.name ?? upgrade.upgradeId,
+      entryId: definition.entryId,
+    });
+  }
+  return missing;
+}
+
 /** Ulepszenie, którym jest wiersz broni pokładowej tego auta; inne — `null`. */
 export function cpredMountRowInfo(
   vehicleId: string,

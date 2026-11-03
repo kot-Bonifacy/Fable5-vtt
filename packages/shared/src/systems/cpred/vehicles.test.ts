@@ -11,6 +11,7 @@ import {
   cpredVehicleDerived,
   cpredVehicleFromCatalog,
   cpredVehicleLayout,
+  cpredVehicleHpAfterUpgrades,
   cpredVehiclePatch,
   cpredVehicleSize,
   cpredVehicleSkillId,
@@ -180,6 +181,37 @@ describe('cpredVehiclePatch', () => {
 
   it('refuses junk numbers', () => {
     expect(cpredVehiclePatch(base, { hp: 'lots' }).ok).toBe(false);
+  });
+
+  it('reinforced frame moves current PUK too, unless the GM sent them', () => {
+    const mounted = cpredVehiclePatch(base, { upgrades: [{ id: 'r', upgradeId: 'reinforced' }] });
+    expect(mounted.ok && [mounted.stats.hp, cpredVehicleDerived(mounted.stats).hpMax]).toEqual([
+      70, 70,
+    ]);
+    if (!mounted.ok) return;
+    const removed = cpredVehiclePatch(mounted.stats, { upgrades: [] });
+    expect(removed.ok && removed.stats.hp).toBe(50);
+    const typed = cpredVehiclePatch(base, {
+      hp: 30,
+      upgrades: [{ id: 'r', upgradeId: 'reinforced' }],
+    });
+    expect(typed.ok && typed.stats.hp).toBe(30);
+  });
+});
+
+describe('cpredVehicleHpAfterUpgrades', () => {
+  const plain = [{ upgradeId: 'nitro' as const }];
+  const framed = [...plain, { upgradeId: 'reinforced' as const }];
+
+  it('adds 20 on mounting and takes 20 on removal, damage stays', () => {
+    expect(cpredVehicleHpAfterUpgrades(40, plain, framed)).toBe(60);
+    expect(cpredVehicleHpAfterUpgrades(60, framed, plain)).toBe(40);
+    expect(cpredVehicleHpAfterUpgrades(40, plain, plain)).toBe(40);
+  });
+
+  it('a wreck stays a wreck, removal never wrecks a running car', () => {
+    expect(cpredVehicleHpAfterUpgrades(0, plain, framed)).toBe(0);
+    expect(cpredVehicleHpAfterUpgrades(5, framed, plain)).toBe(1);
   });
 });
 

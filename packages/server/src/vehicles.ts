@@ -3,6 +3,7 @@ import {
   cpredFleetRowLevel,
   cpredGuessFleetVehicle,
   cpredVehicleFromCatalog,
+  cpredVehicleHpAfterUpgrades,
   cpredVehicleLayout,
   cpredVehicleSize,
   cpredVehicleUpgradesProblem,
@@ -252,7 +253,9 @@ export async function syncFleetVehicles(
     }
     const upgrades = withFleetUpgrades(stats.upgrades, vehicle.id, rows);
     if (JSON.stringify(upgrades) === JSON.stringify(stats.upgrades)) continue;
-    const next = readCpredVehicle({ ...stats, upgrades });
+    // Wzmocniona konstrukcja z Taboru dokłada 20 także do bieżących PUK (MG 03.11).
+    const hp = cpredVehicleHpAfterUpgrades(stats.hp, stats.upgrades, upgrades);
+    const next = readCpredVehicle({ ...stats, hp, upgrades });
     updated.push(
       await db.vehicle.update({
         where: { id: vehicle.id },

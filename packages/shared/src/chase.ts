@@ -610,6 +610,8 @@ export interface SceneVehicleView {
   nitroLeft: number;
   /** Kolczatki w wyrzutni na ten pościg (65e); 0 — brak wyrzutni albo pusta. */
   spikesLeft: number;
+  /** Czy auto zużyło Nitro albo kolczatkę — MG może je uzupełnić (`vehicle:refill`). */
+  refillable: boolean;
   /**
    * Punkty kadłuba (65d) — jawne dla całego stołu, jak PW osłony (16c): każdy
    * widzi, jak maska się sypie. 0 = wrak (`status: 'wrecked'` w kadrze).
@@ -720,6 +722,14 @@ export interface VehicleEnginePayload {
 
 /** `vehicle:nitro` — kierowca w walce za Akcję dostaje drugi Ruch pojazdu (65c). */
 export interface VehicleNitroPayload {
+  sceneVehicleId: string;
+}
+
+/**
+ * MG: `vehicle:refill` — auto znowu ma pełne zbiorniki Nitro i pełną wyrzutnię
+ * kolczatki (decyzja MG z 03.11: „raz dziennie” bez zegara świata).
+ */
+export interface VehicleRefillPayload {
   sceneVehicleId: string;
 }
 

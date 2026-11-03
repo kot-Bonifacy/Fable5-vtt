@@ -6,6 +6,13 @@ w `POMYSLY.md` („Do sprawdzenia przy stole”), decyzje MG — w `decyzje-i-up
 
 ## Otwarte
 
+**03.11.2026 — przegląd ulepszeń pojazdów: oględziny w przeglądarce i wdrożenie.** Z kontenera
+nie oglądane (brak punktu `po-T6`, Playwright MCP niepodłączony). Przy stole (Firefox):
+w oknie pojazdu „Zamontuj” Wzmocnioną konstrukcję — „PUK teraz” rośnie o 20; Ulepszenie foteli
+— po zapisie auto na scenie pościgu ma 6 foteli; menu auta MG po zrzucie kolczatki albo Nitro
+pokazuje „Uzupełnij Nitro i kolczatki”; czy przy którejś broni pokładowej stoi ostrzeżenie
+„Brak broni w katalogu” (jeśli tak — id wpisu do poprawy w `CPRED_VEHICLE_MOUNTS`). Bez migracji.
+
 **31.10.2026 — T4b 4.8 „pięść, która trafia” raz spudłowała.** Na trzy przebiegi T4b od
 `po-T4a` (sesja piąta 31.10) jeden padł w 4.8 na `punch.attack?.hit === false` (kość
 skryptowana 8, Iskra pod Rzeźnikiem); powtórka bez zmian w kodzie 20/20. Adnotacji z rozbiciem

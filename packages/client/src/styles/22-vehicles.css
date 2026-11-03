@@ -311,3 +311,9 @@ input.vehicle-card-name {
   font-size: 0.78rem;
   color: var(--text-dim);
 }
+
+/* Broń pokładowa spoza katalogu (03.11) — ostrzeżenie dla MG w menu auta i w oknie pojazdu. */
+.chase-menu-state.chase-menu-warning,
+.vehicle-hint.vehicle-warning {
+  color: var(--warn);
+}

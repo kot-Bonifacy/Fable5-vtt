@@ -1,5 +1,26 @@
 # Dziennik sesji — archiwum
 
+### Sesja 03.11, czwarta — zaległości bez MG i bez VPS
+
+**Zlecenie MG:** „zweryfikuj, czy są jakieś istotne zaległości, i je wykonaj”, a w trakcie
+pytanie, czemu przy „Bijatyce” na zrzucie stoi pistolet. Prawie wszystkie otwarte zaległości
+to oględziny MG przy stole i wdrożenie na VPS — z kontenera nie do zrobienia. **Zrobione:**
+(1) **okno łupu wraca do wyboru po zdjęciu naklejki** (`ExchangeWindow`: podpis naklejek figur
+z listy → `refresh`; zniknięty `loot:` → `select(null)` + informacja „X już nie leży”; `Esc`
+zamyka okno, `tabIndex={-1}`) — zaległość zamknięta; (2) **T4b 4.8** — przyczyna z kodu:
+lądowanie zapisuje pozycję przed ukrytą Percepcją, a test wpisywał kość zaraz po `waitAt`;
+4.8 czeka teraz na klatkę `final` u MG (`finalFrameOf`), zaległość zostaje do potwierdzenia
+przebiegiem; (3) **pięść przy Bijatyce bez wpisu w kompendium** (`cpredBareHandsIcon`) — na
+stole z prywatnym kompendium pięść była i tak, pistolet rysowała publiczna próbka E2E.
+**Rozstrzygnięcie bez pytań (do słowa MG):** okno po wstaniu ciała nie zaprasza samo do handlu
+(wybór handlu zaprasza, a tego nikt nie kliknął) — schodzi do „wybierz, z kim”. **Testy:**
+`shared` 2919/2919 (+2), serwer 1722/1722, klient 467/467, `tsc` (klient, `shared`, e2e),
+ESLint i Prettier czyste. **Oglądane w Chromium** (tymczasowy spec `99-ogledziny/t99-lup-wstaje`
+na instancji E2E, skasowany; przeglądarka kontenera przez `executablePath`, poprawka
+`actors.ts` niezacommitowana): łup → MG zdejmuje „Ogłuszony” → okno w trybie `none`
+z „🤝 Kowal”, ponowne ogłuszenie przynosi „🎒 Kowal” bez fokusu, `Esc` zamyka; pięść na panelu.
+T4b nieuruchomiony (brak `po-T4a` w kontenerze). Firefoksa w kontenerze nie ma.
+
 ### Sesja 03.11, trzecia — przebieg ataku na czacie
 
 **Zlecenie MG:** sklejanie kart jednej mechaniki (atak → Unik → obrażenia → nałożenie) z
