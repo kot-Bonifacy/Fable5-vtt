@@ -14,6 +14,7 @@ import {
 import { Viewport } from 'pixi-viewport';
 import { MapFxLayer } from './MapFxLayer.js';
 import { ChaseLayer } from './ChaseLayer.js';
+import { stackedTargetsAt } from './stacked-targets.js';
 import { DESTROY_TREE, releasePooledGraphicsData } from './pixi-destroy.js';
 import {
   MAP_MAX_ZOOM,
@@ -1070,6 +1071,14 @@ export class MapRenderer {
    * kursor był (ta sama umowa, co przy `onTokenMenu`).
    */
   onTokenTarget: ((tokenId: string, clientX: number, clientY: number) => void) | null = null;
+  /**
+   * Klik celownika w stos figur (03.11, zlecenie MG): pod kursorem stoi więcej
+   * niż jeden cel, więc zamiast strzelać w figurę z wierzchu mapa pyta, w którą.
+   * `tokenIds` idą od klikniętej (wierzch stosu); bez tego wywołania — albo bez
+   * słuchacza — klik idzie do `onTokenTarget` jak dawniej.
+   */
+  onTokenTargetChoice: ((tokenIds: string[], clientX: number, clientY: number) => void) | null =
+    null;
   /**
    * Grot figury poszedł za celownikiem albo wrócił (03.10) — `facing: null`
    * znaczy „już nie celuje”. Woła się przy każdej zmianie, a dławi nadawca
@@ -4423,6 +4432,62 @@ export class MapRenderer {
       this.movableTokens.get(node.tokenId) !== false && (!this.steerLock || this.isTurnNpc(node));
     if (steerable && !altKey) return null;
     return node;
+  }
+
+  /**
+   * Wskazanie celu klikiem — jeden cel albo pytanie o wybór (03.11, zlecenie MG).
+   *
+   * Stos figur na jednym polu jest dozwolony, a Pixi oddaje klik figurze
+   * z wierzchu; bez tego gracz nie mógł strzelić we wroga leżącego pod innym.
+   * Kandydatów sądzi ta sama reguła co celownik (`aimTargetFor`), a gracz nie
+   * dostaje na liście własnych figur, chyba że trzyma `Alt` (ta sama furtka co
+   * przy pojedynczej figurze). Ładunek obszarowy w ręku celuje w pole, nie
+   * w figurę, więc wtedy nie ma o co pytać.
+   */
+  private emitTokenTarget(
+    node: TokenNode,
+    altKey: boolean,
+    globalX: number,
+    globalY: number,
+  ): void {
+    const rect = this.app.canvas.getBoundingClientRect();
+    const clientX = rect.left + globalX;
+    const clientY = rect.top + globalY;
+    const ids = this.stackedAimTargets(node, altKey, globalX, globalY);
+    if (ids.length > 1 && this.onTokenTargetChoice && this.areaPreview === null) {
+      this.onTokenTargetChoice(ids, clientX, clientY);
+      return;
+    }
+    this.onTokenTarget?.(node.tokenId, clientX, clientY);
+  }
+
+  /** Figury pod punktem kliknięcia, w które ten sam klik może celować — od wierzchu stosu. */
+  private stackedAimTargets(
+    clicked: TokenNode,
+    altKey: boolean,
+    globalX: number,
+    globalY: number,
+  ): string[] {
+    const viewport = this.viewport;
+    if (!viewport) return [clicked.tokenId];
+    const world = viewport.toWorld(globalX, globalY);
+    const figures = [...this.tokenNodes.values()]
+      .filter((node) => !node.destroyed && node !== clicked)
+      .map((node) => ({
+        id: node.tokenId,
+        x: node.x,
+        y: node.y,
+        side: node.side,
+        order: node.zIndex * 1_000_000 + this.tokenLayer.getChildIndex(node),
+      }));
+    return stackedTargetsAt(clicked.tokenId, figures, world.x, world.y, (id) => {
+      const node = this.tokenNodes.get(id);
+      if (!node || !this.aimTargetFor(node, altKey)) return false;
+      if (id === this.selectedTokenId) return false;
+      // Gracz nie strzela we własne figury bez `Alt` — u MG „własne” to cała
+      // mapa, więc tam rozstrzyga sam `aimTargetFor`.
+      return this.viewerIsGm || altKey || this.movableTokens.get(id) === false;
+    });
   }
 
   /**
@@ -7928,8 +7993,7 @@ export class MapRenderer {
         !this.aimsOnRelease(node, event.altKey === true)
       ) {
         event.stopPropagation();
-        const rect = this.app.canvas.getBoundingClientRect();
-        this.onTokenTarget?.(node.tokenId, rect.left + event.global.x, rect.top + event.global.y);
+        this.emitTokenTarget(node, event.altKey === true, event.global.x, event.global.y);
         return;
       }
       // A map tool owns the left button while it is armed. Without this a
@@ -8260,12 +8324,7 @@ export class MapRenderer {
         !this.isTurnNpc(drag.node)
       ) {
         if (this.aimTargetFor(drag.node, false)) {
-          const rect = this.app.canvas.getBoundingClientRect();
-          this.onTokenTarget?.(
-            drag.node.tokenId,
-            rect.left + drag.startGlobalX,
-            rect.top + drag.startGlobalY,
-          );
+          this.emitTokenTarget(drag.node, false, drag.startGlobalX, drag.startGlobalY);
         } else {
           this.onTokenPreview?.(drag.node.tokenId);
         }

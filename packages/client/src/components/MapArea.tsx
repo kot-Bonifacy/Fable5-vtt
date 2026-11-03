@@ -149,6 +149,8 @@ import {
 } from '../combat-steer.js';
 import { useAimMenuStore } from '../stores/aimMenuStore.js';
 import { AimMenu } from './AimMenu.js';
+import { TargetPickMenu } from './TargetPickMenu.js';
+import { useTargetPickStore } from '../stores/targetPickStore.js';
 import { sameSceneObject, useSceneSelectionStore } from '../stores/sceneSelectionStore.js';
 import { useSceneCardStore } from '../stores/sceneCardStore.js';
 import {
@@ -822,6 +824,24 @@ function mapPinnedNotices(state: {
   return pinned;
 }
 
+/**
+ * Klik celownika w figurę — albo wybór z menu „W kogo strzelasz?” (03.11).
+ *
+ * Two doors into one attack (stage 16f). A crosshair armed from a sheet or
+ * from the „Walka" tab already named its weapon, so it wins; otherwise the
+ * shot is fired with whatever the action bar has in hand.
+ */
+function fireAtToken(tokenId: string, clientX: number, clientY: number): void {
+  // Adres dla okna Celowania (31.08): ładowanie kubka nie wie nic o ekranie,
+  // więc pozycję kliknięcia zostawia ten, kto ją zna.
+  useAimMenuStore.getState().placeAt(clientX, clientY);
+  if (useAttackStore.getState().targeting) {
+    loadAttackAtToken(tokenId);
+    return;
+  }
+  attackWithActiveWeapon(tokenId);
+}
+
 export function MapArea() {
   const hostRef = useRef<HTMLDivElement | null>(null);
   const rendererRef = useRef<MapRenderer | null>(null);
@@ -1137,18 +1157,11 @@ export function MapArea() {
       setMenu({ tokenId, x: clientX, y: clientY });
     };
     renderer.onTokenActivate = (tokenId) => openSheetOfToken(tokenId);
-    // Two doors into one attack (stage 16f). A crosshair armed from a sheet or
-    // from the „Walka" tab already named its weapon, so it wins; otherwise the
-    // shot is fired with whatever the action bar has in hand.
-    renderer.onTokenTarget = (tokenId, clientX, clientY) => {
-      // Adres dla okna Celowania (31.08): ładowanie kubka nie wie nic o ekranie,
-      // więc pozycję kliknięcia zostawia ten, kto ją zna.
-      useAimMenuStore.getState().placeAt(clientX, clientY);
-      if (useAttackStore.getState().targeting) {
-        loadAttackAtToken(tokenId);
-        return;
-      }
-      attackWithActiveWeapon(tokenId);
+    renderer.onTokenTarget = fireAtToken;
+    // Kilka celów na jednym polu (03.11, zlecenie MG): pytanie przy kursorze,
+    // wybór wraca przez `fireAtToken` jak klik w pojedynczą figurę.
+    renderer.onTokenTargetChoice = (tokenIds, clientX, clientY) => {
+      useTargetPickStore.getState().open({ tokenIds, x: clientX, y: clientY });
     };
     // Grot celowania widzi cały stół (03.10) — dławi go `reportTokenAim`.
     renderer.onAimFacing = reportTokenAim;
@@ -2776,6 +2789,7 @@ export function MapArea() {
         <ExchangeDock />
       </div>
       <AimMenu />
+      <TargetPickMenu onPick={fireAtToken} />
       <ChaseVehicleMenu />
       <ChaseObstacleMenu />
       <DrawingTextEditor />
