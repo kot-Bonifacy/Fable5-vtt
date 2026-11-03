@@ -1,5 +1,29 @@
 # Dziennik sesji — archiwum
 
+### Sesja 03.11, szósta — przegląd ulepszeń pojazdów
+
+**Zlecenie MG:** „przyjrzyj się ulepszeniom pojazdów (czy one faktycznie działają)”, z pytaniami
+przy wątpliwościach. **Przegląd:** z 19 ulepszeń 13 liczonych w walce jest okablowanych
+(OB kadłuba, szyby, Nitro, bronie pokładowe z łukiem i „tylko seria”, Pług, kolczatka,
+zespolenie, poduszkowiec wobec kolczatki), 6 to opis. **Znalezione i potwierdzone na żywym
+serwerze:** (1) Ulepszenie foteli z okna MG nie dokładało foteli na mapie — okno wysyła
+`layout` zawsze, a serwer przeliczał układ tylko bez niego (test serwera przechodził, bo nie
+wysyłał `layout`); (2) Wzmocniona konstrukcja podnosiła tylko sufit — kompakt stał na 45/65;
+(3) Nitro i kolczatka nie wracały bez zdjęcia auta ze sceny; (4) Stanowisko bardzo ciężkiej broni
+udawało liczone ulepszenie; (5) broń pokładowa spoza katalogu znika z paska po cichu.
+**Odpowiedzi MG (03.11):** +20 do bieżących PUK (demontaż −20, najniżej 1); przycisk MG
+„Uzupełnij”; stanowisko jako „— opis”; ostrzeżenie zamiast cichego braku. **Zrobione:**
+`vehicle:update` — układ równy obecnemu to „nie ruszałem”; `cpredVehicleHpAfterUpgrades`
+w `cpredVehiclePatch` (bez `hp` w łacie), `syncFleetVehicles` i oknie MG; `vehicle:refill`
+(MG) + `SceneVehicleView.refillable` + przycisk w menu auta; `heavyMount.combat = false`;
+`cpredMissingMountWeapons` + `missingMountWeaponsText` (okno pojazdu i menu auta MG). Umowa na
+górze `mapa`, decyzje w `decyzje-i-uproszczenia.md`. **Nie sprawdzone stąd:** czy id broni
+pokładowych (`weapon.miotacz-ognia` i reszta) istnieją w `data/private` — ostrzeżenie powie to
+MG przy stole. **Testy:** `shared` 2926/2926 (+4), serwer 1723/1723 (+1, macierz izolacji
+z `vehicle:refill`), klient 467/467, `tsc` w trzech pakietach, ESLint i Prettier czyste.
+**W przeglądarce nieoglądane** — brak `po-T6` w kontenerze, Playwright MCP niepodłączony;
+zaległość w `zaleglosci.md`.
+
 ### Sesja 03.11, piąta — Ekwipunek: „Używane” i „Plecak”
 
 **Zlecenie MG:** linijka „Schowane: Lekka broń biała, Pistolet…” w lewej belce HUD niepotrzebna

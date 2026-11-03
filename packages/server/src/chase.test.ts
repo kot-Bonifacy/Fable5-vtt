@@ -16,7 +16,12 @@ import type {
   TokenView,
   VehicleView,
 } from '@vtt/shared';
-import { seatedTokenPosition, vehicleSeatCentre } from '@vtt/shared';
+import {
+  chaseRoadByUrl,
+  chaseRoadPatch,
+  seatedTokenPosition,
+  vehicleSeatCentre,
+} from '@vtt/shared';
 import type { ServerConfig } from './config.js';
 import { buildApp, type BuiltApp } from './app.js';
 import { joinUrl } from './test-join.js';
@@ -528,5 +533,38 @@ describe('etap 65b: scena pościgu, auta i fotele', () => {
     );
     expect((await emitAck(gm, 'vehicle:delete', { vehicleId: npcCarId })).ok).toBe(true);
     await gone;
+  });
+});
+
+describe('kreator pościgu (03.11): wbudowana droga jako tło', () => {
+  it('MG kładzie drogę z listy jedną łatą, a adres spoza listy odpada', async () => {
+    const gm = await connect(gmCookie);
+    const created = data(
+      await emitAck<SceneView>(gm, 'scene:create', { name: 'Autostrada', kind: 'chase' }),
+      'scene:create',
+    );
+    const preset = chaseRoadByUrl('/art/roads/highway.webp')!;
+    // Rozmiar z drutu się nie liczy — serwer bierze go z listy dróg.
+    const patch = chaseRoadPatch(preset);
+    const view = data(
+      await emitAck<SceneView>(gm, 'scene:update', {
+        sceneId: created.id,
+        patch: { ...patch, background: { url: preset.url, width: 10, height: 10 } },
+      }),
+      'scene:update road',
+    );
+    expect(view.background).toEqual({ url: preset.url, width: 3500, height: 1800 });
+    expect(view).toMatchObject({ width: 3500, height: 1800, metersPerSquare: 1 });
+    expect(view.grid).toMatchObject({ sizePx: 100, offsetX: 0, offsetY: 0 });
+    expect(view.chase).toMatchObject({ direction: 'right', road: { from: 2, to: 16 } });
+
+    const fake = await emitAck(gm, 'scene:update', {
+      sceneId: created.id,
+      patch: { background: { url: '/art/roads/nope.webp', width: 3500, height: 1800 } },
+    });
+    expect(fake).toMatchObject({ ok: false, error: 'UPLOAD_NOT_FOUND' });
+
+    const file = await exportCampaign(built.prisma, campaignId, { includeChat: false });
+    expect(JSON.stringify(file)).toContain('/art/roads/highway.webp');
   });
 });

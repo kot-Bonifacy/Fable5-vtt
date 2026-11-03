@@ -39,6 +39,25 @@ interface SceneStoreState {
    */
   editorOpen: boolean;
   setEditorOpen: (open: boolean) => void;
+  /**
+   * Kreator sceny pościgu (MG, 03.11) — okno krok po kroku po „Utwórz → Pościg”.
+   * Jak edytor: pływa nad stołem, więc żyje w magazynie.
+   */
+  chaseWizardOpen: boolean;
+  setChaseWizardOpen: (open: boolean) => void;
+  /**
+   * Uchwyty pasa jezdni na mapie (MG, 03.11): włącza je zakładka „Pościg”
+   * edytora albo krok „Droga” kreatora, gasi ich zamknięcie. Stan tej karty.
+   */
+  chaseBandEdit: boolean;
+  setChaseBandEdit: (on: boolean) => void;
+  /**
+   * Prośba o kadr całej sceny obok okna (kreator pościgu, 03.11): `inset` to
+   * szerokość mapy zasłonięta z prawej, `seq` odróżnia kolejne prośby.
+   */
+  frameRequest: { seq: number; inset: number; refit: boolean } | null;
+  /** `refit: false` — tylko granica kamery (okno się zamknęło), bez nowego kadru. */
+  requestFrame: (inset: number, refit?: boolean) => void;
 
   applySync: (payload: StateSyncPayload) => void;
   /** Replaces the viewed scene (activation for players, scene:view for GM). */
@@ -73,6 +92,9 @@ export const useSceneStore = create<SceneStoreState>((set, get) => ({
   effectiveScene: null,
   gridContrast: false,
   editorOpen: false,
+  chaseWizardOpen: false,
+  chaseBandEdit: false,
+  frameRequest: null,
 
   applySync: (payload) =>
     set((state) => ({
@@ -119,6 +141,15 @@ export const useSceneStore = create<SceneStoreState>((set, get) => ({
   setGridContrast: (gridContrast) => set({ gridContrast }),
 
   setEditorOpen: (editorOpen) => set({ editorOpen }),
+
+  setChaseWizardOpen: (chaseWizardOpen) => set({ chaseWizardOpen }),
+
+  setChaseBandEdit: (chaseBandEdit) => set({ chaseBandEdit }),
+
+  requestFrame: (inset, refit = true) =>
+    set((state) => ({
+      frameRequest: { seq: (state.frameRequest?.seq ?? 0) + 1, inset, refit },
+    })),
 
   setDraft: (draft) => set((state) => withEffective({ scene: state.scene, draft })),
 

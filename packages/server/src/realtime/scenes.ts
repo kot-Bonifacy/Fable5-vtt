@@ -15,6 +15,7 @@ import type {
 import {
   CHASE_AMBIENCE,
   ROLE_GM,
+  chaseRoadByUrl,
   defaultChaseDirection,
   isAmbiencePreset,
   isChaseDirection,
@@ -231,14 +232,17 @@ export const sceneUpdateEvent = defineEvent<SceneUpdatePayload, SceneView>({
         data.backgroundWidth = null;
         data.backgroundHeight = null;
       } else {
-        requireOwnUploadUrl(patch.background.url, campaignId);
+        // Wbudowana droga kreatora pościgu (03.11) leży w `/art/roads/`, nie
+        // w plikach kampanii — wpuszczamy tylko adres z listy i jej rozmiar.
+        const builtIn = chaseRoadByUrl(patch.background.url);
+        if (!builtIn) requireOwnUploadUrl(patch.background.url, campaignId);
         data.backgroundUrl = patch.background.url;
-        data.backgroundWidth = patch.background.width;
-        data.backgroundHeight = patch.background.height;
+        data.backgroundWidth = builtIn?.width ?? patch.background.width;
+        data.backgroundHeight = builtIn?.height ?? patch.background.height;
         // A new map usually defines the playable area — adopt its size unless
         // the patch sets dimensions explicitly.
-        if (patch.width === undefined) data.width = patch.background.width;
-        if (patch.height === undefined) data.height = patch.background.height;
+        if (patch.width === undefined) data.width = data.backgroundWidth;
+        if (patch.height === undefined) data.height = data.backgroundHeight;
         // Droga na scenie pościgu (65b) biegnie zwykle wzdłuż dłuższego boku
         // mapy — nowe tło zgaduje kierunek jazdy, chyba że łata go podaje.
         if ((patch.kind ?? scene.kind) === 'chase' && patch.chase?.direction === undefined) {

@@ -7,6 +7,7 @@ import {
   chaseLimitMove,
   chaseScrollSpeed,
   CHASE_CONTROL_LABELS,
+  chaseRoadCells,
   chaseRoadSpanPx,
   clampChaseVehicle,
   defaultVehicleArt,
@@ -152,6 +153,15 @@ export class ChaseLayer {
   private readonly band = new Graphics();
   private showBand = false;
   /**
+   * Edycja pasa (kreator pościgu, 03.11): przy otwartej zakładce „Pościg”
+   * albo kroku „Droga” kreatora MG ciągnie krawędzie pasa wprost na mapie.
+   * Teren poza pasem przygasa, krawędzie są ciągłe i mają uchwyty, a podgląd
+   * trwa do puszczenia przycisku — potem pas wraca ze szkicu sceny.
+   */
+  private bandEdit = false;
+  private bandPreview: { from: number; to: number } | null = null;
+  private bandHover: 'from' | 'to' | null = null;
+  /**
    * Auto ciągnięte przez MG albo kierowcę: id, środek pod kursorem, skąd
    * ruszyło i budżet kierowcy w pikselach (65c; `null` — bez limitu).
    */
@@ -177,6 +187,7 @@ export class ChaseLayer {
 
   setScene(scene: SceneView | null): void {
     this.scene = scene;
+    this.bandPreview = null;
     if (!scene || scene.kind !== 'chase' || !scene.background) {
       this.road.visible = false;
       this.roadKey = null;
@@ -451,17 +462,74 @@ export class ChaseLayer {
     node.label.position.set(0, -(horizontal ? width : length) / 2 - grid * 0.06);
   }
 
-  private drawBand(): void {
-    this.band.clear();
+  /** Włącza i wyłącza uchwyty pasa jezdni (tylko MG, tylko na scenie pościgu). */
+  setBandEdit(on: boolean): void {
+    if (this.bandEdit === on) return;
+    this.bandEdit = on;
+    this.bandPreview = null;
+    this.bandHover = null;
+    this.drawBand();
+  }
+
+  /** Pas, który rysują uchwyty: podgląd przeciągania, pas sceny albo cała szerokość. */
+  bandRoad(): { from: number; to: number } | null {
     const scene = this.scene;
-    if (!scene || scene.kind !== 'chase' || !this.showBand || !scene.chase.road) return;
-    const span = chaseRoadSpanPx(scene.chase, {
+    if (!scene || scene.kind !== 'chase') return null;
+    if (this.bandPreview) return this.bandPreview;
+    if (scene.chase.road) return scene.chase.road;
+    return { from: 0, to: chaseRoadCells(scene.chase.direction, this.gridOf(scene)) };
+  }
+
+  /** Podgląd pasa w trakcie przeciągania krawędzi. */
+  previewBand(road: { from: number; to: number }): void {
+    this.bandPreview = road;
+    this.drawBand();
+  }
+
+  /** Podświetla krawędź pod kursorem. */
+  setBandHover(edge: 'from' | 'to' | null): void {
+    if (this.bandHover === edge) return;
+    this.bandHover = edge;
+    this.drawBand();
+  }
+
+  /** Krawędź pasa pod punktem (w granicach tolerancji w pikselach sceny). */
+  bandHandleAt(point: ScenePoint, tolerance: number): 'from' | 'to' | null {
+    const scene = this.scene;
+    const road = this.bandRoad();
+    if (!this.bandEdit || !scene || !road) return null;
+    const span = chaseRoadSpanPx({ direction: scene.chase.direction, road }, this.gridOf(scene));
+    const horizontal = chaseIsHorizontal(scene.chase.direction);
+    const across = horizontal ? point.y : point.x;
+    const along = horizontal ? point.x : point.y;
+    const length = horizontal ? scene.width : scene.height;
+    if (along < 0 || along > length) return null;
+    const toFrom = Math.abs(across - span.from);
+    const toTo = Math.abs(across - span.to);
+    if (Math.min(toFrom, toTo) > tolerance) return null;
+    return toFrom <= toTo ? 'from' : 'to';
+  }
+
+  private gridOf(scene: SceneView) {
+    return {
       width: scene.width,
       height: scene.height,
       gridSizePx: scene.grid.sizePx,
       gridOffsetX: scene.grid.offsetX,
       gridOffsetY: scene.grid.offsetY,
-    });
+    };
+  }
+
+  private drawBand(): void {
+    this.band.clear();
+    const scene = this.scene;
+    if (!scene || scene.kind !== 'chase') return;
+    if (this.bandEdit) {
+      this.drawBandEditor(scene);
+      return;
+    }
+    if (!this.showBand || !scene.chase.road) return;
+    const span = chaseRoadSpanPx(scene.chase, this.gridOf(scene));
     const horizontal = chaseIsHorizontal(scene.chase.direction);
     const length = horizontal ? scene.width : scene.height;
     const dash = scene.grid.sizePx * 0.5;
@@ -477,6 +545,78 @@ export class ChaseLayer {
       width: Math.max(2, scene.grid.sizePx * 0.05),
       alpha: 0.7,
     });
+  }
+
+  /**
+   * Pas w edycji: przyciemnienie poza jezdnią (tam auto nie wjedzie), ciągłe
+   * krawędzie i uchwyty co 6 kratek — w każdym miejscu kadru jest za co złapać.
+   */
+  private drawBandEditor(scene: SceneView): void {
+    const road = this.bandRoad();
+    if (!road) return;
+    const span = chaseRoadSpanPx({ direction: scene.chase.direction, road }, this.gridOf(scene));
+    const horizontal = chaseIsHorizontal(scene.chase.direction);
+    const length = horizontal ? scene.width : scene.height;
+    const extent = horizontal ? scene.height : scene.width;
+    const grid = scene.grid.sizePx;
+    const shade = (from: number, to: number) => {
+      if (to <= from) return;
+      if (horizontal) this.band.rect(0, from, length, to - from);
+      else this.band.rect(from, 0, to - from, length);
+    };
+    shade(0, span.from);
+    shade(span.to, extent);
+    this.band.fill({ color: 0x000000, alpha: 0.45 });
+
+    const edges: ['from' | 'to', number][] = [
+      ['from', span.from],
+      ['to', span.to],
+    ];
+    for (const [edge, at] of edges) {
+      const hot = this.bandHover === edge || (this.bandPreview !== null && this.bandHover === null);
+      const colour = hot ? 0xffffff : SEAT_DRIVER_COLOR;
+      if (horizontal) this.band.moveTo(0, at).lineTo(length, at);
+      else this.band.moveTo(at, 0).lineTo(at, length);
+      this.band.stroke({ color: colour, width: Math.max(3, grid * 0.06), alpha: 0.95 });
+      const gripAlong = grid * 0.9;
+      const gripAcross = grid * 0.32;
+      for (let pos = grid * 3; pos < length; pos += grid * 6) {
+        if (horizontal) {
+          this.band.roundRect(
+            pos - gripAlong / 2,
+            at - gripAcross / 2,
+            gripAlong,
+            gripAcross,
+            gripAcross / 2,
+          );
+        } else {
+          this.band.roundRect(
+            at - gripAcross / 2,
+            pos - gripAlong / 2,
+            gripAcross,
+            gripAlong,
+            gripAcross / 2,
+          );
+        }
+      }
+      this.band
+        .fill({ color: colour, alpha: 1 })
+        .stroke({ color: 0x0b0f17, width: Math.max(2, grid * 0.03), alpha: 0.9 });
+      // Dwie kreski na uchwycie mówią „ciągnij w poprzek”.
+      for (let pos = grid * 3; pos < length; pos += grid * 6) {
+        for (const shift of [-grid * 0.08, grid * 0.08]) {
+          if (horizontal)
+            this.band
+              .moveTo(pos + shift, at - gripAcross * 0.28)
+              .lineTo(pos + shift, at + gripAcross * 0.28);
+          else
+            this.band
+              .moveTo(at - gripAcross * 0.28, pos + shift)
+              .lineTo(at + gripAcross * 0.28, pos + shift);
+        }
+      }
+      this.band.stroke({ color: 0x0b0f17, width: Math.max(2, grid * 0.025), alpha: 0.8 });
+    }
   }
 
   private drawVehicle(scene: SceneView, vehicle: SceneVehicleView): void {

@@ -477,6 +477,45 @@ Do tego decyzja MG bez błędu w kodzie: **taranowanie pieszego bije tylko piesz
 równoważy dryf — MG potwierdził decyzję 12). Wpisy w `decyzje-i-uproszczenia.md`, test serwera
 `chase-review.test.ts`.
 
+## Kreator pościgu 03.11 (zlecenie MG, poza podetapami)
+
+MG: „popraw interfejs tworzenia scen pościgowych”. Pytania na starcie i odpowiedzi MG: uwiera
+**pas jezdni wpisywany liczbami**; forma — **kreator krok po kroku i rozbudowana zakładka
+„Pościg”**; pas — **uchwyty na mapie** (liczby zostają), widoczne tylko przy otwartym „Pościgu”
+i zapisywane jak reszta szkicu; **wbudowane tła drogi** z asfaltu CC0 dorysowanego skryptem —
+autostrada, ulica 2+2, estakada i Badlands; kreator **z krokiem „Auta”**; w trakcie: **MG wgrywa
+też własną grafikę**.
+
+- [x] `tools/art/chase-roads.py` → `public/art/roads/{highway,street,viaduct,badlands}.webp`
+      (+ miniatury, `ATTRIBUTION.md`): 35 × 18 kratek, 1 m na kratkę, okres 32 kratek — szew
+      bieżni przenika identyczne pasy. Asfalt: ambientCG Asphalt031 i Asphalt033 (CC0).
+- [x] `shared/chase-roads.ts`: `CHASE_ROADS`, `chaseRoadByUrl`, `chaseRoadPatch` (tło, rozmiar,
+      siatka, skala, kierunek, pas jedną łatą), `chaseRoadWithEdge`, `chaseRoadCells`,
+      `chaseFreeSpot`; testy `chase-roads.test.ts`.
+- [x] Serwer: `scene:update` przyjmuje tło spoza uploadów tylko z listy dróg (rozmiar z listy);
+      test w `chase.test.ts` (także adres spoza listy i paczka kampanii).
+- [x] Uchwyty pasa na mapie (`ChaseLayer.setBandEdit`, `MapRenderer.setChaseBandEdit`):
+      przyciemnienie poza jezdnią, ciągłe krawędzie z uchwytami, kursor `row-resize`, przyciąganie
+      do linii siatki.
+- [x] `ChaseWizard` (Tło → Droga → Auta → Gotowe) po „Utwórz → Pościg”; `ChaseSetup.tsx` —
+      sekcje wspólne z zakładką „Pościg”, na której Edycja sceny pościgu się otwiera.
+- [x] „Na drogę” stawia auto na wolnym miejscu jezdni (`chaseFreeSpot`) — w kreatorze, na
+      zakładce i na karcie pojazdu; kamera kadruje scenę obok okna (`frameScene`).
+
+### Rozstrzygnięcia kreatora bez pytań (03.11)
+
+1. **„✕” kreatora zapisuje** to, co wybrano (MG przerywa w połowie i nie traci drogi); „✕”
+   Edycji sceny dalej porzuca szkic, jak przy każdej scenie.
+2. **Szkic idzie na serwer przy wejściu w „Auta”**, bo auta stawia serwer w zapisanym pasie;
+   na zakładce „Pościg” „Na drogę” czeka na „Zapisz”, gdy droga ma niezapisane zmiany.
+3. **Aktywacji kreator nie robi** — „Gotowe” odsyła do przycisku na liście scen (tam jest
+   pytanie o scenę bez miejsca startu w trwającej sesji).
+4. **Wbudowane drogi są poziome** (jazda w prawo); kierunek w pionie na takiej drodze daje
+   ostrzeżenie, nie blokadę. Własna mapa dostaje kierunek z proporcji i pas na całą szerokość,
+   a krok „Droga” pokazuje przy niej pole kratki.
+5. **Wolne miejsce:** najpierw sąsiedni pas obok stojących aut, potem wzdłuż jezdni od środka;
+   liczy tylko auta w kadrze (`racing`), z kratką odstępu.
+
 ## Kryteria ukończenia
 
 Stan 31.10 (po 65e): wszystko zrobione i oglądane na instancji E2E (spece oględzin 65b–65e,
