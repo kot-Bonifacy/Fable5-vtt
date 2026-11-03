@@ -535,6 +535,81 @@
   color: var(--err);
 }
 
+/* „W kogo strzelasz?” (03.11, zlecenie MG) — klik celownika w pole z kilkoma
+   celami. Ta sama skóra co okno Celowania, bo to ten sam moment strzału. */
+.target-pick {
+  position: fixed;
+  z-index: 500;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 11rem;
+  max-width: 16rem;
+  padding: 0.3rem;
+  background: var(--map-panel);
+  border: 1px solid var(--err);
+  border-radius: 6px;
+  color: var(--map-ink);
+}
+
+.target-pick-title {
+  padding: 0.1rem 0.3rem 0.25rem;
+  font-size: 0.75rem;
+  color: var(--map-ink);
+  opacity: 0.8;
+}
+
+.target-pick-item {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.25rem 0.35rem;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--map-ink-bright);
+  font: inherit;
+  font-size: 0.85rem;
+  text-align: left;
+  cursor: pointer;
+}
+
+.target-pick-item:hover,
+.target-pick-item:focus-visible {
+  border-color: var(--err);
+  outline: none;
+}
+
+.target-pick-portrait {
+  flex: none;
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.target-pick-portrait--blank {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--border);
+  font-size: 0.75rem;
+}
+
+.target-pick-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.target-pick-state {
+  flex: none;
+  font-size: 0.7rem;
+  color: var(--err);
+}
+
 /* An attack loaded into the cup reads as dangerous, not as a plain check. */
 .dice-cup--attack {
   --cup-glow: var(--err-rgb);

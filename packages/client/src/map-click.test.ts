@@ -121,7 +121,8 @@ describe('MG w walce prowadzi jedną figurę (etap 50b)', () => {
     // `pointerdown` celował od razu, więc MG z bronią NPC-a w ręku nie mógł
     // przesunąć figury gracza — cel rozstrzyga się dopiero przy puszczeniu.
     const end = blockAfter(SOURCE, 'private endDrag(commit: boolean): void {');
-    expect(end).toContain('this.onTokenTarget?.(');
+    // Od 03.11 cel idzie przez `emitTokenTarget` — pojedynczy albo wybór ze stosu.
+    expect(end).toContain('this.emitTokenTarget(');
     expect(SOURCE).toMatch(
       /this\.aimTargetFor\(node, event\.altKey === true\) &&\s*!this\.aimsOnRelease\(/,
     );

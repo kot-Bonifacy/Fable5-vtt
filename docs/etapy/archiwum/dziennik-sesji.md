@@ -1,5 +1,27 @@
 # Dziennik sesji — archiwum
 
+### Sesja 02.11, piąta — asortyment handlarza z kompendium
+
+**Zlecenie MG:** „dodaj handlarzowi możliwość ustawiania poziomu dostępu do kompendium (zakres
+przedmiotów, którymi będzie handlował) wraz z kategoriami — np. aptekarzowi 4 poziom Używek
+i leków, a 1 poziom pozostałych, podrzędnemu sklepowi z bronią 3 poziom Broń, Pancerz, a 1
+pozostałe”. **Zrobione:** w sekcji „Sklep” karty NPC-a (MG) blok „Asortyment z kompendium”:
+poziom „Pozostałe kategorie” i osobny poziom (albo „jak pozostałe”) dla Broni, Dodatków do
+broni, Pancerza, Sprzętu, Używek i leków i Programów; „— nie handluje” wyłącza kategorię,
+licznik mówi, ile pozycji stoi na półce. Gracz widzi na półce wszystko z kompendium w zakresie
+jako „∞” obok towaru z karty (cena × „Cena %”), linijkę „Asortyment: …” i szukajkę przy dużej
+półce; handlarz skupuje tylko rzeczy z zakresu (`NOT_IN_RANGE`, kafel wyszarzony). Kolumna
+`Merchant.assortment` (migracja `20261102200000_merchant_assortment`), jedzie w kopiach sklepu
+i kampanii. **Rozstrzygnięcia bez pytań (do słowa MG):** poziom handlarza nie zależy od poziomu
+odblokowanego w kampanii; skup też ogranicza zakres; amunicji z kompendium półka nie wystawia
+(MG kładzie ją na karcie jako „∞”), a jej skup idzie poziomem pozostałych; własne wpisy MG
+z ceną też trafiają na półkę. **Przy okazji:** podpowiedzi sekcji „Sklep” (`.cp-shop-hint`)
+były nieczytelne na czerwonym tle panelu — teraz kolor napisów panelu. Umowa na górze
+`ekwipunek`, reszta w `POMYSLY.md`. **Testy:** shared `assortment.test.ts` (+16), shared
+2917/2917, klient 443/443, serwer 1721/1721 (+1 w `merchant.test.ts`), `tsc` i ESLint czyste.
+**Oglądane w Chromium (Playwright, instancja E2E)** — sekcja MG szeroko i na 420 px, okno
+gracza z półką aptekarza; Firefoksa w kontenerze nie ma. **Do wdrożenia:** migracja bazy na VPS.
+
 ### Sesja 02.11, czwarta — w pościgu słychać jazdę autem, nie ulicę
 
 **Zlecenie MG:** „pobrać i dołączyć do wszystkich scen pościgu dźwięk jazdy samochodem (obecnie

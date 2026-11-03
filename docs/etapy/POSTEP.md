@@ -29,6 +29,12 @@ Pełna tabela z nazwami i datami: `archiwum/tabela-etapow.md`.
 
 ## Od czego zacząć
 
+**Wybór celu ze stosu figur (zlecenie MG z 03.11) — czeka na wdrożenie i oględziny przy stole.**
+Klik celownika w pole, na którym stoi więcej niż jeden cel, nie strzela w figurę z wierzchu:
+przy kursorze staje „Kilka celów na tym polu — w kogo?” z listą (nazwa, powtórzona z numerem,
+stan ran), a wybór ładuje kubek jak klik w pojedynczą figurę (dalej okno Celowania). Umowa na
+górze `atak`.
+
 **Asortyment handlarza z kompendium (zlecenie MG z 02.11) — czeka na wdrożenie (migracja bazy)
 i oględziny MG przy stole.** MG w sekcji „Sklep” karty NPC-a ustawia poziom dostępności dla
 pozostałych kategorii i osobno dla Broni, Dodatków, Pancerza, Sprzętu, Używek i leków
@@ -562,7 +568,7 @@ a nie do tego pliku.
 | `ui`        | okna pływające, `z-index`, motyw, skróty, dostępność, wejście, panel decyzji MG | 37   | 15      |
 | `kosci`     | kubek, `rollFormula`, wezwania i prośby o Test, tabele losowe, PT od MG | 24   | 2       |
 | `tura`      | budżet Akcji i metrów, kolejka, trasa, ruch przez ściany, skok, walka z zauważenia, pytanie MG o przekroczenie, Percepcja w drodze, ukryte figury, skradanie, kropki ataków, kierowca bez Biegu | 34   | 7       |
-| `atak`      | broń i dodatki, amunicja, obrażenia, pancerz, rany krytyczne, trucizna na ostrzu, auto-unik, strach z Konfrontacji, auto jako cel, broń pokładowa | 53   | 8       |
+| `atak`      | broń i dodatki, amunicja, obrażenia, pancerz, rany krytyczne, trucizna na ostrzu, auto-unik, strach z Konfrontacji, auto jako cel, broń pokładowa, wybór celu ze stosu | 54   | 8       |
 | `statysta`  | figura z kartą, `statBlock`, Wartość bojowa, `token:stat`, wzorce | 17   | 3       |
 | `karta`     | strony i zakładki, panele, `sheet.css`, walidacja list, usuwanie przedmiotu | 11   | 12      |
 | `postac`    | kreator, PD i awanse, koszyk i cofanie awansów, Role i Zdolności, cyborgizacje, chrom zmieniający liczby, ekonomia, Test montażu gracza, pojazdy i Tabor | 58   | 3       |
@@ -580,6 +586,28 @@ a nie do tego pliku.
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
 
+### Sesja 03.11 — wybór celu, gdy na jednym polu stoi kilku wrogów
+
+**Zlecenie MG:** „gdy na jednym hexie jest więcej niż jeden z wrogów, gracz powinien mieć
+możliwość wyboru, w którego strzela (obecnie chyba nie da się wybrać konkretnego celu)”.
+**Przyczyna:** stos figur na polu jest dozwolony, a Pixi oddaje klik tylko figurze z wierzchu —
+celownik zawsze trafiał w górną. **Zrobione:** `MapRenderer.emitTokenTarget` (obie drogi celu:
+`pointerdown` i klik w miejscu MG pod blokadą 50b) zbiera figury pod punktem kliknięcia
+(`stackedTargetsAt`, `map/stacked-targets.ts`) regułą `aimTargetFor`, bez strzelca i — u gracza —
+bez własnych figur (chyba że `Alt`). Przy więcej niż jednej (i bez ładunku obszarowego w ręku)
+menu „Kilka celów na tym polu — w kogo?” przy kursorze (`TargetPickMenu`, `targetPickStore`):
+portret, nazwa (powtórzona dostaje numer od wierzchu — alias „Ochroniarz” bywa wspólny), stan
+ran; `Esc` albo klik obok zamyka bez strzału. Wybór idzie przez `fireAtToken` w `MapArea` — tę
+samą funkcję co klik w pojedynczą figurę. Działa tak samo u MG. Umowa na górze `atak`.
+**Rozstrzygnięcia bez pytań (do słowa MG):** pierwsza na liście jest figura z wierzchu (ta,
+w którą poszedłby strzał bez pytania, ma fokus pod `Enter`); granat i inne ładunki obszarowe
+nie pytają, bo celują w pole; dymek celownika przy najechaniu dalej wycenia figurę z wierzchu.
+**Testy:** klient `stacked-targets.test.ts` (+6), `map-click.test.ts` przestawiony na
+`emitTokenTarget`; klient 449/449, `tsc` i ESLint czyste. **Oglądane w Chromium (biblioteka
+`playwright`, instancja E2E):** gracz z Zgrzytem 9, trzy figury NPC na jednym polu → menu
+z trzema pozycjami, wybór spodniego „Gangera” ładuje kubek „Zgrzyt 9 → Ganger” i okno
+Celowania. Firefoksa w kontenerze nie ma — oględziny w nim przy stole.
+
 ### Sesja 02.11, szósta — wpięta figura nie rusza się (zgłoszenie „hakowanie się wyłączyło”)
 
 **Zgłoszenie gracza (przez MG):** „hackowanie się wyłączyło przy włączeniu trybu turowego”.
@@ -594,25 +622,3 @@ i skoku. Zasada domowa w `decyzje-i-uproszczenia.md` („Sieć i walka”). **Te
 `netrun.test.ts` (odmowa przeciągnięcia, klatki, marszu, skoku; ręka MG wynosi i odłącza),
 `netcombat.test.ts` (wyniesienie ręką MG); shared 2901, klient 443, serwer 1720 — zielone.
 **Nieoglądane w przeglądarce** (sesja w chmurze, Playwright MCP nie wstał).
-
-### Sesja 02.11, piąta — asortyment handlarza z kompendium
-
-**Zlecenie MG:** „dodaj handlarzowi możliwość ustawiania poziomu dostępu do kompendium (zakres
-przedmiotów, którymi będzie handlował) wraz z kategoriami — np. aptekarzowi 4 poziom Używek
-i leków, a 1 poziom pozostałych, podrzędnemu sklepowi z bronią 3 poziom Broń, Pancerz, a 1
-pozostałe”. **Zrobione:** w sekcji „Sklep” karty NPC-a (MG) blok „Asortyment z kompendium”:
-poziom „Pozostałe kategorie” i osobny poziom (albo „jak pozostałe”) dla Broni, Dodatków do
-broni, Pancerza, Sprzętu, Używek i leków i Programów; „— nie handluje” wyłącza kategorię,
-licznik mówi, ile pozycji stoi na półce. Gracz widzi na półce wszystko z kompendium w zakresie
-jako „∞” obok towaru z karty (cena × „Cena %”), linijkę „Asortyment: …” i szukajkę przy dużej
-półce; handlarz skupuje tylko rzeczy z zakresu (`NOT_IN_RANGE`, kafel wyszarzony). Kolumna
-`Merchant.assortment` (migracja `20261102200000_merchant_assortment`), jedzie w kopiach sklepu
-i kampanii. **Rozstrzygnięcia bez pytań (do słowa MG):** poziom handlarza nie zależy od poziomu
-odblokowanego w kampanii; skup też ogranicza zakres; amunicji z kompendium półka nie wystawia
-(MG kładzie ją na karcie jako „∞”), a jej skup idzie poziomem pozostałych; własne wpisy MG
-z ceną też trafiają na półkę. **Przy okazji:** podpowiedzi sekcji „Sklep” (`.cp-shop-hint`)
-były nieczytelne na czerwonym tle panelu — teraz kolor napisów panelu. Umowa na górze
-`ekwipunek`, reszta w `POMYSLY.md`. **Testy:** shared `assortment.test.ts` (+16), shared
-2917/2917, klient 443/443, serwer 1721/1721 (+1 w `merchant.test.ts`), `tsc` i ESLint czyste.
-**Oglądane w Chromium (Playwright, instancja E2E)** — sekcja MG szeroko i na 420 px, okno
-gracza z półką aptekarza; Firefoksa w kontenerze nie ma. **Do wdrożenia:** migracja bazy na VPS.
