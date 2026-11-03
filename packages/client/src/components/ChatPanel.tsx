@@ -61,6 +61,12 @@ import { SightingRow } from './SightingRow.js';
 import { RollTableRow } from './RollTableCard.js';
 import { useAuthStore } from '../stores/authStore.js';
 import { chatContinuations } from '../chat-grouping.js';
+import {
+  attackThreadSettled,
+  attackThreadSummary,
+  foldAttackThreads,
+  isCombatThreadRoot,
+} from '../chat-attack-thread.js';
 import { rollShowsTotal } from '../chat-roll-total.js';
 import { gmAttentionKey } from '../gm-attention.js';
 import { useChatFilterStore } from '../stores/chatFilterStore.js';
@@ -856,6 +862,7 @@ function FeedRow({
   myUserId,
   trace,
   canResolveProposal,
+  thread,
 }: {
   item: ChatItem;
   involvement: ChatInvolvement | null;
@@ -864,12 +871,31 @@ function FeedRow({
   myUserId: string;
   trace?: BotTraceBroadcast;
   canResolveProposal: boolean;
+  /** Przebieg ataku albo starcia (03.11) — kroki, rozliczenie i zwinięcie. */
+  thread?: FeedThread;
 }) {
   if (item.type === 'note') return <NoteRow item={item} />;
   const base = involvement ? INVOLVEMENT_CLASS[involvement] : 'chat-row';
   const style = {
     '--chat-kind-icon': `url("/icons/hud/${CATEGORY_ICON[chatCategoryOf(item.message.kind)]}.svg")`,
   } as CSSProperties;
+  if (thread) {
+    return (
+      <div
+        className={`${base} chat-row--thread`}
+        data-author-color={item.message.authorColor}
+        style={style}
+      >
+        <AttackThreadRow
+          message={item.message}
+          thread={thread}
+          isGm={isGm}
+          myUserId={myUserId}
+          canResolveProposal={canResolveProposal}
+        />
+      </div>
+    );
+  }
   return (
     <div
       className={continued ? `${base} chat-row--cont` : base}
@@ -885,6 +911,126 @@ function FeedRow({
         {...(trace ? { trace } : {})}
       />
     </div>
+  );
+}
+
+/** Przebieg na czacie, tak jak go widzi `FeedRow` (03.11). */
+interface FeedThread {
+  steps: readonly ChatMessageView[];
+  settled: boolean;
+  open: boolean;
+  onToggle: () => void;
+}
+
+/**
+ * Przebieg ataku (03.11, zlecenie MG): karta ataku, pod nią rzut obrażeń
+ * i każde ich nałożenie — osobne wiersze serwera złożone w jedną kartę przez
+ * `foldAttackThreads`. Rozliczony zwija się do linii z werdyktem i skutkiem;
+ * klik rozwija go z powrotem. Zwinięte karty **zostają w DOM-ie** (`hidden`):
+ * licznik kart rzutu i `data-total` w E2E czytają je tak jak przedtem.
+ *
+ * Każdy krok to dalej pełna karta z własnym nagłówkiem i przyciskami
+ * („Zastosuj”, „Cofnij”, „Minęła minuta”) — przebieg niczego nie przepisuje.
+ */
+function AttackThreadRow({
+  message,
+  thread,
+  isGm,
+  myUserId,
+  canResolveProposal,
+}: {
+  message: ChatMessageView;
+  thread: FeedThread;
+  isGm: boolean;
+  myUserId: string;
+  canResolveProposal: boolean;
+}) {
+  const collapsed = thread.settled && !thread.open;
+  return (
+    <>
+      {collapsed && (
+        <AttackThreadLine message={message} steps={thread.steps} onExpand={thread.onToggle} />
+      )}
+      <div className="chat-thread" hidden={collapsed}>
+        <FullMessageRow
+          message={message}
+          isGm={isGm}
+          myUserId={myUserId}
+          canResolveProposal={canResolveProposal}
+        />
+        {thread.steps.map((step) => (
+          <div key={step.id} className="chat-thread-step">
+            <FullMessageRow
+              message={step}
+              isGm={isGm}
+              myUserId={myUserId}
+              canResolveProposal={false}
+            />
+          </div>
+        ))}
+        {thread.settled && (
+          <button
+            type="button"
+            className="chat-thread-fold"
+            aria-expanded={true}
+            title="Zwiń rozliczony przebieg do jednej linii"
+            onClick={thread.onToggle}
+          >
+            Zwiń
+          </button>
+        )}
+      </div>
+    </>
+  );
+}
+
+/** Zwinięta linia przebiegu: kto w kogo, werdykt, skutek na każdym celu. */
+function AttackThreadLine({
+  message,
+  steps,
+  onExpand,
+}: {
+  message: ChatMessageView;
+  steps: readonly ChatMessageView[];
+  onExpand: () => void;
+}) {
+  const summary = attackThreadSummary(message, steps);
+  const last = steps.length > 0 ? steps[steps.length - 1]! : message;
+  return (
+    <button
+      type="button"
+      className="chat-thread-summary"
+      aria-expanded={false}
+      title="Rozwiń przebieg — kości, Unik, obrażenia"
+      onClick={onExpand}
+    >
+      <span className="chat-thread-head">
+        <span className="chat-message-author">{summary.actor}</span>
+        <span className="chat-thread-title">{summary.title}</span>
+        <span className={`chat-roll-badge chat-roll-badge--${summary.verdict.tone}`}>
+          {summary.verdict.text}
+        </span>
+        <span className="chat-message-time">{formatTime(last.createdAt)}</span>
+      </span>
+      {summary.effects.map((effect, index) => (
+        <span key={index} className="chat-thread-effect">
+          <strong>{effect.name}</strong> {effect.text}
+          {effect.badges.map((badge) => (
+            <span
+              key={badge}
+              className={`chat-roll-badge ${
+                badge.startsWith('Rana') ? 'chat-roll-badge--injury' : 'chat-roll-badge--wound'
+              }`}
+            >
+              {badge}
+            </span>
+          ))}
+        </span>
+      ))}
+      {summary.notes.length > 0 && (
+        <span className="chat-thread-note">{summary.notes.join(' · ')}</span>
+      )}
+    </button>
   );
 }
 
@@ -1000,6 +1146,11 @@ export function ChatPanel() {
   const characters = useCharacterStore((s) => s.characters);
   /** Rozwinięte grupy ukrytych wierszy — klucz bierze się z pierwszego w grupie. */
   const [openRuns, setOpenRuns] = useState<ReadonlySet<string>>(() => new Set());
+  /**
+   * Przebiegi rozwinięte albo zwinięte ręką (03.11). Bez wpisu rozliczony
+   * przebieg jest zwinięty, a nierozliczony rozwinięty.
+   */
+  const [threadOpen, setThreadOpen] = useState<ReadonlyMap<number, boolean>>(() => new Map());
   /** „Wyczyść czat” MG czeka na potwierdzenie w oknie. */
   const [confirmClear, setConfirmClear] = useState(false);
 
@@ -1041,6 +1192,29 @@ export function ChatPanel() {
     return out;
   }, [items, myUserId, isGm, myTokenIds]);
 
+  /** Atak z Unikiem, obrażeniami i ich nałożeniem jako jedna karta (03.11). */
+  const threads = useMemo(() => foldAttackThreads(items), [items]);
+
+  /**
+   * „To dotyczy mnie” przebiegu to najmocniejsze z jego kroków: strzał mojej
+   * postaci jest „mój”, a trafienie w nią — „do mnie”, i karta ma to mówić
+   * także wtedy, gdy rozliczenie przyszło jako osobny wiersz.
+   */
+  const rowInvolvements = useMemo(() => {
+    if (threads.steps.size === 0) return involvements;
+    const rank = { awaitingMe: 3, mine: 2, forMe: 1 } as const;
+    const out = new Map(involvements);
+    for (const [rootId, steps] of threads.steps) {
+      let best = involvements.get(rootId) ?? null;
+      for (const step of steps) {
+        const next = involvements.get(step.id) ?? null;
+        if (next && (!best || rank[next] > rank[best])) best = next;
+      }
+      out.set(rootId, best);
+    }
+    return out;
+  }, [threads, involvements]);
+
   const feed = useMemo<FeedEntry[]>(() => {
     const out: FeedEntry[] = [];
     let run: ChatItem[] = [];
@@ -1050,13 +1224,18 @@ export function ChatPanel() {
       out.push({ kind: 'hidden', key, items: run, open: openRuns.has(key) });
       run = [];
     };
-    for (const item of items) {
+    for (const item of threads.items) {
       const category = item.type === 'note' ? 'table' : chatCategoryOf(item.message.kind);
-      const involvement = item.type === 'note' ? null : involvements.get(item.message.id);
+      const involvement = item.type === 'note' ? null : rowInvolvements.get(item.message.id);
       // Notatka lokalna powstała wyłącznie na tym ekranie, więc z definicji jest
       // „do mnie” — „Ja” jej nie zwija.
       const concernsMe = item.type === 'note' || (involvement ?? null) !== null;
-      const shown = categories[category] && (!mineOnly || concernsMe);
+      // Przebieg walki stoi przy „Rzutach” albo „Walce” (decyzja MG 03.11).
+      const combatThread =
+        item.type === 'message' &&
+        (isCombatThreadRoot(item.message) || threads.steps.has(item.message.id));
+      const categoryOn = combatThread ? categories.dice || categories.combat : categories[category];
+      const shown = categoryOn && (!mineOnly || concernsMe);
       // To, co czeka na moje kliknięcie (unik, obrona w starciu), wygrywa
       // z filtrem tak samo jak `isPending` — inaczej zawisłoby pod separatorem.
       if (shown || isPending(item, myUserId, isGm) || involvement === 'awaitingMe') {
@@ -1068,7 +1247,7 @@ export function ChatPanel() {
     }
     flush();
     return out;
-  }, [items, categories, mineOnly, involvements, openRuns, myUserId, isGm]);
+  }, [threads, categories, mineOnly, rowInvolvements, openRuns, myUserId, isGm]);
 
   /**
    * Karty doklejone do poprzedniej (etap 60b). Liczone na `feed`, czyli po
@@ -1079,7 +1258,7 @@ export function ChatPanel() {
   const continuations = useMemo(() => {
     const breaksGroup = (item: ChatItem) => {
       if (isPending(item, myUserId, isGm)) return true;
-      const involvement = item.type === 'message' ? involvements.get(item.message.id) : null;
+      const involvement = item.type === 'message' ? rowInvolvements.get(item.message.id) : null;
       return involvement === 'forMe' || involvement === 'awaitingMe';
     };
     const out = chatContinuations(
@@ -1091,7 +1270,7 @@ export function ChatPanel() {
       for (const id of chatContinuations(entry.items, breaksGroup)) out.add(id);
     }
     return out;
-  }, [feed, involvements, myUserId, isGm]);
+  }, [feed, rowInvolvements, myUserId, isGm]);
 
   useLayoutEffect(() => {
     const feedEl = feedRef.current;
@@ -1133,13 +1312,35 @@ export function ChatPanel() {
     });
   }
 
+  /** Przebieg tej karty, gdy nim jest — atak, starcie albo rzut obrażeń z krokami. */
+  function threadOf(message: ChatMessageView): FeedThread | undefined {
+    const steps = threads.steps.get(message.id);
+    if (!steps && !isCombatThreadRoot(message)) return undefined;
+    const list = steps ?? [];
+    const settled = attackThreadSettled(message, list);
+    return {
+      steps: list,
+      settled,
+      open: threadOpen.get(message.id) ?? !settled,
+      onToggle: () =>
+        setThreadOpen((current) => {
+          const next = new Map(current);
+          next.set(message.id, !(current.get(message.id) ?? !settled));
+          return next;
+        }),
+    };
+  }
+
   function renderItem(item: ChatItem, key: string) {
     const trace = item.type === 'message' ? botTraces[item.message.id] : undefined;
+    const thread = item.type === 'message' ? threadOf(item.message) : undefined;
     return (
       <FeedRow
         key={key}
         item={item}
-        involvement={item.type === 'message' ? (involvements.get(item.message.id) ?? null) : null}
+        involvement={
+          item.type === 'message' ? (rowInvolvements.get(item.message.id) ?? null) : null
+        }
         continued={item.type === 'message' && continuations.has(item.message.id)}
         isGm={isGm}
         myUserId={myUserId}
@@ -1147,6 +1348,7 @@ export function ChatPanel() {
           item.type === 'message' && (isGm || item.message.proposal?.controllerUserId === myUserId)
         }
         {...(trace ? { trace } : {})}
+        {...(thread ? { thread } : {})}
       />
     );
   }

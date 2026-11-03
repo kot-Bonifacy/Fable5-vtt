@@ -197,6 +197,12 @@ export interface CombatActionLogEntry {
 export interface DamageLogEntry {
   /** Chat message the damage roll came from. */
   sourceMessageId?: number;
+  /**
+   * Karta ataku, której skutkiem jest ten wpis, gdy nie stoi za nim rzut
+   * obrażeń — oblany Test gazu, łzawiącego, EMP (03.11). Klient wkłada wpis
+   * do przebiegu tego ataku na czacie; dla rozliczenia znaczenia nie ma.
+   */
+  attackMessageId?: number;
   /** Token that took the damage; absent when a cover did (stage 16c). */
   targetTokenId?: string;
   /** Cover that took the damage instead of a token (stage 16c). */

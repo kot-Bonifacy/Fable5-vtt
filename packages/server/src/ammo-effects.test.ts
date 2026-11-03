@@ -452,6 +452,22 @@ describe('ammunition that deals no damage', () => {
         expect(log.armor).toBeUndefined();
       }
     });
+
+    // Przebieg ataku na czacie (03.11): klient wkłada kartę skutku do karty
+    // ataku, więc skutek idzie po niej i niesie jej id — wcześniej przychodził
+    // przed kośćmi i z niczym się nie łączył.
+    it('posts each failure after the attack card and names that card', async () => {
+      await load('ammo.sample-gas');
+      const { posted, messageId } = await lob();
+      const attackAt = posted.findIndex((entry) => entry.message.id === messageId);
+      const damageCards = posted.filter((entry) => entry.message.damage);
+      expect(damageCards.length).toBeGreaterThan(0);
+      for (const entry of damageCards) {
+        expect(entry.message.damage?.attackMessageId).toBe(messageId);
+        expect(entry.message.id).toBeGreaterThan(messageId);
+        expect(posted.indexOf(entry)).toBeGreaterThan(attackAt);
+      }
+    });
   });
 
   /**

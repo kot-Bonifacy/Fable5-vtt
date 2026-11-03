@@ -29,12 +29,20 @@ Pełna tabela z nazwami i datami: `archiwum/tabela-etapow.md`.
 
 ## Od czego zacząć
 
+**Przebieg ataku na czacie (sklejanie kart jednej mechaniki z `POMYSLY.md`, MG 03.11) — czeka
+na wdrożenie i oględziny przy stole (Firefox).** Atak, rzut obrażeń i każde ich nałożenie (także
+skutki gazu i EMP) to jedna karta, która stoi na miejscu najnowszego kroku. Rozliczona zwija się
+sama do linii „Kowal · broń → cel · werdykt” z przebiciem, PW i ranami na każdym celu; klik
+rozwija, „Zwiń” zwija. Starcie (Pochwycenie, Konfrontacja) też się zwija, Duszenie i Rzut zostają
+osobno. Sklejanie robi klient — wiersze w bazie, historia, boty i eksport bez zmian; serwer tylko
+wysyła karty skutków amunicji z Testem po karcie ataku i z jej id. Umowy na górze `czat` i `atak`.
+
 **Gęsta karta rzutu na czacie (zlecenie MG z 03.11) — czeka na wdrożenie i oględziny przy stole
 (Firefox).** Duża suma zniknęła (Test podaje ją w plakietce, reszta „= N” za kośćmi), tytuł rzutu
 stoi w nagłówku obok postaci, kości i źródła modyfikatorów dzielą wiersz, wszystkie plakietki
 (krytyk, wynik, werdykt ataku/starcia) — drugi; cele granatu i ognia zaporowego to kafle,
 karta obrażeń płynie wierszem. Przy belce 620 px Test + obrażenia + granat z trzema celami
-+ nałożenie obrażeń: 441 px zamiast 686. Umowa na górze `czat`, sklejanie kart w `POMYSLY.md`.
++ nałożenie obrażeń: 441 px zamiast 686. Umowa na górze `czat`, sklejanie kart — akapit wyżej.
 
 **Wybór celu ze stosu figur (zlecenie MG z 03.11) — czeka na wdrożenie i oględziny przy stole.**
 Klik celownika w pole, na którym stoi więcej niż jeden cel, nie strzela w figurę z wierzchu:
@@ -570,12 +578,12 @@ a nie do tego pliku.
 | obszar      | co obejmuje                                                    | umów | pułapek |
 | ----------- | -------------------------------------------------------------- | ---- | ------- |
 | `mapa`      | figury, zaznaczanie, narzędzia, obiekty sceny, ściany, efekty, zamek drzwi, ukryta figura zauważona, ikony urządzeń, wspólny widok drużyny, scena pościgu, jazda kierowcy i dryf, Manewr i taranowanie, przeszkody pościgu, sceny przykładowe, wzorzec zwykłej mapy | 77   | 27      |
-| `czat`      | rodzaje wierszy, `visibleTo`, filtr, `seq`, `gmrecovery`, „to dotyczy mnie”, grupy kart, kolor gracza, czyszczenie, gęsta karta rzutu | 14   | 3       |
+| `czat`      | rodzaje wierszy, `visibleTo`, filtr, `seq`, `gmrecovery`, „to dotyczy mnie”, grupy kart, kolor gracza, czyszczenie, gęsta karta rzutu, przebieg ataku | 15   | 3       |
 | `serwer`    | Prisma i migracje, zdarzenia gniazda, zapisy karty, uploady    | 26   | 21      |
 | `ui`        | okna pływające, `z-index`, motyw, skróty, dostępność, wejście, panel decyzji MG | 37   | 15      |
 | `kosci`     | kubek, `rollFormula`, wezwania i prośby o Test, tabele losowe, PT od MG | 24   | 2       |
 | `tura`      | budżet Akcji i metrów, kolejka, trasa, ruch przez ściany, skok, walka z zauważenia, pytanie MG o przekroczenie, Percepcja w drodze, ukryte figury, skradanie, kropki ataków, kierowca bez Biegu | 34   | 7       |
-| `atak`      | broń i dodatki, amunicja, obrażenia, pancerz, rany krytyczne, trucizna na ostrzu, auto-unik, strach z Konfrontacji, auto jako cel, broń pokładowa, wybór celu ze stosu | 54   | 8       |
+| `atak`      | broń i dodatki, amunicja, obrażenia, pancerz, rany krytyczne, trucizna na ostrzu, auto-unik, strach z Konfrontacji, auto jako cel, broń pokładowa, wybór celu ze stosu, skutki amunicji po karcie ataku | 55   | 8       |
 | `statysta`  | figura z kartą, `statBlock`, Wartość bojowa, `token:stat`, wzorce | 17   | 3       |
 | `karta`     | strony i zakładki, panele, `sheet.css`, walidacja list, usuwanie przedmiotu | 11   | 12      |
 | `postac`    | kreator, PD i awanse, koszyk i cofanie awansów, Role i Zdolności, cyborgizacje, chrom zmieniający liczby, ekonomia, Test montażu gracza, pojazdy i Tabor | 58   | 3       |
@@ -592,6 +600,33 @@ a nie do tego pliku.
 ## Notatki z dwóch ostatnich sesji
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
+
+### Sesja 03.11, trzecia — przebieg ataku na czacie
+
+**Zlecenie MG:** sklejanie kart jednej mechaniki (atak → Unik → obrażenia → nałożenie) z
+`POMYSLY.md`. **Pytania i odpowiedzi MG (03.11):** miejsce — karta zjeżdża na dół, na miejsce
+najnowszego kroku; zwijanie — rozliczony przebieg zwinięty sam, klik rozwija; zakres — strzał
+i cios, obszar, ogień zaporowy, zwarcie i Konfrontacja; droga — klient, nie wiersz-matka na
+serwerze; zwarcie — tylko zwijanie, Duszenie i Rzut osobno; gaz i EMP — dowiązać na serwerze;
+filtr — „Rzuty” lub „Walka”; linia — werdykt + skutek (przebicie, PW, rany, stan ran).
+**Zrobione:** `chat-attack-thread.ts` (`foldAttackThreads`, `attackThreadSettled`,
+`attackThreadSummary`, `isCombatThreadRoot`) + test (13); `ChatPanel` — `threads`,
+`rowInvolvements`, `AttackThreadRow`, `AttackThreadLine`, stan `threadOpen`; style
+`.chat-thread*` w `02-chat-dice.css`. Serwer: `DamageLogEntry.attackMessageId`,
+`AmmoFailureCard` + `postAmmoFailureCards` (`ammo-effects.ts`), `performAttackRoll` wysyła karty
+skutków po karcie ataku (w `catch` bez id); test w `ammo-effects.test.ts` (+1). Odłożone do
+`POMYSLY.md`: Duszenie/Rzut pod Pochwyceniem, krótszy nagłówek kroku, zapamiętane zwinięcie,
+liczby Uniku w linii, Test Przeżywalności. **Rozstrzygnięcia bez pytań (do słowa MG):** zwija się
+też pojedyncza karta ataku bez kroków (pudło, ogień zaporowy); rzut obrażeń bez ataku (z karty,
+`/r` + „Zastosuj”) skleja się ze swoim nałożeniem tą samą drogą; cofnięte nałożenie zostaje
+w rozwiniętym przebiegu przekreślone, a znika ze zwiniętej linii; zwinięte karty zostają w DOM-ie
+pod `hidden`, żeby E2E (`.chat-roll`, `data-total`, `chatCards`) czytało je jak dawniej.
+**Testy:** klient 467/467 (+13), serwer 1722/1722 (+1), `shared` 2917/2917, `tsc` (klient, serwer),
+ESLint i Prettier czyste. **Oglądane w Chromium (biblioteka `playwright`, instancja E2E, karty
+wstrzyknięte do magazynu czatu):** belka 420 i 620 px — rozliczony strzał z raną, granat z dwoma
+celami i odskokiem, pudło, ogień zaporowy i starcie zwinięte do linii, atak czekający na Unik
+rozwinięty; rozwinięcie pokazuje rzut obrażeń i kartę nałożenia z „Cofnij” i „Zwiń”. Firefoksa
+w kontenerze nie ma — oględziny w nim przy stole.
 
 ### Sesja 03.11, druga — gęsta karta rzutu na czacie
 
@@ -611,26 +646,3 @@ podają. **Testy:** klient 454/454 (+5), `tsc`, ESLint, Prettier czyste. **Oglą
 (biblioteka `playwright`, instancja E2E, karty wstrzyknięte do magazynu czatu):** belka 320 px
 704 → 583 px, 620 px 686 → 441 px dla tych samych czterech kart. Firefoksa w kontenerze nie ma —
 oględziny w nim przy stole.
-
-### Sesja 03.11 — wybór celu, gdy na jednym polu stoi kilku wrogów
-
-**Zlecenie MG:** „gdy na jednym hexie jest więcej niż jeden z wrogów, gracz powinien mieć
-możliwość wyboru, w którego strzela (obecnie chyba nie da się wybrać konkretnego celu)”.
-**Przyczyna:** stos figur na polu jest dozwolony, a Pixi oddaje klik tylko figurze z wierzchu —
-celownik zawsze trafiał w górną. **Zrobione:** `MapRenderer.emitTokenTarget` (obie drogi celu:
-`pointerdown` i klik w miejscu MG pod blokadą 50b) zbiera figury pod punktem kliknięcia
-(`stackedTargetsAt`, `map/stacked-targets.ts`) regułą `aimTargetFor`, bez strzelca i — u gracza —
-bez własnych figur (chyba że `Alt`). Przy więcej niż jednej (i bez ładunku obszarowego w ręku)
-menu „Kilka celów na tym polu — w kogo?” przy kursorze (`TargetPickMenu`, `targetPickStore`):
-portret, nazwa (powtórzona dostaje numer od wierzchu — alias „Ochroniarz” bywa wspólny), stan
-ran; `Esc` albo klik obok zamyka bez strzału. Wybór idzie przez `fireAtToken` w `MapArea` — tę
-samą funkcję co klik w pojedynczą figurę. Działa tak samo u MG. Umowa na górze `atak`.
-**Rozstrzygnięcia bez pytań (do słowa MG):** pierwsza na liście jest figura z wierzchu (ta,
-w którą poszedłby strzał bez pytania, ma fokus pod `Enter`); granat i inne ładunki obszarowe
-nie pytają, bo celują w pole; dymek celownika przy najechaniu dalej wycenia figurę z wierzchu.
-**Testy:** klient `stacked-targets.test.ts` (+6), `map-click.test.ts` przestawiony na
-`emitTokenTarget`; klient 449/449, `tsc` i ESLint czyste. **Oglądane w Chromium (biblioteka
-`playwright`, instancja E2E):** gracz z Zgrzytem 9, trzy figury NPC na jednym polu → menu
-z trzema pozycjami, wybór spodniego „Gangera” ładuje kubek „Zgrzyt 9 → Ganger” i okno
-Celowania. Firefoksa w kontenerze nie ma — oględziny w nim przy stole.
-

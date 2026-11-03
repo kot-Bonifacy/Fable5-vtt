@@ -1,5 +1,27 @@
 # Dziennik sesji — archiwum
 
+### Sesja 03.11 — wybór celu, gdy na jednym polu stoi kilku wrogów
+
+**Zlecenie MG:** „gdy na jednym hexie jest więcej niż jeden z wrogów, gracz powinien mieć
+możliwość wyboru, w którego strzela (obecnie chyba nie da się wybrać konkretnego celu)”.
+**Przyczyna:** stos figur na polu jest dozwolony, a Pixi oddaje klik tylko figurze z wierzchu —
+celownik zawsze trafiał w górną. **Zrobione:** `MapRenderer.emitTokenTarget` (obie drogi celu:
+`pointerdown` i klik w miejscu MG pod blokadą 50b) zbiera figury pod punktem kliknięcia
+(`stackedTargetsAt`, `map/stacked-targets.ts`) regułą `aimTargetFor`, bez strzelca i — u gracza —
+bez własnych figur (chyba że `Alt`). Przy więcej niż jednej (i bez ładunku obszarowego w ręku)
+menu „Kilka celów na tym polu — w kogo?” przy kursorze (`TargetPickMenu`, `targetPickStore`):
+portret, nazwa (powtórzona dostaje numer od wierzchu — alias „Ochroniarz” bywa wspólny), stan
+ran; `Esc` albo klik obok zamyka bez strzału. Wybór idzie przez `fireAtToken` w `MapArea` — tę
+samą funkcję co klik w pojedynczą figurę. Działa tak samo u MG. Umowa na górze `atak`.
+**Rozstrzygnięcia bez pytań (do słowa MG):** pierwsza na liście jest figura z wierzchu (ta,
+w którą poszedłby strzał bez pytania, ma fokus pod `Enter`); granat i inne ładunki obszarowe
+nie pytają, bo celują w pole; dymek celownika przy najechaniu dalej wycenia figurę z wierzchu.
+**Testy:** klient `stacked-targets.test.ts` (+6), `map-click.test.ts` przestawiony na
+`emitTokenTarget`; klient 449/449, `tsc` i ESLint czyste. **Oglądane w Chromium (biblioteka
+`playwright`, instancja E2E):** gracz z Zgrzytem 9, trzy figury NPC na jednym polu → menu
+z trzema pozycjami, wybór spodniego „Gangera” ładuje kubek „Zgrzyt 9 → Ganger” i okno
+Celowania. Firefoksa w kontenerze nie ma — oględziny w nim przy stole.
+
 ### Sesja 02.11, szósta — wpięta figura nie rusza się (zgłoszenie „hakowanie się wyłączyło”)
 
 **Zgłoszenie gracza (przez MG):** „hackowanie się wyłączyło przy włączeniu trybu turowego”.

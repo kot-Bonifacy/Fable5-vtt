@@ -191,7 +191,8 @@
 
 /* „▶ Ty” — kolor nie jest jedynym nośnikiem: znaczek czyta się i bez paska.
    Każda karta ma dokładnie jeden nagłówek `.chat-message-meta`. */
-.chat-row--for-me .chat-message-meta::before {
+.chat-row--for-me .chat-message-meta::before,
+.chat-row--for-me .chat-thread-head::before {
   content: '▶ Ty';
   flex: none;
   align-self: center;
@@ -210,7 +211,8 @@
    Ikona stoi na początku nagłówka, przed „▶ Ty” (`order`). Plik podaje
    `FeedRow` zmienną `--chat-kind-icon` — ten sam, co na przycisku filtra —
    a maskę rysuje się jak `.hud-icon`, kolorem przygaszonego tekstu. */
-.chat-row .chat-message-meta::after {
+.chat-row .chat-message-meta::after,
+.chat-row .chat-thread-head::after {
   content: '';
   order: -1;
   flex: none;
@@ -887,6 +889,102 @@ body:has(.creator-window) .dice-overlay {
   .chat-filter-label {
     display: none;
   }
+}
+
+/* --- Przebieg ataku (03.11, zlecenie MG) ---
+   Karta ataku, pod nią rzut obrażeń i każde nałożenie — jeden wiersz feedu.
+   Kroki to pełne karty z własnym nagłówkiem, ale bez ikony rubryki (należy do
+   przebiegu) i bez własnej krawędzi: przy krawędzi wiersza stoi jeden pasek
+   (MG 24.10), a „▶ Ty” mówi tylko karta ataku. Rozliczony przebieg zwija się
+   do przycisku z linią werdyktu — jego nagłówek dostaje ikonę i „▶ Ty” tymi
+   samymi regułami, co `.chat-message-meta`. */
+.chat-thread {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.chat-thread[hidden] {
+  display: none;
+}
+
+.chat-thread-step .chat-message-meta::after,
+.chat-thread-step .chat-message-meta::before {
+  display: none;
+}
+
+.chat-thread-fold {
+  align-self: flex-end;
+  border: 0;
+  background: transparent;
+  color: var(--text-dim);
+  font: inherit;
+  font-size: 0.72rem;
+  padding: 0 0.1rem;
+  cursor: pointer;
+}
+
+.chat-thread-fold::before {
+  content: '▴ ';
+}
+
+.chat-thread-fold:hover,
+.chat-thread-fold:focus-visible {
+  color: var(--text);
+}
+
+.chat-thread-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  width: 100%;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 0.85rem;
+  line-height: 1.35;
+  padding: 0;
+  text-align: left;
+  cursor: pointer;
+}
+
+.chat-thread-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  column-gap: 0.45rem;
+  row-gap: 0.1rem;
+}
+
+.chat-thread-title {
+  min-width: 0;
+  color: var(--text-dim);
+  overflow-wrap: anywhere;
+}
+
+.chat-thread-effect {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.35rem;
+  padding-left: 1.25rem;
+}
+
+.chat-thread-note {
+  padding-left: 1.25rem;
+  font-size: 0.78rem;
+  color: var(--text-dim);
+}
+
+.chat-thread-summary:hover,
+.chat-thread-summary:focus-visible {
+  background: rgb(var(--accent-rgb) / 5%);
+}
+
+.chat-thread-summary:hover .chat-thread-title,
+.chat-thread-summary:focus-visible .chat-thread-title {
+  color: var(--text);
 }
 
 /* Ukryte wiersze zwijają się w kreskę z licznikiem — klik rozwija je w miejscu,
