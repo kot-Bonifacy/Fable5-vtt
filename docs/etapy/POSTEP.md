@@ -621,7 +621,7 @@ też pojedyncza karta ataku bez kroków (pudło, ogień zaporowy); rzut obraże�
 `/r` + „Zastosuj”) skleja się ze swoim nałożeniem tą samą drogą; cofnięte nałożenie zostaje
 w rozwiniętym przebiegu przekreślone, a znika ze zwiniętej linii; zwinięte karty zostają w DOM-ie
 pod `hidden`, żeby E2E (`.chat-roll`, `data-total`, `chatCards`) czytało je jak dawniej.
-**Testy:** klient 467/467 (+13), serwer i `shared` — wynik w commicie, `tsc` (klient, serwer),
+**Testy:** klient 467/467 (+13), serwer 1722/1722 (+1), `shared` 2917/2917, `tsc` (klient, serwer),
 ESLint i Prettier czyste. **Oglądane w Chromium (biblioteka `playwright`, instancja E2E, karty
 wstrzyknięte do magazynu czatu):** belka 420 i 620 px — rozliczony strzał z raną, granat z dwoma
 celami i odskokiem, pudło, ogień zaporowy i starcie zwinięte do linii, atak czekający na Unik
