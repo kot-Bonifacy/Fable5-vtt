@@ -35,7 +35,7 @@ przestanie się bronić, przenieś ją stąd do `POMYSLY.md` jako zadanie — ni
 - **Wyrzutnia kolczatki: jedna kolczatka na każde wykupienie, na pościg.** Podręcznik mówi
   tylko, że kolejne wykupienie „zwiększa liczbę kolczatek”, a uzupełnić ich nie można w czasie
   jazdy — VTT liczy je jak zbiorniki Nitro (`SceneVehicle.spikesUsed`). Zrzut za Akcję
-  kierowcy, w walce.
+  kierowcy, w walce. Uzupełnia je ten sam przycisk MG co Nitro (03.11).
 - **Kolczatkę przejeżdża każde auto z oponami raz** — także kierowca-gracz w swojej turze
   (`chaseSpikesCrossed`), z wyjątkiem auta, które ją zrzuciło. Test Prowadzenia PT 17 rzuca
   serwer; auto bez zdolnego kierowcy Testu nie ma i bierze 4k6 w słaby punkt (po OB ×2).
@@ -78,7 +78,8 @@ przestanie się bronić, przenieś ją stąd do `POMYSLY.md` jako zadanie — ni
   i rakiety razą tylko „cele przed pojazdem”: przednia ćwiartka bryły (`vehicleSideFacing`).
 - **Stanowisko bardzo ciężkiej broni nie ma osobnej mechaniki.** Pasażer i tak strzela
   z fotela własną bronią dwuręczną, przeładowuje w jeździe, a szyba kuloodporna chroni go jak
-  każdego pasażera (65d1).
+  każdego pasażera (65d1). Od 03.11 (decyzja MG) okno pojazdu pokazuje je jako „— opis”
+  (`combat: false`), żeby nie udawało liczonego ulepszenia.
 
 ## Ostrzał pojazdów (etap 65d1, 31.10.2026)
 
@@ -121,9 +122,16 @@ przestanie się bronić, przenieś ją stąd do `POMYSLY.md` jako zadanie — ni
 - **Ręka na kierownicy odmawia broni dwuręcznej** (`WHEEL_TWO_HANDED`); świadome „zdjęcie ręki”
   z utratą kontroli na początku następnej tury (s. 191) nie ma osobnego gestu.
 - **Nitro: zbiornik na pościg, nie na dobę** — liczy go auto na scenie (`SceneVehicle.nitroUsed`),
-  a nie zegar świata; nowe postawienie auta napełnia zbiorniki.
+  a nie zegar świata; nowe postawienie auta napełnia zbiorniki. **Od 03.11 (decyzja MG)** „raz
+  dziennie” rozstrzyga MG przyciskiem „Uzupełnij Nitro i kolczatki” w menu auta
+  (`vehicle:refill`) — także w walce, bez kosztu.
 
 ## Pojazdy i Tabor Rodziny (etap 65a, 30.10.2026)
+
+- **Wzmocniona konstrukcja dokłada 20 także do bieżących PUK (decyzja MG z 03.11).** Podręcznik
+  mówi tylko „+20 PUK”; wcześniej rósł sam sufit i auto na pełnych PUK po montażu wyglądało na
+  rozbite (45/65). Demontaż zabiera 20 (najniżej 1), wrak zostaje wrakiem, uszkodzenia sprzed
+  montażu zostają. Działa w oknie MG (na oczach MG, przed zapisem) i przy wierszu z Taboru.
 
 - **Ulepszenie foteli raz w motocyklu, skuterze i żyrokopterze.** Plik etapu mówił „nie
   w motocyklu”, a s. 163 mówi „kilkukrotnie dla większości pojazdów prócz motocykli…” i wspomina

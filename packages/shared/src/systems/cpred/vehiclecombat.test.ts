@@ -10,6 +10,7 @@ import {
   cpredSpikesAffect,
   cpredVehicleSpikesLeft,
   cpredManeuversFor,
+  cpredMissingMountWeapons,
   cpredMountRowInfo,
   cpredMountWeaponRows,
   cpredRamContinues,
@@ -208,5 +209,29 @@ describe('kolczatka (65e, s. 165)', () => {
     });
     expect(CPRED_SPIKES_DV).toBe(17);
     expect(CPRED_SPIKES_DAMAGE).toBe('4k6');
+  });
+});
+
+describe('broń pokładowa spoza katalogu', () => {
+  it('wymienia każde ulepszenie raz, gdy katalog nie zna jego broni', () => {
+    const stats = readCpredVehicle({
+      kind: 'car',
+      upgrades: [
+        { id: 'a', upgradeId: 'flamethrower' },
+        { id: 'b', upgradeId: 'flamethrower' },
+        { id: 'c', upgradeId: 'machineGun' },
+        { id: 'd', upgradeId: 'nitro' },
+      ],
+    });
+    expect(
+      cpredMissingMountWeapons(stats, (entryId) => entryId === 'weapon.assault-rifle'),
+    ).toEqual([
+      {
+        upgradeId: 'flamethrower',
+        name: 'Pokładowy miotacz ognia',
+        entryId: 'weapon.miotacz-ognia',
+      },
+    ]);
+    expect(cpredMissingMountWeapons(stats, () => true)).toEqual([]);
   });
 });

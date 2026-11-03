@@ -1,11 +1,13 @@
 import {
   cpredMountDefinition,
+  cpredMissingMountWeapons,
   cpredMountWeaponRows,
   cpredParseMountRowId,
   cpredWithMountWeapons,
   isWeaponEntry,
   resolveWeapon,
   type CpredVehicleUpgradeId,
+  type CpredVehicleUpgradeRow,
   type CpredWeaponRow,
   type SceneVehicleView,
   type TokenView,
@@ -86,4 +88,27 @@ export function mountAutofireOnly(weaponRowId: string): boolean {
     .vehicles.find((entry) => entry.vehicleId === parsed.vehicleId);
   const mount = vehicle?.mounts.find((entry) => entry.id === parsed.upgradeRowId);
   return mount ? cpredMountDefinition(mount.upgradeId)?.autofireOnly === true : false;
+}
+
+/**
+ * Ostrzeżenie MG (03.11): bronie pokładowe, których broni nie zna katalog
+ * kampanii — kierowca ich nie zobaczy, bo `cpredMountWeaponRows` je pomija.
+ * Przed pierwszym `state:sync` katalog jest pusty — wtedy nic nie mówimy.
+ */
+export function missingMountWeaponsText(
+  upgrades: readonly Pick<CpredVehicleUpgradeRow, 'upgradeId'>[],
+): string | null {
+  const compendium = useCompendiumStore.getState();
+  if (compendium.order.length === 0) return null;
+  const missing = cpredMissingMountWeapons(
+    { upgrades: upgrades.map((row, index) => ({ id: String(index), notes: '', ...row })) },
+    (entryId) => {
+      const entry = compendium.entries[entryId];
+      return entry !== undefined && isWeaponEntry(entry);
+    },
+  );
+  if (missing.length === 0) return null;
+  return `Brak broni w katalogu: ${missing
+    .map((entry) => `${entry.name} (${entry.entryId})`)
+    .join(', ')} — kierowca jej nie zobaczy na pasku.`;
 }

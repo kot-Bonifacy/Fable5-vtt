@@ -10,6 +10,7 @@ import type {
   VehicleManeuverCallPayload,
   VehicleManeuverPayload,
   VehicleNitroPayload,
+  VehicleRefillPayload,
   ScenePoint,
 } from '@vtt/shared';
 import {
@@ -398,6 +399,28 @@ export const vehicleNitroEvent = defineEvent<VehicleNitroPayload, SceneVehicleVi
       data: { nitroUsed: { increment: 1 } },
     });
     await emitChase(deps, campaignId, placed.sceneId);
+    return placedView(deps.ctx.prisma, placed.sceneId, placed.id);
+  },
+});
+
+/**
+ * MG: `vehicle:refill` — pełne zbiorniki Nitro i pełna wyrzutnia kolczatki.
+ * Podręcznik daje zbiornik „raz dziennie”, a VTT nie liczy doby auta, więc
+ * uzupełnienie to gest MG (decyzja z 03.11), także w trakcie walki.
+ */
+export const vehicleRefillEvent = defineEvent<VehicleRefillPayload, SceneVehicleView>({
+  name: 'vehicle:refill',
+  role: ROLE_GM,
+  handler: async ({ deps, socket, payload }) => {
+    const campaignId = requireChaseCampaignId(socket.data);
+    const placed = await requirePlaced(deps.ctx.prisma, campaignId, payload?.sceneVehicleId);
+    if (placed.nitroUsed !== 0 || placed.spikesUsed !== 0) {
+      await deps.ctx.prisma.sceneVehicle.update({
+        where: { id: placed.id },
+        data: { nitroUsed: 0, spikesUsed: 0 },
+      });
+      await emitChase(deps, campaignId, placed.sceneId);
+    }
     return placedView(deps.ctx.prisma, placed.sceneId, placed.id);
   },
 });

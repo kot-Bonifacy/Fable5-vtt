@@ -220,16 +220,22 @@ export const vehicleUpdateEvent = defineEvent<VehicleUpdatePayload, VehicleView>
       const result = cpredVehiclePatch(readCpredVehicle(current.system), patch.system);
       if (!result.ok) throw new RealtimeError(result.code);
       data.system = JSON.stringify(result.stats);
-      // Fotele z ulepszeń zmieniają układ i bryłę, chyba że MG ustawił je
-      // w tej samej łacie sam.
+      // Fotele z ulepszeń zmieniają układ i bryłę, chyba że MG zmienił je
+      // w tej samej łacie sam. Okno pojazdu wysyła układ i rozmiar zawsze —
+      // wartość równa obecnej to „nie ruszałem”, nie decyzja MG (inaczej
+      // Ulepszenie foteli z okna nigdy nie dokładało foteli na mapie).
       const body = vehicleBodyColumns(result.stats);
+      const before = readCpredVehicle(current.system);
       const seatsChanged =
-        readCpredVehicle(current.system).seats !== result.stats.seats ||
-        JSON.stringify(readCpredVehicle(current.system).upgrades) !==
-          JSON.stringify(result.stats.upgrades);
+        before.seats !== result.stats.seats ||
+        JSON.stringify(before.upgrades) !== JSON.stringify(result.stats.upgrades);
       if (seatsChanged) {
-        if (!('layout' in patch)) data.layout = body.layout;
-        if (!('widthSq' in patch) && !('lengthSq' in patch) && body.layout !== current.layout) {
+        const layoutChosen = 'layout' in patch && patch.layout !== current.layout;
+        const sizeChosen =
+          ('widthSq' in patch && patch.widthSq !== current.widthSq) ||
+          ('lengthSq' in patch && patch.lengthSq !== current.lengthSq);
+        if (!layoutChosen) data.layout = body.layout;
+        if (!sizeChosen && body.layout !== current.layout) {
           data.widthSq = body.widthSq;
           data.lengthSq = body.lengthSq;
         }

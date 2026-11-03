@@ -239,7 +239,9 @@ export const CPRED_VEHICLE_UPGRADES: readonly CpredVehicleUpgradeDefinition[] = 
     text: 'Fotel z obrotowym stanowiskiem na dwuręczną broń dystansową — strzela pasażer, przeładowuje i w jeździe.',
     page: 164,
     motoLevel: 5,
-    combat: true,
+    // Bez osobnej mechaniki (decyzje-i-uproszczenia, 65d2): pasażer i bez
+    // stanowiska strzela z fotela bronią dwuręczną i przeładowuje w jeździe.
+    combat: false,
     repeat: 'once',
     kinds: NOT_SMALL,
     requiresReinforced: true,
@@ -580,6 +582,25 @@ export function cpredVehicleUpgradesProblem(
   return null;
 }
 
+/**
+ * Bieżące PUK po zmianie listy ulepszeń: Wzmocniona konstrukcja dokłada 20
+ * także do bieżących PUK, a zdjęta je zabiera (decyzja MG z 03.11) — inaczej
+ * auto na pełnych PUK po montażu wyglądało na rozbite. Wrak zostaje wrakiem,
+ * a demontaż nie robi z całego auta wraku (najniżej 1). Sufit przycina
+ * `readCpredVehicle`.
+ */
+export function cpredVehicleHpAfterUpgrades(
+  hp: number,
+  before: readonly Pick<CpredVehicleUpgradeRow, 'upgradeId'>[],
+  after: readonly Pick<CpredVehicleUpgradeRow, 'upgradeId'>[],
+): number {
+  const reinforced = (rows: readonly Pick<CpredVehicleUpgradeRow, 'upgradeId'>[]) =>
+    rows.some((row) => row.upgradeId === 'reinforced') ? CPRED_VEHICLE_REINFORCED_HP : 0;
+  const shift = reinforced(after) - reinforced(before);
+  if (shift === 0 || hp <= 0) return hp;
+  return Math.max(1, hp + shift);
+}
+
 /** Nowy pojazd z wpisu katalogu: pełne PUK, bez ulepszeń. */
 export function cpredVehicleFromCatalog(
   entry: Pick<VehicleEntry, 'id' | 'vehicleKind' | 'hp' | 'seats' | 'move'> | null,
@@ -616,11 +637,16 @@ export function cpredVehiclePatch(
     'upgrades' in patch
       ? readUpgradeRows(patch.upgrades).filter((row) => !row.fleetRowId)
       : current.upgrades.filter((row) => !row.fleetRowId);
+  const upgrades = [...fromFleet, ...own];
+  // PUK podane w łacie to decyzja MG (okno pojazdu przesuwa je samo przy
+  // montażu); bez nich bieżące PUK idą za Wzmocnioną konstrukcją.
+  const hp =
+    'hp' in patch ? patch.hp : cpredVehicleHpAfterUpgrades(current.hp, current.upgrades, upgrades);
   const next = readCpredVehicle({
     ...current,
     ...('kind' in patch ? { kind: patch.kind } : {}),
     ...('hpMax' in patch ? { hpMax: patch.hpMax } : {}),
-    ...('hp' in patch ? { hp: patch.hp } : {}),
+    hp,
     ...('seats' in patch ? { seats: patch.seats } : {}),
     ...('move' in patch ? { move: patch.move } : {}),
     ...('notes' in patch && typeof patch.notes === 'string' ? { notes: patch.notes } : {}),
@@ -628,7 +654,7 @@ export function cpredVehiclePatch(
     ...('windows' in patch && typeof patch.windows === 'object' && patch.windows !== null
       ? { windows: patch.windows }
       : {}),
-    upgrades: [...fromFleet, ...own],
+    upgrades,
   });
   const problem = cpredVehicleUpgradesProblem(next.kind, next.upgrades);
   if (problem) return { ok: false, code: problem };

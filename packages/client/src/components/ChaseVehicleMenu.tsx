@@ -6,6 +6,7 @@ import {
   VEHICLE_LAYOUTS,
   VEHICLE_WINDOW_SIDES,
   ROLE_GM,
+  type CpredVehicleUpgradeId,
   type SceneVehicleView,
   type TokenView,
   type VehicleWindowSide,
@@ -21,6 +22,7 @@ import {
   dropVehicleSpikes,
   fireVehicleNitro,
   performVehicleManeuver,
+  refillVehicle,
   reloadVehicleMount,
   removeChaseVehicle,
   restoreChaseVehicle,
@@ -31,6 +33,7 @@ import {
 } from '../socket.js';
 import { clearNotices, notifyChoice, notifyRefusal } from '../notices.js';
 import { useMenuTop } from './TokenContextMenu.js';
+import { missingMountWeaponsText } from '../chase-mounts.js';
 
 /**
  * Menu auta na scenie pościgu (etap 65b) — klik w auto, a nie w wolny fotel.
@@ -248,6 +251,16 @@ export function ChaseVehicleMenu() {
             Przywróć do pościgu
           </button>
         )}
+        {isGm && vehicle.refillable && (
+          <button
+            type="button"
+            className="context-menu-item"
+            title="Pełne zbiorniki Nitro i pełna wyrzutnia kolczatki — „raz dziennie” rozstrzyga MG."
+            onClick={() => act(() => refillVehicle(vehicle.id))}
+          >
+            Uzupełnij Nitro i kolczatki
+          </button>
+        )}
         {isGm && vehicle.control === 'lost' && (
           <button
             type="button"
@@ -313,6 +326,11 @@ export function ChaseVehicleMenu() {
 function VehicleHull({ vehicle, isGm }: { vehicle: SceneVehicleView; isGm: boolean }) {
   const [draft, setDraft] = useState<string>(String(vehicle.hp));
   const share = vehicle.hpMax > 0 ? Math.max(0, Math.min(1, vehicle.hp / vehicle.hpMax)) : 0;
+  const missingMounts = isGm
+    ? missingMountWeaponsText(
+        vehicle.mounts.map((mount) => ({ upgradeId: mount.upgradeId as CpredVehicleUpgradeId })),
+      )
+    : null;
   const save = () => {
     const hp = Number.parseInt(draft, 10);
     if (!Number.isInteger(hp) || hp === vehicle.hp) return;
@@ -374,6 +392,9 @@ function VehicleHull({ vehicle, isGm }: { vehicle: SceneVehicleView; isGm: boole
           {vehicle.upgrades.join(', ')}
           {vehicle.nitroLeft > 0 ? ` · Nitro: ${vehicle.nitroLeft}` : ''}
         </p>
+      )}
+      {isGm && missingMounts && (
+        <p className="chase-menu-state chase-menu-warning">{missingMounts}</p>
       )}
     </div>
   );

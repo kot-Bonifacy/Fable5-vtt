@@ -3480,6 +3480,9 @@ export const setVehicleEngine = (sceneVehicleId: string, on: boolean) =>
   emitSceneAck<SceneVehicleView>('vehicle:engine', { sceneVehicleId, on });
 export const fireVehicleNitro = (sceneVehicleId: string) =>
   emitSceneAck<SceneVehicleView>('vehicle:nitro', { sceneVehicleId });
+/** MG (03.11): pełne zbiorniki Nitro i pełna wyrzutnia kolczatki. */
+export const refillVehicle = (sceneVehicleId: string) =>
+  emitSceneAck<SceneVehicleView>('vehicle:refill', { sceneVehicleId });
 export const restoreChaseVehicle = (sceneVehicleId: string) =>
   emitSceneAck<SceneVehicleView>('chase:restore', { sceneVehicleId });
 export const restoreVehicleControl = (sceneVehicleId: string) =>

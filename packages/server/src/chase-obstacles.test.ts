@@ -474,7 +474,7 @@ describe('etap 65e: przeszkody, ruch uliczny i kolczatka', () => {
       await emitAck<SceneVehicleView>(gm, 'vehicle:spikes', { sceneVehicleId: carB.id }),
       'vehicle:spikes',
     );
-    expect(dropped.spikesLeft).toBe(0);
+    expect(dropped).toMatchObject({ spikesLeft: 0, refillable: true });
     expect(await emitAck(gm, 'vehicle:spikes', { sceneVehicleId: carB.id })).toMatchObject({
       ok: false,
       error: 'NO_SPIKES',
@@ -485,6 +485,18 @@ describe('etap 65e: przeszkody, ruch uliczny i kolczatka', () => {
     });
     const spikes = (await obstacleRows()).find((entry) => entry.kind === 'spikes')!;
     expect(spikes).toMatchObject({ x: 1000 - 250 - 50 - 5, y: 750, droppedById: carB.id });
+    // MG uzupełnia wyrzutnię (03.11) — gracz nie może.
+    expect(await emitAck(player, 'vehicle:refill', { sceneVehicleId: carB.id })).toMatchObject({
+      ok: false,
+      error: 'FORBIDDEN',
+    });
+    expect(
+      data(
+        await emitAck<SceneVehicleView>(gm, 'vehicle:refill', { sceneVehicleId: carB.id }),
+        'vehicle:refill',
+      ),
+    ).toMatchObject({ spikesLeft: 1, refillable: false });
+    await built.prisma.sceneVehicle.update({ where: { id: carB.id }, data: { spikesUsed: 1 } });
 
     // Runda 3: taksówka staje przed Vex, a auto bez kierowcy wjeżdża na kolczatkę
     // (bez kierowcy Testu nie ma — 4k6 w słaby punkt: 3+3+3+3 = 12, po OB 0 ×2 = 24).

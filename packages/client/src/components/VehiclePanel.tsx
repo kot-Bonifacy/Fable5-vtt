@@ -10,6 +10,7 @@ import {
   VEHICLE_SIZE_MAX,
   VEHICLE_SIZE_MIN,
   cpredVehicleDerived,
+  cpredVehicleHpAfterUpgrades,
   defaultVehicleArt,
   cpredVehicleUpgrade,
   cpredVehicleUpgradeProblem,
@@ -36,6 +37,7 @@ import {
   updateVehicle,
 } from '../socket.js';
 import { startVehicleDrag } from '../map/vehicle-drag.js';
+import { missingMountWeaponsText } from '../chase-mounts.js';
 import { useChaseStore } from '../stores/chaseStore.js';
 import { useSceneStore } from '../stores/sceneStore.js';
 import { chaseErrorText } from './ChaseVehicleMenu.js';
@@ -427,6 +429,14 @@ export function VehicleEditor({ vehicle, onClose }: { vehicle: VehicleView; onCl
   );
   const pickProblem = pick ? cpredVehicleUpgradeProblem(kind, upgrades, pick) : null;
   const fleetOwned = stats.fleetRowId !== null;
+  const missingMounts = missingMountWeaponsText(upgrades);
+
+  // Wzmocniona konstrukcja przesuwa i bieżące PUK (MG 03.11) — na oczach MG,
+  // bo łata okna niesie `hp` i serwer bierze je dosłownie.
+  function changeUpgrades(next: CpredVehicleUpgradeRow[]) {
+    setHp((value) => cpredVehicleHpAfterUpgrades(value, upgrades, next));
+    setUpgrades(next);
+  }
 
   async function submit(event: FormEvent) {
     event.preventDefault();
@@ -567,7 +577,9 @@ export function VehicleEditor({ vehicle, onClose }: { vehicle: VehicleView; onCl
                         className="cp-mini-button"
                         title={`Zdejmij: ${upgrade?.name ?? row.upgradeId}`}
                         aria-label={`Zdejmij: ${upgrade?.name ?? row.upgradeId}`}
-                        onClick={() => setUpgrades(upgrades.filter((entry) => entry.id !== row.id))}
+                        onClick={() =>
+                          changeUpgrades(upgrades.filter((entry) => entry.id !== row.id))
+                        }
                       >
                         ✕
                       </button>
@@ -595,7 +607,7 @@ export function VehicleEditor({ vehicle, onClose }: { vehicle: VehicleView; onCl
                 title={pickProblem ? CPRED_VEHICLE_UPGRADE_PROBLEMS[pickProblem] : undefined}
                 onClick={() => {
                   if (!pick) return;
-                  setUpgrades([
+                  changeUpgrades([
                     ...upgrades,
                     { id: Math.random().toString(36).slice(2, 10), upgradeId: pick, notes: '' },
                   ]);
@@ -605,6 +617,7 @@ export function VehicleEditor({ vehicle, onClose }: { vehicle: VehicleView; onCl
                 Zamontuj
               </button>
             </div>
+            {missingMounts ? <p className="vehicle-hint vehicle-warning">{missingMounts}</p> : null}
           </fieldset>
 
           <div className="bot-row-inline">

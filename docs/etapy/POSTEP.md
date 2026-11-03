@@ -29,6 +29,12 @@ Pełna tabela z nazwami i datami: `archiwum/tabela-etapow.md`.
 
 ## Od czego zacząć
 
+**Ulepszenia pojazdów po przeglądzie (zlecenie MG z 03.11) — czekają na wdrożenie i oględziny
+przy stole (Firefox).** Ulepszenie foteli z okna MG dokłada fotele na mapie, Wzmocniona
+konstrukcja dodaje 20 także do bieżących PUK, MG ma w menu auta „Uzupełnij Nitro i kolczatki”,
+Stanowisko bardzo ciężkiej broni to „— opis”, a broń pokładowa spoza katalogu daje MG
+ostrzeżenie zamiast cichego braku. Umowa na górze `mapa`, zaległość w `zaleglosci.md`.
+
 **Ekwipunek „Używane” nad „Plecakiem” (zlecenie MG z 03.11, wzór z cRPG) — czeka na wdrożenie
 i oględziny przy stole (Firefox).** Linijka „Schowane: …” z lewej belki HUD zniknęła. Zakładka
 „Ekwipunek” zaczyna się sekcją „Używane” (czerwony brzeg): „Ręce” (broń dobyta i gołe ręce,
@@ -592,7 +598,7 @@ a nie do tego pliku.
 
 | obszar      | co obejmuje                                                    | umów | pułapek |
 | ----------- | -------------------------------------------------------------- | ---- | ------- |
-| `mapa`      | figury, zaznaczanie, narzędzia, obiekty sceny, ściany, efekty, zamek drzwi, ukryta figura zauważona, ikony urządzeń, wspólny widok drużyny, scena pościgu, jazda kierowcy i dryf, Manewr i taranowanie, przeszkody pościgu, sceny przykładowe, wzorzec zwykłej mapy | 77   | 27      |
+| `mapa`      | figury, zaznaczanie, narzędzia, obiekty sceny, ściany, efekty, zamek drzwi, ukryta figura zauważona, ikony urządzeń, wspólny widok drużyny, scena pościgu, jazda kierowcy i dryf, Manewr i taranowanie, przeszkody pościgu, sceny przykładowe, wzorzec zwykłej mapy, ulepszenia pojazdu | 78   | 27      |
 | `czat`      | rodzaje wierszy, `visibleTo`, filtr, `seq`, `gmrecovery`, „to dotyczy mnie”, grupy kart, kolor gracza, czyszczenie, gęsta karta rzutu, przebieg ataku | 15   | 3       |
 | `serwer`    | Prisma i migracje, zdarzenia gniazda, zapisy karty, uploady    | 26   | 21      |
 | `ui`        | okna pływające, `z-index`, motyw, skróty, dostępność, wejście, panel decyzji MG | 37   | 15      |
@@ -615,6 +621,30 @@ a nie do tego pliku.
 ## Notatki z dwóch ostatnich sesji
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
+
+### Sesja 03.11, szósta — przegląd ulepszeń pojazdów
+
+**Zlecenie MG:** „przyjrzyj się ulepszeniom pojazdów (czy one faktycznie działają)”, z pytaniami
+przy wątpliwościach. **Przegląd:** z 19 ulepszeń 13 liczonych w walce jest okablowanych
+(OB kadłuba, szyby, Nitro, bronie pokładowe z łukiem i „tylko seria”, Pług, kolczatka,
+zespolenie, poduszkowiec wobec kolczatki), 6 to opis. **Znalezione i potwierdzone na żywym
+serwerze:** (1) Ulepszenie foteli z okna MG nie dokładało foteli na mapie — okno wysyła
+`layout` zawsze, a serwer przeliczał układ tylko bez niego (test serwera przechodził, bo nie
+wysyłał `layout`); (2) Wzmocniona konstrukcja podnosiła tylko sufit — kompakt stał na 45/65;
+(3) Nitro i kolczatka nie wracały bez zdjęcia auta ze sceny; (4) Stanowisko bardzo ciężkiej broni
+udawało liczone ulepszenie; (5) broń pokładowa spoza katalogu znika z paska po cichu.
+**Odpowiedzi MG (03.11):** +20 do bieżących PUK (demontaż −20, najniżej 1); przycisk MG
+„Uzupełnij”; stanowisko jako „— opis”; ostrzeżenie zamiast cichego braku. **Zrobione:**
+`vehicle:update` — układ równy obecnemu to „nie ruszałem”; `cpredVehicleHpAfterUpgrades`
+w `cpredVehiclePatch` (bez `hp` w łacie), `syncFleetVehicles` i oknie MG; `vehicle:refill`
+(MG) + `SceneVehicleView.refillable` + przycisk w menu auta; `heavyMount.combat = false`;
+`cpredMissingMountWeapons` + `missingMountWeaponsText` (okno pojazdu i menu auta MG). Umowa na
+górze `mapa`, decyzje w `decyzje-i-uproszczenia.md`. **Nie sprawdzone stąd:** czy id broni
+pokładowych (`weapon.miotacz-ognia` i reszta) istnieją w `data/private` — ostrzeżenie powie to
+MG przy stole. **Testy:** `shared` 2926/2926 (+4), serwer 1723/1723 (+1, macierz izolacji
+z `vehicle:refill`), klient 467/467, `tsc` w trzech pakietach, ESLint i Prettier czyste.
+**W przeglądarce nieoglądane** — brak `po-T6` w kontenerze, Playwright MCP niepodłączony;
+zaległość w `zaleglosci.md`.
 
 ### Sesja 03.11, piąta — Ekwipunek: „Używane” i „Plecak”
 
@@ -640,24 +670,3 @@ klient 467/467, `tsc` (klient, serwer), ESLint i Prettier czyste. **Oglądane w 
 dobycie z zamianą, schowanie do pustych rąk, okno „Wymiana” ze znaczkami; konsola bez błędów.
 Dwóch kolumn od 1350 px nie oglądano (okno karty się nie rozciągnęło). Firefoksa w kontenerze
 nie ma — oględziny w nim przy stole.
-
-### Sesja 03.11, czwarta — zaległości bez MG i bez VPS
-
-**Zlecenie MG:** „zweryfikuj, czy są jakieś istotne zaległości, i je wykonaj”, a w trakcie
-pytanie, czemu przy „Bijatyce” na zrzucie stoi pistolet. Prawie wszystkie otwarte zaległości
-to oględziny MG przy stole i wdrożenie na VPS — z kontenera nie do zrobienia. **Zrobione:**
-(1) **okno łupu wraca do wyboru po zdjęciu naklejki** (`ExchangeWindow`: podpis naklejek figur
-z listy → `refresh`; zniknięty `loot:` → `select(null)` + informacja „X już nie leży”; `Esc`
-zamyka okno, `tabIndex={-1}`) — zaległość zamknięta; (2) **T4b 4.8** — przyczyna z kodu:
-lądowanie zapisuje pozycję przed ukrytą Percepcją, a test wpisywał kość zaraz po `waitAt`;
-4.8 czeka teraz na klatkę `final` u MG (`finalFrameOf`), zaległość zostaje do potwierdzenia
-przebiegiem; (3) **pięść przy Bijatyce bez wpisu w kompendium** (`cpredBareHandsIcon`) — na
-stole z prywatnym kompendium pięść była i tak, pistolet rysowała publiczna próbka E2E.
-**Rozstrzygnięcie bez pytań (do słowa MG):** okno po wstaniu ciała nie zaprasza samo do handlu
-(wybór handlu zaprasza, a tego nikt nie kliknął) — schodzi do „wybierz, z kim”. **Testy:**
-`shared` 2919/2919 (+2), serwer 1722/1722, klient 467/467, `tsc` (klient, `shared`, e2e),
-ESLint i Prettier czyste. **Oglądane w Chromium** (tymczasowy spec `99-ogledziny/t99-lup-wstaje`
-na instancji E2E, skasowany; przeglądarka kontenera przez `executablePath`, poprawka
-`actors.ts` niezacommitowana): łup → MG zdejmuje „Ogłuszony” → okno w trybie `none`
-z „🤝 Kowal”, ponowne ogłuszenie przynosi „🎒 Kowal” bez fokusu, `Esc` zamyka; pięść na panelu.
-T4b nieuruchomiony (brak `po-T4a` w kontenerze). Firefoksa w kontenerze nie ma.

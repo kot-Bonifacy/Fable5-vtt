@@ -158,6 +158,9 @@ function toSceneVehicleView(
     driftSq: chase.driftSq,
     nitroLeft: chase.nitroLeft,
     spikesLeft: cpredVehicleSpikesLeft(stats, row.spikesUsed),
+    refillable:
+      (row.nitroUsed > 0 && derived.nitroTanks > 0) ||
+      (row.spikesUsed > 0 && (derived.counts.spikes ?? 0) > 0),
     hp: stats.hp,
     hpMax: derived.hpMax,
     armorSp: derived.hullSp,
