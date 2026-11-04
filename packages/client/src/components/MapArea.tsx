@@ -1071,7 +1071,7 @@ export function MapArea() {
       useChaseStore.setState((state) => ({ vehicles: [...state.vehicles] }));
       notifyChoice(
         'chase',
-        `Na drodze: ${obstacle}. Taranowanie to 6k6 dla obu stron i Rana Krytyczna dla jadących.`,
+        `Na drodze: ${obstacle.name}. ${obstacle.text}`,
         [
           { label: 'Taranuj', run: () => send(true) },
           { label: 'Zatrzymaj się przed', run: () => send(false) },

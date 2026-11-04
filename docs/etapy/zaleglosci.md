@@ -6,6 +6,12 @@ w `POMYSLY.md` („Do sprawdzenia przy stole”), decyzje MG — w `decyzje-i-up
 
 ## Otwarte
 
+**04.11.2026 (szósta sesja) — oględziny paska „Zderzenie” i `/jako` za NPC-a.** Sprawdzone
+testami i buildem, bez przeglądarki. Przy stole (Firefox): przeciągnięcie Wozu z Pługiem
+przodem w furgon — pasek mówi „Pług bojowy przodem… Twoje auto nic nie bierze”, bokiem — „Pług
+nie zadziała”, w pieszego, przeszkodę i beton — własne zdania; pasek przeszkody gracza i menu MG
+mówią to samo. `/jako Kłoda …` u MG — wiersz z imieniem Kłody u gracza, bez portretu.
+
 **04.11.2026 (piąta sesja) — oględziny w przeglądarce zmian pościgu i czatu.** Zmiany
 sprawdzone tylko testami (serwer, klient) i buildem, bez przeglądarki. Przy stole (Firefox):
 pieszy z bronią w ręku klikiem w wolny fotel Wozu wsiada, a klikiem w kadłub strzela; prawy
@@ -23,21 +29,16 @@ z przedniego fotela nachodzi na pierścień figury z fotela obok (`car-4`, `van-
 
 **04.11.2026 — drobiazgi z przebiegu 66c (UI pościgu i czatu).**
 
-- `/jako <imię>` szuka tylko botów (`BOT_NOT_FOUND` → „Nie znaleziono NPC-a o tym imieniu”),
-  a pole czatu podpowiada „/jako NPC”. NPC z karty sceny nie mówi na czacie — okrzyki idą zwykłą
-  wiadomością MG (notatka 💬 wzorca to mówi).
-- Pasek „Zderzenie” zawsze pisze „6k6 dla obu stron i Rana Krytyczna dla jadących”: przy
-  taranie Pługiem przodem nie mówi, że Wóz nic nie bierze, przy uderzeniu bokiem — że Pług nie
-  zadziała, a przy przeszkodzie Ran krytycznych nie ma (65e, rozstrzygnięcie 7). Pasek
-  przeszkody gracza nie wspomina Pługa. Rzut 6k6 w przeszkodę dostaje plakietkę „Rana
-  krytyczna!” (dwie szóstki), która niczego nie robi.
 - Bryła `van-8` jest ok. 0,6 kratki dłuższa niż grafika furgonu: Wóz „dotykał” go, stojąc na
   obrazku 0,4 kratki dalej; „Zatrzymaj się przed” przy zderzeniu od pierwszego kroku nie rusza
   auta wcale.
 - Kubek z polem Szczęścia zasłania „Następna tura” w lewym panelu MG (Playwright nie kliknie,
   klawisz E działa). Esc z fokusem na kubku MG raz odłożył atak, dwa razy nie.
 - Po „Cofnij” na karcie obrażeń kadłuba karta ataku znów ma „Na kubek” / „Zastosuj”, a kubek
-  MG dostaje z powrotem rzut obrażeń — łatwo zastosować je drugi raz.
+  MG dostaje z powrotem rzut obrażeń — łatwo zastosować je drugi raz. **04.11 (szósta sesja):
+  to umowa, nie błąd** — tak samo przy figurach „Cofnij” przywraca przyciski, bo tak MG
+  przenosi trafienie na inny cel (`DamageControls.tsx`, `settled`). Do decyzji MG, czy po
+  „Cofnij” przyciski mają wracać tylko na prośbę.
 - MG nie ma „Ucieka” / „Odjedź” w menu auta (notatki wzorca o nim wspominały): na stojącej
   drodze eskorta zablokowana Wozem nie miała jak odjechać.
 - Kamera gracza (`coverZoom` na estakadzie 35 × 18) mieści ok. 23 kratki długości — furgon

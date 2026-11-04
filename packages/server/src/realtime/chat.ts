@@ -18,6 +18,7 @@ import {
   ROLE_GM,
   parseChatInput,
   rollFormula,
+  tokenTableName,
 } from '@vtt/shared';
 import { createMixedRng } from './dice-rng.js';
 import { findRandomTableByName, rollTableToChat } from './tables.js';
@@ -40,6 +41,7 @@ import {
 import { emitJournalPending } from './journal.js';
 import { speakingCharacter } from './relations.js';
 import { campaignRoom, lobbyRoom } from './state.js';
+import type { PrismaClient } from '../db.js';
 
 function requireCampaignId(socketData: { campaign: { id: string } | null }): string {
   if (!socketData.campaign) throw new RealtimeError('NO_CAMPAIGN');
@@ -175,8 +177,42 @@ async function persistAndEmitWhisper(
 }
 
 /**
- * `/jako <bot> <treść>` — the GM speaks in an NPC's name without the model.
+ * NPC-e ze sceny, za które MG mówi przez `/jako` bez bota (zaległość 66c
+ * z 04.11): figury bez gracza — statysta albo karta bez właściciela. Imię to
+ * to, które widzi stół (`publicName`), ale MG może wpisać też prawdziwe.
+ */
+interface SceneNpcSpeaker {
+  /** Pod tym imieniem wiersz staje na czacie. */
+  name: string;
+  /** Imiona, które `/jako` przyjmuje (małymi literami). */
+  aliases: string[];
+}
+
+async function sceneNpcSpeakers(
+  prisma: PrismaClient,
+  sceneId: string | null,
+): Promise<SceneNpcSpeaker[]> {
+  if (!sceneId) return [];
+  const tokens = await prisma.token.findMany({
+    where: { sceneId, ownerId: null },
+    select: { name: true, publicName: true, character: { select: { ownerId: true } } },
+  });
+  return tokens
+    .filter((token) => !token.character?.ownerId)
+    .map((token) => {
+      const name = tokenTableName(token, token.name);
+      return {
+        name,
+        aliases: [...new Set([name, token.name].map((entry) => entry.toLowerCase()))],
+      };
+    });
+}
+
+/**
+ * `/jako <imię> <treść>` — the GM speaks in an NPC's name without the model.
  * The bot may be idle („nie w sesji"): voicing an NPC by hand needs no model.
+ * Bez bota o tym imieniu — NPC z figury na scenie: zwykła wypowiedź konta MG
+ * podpisana jego imieniem (`speakerName`), bez portretu bota.
  */
 async function persistAndEmitAsBot(
   deps: RealtimeDeps,
@@ -186,16 +222,44 @@ async function persistAndEmitAsBot(
   targetName: string,
   text: string,
   bots: ChatBot[],
+  npcs: SceneNpcSpeaker[],
+  inLobby: boolean,
 ): Promise<void> {
   const wanted = targetName.toLowerCase();
   const bot = bots.find((entry) => entry.name.toLowerCase() === wanted);
-  if (!bot) throw new RealtimeError('BOT_NOT_FOUND');
-  await speakAsBot(deps, {
+  if (bot) {
+    await speakAsBot(deps, {
+      campaignId,
+      gmUserId: user.id,
+      sceneId,
+      bot: { id: bot.id, name: bot.name },
+      text,
+    });
+    return;
+  }
+  const npc = npcs.find((entry) => entry.aliases.includes(wanted));
+  if (!npc) throw new RealtimeError('BOT_NOT_FOUND');
+  const message = await insertChatMessage(deps.ctx.prisma, {
     campaignId,
-    gmUserId: user.id,
-    sceneId,
-    bot: { id: bot.id, name: bot.name },
+    authorId: user.id,
+    kind: 'say',
     text,
+    sceneId,
+    speakerName: npc.name,
+  });
+  broadcastChatMessage(deps, campaignId, message, false);
+  emitJournalPending(deps, campaignId);
+  if (inLobby) return;
+  // Jak wiersz bota pisany ręką: NPC może zawołać bota po imieniu.
+  await triggerBotsForLine(deps, {
+    campaignId,
+    sceneId,
+    origin: 'gm_as_bot',
+    text,
+    messageId: message.id,
+    calledByUserId: user.id,
+    calledByName: npc.name,
+    bots,
   });
 }
 
@@ -283,15 +347,20 @@ export const chatSendEvent = defineEvent<ChatSendPayload>({
     // tabele i boty — dopiero przy stole.
     const inLobby = socket.data.atTable !== true;
 
-    const [roster, bots] = await Promise.all([
+    const [roster, bots, npcs] = await Promise.all([
       getRoster(deps.ctx.prisma, campaignId),
       listChatBots(deps.ctx.prisma, campaignId),
+      // NPC-e ze sceny tylko dla poleceń MG (`/jako`) — zwykła wypowiedź ich nie potrzebuje.
+      user.role === ROLE_GM && text.trimStart().startsWith('/')
+        ? sceneNpcSpeakers(deps.ctx.prisma, sceneId)
+        : Promise.resolve([]),
     ]);
     // Bot names join the roster only to parse multi-word targets; who may be
     // addressed at all is decided below, per command.
     const parsed = parseChatInput(text, [
       ...roster.map((entry) => entry.name),
       ...bots.map((entry) => entry.name),
+      ...npcs.flatMap((entry) => entry.aliases),
     ]);
 
     switch (parsed.kind) {
@@ -359,6 +428,8 @@ export const chatSendEvent = defineEvent<ChatSendPayload>({
           parsed.targetName,
           parsed.text,
           bots,
+          npcs,
+          inLobby,
         );
         return;
       case 'rolltable': {

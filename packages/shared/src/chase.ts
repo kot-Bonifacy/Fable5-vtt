@@ -639,6 +639,11 @@ export interface SceneVehicleView {
   windows: Record<VehicleWindowSide, { hp: number; max: number }> | null;
   /** Nazwy ulepszeń do panelu auta — system liczy, rdzeń wypisuje. */
   upgrades: string[];
+  /**
+   * Auto ma Pług bojowy (zaległość 66c z 04.11): pasek „Zderzenie” mówi przed
+   * taranowaniem, kto ile bierze — system liczy, rdzeń wypisuje.
+   */
+  ramPlow: boolean;
   /** Manewry, które pasują do tego pojazdu (65d2) — system liczy, menu auta wypisuje. */
   maneuvers: ChaseManeuverOption[];
   /**

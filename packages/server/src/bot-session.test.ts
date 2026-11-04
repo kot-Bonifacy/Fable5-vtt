@@ -614,6 +614,37 @@ describe('the GM speaks as an NPC', () => {
     player.socket.disconnect();
   });
 
+  it('speaks for a scene NPC without a bot, under the name the table sees', async () => {
+    const gm = createSocket(gmCookie);
+    await gm.firstSync;
+    const created = await emitAck(gm.socket, 'token:create', {
+      sceneId,
+      name: 'Kłoda Wrzos',
+      x: 0,
+      y: 0,
+    });
+    expect(created.ok).toBe(true);
+    const player = createSocket(playerCookie);
+    await player.firstSync;
+    const playerSeen = collectChat(player.socket);
+
+    // Wielowyrazowe imię figury, wielkość liter bez znaczenia (zaległość 66c z 04.11).
+    await emitAck(gm.socket, 'chat:send', { text: '/jako kłoda wrzos Stać, bo strzelam!' });
+    const line = await until(() =>
+      playerSeen.messages.find((m) => m.text === 'Stać, bo strzelam!'),
+    );
+    expect(line).toMatchObject({ kind: 'say', authorName: 'Kłoda Wrzos' });
+    expect(line.botId).toBeUndefined();
+    expect(await emitAck(gm.socket, 'chat:send', { text: '/jako Nikt Halo.' })).toEqual({
+      ok: false,
+      error: 'BOT_NOT_FOUND',
+    });
+
+    await built.prisma.token.deleteMany({ where: { sceneId } });
+    gm.socket.disconnect();
+    player.socket.disconnect();
+  });
+
   it('refuses to let a player put words in an NPC mouth', async () => {
     const gm = createSocket(gmCookie);
     await gm.firstSync;

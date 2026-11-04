@@ -9,6 +9,30 @@ go czytać.
 albo gdy chcesz sprawdzić, czy pozycja, która wygląda na nową, nie jest wracającą starą.
 Treść wpisów jest niezmieniona — łącznie z datami i odsyłaczami do notatek sesji.
 
+## Zamknięte 2026-11-04, szósta sesja (drobiazgi z przebiegu 66c)
+
+**04.11.2026 — pasek „Zderzenie” nie mówił, kto ile bierze (z „drobiazgów z przebiegu 66c”).**
+Wpis: pasek zawsze pisał „6k6 dla obu stron i Rana Krytyczna dla jadących” — bez Pługa przodem
+(Wóz nic nie bierze), bez Pługa bokiem (nie działa), pasek przeszkody gracza nie wspominał
+Pługa, a rzut 6k6 w przeszkodę dostawał plakietkę „Rana krytyczna!”. **Diagnoza:** tekst był
+stałym napisem w `MapArea.tsx`, `ChaseObstacleMenu.tsx` i `ChaseVehicleMenu.tsx`, a klient nie
+wiedział o Pługu. Plakietkę dawał `rollWoundsCritically` — rzut `ramObstacle` nie ma
+`damage`, więc dwie szóstki liczyły się jak w ciało. **Naprawa:** widok auta niesie `ramPlow`
+(`cpredVehicleHasPlow`), zdanie składa `chaseRamText` (`client/src/chase-ram.ts`) wg rodzaju
+uderzonego (auto, pieszy, przeszkoda, beton), Pługa i przodu (`chaseHitsWithFront`, jak
+`firstChaseContact`); `chaseObstacleAhead` zwraca `{ name, text }`. `ramObstacle` zeruje
+`criticalDamage`. Uwaga do wpisu: przy przeszkodzie **bez** Pługa jadący taranującym dostają
+Ranę (kod i `decyzje-i-uproszczenia.md` — „6k6 i Rana zostają przy zderzeniu z autem
+i przeszkodą”); nie ma jej przeszkoda. Testy: `chase-ram.test.ts` (klient), asercja w
+`chase-obstacles.test.ts`.
+
+**04.11.2026 — `/jako` tylko dla botów (z „drobiazgów z przebiegu 66c”).** NPC z karty sceny nie
+mówił na czacie. **Naprawa:** `/jako <imię>` bez bota szuka figury bez gracza na scenie MG
+(`sceneNpcSpeakers`) i zapisuje `say` konta MG z `speakerName` (umowa na górze `czat`);
+komunikaty błędów mówią „bota albo NPC-a ze sceny”. Notatki 💬 i ❓ wzorca „Ostatni zjazd”
+poprawione (okrzyki przez `/jako`; klik w fotel z bronią w ręku wsiada od piątej sesji).
+Test: `bot-session.test.ts` („speaks for a scene NPC without a bot…”).
+
 ## Zamknięte 2026-11-04, piąta sesja (zaległości z przebiegu 66c)
 
 **04.11.2026 — lista obecności gracza między sesjami nie widzi nowych osób.** Przy

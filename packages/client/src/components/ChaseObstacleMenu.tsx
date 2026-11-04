@@ -14,6 +14,7 @@ import { useTokenStore } from '../stores/tokenStore.js';
 import { answerChaseObstacle, answerChaseVehicle, removeChaseObstacle } from '../socket.js';
 import { clearNotices, notifyChoice, notifyRefusal } from '../notices.js';
 import { chaseErrorText } from './ChaseVehicleMenu.js';
+import { chaseRamText } from '../chase-ram.js';
 import { useMenuTop } from './TokenContextMenu.js';
 
 /**
@@ -87,7 +88,11 @@ export function ChaseObstacleMenu() {
             <button
               type="button"
               className="context-menu-item"
-              title="Zderzenie: po 6k6 dla auta i przeszkody, Rana Krytyczna dla jadących"
+              title={chaseRamText(
+                chaseObstacleUnbreakable(obstacle.kind) ? 'concrete' : 'obstacle',
+                blocked.ramPlow,
+                true,
+              )}
               onClick={() => act(() => answer(obstacle.id, 'ram'))}
             >
               Taranuj
@@ -202,12 +207,17 @@ export function useObstacleNotice(): void {
             ? ` (${blocker.hp} PW)`
             : ''
         : ` (${blocker.hp > 0 ? 'stoi na drodze' : 'wrak'})`;
-    const what = blocker.kind === 'obstacle' ? 'auta i przeszkody' : 'obu aut';
+    // Stojąca przeszkoda trafia zawsze w przód (dryf na zderzak).
+    const ram = chaseRamText(
+      blocker.kind === 'obstacle' ? (blocker.concrete ? 'concrete' : 'obstacle') : 'vehicle',
+      vehicle.ramPlow,
+      true,
+    );
     notifyChoice(
       'obstacle',
       blocker.concrete
-        ? `Na drodze: ${blocker.name}${hp}. Gwałtowny skręt to Test PT 13 — porażka to utrata kontroli i rozbicie auta. Taranowanie betonu robi z auta wrak, a jadący dostają Ranę Krytyczną.`
-        : `Na drodze: ${blocker.name}${hp}. Gwałtowny skręt to Test PT 13 — porażka to utrata kontroli i zderzenie. Taranowanie to 6k6 dla ${what}.`,
+        ? `Na drodze: ${blocker.name}${hp}. Gwałtowny skręt to Test PT 13 — porażka to utrata kontroli i rozbicie auta. Taranuj: ${ram}`
+        : `Na drodze: ${blocker.name}${hp}. Gwałtowny skręt to Test PT 13 — porażka to utrata kontroli i zderzenie. Taranuj: ${ram}`,
       [
         { label: 'Gwałtowny skręt', run: () => run('swerve') },
         { label: 'Taranuj', run: () => run('ram') },

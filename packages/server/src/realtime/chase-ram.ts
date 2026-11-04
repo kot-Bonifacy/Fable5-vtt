@@ -421,6 +421,9 @@ async function ramObstacle(
   const roll = rollFormula(parsed.formula, createMixedRng());
   roll.title = dice.title;
   roll.actor = 'Taranowanie';
+  // Dwie szóstki ranią ciało, nie przeszkodę (zaległość 66c z 04.11): bez tego
+  // karta obiecywała „Rana krytyczna!”, która niczego nie robi.
+  roll.criticalDamage = false;
   await postServerRoll(deps, campaignId, user, scene.id, roll);
   const fresh = await prisma.chaseObstacle.findUnique({ where: { id: obstacle.id } });
   if (!fresh) return true;

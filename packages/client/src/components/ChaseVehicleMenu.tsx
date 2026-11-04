@@ -35,6 +35,7 @@ import {
 import { clearNotices, notifyChoice, notifyRefusal } from '../notices.js';
 import { useMenuTop } from './TokenContextMenu.js';
 import { missingMountWeaponsText } from '../chase-mounts.js';
+import { chaseRamText } from '../chase-ram.js';
 
 /**
  * Menu auta na scenie pościgu (etap 65b) — klik w auto, a nie w wolny fotel.
@@ -278,7 +279,7 @@ export function ChaseVehicleMenu() {
             <button
               type="button"
               className="context-menu-item"
-              title="Zderzenie: po 6k6 dla obu aut, Rana Krytyczna dla jadących"
+              title={chaseRamText('vehicle', blockedVehicle.ramPlow, true)}
               onClick={() => act(() => answerChaseVehicle(vehicle.id, 'ram'))}
             >
               Taranuj

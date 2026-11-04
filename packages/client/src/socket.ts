@@ -472,11 +472,11 @@ function chatErrorText(code: string): string {
     case 'ROLL_BAD_NOTATION':
       return 'Nieprawidłowa formuła rzutu (przykłady: 1d10+5, 2d6+3).';
     case 'AS_BOT_MISSING_TARGET':
-      return 'Podaj bota: /jako <imię> <treść>';
+      return 'Podaj imię bota albo NPC-a ze sceny: /jako <imię> <treść>';
     case 'AS_BOT_MISSING_TEXT':
       return 'Podaj treść wypowiedzi: /jako <imię> <treść>';
     case 'BOT_NOT_FOUND':
-      return 'Nie znaleziono NPC-a o tym imieniu.';
+      return 'Nie ma bota ani NPC-a na tej scenie o tym imieniu.';
     case 'FORBIDDEN':
       return 'Tylko MG może mówić w imieniu NPC-a.';
     case 'NO_CAMPAIGN':

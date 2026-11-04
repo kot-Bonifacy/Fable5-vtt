@@ -17,6 +17,7 @@ import {
   cpredDriverIncapable,
   cpredVehicleChase,
   cpredVehicleDerived,
+  cpredVehicleHasPlow,
   cpredVehicleUpgradeNames,
   cpredVehicleWindows,
   cpredVehicleWrecked,
@@ -166,6 +167,7 @@ function toSceneVehicleView(
     armorSp: derived.hullSp,
     windows: cpredVehicleWindows(stats),
     upgrades: cpredVehicleUpgradeNames(stats),
+    ramPlow: cpredVehicleHasPlow(stats),
     maneuvers: cpredManeuversFor(stats.kind).map(maneuverOption),
     maneuverCall: maneuverCallOf(row.maneuverCall),
     mounts: stats.upgrades

@@ -523,6 +523,11 @@ describe('etap 65e: przeszkody, ruch uliczny i kolczatka', () => {
       where: { kind: 'action', text: 'Przeszkoda rozbita' },
     });
     expect(broken).not.toBeNull();
+    // Sześć szóstek w przeszkodę nie obiecuje Rany krytycznej (zaległość 66c z 04.11).
+    const taxiRoll = await built.prisma.chatMessage.findFirst({
+      where: { kind: 'roll', text: { contains: '→ Taksówka' } },
+    });
+    expect(JSON.parse(taxiRoll!.payload!)).toMatchObject({ total: 36, criticalDamage: false });
   });
 
   it('auto bez kierowcy wjeżdża w przeszkodę samo; MG zdejmuje przeszkody z drogi', async () => {

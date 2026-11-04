@@ -106,8 +106,8 @@ skalowanie, teksty dla graczy i zakończenia. **Rozegrany w przeglądarce 04.11*
 na `dev.db`, 7 rund, sukces z kosztem) i poprawiony wg decyzji MG: Rydwan bez karabinu
 pokładowego, pistolet dla postaci bez broni w schowku Wozu (notatka ❓ pkt 9), NPC-e +1 do broni
 (Szron i Kłoda +2). Kopia sceny w „Oględzinach 12.09” jest sprzed tych zmian. Z 11 błędów
-z `zaleglosci.md` (04.11) pięć naprawionych 04.11 w piątej sesji (notatka sesji); drobiazgi
-UI pościgu i czatu czekają. Szczegóły w `etap-66c-ostatni-zjazd.md`
+z `zaleglosci.md` (04.11) pięć naprawionych 04.11 w piątej sesji, pasek „Zderzenie” i `/jako`
+w szóstej; reszta drobiazgów UI pościgu czeka. Szczegóły w `etap-66c-ostatni-zjazd.md`
 („Rozegranie w przeglądarce”). Wzorzec umie od 66c tło z `CHASE_ROADS`, auto
 w rezerwie i stany figur, a **załoga auta poza pościgiem nie istnieje dla gracza** (reguła ogólna,
 decyzja MG). Testy serwera wzorców stoją na fiksturze `test-poscig`
@@ -627,7 +627,7 @@ a nie do tego pliku.
 | obszar      | co obejmuje                                                    | umów | pułapek |
 | ----------- | -------------------------------------------------------------- | ---- | ------- |
 | `mapa`      | figury, zaznaczanie, narzędzia, obiekty sceny, ściany, efekty, zamek drzwi, ukryta figura zauważona, ikony urządzeń, wspólny widok drużyny, scena pościgu, jazda kierowcy i dryf, Manewr i taranowanie, przeszkody pościgu, sceny przykładowe, wzorzec zwykłej mapy, ulepszenia pojazdu, stojące auto na drodze, kreator pościgu i wbudowane drogi, załoga auta poza pościgiem | 82   | 27      |
-| `czat`      | rodzaje wierszy, `visibleTo`, filtr, `seq`, `gmrecovery`, „to dotyczy mnie”, grupy kart, kolor gracza, czyszczenie, gęsta karta rzutu, przebieg ataku | 15   | 3       |
+| `czat`      | rodzaje wierszy, `visibleTo`, filtr, `seq`, `gmrecovery`, „to dotyczy mnie”, grupy kart, kolor gracza, czyszczenie, gęsta karta rzutu, przebieg ataku, `/jako` za NPC-a | 16   | 3       |
 | `serwer`    | Prisma i migracje, zdarzenia gniazda, zapisy karty, uploady    | 26   | 21      |
 | `ui`        | okna pływające, `z-index`, motyw, skróty, dostępność, wejście, panel decyzji MG | 37   | 15      |
 | `kosci`     | kubek, `rollFormula`, wezwania i prośby o Test, tabele losowe, PT od MG | 24   | 2       |
@@ -649,6 +649,21 @@ a nie do tego pliku.
 ## Notatki z dwóch ostatnich sesji
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
+
+### Sesja 04.11, szósta — drobiazgi z przebiegu „Ostatniego zjazdu” (66c)
+
+**Zlecenie MG:** „napraw kilka zaległości”. **Zrobione:** pasek „Zderzenie” (przeciągnięcie,
+pasek przeszkody gracza, menu MG) mówi konkretnie, kto ile bierze — Pług przodem, bokiem,
+pieszy, przeszkoda, beton (`chaseRamText`, nowe pole widoku `ramPlow`); rzut 6k6 w przeszkodę
+bez plakietki „Rana krytyczna!”; `/jako <imię>` mówi też za NPC-a z figury na scenie MG (umowa
+na górze `czat`); notatki 💬 i ❓ wzorca 66c poprawione. Zamknięte z diagnozą
+w `archiwum/zamkniete-zaleglosci.md`. **Nie ruszone, bo to decyzja MG:** „Cofnij” obrażeń
+kadłuba przywraca przyciski celowo (tak MG przenosi trafienie) — dopisane przy wpisie.
+**Zostało** z drobiazgów: bryła `van-8`, kubek nad „Następna tura”, „Odjedź” MG, kamera
+gracza, EMP 2, i „resztki” (metry przy wysiadce, wrak za autem, podpisy foteli).
+**Oglądane:** **nie w przeglądarce** — zaległość „oględziny paska »Zderzenie« i `/jako`”.
+**Testy:** shared 2947, client 471, server 1737 zielone, `tsc` i ESLint czyste, build klienta
+przechodzi. Bez migracji bazy.
 
 ### Sesja 04.11, piąta — zaległości z przebiegu „Ostatniego zjazdu” (66c)
 
@@ -672,21 +687,3 @@ domowe w `decyzje-i-uproszczenia.md`.
 zmian pościgu i czatu”). **Testy:** shared 2943, client 468, server 1736 zielone, `tsc` i ESLint
 czyste, build klienta przechodzi; `chase-combat` raz migotnął pod `vitest run src/chase`
 (dopisane do zaległości o migotaniu). Bez migracji bazy.
-
-### Sesja 04.11, czwarta — rozegranie „Ostatniego zjazdu” w przeglądarce (66c)
-
-**Zlecenie MG:** rozegrać w przeglądarce `etap-66c-ostatni-zjazd.md` na przygotowanych postaciach
-i scenie, z pytaniami. **Odpowiedzi MG:** błędy notuję i obchodzę ręką MG (bez napraw kodu),
-prowadzę jak MG przy stole (korekty z tabeli „za łatwo / za trudno”, wczesny koniec = wynik
-balansu), notatki wzorca poprawiam od razu. **Zrobione:** 7 rund na `dev.db` (kopia
-`dev.db.bak-20261104-66c`), wynik „sukces z kosztem” — furgon wbity w barykadę w rundzie 6,
-Wolt martwy, Kłoda poddał się po Perswazji, Iskra z urazem kręgosłupa po taranie bokiem.
-Wrak Wozu od jednej serii karabinu Rydwanu w rundzie 4 (porażka) MG cofnął i zgasił Rydwan.
-Przebieg, drogi do celu i 6 wniosków o balansie w pliku etapu („Rozegranie w przeglądarce”),
-11 błędów i drobiazgów w `zaleglosci.md` (najważniejsze: klik w fotel z bronią w ręku celuje
-w auto; marsz MG wyprowadza NPC-a z fotela przez barierę). Poprawione teksty pięciu notatek
-wzorca. **Oglądane:** MG i Ola w Chromium, Tester i Handlarz w **Firefoksie** (Playwright MCP).
-**Decyzje MG po rozegraniu (wprowadzone):** Rydwan bez karabinu pokładowego (Grot z pistoletem),
-postać bez broni bierze pistolet ze schowka Wozu (wstęp + notatka ❓), NPC-e +1 do broni,
-Szron i Kłoda +2, szyba bez zmian. **Testy:** kod aplikacji nietknięty; testy wzorców `shared`
-17/17, serwer 7/7 po zmianach `scene.json`.

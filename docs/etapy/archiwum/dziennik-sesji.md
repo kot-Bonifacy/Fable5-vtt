@@ -1,5 +1,23 @@
 # Dziennik sesji — archiwum
 
+### Sesja 04.11, czwarta — rozegranie „Ostatniego zjazdu” w przeglądarce (66c)
+
+**Zlecenie MG:** rozegrać w przeglądarce `etap-66c-ostatni-zjazd.md` na przygotowanych postaciach
+i scenie, z pytaniami. **Odpowiedzi MG:** błędy notuję i obchodzę ręką MG (bez napraw kodu),
+prowadzę jak MG przy stole (korekty z tabeli „za łatwo / za trudno”, wczesny koniec = wynik
+balansu), notatki wzorca poprawiam od razu. **Zrobione:** 7 rund na `dev.db` (kopia
+`dev.db.bak-20261104-66c`), wynik „sukces z kosztem” — furgon wbity w barykadę w rundzie 6,
+Wolt martwy, Kłoda poddał się po Perswazji, Iskra z urazem kręgosłupa po taranie bokiem.
+Wrak Wozu od jednej serii karabinu Rydwanu w rundzie 4 (porażka) MG cofnął i zgasił Rydwan.
+Przebieg, drogi do celu i 6 wniosków o balansie w pliku etapu („Rozegranie w przeglądarce”),
+11 błędów i drobiazgów w `zaleglosci.md` (najważniejsze: klik w fotel z bronią w ręku celuje
+w auto; marsz MG wyprowadza NPC-a z fotela przez barierę). Poprawione teksty pięciu notatek
+wzorca. **Oglądane:** MG i Ola w Chromium, Tester i Handlarz w **Firefoksie** (Playwright MCP).
+**Decyzje MG po rozegraniu (wprowadzone):** Rydwan bez karabinu pokładowego (Grot z pistoletem),
+postać bez broni bierze pistolet ze schowka Wozu (wstęp + notatka ❓), NPC-e +1 do broni,
+Szron i Kłoda +2, szyba bez zmian. **Testy:** kod aplikacji nietknięty; testy wzorców `shared`
+17/17, serwer 7/7 po zmianach `scene.json`.
+
 ### Sesja 04.11, trzecia — przygotowanie przebiegu „Ostatniego zjazdu” w przeglądarce
 
 **Zlecenie MG:** „wykonaj w przeglądarce pełen przebieg przykładowej sceny z pościgiem”,
