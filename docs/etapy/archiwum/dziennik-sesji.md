@@ -1,5 +1,28 @@
 # Dziennik sesji — archiwum
 
+### Sesja 03.11, ósma — kreator sceny pościgu
+
+**Zlecenie MG:** „popraw interfejs tworzenia scen pościgowych”, z pytaniami przy wątpliwościach.
+**Odpowiedzi MG (03.11):** uwiera pas jezdni wpisywany liczbami; forma — kreator krok po kroku
+i rozbudowana zakładka „Pościg”; pas — uchwyty na mapie; wbudowane tła drogi — tak, z asfaltu
+CC0 dorysowanego skryptem, wszystkie cztery (autostrada, ulica 2+2, estakada, Badlands); kreator
+z krokiem „Auta”; uchwyty tylko przy otwartym „Pościgu”, zapis „Zapisz”; **MG może wgrać też
+własną grafikę** (uwaga w trakcie). **Zrobione:** `tools/art/chase-roads.py` + 4 drogi
+i miniatury w `public/art/roads/` (35 × 18 kratek, okres 32 — szew znika; tekstury ambientCG
+z kopii na GitHubie, bo ambientCG.com jest zablokowany w kontenerze), `shared/chase-roads.ts`
+(`CHASE_ROADS`, `chaseRoadPatch`, `chaseRoadWithEdge`, `chaseRoadCells`, `chaseFreeSpot`),
+`scene:update` przyjmuje tło z listy dróg, `ChaseLayer`/`MapRenderer` — uchwyty pasa
+i `frameScene`, `ChaseSetup.tsx`, `ChaseWizard.tsx`, `Segmented.tsx`, zakładka „Pościg” na
+sekcjach kreatora, „Na drogę” na karcie pojazdu przez `chaseFreeSpot`. **Rozstrzygnięcia bez
+pytań (do słowa MG):** „✕” kreatora zapisuje wybrane kroki (w Edycji „✕” dalej porzuca szkic);
+aktywacji sceny kreator nie robi — zostaje przycisk na liście scen; drogi są poziome (jazda
+w pionie po wbudowanej drodze daje ostrzeżenie); własna mapa dostaje kierunek z proporcji i pas
+na całą szerokość. **Testy:** `shared` 2941/2941 (+13 `chase-roads.test.ts`), serwer 1732/1732
+(+1 w `chase.test.ts`), klient 468/468, `tsc` w trzech pakietach, ESLint i Prettier czyste. **Oglądane w Chromium** (skrypt
+`playwright` na instancji E2E: kreator od pustej sceny, przeciągnięcie krawędzi pasa myszą,
+dwa auta obok siebie, zakładka „Pościg”, własna mapa) — **Firefoksa w kontenerze nie ma**,
+Playwright MCP niepodłączony; zaległość w `zaleglosci.md`.
+
 ### Sesja 03.11, siódma — przegląd mechanik pościgu
 
 **Zlecenie MG:** sprawdzić mechaniki sceny pościgu (bez ulepszeń pojazdów), czy mają sens

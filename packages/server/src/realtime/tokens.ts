@@ -1,4 +1,5 @@
 import { settleSeatAfterGmDrop } from './chase.js';
+import { offstageVehicleIds, seatedOffstage } from './chase-offstage.js';
 import { deferView } from './presentation.js';
 import type {
   FogShapeView,
@@ -427,6 +428,9 @@ export async function fetchSceneTokensFor(
     .map((row) => (isGm || !row.hidden ? row : { ...row, hidden: false }));
   const sheets = await loadLinkedSheets(prisma, registry, rows);
   const concealment = await concealmentFor(prisma, scene, user, context, liveOverride);
+  // Załoga auta poza pościgiem (66c) — gracz zna tylko własne figury z takiego auta.
+  const offstage =
+    isGm || scene.kind !== 'chase' ? new Set<string>() : await offstageVehicleIds(prisma, scene.id);
   const views: TokenView[] = [];
   for (const stored of rows) {
     const row =
@@ -434,6 +438,13 @@ export async function fetchSceneTokensFor(
         ? { ...stored, x: liveOverride.x, y: liveOverride.y }
         : stored;
     const linked = row.characterId ? sheets.get(row.characterId) : undefined;
+    if (
+      row.sceneVehicleId !== null &&
+      offstage.has(row.sceneVehicleId) &&
+      !controllerIds(row, linked).has(user.id)
+    ) {
+      continue;
+    }
     if (concealedFrom(row, scene, concealment, linked, user.id)) continue;
     views.push(toTokenView(row, seesPrivate(row, linked, user), linked, scene));
   }
@@ -707,6 +718,17 @@ export async function emitTokenUpsert(
   // Both owners see the private view; a player owning the sheet but not the
   // token (or the other way round) still gets exactly one copy.
   const privateUserIds = controllerIds(token, linked);
+
+  // Fotel auta poza pościgiem (66c): jak figura w mgle — MG i ci, którzy ją
+  // prowadzą. Przejście auta w ten stan i z powrotem odświeża listy graczy
+  // (`driftChaseRound`, `chase:restore`).
+  if (scene.kind === 'chase' && (await seatedOffstage(deps.ctx.prisma, token))) {
+    deps.io.to(gmRoom(campaignId)).emit('token:upsert', privatePayload);
+    for (const userId of privateUserIds) {
+      await emitToCampaignUser(deps.io, campaignId, userId, 'token:upsert', privatePayload);
+    }
+    return;
+  }
 
   // On a dynamic scene the audience cannot be a room at all: every player has
   // a different field of view, so „who may see this token?" has a different

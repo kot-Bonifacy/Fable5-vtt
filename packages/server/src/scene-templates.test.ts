@@ -7,7 +7,11 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { io as ioClient, type Socket as ClientSocket } from 'socket.io-client';
 import type {
   CampaignSummary,
+  CombatView,
   SceneTemplateCreateResult,
+  SceneVehicleView,
+  StateSyncPayload,
+  TokenSyncBroadcast,
   SceneTemplateSummary,
   SocketAck,
 } from '@vtt/shared';
@@ -73,7 +77,9 @@ function cookieOf(setCookieHeader: string | string[] | undefined): string {
   return raw.split(';')[0]!;
 }
 
-function connect(cookie: string): Promise<ClientSocket> {
+function connectWithSync(
+  cookie: string,
+): Promise<{ socket: ClientSocket; sync: StateSyncPayload }> {
   const socket = ioClient(baseUrl, {
     extraHeaders: { cookie },
     reconnection: false,
@@ -83,10 +89,35 @@ function connect(cookie: string): Promise<ClientSocket> {
   return new Promise((resolveSocket, reject) => {
     const timer = setTimeout(() => reject(new Error('state:sync timeout')), 4000);
     socket.once('connect_error', reject);
-    socket.once('state:sync', () => {
+    socket.once('state:sync', (sync: StateSyncPayload) => {
       clearTimeout(timer);
-      resolveSocket(socket);
+      resolveSocket({ socket, sync });
     });
+  });
+}
+
+async function connect(cookie: string): Promise<ClientSocket> {
+  return (await connectWithSync(cookie)).socket;
+}
+
+function waitForMatch<T>(
+  socket: ClientSocket,
+  event: string,
+  matches: (payload: T) => boolean,
+  ms = 4000,
+): Promise<T> {
+  return new Promise((resolveEvent, reject) => {
+    const timer = setTimeout(() => {
+      socket.off(event, listener);
+      reject(new Error(`${event} timeout`));
+    }, ms);
+    const listener = (payload: T) => {
+      if (!matches(payload)) return;
+      clearTimeout(timer);
+      socket.off(event, listener);
+      resolveEvent(payload);
+    };
+    socket.on(event, listener);
   });
 }
 
@@ -162,8 +193,8 @@ describe('etap 66: sceny przykładowe', () => {
       category: 'examples',
       kind: 'chase',
       backgroundUrl: null,
-      vehicles: 2,
-      figures: 3,
+      vehicles: 3,
+      figures: 5,
     });
     expect(await emitAck(player, 'scene:templates')).toMatchObject({ ok: false });
     expect(
@@ -187,8 +218,9 @@ describe('etap 66: sceny przykładowe', () => {
       }),
       'from-template',
     );
-    // Próbka z `data/public` ma alternatywę dla każdego wpisu wzorca.
-    expect(result.missing).toEqual([]);
+    // Próbka z `data/public` ma alternatywę dla każdego wpisu wzorca; nieznany
+    // stan figury (66c) wypada i trafia na listę dla MG.
+    expect(result.missing).toEqual(['status:nie-ma-takiego-stanu']);
 
     const scene = await built.prisma.scene.findUniqueOrThrow({ where: { id: result.sceneId } });
     expect(scene).toMatchObject({
@@ -212,9 +244,11 @@ describe('etap 66: sceny przykładowe', () => {
       where: { sceneId: scene.id },
       include: { vehicle: true },
     });
-    expect(placed).toHaveLength(2);
+    expect(placed).toHaveLength(3);
     const taxi = placed.find((row) => row.vehicle.name === 'Kradziona taksówka')!;
     const pickup = placed.find((row) => row.vehicle.name === 'Pickup Maelstromu')!;
+    const reserve = placed.find((row) => row.vehicle.name === 'Posiłki Maelstromu')!;
+    expect([taxi.status, pickup.status, reserve.status]).toEqual(['racing', 'racing', 'behind']);
     expect(taxi.vehicle).toMatchObject({ campaignId, ownerCharacterId: null });
     expect(taxi.vehicle.imageUrl).toBe('/art/vehicles/car-taxi.webp');
     expect(readCpredVehicle(taxi.vehicle.system).upgrades.map((row) => row.upgradeId)).toEqual([
@@ -232,11 +266,16 @@ describe('etap 66: sceny przykładowe', () => {
       expect(row.y + 1.5 * scene.gridSizePx).toBeLessThanOrEqual(9 * scene.gridSizePx + 0.01);
     }
 
-    const tokens = await built.prisma.token.findMany({
+    const all = await built.prisma.token.findMany({
       where: { sceneId: scene.id },
       include: { character: true },
       orderBy: { vehicleSeat: 'asc' },
     });
+    expect(all).toHaveLength(5);
+    const hostage = all.find((row) => row.name === 'Zakładnik')!;
+    expect(hostage).toMatchObject({ sceneVehicleId: taxi.id, vehicleSeat: 3 });
+    expect(JSON.parse(hostage.statuses)).toEqual(['unconscious']);
+    const tokens = all.filter((row) => row.sceneVehicleId === pickup.id);
     expect(tokens.map((row) => [row.name, row.vehicleSeat])).toEqual([
       ['Szczęka', 0],
       ['Bolec', 1],
@@ -278,8 +317,154 @@ describe('etap 66: sceny przykładowe', () => {
     const scene = await built.prisma.scene.findUniqueOrThrow({ where: { id: again.sceneId } });
     expect(scene.name).toBe('Pościg testowy 2');
     // Każda kopia ma własne auta i karty — nic nie jest dzielone między scenami.
-    expect(await built.prisma.vehicle.count({ where: { campaignId } })).toBe(4);
-    expect(await built.prisma.character.count({ where: { campaignId } })).toBe(6);
+    expect(await built.prisma.vehicle.count({ where: { campaignId } })).toBe(6);
+    expect(await built.prisma.character.count({ where: { campaignId } })).toBe(10);
+  });
+
+  it('auto w rezerwie (66c): gracz nie widzi ani auta, ani załogi; załoga poza walką do „Przywróć”', async () => {
+    const result = data(
+      await emitAck<SceneTemplateCreateResult>(gm, 'scene:from-template', {
+        templateId: 'test-poscig',
+      }),
+      'from-template 3',
+    );
+    const sceneId = result.sceneId;
+    const reserve = await built.prisma.sceneVehicle.findFirstOrThrow({
+      where: { sceneId, status: 'behind' },
+    });
+    const crew = await built.prisma.token.findFirstOrThrow({
+      where: { sceneId, sceneVehicleId: reserve.id },
+    });
+    expect(crew.name).toBe('Gwint');
+
+    expect((await emitAck(gm, 'scene:activate', { sceneId })).ok).toBe(true);
+    const { socket: player, sync } = await connectWithSync(playerCookie);
+    expect(sync.scene?.id).toBe(sceneId);
+    expect(sync.sceneVehicles.map((row) => row.id)).not.toContain(reserve.id);
+    expect(sync.tokens.map((row) => row.name).sort()).toEqual(
+      ['Bolec', 'Rdza', 'Szczęka', 'Zakładnik'].sort(),
+    );
+    // MG widzi wszystko.
+    const { sync: gmSync } = await connectWithSync(gmCookie);
+    expect(gmSync.tokens.map((row) => row.id)).toContain(crew.id);
+
+    // „Wszystkie figury na scenie” — załoga rezerwy zostaje poza kolejką.
+    const everyone = await built.prisma.token.findMany({ where: { sceneId } });
+    const combat = data(
+      await emitAck<CombatView>(gm, 'combat:start', {
+        sceneId,
+        tokenIds: everyone.map((row) => row.id),
+      }),
+      'combat:start',
+    );
+    expect(combat.combatants.map((row) => row.tokenId)).not.toContain(crew.id);
+    expect(combat.combatants).toHaveLength(4);
+
+    // „Przywróć do pościgu” wprowadza auto i załogę na mapę gracza.
+    const shown = waitForMatch<TokenSyncBroadcast>(player, 'token:sync', (payload) =>
+      payload.tokens.some((row) => row.id === crew.id),
+    );
+    const back = data(
+      await emitAck<SceneVehicleView>(gm, 'chase:restore', { sceneVehicleId: reserve.id }),
+      'chase:restore',
+    );
+    expect(back.status).toBe('racing');
+    expect((await shown).tokens.find((row) => row.id === crew.id)?.name).toBe('Gwint');
+  });
+});
+
+describe('etap 66c: „Ostatni zjazd”', () => {
+  it('staje na estakadzie bez braków: cztery auta, osiem NPC-ów, Rydwan w rezerwie, drużyna bez figur', async () => {
+    const gm = await connect(gmCookie);
+    const list = data(await emitAck<SceneTemplateSummary[]>(gm, 'scene:templates'), 'templates');
+    expect(list.find((row) => row.id === 'ostatni-zjazd')).toMatchObject({
+      name: 'Ostatni zjazd',
+      kind: 'chase',
+      backgroundUrl: '/art/roads/viaduct.webp',
+      vehicles: 4,
+      figures: 8,
+    });
+    const result = data(
+      await emitAck<SceneTemplateCreateResult>(gm, 'scene:from-template', {
+        templateId: 'ostatni-zjazd',
+      }),
+      'from-template',
+    );
+    expect(result.missing).toEqual([]);
+
+    const scene = await built.prisma.scene.findUniqueOrThrow({ where: { id: result.sceneId } });
+    expect(scene).toMatchObject({
+      kind: 'chase',
+      backgroundUrl: '/art/roads/viaduct.webp',
+      backgroundWidth: 3500,
+      backgroundHeight: 1800,
+      width: 3500,
+      height: 1800,
+      gridSizePx: 100,
+      chaseDirection: 'left',
+      chaseTempo: 40,
+      chaseRunning: true,
+      chaseRoadFrom: 3,
+      chaseRoadTo: 15,
+      spawnX: 3300,
+      spawnY: 1300,
+    });
+
+    const placed = await built.prisma.sceneVehicle.findMany({
+      where: { sceneId: scene.id },
+      include: { vehicle: true },
+    });
+    const byName = new Map(placed.map((row) => [row.vehicle.name, row]));
+    expect([...byName.keys()].sort()).toEqual(
+      ['Eskorta', 'Furgon Halcyonu', 'Rydwan', 'Wóz od Matyldy'].sort(),
+    );
+    const van = byName.get('Furgon Halcyonu')!;
+    expect(van.vehicle).toMatchObject({ layout: 'van-8', widthSq: 3, lengthSq: 7 });
+    expect(readCpredVehicle(van.vehicle.system).upgrades.map((row) => row.upgradeId)).toEqual([
+      'reinforced',
+      'armoredHull',
+      'bulletproofGlass',
+      'extraSeats',
+      'extraSeats',
+      'nitro',
+    ]);
+    expect(byName.get('Rydwan')!.status).toBe('behind');
+    expect(
+      placed
+        .filter((row) => row.status === 'racing')
+        .map((row) => row.vehicle.name)
+        .sort(),
+    ).toEqual(['Eskorta', 'Furgon Halcyonu', 'Wóz od Matyldy'].sort());
+    // Furgon z przodu (jazda w lewo), Wóz drużyny z tyłu.
+    expect(van.x).toBeLessThan(byName.get('Eskorta')!.x);
+    expect(byName.get('Eskorta')!.x).toBeLessThan(byName.get('Wóz od Matyldy')!.x);
+
+    const tokens = await built.prisma.token.findMany({ where: { sceneId: scene.id } });
+    expect(tokens).toHaveLength(8);
+    // Drużyna siada sama — w Wozie od Matyldy nie ma nikogo.
+    expect(tokens.some((row) => row.sceneVehicleId === byName.get('Wóz od Matyldy')!.id)).toBe(
+      false,
+    );
+    const seats = Object.fromEntries(
+      tokens.map((row) => [
+        row.name,
+        [placed.find((car) => car.id === row.sceneVehicleId)?.vehicle.name, row.vehicleSeat],
+      ]),
+    );
+    expect(seats).toEqual({
+      Wolt: ['Furgon Halcyonu', 0],
+      Kłoda: ['Furgon Halcyonu', 6],
+      Iskra: ['Furgon Halcyonu', 7],
+      Mewa: ['Eskorta', 0],
+      Szron: ['Eskorta', 1],
+      Lutka: ['Eskorta', 3],
+      Grot: ['Rydwan', 0],
+      Kabel: ['Rydwan', 1],
+    });
+    const iskra = tokens.find((row) => row.name === 'Iskra')!;
+    expect(iskra.disposition).toBe('neutral');
+    expect(JSON.parse(iskra.statuses)).toEqual(['unconscious']);
+    expect(await built.prisma.mapNote.count({ where: { sceneId: scene.id } })).toBe(5);
   });
 });
 

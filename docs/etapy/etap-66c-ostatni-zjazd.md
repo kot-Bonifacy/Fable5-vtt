@@ -1,8 +1,9 @@
 # Etap 66c — Scena przykładowa „Ostatni zjazd” (pościg na 2–3 graczy)
 
 **Faza:** przed betą (zlecenie MG z 04.11 spoza planu) · **Wymaga etapów:** 66 (wzorce scen),
-65 (scena pościgu, w tym kreator z wbudowanymi drogami z 03.11) · **Stan:** ⬜ projekt gotowy,
-decyzje MG z 04.11 wpisane, czeka na wdrożenie we wzorzec
+65 (scena pościgu, w tym kreator z wbudowanymi drogami z 03.11) · **Stan:** 🟨 wzorzec
+`data/public/scenes/ostatni-zjazd/` zrobiony 04.11 (druga sesja), czeka na przebieg MG przy stole
+(balans 3 graczy) i wdrożenie
 
 ## Skąd ten etap
 
@@ -420,33 +421,96 @@ dołożyć, jedna jest opcjonalna.
    dla Iskry). Bez tego MG po prostu nie dokłada Iskry do kolejki — notatka 2 o tym mówi.
    Jeśli to dojdzie, to raczej przy okazji, bo to nie blokuje sceny.
 
+### Wdrożenie (04.11, druga sesja) — decyzje MG i odstępstwa od projektu
+
+**Pytania do MG przed kodem (04.11):**
+
+1. **Załoga Rydwanu w rezerwie.** Serwer chował przed graczem tylko samo auto `behind` —
+   figury w fotelach dalej jechały do gracza (u Rydwanu stojącego w kadrze byłyby widoczne),
+   a wykrycie wroga (etap 56) wciągnęłoby je do starcia. **MG: reguła ogólna.** Figury
+   w fotelach auta `behind` / `escaped` nie wychodzą do gracza (poza tymi, które sam prowadzi),
+   nie zakładają walki przez zauważenie i nie wchodzą do `combat:start`. Dotyczy też każdego
+   auta, które odpadnie w zwykłym pościgu. Umowa na górze `mapa`.
+2. **Stan figury we wzorcu (pkt 3) — MG: tak.** Iskra startuje Nieprzytomna.
+3. **Przebieg na sucho — MG: techniczny przebieg robię sam**, balans przy stole ocenia MG.
+
+**Odstępstwa od projektu:**
+
+- Stany figury stoją w rdzeniu jako `figures[].statuses` (obok `glyph`, `facing`), nie
+  w `system`: `Token.statuses` to kolumna rdzenia, a id sprawdza serwer z listą stanów
+  systemu (`deps.ctx.statuses.ids`). Nieznany stan trafia do `missing` jako `status:<id>`.
+- Rydwan zostaje w kadrze (x 32,5, górny pas) jako półprzezroczysty duch MG, a nie za
+  krawędzią. „Przywróć do pościgu” zostawia go w tym samym miejscu, przy tylnej krawędzi.
+- Notatka 2 „Zanim ruszycie” mówi, jak naprawdę wygląda rozsadzenie: aktywacja nie stawia
+  figur drużyny (MG przeciąga je z „Postaci”), a gracz bez zgody nie usiądzie za kierownicą
+  (`DRIVER_SEAT_FORBIDDEN`). Siada więc jako pasażer, MG daje „Może prowadzić” w menu Wozu
+  i dopiero wtedy gracz klika fotel kierowcy. Do tego tabela „za łatwo / za trudno”.
+  Wykrycie wroga (etap 56) na pościgu samo starcia nie zakłada: stawianie i sadzanie figur go
+  nie wyzwala. Dlatego notatka mówi „włącz tryb turowy”, jak w projekcie.
+- Fikstura `test-poscig` dostała auto w rezerwie („Posiłki Maelstromu” z Gwintem) i figurę
+  ze stanem (Zakładnik, `unconscious` + nieznany id). Na niej stoi test reguły ogólnej.
+- **Runda 3 bez „Dołącz do walki”:** „Przywróć do pościgu” odświeża graczom listę figur,
+  a to uruchamia wykrycie wroga (etap 56). Grot i Kabel dołączają do walki sami, z inicjatywą
+  rzuconą przez serwer. Ręczne „Dołącz do walki” zostaje tylko na grę bez rozpoczętej sesji.
+- **Taran Pługiem kosztuje Iskrę Ranę krytyczną.** Taranowany zawsze daje każdemu w środku
+  „Odgięciowy uraz kręgosłupa” (s. 191, Pług chroni tylko taranującego). Notatka 1 o tym
+  mówi, a zakończenie „sukces z kosztem” to obejmuje.
+
+### Przebieg techniczny (04.11, spec oględzin na instancji E2E z `data/private`)
+
+MG w Chromium, Marek (Kowal) i Ola (Iskra z punktu `po-T6`) w **Firefoksie**. Spec
+tymczasowy, niezacommitowany (`99-ostatni-zjazd`), 8/8 zielonych:
+
+1. „Przykładowe” → „Dodaj do kampanii”: bez komunikatu o brakach. Auta mają liczby
+   z projektu (furgon 70 PUK, Ruch 5 kratek na turę, dryf −5, `van-8`; Wóz, eskorta i Rydwan
+   Ruch 10, dryf 0), Rydwan `behind` w prawym górnym rogu jako duch MG.
+2. Aktywacja: Ola widzi figury z furgonu i eskorty, ale nie Grota, Kabla ani Rydwanu.
+3. Rozsadzenie: fotel kierowcy bez zgody MG odmawia (`DRIVER_SEAT_FORBIDDEN`); pasażer →
+   „Może prowadzić” → fotel kierowcy działa.
+4. `combat:start` ze wszystkimi figurami sceny: 7 w kolejce, bez załogi Rydwanu. Mewa zrzuca
+   kolczatkę za eskortę.
+5. Taran Pługiem: Kowal wjeżdża w furgon — furgon 70 → 47 (6k6 = 36 − OB 13), Wóz 50/50.
+6. Strzał Iskry w Wolta: karta odmowy „Furgon Halcyonu — tylna szyba” 15/15.
+7. Runda 2: furgon nie cofa się, bo Wóz stoi mu na zderzaku (dryf staje przy zderzaku, 65d2).
+   „Przywróć do pościgu”: Ola widzi Rydwan, Grota i Kabla, obaj dołączają do walki sami.
+8. Wolt Nieprzytomny, auto cywilne na pasie furgonu: w następnej rundzie furgon bez kontroli
+   wjeżdża w nie sam (PUK 47 → 37, auto cywilne 25 → 3).
+
+**Zauważone przy okazji (sprzed 66c, do oceny przy stole):** przeszkoda, którą auto minęło
+albo staranowało, ląduje za jego tylnym zderzakiem także wtedy, gdy stoi tam inne auto (tu
+pod Wozem, który pchał furgon). Podpis figury z przedniego fotela nachodzi na pierścień
+figury z fotela obok (Wóz i furgon u gracza). Obie rzeczy są w `zaleglosci.md`.
+
 ### Do zrobienia
 
-- [ ] Czytnik wzorca: tło z `CHASE_ROADS` (pkt 1) + testy `shared` (przyjęcie drogi, odmowa
+- [x] Czytnik wzorca: tło z `CHASE_ROADS` (pkt 1) + testy `shared` (przyjęcie drogi, odmowa
       obcego `/art/…`, rozmiar z listy).
-- [ ] `vehicles[].status` (pkt 2) w `readSceneTemplate` i `instantiateSceneTemplate`, test
+- [x] `vehicles[].status` (pkt 2) w `readSceneTemplate` i `instantiateSceneTemplate`, test
       serwera na fiksturze `test-poscig` (auto `behind` niewidoczne dla gracza, figury poza
       kolejką po starcie walki).
-- [ ] `data/public/scenes/ostatni-zjazd/scene.json` wg tego pliku: 4 auta, 8 figur
+- [x] `figures[].statuses` (pkt 3, decyzja MG) — Iskra Nieprzytomna.
+- [x] `data/public/scenes/ostatni-zjazd/scene.json` wg tego pliku: 4 auta, 8 figur
       (Wolt, Kłoda, Iskra, Mewa, Szron, Lutka, Grot, Kabel; drużyna siada sama), 5 notatek, opis
       ≤ 600 znaków.
-- [ ] Test serwera: wzorzec `ostatni-zjazd` staje bez `missing` na próbce, furgon ma `van-8`
+- [x] Test serwera: wzorzec `ostatni-zjazd` staje bez `missing` na próbce, furgon ma `van-8`
       i 8 foteli, Rydwan `behind`, drużyna bez figur.
-- [ ] Oględziny w **Firefoksie** (Playwright, instancja E2E z `data/private`): lista
-      „Przykładowe”, dodanie, bieżnia na estakadzie, fotele i podpisy (osiem podpisów
-      pod czterema autami nie może na siebie nachodzić), przywrócenie Rydwanu, kolczatka
-      eskorty, taran Pługiem w furgon.
-- [ ] Przebieg na sucho dwóch rund przez MG z dwoma kontami graczy (balans 3 graczy).
+- [x] Oględziny w **Firefoksie** (Playwright, instancja E2E z `data/private`): lista
+      „Przykładowe”, dodanie, bieżnia na estakadzie, fotele i podpisy (podpisy aut i figur
+      w różnych autach na siebie nie nachodzą), przywrócenie Rydwanu, kolczatka eskorty,
+      taran Pługiem w furgon.
+- [x] Przebieg techniczny dwóch rund (MG + dwa konta graczy, spec) — wyżej.
+- [ ] Balans na 3 graczy przy prawdziwym stole — **MG**.
 
 ## Kryteria ukończenia
 
-- [ ] MG w dowolnej kampanii dodaje „Ostatni zjazd” z sekcji „Przykładowe” i dostaje scenę
+- [x] MG w dowolnej kampanii dodaje „Ostatni zjazd” z sekcji „Przykładowe” i dostaje scenę
       z czterema autami, kartami ośmiu NPC-ów i pięcioma notatkami, bez listy braków przy
       katalogu z `data/private`.
-- [ ] Rydwan jest niewidoczny dla graczy do „Przywróć do pościgu”.
+- [x] Rydwan jest niewidoczny dla graczy do „Przywróć do pościgu” (razem z załogą).
 - [ ] Wszystkie drogi do celu z tabeli działają przy stole (strzał przez szybę, taran Pługiem,
-      przeszkoda przed furgonem bez kontroli).
-- [ ] Testy `shared` i serwera przechodzą, oględziny w Firefoksie opisane w notatce sesji.
+      przeszkoda przed furgonem bez kontroli) — w specu działają wszystkie trzy, „przy stole”
+      potwierdza MG.
+- [x] Testy `shared` i serwera przechodzą, oględziny w Firefoksie opisane w notatce sesji.
 
 ## Decyzje MG z 04.11
 

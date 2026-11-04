@@ -26,6 +26,7 @@ import {
   CHASE_TEMPO_MIN,
   type ChaseDirection,
 } from './chase.js';
+import { chaseRoadByUrl } from './chase-roads.js';
 import { CHASE_AMBIENCE, isAmbiencePreset, type AmbiencePreset } from './music.js';
 import { NOTE_ICONS, NOTE_TEXT_MAX_LENGTH, type NoteIcon } from './notes.js';
 import {
@@ -56,8 +57,24 @@ export type SceneTemplateCategory = keyof typeof SCENE_TEMPLATE_CATEGORIES;
 /** Id wzorca to nazwa katalogu: małe litery, cyfry i myślniki. */
 export const SCENE_TEMPLATE_ID_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
-/** Tło wzorca leży obok jego pliku w `data/public/scenes/` (serwer wydaje je pod `/public/`). */
+/**
+ * Tło wzorca leży obok jego pliku w `data/public/scenes/` (serwer wydaje je pod
+ * `/public/`) albo jest wbudowaną drogą pościgu z `CHASE_ROADS` (66c) — wtedy
+ * rozmiar bierze się z listy, a nie z pliku.
+ */
 export const SCENE_TEMPLATE_URL_PREFIX = '/public/scenes/';
+
+/**
+ * Auto wzorca startuje w pościgu (`racing`) albo w rezerwie (`behind`, 66c):
+ * gracz go nie widzi, figury w jego fotelach nie wchodzą do walki, a MG
+ * wprowadza je „Przywróć do pościgu”.
+ */
+export const SCENE_TEMPLATE_VEHICLE_STATUSES = ['racing', 'behind'] as const;
+export type SceneTemplateVehicleStatus = (typeof SCENE_TEMPLATE_VEHICLE_STATUSES)[number];
+
+/** Ile stanów (naklejek) może nieść figura wzorca. */
+export const SCENE_TEMPLATE_FIGURE_STATUSES_MAX = 8;
+const STATUS_ID_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
 export const SCENE_TEMPLATE_DESCRIPTION_MAX = 600;
 export const SCENE_TEMPLATE_VEHICLES_MAX = 12;
@@ -131,6 +148,8 @@ export interface SceneTemplateVehicle {
   /** Środek bryły w kratkach. */
   x: number;
   y: number;
+  /** `behind` — auto w rezerwie, poza pościgiem do „Przywróć” MG (66c). */
+  status: SceneTemplateVehicleStatus;
   /** Z czego zbudować auto — czyta moduł systemu. */
   system: unknown;
 }
@@ -155,6 +174,11 @@ export interface SceneTemplateFigure {
   facing: number | null;
   /** Zasięg wzroku w metrach (`Token.visionRange`); `null` — tyle, ile pozwolą ściany. */
   visionRange: number | null;
+  /**
+   * Stany figury na starcie (`Token.statuses`, np. `unconscious`, 66c). Id
+   * sprawdza serwer z listą stanów systemu — nieznane idą do `missing`.
+   */
+  statuses: string[];
   /** Statblok karty NPC-a — czyta moduł systemu. */
   system: unknown;
 }
@@ -282,7 +306,11 @@ function readScene(raw: unknown): SceneTemplateScene | null {
     raw.kind === 'chase' ? 'chase' : raw.kind === 'map' || raw.kind === undefined ? 'map' : null;
   if (!kind) return null;
   let backgroundUrl: string | null = null;
-  if (raw.backgroundUrl !== undefined && raw.backgroundUrl !== null) {
+  // Wbudowana droga (66c): adres i rozmiar z `CHASE_ROADS`, jak w `scene:update`.
+  const road = chaseRoadByUrl(raw.backgroundUrl as string | null | undefined);
+  if (road) {
+    backgroundUrl = road.url;
+  } else if (raw.backgroundUrl !== undefined && raw.backgroundUrl !== null) {
     if (
       typeof raw.backgroundUrl !== 'string' ||
       !raw.backgroundUrl.startsWith(SCENE_TEMPLATE_URL_PREFIX) ||
@@ -292,10 +320,16 @@ function readScene(raw: unknown): SceneTemplateScene | null {
     }
     backgroundUrl = raw.backgroundUrl;
   }
-  const bgWidth =
-    finite(raw.backgroundWidth) && raw.backgroundWidth > 0 ? raw.backgroundWidth : null;
-  const bgHeight =
-    finite(raw.backgroundHeight) && raw.backgroundHeight > 0 ? raw.backgroundHeight : null;
+  const bgWidth = road
+    ? road.width
+    : finite(raw.backgroundWidth) && raw.backgroundWidth > 0
+      ? raw.backgroundWidth
+      : null;
+  const bgHeight = road
+    ? road.height
+    : finite(raw.backgroundHeight) && raw.backgroundHeight > 0
+      ? raw.backgroundHeight
+      : null;
   if (backgroundUrl && (bgWidth === null || bgHeight === null)) return null;
   const width = finite(raw.width) && raw.width > 0 ? raw.width : (bgWidth ?? 4000);
   const height = finite(raw.height) && raw.height > 0 ? raw.height : (bgHeight ?? 3000);
@@ -364,7 +398,12 @@ function readVehicle(raw: unknown): SceneTemplateVehicle | null {
     if (!isVehicleArtUrl(raw.imageUrl)) return null;
     imageUrl = raw.imageUrl;
   }
-  return { key, name, imageUrl, x: raw.x, y: raw.y, system: raw.system ?? null };
+  let status: SceneTemplateVehicleStatus = 'racing';
+  if (raw.status !== undefined) {
+    if (!(SCENE_TEMPLATE_VEHICLE_STATUSES as readonly unknown[]).includes(raw.status)) return null;
+    status = raw.status as SceneTemplateVehicleStatus;
+  }
+  return { key, name, imageUrl, x: raw.x, y: raw.y, status, system: raw.system ?? null };
 }
 
 function readFigure(raw: unknown, vehicleKeys: ReadonlySet<string>): SceneTemplateFigure | null {
@@ -399,6 +438,16 @@ function readFigure(raw: unknown, vehicleKeys: ReadonlySet<string>): SceneTempla
   }
   // Figura w fotelu bierze miejsce z auta — liczby są wtedy nieobowiązkowe.
   if (!vehicle && (!finite(raw.x) || !finite(raw.y))) return null;
+  let statuses: string[] = [];
+  if (raw.statuses !== undefined) {
+    if (!Array.isArray(raw.statuses) || raw.statuses.length > SCENE_TEMPLATE_FIGURE_STATUSES_MAX) {
+      return null;
+    }
+    if (!raw.statuses.every((id) => typeof id === 'string' && STATUS_ID_PATTERN.test(id))) {
+      return null;
+    }
+    statuses = [...new Set(raw.statuses as string[])];
+  }
   return {
     key,
     name,
@@ -410,6 +459,7 @@ function readFigure(raw: unknown, vehicleKeys: ReadonlySet<string>): SceneTempla
     glyph,
     facing,
     visionRange,
+    statuses,
     system: raw.system ?? null,
   };
 }

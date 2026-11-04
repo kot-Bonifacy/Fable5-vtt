@@ -173,4 +173,4 @@ a w `POSTEP.md` popraw tylko wiersz stanu.
 | 65e    | Przeszkody i ruch uliczny: MG wypuszcza na pas, Manewr albo taranowanie, kolczatka | ✅     | 2026-10-31          |
 | 66     | Sceny przykładowe: wzorce scen w repo dla każdego MG, „Pościg na wiadukcie” (Maelstrom, taksówka; wzorzec skasowany 04.11) | 🟨     | 2026-10-31          |
 | 66b    | Wzorzec zwykłej mapy: ciemność, ściany, osłony, urządzenia, gniazda i Sieć; „Fabryka dronów” | 🟨     | 2026-10-31          |
-| 66c    | Scena przykładowa „Ostatni zjazd”: pościg na 2–3 graczy na wbudowanej estakadzie (drużyna goni furgon z porwaną) | ⬜     | projekt 2026-11-04  |
+| 66c    | Scena przykładowa „Ostatni zjazd”: pościg na 2–3 graczy na wbudowanej estakadzie (drużyna goni furgon z porwaną); załoga auta poza pościgiem ukryta przed graczem | 🟨     | 2026-11-04          |

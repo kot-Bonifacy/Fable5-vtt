@@ -1,6 +1,7 @@
 import { readFileSync, readdirSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
+import { CHASE_ROADS } from './chase-roads.js';
 import { readSceneTemplate, sceneTemplatePoint } from './scene-templates.js';
 import {
   cpredTemplateNpcEntryIds,
@@ -79,11 +80,66 @@ describe('readSceneTemplate (etap 66)', () => {
         (raw) => ({ ...raw, vehicles: [{ ...raw.vehicles[0], imageUrl: '/uploads/a.png' }] }),
       ],
       ['pusta notatka', (raw) => ({ ...raw, notes: [{ x: 1, y: 1, text: '  ' }] })],
+      [
+        'obca grafika z /art/',
+        (raw) => ({ ...raw, scene: { ...raw.scene, backgroundUrl: '/art/roads/nie-ma.webp' } }),
+      ],
+      [
+        'auto w nieznanym stanie',
+        (raw) => ({ ...raw, vehicles: [{ ...raw.vehicles[0], status: 'escaped' }] }),
+      ],
+      [
+        'stan figury, który nie jest id',
+        (raw) => ({ ...raw, figures: [{ ...raw.figures[0], statuses: ['Nieprzytomny'] }] }),
+      ],
     ];
     for (const [label, broken] of cases) {
       expect(readSceneTemplate(broken(minimal()), 'proba'), label).toBeNull();
     }
     expect(readSceneTemplate(minimal(), '../proba')).toBeNull();
+  });
+
+  it('tło z wbudowanej drogi: adres i rozmiar z CHASE_ROADS, nie z pliku (66c)', () => {
+    const viaduct = CHASE_ROADS.find((road) => road.id === 'viaduct')!;
+    const raw = minimal();
+    const template = readSceneTemplate(
+      {
+        ...raw,
+        scene: {
+          ...raw.scene,
+          backgroundUrl: viaduct.url,
+          backgroundWidth: 10,
+          backgroundHeight: undefined,
+          gridSizePx: 100,
+        },
+      },
+      'proba',
+    )!;
+    expect(template).not.toBeNull();
+    expect(template.scene).toMatchObject({
+      backgroundUrl: '/art/roads/viaduct.webp',
+      backgroundWidth: viaduct.width,
+      backgroundHeight: viaduct.height,
+      width: viaduct.width,
+      height: viaduct.height,
+    });
+  });
+
+  it('auto w rezerwie i stany figury (66c)', () => {
+    const raw = minimal();
+    const template = readSceneTemplate(
+      {
+        ...raw,
+        vehicles: [{ ...raw.vehicles[0], status: 'behind' }],
+        figures: [{ ...raw.figures[0], statuses: ['unconscious', 'unconscious', 'prone'] }],
+      },
+      'proba',
+    )!;
+    expect(template.vehicles[0]!.status).toBe('behind');
+    expect(template.figures[0]!.statuses).toEqual(['unconscious', 'prone']);
+    const plain = readSceneTemplate(minimal(), 'proba')!;
+    expect(plain.vehicles[0]!.status).toBe('racing');
+    expect(plain.figures[0]!.statuses).toEqual([]);
   });
 });
 
@@ -155,6 +211,15 @@ describe('wzorce w data/public/scenes', () => {
     .filter((dirent) => dirent.isDirectory())
     .map((dirent) => dirent.name);
 
+  // Stany figur sprawdza serwer z listą systemu — tu ta sama lista z repo.
+  const statusIds = new Set(
+    (
+      JSON.parse(readFileSync(join(root, '..', 'cpred', 'statuses.json'), 'utf8')) as {
+        statuses: { id: string }[];
+      }
+    ).statuses.map((row) => row.id),
+  );
+
   it('każdy wzorzec z repo jest poprawny, a jego tło leży obok', () => {
     expect(ids.length).toBeGreaterThan(0);
     for (const id of ids) {
@@ -163,8 +228,16 @@ describe('wzorce w data/public/scenes', () => {
       expect(template, id).not.toBeNull();
       const url = template!.scene.backgroundUrl;
       if (url) {
-        const file = join(root, '..', url.slice('/public/'.length));
+        // Wbudowana droga (66c) to statyczny plik klienta, reszta leży obok wzorca.
+        const file = url.startsWith('/art/')
+          ? join(root, '../../../packages/client/public', url)
+          : join(root, '..', url.slice('/public/'.length));
         expect(() => readFileSync(file), `${id}: ${url}`).not.toThrow();
+      }
+      for (const figure of template!.figures) {
+        for (const status of figure.statuses) {
+          expect(statusIds.has(status), `${id}: ${figure.name} — ${status}`).toBe(true);
+        }
       }
     }
   });

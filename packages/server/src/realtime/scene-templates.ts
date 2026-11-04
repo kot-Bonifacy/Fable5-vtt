@@ -159,6 +159,15 @@ export async function instantiateSceneTemplate(
   }
   const netData = netrunningDataOf(deps.ctx.cpred);
 
+  // Stany figur (66c) z listy systemu, jak `token:update` — nieznany id do `missing`.
+  const figureStatuses = template.figures.map((figure) =>
+    figure.statuses.filter((id) => {
+      if (deps.ctx.statuses.ids.has(id)) return true;
+      missing.add(`status:${id}`);
+      return false;
+    }),
+  );
+
   const name = await freeSceneName(deps, campaignId, template.name);
   const t = template.scene;
   const point = (at: { x: number; y: number }) => sceneTemplatePoint(t, at);
@@ -218,8 +227,16 @@ export async function instantiateSceneTemplate(
       });
       vehicles.push(vehicle);
       const centre = clampChaseVehicle(point(spec), chaseBodyOf(vehicle), settings, frame);
+      // Auto w rezerwie (66c) stoi w kadrze, ale poza pościgiem: gracz go nie
+      // widzi, a MG wprowadza je „Przywróć do pościgu” w tym samym miejscu.
       const row = await tx.sceneVehicle.create({
-        data: { sceneId: scene.id, vehicleId: vehicle.id, x: centre.x, y: centre.y },
+        data: {
+          sceneId: scene.id,
+          vehicleId: vehicle.id,
+          x: centre.x,
+          y: centre.y,
+          status: spec.status,
+        },
       });
       placed.set(spec.key, { id: row.id, vehicle, x: centre.x, y: centre.y });
     }
@@ -270,6 +287,7 @@ export async function instantiateSceneTemplate(
           glyph: figure.glyph,
           facing: figure.facing,
           visionRange: figure.visionRange,
+          statuses: JSON.stringify(figureStatuses[index]!),
           ...(seatCentre && car && figure.vehicle
             ? { sceneVehicleId: car.id, vehicleSeat: figure.vehicle.seat }
             : {}),

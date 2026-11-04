@@ -578,6 +578,15 @@ export function isSceneVehicleStatus(value: unknown): value is SceneVehicleStatu
   return (SCENE_VEHICLE_STATUSES as readonly unknown[]).includes(value);
 }
 
+/**
+ * Auto poza pościgiem (`behind`, `escaped`): gracz nie widzi ani auta, ani
+ * figur w jego fotelach (poza własnymi), a załoga nie wchodzi do walki, póki
+ * MG nie przywróci auta (66c — także auto w rezerwie ze wzorca).
+ */
+export function sceneVehicleOffstage(status: string): boolean {
+  return status === 'behind' || status === 'escaped';
+}
+
 /** Auto na scenie pościgu tak, jak widzi je klient — bryła jedzie razem z miejscem. */
 export interface SceneVehicleView {
   id: string;

@@ -6,6 +6,26 @@ w `POMYSLY.md` („Do sprawdzenia przy stole”), decyzje MG — w `decyzje-i-up
 
 ## Otwarte
 
+**04.11.2026 — „Ostatni zjazd” (66c): przebieg przy stole i wdrożenie.** Technicznie przejechany
+specem oględzin (MG w Chromium, Marek i Ola w Firefoksie, `data/private`). Zostaje dla MG:
+balans na 3 graczy przy prawdziwym stole (czy 6 rund wystarcza, czy furgon da się zatrzymać
+bez rakiety), wygląd podpisów ośmiu NPC-ów w czterech autach na żywo i portrety. Na VPS
+wzorzec jedzie z repo (bez migracji); kopie skasowanego „Pościgu na wiadukcie” w kampaniach na
+VPS — nie sprawdzone (zostaną bez tła). Reguła „załoga auta poza pościgiem” (umowa na górze
+`mapa`) dotyczy też aut, które odpadły w zwykłym pościgu — warto rzucić okiem przy stole, czy
+nikogo nie dziwi, że załoga znika razem z autem.
+
+**04.11.2026 — przeszkoda za autem ląduje na aucie, które stoi tuż za nim (65e, widziane
+w przebiegu 66c).** Furgon bez kontroli staranował auto cywilne, a to wylądowało za jego tylnym
+zderzakiem — pod Wozem drużyny, który pchał furgon (przeszkody rysują się pod autami, więc jej
+nie widać). `chaseObstaclePastVehicle` nie pyta, czy miejsce jest wolne. Do oceny MG: czy
+przeszkoda ma wtedy zniknąć, przesunąć się dalej, czy uderzyć w auto za nim. Przy okazji:
+podpis figury z przedniego fotela nachodzi na pierścień figury z fotela obok (`car-4`, `van-8`).
+
+**04.11.2026 — `surgery.test.ts` migocze pod pełną suitą serwera.** W jednym z dwóch pełnych
+przebiegów padły 2 testy (Test montażu z `outcome.success` innym niż oczekiwany); osobno
+3/3 zielone. Nie dotyka zmian 66c — do zbadania przy najbliższym przeglądzie testów (`testy`).
+
 **03.11.2026 — kreator pościgu: oględziny w Firefoksie i przy stole, wdrożenie.** Oglądane
 tylko w Chromium (skrypt `playwright` na instancji E2E) — Firefoksa w kontenerze nie ma, Playwright
 MCP niepodłączony. Przy stole (Firefox): „Utwórz → Pościg” — kreator, każda z czterech dróg

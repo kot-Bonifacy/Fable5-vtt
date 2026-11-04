@@ -1,0 +1,469 @@
+{
+  "schemaVersion": 1,
+  "name": "Ostatni zjazd",
+  "category": "examples",
+  "description": "Pościg na 2–3 graczy na wbudowanej estakadzie. Drużyna goni furgon Halcyonu z porwaną netrunnerką i musi go zatrzymać przed ostatnim zjazdem (6 rund), nie rozwalając ładunku. Trzy auta wroga: opancerzony furgon, eskorta z kolczatkami i Rydwan w rezerwie z karabinem pokładowym. Osiem kart NPC-ów i pięć notatek MG: przebieg rund, skalowanie, teksty dla graczy i zakończenia. Wymaga katalogu pojazdów z podręcznika — na samej próbce wszystkie auta są kompaktami.",
+  "scene": {
+    "kind": "chase",
+    "backgroundUrl": "/art/roads/viaduct.webp",
+    "gridSizePx": 100,
+    "gridOffsetX": 0,
+    "gridOffsetY": 0,
+    "gridVisible": true,
+    "gridPlayers": false,
+    "metersPerSquare": 1,
+    "visibility": "open",
+    "playerMove": "stop",
+    "ambience": "car",
+    "spawn": {
+      "x": 33,
+      "y": 13
+    },
+    "chase": {
+      "direction": "left",
+      "tempo": 40,
+      "running": true,
+      "road": {
+        "from": 3,
+        "to": 15
+      }
+    }
+  },
+  "vehicles": [
+    {
+      "key": "matylda",
+      "name": "Wóz od Matyldy",
+      "imageUrl": "/art/vehicles/car-orange.webp",
+      "x": 28,
+      "y": 9,
+      "system": {
+        "catalogIds": [
+          "vehicle.samochod-sportowy",
+          "vehicle.sample-kompakt"
+        ],
+        "upgrades": [
+          "ram",
+          "nitro"
+        ]
+      }
+    },
+    {
+      "key": "furgon",
+      "name": "Furgon Halcyonu",
+      "imageUrl": "/art/vehicles/van-white.webp",
+      "x": 9,
+      "y": 9,
+      "system": {
+        "catalogIds": [
+          "vehicle.samochod-kompaktowy",
+          "vehicle.sample-kompakt"
+        ],
+        "upgrades": [
+          "reinforced",
+          "armoredHull",
+          "bulletproofGlass",
+          "extraSeats",
+          "extraSeats",
+          "nitro"
+        ]
+      }
+    },
+    {
+      "key": "eskorta",
+      "name": "Eskorta",
+      "imageUrl": "/art/vehicles/car-black-viper.webp",
+      "x": 17.5,
+      "y": 13,
+      "system": {
+        "catalogIds": [
+          "vehicle.samochod-sportowy",
+          "vehicle.sample-kompakt"
+        ],
+        "upgrades": [
+          "bulletproofGlass",
+          "spikes",
+          "spikes"
+        ]
+      }
+    },
+    {
+      "key": "rydwan",
+      "name": "Rydwan",
+      "imageUrl": "/art/vehicles/car-red.webp",
+      "x": 32.5,
+      "y": 5,
+      "status": "behind",
+      "system": {
+        "catalogIds": [
+          "vehicle.samochod-sportowy",
+          "vehicle.sample-kompakt"
+        ],
+        "upgrades": [
+          "machineGun"
+        ]
+      }
+    }
+  ],
+  "figures": [
+    {
+      "name": "Wolt",
+      "vehicle": {
+        "key": "furgon",
+        "seat": 0
+      },
+      "disposition": "hostile",
+      "system": {
+        "stats": {
+          "int": 5,
+          "ref": 6,
+          "dex": 5,
+          "tech": 5,
+          "cool": 5,
+          "will": 4,
+          "luck": 2,
+          "move": 5,
+          "body": 5,
+          "emp": 3
+        },
+        "skills": {
+          "driving": 4,
+          "handgun": 4,
+          "evasion": 3,
+          "perception": 4,
+          "athletics": 3
+        },
+        "weapons": [
+          [
+            "weapon.heavy-pistol",
+            "weapon.zgrzyt-9"
+          ]
+        ],
+        "armorBody": [
+          "armor.light-armorjack",
+          "armor.kurtka-warsztatowa"
+        ]
+      }
+    },
+    {
+      "name": "Kłoda",
+      "vehicle": {
+        "key": "furgon",
+        "seat": 6
+      },
+      "disposition": "hostile",
+      "system": {
+        "stats": {
+          "int": 4,
+          "ref": 6,
+          "dex": 6,
+          "tech": 3,
+          "cool": 6,
+          "will": 6,
+          "luck": 2,
+          "move": 5,
+          "body": 8,
+          "emp": 2
+        },
+        "skills": {
+          "shoulder-arms": 6,
+          "brawling": 6,
+          "melee-weapon": 5,
+          "evasion": 4,
+          "perception": 5,
+          "athletics": 5,
+          "interrogation": 3
+        },
+        "weapons": [
+          [
+            "weapon.shotgun",
+            "weapon.huk-12"
+          ],
+          [
+            "weapon.heavy-melee",
+            "weapon.szpon"
+          ]
+        ],
+        "armorBody": [
+          "armor.medium-armorjack",
+          "armor.kurtka-warsztatowa"
+        ],
+        "armorHead": [
+          "armor.light-armorjack",
+          "armor.helm-kurierski"
+        ]
+      }
+    },
+    {
+      "name": "Iskra",
+      "vehicle": {
+        "key": "furgon",
+        "seat": 7
+      },
+      "disposition": "neutral",
+      "statuses": [
+        "unconscious"
+      ],
+      "system": {
+        "stats": {
+          "int": 7,
+          "ref": 6,
+          "dex": 5,
+          "tech": 6,
+          "cool": 4,
+          "will": 5,
+          "luck": 5,
+          "move": 6,
+          "body": 3,
+          "emp": 6
+        },
+        "skills": {
+          "electronics-security": 5,
+          "cryptography": 4,
+          "education": 5,
+          "perception": 4,
+          "conversation": 3,
+          "evasion": 3
+        },
+        "roleId": "netrunner",
+        "roleRank": 3
+      }
+    },
+    {
+      "name": "Mewa",
+      "vehicle": {
+        "key": "eskorta",
+        "seat": 0
+      },
+      "disposition": "hostile",
+      "system": {
+        "stats": {
+          "int": 5,
+          "ref": 8,
+          "dex": 6,
+          "tech": 4,
+          "cool": 6,
+          "will": 5,
+          "luck": 3,
+          "move": 6,
+          "body": 5,
+          "emp": 3
+        },
+        "skills": {
+          "driving": 7,
+          "handgun": 5,
+          "evasion": 5,
+          "perception": 5,
+          "athletics": 4
+        },
+        "weapons": [
+          [
+            "weapon.heavy-pistol",
+            "weapon.zgrzyt-9"
+          ]
+        ],
+        "armorBody": [
+          "armor.light-armorjack",
+          "armor.kurtka-warsztatowa"
+        ]
+      }
+    },
+    {
+      "name": "Szron",
+      "vehicle": {
+        "key": "eskorta",
+        "seat": 1
+      },
+      "disposition": "hostile",
+      "system": {
+        "stats": {
+          "int": 6,
+          "ref": 7,
+          "dex": 6,
+          "tech": 4,
+          "cool": 7,
+          "will": 6,
+          "luck": 3,
+          "move": 6,
+          "body": 7,
+          "emp": 2
+        },
+        "skills": {
+          "shoulder-arms": 6,
+          "autofire": 5,
+          "handgun": 5,
+          "evasion": 5,
+          "perception": 5,
+          "tactics": 5,
+          "brawling": 4
+        },
+        "weapons": [
+          [
+            "weapon.assault-rifle",
+            "weapon.grzechotnik"
+          ],
+          [
+            "weapon.heavy-pistol",
+            "weapon.zgrzyt-9"
+          ]
+        ],
+        "armorBody": [
+          "armor.medium-armorjack",
+          "armor.kurtka-warsztatowa"
+        ],
+        "armorHead": [
+          "armor.light-armorjack",
+          "armor.helm-kurierski"
+        ]
+      }
+    },
+    {
+      "name": "Lutka",
+      "vehicle": {
+        "key": "eskorta",
+        "seat": 3
+      },
+      "disposition": "hostile",
+      "system": {
+        "stats": {
+          "int": 4,
+          "ref": 7,
+          "dex": 7,
+          "tech": 3,
+          "cool": 5,
+          "will": 4,
+          "luck": 2,
+          "move": 6,
+          "body": 5,
+          "emp": 3
+        },
+        "skills": {
+          "autofire": 5,
+          "handgun": 5,
+          "evasion": 6,
+          "perception": 4,
+          "athletics": 4
+        },
+        "weapons": [
+          [
+            "weapon.submachine-gun",
+            "weapon.zardzewiak"
+          ]
+        ],
+        "armorBody": [
+          "armor.light-armorjack",
+          "armor.kurtka-warsztatowa"
+        ]
+      }
+    },
+    {
+      "name": "Grot",
+      "vehicle": {
+        "key": "rydwan",
+        "seat": 0
+      },
+      "disposition": "hostile",
+      "system": {
+        "stats": {
+          "int": 4,
+          "ref": 7,
+          "dex": 5,
+          "tech": 4,
+          "cool": 5,
+          "will": 4,
+          "luck": 2,
+          "move": 5,
+          "body": 6,
+          "emp": 2
+        },
+        "skills": {
+          "driving": 6,
+          "autofire": 5,
+          "handgun": 4,
+          "evasion": 4,
+          "perception": 4
+        },
+        "weapons": [
+          [
+            "weapon.heavy-pistol",
+            "weapon.zgrzyt-9"
+          ]
+        ],
+        "armorBody": [
+          "armor.light-armorjack",
+          "armor.kurtka-warsztatowa"
+        ]
+      }
+    },
+    {
+      "name": "Kabel",
+      "vehicle": {
+        "key": "rydwan",
+        "seat": 1
+      },
+      "disposition": "hostile",
+      "system": {
+        "stats": {
+          "int": 3,
+          "ref": 6,
+          "dex": 6,
+          "tech": 3,
+          "cool": 5,
+          "will": 5,
+          "luck": 2,
+          "move": 6,
+          "body": 7,
+          "emp": 2
+        },
+        "skills": {
+          "shoulder-arms": 5,
+          "brawling": 5,
+          "evasion": 4,
+          "perception": 4,
+          "athletics": 4
+        },
+        "weapons": [
+          [
+            "weapon.shotgun",
+            "weapon.huk-12"
+          ]
+        ],
+        "armorBody": [
+          "armor.light-armorjack",
+          "armor.kurtka-warsztatowa"
+        ]
+      }
+    }
+  ],
+  "notes": [
+    {
+      "x": 3,
+      "y": 17,
+      "icon": "📌",
+      "text": "OSTATNI ZJAZD — o co chodzi\n\nFixerka Matylda dostała cynk: zespół odzysku Halcyon Bioformy wiezie estakadą porwaną netrunnerkę Iskrę, która wykradła im coś ważnego (dopasuj do kampanii). Na koniec rundy 6 furgon zjedzie ostatnim zjazdem do strzeżonej enklawy Halcyonu i Iskry nikt już nie zobaczy. Drużyna dostaje od Matyldy wóz z Pługiem bojowym i Nitro i siada furgonowi na ogon.\n\nWygrana: furgon stoi przed końcem rundy 6 (kierowca padł, wrak, zderzenie), a Iskra żyje.\nPorażka: na koniec rundy 6 furgon jedzie i ma kierowcę albo Wóz od Matyldy jest wrakiem lub wypadł za tylną (prawą) krawędź.\n\nObsada (karty NPC-ów w kampanii, statystyki wymyślone):\n• Furgon Halcyonu — Wolt (kierowca, słaby), Kłoda (strażnik ze strzelbą, fotel z tyłu), Iskra (uśpiona).\n• Eskorta — Mewa (kierowczyni, 2 kolczatki), Szron (dowódca, karabin szturmowy), Lutka (pistolet maszynowy — tylko przy 3 graczach).\n• Rydwan (w rezerwie, wjeżdża w rundzie 3) — Grot (karabin pokładowy w przodzie), Kabel (strzelba).\n\nHaczyk: furgon ma opancerzony kadłub (OB 13, 70 PUK) i kuloodporne szyby. Strzał w kadłub nic nie daje, a rakieta albo granat w furgon trafi też Iskrę. Drogi do celu: rozbić szybę (15 PW) i zdjąć Wolta, taranować Pługiem (Wolt robi potem Manewr, a każdy w furgonie — także Iskra — dostaje Ranę krytyczną „uraz kręgosłupa”) albo wepchnąć furgon w przeszkodę.\n\nBilans tempa jest liczony dla katalogu pojazdów z podręcznika (s. 190–191). Na samej próbce kompendium wszystkie auta są kompaktami z Ruchem 20 — scena stanie, ale nie nadaje się do gry."
+    },
+    {
+      "x": 9,
+      "y": 17,
+      "icon": "❓",
+      "text": "ZANIM RUSZYCIE\n\n1. Skalowanie. 3 postacie — bez zmian. 2 postacie — przed aktywacją zdejmij figurę Lutki, nie przywracaj Rydwanu, zegar 7 rund. 3 postacie + bot — Rydwan wjeżdża już w rundzie 2, a Szron celuje najpierw w kierowcę drużyny.\n2. Portrety: wzorzec ich nie niesie (figury mają inicjały) — daj NPC-om portrety na kartach.\n3. Aktywuj scenę i przeciągnij postacie drużyny z zakładki „Postacie” na dolny pas za Wozem od Matyldy (miejsce startu). Gracze klikają wolne fotele pasażerów. Kierownicę daje MG: menu Wozu → „Może prowadzić” przy figurze, która ma prowadzić — potem ten gracz klika fotel kierowcy. Bot-towarzysz jedzie tylko jako pasażer.\n4. Drużyna ma własny wóz (Nomada, auto z karty)? Zdejmij Wóz od Matyldy z drogi i postaw swój przez „Na drogę”. Bez Pługa taranowanie furgonu kosztuje obrażenia.\n5. Iskra jest Nieprzytomna, więc traci turę. Nie dokładaj jej do kolejki, a stan zdejmij, gdy się obudzi.\n6. Rydwan stoi w rezerwie (półprzezroczysty, prawy górny róg): gracze nie widzą ani auta, ani załogi, a Grot i Kabel nie wchodzą do walki. W rundzie 3: menu auta → „Przywróć do pościgu”. Drużyna od razu ich widzi, więc obaj dołączają do walki sami z rzuconą inicjatywą (bez sesji — „Dołącz do walki”).\n7. Wszystkie silniki chodzą. Przeczytaj wstęp (notatka 💬) i włącz tryb turowy. Pierwsza runda nie dryfuje.\n8. Tempo 40: Wóz i eskorta trzymają się kadru, furgon (Ruch 20) cofa się o 5 kratek na rundę, więc Wolt jedzie całym budżetem i nie strzela. Kierunek i tempo zmienisz w Edycji sceny → Pościg.\n\nZa łatwo: Rydwan drugi raz w rundzie 5 albo wcześniejsza kolczatka. Za trudno: Lutka ucieka z Rydwanem, Rydwan zostaje w tyle (zgaś mu silnik) albo furgon łapie gumę (−10 PUK ręcznie i Manewr Wolta)."
+    },
+    {
+      "x": 15,
+      "y": 17,
+      "icon": "⚠️",
+      "text": "PRZEBIEG RUND — zegar: zjazd na koniec rundy 6 (przy 2 graczach 7)\n\nR1 — Szron strzela w Wóz albo w kierowcę (przednia szyba Wozu nie jest kuloodporna). Kłoda strzela przez tylną szybę furgonu. Mewa zjeżdża na pas Wozu, między niego a furgon. Pokaż, że kadłub furgonu nie bierze obrażeń: „Kule odbijają się od blach — to pancerz”.\nR2 — Mewa zrzuca pierwszą kolczatkę (menu auta → „Zrzuć kolczatkę”). Kto w nią wjedzie, rzuca Prowadzenie PT 17, a porażka to 4k6 w słaby punkt. Kierowca ominie ją zmianą pasa.\nR3 — Rydwan: „Przywróć do pościgu” (Grot i Kabel dołączają do walki sami). Auto cywilne z palety „Przeszkody” na pasie przed furgonem: Wolt robi Gwałtowny skręt (PT 13) albo taranuje.\nR4 — przypomnij zegar. Roboty drogowe na pasie Wozu (Manewr albo taranowanie — z Pługiem tanie, ale kosztuje turę). Szron celuje w słaby punkt Wozu (−8, obrażenia po OB ×2).\nR5 — druga kolczatka, jeśli Wóz jest za eskortą. Jeśli ją minął, Mewa taranuje Wóz z boku (bez Pługa oba auta biorą 6k6). Rydwan strzela serią w tył Wozu.\nR6 — barykada na pasie furgonu przed zjazdem: Wolt robi Skok (PT 17) albo Gwałtowny skręt. Jeśli na koniec rundy furgon jedzie i ma kierowcę, skręca w zjazd: porażka. Odsuń go za przednią (lewą) krawędź.\n\nMORALE\n• Szron pada → Mewa gasi silnik i eskorta zostaje w tyle. Lutka krzyczy „Odwrót!”.\n• Rydwan ma PUK ≤ 15 → Grot ucieka (zgaś silnik).\n• Wolt pada → furgon bez kontroli dryfuje na drużynę. Kłoda w swojej turze przesiada się za kierownicę (przeciągnij figurę i odlicz mu Akcję Ruchu). Drużyna ma jedną turę, żeby temu zapobiec.\n\nBARIERY: mechanika nie zrzuca aut z estakady. Auto po utracie kontroli na skrajnym pasie „szoruje po barierze w snopie iskier”. Furgonu nie spychaj w przepaść — Iskra by zginęła."
+    },
+    {
+      "x": 21,
+      "y": 17,
+      "icon": "💬",
+      "text": "WSTĘP I OKRZYKI\n\nWstęp (przeczytaj przed rundą 1):\n„Estakada wisi nad miastem jak neonowa nitka: magentowa bariera po lewej, cyjanowa po prawej, a za nimi tylko pustka i światła dzielnic sto metrów niżej. Matylda rzuca wam kluczyki i nie tłumaczy, skąd ma ten pomarańczowy wóz z pługiem przyspawanym do zderzaka. »Biały furgon Halcyonu, kilometr przed wami. W środku dziewczyna, która nazywa się Iskra i która zrobiła mi kiedyś przysługę. Za dziesięć minut furgon zjedzie z estakady do ich enklawy i będzie po niej. I jeszcze jedno: nie rozwalcie mi tego furgonu. Ona siedzi z tyłu.« Silnik ryczy. Przed wami, w smugach neonu, majaczy czarne auto, które jedzie stanowczo zbyt blisko białej furgonetki.”\n\nOkrzyki (na czat albo na głos):\n• Szron, runda 1: „Ogon na szóstej! Mewa, zamknij ich!”\n• Mewa, kolczatka: „Częstujcie się!”\n• Grot, wjazd Rydwanu: „Mamy ich z tyłu, zamykamy!”\n• Szron, celując w koła: „Celuj w koła!”\n• Wolt, przed barykadą: „Trzymajcie się, skaczę!”\n• Kłoda, gdy furgon stanie: „Jeszcze krok i dziewczyna dostaje w głowę!”\n• MG w rundach 4 i 6: „Zjazd na Halcyon za dwa kilometry!”"
+    },
+    {
+      "x": 32,
+      "y": 17,
+      "icon": "💰",
+      "text": "ZATRZYMANIE I ZAKOŃCZENIA\n\nFurgon stoi (kierowca padł, a Kłoda się nie przesiadł, wrak albo zderzenie)? Wyłącz „Droga jedzie” w Edycji sceny → Pościg: auta stoją, przeszkody nie dryfują, a walka toczy się dalej na stojącej estakadzie. Figury z aut wysadzasz przeciągnięciem.\n\n• Kłoda wysiada z Iskrą jako tarczą. Kto strzela w Kłodę i chybi o 1–2 oczka, trafia Iskrę (rozstrzygasz ręcznie, VTT tego nie liczy). Perswazja albo Zastraszanie PT 15 kończy sprawę bez strzału.\n• Eskorta i Rydwan, jeśli jeszcze jadą, odjeżdżają. Wyjątek: Szron żyje, a drużyna jest ranna — wtedy jedna runda ostrzału z przejeżdżającego auta i odjazd.\n\nZAKOŃCZENIA\n• Pełny sukces — Iskra żywa, furgon stoi przed zjazdem. Iskra budzi się po kilku minutach i jest winna drużynie przysługę (netrunnerka z kontaktem w Halcyonie).\n• Sukces z kosztem — Iskra żywa, ale ranna (wybuch, strzał przez Kłodę). Trzeba ją zawieźć do ripperdoka, a Halcyon wie, kto ją odbił.\n• Porażka — furgon zjeżdża do enklawy, a Matylda nie płaci. Haki: odbicie Iskry z enklawy (scena skradania) albo Iskra, przesłuchana, sprzedaje Halcyonowi drużynę.\n\nŁUP: broń i pancerze zespołu odzysku, w furgonie skrzynia z lekami Halcyonu (wartość wg kampanii) i chip z tym, co Iskra wykradła.\nNAGRODA MATYLDY wg cennika kampanii: stawka za robotę bojową na osobę plus premia, jeśli Iskra wyjdzie bez szwanku."
+    }
+  ]
+}

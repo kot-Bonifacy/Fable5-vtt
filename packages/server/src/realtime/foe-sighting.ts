@@ -22,6 +22,7 @@ import { sheetTurnForfeit } from '../sheets.js';
 import type { RealtimeDeps } from './registry.js';
 import { RealtimeError } from './registry.js';
 import { containerTokenIds } from './containers.js';
+import { offstageVehicleIds } from './chase-offstage.js';
 import { emitToCampaignUser, gmRoom } from './state.js';
 import { loadVisionContext } from './vision.js';
 import {
@@ -204,8 +205,13 @@ async function eligibleFoes(deps: RealtimeDeps, sceneId: string): Promise<Token[
   ).filter((row) => !row.hidden || readTokenSightings(row.sightings).users.length > 0);
   if (rows.length === 0) return rows;
   const containers = await containerTokenIds(deps.ctx.prisma, rows);
+  // Załoga auta poza pościgiem (66c) nie zakłada walki — gracz jej nie widzi.
+  const offstage = await offstageVehicleIds(deps.ctx.prisma, sceneId);
   return rows.filter(
-    (row) => !containers.has(row.id) && sheetTurnForfeit(readTokenStatuses(row.statuses)) === null,
+    (row) =>
+      !containers.has(row.id) &&
+      !(row.sceneVehicleId !== null && offstage.has(row.sceneVehicleId)) &&
+      sheetTurnForfeit(readTokenStatuses(row.statuses)) === null,
   );
 }
 

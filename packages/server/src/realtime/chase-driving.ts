@@ -79,7 +79,7 @@ import { logSpentAction } from './combat-log.js';
 import { rollServerSkillTest } from './character-rolls.js';
 import { clearGrapplesOf } from './grapple-state.js';
 import { RealtimeError, defineEvent, type RealtimeDeps } from './registry.js';
-import { emitTokensById } from './tokens.js';
+import { emitSceneTokensToPlayers, emitTokensById } from './tokens.js';
 
 /**
  * Jazda w pościgu (etap 65c): kierowca przesuwa swoje auto, silnik, Nitro,
@@ -468,6 +468,9 @@ export const chaseRestoreEvent = defineEvent<ChaseRestorePayload, SceneVehicleVi
     });
     await emitChase(deps, campaignId, scene.id);
     await emitTokensById(deps, campaignId, moved, { moved: true });
+    // Załoga wraca graczom z autem (66c) — także wtedy, gdy auto w rezerwie
+    // stało już w kadrze i nikt się nie ruszył.
+    await emitSceneTokensToPlayers(deps, campaignId, scene);
     return placedView(deps.ctx.prisma, scene.id, row.id);
   },
 });
@@ -780,6 +783,8 @@ export async function driftChaseRound(
   await driftObstaclesRound(deps, campaignId, scene, round, user, moves, lostBefore);
   await emitChase(deps, campaignId, scene.id);
   if (dropped.length === 0) return false;
+  // Załoga auta, które odpadło, znika graczom razem z autem (66c).
+  await emitSceneTokensToPlayers(deps, campaignId, scene);
 
   const leaving = new Set(dropped.flatMap((entry) => entry.passengers));
   for (const combatant of combat.combatants) {

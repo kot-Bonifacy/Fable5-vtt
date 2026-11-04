@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "name": "Pościg testowy",
   "category": "examples",
-  "description": "Fikstura testów serwera (etap 66): pościg z dwoma autami i trzema gangerami w fotelach. Nie jest sceną przykładową.",
+  "description": "Fikstura testów serwera (etap 66, 66c): pościg z dwoma autami w kadrze, trzema gangerami w fotelach i autem posiłków w rezerwie. Nie jest sceną przykładową.",
   "scene": {
     "kind": "chase",
     "backgroundUrl": null,
@@ -52,6 +52,18 @@
       "system": {
         "catalogIds": ["vehicle.samochod-sportowy", "vehicle.sample-kompakt"],
         "upgrades": ["reinforced", "ram"]
+      }
+    },
+    {
+      "key": "posilki",
+      "name": "Posiłki Maelstromu",
+      "imageUrl": "/art/vehicles/car-red.webp",
+      "x": 21.5,
+      "y": 4.5,
+      "status": "behind",
+      "system": {
+        "catalogIds": ["vehicle.samochod-sportowy", "vehicle.sample-kompakt"],
+        "upgrades": []
       }
     }
   ],
@@ -159,6 +171,59 @@
         ],
         "armorBody": ["armor.medium-armorjack", "armor.kurtka-warsztatowa"],
         "armorHead": ["armor.light-armorjack", "armor.helm-kurierski"]
+      }
+    },
+    {
+      "name": "Gwint",
+      "vehicle": {
+        "key": "posilki",
+        "seat": 0
+      },
+      "disposition": "hostile",
+      "system": {
+        "stats": {
+          "int": 4,
+          "ref": 6,
+          "dex": 5,
+          "tech": 4,
+          "cool": 5,
+          "will": 4,
+          "luck": 2,
+          "move": 5,
+          "body": 6,
+          "emp": 2
+        },
+        "skills": {
+          "driving": 5,
+          "handgun": 4,
+          "evasion": 3,
+          "perception": 3
+        },
+        "weapons": [["weapon.heavy-pistol", "weapon.zgrzyt-9"]]
+      }
+    },
+    {
+      "name": "Zakładnik",
+      "vehicle": {
+        "key": "taksowka",
+        "seat": 3
+      },
+      "disposition": "neutral",
+      "statuses": ["unconscious", "nie-ma-takiego-stanu"],
+      "system": {
+        "stats": {
+          "int": 5,
+          "ref": 5,
+          "dex": 5,
+          "tech": 5,
+          "cool": 5,
+          "will": 5,
+          "luck": 5,
+          "move": 5,
+          "body": 4,
+          "emp": 5
+        },
+        "skills": {}
       }
     }
   ],

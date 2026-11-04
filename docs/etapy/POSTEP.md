@@ -21,7 +21,7 @@ w plikach obok — czytaj je **na żądanie, nigdy rutynowo**:
 
 | stan         | etapy                                                                                          |
 | ------------ | ---------------------------------------------------------------------------------------------- |
-| ⬜ otwarty   | **66** Sceny przykładowe (🟨 zrobione 31.10, czeka na oględziny MG przy stole i wdrożenie; **66b** „Fabryka dronów” 🟨 zrobione 31.10, tak samo; **66c** „Ostatni zjazd” ⬜ projekt 04.11 przyjęty przez MG, czeka na wdrożenie we wzorzec); **65** Scena pościgu i walka pojazdów (🟨 65a–65e ✅ 30–31.10, czeka na oględziny MG przy stole); **62** Sieć ze sceny (🟨 zrobione, czeka na oględziny MG na VPS po wdrożeniu); **61** Skradanie się (🟨 zrobione, czeka na słowo MG o rozstrzygnięciach); **28** Wdrożenie na VPS (🟨 działa na `https://vtt.tatanga.eu` z botami od 18.10; zostały off-site, utwardzenie, monitoring); **43b**, **43c** (UI walki); **60** Czytelny czat (zlecenie MG z 24.10; 🟨 60a–60c ✅, czeka na oględziny MG z pierwszego kryterium); T10; refaktoryzacja odłożona (MG 18.10) |
+| ⬜ otwarty   | **66** Sceny przykładowe (🟨 zrobione 31.10, czeka na oględziny MG przy stole i wdrożenie; **66b** „Fabryka dronów” 🟨 zrobione 31.10, tak samo; **66c** „Ostatni zjazd” 🟨 wzorzec zrobiony 04.11, czeka na przebieg MG przy stole i wdrożenie); **65** Scena pościgu i walka pojazdów (🟨 65a–65e ✅ 30–31.10, czeka na oględziny MG przy stole); **62** Sieć ze sceny (🟨 zrobione, czeka na oględziny MG na VPS po wdrożeniu); **61** Skradanie się (🟨 zrobione, czeka na słowo MG o rozstrzygnięciach); **28** Wdrożenie na VPS (🟨 działa na `https://vtt.tatanga.eu` z botami od 18.10; zostały off-site, utwardzenie, monitoring); **43b**, **43c** (UI walki); **60** Czytelny czat (zlecenie MG z 24.10; 🟨 60a–60c ✅, czeka na oględziny MG z pierwszego kryterium); T10; refaktoryzacja odłożona (MG 18.10) |
 | ✅ ukończone | 01–11, 13–20b, 23a–27f, 27h–27l, 29a–30d, 31–35, 37–42c, 43a, 44a–44d, 45, 46a1, 46a2, 46c1, 46c2, 46b1, 46b2, 47a, 47b, 48a, 48b, 48c, 49a, 49b, 50a, 50b, 50c, 51, 52, 53, 54, 55, 56, 57 (57a–57c), 58 (58a–58d), 59 (59a–59c), 63 (63a–63b; 63c wycofane 29.10), 64 (64a–64c) (ostatni zamknięty: 64, 2026-10-30) |
 | ⛔ wycofane  | 12, 21, 22 (głos), 27g (wydajność), 36 (makra); 27, 29, 30, 38 rozdzielone na etapy literowane |
 
@@ -98,12 +98,15 @@ i na wdrożenie.** W panelu scen MG pod listą stoi zwijana sekcja „Przykłado
 z `data/public/scenes/<id>/scene.json`, wspólne dla każdego MG, a „Dodaj do kampanii” zakłada
 własną kopię (scena, pojazdy MG, karty NPC-ów, figury w fotelach, notatki MG). Wzorzec niesie id
 z alternatywami zamiast treści podręcznika. **Pierwszy wzorzec, „Pościg na wiadukcie”, MG skasował
-04.11** („niedokończony projekt”); następca to projekt **66c „Ostatni zjazd”**
-(`etap-66c-ostatni-zjazd.md`): pościg na 2–3 graczy na wbudowanej estakadzie, drużyna goni
-furgon z porwaną netrunnerką, trzy auta wroga, rozpisane rundy. Do wdrożenia potrzebuje dwóch
-drobnych rzeczy w kodzie (tło wzorca z `CHASE_ROADS`, auto w rezerwie `status: behind`). Testy
-serwera wzorców stoją na fiksturze `test-poscig` (`ServerConfig.sceneTemplatesDir`). Plik etapu `etap-66-sceny-przykladowe.md`, umowa
-na górze `mapa`. **Od 66b (31.10) wzorzec umie zwykłą mapę:** ciemność, ściany, drzwi, osłony,
+04.11** („niedokończony projekt”). Jego następcą jest **66c „Ostatni zjazd”** (zrobiony 04.11,
+`etap-66c-ostatni-zjazd.md`): pościg na 2–3 graczy na wbudowanej estakadzie. Drużyna goni
+furgon z porwaną netrunnerką Iskrą (uśpiona, stan Nieprzytomna), są trzy auta wroga, a Rydwan
+czeka w rezerwie (`status: behind`) do „Przywróć do pościgu”. Pięć notatek MG rozpisuje rundy,
+skalowanie, teksty dla graczy i zakończenia. Wzorzec umie od 66c tło z `CHASE_ROADS`, auto
+w rezerwie i stany figur, a **załoga auta poza pościgiem nie istnieje dla gracza** (reguła ogólna,
+decyzja MG). Testy serwera wzorców stoją na fiksturze `test-poscig`
+(`ServerConfig.sceneTemplatesDir`). Plik etapu `etap-66-sceny-przykladowe.md`, umowy na górze
+`mapa`. **Od 66b (31.10) wzorzec umie zwykłą mapę:** ciemność, ściany, drzwi, osłony,
 figury z ikoną i kierunkiem, gniazda Sieci i Architekturę z uśpionymi urządzeniami. Drugi
 wzorzec to „Fabryka dronów”: ciemna hala, drużyna (netrunner + bojowiec) wchodzi dolną bramą po
 drzazgę z prototypu „Sowa” na prawym górnym lądowisku; patrol trzech dronów, 4 kamery, 11
@@ -617,7 +620,7 @@ a nie do tego pliku.
 
 | obszar      | co obejmuje                                                    | umów | pułapek |
 | ----------- | -------------------------------------------------------------- | ---- | ------- |
-| `mapa`      | figury, zaznaczanie, narzędzia, obiekty sceny, ściany, efekty, zamek drzwi, ukryta figura zauważona, ikony urządzeń, wspólny widok drużyny, scena pościgu, jazda kierowcy i dryf, Manewr i taranowanie, przeszkody pościgu, sceny przykładowe, wzorzec zwykłej mapy, ulepszenia pojazdu, stojące auto na drodze, kreator pościgu i wbudowane drogi | 80   | 27      |
+| `mapa`      | figury, zaznaczanie, narzędzia, obiekty sceny, ściany, efekty, zamek drzwi, ukryta figura zauważona, ikony urządzeń, wspólny widok drużyny, scena pościgu, jazda kierowcy i dryf, Manewr i taranowanie, przeszkody pościgu, sceny przykładowe, wzorzec zwykłej mapy, ulepszenia pojazdu, stojące auto na drodze, kreator pościgu i wbudowane drogi, załoga auta poza pościgiem | 81   | 27      |
 | `czat`      | rodzaje wierszy, `visibleTo`, filtr, `seq`, `gmrecovery`, „to dotyczy mnie”, grupy kart, kolor gracza, czyszczenie, gęsta karta rzutu, przebieg ataku | 15   | 3       |
 | `serwer`    | Prisma i migracje, zdarzenia gniazda, zapisy karty, uploady    | 26   | 21      |
 | `ui`        | okna pływające, `z-index`, motyw, skróty, dostępność, wejście, panel decyzji MG | 37   | 15      |
@@ -641,6 +644,31 @@ a nie do tego pliku.
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
 
+### Sesja 04.11, druga — wzorzec „Ostatni zjazd” (66c)
+
+**Zlecenie MG:** wykonać `etap-66c-ostatni-zjazd.md`, z pytaniami przy wątpliwościach.
+**Odpowiedzi MG (04.11):** (1) załoga auta w rezerwie — **reguła ogólna**: figury w fotelach auta
+`behind`/`escaped` nie istnieją dla gracza (poza własnymi), nie zakładają walki przez zauważenie
+i nie wchodzą do `combat:start`; (2) stan figury we wzorcu — tak (Iskra Nieprzytomna);
+(3) przebieg techniczny robię sam, balans przy stole — MG. **Zrobione:** `readSceneTemplate`
+przyjmuje tło z `CHASE_ROADS` (rozmiar z listy), `vehicles[].status` (`racing`/`behind`)
+i `figures[].statuses` (serwer filtruje id stanów, nieznane → `missing` `status:<id>`);
+`sceneVehicleOffstage` (`shared/chase.ts`) + liść `realtime/chase-offstage.ts` wpięty
+w `fetchSceneTokensFor`, `emitTokenUpsert`, `eligibleFoes` i `combat:start`; `driftChaseRound`
+i `chase:restore` odświeżają graczom listę figur. Wzorzec
+`data/public/scenes/ostatni-zjazd/scene.json` (4 auta, 8 NPC-ów, 5 notatek ≤ 1740 znaków, opis
+461), fikstura `test-poscig` z autem w rezerwie i figurą ze stanem. Umowa na górze `mapa`.
+**Oglądane w Firefoksie** (Marek i Ola) **i Chromium** (MG): tymczasowy spec `99-ostatni-zjazd`
+na instancji E2E z `data/private`, 8/8 — przebieg w pliku etapu (dodanie bez braków, Rydwan
+i załoga niewidoczne, rozsadzenie, kolczatka, taran 70 → 47 bez obrażeń Wozu, szyba blokuje
+strzał w Wolta, przywrócenie z samoczynnym dołączeniem Grota i Kabla, furgon bez kontroli
+w przeszkodzie). Spec usunięty po przebiegu. **Wnioski do notatek wzorca:** aktywacja nie
+stawia figur drużyny (MG przeciąga z „Postaci”), kierowca siada najpierw jako pasażer, taran
+daje Iskrze Ranę krytyczną. **Zaległości:** przeszkoda za autem ląduje na aucie za nim (65e),
+`surgery.test.ts` migocze pod pełną suitą (1 z 2 przebiegów, osobno 3/3). **Testy:** `shared`
+2943/2943, serwer 1734/1734 (dwa ostatnie pełne przebiegi), klient 468/468, `tsc` w trzech pakietach, ESLint i Prettier
+na zmienionych plikach czyste.
+
 ### Sesja 04.11, pierwsza — projekt sceny „Ostatni zjazd”, stary pościg skasowany
 
 **Zlecenie MG:** „przygotuj w jakimś pliku .md projekt przykładowej sceny (…) pościgu na 2–3
@@ -659,26 +687,3 @@ zablokowany) — po wdrożeniu taka kopia zostanie bez tła; lokalnie `dev.db` i
 `tsc` padał, a test izolacji dostawał 500 na `/api/archive/bot`; `npx prisma generate`
 w `packages/server` naprawia. **Testy:** `shared` 2941/2941, serwer 1732/1732, `tsc` serwera czysty (po `prisma generate`), ESLint i Prettier na zmienionym kodzie czyste. **W przeglądarce nieoglądane** —
 zmiana nie dotyka UI (lista „Przykładowe” ma o jeden wiersz mniej).
-
-### Sesja 03.11, ósma — kreator sceny pościgu
-
-**Zlecenie MG:** „popraw interfejs tworzenia scen pościgowych”, z pytaniami przy wątpliwościach.
-**Odpowiedzi MG (03.11):** uwiera pas jezdni wpisywany liczbami; forma — kreator krok po kroku
-i rozbudowana zakładka „Pościg”; pas — uchwyty na mapie; wbudowane tła drogi — tak, z asfaltu
-CC0 dorysowanego skryptem, wszystkie cztery (autostrada, ulica 2+2, estakada, Badlands); kreator
-z krokiem „Auta”; uchwyty tylko przy otwartym „Pościgu”, zapis „Zapisz”; **MG może wgrać też
-własną grafikę** (uwaga w trakcie). **Zrobione:** `tools/art/chase-roads.py` + 4 drogi
-i miniatury w `public/art/roads/` (35 × 18 kratek, okres 32 — szew znika; tekstury ambientCG
-z kopii na GitHubie, bo ambientCG.com jest zablokowany w kontenerze), `shared/chase-roads.ts`
-(`CHASE_ROADS`, `chaseRoadPatch`, `chaseRoadWithEdge`, `chaseRoadCells`, `chaseFreeSpot`),
-`scene:update` przyjmuje tło z listy dróg, `ChaseLayer`/`MapRenderer` — uchwyty pasa
-i `frameScene`, `ChaseSetup.tsx`, `ChaseWizard.tsx`, `Segmented.tsx`, zakładka „Pościg” na
-sekcjach kreatora, „Na drogę” na karcie pojazdu przez `chaseFreeSpot`. **Rozstrzygnięcia bez
-pytań (do słowa MG):** „✕” kreatora zapisuje wybrane kroki (w Edycji „✕” dalej porzuca szkic);
-aktywacji sceny kreator nie robi — zostaje przycisk na liście scen; drogi są poziome (jazda
-w pionie po wbudowanej drodze daje ostrzeżenie); własna mapa dostaje kierunek z proporcji i pas
-na całą szerokość. **Testy:** `shared` 2941/2941 (+13 `chase-roads.test.ts`), serwer 1732/1732
-(+1 w `chase.test.ts`), klient 468/468, `tsc` w trzech pakietach, ESLint i Prettier czyste. **Oglądane w Chromium** (skrypt
-`playwright` na instancji E2E: kreator od pustej sceny, przeciągnięcie krawędzi pasa myszą,
-dwa auta obok siebie, zakładka „Pościg”, własna mapa) — **Firefoksa w kontenerze nie ma**,
-Playwright MCP niepodłączony; zaległość w `zaleglosci.md`.

@@ -68,6 +68,7 @@ import {
   type RealtimeDeps,
 } from './registry.js';
 import { containerTokenIds } from './containers.js';
+import { offstageVehicleIds } from './chase-offstage.js';
 import { campaignRoom, gmRoom, sceneRoom } from './state.js';
 import { requireCampaignScene } from './scenes.js';
 import { INCLUDE_CHAT_NAMES, deliverRollMessage, toChatMessageView } from './chat-io.js';
@@ -1090,7 +1091,15 @@ export const combatStartEvent = defineEvent<CombatStartPayload, CombatView>({
     // Pojemnik (46b) nie ma inicjatywy — „wszystkie figury na scenie” MG
     // zaznacza razem ze skrzyniami, więc tu się je po cichu pomija.
     const containers = await containerTokenIds(deps.ctx.prisma, tokens);
-    const fighters = tokenIds.filter((id) => !containers.has(id));
+    // Załoga auta poza pościgiem (66c: rezerwa ze wzorca, auto, które odpadło)
+    // czeka na „Przywróć do pościgu” — potem MG dokłada ją „Dołącz do walki”.
+    const offstage = await offstageVehicleIds(deps.ctx.prisma, scene.id);
+    const parked = new Set(
+      tokens
+        .filter((token) => token.sceneVehicleId !== null && offstage.has(token.sceneVehicleId))
+        .map((token) => token.id),
+    );
+    const fighters = tokenIds.filter((id) => !containers.has(id) && !parked.has(id));
 
     // Starting a fight replaces whatever was running on that scene.
     await deps.ctx.prisma.combat.deleteMany({ where: { sceneId: scene.id } });
