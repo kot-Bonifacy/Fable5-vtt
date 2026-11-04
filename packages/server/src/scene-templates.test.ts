@@ -1,6 +1,6 @@
 import { execSync } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
-import { mkdtempSync, unlinkSync } from 'node:fs';
+import { cpSync, mkdtempSync, unlinkSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -23,7 +23,20 @@ import { chaseBodyOf } from './realtime/chase.js';
  * i zakłada z nich zwykłą scenę kampanii — z autami, kartami NPC-ów, figurami
  * w fotelach i notatkami MG. Testy chodzą na próbce kompendium (bez
  * `data/private`), więc wzorzec musi stanąć z alternatyw z próbki.
+ *
+ * Katalog wzorców to kopia scen z repo plus fikstura pościgu
+ * (`fixtures/scene-templates/test-poscig`) — testy auta i foteli nie zależą
+ * od tego, jakie pościgi akurat leżą w przykładowych (04.11 MG skasował
+ * „Pościg na wiadukcie”, z którego fikstura powstała).
  */
+
+const SCENE_TEMPLATES_DIR = mkdtempSync(join(tmpdir(), 'vtt-scene-templates-'));
+cpSync(resolve(import.meta.dirname, '../../../data/public/scenes'), SCENE_TEMPLATES_DIR, {
+  recursive: true,
+});
+cpSync(resolve(import.meta.dirname, 'fixtures/scene-templates'), SCENE_TEMPLATES_DIR, {
+  recursive: true,
+});
 
 const TEST_DB = `./.test-${randomBytes(6).toString('hex')}.db`;
 const GM_PASSWORD = 'test-haslo';
@@ -39,6 +52,7 @@ const config: ServerConfig = {
   sessionTtlDays: 1,
   uploadsDir: mkdtempSync(join(tmpdir(), 'vtt-uploads-')),
   dataPublicDir: resolve(import.meta.dirname, '../../../data/public'),
+  sceneTemplatesDir: SCENE_TEMPLATES_DIR,
   dataPrivateDir: resolve(import.meta.dirname, 'fixtures/no-private-data'),
   aiGatewayUrl: 'http://127.0.0.1:1',
   aiGatewayApiKey: '',
@@ -139,21 +153,21 @@ afterAll(async () => {
 describe('etap 66: sceny przykładowe', () => {
   let gm: ClientSocket;
 
-  it('MG widzi wzorce z repo, gracz nie', async () => {
+  it('MG widzi wzorce, gracz nie', async () => {
     gm = await connect(gmCookie);
     const player = await connect(playerCookie);
     const list = data(await emitAck<SceneTemplateSummary[]>(gm, 'scene:templates'), 'templates');
-    expect(list.find((row) => row.id === 'poscig-wiadukt')).toMatchObject({
-      name: 'Pościg na wiadukcie',
+    expect(list.find((row) => row.id === 'test-poscig')).toMatchObject({
+      name: 'Pościg testowy',
       category: 'examples',
       kind: 'chase',
-      backgroundUrl: '/public/scenes/poscig-wiadukt/map.webp',
+      backgroundUrl: null,
       vehicles: 2,
       figures: 3,
     });
     expect(await emitAck(player, 'scene:templates')).toMatchObject({ ok: false });
     expect(
-      await emitAck(player, 'scene:from-template', { templateId: 'poscig-wiadukt' }),
+      await emitAck(player, 'scene:from-template', { templateId: 'test-poscig' }),
     ).toMatchObject({ ok: false });
   });
 
@@ -166,10 +180,10 @@ describe('etap 66: sceny przykładowe', () => {
     }
   });
 
-  it('„Pościg na wiadukcie” staje z autami, gangerami w fotelach i notatkami MG', async () => {
+  it('wzorzec pościgu staje z autami, gangerami w fotelach i notatkami MG', async () => {
     const result = data(
       await emitAck<SceneTemplateCreateResult>(gm, 'scene:from-template', {
-        templateId: 'poscig-wiadukt',
+        templateId: 'test-poscig',
       }),
       'from-template',
     );
@@ -179,7 +193,7 @@ describe('etap 66: sceny przykładowe', () => {
     const scene = await built.prisma.scene.findUniqueOrThrow({ where: { id: result.sceneId } });
     expect(scene).toMatchObject({
       campaignId,
-      name: 'Pościg na wiadukcie',
+      name: 'Pościg testowy',
       active: false,
       kind: 'chase',
       chaseDirection: 'left',
@@ -188,7 +202,7 @@ describe('etap 66: sceny przykładowe', () => {
       chaseRoadTo: 9,
       visibility: 'open',
       metersPerSquare: 1,
-      backgroundUrl: '/public/scenes/poscig-wiadukt/map.webp',
+      backgroundUrl: null,
       width: 1448,
       height: 1086,
     });
@@ -257,12 +271,12 @@ describe('etap 66: sceny przykładowe', () => {
   it('druga kopia tego samego wzorca dostaje numer w nazwie', async () => {
     const again = data(
       await emitAck<SceneTemplateCreateResult>(gm, 'scene:from-template', {
-        templateId: 'poscig-wiadukt',
+        templateId: 'test-poscig',
       }),
       'from-template 2',
     );
     const scene = await built.prisma.scene.findUniqueOrThrow({ where: { id: again.sceneId } });
-    expect(scene.name).toBe('Pościg na wiadukcie 2');
+    expect(scene.name).toBe('Pościg testowy 2');
     // Każda kopia ma własne auta i karty — nic nie jest dzielone między scenami.
     expect(await built.prisma.vehicle.count({ where: { campaignId } })).toBe(4);
     expect(await built.prisma.character.count({ where: { campaignId } })).toBe(6);

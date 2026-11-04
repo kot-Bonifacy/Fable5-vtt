@@ -835,7 +835,7 @@ const CASES: Record<string, Case> = {
   'scene:create': own('nowa scena w kampanii gniazda', () => ({ name: 'Scena nowa' })),
   'scene:templates': own('wzorce z repo — wspólne dla serwera, bez danych kampanii'),
   'scene:from-template': own('kopia wzorca w kampanii gniazda', () => ({
-    templateId: 'poscig-wiadukt',
+    templateId: 'fabryka-dronow',
   })),
   'scene:update': foreign((a) => ({ sceneId: a.sceneId, patch: { name: 'x' } })),
   'scene:delete': foreign((a) => ({ sceneId: a.sceneId })),

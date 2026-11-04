@@ -156,7 +156,7 @@ describe('wzorce w data/public/scenes', () => {
     .map((dirent) => dirent.name);
 
   it('każdy wzorzec z repo jest poprawny, a jego tło leży obok', () => {
-    expect(ids).toContain('poscig-wiadukt');
+    expect(ids.length).toBeGreaterThan(0);
     for (const id of ids) {
       const raw: unknown = JSON.parse(readFileSync(join(root, id, 'scene.json'), 'utf8'));
       const template = readSceneTemplate(raw, id);

@@ -21,7 +21,7 @@ w plikach obok — czytaj je **na żądanie, nigdy rutynowo**:
 
 | stan         | etapy                                                                                          |
 | ------------ | ---------------------------------------------------------------------------------------------- |
-| ⬜ otwarty   | **66** Sceny przykładowe (🟨 zrobione 31.10, czeka na oględziny MG przy stole i wdrożenie; **66b** „Fabryka dronów” 🟨 zrobione 31.10, tak samo); **65** Scena pościgu i walka pojazdów (🟨 65a–65e ✅ 30–31.10, czeka na oględziny MG przy stole); **62** Sieć ze sceny (🟨 zrobione, czeka na oględziny MG na VPS po wdrożeniu); **61** Skradanie się (🟨 zrobione, czeka na słowo MG o rozstrzygnięciach); **28** Wdrożenie na VPS (🟨 działa na `https://vtt.tatanga.eu` z botami od 18.10; zostały off-site, utwardzenie, monitoring); **43b**, **43c** (UI walki); **60** Czytelny czat (zlecenie MG z 24.10; 🟨 60a–60c ✅, czeka na oględziny MG z pierwszego kryterium); T10; refaktoryzacja odłożona (MG 18.10) |
+| ⬜ otwarty   | **66** Sceny przykładowe (🟨 zrobione 31.10, czeka na oględziny MG przy stole i wdrożenie; **66b** „Fabryka dronów” 🟨 zrobione 31.10, tak samo; **66c** „Ostatni zjazd” ⬜ projekt 04.11, czeka na akceptację MG i wdrożenie we wzorzec); **65** Scena pościgu i walka pojazdów (🟨 65a–65e ✅ 30–31.10, czeka na oględziny MG przy stole); **62** Sieć ze sceny (🟨 zrobione, czeka na oględziny MG na VPS po wdrożeniu); **61** Skradanie się (🟨 zrobione, czeka na słowo MG o rozstrzygnięciach); **28** Wdrożenie na VPS (🟨 działa na `https://vtt.tatanga.eu` z botami od 18.10; zostały off-site, utwardzenie, monitoring); **43b**, **43c** (UI walki); **60** Czytelny czat (zlecenie MG z 24.10; 🟨 60a–60c ✅, czeka na oględziny MG z pierwszego kryterium); T10; refaktoryzacja odłożona (MG 18.10) |
 | ✅ ukończone | 01–11, 13–20b, 23a–27f, 27h–27l, 29a–30d, 31–35, 37–42c, 43a, 44a–44d, 45, 46a1, 46a2, 46c1, 46c2, 46b1, 46b2, 47a, 47b, 48a, 48b, 48c, 49a, 49b, 50a, 50b, 50c, 51, 52, 53, 54, 55, 56, 57 (57a–57c), 58 (58a–58d), 59 (59a–59c), 63 (63a–63b; 63c wycofane 29.10), 64 (64a–64c) (ostatni zamknięty: 64, 2026-10-30) |
 | ⛔ wycofane  | 12, 21, 22 (głos), 27g (wydajność), 36 (makra); 27, 29, 30, 38 rozdzielone na etapy literowane |
 
@@ -96,10 +96,13 @@ rzeczy z zakresu. Rozstrzygnięcia bez pytań — w notatce sesji. Umowa na gór
 **Sceny przykładowe (etap 66, zlecenie MG z 31.10) — czekają na oględziny MG przy stole
 i na wdrożenie.** W panelu scen MG pod listą stoi zwijana sekcja „Przykładowe”: wzorce
 z `data/public/scenes/<id>/scene.json`, wspólne dla każdego MG, a „Dodaj do kampanii” zakłada
-własną kopię (scena, pojazdy MG, karty NPC-ów, figury w fotelach, notatki MG). Pierwszy wzorzec
-to „Pościg na wiadukcie”: drużyna ucieka kradzioną taksówką górną jezdnią, pickup Maelstromu
-(Szczęka, Bolec, Rdza) na ogonie, skrojone na 1–2 postacie z botami. Wzorzec niesie id
-z alternatywami zamiast treści podręcznika. Plik etapu `etap-66-sceny-przykladowe.md`, umowa
+własną kopię (scena, pojazdy MG, karty NPC-ów, figury w fotelach, notatki MG). Wzorzec niesie id
+z alternatywami zamiast treści podręcznika. **Pierwszy wzorzec, „Pościg na wiadukcie”, MG skasował
+04.11** („niedokończony projekt”); następca to projekt **66c „Ostatni zjazd”**
+(`etap-66c-ostatni-zjazd.md`): pościg na 2–3 graczy na wbudowanej autostradzie, drużyna goni
+furgon z porwaną netrunnerką, trzy auta wroga, rozpisane rundy. Do wdrożenia potrzebuje dwóch
+drobnych rzeczy w kodzie (tło wzorca z `CHASE_ROADS`, auto w rezerwie `status: behind`). Testy
+serwera wzorców stoją na fiksturze `test-poscig` (`ServerConfig.sceneTemplatesDir`). Plik etapu `etap-66-sceny-przykladowe.md`, umowa
 na górze `mapa`. **Od 66b (31.10) wzorzec umie zwykłą mapę:** ciemność, ściany, drzwi, osłony,
 figury z ikoną i kierunkiem, gniazda Sieci i Architekturę z uśpionymi urządzeniami. Drugi
 wzorzec to „Fabryka dronów”: ciemna hala, drużyna (netrunner + bojowiec) wchodzi dolną bramą po
@@ -638,6 +641,25 @@ a nie do tego pliku.
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
 
+### Sesja 04.11, pierwsza — projekt sceny „Ostatni zjazd”, stary pościg skasowany
+
+**Zlecenie MG:** „przygotuj w jakimś pliku .md projekt przykładowej sceny (…) pościgu na 2–3
+graczy”, w trakcie: „poprzednia przykładowa scena była niedokończonym projektem” i „skasuj starą
+scenę pościgu z przykładowych”. **Zrobione:** projekt `etap-66c-ostatni-zjazd.md` (pomysł,
+autostrada z `CHASE_ROADS`, ustawienie aut w kratkach, 4 auta z `catalogIds`/ulepszeniami,
+8 NPC-ów ze statblokami i alternatywami sprzętu, skalowanie, przebieg rund 1–6 z zegarem,
+drogi do celu, zakończenia, teksty dla graczy, zakres kodu i kryteria). Usunięty
+`data/public/scenes/poscig-wiadukt/` (scena + mapa MG; mapa zostaje w historii gita).
+`ServerConfig.sceneTemplatesDir` + `sceneTemplatesRoot` (`server/scene-templates.ts`), fikstura
+`src/fixtures/scene-templates/test-poscig` (dawny wiadukt bez tła), test izolacji na
+`fabryka-dronow`, test `shared` bez twardego id. Umowa na górze sceny przykładowe w `mapa`.
+**Nie sprawdzone:** czy na VPS są kopie wiaduktu w kampaniach (odczyt z produkcji
+zablokowany) — po wdrożeniu taka kopia zostanie bez tła; lokalnie `dev.db` i `e2e.db` czyste.
+**Pułapka środowiska:** lokalny klient Prisma był nieaktualny (`blockingId`, `assortment`) —
+`tsc` padał, a test izolacji dostawał 500 na `/api/archive/bot`; `npx prisma generate`
+w `packages/server` naprawia. **Testy:** `shared` 2941/2941, serwer 1732/1732, `tsc` serwera czysty (po `prisma generate`), ESLint i Prettier na zmienionym kodzie czyste. **W przeglądarce nieoglądane** —
+zmiana nie dotyka UI (lista „Przykładowe” ma o jeden wiersz mniej).
+
 ### Sesja 03.11, ósma — kreator sceny pościgu
 
 **Zlecenie MG:** „popraw interfejs tworzenia scen pościgowych”, z pytaniami przy wątpliwościach.
@@ -660,29 +682,3 @@ na całą szerokość. **Testy:** `shared` 2941/2941 (+13 `chase-roads.test.ts`)
 `playwright` na instancji E2E: kreator od pustej sceny, przeciągnięcie krawędzi pasa myszą,
 dwa auta obok siebie, zakładka „Pościg”, własna mapa) — **Firefoksa w kontenerze nie ma**,
 Playwright MCP niepodłączony; zaległość w `zaleglosci.md`.
-
-### Sesja 03.11, siódma — przegląd mechanik pościgu
-
-**Zlecenie MG:** sprawdzić mechaniki sceny pościgu (bez ulepszeń pojazdów), czy mają sens
-i czy działają, z pytaniami przy wątpliwościach. **Przegląd:** kod `shared` i serwera etapu
-65 (jazda, dryf, Manewr, taranowanie, ostrzał, przeszkody, kolczatka); testy pościgu zielone,
-ale sondy na żywym serwerze potwierdziły pięć problemów: (1) słaby kierowca nie mógł użyć Nitro
-(Test zwykłej jazdy zabierał Akcję); (2) wrak / zgaszone auto przyklejało się dryfem do zderzaka
-auta za nim i jechało z nim bez obrażeń; (3) taranowanie wraku przejeżdżało przez niego;
-(4) reguła „auto bez kontroli wjeżdża w przeszkodę” nigdy nie działała (dryf zerował
-`lostControl` przed przeszkodami); (5) przeszkoda czekała w kadrze na auto, które MG odsunął.
-**Odpowiedzi MG (03.11):** naprawić oczywiste błędy; tempo + dryf + budżet zostają; stojące auto
-jak przeszkoda; taranowany wrak za autem; Test jazdy w ramach Akcji Ruchu; taranowanie pieszego
-bije tylko pieszego. **Zrobione:** `CpredTurnState.drivingTested` (+ `cpredMarkDrivingTested`,
-Test po wydatku na sucho, bez `DRIVING_TEST_NEEDS_ACTION`), `CpredRamInput.pedestrian`,
-`SceneVehicle.blockingId` (migracja) + `blockingVehicleId` w widoku + `chase:vehicle-answer`
-(do macierzy izolacji), `riders` i `lostBefore` w `driftChaseRound`, `pushVehicleBehind`,
-`releaseBlocking` w `moveSceneVehicle`; klient — wspólny pasek w `useObstacleNotice`, „Za
-kierowcę: …” w menu stojącego auta u MG. Umowy na górze `mapa` i `tura`, decyzje na górze
-`decyzje-i-uproszczenia.md`, opis w `etap-65-poscig.md` („Przegląd mechanik 03.11”). Stary test
-dryfu w `chase-ram.test.ts` sadza kierowcę w aucie za zgaszonym (bez kierowcy jest teraz
-zderzenie). **Testy:** `shared` 2928/2928 (+2), serwer 1731/1731 (+8 w nowym
-`chase-review.test.ts`), klient 467/467, `tsc` w trzech
-pakietach, `vite build`, ESLint i Prettier czyste. **W przeglądarce nieoglądane** — brak
-`po-T6`, mapy wiaduktu i Firefoksa, Playwright MCP niepodłączony (E2E `48-poscig` pominięte);
-zaległość w `zaleglosci.md`.

@@ -29,7 +29,7 @@ import {
   type CpredTemplatePlacedFigure,
 } from '@vtt/shared';
 import type { Character, Scene, Vehicle } from '../generated/prisma/client.js';
-import { loadSceneTemplate, loadSceneTemplates } from '../scene-templates.js';
+import { loadSceneTemplate, loadSceneTemplates, sceneTemplatesRoot } from '../scene-templates.js';
 import { vehicleBodyColumns, vehicleCatalog } from '../vehicles.js';
 import { emitCharacterUpsert, toCharacterView } from './character-io.js';
 import { npcSheetFrom } from './characters.js';
@@ -59,7 +59,7 @@ export const sceneTemplatesEvent = defineEvent<void, SceneTemplateSummary[]>({
   role: ROLE_GM,
   handler: async ({ deps, socket }) => {
     requireCampaignId(socket.data);
-    const templates = await loadSceneTemplates(deps.ctx.config.dataPublicDir, deps.log);
+    const templates = await loadSceneTemplates(sceneTemplatesRoot(deps.ctx.config), deps.log);
     return templates.map(sceneTemplateSummary);
   },
 });
@@ -74,7 +74,7 @@ export const sceneFromTemplateEvent = defineEvent<
     const campaignId = requireCampaignId(socket.data);
     if (typeof payload?.templateId !== 'string') throw new RealtimeError('BAD_REQUEST');
     const template = await loadSceneTemplate(
-      deps.ctx.config.dataPublicDir,
+      sceneTemplatesRoot(deps.ctx.config),
       payload.templateId,
       deps.log,
     );

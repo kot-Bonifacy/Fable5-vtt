@@ -1,5 +1,31 @@
 # Dziennik sesji — archiwum
 
+### Sesja 03.11, siódma — przegląd mechanik pościgu
+
+**Zlecenie MG:** sprawdzić mechaniki sceny pościgu (bez ulepszeń pojazdów), czy mają sens
+i czy działają, z pytaniami przy wątpliwościach. **Przegląd:** kod `shared` i serwera etapu
+65 (jazda, dryf, Manewr, taranowanie, ostrzał, przeszkody, kolczatka); testy pościgu zielone,
+ale sondy na żywym serwerze potwierdziły pięć problemów: (1) słaby kierowca nie mógł użyć Nitro
+(Test zwykłej jazdy zabierał Akcję); (2) wrak / zgaszone auto przyklejało się dryfem do zderzaka
+auta za nim i jechało z nim bez obrażeń; (3) taranowanie wraku przejeżdżało przez niego;
+(4) reguła „auto bez kontroli wjeżdża w przeszkodę” nigdy nie działała (dryf zerował
+`lostControl` przed przeszkodami); (5) przeszkoda czekała w kadrze na auto, które MG odsunął.
+**Odpowiedzi MG (03.11):** naprawić oczywiste błędy; tempo + dryf + budżet zostają; stojące auto
+jak przeszkoda; taranowany wrak za autem; Test jazdy w ramach Akcji Ruchu; taranowanie pieszego
+bije tylko pieszego. **Zrobione:** `CpredTurnState.drivingTested` (+ `cpredMarkDrivingTested`,
+Test po wydatku na sucho, bez `DRIVING_TEST_NEEDS_ACTION`), `CpredRamInput.pedestrian`,
+`SceneVehicle.blockingId` (migracja) + `blockingVehicleId` w widoku + `chase:vehicle-answer`
+(do macierzy izolacji), `riders` i `lostBefore` w `driftChaseRound`, `pushVehicleBehind`,
+`releaseBlocking` w `moveSceneVehicle`; klient — wspólny pasek w `useObstacleNotice`, „Za
+kierowcę: …” w menu stojącego auta u MG. Umowy na górze `mapa` i `tura`, decyzje na górze
+`decyzje-i-uproszczenia.md`, opis w `etap-65-poscig.md` („Przegląd mechanik 03.11”). Stary test
+dryfu w `chase-ram.test.ts` sadza kierowcę w aucie za zgaszonym (bez kierowcy jest teraz
+zderzenie). **Testy:** `shared` 2928/2928 (+2), serwer 1731/1731 (+8 w nowym
+`chase-review.test.ts`), klient 467/467, `tsc` w trzech
+pakietach, `vite build`, ESLint i Prettier czyste. **W przeglądarce nieoglądane** — brak
+`po-T6`, mapy wiaduktu i Firefoksa, Playwright MCP niepodłączony (E2E `48-poscig` pominięte);
+zaległość w `zaleglosci.md`.
+
 ### Sesja 03.11, szósta — przegląd ulepszeń pojazdów
 
 **Zlecenie MG:** „przyjrzyj się ulepszeniom pojazdów (czy one faktycznie działają)”, z pytaniami

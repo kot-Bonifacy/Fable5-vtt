@@ -1,13 +1,11 @@
 {
   "schemaVersion": 1,
-  "name": "Pościg na wiadukcie",
+  "name": "Pościg testowy",
   "category": "examples",
-  "description": "Drużyna ucieka kradzioną taksówką górną jezdnią neonowego wiaduktu, a pickup Maelstromu siedzi jej na ogonie. Gotowe starcie dla 1–2 postaci z botami: dwa auta, trzech gangerów z kartami, notatki MG z przebiegiem i zwrotami akcji.",
+  "description": "Fikstura testów serwera (etap 66): pościg z dwoma autami i trzema gangerami w fotelach. Nie jest sceną przykładową.",
   "scene": {
     "kind": "chase",
-    "backgroundUrl": "/public/scenes/poscig-wiadukt/map.webp",
-    "backgroundWidth": 1448,
-    "backgroundHeight": 1086,
+    "backgroundUrl": null,
     "width": 1448,
     "height": 1086,
     "gridSizePx": 60.333333,
@@ -19,12 +17,18 @@
     "visibility": "open",
     "playerMove": "stop",
     "ambience": "car",
-    "spawn": { "x": 6.5, "y": 11.5 },
+    "spawn": {
+      "x": 6.5,
+      "y": 11.5
+    },
     "chase": {
       "direction": "left",
       "tempo": 40,
       "running": true,
-      "road": { "from": 3, "to": 9 }
+      "road": {
+        "from": 3,
+        "to": 9
+      }
     }
   },
   "vehicles": [
@@ -54,34 +58,105 @@
   "figures": [
     {
       "name": "Szczęka",
-      "vehicle": { "key": "pickup", "seat": 0 },
+      "vehicle": {
+        "key": "pickup",
+        "seat": 0
+      },
       "disposition": "hostile",
       "system": {
-        "stats": { "int": 4, "ref": 6, "dex": 6, "tech": 5, "cool": 4, "will": 4, "luck": 2, "move": 6, "body": 6, "emp": 2 },
-        "skills": { "driving": 6, "handgun": 5, "evasion": 4, "perception": 4, "brawling": 4, "athletics": 3 },
+        "stats": {
+          "int": 4,
+          "ref": 6,
+          "dex": 6,
+          "tech": 5,
+          "cool": 4,
+          "will": 4,
+          "luck": 2,
+          "move": 6,
+          "body": 6,
+          "emp": 2
+        },
+        "skills": {
+          "driving": 6,
+          "handgun": 5,
+          "evasion": 4,
+          "perception": 4,
+          "brawling": 4,
+          "athletics": 3
+        },
         "weapons": [["weapon.heavy-pistol", "weapon.zgrzyt-9"]],
         "armorBody": ["armor.light-armorjack", "armor.kurtka-warsztatowa"]
       }
     },
     {
       "name": "Bolec",
-      "vehicle": { "key": "pickup", "seat": 1 },
+      "vehicle": {
+        "key": "pickup",
+        "seat": 1
+      },
       "disposition": "hostile",
       "system": {
-        "stats": { "int": 3, "ref": 7, "dex": 6, "tech": 3, "cool": 5, "will": 4, "luck": 2, "move": 6, "body": 7, "emp": 2 },
-        "skills": { "shoulder-arms": 6, "melee-weapon": 4, "brawling": 5, "evasion": 4, "perception": 4, "athletics": 4 },
-        "weapons": [["weapon.shotgun", "weapon.huk-12"], ["weapon.medium-melee", "weapon.szpon"]],
+        "stats": {
+          "int": 3,
+          "ref": 7,
+          "dex": 6,
+          "tech": 3,
+          "cool": 5,
+          "will": 4,
+          "luck": 2,
+          "move": 6,
+          "body": 7,
+          "emp": 2
+        },
+        "skills": {
+          "shoulder-arms": 6,
+          "melee-weapon": 4,
+          "brawling": 5,
+          "evasion": 4,
+          "perception": 4,
+          "athletics": 4
+        },
+        "weapons": [
+          ["weapon.shotgun", "weapon.huk-12"],
+          ["weapon.medium-melee", "weapon.szpon"]
+        ],
         "armorBody": ["armor.light-armorjack", "armor.kurtka-warsztatowa"]
       }
     },
     {
       "name": "Rdza",
-      "vehicle": { "key": "pickup", "seat": 2 },
+      "vehicle": {
+        "key": "pickup",
+        "seat": 2
+      },
       "disposition": "hostile",
       "system": {
-        "stats": { "int": 5, "ref": 7, "dex": 7, "tech": 4, "cool": 7, "will": 6, "luck": 3, "move": 6, "body": 8, "emp": 1 },
-        "skills": { "handgun": 6, "autofire": 4, "melee-weapon": 5, "brawling": 5, "evasion": 6, "perception": 5, "tactics": 4, "interrogation": 4 },
-        "weapons": [["weapon.heavy-submachine-gun", "weapon.zardzewiak"], ["weapon.heavy-melee", "weapon.szpon"]],
+        "stats": {
+          "int": 5,
+          "ref": 7,
+          "dex": 7,
+          "tech": 4,
+          "cool": 7,
+          "will": 6,
+          "luck": 3,
+          "move": 6,
+          "body": 8,
+          "emp": 1
+        },
+        "skills": {
+          "handgun": 6,
+          "autofire": 4,
+          "melee-weapon": 5,
+          "brawling": 5,
+          "evasion": 6,
+          "perception": 5,
+          "tactics": 4,
+          "interrogation": 4
+        },
+        "weapons": [
+          ["weapon.heavy-submachine-gun", "weapon.zardzewiak"],
+          ["weapon.heavy-melee", "weapon.szpon"]
+        ],
         "armorBody": ["armor.medium-armorjack", "armor.kurtka-warsztatowa"],
         "armorHead": ["armor.light-armorjack", "armor.helm-kurierski"]
       }

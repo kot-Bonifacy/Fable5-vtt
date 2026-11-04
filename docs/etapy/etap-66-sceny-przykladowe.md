@@ -60,7 +60,17 @@ szybkiego użycia dla wszystkich MG”.
    (oględziny); gang podaje notatka MG.
 4. **Kierunek „w lewo”** — górna jezdnia w ruchu prawostronnym; MG zmienia go w Edycji sceny.
 
+## Skasowane 04.11 (MG)
+
+MG (04.11): „poprzednia przykładowa scena była niedokończonym projektem” i „skasuj starą scenę
+pościgu z przykładowych”. Katalog `data/public/scenes/poscig-wiadukt/` (scena i mapa wiaduktu)
+zniknął z repo; mapa zostaje w historii gita. Kopie dodane wcześniej do kampanii zostają jako
+sceny, ale ich tło wskazywało `/public/scenes/poscig-wiadukt/map.webp` i po wdrożeniu go nie
+będzie. Testy serwera wzorców stoją na fiksturze `test-poscig` (`ServerConfig.sceneTemplatesDir`).
+Następca: projekt `etap-66c-ostatni-zjazd.md` (pościg na 2–3 graczy, drużyna goni).
+
 ## Do oceny MG
 
-- Przebieg starcia przy stole (siła gangu na 1–2 postacie, tempo 40, odstęp aut 5,5 kratki).
+- ~~Przebieg starcia przy stole (siła gangu na 1–2 postacie, tempo 40, odstęp aut 5,5 kratki).~~
+  Wzorzec skasowany 04.11.
 - Czy NPC-e mają mieć portrety (dziś kółka z inicjałem).

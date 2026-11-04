@@ -21,6 +21,12 @@ export interface ServerConfig {
   uploadsDir: string;
   /** Absolute directory of committed public data (status icons, samples). */
   dataPublicDir: string;
+  /**
+   * Directory of scene templates (stage 66); absent — `<dataPublicDir>/scenes`.
+   * Server tests point it at fixtures so they do not depend on which example
+   * scenes the repo currently ships.
+   */
+  sceneTemplatesDir?: string;
   /** Absolute directory of gitignored rulebook-derived data; may not exist. */
   dataPrivateDir: string;
   /** Base URL of the Python AI gateway (localhost in dev, tailnet address in prod). */
