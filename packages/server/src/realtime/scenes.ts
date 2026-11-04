@@ -15,6 +15,7 @@ import type {
 import {
   CHASE_AMBIENCE,
   ROLE_GM,
+  DEFAULT_CHASE_SETTINGS,
   chaseRoadByUrl,
   defaultChaseDirection,
   isAmbiencePreset,
@@ -201,6 +202,9 @@ export const sceneCreateEvent = defineEvent<SceneCreatePayload, SceneView>({
         ...(chase
           ? {
               kind: 'chase',
+              // Kolumna ma domyślnie „w prawo” (zmiana domyślnej w SQLite to
+              // przebudowa tabeli), więc kierunek pościgu wpisujemy sami.
+              chaseDirection: DEFAULT_CHASE_SETTINGS.direction,
               visibility: 'open',
               dark: false,
               explore: false,
@@ -258,6 +262,19 @@ export const sceneUpdateEvent = defineEvent<SceneUpdatePayload, SceneView>({
     if (patch.playerMove !== undefined) data.playerMove = patch.playerMove;
     if (patch.ambience !== undefined) data.ambience = patch.ambience;
     if (patch.kind !== undefined) data.kind = patch.kind;
+    // Mapa zamieniona w pościg nie ma własnego kierunku (kolumna stoi na
+    // „w prawo”) — zgaduje go tło, a bez tła domyślne „w lewo” (MG, 04.11).
+    if (
+      patch.kind === 'chase' &&
+      scene.kind !== 'chase' &&
+      patch.chase?.direction === undefined &&
+      data.chaseDirection === undefined
+    ) {
+      data.chaseDirection =
+        scene.backgroundWidth && scene.backgroundHeight
+          ? defaultChaseDirection(scene.backgroundWidth, scene.backgroundHeight)
+          : DEFAULT_CHASE_SETTINGS.direction;
+    }
     // Scena przełączona na pościg rusza z odgłosem jazdy, chyba że łata sama
     // ustawia otoczenie; powrót do mapy gasi jazdę, której mapa nie wybrała.
     if (patch.kind !== undefined && patch.kind !== scene.kind && patch.ambience === undefined) {

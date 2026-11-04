@@ -32,7 +32,7 @@ describe('wbudowane drogi', () => {
   it('łata drogi przechodzi przez sanitizeScenePatch bez strat', () => {
     const patch = chaseRoadPatch(CHASE_ROADS[0]!);
     expect(sanitizeScenePatch(patch)).toEqual(patch);
-    expect(patch.chase).toEqual({ direction: 'right', road: { from: 2, to: 16 } });
+    expect(patch.chase).toEqual({ direction: 'left', road: { from: 2, to: 16 } });
     expect(patch.metersPerSquare).toBe(1);
   });
 });
@@ -81,7 +81,7 @@ describe('chaseRoadCells', () => {
 
 describe('chaseFreeSpot', () => {
   const car = { widthSq: 3, lengthSq: 5 };
-  const settings = { direction: 'right' as const, road: { from: 2, to: 16 } };
+  const settings = { direction: 'left' as const, road: { from: 2, to: 16 } };
 
   it('pierwsze auto staje na środku jezdni', () => {
     expect(chaseFreeSpot(car, [], settings, scene)).toEqual({ x: 1750, y: 900 });

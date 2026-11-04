@@ -96,7 +96,7 @@ describe('pas jezdni', () => {
 
 describe('ustawienia pościgu', () => {
   it('kierunek z proporcji tła', () => {
-    expect(defaultChaseDirection(2400, 1800)).toBe('right');
+    expect(defaultChaseDirection(2400, 1800)).toBe('left');
     expect(defaultChaseDirection(1000, 3000)).toBe('up');
   });
 

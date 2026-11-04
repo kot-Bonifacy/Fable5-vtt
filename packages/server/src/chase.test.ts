@@ -543,6 +543,8 @@ describe('kreator pościgu (03.11): wbudowana droga jako tło', () => {
       await emitAck<SceneView>(gm, 'scene:create', { name: 'Autostrada', kind: 'chase' }),
       'scene:create',
     );
+    // Domyślnie auta jadą w lewo (decyzja MG z 04.11).
+    expect(created.chase.direction).toBe('left');
     const preset = chaseRoadByUrl('/art/roads/highway.webp')!;
     // Rozmiar z drutu się nie liczy — serwer bierze go z listy dróg.
     const patch = chaseRoadPatch(preset);
@@ -556,13 +558,27 @@ describe('kreator pościgu (03.11): wbudowana droga jako tło', () => {
     expect(view.background).toEqual({ url: preset.url, width: 3500, height: 1800 });
     expect(view).toMatchObject({ width: 3500, height: 1800, metersPerSquare: 1 });
     expect(view.grid).toMatchObject({ sizePx: 100, offsetX: 0, offsetY: 0 });
-    expect(view.chase).toMatchObject({ direction: 'right', road: { from: 2, to: 16 } });
+    expect(view.chase).toMatchObject({ direction: 'left', road: { from: 2, to: 16 } });
 
     const fake = await emitAck(gm, 'scene:update', {
       sceneId: created.id,
       patch: { background: { url: '/art/roads/nope.webp', width: 3500, height: 1800 } },
     });
     expect(fake).toMatchObject({ ok: false, error: 'UPLOAD_NOT_FOUND' });
+
+    // Mapa zamieniona w pościg też rusza w lewo, choć kolumna stoi na „w prawo”.
+    const plain = data(
+      await emitAck<SceneView>(gm, 'scene:create', { name: 'Parking' }),
+      'scene:create map',
+    );
+    const switched = data(
+      await emitAck<SceneView>(gm, 'scene:update', {
+        sceneId: plain.id,
+        patch: { kind: 'chase' },
+      }),
+      'scene:update kind',
+    );
+    expect(switched.chase.direction).toBe('left');
 
     const file = await exportCampaign(built.prisma, campaignId, { includeChat: false });
     expect(JSON.stringify(file)).toContain('/art/roads/highway.webp');

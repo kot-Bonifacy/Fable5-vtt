@@ -33,7 +33,7 @@ Pełna tabela z nazwami i datami: `archiwum/tabela-etapow.md`.
 „Utwórz → Pościg” otwiera kreator: **Tło** (cztery wbudowane drogi — Autostrada, Ulica 2+2,
 Estakada, Badlands — albo własna mapa MG), **Droga** (pas jezdni przeciągany wprost na mapie,
 kierunek, tempo, kratka własnej mapy), **Auta** (drużyna i MG/NPC-e z „Na drogę” na wolnym
-miejscu, wóz z katalogu) i **Gotowe**. Te same sekcje stoją na zakładce „Pościg” Edycji sceny,
+miejscu, wóz z katalogu) i **Gotowe**. Od 04.11 (MG) pościg domyślnie jedzie **w lewo**. Te same sekcje stoją na zakładce „Pościg” Edycji sceny,
 na której scena pościgu się otwiera. Drogi rysuje `tools/art/chase-roads.py` z asfaltu CC0
 (ambientCG). Umowa na górze `mapa`, zaległość w `zaleglosci.md`, opis w `etap-65-poscig.md`.
 

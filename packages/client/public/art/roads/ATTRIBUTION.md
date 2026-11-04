@@ -1,6 +1,6 @@
 # Atrybucja wbudowanych dróg (kreator pościgu, 03.11.2026)
 
-Tła sceny pościgu widziane z góry, jazda w prawo, 35 × 18 kratek po 100 px (1 m na kratkę).
+Tła sceny pościgu widziane z góry, poziome (domyślnie jazda w lewo), 35 × 18 kratek po 100 px (1 m na kratkę).
 Rysuje je `tools/art/chase-roads.py`; układ jezdni (pas, kierunek, rozmiar) powtarza
 `CHASE_ROADS` w `packages/shared/src/chase-roads.ts`. Każda droga ma okres 32 kratek, a ostatnie
 3 kratki powtarzają pierwsze — szew bieżni (`CHASE_SEAM_SQUARES`) przenika dwa identyczne pasy

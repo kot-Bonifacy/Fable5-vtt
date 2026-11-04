@@ -502,6 +502,12 @@ też własną grafikę**.
 - [x] „Na drogę” stawia auto na wolnym miejscu jezdni (`chaseFreeSpot`) — w kreatorze, na
       zakładce i na karcie pojazdu; kamera kadruje scenę obok okna (`frameScene`).
 
+**Decyzja MG z 04.11: domyślnie auta jadą w lewo** — nowa scena pościgu, każda wbudowana
+droga, własna mapa szersza niż wysoka (`defaultChaseDirection`) i mapa zamieniona w pościg.
+Kolumna `Scene.chaseDirection` dalej ma w bazie domyślne „right” (zmiana domyślnej w SQLite to
+przebudowa tabeli), więc `scene:create` i przełączenie `map → chase` wpisują kierunek same;
+istniejące sceny pościgu zostają, jak były.
+
 ### Rozstrzygnięcia kreatora bez pytań (03.11)
 
 1. **„✕” kreatora zapisuje** to, co wybrano (MG przerywa w połowie i nie traci drogi); „✕”
@@ -510,7 +516,7 @@ też własną grafikę**.
    na zakładce „Pościg” „Na drogę” czeka na „Zapisz”, gdy droga ma niezapisane zmiany.
 3. **Aktywacji kreator nie robi** — „Gotowe” odsyła do przycisku na liście scen (tam jest
    pytanie o scenę bez miejsca startu w trwającej sesji).
-4. **Wbudowane drogi są poziome** (jazda w prawo); kierunek w pionie na takiej drodze daje
+4. **Wbudowane drogi są poziome** (od 04.11 domyślnie jazda w lewo — decyzja MG); kierunek w pionie na takiej drodze daje
    ostrzeżenie, nie blokadę. Własna mapa dostaje kierunek z proporcji i pas na całą szerokość,
    a krok „Droga” pokazuje przy niej pole kratki.
 5. **Wolne miejsce:** najpierw sąsiedni pas obok stojących aut, potem wzdłuż jezdni od środka;

@@ -56,7 +56,8 @@ function road(
     url: `/art/roads/${id}.webp`,
     thumbUrl: `/art/roads/${id}-thumb.webp`,
     ...ROAD_SIZE,
-    direction: 'right',
+    // Drogi są symetryczne w poziomie; domyślnie jazda w lewo (MG, 04.11).
+    direction: 'left',
     road: { from, to },
   };
 }
