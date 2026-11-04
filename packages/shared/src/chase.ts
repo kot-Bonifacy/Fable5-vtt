@@ -67,17 +67,23 @@ export interface ChaseSettings {
   road: { from: number; to: number } | null;
 }
 
-/** Ustawienia pościgu sceny, która nigdy ich nie zmieniała. */
+/**
+ * Ustawienia pościgu sceny, która nigdy ich nie zmieniała. Domyślnie auta jadą
+ * w lewo (decyzja MG z 04.11).
+ */
 export const DEFAULT_CHASE_SETTINGS: ChaseSettings = {
-  direction: 'right',
+  direction: 'left',
   tempo: CHASE_TEMPO_DEFAULT,
   running: true,
   road: null,
 };
 
-/** Kierunek jazdy z proporcji tła: szersze niż wyższe — w prawo, inaczej w górę. */
+/**
+ * Kierunek jazdy z proporcji tła: szersze niż wyższe — w lewo (decyzja MG
+ * z 04.11; do 03.11 w prawo), inaczej w górę.
+ */
 export function defaultChaseDirection(width: number, height: number): ChaseDirection {
-  return width >= height ? 'right' : 'up';
+  return width >= height ? 'left' : 'up';
 }
 
 /** Kierunek jazdy w stopniach zgodnie z ruchem wskazówek od „w górę” (jak `Token.facing`). */

@@ -9,6 +9,7 @@ import {
   VEHICLE_LAYOUT_LABELS,
   VEHICLE_SIZE_MAX,
   VEHICLE_SIZE_MIN,
+  chaseFreeSpot,
   cpredVehicleDerived,
   cpredVehicleHpAfterUpgrades,
   defaultVehicleArt,
@@ -136,11 +137,28 @@ export function VehicleCard({
 
   async function placeOnRoad() {
     if (!chaseScene) return;
+    // Pierwsze wolne miejsce jezdni (kreator pościgu, 03.11), a nie środek
+    // sceny — drugie auto nie ląduje na pierwszym.
+    const spot = chaseFreeSpot(
+      vehicle,
+      useChaseStore
+        .getState()
+        .vehicles.filter((row) => row.status === 'racing')
+        .map((row) => ({ x: row.x, y: row.y, widthSq: row.widthSq, lengthSq: row.lengthSq })),
+      chaseScene.chase,
+      {
+        width: chaseScene.width,
+        height: chaseScene.height,
+        gridSizePx: chaseScene.grid.sizePx,
+        gridOffsetX: chaseScene.grid.offsetX,
+        gridOffsetY: chaseScene.grid.offsetY,
+      },
+    );
     const ack = await placeChaseVehicle({
       sceneId: chaseScene.id,
       vehicleId: vehicle.id,
-      x: chaseScene.width / 2,
-      y: chaseScene.height / 2,
+      x: spot.x,
+      y: spot.y,
     });
     noteAck('chase', ack, chaseErrorText);
   }
@@ -261,7 +279,7 @@ function VehicleArtPicker({ vehicle }: { vehicle: VehicleView }) {
 }
 
 /** MG: „＋ z katalogu” — wybór wpisu i zgoda jednym przyciskiem. */
-function AddFromCatalog({ ownerCharacterId }: { ownerCharacterId: string | null }) {
+export function AddFromCatalog({ ownerCharacterId }: { ownerCharacterId: string | null }) {
   const catalog = useVehicleCatalog();
   const [catalogId, setCatalogId] = useState('');
   const [busy, setBusy] = useState(false);

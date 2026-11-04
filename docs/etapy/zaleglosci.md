@@ -6,6 +6,15 @@ w `POMYSLY.md` („Do sprawdzenia przy stole”), decyzje MG — w `decyzje-i-up
 
 ## Otwarte
 
+**03.11.2026 — kreator pościgu: oględziny w Firefoksie i przy stole, wdrożenie.** Oglądane
+tylko w Chromium (skrypt `playwright` na instancji E2E) — Firefoksa w kontenerze nie ma, Playwright
+MCP niepodłączony. Przy stole (Firefox): „Utwórz → Pościg” — kreator, każda z czterech dróg
+w kafelku i na mapie (czy przewija się bez szwu na żywo i czy wygląd pasuje do stołu), „Wgraj
+własną mapę”, przeciągnięcie obu krawędzi pasa w kroku „Droga”, „Na drogę” dla trzech aut
+(nie lądują na sobie), „Pełna edycja sceny…” otwiera zakładkę „Pościg”. Na VPS pliki
+`/art/roads/*.webp` jadą w obrazie klienta (bez migracji). Stałego E2E kreatora nie ma
+(wymaga `po-T6` i Firefoksa) — dopisać do `48-poscig` przy najbliższym przebiegu.
+
 **03.11.2026 — przegląd mechanik pościgu: oględziny w przeglądarce i wdrożenie (migracja
 `20261103210000_chase_vehicle_blocking`).** Z kontenera nie oglądane (brak punktu `po-T6`, mapy
 wiaduktu z `C:\AI\materialy` i Firefoksa; Playwright MCP niepodłączony), E2E

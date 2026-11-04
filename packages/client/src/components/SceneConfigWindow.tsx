@@ -1,6 +1,5 @@
 import { useEffect, useState, type ChangeEvent, type ReactNode } from 'react';
 import type {
-  ChaseDirection,
   GridConfig,
   MapUploadResult,
   SceneKind,
@@ -8,11 +7,6 @@ import type {
   SceneVisibility,
 } from '@vtt/shared';
 import {
-  CHASE_DIRECTIONS,
-  CHASE_DIRECTION_LABELS,
-  CHASE_TEMPO_MAX,
-  CHASE_TEMPO_MIN,
-  chaseIsHorizontal,
   GRID_SIZE_MAX,
   GRID_SIZE_MIN,
   SCENE_DARK_SIGHT_MAX_M,
@@ -35,6 +29,15 @@ import {
 import { useSceneStore } from '../stores/sceneStore.js';
 import { useWindowPlacement } from '../window-placement.js';
 import { WindowResizeGrip } from './WindowResizeGrip.js';
+import { Segmented } from './Segmented.js';
+import {
+  useFrameBesideWindow,
+  ChaseDriveSection,
+  ChaseGridSection,
+  ChaseRoadPicker,
+  ChaseRoadSection,
+  ChaseVehiclesSection,
+} from './ChaseSetup.js';
 import {
   IconBrush,
   IconCloud,
@@ -237,37 +240,6 @@ function formatDecimal(value: number, digits: number): string {
   return String(Math.round(value * factor) / factor).replace('.', ',');
 }
 
-/** Przełącznik kilku wartości w jednym rzędzie (rola `radiogroup`). */
-function Segmented<T extends string>({
-  label,
-  options,
-  value,
-  onChange,
-}: {
-  label: string;
-  options: { id: T; label: string; hint: string }[];
-  value: T;
-  onChange: (value: T) => void;
-}) {
-  return (
-    <div className="scene-seg" role="radiogroup" aria-label={label}>
-      {options.map((option) => (
-        <button
-          key={option.id}
-          type="button"
-          role="radio"
-          aria-checked={option.id === value}
-          className={`scene-seg-option${option.id === value ? ' is-active' : ''}`}
-          title={option.hint}
-          onClick={() => onChange(option.id)}
-        >
-          {option.label}
-        </button>
-      ))}
-    </div>
-  );
-}
-
 /**
  * Kratka z liczby kolumn (zlecenie MG, 11.09.2026) — obok suwaka, nie zamiast
  * niego: mapa bez okrągłej skali dalej ustawia się pikselami. Liczy z wymiarów
@@ -335,74 +307,6 @@ function GridColumnsField({
 }
 
 /**
- * Pas jezdni sceny pościgu (65b): od–do w kratkach w poprzek kierunku jazdy.
- * Auto nie wyjedzie poza pas; bez pasa jeździ po całej szerokości sceny.
- * Pas widać u MG na mapie jako dwie przerywane linie.
- */
-function ChaseRoadSection({
-  road,
-  horizontal,
-  cells,
-  onChange,
-}: {
-  road: { from: number; to: number } | null;
-  horizontal: boolean;
-  cells: number;
-  onChange: (road: { from: number; to: number } | null) => void;
-}) {
-  const span = road ?? { from: 0, to: Math.max(1, cells) };
-  const set = (from: number, to: number) => {
-    const a = Math.max(0, Math.round(from));
-    const b = Math.max(a + 1, Math.round(to));
-    onChange({ from: a, to: b });
-  };
-  return (
-    <section className="settings-group">
-      <h3 className="settings-group-title">Pas jezdni</h3>
-      <label
-        className="settings-row settings-row--switch"
-        title="Auta mogą stanąć wszędzie w poprzek sceny."
-      >
-        <input
-          type="checkbox"
-          checked={road === null}
-          onChange={(e) => (e.target.checked ? onChange(null) : set(span.from, span.to))}
-        />
-        <span>Cała szerokość sceny</span>
-      </label>
-      {road !== null && (
-        <div
-          className="settings-row"
-          title={`${horizontal ? 'Wiersze' : 'Kolumny'} kratek liczone od ${horizontal ? 'górnej' : 'lewej'} krawędzi sceny (od 0) — pierwsza zajęta przez jezdnię i pierwsza za nią.`}
-        >
-          <label className="settings-label" htmlFor="chase-road-from">
-            {horizontal ? 'Wiersze' : 'Kolumny'}
-          </label>
-          <input
-            id="chase-road-from"
-            type="number"
-            className="scene-number-input"
-            aria-label="Pas jezdni od kratki"
-            min={0}
-            value={road.from}
-            onChange={(e) => set(Number(e.target.value), road.to)}
-          />
-          <span className="scene-config-unit">–</span>
-          <input
-            type="number"
-            className="scene-number-input"
-            aria-label="Pas jezdni do kratki"
-            min={1}
-            value={road.to}
-            onChange={(e) => set(road.from, Number(e.target.value))}
-          />
-        </div>
-      )}
-    </section>
-  );
-}
-
-/**
  * Okno „Edycja sceny” (15.10.2026, wzorem Scene Configuration z Foundry).
  *
  * Do 15.10 edytor stał pod listą scen w bocznym panelu jako jedna długa
@@ -429,7 +333,13 @@ function SceneConfigBody() {
   const setEditorOpen = useSceneStore((s) => s.setEditorOpen);
   const gridContrast = useSceneStore((s) => s.gridContrast);
   const setGridContrast = useSceneStore((s) => s.setGridContrast);
-  const [tab, setTab] = useState<SceneTab>('map');
+  const setChaseWizardOpen = useSceneStore((s) => s.setChaseWizardOpen);
+  const setChaseBandEdit = useSceneStore((s) => s.setChaseBandEdit);
+  // Scena pościgu otwiera się na zakładce „Pościg” (zlecenie MG z 03.11) —
+  // tam jest wszystko, co ją odróżnia od mapy.
+  const [tab, setTab] = useState<SceneTab>(() =>
+    useSceneStore.getState().effectiveScene?.kind === 'chase' ? 'chase' : 'map',
+  );
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -449,6 +359,17 @@ function SceneConfigBody() {
   // (zlecenie MG, 21.10), MG włącza ją przełącznikiem, a zamknięcie okna ją gasi,
   // więc mapa nigdy nie zostaje w trybie roboczym po edycji.
   useEffect(() => () => setGridContrast(false), [setGridContrast]);
+
+  // Uchwyty pasa jezdni na mapie (03.11): tylko przy otwartej zakładce „Pościg”
+  // sceny pościgu; zamknięcie okna je gasi.
+  const chaseTabOpen = tab === 'chase' && scene?.kind === 'chase';
+  useEffect(() => {
+    setChaseBandEdit(chaseTabOpen);
+  }, [chaseTabOpen, setChaseBandEdit]);
+  useEffect(() => () => setChaseBandEdit(false), [setChaseBandEdit]);
+
+  // Droga wybrana na zakładce „Pościg” staje w kadrze obok okna (03.11).
+  useFrameBesideWindow(placement.ref, chaseTabOpen ? (scene?.background?.url ?? null) : null);
 
   // Scena zniknęła spod okna (skasowana, MG nic nie ogląda) — okno też.
   useEffect(() => {
@@ -792,52 +713,31 @@ function SceneConfigBody() {
             {scene.kind === 'chase' && (
               <>
                 <section className="settings-group">
-                  <h3 className="settings-group-title">Jazda</h3>
-                  <Segmented<ChaseDirection>
-                    label="Kierunek jazdy"
-                    options={CHASE_DIRECTIONS.map((id) => ({
-                      id,
-                      label: CHASE_DIRECTION_LABELS[id],
-                      hint: `Auta jadą ${CHASE_DIRECTION_LABELS[id]}, a droga przewija się w przeciwną stronę.`,
-                    }))}
-                    value={scene.chase.direction}
-                    onChange={(direction) => patchDraft({ chase: { direction } })}
-                  />
-                  <div
-                    className="settings-row"
-                    title="Ruch pościgu: tempo / 4 kratek na rundę. Tyle jedzie droga, a od walki pojazdów auto wolniejsze od tempa traci dystans."
-                  >
-                    <label className="settings-label" htmlFor="chase-tempo">
-                      Tempo (Ruch)
-                    </label>
-                    <input
-                      id="chase-tempo"
-                      type="number"
-                      className="scene-number-input"
-                      min={CHASE_TEMPO_MIN}
-                      max={CHASE_TEMPO_MAX}
-                      step={5}
-                      value={scene.chase.tempo}
-                      onChange={(e) => patchDraft({ chase: { tempo: Number(e.target.value) } })}
-                    />
+                  <div className="scene-editor-row">
+                    <h3 className="settings-group-title scene-config-grow">Droga</h3>
+                    <button
+                      type="button"
+                      className="small-button"
+                      title="Kroki Tło → Droga → Auta → Gotowe; to, co tu zmieniłeś, idzie do kreatora"
+                      onClick={() => {
+                        setEditorOpen(false);
+                        setChaseWizardOpen(true);
+                      }}
+                    >
+                      Kreator pościgu…
+                    </button>
                   </div>
-                  <label className="settings-row settings-row--switch">
-                    <input
-                      type="checkbox"
-                      checked={scene.chase.running}
-                      onChange={(e) => patchDraft({ chase: { running: e.target.checked } })}
-                    />
-                    <span>Droga jedzie</span>
-                  </label>
+                  <ChaseRoadPicker scene={scene} />
                 </section>
-                <ChaseRoadSection
-                  road={scene.chase.road}
-                  horizontal={chaseIsHorizontal(scene.chase.direction)}
-                  cells={Math.floor(
-                    (chaseIsHorizontal(scene.chase.direction) ? scene.height : scene.width) /
-                      scene.grid.sizePx,
-                  )}
-                  onChange={(road) => patchDraft({ chase: { road } })}
+                <ChaseRoadSection scene={scene} />
+                <ChaseDriveSection scene={scene} />
+                <ChaseGridSection scene={scene} />
+                <ChaseVehiclesSection
+                  blockedReason={
+                    draft && (draft.background || draft.chase || draft.grid || draft.kind)
+                      ? 'Zapisz zmiany drogi, a potem stawiaj auta — serwer ustawia je w zapisanym pasie jezdni.'
+                      : null
+                  }
                 />
               </>
             )}

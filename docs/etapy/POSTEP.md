@@ -29,6 +29,14 @@ Pełna tabela z nazwami i datami: `archiwum/tabela-etapow.md`.
 
 ## Od czego zacząć
 
+**Kreator pościgu (zlecenie MG z 03.11) — czeka na wdrożenie i oględziny przy stole (Firefox).**
+„Utwórz → Pościg” otwiera kreator: **Tło** (cztery wbudowane drogi — Autostrada, Ulica 2+2,
+Estakada, Badlands — albo własna mapa MG), **Droga** (pas jezdni przeciągany wprost na mapie,
+kierunek, tempo, kratka własnej mapy), **Auta** (drużyna i MG/NPC-e z „Na drogę” na wolnym
+miejscu, wóz z katalogu) i **Gotowe**. Od 04.11 (MG) pościg domyślnie jedzie **w lewo**. Te same sekcje stoją na zakładce „Pościg” Edycji sceny,
+na której scena pościgu się otwiera. Drogi rysuje `tools/art/chase-roads.py` z asfaltu CC0
+(ambientCG). Umowa na górze `mapa`, zaległość w `zaleglosci.md`, opis w `etap-65-poscig.md`.
+
 **Przegląd mechanik pościgu (zlecenie MG z 03.11) — czeka na wdrożenie (migracja bazy)
 i oględziny przy stole (Firefox).** Test zwykłej jazdy idzie w ramach Akcji Ruchu (słaby kierowca
 odpala Nitro i strzela), taranowanie pieszego bije tylko pieszego, wrak albo zgaszone auto,
@@ -606,7 +614,7 @@ a nie do tego pliku.
 
 | obszar      | co obejmuje                                                    | umów | pułapek |
 | ----------- | -------------------------------------------------------------- | ---- | ------- |
-| `mapa`      | figury, zaznaczanie, narzędzia, obiekty sceny, ściany, efekty, zamek drzwi, ukryta figura zauważona, ikony urządzeń, wspólny widok drużyny, scena pościgu, jazda kierowcy i dryf, Manewr i taranowanie, przeszkody pościgu, sceny przykładowe, wzorzec zwykłej mapy, ulepszenia pojazdu, stojące auto na drodze | 79   | 27      |
+| `mapa`      | figury, zaznaczanie, narzędzia, obiekty sceny, ściany, efekty, zamek drzwi, ukryta figura zauważona, ikony urządzeń, wspólny widok drużyny, scena pościgu, jazda kierowcy i dryf, Manewr i taranowanie, przeszkody pościgu, sceny przykładowe, wzorzec zwykłej mapy, ulepszenia pojazdu, stojące auto na drodze, kreator pościgu i wbudowane drogi | 80   | 27      |
 | `czat`      | rodzaje wierszy, `visibleTo`, filtr, `seq`, `gmrecovery`, „to dotyczy mnie”, grupy kart, kolor gracza, czyszczenie, gęsta karta rzutu, przebieg ataku | 15   | 3       |
 | `serwer`    | Prisma i migracje, zdarzenia gniazda, zapisy karty, uploady    | 26   | 21      |
 | `ui`        | okna pływające, `z-index`, motyw, skróty, dostępność, wejście, panel decyzji MG | 37   | 15      |
@@ -629,6 +637,29 @@ a nie do tego pliku.
 ## Notatki z dwóch ostatnich sesji
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
+
+### Sesja 03.11, ósma — kreator sceny pościgu
+
+**Zlecenie MG:** „popraw interfejs tworzenia scen pościgowych”, z pytaniami przy wątpliwościach.
+**Odpowiedzi MG (03.11):** uwiera pas jezdni wpisywany liczbami; forma — kreator krok po kroku
+i rozbudowana zakładka „Pościg”; pas — uchwyty na mapie; wbudowane tła drogi — tak, z asfaltu
+CC0 dorysowanego skryptem, wszystkie cztery (autostrada, ulica 2+2, estakada, Badlands); kreator
+z krokiem „Auta”; uchwyty tylko przy otwartym „Pościgu”, zapis „Zapisz”; **MG może wgrać też
+własną grafikę** (uwaga w trakcie). **Zrobione:** `tools/art/chase-roads.py` + 4 drogi
+i miniatury w `public/art/roads/` (35 × 18 kratek, okres 32 — szew znika; tekstury ambientCG
+z kopii na GitHubie, bo ambientCG.com jest zablokowany w kontenerze), `shared/chase-roads.ts`
+(`CHASE_ROADS`, `chaseRoadPatch`, `chaseRoadWithEdge`, `chaseRoadCells`, `chaseFreeSpot`),
+`scene:update` przyjmuje tło z listy dróg, `ChaseLayer`/`MapRenderer` — uchwyty pasa
+i `frameScene`, `ChaseSetup.tsx`, `ChaseWizard.tsx`, `Segmented.tsx`, zakładka „Pościg” na
+sekcjach kreatora, „Na drogę” na karcie pojazdu przez `chaseFreeSpot`. **Rozstrzygnięcia bez
+pytań (do słowa MG):** „✕” kreatora zapisuje wybrane kroki (w Edycji „✕” dalej porzuca szkic);
+aktywacji sceny kreator nie robi — zostaje przycisk na liście scen; drogi są poziome (jazda
+w pionie po wbudowanej drodze daje ostrzeżenie); własna mapa dostaje kierunek z proporcji i pas
+na całą szerokość. **Testy:** `shared` 2941/2941 (+13 `chase-roads.test.ts`), serwer 1732/1732
+(+1 w `chase.test.ts`), klient 468/468, `tsc` w trzech pakietach, ESLint i Prettier czyste. **Oglądane w Chromium** (skrypt
+`playwright` na instancji E2E: kreator od pustej sceny, przeciągnięcie krawędzi pasa myszą,
+dwa auta obok siebie, zakładka „Pościg”, własna mapa) — **Firefoksa w kontenerze nie ma**,
+Playwright MCP niepodłączony; zaległość w `zaleglosci.md`.
 
 ### Sesja 03.11, siódma — przegląd mechanik pościgu
 
@@ -654,28 +685,4 @@ zderzenie). **Testy:** `shared` 2928/2928 (+2), serwer 1731/1731 (+8 w nowym
 `chase-review.test.ts`), klient 467/467, `tsc` w trzech
 pakietach, `vite build`, ESLint i Prettier czyste. **W przeglądarce nieoglądane** — brak
 `po-T6`, mapy wiaduktu i Firefoksa, Playwright MCP niepodłączony (E2E `48-poscig` pominięte);
-zaległość w `zaleglosci.md`.
-
-### Sesja 03.11, szósta — przegląd ulepszeń pojazdów
-
-**Zlecenie MG:** „przyjrzyj się ulepszeniom pojazdów (czy one faktycznie działają)”, z pytaniami
-przy wątpliwościach. **Przegląd:** z 19 ulepszeń 13 liczonych w walce jest okablowanych
-(OB kadłuba, szyby, Nitro, bronie pokładowe z łukiem i „tylko seria”, Pług, kolczatka,
-zespolenie, poduszkowiec wobec kolczatki), 6 to opis. **Znalezione i potwierdzone na żywym
-serwerze:** (1) Ulepszenie foteli z okna MG nie dokładało foteli na mapie — okno wysyła
-`layout` zawsze, a serwer przeliczał układ tylko bez niego (test serwera przechodził, bo nie
-wysyłał `layout`); (2) Wzmocniona konstrukcja podnosiła tylko sufit — kompakt stał na 45/65;
-(3) Nitro i kolczatka nie wracały bez zdjęcia auta ze sceny; (4) Stanowisko bardzo ciężkiej broni
-udawało liczone ulepszenie; (5) broń pokładowa spoza katalogu znika z paska po cichu.
-**Odpowiedzi MG (03.11):** +20 do bieżących PUK (demontaż −20, najniżej 1); przycisk MG
-„Uzupełnij”; stanowisko jako „— opis”; ostrzeżenie zamiast cichego braku. **Zrobione:**
-`vehicle:update` — układ równy obecnemu to „nie ruszałem”; `cpredVehicleHpAfterUpgrades`
-w `cpredVehiclePatch` (bez `hp` w łacie), `syncFleetVehicles` i oknie MG; `vehicle:refill`
-(MG) + `SceneVehicleView.refillable` + przycisk w menu auta; `heavyMount.combat = false`;
-`cpredMissingMountWeapons` + `missingMountWeaponsText` (okno pojazdu i menu auta MG). Umowa na
-górze `mapa`, decyzje w `decyzje-i-uproszczenia.md`. **Nie sprawdzone stąd:** czy id broni
-pokładowych (`weapon.miotacz-ognia` i reszta) istnieją w `data/private` — ostrzeżenie powie to
-MG przy stole. **Testy:** `shared` 2926/2926 (+4), serwer 1723/1723 (+1, macierz izolacji
-z `vehicle:refill`), klient 467/467, `tsc` w trzech pakietach, ESLint i Prettier czyste.
-**W przeglądarce nieoglądane** — brak `po-T6` w kontenerze, Playwright MCP niepodłączony;
 zaległość w `zaleglosci.md`.

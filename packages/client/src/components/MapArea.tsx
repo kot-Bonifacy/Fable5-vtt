@@ -1016,6 +1016,11 @@ export function MapArea() {
     const renderer = new MapRenderer();
     renderer.onBackgroundLoad = setBackgroundLoad;
     renderer.onMapClick = handleMapClick;
+    // Kreator pościgu (03.11): puszczona krawędź pasa trafia do szkicu sceny,
+    // jak każde pole Edycji — „Zapisz” (albo krok kreatora) ją utrwala.
+    renderer.onRoadBandChange = (road) => {
+      useSceneStore.getState().patchDraft({ chase: { road } });
+    };
     renderer.onVehicleMove = (sceneVehicleId, x, y) => {
       const send = (ram: boolean) =>
         void moveChaseVehicle(sceneVehicleId, x, y, ram).then((ack) => {
@@ -1474,6 +1479,20 @@ export function MapArea() {
     if (!ready) return;
     rendererRef.current?.setGridContrast(gridContrast);
   }, [ready, gridContrast]);
+
+  // Uchwyty pasa jezdni (kreator pościgu, 03.11) — włącza je zakładka „Pościg”
+  // albo krok „Droga” kreatora.
+  const frameRequest = useSceneStore((s) => s.frameRequest);
+  useEffect(() => {
+    if (!ready || !frameRequest) return;
+    rendererRef.current?.frameScene(frameRequest.inset, frameRequest.refit);
+  }, [ready, frameRequest]);
+
+  const chaseBandEdit = useSceneStore((s) => s.chaseBandEdit);
+  useEffect(() => {
+    if (!ready) return;
+    rendererRef.current?.setChaseBandEdit(chaseBandEdit);
+  }, [ready, chaseBandEdit]);
 
   useEffect(() => {
     if (!ready) return;

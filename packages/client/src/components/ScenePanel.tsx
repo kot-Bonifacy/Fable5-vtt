@@ -185,6 +185,7 @@ export function ScenePanel() {
   const [newKind, setNewKind] = useState<SceneKind>('map');
   // Edycja sceny to osobne okno (`SceneConfigWindow`, 15.10) — panel je tylko otwiera.
   const setEditorOpen = useSceneStore((s) => s.setEditorOpen);
+  const setChaseWizardOpen = useSceneStore((s) => s.setChaseWizardOpen);
 
   async function create(event: FormEvent) {
     event.preventDefault();
@@ -194,7 +195,15 @@ export function ScenePanel() {
     if (ack.ok && ack.data) {
       setNewName('');
       await viewScene(ack.data.id);
-      setEditorOpen(true);
+      // Nowy pościg prowadzi kreator krok po kroku (zlecenie MG z 03.11),
+      // zwykła mapa — jak dotąd — Edycja sceny.
+      if (newKind === 'chase') {
+        setEditorOpen(false);
+        setChaseWizardOpen(true);
+      } else {
+        setChaseWizardOpen(false);
+        setEditorOpen(true);
+      }
     }
   }
 
@@ -203,6 +212,7 @@ export function ScenePanel() {
       const ack = await viewScene(sceneId);
       if (!ack.ok) return;
     }
+    setChaseWizardOpen(false);
     setEditorOpen(true);
   }
 
@@ -234,7 +244,7 @@ export function ScenePanel() {
         />
         <select
           aria-label="Rodzaj nowej sceny"
-          title="Pościg: droga przewija się pod autami, a postacie siedzą w fotelach"
+          title="Pościg: droga przewija się pod autami, a postacie siedzą w fotelach — „Utwórz” otwiera kreator pościgu"
           value={newKind}
           onChange={(e) => setNewKind(e.target.value === 'chase' ? 'chase' : 'map')}
         >

@@ -58,6 +58,9 @@ import type {
 import {
   COVER_MIN_SIZE_PX,
   ZONE_MIN_SIZE_PX,
+  chaseIsHorizontal,
+  chaseRoadCells,
+  chaseRoadWithEdge,
   DRAWING_FILL_ALPHA,
   DRAWING_PATH_MAX_POINTS,
   FOG_STROKE_MAX_POINTS,
@@ -994,6 +997,8 @@ export class MapRenderer {
   onMapClick: ((x: number, y: number) => boolean) | null = null;
   /** MG puścił przeciągnięte auto (etap 65b) — środek bryły po przycięciu do pasa. */
   onVehicleMove: ((sceneVehicleId: string, x: number, y: number) => void) | null = null;
+  /** MG puścił krawędź pasa jezdni (kreator pościgu, 03.11) — nowy pas w kratkach. */
+  onRoadBandChange: ((road: { from: number; to: number }) => void) | null = null;
   /**
    * Czy gracz może ciągnąć to auto (65c): `false` — nie, `null` — bez limitu
    * (poza walką), liczba — budżet tury kierowcy w pikselach sceny. MG ciągnie
@@ -1159,6 +1164,11 @@ export class MapRenderer {
     /** Budżet kierowcy w pikselach (65c); `null` — bez limitu (MG, poza walką). */
     limitPx: number | null;
   } | null = null;
+  /** Uchwyty pasa jezdni u MG (kreator pościgu, 03.11) i krawędź w ręku. */
+  private chaseBandEdit = false;
+  /** Szerokość mapy zasłonięta oknem z prawej (`frameScene`), w pikselach ekranu. */
+  private frameInsetPx = 0;
+  private bandGrab: { edge: 'from' | 'to' } | null = null;
   private readonly grid = new Graphics();
   /** Kontrastowa siatka przy otwartym edytorze sceny (12.09) — patrz `map/grid-style.ts`. */
   private gridContrast = false;
@@ -2564,6 +2574,18 @@ export class MapRenderer {
       // „narysuj obok". Rozstrzygnięcie MG z 24.08.
       if (this.grabSceneHandle(point)) return;
 
+      // Krawędź pasa jezdni (kreator pościgu, 03.11) — tylko przy otwartej
+      // zakładce „Pościg” albo kroku „Droga”, więc nie zabiera klików autom
+      // w grze; przy krawędzi wygrywa z autem, bo to po nią MG sięga.
+      if (this.chaseBandEdit && !this.mapToolArmed && !isTokenTarget(event.target)) {
+        const edge = this.chase.bandHandleAt(point, this.handleTolerance() * 1.4);
+        if (edge) {
+          this.bandGrab = { edge };
+          viewport.plugins.pause('drag');
+          return;
+        }
+      }
+
       // Auto na scenie pościgu (65b): MG chwyta je i przeciąga po drodze. Figura
       // siedząca w aucie bierze klik sama (jej menu, zaznaczenie, przeciąganie
       // do innego fotela), a gest bez ruchu zostaje kliknięciem — menu auta.
@@ -2772,6 +2794,10 @@ export class MapRenderer {
         this.moveSceneHandle(point, event.ctrlKey || event.metaKey);
         return;
       }
+      if (this.bandGrab) {
+        this.dragBandEdge(this.bandGrab.edge, point);
+        return;
+      }
       const grab = this.vehicleGrab;
       if (grab) {
         if (
@@ -2799,6 +2825,7 @@ export class MapRenderer {
       if (!this.gestureInFlight()) {
         this.setSceneHover(this.armedLayerKind() ? this.pickOnArmedLayer(point) : null);
         this.applyHandleCursor(point);
+        this.applyBandCursor(point);
       }
 
       if (this.fogStroke) {
@@ -2872,6 +2899,15 @@ export class MapRenderer {
     });
 
     const end = () => {
+      if (this.bandGrab) {
+        this.bandGrab = null;
+        this.viewport?.plugins.resume('drag');
+        const road = this.chase.bandRoad();
+        if (road) this.onRoadBandChange?.(road);
+        this.dragEndedAt = performance.now();
+        this.layerPickSpent = true;
+        return;
+      }
       const grab = this.vehicleGrab;
       if (grab) {
         this.vehicleGrab = null;
@@ -3470,10 +3506,15 @@ export class MapRenderer {
     const scene = this.scene;
     if (!viewport || !scene || this.destroyed) return;
     const margin = this.cameraLocked ? 0 : PAN_MARGIN;
+    // Okno kreatora pościgu przy prawej krawędzi (03.11) poszerza świat w prawo.
+    // `underflow` centruje według `worldWidth`, nie według granic `clamp`, więc
+    // rośnie jedno i drugie — scena mniejsza od ekranu staje na lewo od okna.
+    const inset = this.frameInsetPx / Math.max(1e-3, viewport.scale.x);
+    viewport.worldWidth = scene.width + inset;
     viewport.clamp({
       left: -scene.width * margin,
       top: -scene.height * margin,
-      right: scene.width * (1 + margin),
+      right: scene.width * (1 + margin) + inset,
       bottom: scene.height * (1 + margin),
       underflow: 'center',
     });
@@ -6890,6 +6931,64 @@ export class MapRenderer {
     this.refreshOverlays();
   }
 
+  /**
+   * Uchwyty pasa jezdni (kreator pościgu, 03.11): włącza je otwarta zakładka
+   * „Pościg” w Edycji sceny albo krok „Droga” kreatora. Tylko MG.
+   */
+  setChaseBandEdit(on: boolean): void {
+    if (this.destroyed) return;
+    const next = on && this.viewerIsGm;
+    if (this.chaseBandEdit === next) return;
+    this.chaseBandEdit = next;
+    if (!next && this.bandGrab) {
+      this.bandGrab = null;
+      this.viewport?.plugins.resume('drag');
+    }
+    this.chase.setBandEdit(next);
+  }
+
+  /** Krawędź pasa idzie za kursorem — przyciągnięta do linii siatki. */
+  private dragBandEdge(edge: 'from' | 'to', point: ScenePoint): void {
+    const scene = this.scene;
+    const road = this.chase.bandRoad();
+    if (!scene || !road) return;
+    const horizontal = chaseIsHorizontal(scene.chase.direction);
+    const cells = chaseRoadCells(scene.chase.direction, {
+      width: scene.width,
+      height: scene.height,
+      gridSizePx: scene.grid.sizePx,
+      gridOffsetX: scene.grid.offsetX,
+      gridOffsetY: scene.grid.offsetY,
+    });
+    const next = chaseRoadWithEdge(
+      road,
+      edge,
+      horizontal ? point.y : point.x,
+      { sizePx: scene.grid.sizePx, offset: horizontal ? scene.grid.offsetY : scene.grid.offsetX },
+      cells,
+    );
+    this.chase.setBandHover(edge);
+    this.chase.previewBand(next);
+  }
+
+  /** Kursor „ciągnij w poprzek” nad krawędzią pasa. */
+  private applyBandCursor(point: ScenePoint): void {
+    if (!this.chaseBandEdit || this.mapToolArmed) {
+      this.chase.setBandHover(null);
+      return;
+    }
+    const edge = this.chase.bandHandleAt(point, this.handleTolerance() * 1.4);
+    this.chase.setBandHover(edge);
+    const canvas = this.app.canvas as HTMLCanvasElement | undefined;
+    const scene = this.scene;
+    if (!canvas || !scene) return;
+    if (edge) {
+      canvas.style.cursor = chaseIsHorizontal(scene.chase.direction) ? 'row-resize' : 'col-resize';
+    } else if (canvas.style.cursor === 'row-resize' || canvas.style.cursor === 'col-resize') {
+      this.applyMapCursor();
+    }
+  }
+
   /** Przeszkody na scenie pościgu (65e). */
   setChaseObstacles(obstacles: ChaseObstacleView[]): void {
     if (this.destroyed) return;
@@ -8581,6 +8680,33 @@ export class MapRenderer {
           : { color: stroke.color, alpha: stroke.alpha, width: stroke.width },
       );
     }
+  }
+
+  /**
+   * Cała scena w kadrze, w części mapy, której nie zasłania okno stojące przy
+   * prawej krawędzi (kreator pościgu, 03.11): po wyborze drogi MG widzi ją
+   * całą obok okna, a nie pod nim. Granica kamery z prawej rośnie o szerokość
+   * okna, więc `underflow: 'center'` sam stawia scenę na lewo od niego;
+   * `frameScene(0, false)` po zamknięciu okna oddaje zwykłą granicę.
+   */
+  frameScene(rightInset = 0, refit = true): void {
+    const viewport = this.viewport;
+    const scene = this.scene;
+    if (!viewport || !scene || this.destroyed) return;
+    this.frameInsetPx = Math.max(0, rightInset);
+    if (refit) {
+      const margin = 24;
+      const width = Math.max(200, viewport.screenWidth - this.frameInsetPx) - margin * 2;
+      const height = viewport.screenHeight - margin * 2;
+      const scale = Math.min(width / scene.width, height / scene.height);
+      viewport.setZoom(Math.min(Math.max(scale, MIN_ZOOM), 1), true);
+    }
+    this.applyCameraBounds();
+    if (refit) {
+      const shift = this.frameInsetPx / 2 / viewport.scale.x;
+      viewport.moveCenter(scene.width / 2 + shift, scene.height / 2);
+    }
+    this.refreshOverlays();
   }
 
   private fitScene(scene: SceneView): void {
