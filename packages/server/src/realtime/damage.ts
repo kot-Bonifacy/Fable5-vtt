@@ -711,14 +711,17 @@ function damageMapFx(
   // The picture on the figure (17.10) grows with what the hit cost — a graze
   // and a round that took half the figure must not look the same.
   const max = log.hp?.max ?? 0;
+  const weight = log.injury ? 'crit' : log.hpLost > 0 ? 'wound' : 'armor';
   const effects: MapFxEffect[] = [
     {
       kind: 'hit',
       at,
       size: token.size,
-      weight: log.injury ? 'crit' : log.hpLost > 0 ? 'wound' : 'armor',
+      weight,
       strength: max > 0 ? Math.min(1, log.hpLost / max) : 0,
-      sound: 'impact',
+      // The table hears whether it *hurt* (04.11, zlecenie MG): a round the vest
+      // ate is a dull thud, one that took Hit Points is a wet, painful one.
+      sound: weight === 'armor' ? 'impact' : 'wound',
     },
   ];
   effects.push(

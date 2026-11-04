@@ -29,8 +29,10 @@ export type MapFxSound =
   | 'flame'
   /** Granatnik i wyrzutnia rakiet: odpalenie, nie wystrzał z karabinu. */
   | 'launch'
-  /** Kula albo pięść dochodzi do celu — głuche uderzenie w ciało. */
+  /** Kula albo pięść dochodzi do celu, ale nie przebija pancerza — głuche uderzenie. */
   | 'impact'
+  /** Trafienie, które zabrało Punkty Wytrzymałości — mokre, bolesne uderzenie (04.11). */
+  | 'wound'
   /** Chybiony pocisk odbija się od tego, co stało za figurą. */
   | 'ricochet'
   | 'explosion'
@@ -55,6 +57,7 @@ export const MAP_FX_SOUNDS: readonly MapFxSound[] = [
   'flame',
   'launch',
   'impact',
+  'wound',
   'ricochet',
   'explosion',
   'gas',

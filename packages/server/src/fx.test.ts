@@ -373,6 +373,9 @@ describe('map effects', () => {
     expect(float.at).toEqual(MOOK_CENTRE);
     // Either the vest ate it or it hurt — both are said, neither is „−0".
     expect(float.text === 'PANCERZ' || /^−\d+$/.test(float.text)).toBe(true);
+    // …and heard (04.11): a thud off the vest, a wet one when it hurt.
+    expect(hit.sound).toBe(float.text === 'PANCERZ' ? 'impact' : 'wound');
+    expect(hit.weight === 'armor').toBe(float.text === 'PANCERZ');
   });
 
   describe('behind the fog', () => {

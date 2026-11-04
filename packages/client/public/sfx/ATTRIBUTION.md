@@ -141,3 +141,21 @@ pocisk na drugim końcu […] wybiera klient z `hit`". Teraz wybiera: chybiony *
 (nie strzała, nie ostrze) gra odbicie w chwili, gdy smuga dolatuje, najwyżej dwa razy na
 serię (`MAX_RICOCHETS_PER_SHOT`) i tylko wtedy, gdy daleki koniec przetrwał przycięcie dla
 widza — czyli tak, jak od początku obiecywał tamten komentarz.
+
+## Rana (04.11)
+
+| Plik        | Oryginał       | Paczka                                                                     | Autor       | Licencja   |
+| ----------- | -------------- | -------------------------------------------------------------------------- | ----------- | ---------- |
+| `wound.wav` | `punch_1a.wav` | [Fleshy Fight Sounds](https://opengameart.org/content/fleshy-fight-sounds) | Will Leamon | OGA-BY 3.0 |
+
+Nota wymagana przez autora: „Additional Sound FX by Will Leamon”.
+
+Wybrana przez MG po odsłuchu ~140 kandydatów (głosy bólu i trafienia w ciało) **w kontekście**,
+czyli zaraz po `shot-pistol.wav`. Do tej pory każde trafienie grało `impact.wav`, więc
+nie było słychać, czy kula przeszła przez pancerz. Teraz o próbce decyduje waga efektu `hit`
+(`damageMapFx` w `packages/server/src/realtime/damage.ts`): **`armor`** (pancerz albo bariera zjadły
+całość) gra `impact`, a **`wound` i `crit`** (poszły Punkty Wytrzymałości) grają `wound`.
+
+Oryginał to stereo 32-bit float 48 kHz, którego moduł `wave` nie czyta. Został zsumowany do mono,
+przycięty do 0,46 s (cisza poniżej −40 dB względem szczytu), wygaszony na ostatnich 60 ms
+i znormalizowany do −0,7 dBFS jako 16-bit PCM.
