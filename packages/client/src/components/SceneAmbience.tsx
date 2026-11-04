@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
-import { AMBIENCE_PRESETS, ROLE_GM, type AmbiencePreset } from '@vtt/shared';
+import { AMBIENCE_PRESETS, ROLE_GM, chaseAmbienceFor, type AmbiencePreset } from '@vtt/shared';
 import { useSceneStore } from '../stores/sceneStore.js';
+import { useChaseStore } from '../stores/chaseStore.js';
+import { useTokenStore } from '../stores/tokenStore.js';
 import { useSettingsStore } from '../stores/settingsStore.js';
 import { useChatStore } from '../stores/chatStore.js';
 import { useAuthStore } from '../stores/authStore.js';
@@ -10,7 +12,24 @@ import { updateScene } from '../socket.js';
 export function useSceneAmbience() {
   const scene = useSceneStore((s) => s.scene);
   const synced = useChatStore((s) => s.synced);
-  const preset = synced ? scene?.ambience : undefined;
+  const chase = scene?.kind === 'chase';
+  const userId = useAuthStore((s) => s.user?.id ?? null);
+  // Primitive selectors only: the hook lives in App, token moves must not re-render it.
+  const seated = useTokenStore((s) =>
+    chase && userId
+      ? Object.values(s.tokens)
+          .flatMap((token) =>
+            token.ownerId === userId && token.vehicleSeat ? [token.vehicleSeat.sceneVehicleId] : [],
+          )
+          .sort()
+          .join(',')
+      : '',
+  );
+  const preset = useChaseStore((s) =>
+    synced && scene?.ambience
+      ? chaseAmbienceFor(scene.ambience, chase, s.vehicles, seated ? seated.split(',') : [])
+      : undefined,
+  );
   useEffect(() => {
     if (!preset || preset === 'none') return;
     const audio = new Audio(`/ambience/${preset}.wav`);
@@ -81,7 +100,7 @@ export function SceneAmbience() {
       {gm && scene ? (
         <label
           className="settings-row"
-          title="Otoczenie gra razem z muzyką. Każdy słyszy odgłos sceny, którą ogląda."
+          title="Otoczenie gra razem z muzyką. Każdy słyszy odgłos sceny, którą ogląda. W pościgu „Jazda samochodem” przechodzi w „Ulicę”, gdy auto stoi."
         >
           <span className="settings-label">Odgłos na oglądanej scenie</span>
           <select
