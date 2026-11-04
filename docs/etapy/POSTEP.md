@@ -21,7 +21,7 @@ w plikach obok — czytaj je **na żądanie, nigdy rutynowo**:
 
 | stan         | etapy                                                                                          |
 | ------------ | ---------------------------------------------------------------------------------------------- |
-| ⬜ otwarty   | **66** Sceny przykładowe (🟨 zrobione 31.10, czeka na oględziny MG przy stole i wdrożenie; **66b** „Fabryka dronów” 🟨 zrobione 31.10, tak samo; **66c** „Ostatni zjazd” 🟨 wzorzec zrobiony i rozegrany w przeglądarce 04.11 — czeka na decyzje MG o balansie, stół MG i wdrożenie); **65** Scena pościgu i walka pojazdów (🟨 65a–65e ✅ 30–31.10, czeka na oględziny MG przy stole); **62** Sieć ze sceny (🟨 zrobione, czeka na oględziny MG na VPS po wdrożeniu); **61** Skradanie się (🟨 zrobione, czeka na słowo MG o rozstrzygnięciach); **28** Wdrożenie na VPS (🟨 działa na `https://vtt.tatanga.eu` z botami od 18.10; zostały off-site, utwardzenie, monitoring); **43b**, **43c** (UI walki); **60** Czytelny czat (zlecenie MG z 24.10; 🟨 60a–60c ✅, czeka na oględziny MG z pierwszego kryterium); T10; refaktoryzacja odłożona (MG 18.10) |
+| ⬜ otwarty   | **66** Sceny przykładowe (🟨 zrobione 31.10, czeka na oględziny MG przy stole i wdrożenie; **66b** „Fabryka dronów” 🟨 zrobione 31.10, tak samo; **66c** „Ostatni zjazd” 🟨 wzorzec zrobiony, rozegrany w przeglądarce i poprawiony wg decyzji MG 04.11 — czeka na błędy z zaległości, stół MG i wdrożenie); **65** Scena pościgu i walka pojazdów (🟨 65a–65e ✅ 30–31.10, czeka na oględziny MG przy stole); **62** Sieć ze sceny (🟨 zrobione, czeka na oględziny MG na VPS po wdrożeniu); **61** Skradanie się (🟨 zrobione, czeka na słowo MG o rozstrzygnięciach); **28** Wdrożenie na VPS (🟨 działa na `https://vtt.tatanga.eu` z botami od 18.10; zostały off-site, utwardzenie, monitoring); **43b**, **43c** (UI walki); **60** Czytelny czat (zlecenie MG z 24.10; 🟨 60a–60c ✅, czeka na oględziny MG z pierwszego kryterium); T10; refaktoryzacja odłożona (MG 18.10) |
 | ✅ ukończone | 01–11, 13–20b, 23a–27f, 27h–27l, 29a–30d, 31–35, 37–42c, 43a, 44a–44d, 45, 46a1, 46a2, 46c1, 46c2, 46b1, 46b2, 47a, 47b, 48a, 48b, 48c, 49a, 49b, 50a, 50b, 50c, 51, 52, 53, 54, 55, 56, 57 (57a–57c), 58 (58a–58d), 59 (59a–59c), 63 (63a–63b; 63c wycofane 29.10), 64 (64a–64c) (ostatni zamknięty: 64, 2026-10-30) |
 | ⛔ wycofane  | 12, 21, 22 (głos), 27g (wydajność), 36 (makra); 27, 29, 30, 38 rozdzielone na etapy literowane |
 
@@ -103,9 +103,10 @@ z alternatywami zamiast treści podręcznika. **Pierwszy wzorzec, „Pościg na 
 furgon z porwaną netrunnerką Iskrą (uśpiona, stan Nieprzytomna), są trzy auta wroga, a Rydwan
 czeka w rezerwie (`status: behind`) do „Przywróć do pościgu”. Pięć notatek MG rozpisuje rundy,
 skalowanie, teksty dla graczy i zakończenia. **Rozegrany w przeglądarce 04.11** (Rdza, Kosa, Szew
-na `dev.db`, 7 rund, sukces z kosztem): czekają decyzje MG o balansie — karabin Rydwanu robi
-z Wozu wrak jedną serią, Medyk w pościgu nie ma Akcji, NPC-e w średnim pancerzu prawie nie
-trafiają — i 11 błędów z `zaleglosci.md` (04.11). Szczegóły w `etap-66c-ostatni-zjazd.md`
+na `dev.db`, 7 rund, sukces z kosztem) i poprawiony wg decyzji MG: Rydwan bez karabinu
+pokładowego, pistolet dla postaci bez broni w schowku Wozu (notatka ❓ pkt 9), NPC-e +1 do broni
+(Szron i Kłoda +2). Kopia sceny w „Oględzinach 12.09” jest sprzed tych zmian. Czeka 11 błędów
+z `zaleglosci.md` (04.11). Szczegóły w `etap-66c-ostatni-zjazd.md`
 („Rozegranie w przeglądarce”). Wzorzec umie od 66c tło z `CHASE_ROADS`, auto
 w rezerwie i stany figur, a **załoga auta poza pościgiem nie istnieje dla gracza** (reguła ogólna,
 decyzja MG). Testy serwera wzorców stoją na fiksturze `test-poscig`
@@ -661,8 +662,10 @@ Przebieg, drogi do celu i 6 wniosków o balansie w pliku etapu („Rozegranie w 
 11 błędów i drobiazgów w `zaleglosci.md` (najważniejsze: klik w fotel z bronią w ręku celuje
 w auto; marsz MG wyprowadza NPC-a z fotela przez barierę). Poprawione teksty pięciu notatek
 wzorca. **Oglądane:** MG i Ola w Chromium, Tester i Handlarz w **Firefoksie** (Playwright MCP).
-**Testy:** kod aplikacji nietknięty; testy wzorców `shared` 17/17, serwer 7/7 po zmianie
-`scene.json`.
+**Decyzje MG po rozegraniu (wprowadzone):** Rydwan bez karabinu pokładowego (Grot z pistoletem),
+postać bez broni bierze pistolet ze schowka Wozu (wstęp + notatka ❓), NPC-e +1 do broni,
+Szron i Kłoda +2, szyba bez zmian. **Testy:** kod aplikacji nietknięty; testy wzorców `shared`
+17/17, serwer 7/7 po zmianach `scene.json`.
 
 ### Sesja 04.11, trzecia — przygotowanie przebiegu „Ostatniego zjazdu” w przeglądarce
 

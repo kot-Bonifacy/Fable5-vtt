@@ -39,7 +39,7 @@ wykradła im coś ważnego (dopasuj do kampanii). Za sześć rund furgon zjedzie
 zjazdem do strzeżonej enklawy Halcyonu i Iskry nikt już nie zobaczy. Drużyna dostaje od
 Matyldy szybki wóz z Pługiem bojowym i Nitro i siada furgonowi na ogon. Przed nimi jest
 czarne auto eskorty, które zrzuca kolczatki i strzela, a w rundzie 3 od tyłu dojeżdżają
-posiłki z karabinem w zderzaku. **Haczyk:** w furgonie siedzi Iskra, więc rakieta albo
+posiłki z pistoletem i strzelbą. **Haczyk:** w furgonie siedzi Iskra, więc rakieta albo
 granat w furgon trafi też ją. Furgon ma opancerzony kadłub i kuloodporne szyby. Najprościej
 jest więc zdjąć kierowcę przez rozbitą szybę, wjechać w furgon Pługiem albo zepchnąć go
 w przeszkodę.
@@ -113,7 +113,7 @@ co wystarcza do testów, ale nie do gry. Opis „Wymaga…” w notatce mówi o 
 | `matylda` | Wóz od Matyldy | `vehicle.samochod-sportowy`, `vehicle.sample-kompakt` | `ram`, `nitro` | `car-orange.webp` | PUK 50, Ruch 40, 4 fotele, Pług z przodu, 1 zbiornik Nitro |
 | `furgon` | Furgon Halcyonu | `vehicle.samochod-kompaktowy`, `vehicle.sample-kompakt` | `reinforced`, `armoredHull`, `bulletproofGlass`, `extraSeats`, `extraSeats`, `nitro` | `van-white.webp` | PUK 70, OB 13, Ruch 20, 8 foteli (`van-8`, bryła 3 × 7), cienkie szyby 15 PW na burtę, 1 zbiornik Nitro |
 | `eskorta` | Eskorta | `vehicle.samochod-sportowy`, `vehicle.sample-kompakt` | `bulletproofGlass`, `spikes`, `spikes` | `car-black-viper.webp` | PUK 50, Ruch 40, szyby 15 PW, **2 kolczatki** |
-| `rydwan` | Rydwan | `vehicle.samochod-sportowy`, `vehicle.sample-kompakt` | `machineGun` | `car-red.webp` | PUK 50, Ruch 40, karabin pokładowy (30 naboi, tylko Ogień ciągły, w przód) |
+| `rydwan` | Rydwan | `vehicle.samochod-sportowy`, `vehicle.sample-kompakt` | — (do 04.11 `machineGun`, decyzja MG) | `car-red.webp` | PUK 50, Ruch 40, bez broni pokładowej |
 
 **Dlaczego tak:**
 
@@ -128,8 +128,9 @@ co wystarcza do testów, ale nie do gry. Opis „Wymaga…” w notatce mówi o 
 - **Pług bojowy drużyny** pozwala taranować furgon bez obrażeń i bez Rany Krytycznej dla
   taranującego, a z Nitro uderzony dostaje +2k6. To trzecia droga do celu obok strzału
   w kierowcę i wepchnięcia furgonu w przeszkodę.
-- **Rydwan ma karabin w przodzie** i nadjeżdża od tyłu, więc ma auto drużyny w przedniej
-  ćwiartce (`MOUNT_FRONT_ONLY` spełnione). Przez dwie rundy drużyna jest w kleszczach.
+- **Rydwan to posiłki od tyłu** — Grot z pistoletem i Kabel ze strzelbą. Przez dwie rundy
+  drużyna jest w kleszczach. Do 04.11 miał karabin pokładowy, ale jedna seria robiła z Wozu
+  wrak (rozegranie w przeglądarce) — MG kazał go zdjąć.
 - **Drużyna, która ma własny wóz** (Nomada z Moto, auto z karty): MG zdejmuje „Wóz od
   Matyldy” z drogi i stawia swój przez „Na drogę”. Bez Pługa jedna z dróg do celu kosztuje
   obrażenia — notatka o tym przypomina.
@@ -148,7 +149,7 @@ Statystyki wymyślone (nie z podręcznika), ułożone pod NPC-a z poziomu „naj
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | 5 | 6 | 5 | 5 | 5 | 4 | 2 | 5 | 5 | 3 |
 
-Umiejętności: `driving` 4, `handgun` 4, `evasion` 3, `perception` 4, `athletics` 3.
+Umiejętności: `driving` 4, `handgun` 5, `evasion` 3, `perception` 4, `athletics` 3.
 Sprzęt: `weapon.heavy-pistol` / `weapon.zgrzyt-9`; `armor.light-armorjack` /
 `armor.kurtka-warsztatowa`.
 
@@ -159,7 +160,7 @@ wszystko, co się zbliży. Gdy furgon stanie, łapie Iskrę jako tarczę (patrz 
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | 4 | 6 | 6 | 3 | 6 | 6 | 2 | 5 | 8 | 2 |
 
-Umiejętności: `shoulder-arms` 6, `brawling` 6, `melee-weapon` 5, `evasion` 4, `perception` 5,
+Umiejętności: `shoulder-arms` 8, `brawling` 6, `melee-weapon` 5, `evasion` 4, `perception` 5,
 `athletics` 5, `interrogation` 3. Sprzęt: `weapon.shotgun` / `weapon.huk-12`,
 `weapon.heavy-melee` / `weapon.szpon`; tułów `armor.medium-armorjack` /
 `armor.kurtka-warsztatowa`, głowa `armor.light-armorjack` / `armor.helm-kurierski`.
@@ -185,7 +186,7 @@ Jej Akcja to kolczatka albo strzał, a Akcja Ruchu to zajeżdżanie drogi.
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | 5 | 8 | 6 | 4 | 6 | 5 | 3 | 6 | 5 | 3 |
 
-Umiejętności: `driving` 7, `handgun` 5, `evasion` 5, `perception` 5, `athletics` 4.
+Umiejętności: `driving` 7, `handgun` 6, `evasion` 5, `perception` 5, `athletics` 4.
 Sprzęt: `weapon.heavy-pistol` / `weapon.zgrzyt-9`; `armor.light-armorjack` /
 `armor.kurtka-warsztatowa`.
 
@@ -196,7 +197,7 @@ strzelec. Gdy padnie, reszta zespołu traci zapał (patrz „Morale”).
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | 6 | 7 | 6 | 4 | 7 | 6 | 3 | 6 | 7 | 2 |
 
-Umiejętności: `shoulder-arms` 6, `autofire` 5, `handgun` 5, `evasion` 5, `perception` 5,
+Umiejętności: `shoulder-arms` 8, `autofire` 7, `handgun` 6, `evasion` 5, `perception` 5,
 `tactics` 5, `brawling` 4. Sprzęt: `weapon.assault-rifle` / `weapon.grzechotnik`,
 `weapon.heavy-pistol` / `weapon.zgrzyt-9`; tułów `armor.medium-armorjack` /
 `armor.kurtka-warsztatowa`, głowa `armor.light-armorjack` / `armor.helm-kurierski`.
@@ -208,20 +209,20 @@ przy 2 MG zdejmuje jej figurę przed aktywacją.
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | 4 | 7 | 7 | 3 | 5 | 4 | 2 | 6 | 5 | 3 |
 
-Umiejętności: `autofire` 5, `handgun` 5, `evasion` 6, `perception` 4, `athletics` 4.
+Umiejętności: `autofire` 6, `handgun` 6, `evasion` 6, `perception` 4, `athletics` 4.
 Sprzęt: `weapon.submachine-gun` / `weapon.zardzewiak`; `armor.light-armorjack` /
 `armor.kurtka-warsztatowa`.
 
 ### Rydwan (posiłki, runda 3)
 
-**Grot — kierowca Rydwanu** (fotel 0, `hostile`). Strzela z karabinu pokładowego (Ogień
-ciągły) i to jego cała robota.
+**Grot — kierowca Rydwanu** (fotel 0, `hostile`). Prowadzi i strzela z ciężkiego pistoletu
+(karabin pokładowy zdjęty 04.11, decyzja MG).
 
 | INT | REF | ZW | TECH | CHŁ | WOLA | SZCZ | RUCH | BC | EMP |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | 4 | 7 | 5 | 4 | 5 | 4 | 2 | 5 | 6 | 2 |
 
-Umiejętności: `driving` 6, `autofire` 5, `handgun` 4, `evasion` 4, `perception` 4.
+Umiejętności: `driving` 6, `handgun` 6, `evasion` 4, `perception` 4.
 Sprzęt: `weapon.heavy-pistol` / `weapon.zgrzyt-9`; `armor.light-armorjack` /
 `armor.kurtka-warsztatowa`.
 
@@ -231,7 +232,7 @@ Sprzęt: `weapon.heavy-pistol` / `weapon.zgrzyt-9`; `armor.light-armorjack` /
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | 3 | 6 | 6 | 3 | 5 | 5 | 2 | 6 | 7 | 2 |
 
-Umiejętności: `shoulder-arms` 5, `brawling` 5, `evasion` 4, `perception` 4, `athletics` 4.
+Umiejętności: `shoulder-arms` 6, `brawling` 5, `evasion` 4, `perception` 4, `athletics` 4.
 Sprzęt: `weapon.shotgun` / `weapon.huk-12`; `armor.light-armorjack` /
 `armor.kurtka-warsztatowa`.
 
@@ -294,7 +295,7 @@ uruchomione silniki. MG włącza tryb turowy. Pierwsza runda nie dryfuje (szyk u
 
 - Mewa zrzuca drugą kolczatkę, jeśli auto drużyny jest za eskortą. Jeśli drużyna już ją minęła,
   Mewa próbuje taranować auto drużyny z boku (eskorta nie ma Pługa, więc oba auta biorą 6k6).
-- Rydwan strzela serią w tył auta drużyny.
+- Grot i Kabel strzelają z Rydwanu w tył auta drużyny.
 
 ### Runda 6 — ostatni zjazd
 
@@ -572,7 +573,7 @@ w furgon przodem się nie udało (eskorta blokuje tył furgonu, tak jak chce pro
 to zwykły taran z Ranami dla wszystkich. Przeszkoda przed furgonem — działa dwukrotnie (auto
 cywilne, barykada), za każdym razem przez nieudany Manewr Wolta i wepchnięcie ręką MG.
 
-**Wnioski z balansu (do decyzji MG):**
+**Wnioski z balansu** (decyzje MG — niżej):
 
 1. **Karabin pokładowy Rydwanu jest zabójczy dla Wozu** (Ogień ciągły 2k6 ×4 bez OB): jedna
    seria = wrak = porażka w rundzie 4. Propozycje: Grot strzela w ludzi, nie w kadłub (wpisane
@@ -588,6 +589,18 @@ cywilne, barykada), za każdym razem przez nieudany Manewr Wolta i wepchnięcie 
    Manewrom Wolta; samym strzelaniem Wolt padł dopiero w rundzie 6.
 6. **Taran bokiem kosztuje Iskrę Ranę krytyczną**, a gracz nie dostaje ostrzeżenia, że Pług nie
    działa — w tym przebiegu stąd „sukces z kosztem”.
+
+**Decyzje MG po rozegraniu (04.11) — wprowadzone we wzorcu:**
+
+1. **Rydwan bez karabinu pokładowego** (`upgrades: []`); Grot prowadzi i strzela z ciężkiego
+   pistoletu (`handgun` 6, `autofire` usunięty), notatki 📌 i ⚠️ bez serii.
+2. **Postać bez broni dystansowej dostaje pistolet**: wzorzec nie umie położyć przedmiotu
+   w aucie ani dać go postaci gracza, więc Matylda zostawia ciężki pistolet w schowku Wozu —
+   mówi o tym wstęp (💬), a notatka ❓ (pkt 9) każe MG wydać go z Kompendium („Dodaj za darmo”).
+3. **NPC-e odrobinę celniejsi**: broń, której używają, +1 (Wolt, Mewa i Lutka `handgun` 6/5,
+   Lutka `autofire` 6, Kabel `shoulder-arms` 6), a Szron i Kłoda w średnim pancerzu (−2 REF) +2
+   (`shoulder-arms` 8, Szron `autofire` 7, `handgun` 6). Grot `handgun` 6.
+4. **Szyba zostaje** — zwykła szyba kuloodporna pada od karabinu i to jest w porządku.
 
 **Poprawione notatki wzorca (`scene.json`):** 📌 — taran bokiem / w tył to nie Pług;
 ❓ — klik w fotel z bronią w ręku celuje (najpierw slot broni), dołożenie pięciu NPC-ów
@@ -622,7 +635,8 @@ gracza, EMP 2 NPC-ów.
 - [x] Przygotowanie przebiegu przy stole na `dev.db`: 3 postacie z kreatora, scena dodana
       (04.11, trzecia sesja — wyżej).
 - [x] Rozegranie 6 rund w przeglądarce (MG + 3 graczy) — 04.11, czwarta sesja, wyżej.
-- [ ] Decyzje MG o balansie (karabin Rydwanu, Medyk, celność NPC-ów) i błędy z zaległości.
+- [x] Decyzje MG o balansie (karabin Rydwanu, Medyk, celność NPC-ów) — 04.11, we wzorcu.
+- [ ] Błędy z `zaleglosci.md` (04.11) i balans przy prawdziwym stole.
 - [ ] Balans na 3 graczy przy prawdziwym stole — **MG**.
 
 ## Kryteria ukończenia

@@ -60,8 +60,9 @@ stole.
 **04.11.2026 — „Ostatni zjazd” (66c): przebieg przy stole i wdrożenie.** Technicznie przejechany
 specem oględzin (MG w Chromium, Marek i Ola w Firefoksie, `data/private`), a 04.11 (czwarta
 sesja) rozegrany w przeglądarce 7 rund na `dev.db` — wynik balansu w pliku etapu
-(„Rozegranie w przeglądarce”). Zostaje dla MG: decyzje balansu z tamtej listy (karabin Rydwanu,
-Medyk bez roli, celność NPC-ów z pancerzem średnim), przy stole wygląd podpisów i portrety. Na VPS
+(„Rozegranie w przeglądarce”). Decyzje balansu MG wprowadzone we wzorcu tego samego dnia (Rydwan
+bez karabinu, pistolet w schowku Wozu, NPC-e celniejsi). Zostaje dla MG: balans przy
+prawdziwym stole, wygląd podpisów i portrety. Na VPS
 wzorzec jedzie z repo (bez migracji); kopie skasowanego „Pościgu na wiadukcie” w kampaniach na
 VPS — nie sprawdzone (zostaną bez tła). Reguła „załoga auta poza pościgiem” (umowa na górze
 `mapa`) dotyczy też aut, które odpadły w zwykłym pościgu — warto rzucić okiem przy stole, czy
