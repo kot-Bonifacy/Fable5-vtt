@@ -2,7 +2,7 @@
 
 **Faza:** przed betą (zlecenie MG z 04.11 spoza planu) · **Wymaga etapów:** 66 (wzorce scen),
 65 (scena pościgu, w tym kreator z wbudowanymi drogami z 03.11) · **Stan:** ⬜ projekt gotowy,
-czeka na akceptację MG i wdrożenie we wzorzec
+decyzje MG z 04.11 wpisane, czeka na wdrożenie we wzorzec
 
 ## Skąd ten etap
 
@@ -27,12 +27,12 @@ tła). Test izolacji kampanii woła `fabryka-dronow`.
 | Skrojone na 1–2 postacie, skalowanie jednym zdaniem | skalowanie 2 / 3 / 3 + bot w tabeli, z tym, co dokładnie zdjąć lub dołożyć |
 | Brak tekstu dla graczy | wstęp do przeczytania, okrzyki NPC-ów, zakończenia |
 | Tylko pościg, bez „co potem” | zakończenia, łup, nagroda, haki fabularne |
-| Mapa MG w repo (jedyna kopia tła) | wbudowana droga „Autostrada” (CC0, już w repo) — nic nowego do grafiki |
+| Mapa MG w repo (jedyna kopia tła) | wbudowana droga „Estakada” (CC0, już w repo) — nic nowego do grafiki |
 
 ## Pomysł w jednym akapicie
 
 Fixerka **Matylda** (wymyślona) dostała cynk: zespół odzysku firmy **Halcyon Bioformy**
-(wymyślona korporacja medyczna) wiezie autostradą porwaną netrunnerkę **Iskrę**, która
+(wymyślona korporacja medyczna) wiezie estakadą nad miastem porwaną netrunnerkę **Iskrę**, która
 wykradła im coś ważnego (dopasuj do kampanii). Za sześć rund furgon zjedzie ostatnim
 zjazdem do strzeżonej enklawy Halcyonu i Iskry nikt już nie zobaczy. Drużyna dostaje od
 Matyldy szybki wóz z Pługiem bojowym i Nitro i siada furgonowi na ogon. Przed nimi jest
@@ -55,35 +55,36 @@ mechaniki: kolczatka wroga, słaby punkt, taranowanie z Pługiem, szyby i posił
 
 ## Mapa i ustawienia sceny
 
-**Tło: wbudowana droga „Autostrada”** (`/art/roads/highway.webp`, 35 × 18 kratek po 100 px,
-1 m na kratkę, okres 32 kratek, szew bieżni niewidoczny). Trzy pasy w jedną stronę:
-**górny wiersze 3–7, środkowy 7–11, dolny 11–15**, pobocza 2–3 i 15–16, bariery, żwir.
-Środki pasów: y = 5, 9, 13.
+**Tło: wbudowana droga „Estakada”** (`/art/roads/viaduct.webp`, 35 × 18 kratek po 100 px,
+1 m na kratkę, okres 32 kratek, szew bieżni niewidoczny; decyzja MG z 04.11). Trzy pasy
+w jedną stronę: **górny wiersze 3–7, środkowy 7–11, dolny 11–15**, neonowe bariery 2,5–3
+(cyjan) i 15–15,5 (magenta), poza nimi przepaść z nocnym miastem w dole. Pobocza nie ma: auto
+jedzie od bariery do bariery. Środki pasów: y = 5, 9, 13.
 
 | pole | wartość | dlaczego |
 | --- | --- | --- |
 | `kind` | `chase` | |
 | `chase.direction` | `left` | domyślne od 04.11 (MG); przód kadru to lewa krawędź, tył — prawa |
 | `chase.tempo` | 40 | prędkość eskorty i auta drużyny — oba bez dryfu, furgon (Ruch 20) cofa się o 5 kratek na rundę |
-| `chase.road` | `{ from: 2, to: 16 }` | pas wbudowanej drogi z poboczami (`CHASE_ROADS`) |
+| `chase.road` | `{ from: 3, to: 15 }` | pas wbudowanej estakady (`CHASE_ROADS`), od bariery do bariery |
 | `chase.running` | `true` | droga jedzie od aktywacji |
 | `visibility` / `playerMove` | `open` / `stop` | jak każdy pościg |
 | `ambience` | `car` | |
-| `spawn` | `{ x: 28, y: 17 }` | żwir pod dolną barierą, pod autem drużyny — gracze klikają fotel tuż obok |
+| `spawn` | `{ x: 33, y: 13 }` | dolny pas za autem drużyny — pod barierami jest przepaść, więc start na jezdni; poza walką nikt się z nikim nie zderza, a gracze klikają fotel tuż obok |
 
 ### Ustawienie startowe (środki brył w kratkach)
 
 ```
  x:  0    5    10   15   20   25   30   35
- y 2 ─────────────────────────────────────── pobocze / bariera
- y 3 ┌ pas górny ────────────────────────────
+ y 0   ░░░░░░░░ przepaść, miasto w dole ░░░░░░
+ y 3 ┌ bariera cyjan ═ pas górny ────────────
  y 5 │                                  [Rydwan]*  ← poza kadrem (posiłki)
  y 7 ├ pas środkowy ─────────────────────────
  y 9 │    [ FURGON ]            [MATYLDA]       ← drużyna
  y11 ├ pas dolny ────────────────────────────
- y13 │           [ESKORTA]
- y15 └───────────────────────────────────────
- y17   📌   ❓   ⚠️   💬   💰       ⚑ start drużyny
+ y13 │           [ESKORTA]               ⚑ start drużyny
+ y15 └ bariera magenta ═══════════════════════
+ y17   📌   ❓   ⚠️   💬   💰   (notatki MG nad przepaścią)
         ← kierunek jazdy (przód kadru)              tył kadru →
 ```
 
@@ -250,7 +251,7 @@ o tym wiedzą: Matylda mówi to we wstępie, a w rundzie 4 i 6 MG przypomina okr
 
 ### Przed rundą 1 — rozsadzenie
 
-Drużyna stoi na żwirze przy miejscu startu i klika fotele w Wozie od Matyldy. Kierownicę
+Drużyna stoi na dolnym pasie przy miejscu startu i klika fotele w Wozie od Matyldy. Kierownicę
 daje MG: menu auta → „Może prowadzić” przy figurze kierowcy. Wszystkie auta mają już
 uruchomione silniki. MG włącza tryb turowy. Pierwsza runda nie dryfuje (szyk ustawia MG).
 
@@ -300,6 +301,14 @@ uruchomione silniki. MG włącza tryb turowy. Pierwsza runda nie dryfuje (szyk u
 - Jeśli na koniec rundy furgon nadal jedzie i ma kierowcę, skręca w zjazd: **porażka**.
   MG ogłasza to narracyjnie i odsuwa furgon za przednią krawędź (albo ustawia „Ucieka”).
 
+### Bariery estakady
+
+Mechanika nie zrzuca aut z estakady — auto nie wyjedzie poza pas jezdni. Bariery grają
+narracyjnie: auto po utracie kontroli na skrajnym pasie „szoruje po barierze w snopie iskier”,
+a wrak, który staje przy barierze, MG może opisać jako zawieszony nad przepaścią (dobry moment
+na Kłodę z Iskrą, jeśli to furgon). Zepchnięcie auta w przepaść to decyzja MG poza mechaniką,
+**nie dla furgonu** — Iskra by zginęła, a scena nie daje na to ostrzeżenia.
+
 ### Morale
 
 - **Szron pada** → Mewa gasi silnik i eskorta zostaje w tyle (dryfuje z pełnym tempem jak
@@ -324,7 +333,7 @@ uruchomione silniki. MG włącza tryb turowy. Pierwsza runda nie dryfuje (szyk u
 
 Gdy furgon stoi (kierowca padł i Kłoda się nie przesiadł, wrak albo zderzenie): MG wyłącza
 „Droga jedzie”. Auta stoją, przeszkody nie dryfują, a walka toczy się dalej na stojącej
-autostradzie. MG wysadza figury z aut przeciągnięciem (wyskok na jezdnię robi tylko MG).
+estakadzie. MG wysadza figury z aut przeciągnięciem (wyskok na jezdnię robi tylko MG).
 
 - **Kłoda z Iskrą jako tarczą.** Kłoda wysiada i trzyma Iskrę przed sobą (narracyjnie: kto
   strzela w Kłodę i chybi o 1–2 oczka, trafia Iskrę — decyzja MG, VTT tego nie liczy).
@@ -348,14 +357,14 @@ autostradzie. MG wysadza figury z aut przeciągnięciem (wyskok na jezdnię robi
 
 **Wstęp (MG czyta przed rundą 1):**
 
-> Deszcz przestał padać pół godziny temu, ale asfalt dalej błyszczy jak czarne lustro.
-> Matylda rzuca wam kluczyki i nie tłumaczy, skąd ma ten pomarańczowy wóz z pługiem
-> przyspawanym do zderzaka. „Biały furgon Halcyonu, trzeci pas, kilometr przed wami.
-> W środku dziewczyna, która nazywa się Iskra i która zrobiła mi kiedyś przysługę. Za
-> dziesięć minut furgon zjedzie do ich enklawy i będzie po niej. I jeszcze jedno: nie
-> rozwalcie mi tego furgonu. Ona siedzi z tyłu.” Silnik ryczy. Przed wami, między
-> światłami latarni, majaczy czarne auto, które jedzie stanowczo zbyt blisko białej
-> furgonetki.
+> Estakada wisi nad miastem jak neonowa nitka: magentowa bariera po lewej, cyjanowa po
+> prawej, a za nimi tylko pustka i światła dzielnic sto metrów niżej. Matylda rzuca wam
+> kluczyki i nie tłumaczy, skąd ma ten pomarańczowy wóz z pługiem przyspawanym do zderzaka.
+> „Biały furgon Halcyonu, kilometr przed wami. W środku dziewczyna, która nazywa się Iskra
+> i która zrobiła mi kiedyś przysługę. Za dziesięć minut furgon zjedzie z estakady do ich
+> enklawy i będzie po niej. I jeszcze jedno: nie rozwalcie mi tego furgonu. Ona siedzi
+> z tyłu.” Silnik ryczy. Przed wami, w smugach neonu, majaczy czarne auto, które jedzie
+> stanowczo zbyt blisko białej furgonetki.
 
 **Okrzyki NPC-ów (do czatu albo na głos):**
 
@@ -366,9 +375,9 @@ autostradzie. MG wysadza figury z aut przeciągnięciem (wyskok na jezdnię robi
 - Wolt, przed barykadą: „Trzymajcie się, skaczę!”
 - Kłoda, gdy furgon stanie: „Jeszcze krok i dziewczyna dostaje w głowę!”
 
-## Notatki MG we wzorcu (`notes`, wiersz y = 17, gotowe do wklejenia)
+## Notatki MG we wzorcu (`notes`, wiersz y = 17)
 
-Pięć notatek na żwirze pod dolną barierą (x = 3, 9, 15, 21, 32). Teksty niżej są gotowe do
+Pięć notatek nad przepaścią pod dolną barierą (x = 3, 9, 15, 21, 32) — warstwa MG, gracz ich nie widzi. Teksty niżej są gotowe do
 wklejenia do `scene.json` i każda mieści się w `NOTE_TEXT_MAX_LENGTH` = 2000 znaków. Długie
 tabele (statystyki, drogi do celu) zostają w tym pliku i na kartach NPC-ów. Notatka ich nie
 powtarza.
@@ -380,7 +389,7 @@ powtarza.
 2. **❓ (x 9) „ZANIM RUSZYCIE”** — rozsadzenie i „Może prowadzić”, skalowanie (tabela
    „Skalowanie” w trzech wierszach: 2 graczy — zdejmij Lutkę i nie przywracaj Rydwanu, zegar 7;
    3 — bez zmian; z botem — Rydwan w rundzie 2), Iskra poza kolejką, własny wóz drużyny,
-   kierunek i tempo w Edycji sceny → Pościg.
+   kierunek i tempo w Edycji sceny → Pościg, portrety NPC-ów (wzorzec ich nie ma — MG wybiera sam).
 3. **⚠️ (x 15) „PRZEBIEG RUND”** — runda po rundzie w jednym zdaniu każda (kolczatka 2,
    Rydwan + auto cywilne 3, roboty drogowe 4, druga kolczatka 5, barykada i zjazd 6), plus
    akapit „Morale”.
@@ -399,7 +408,7 @@ dołożyć, jedna jest opcjonalna.
    obok. `scene:update` już przepuszcza tę listę (kreator z 03.11), a `isOwnUploadUrl` /
    archiwum trzeba sprawdzić tak, jak dla `/public/scenes/`. Test `shared` „tło leży obok”
    sprawdza dla `/art/roads/` plik w `packages/client/public/`. **Alternatywa bez kodu:**
-   skopiować `highway.webp` do `data/public/scenes/ostatni-zjazd/map.webp` (CC0, wolno). Ma
+   skopiować `viaduct.webp` do `data/public/scenes/ostatni-zjazd/map.webp` (CC0, wolno). Ma
    to jednak wadę: dwie kopie tła, a poprawka skryptu dróg nie dotrze do wzorca. Rekomendacja:
    dołożyć regułę w czytniku.
 2. **Auto w rezerwie: `vehicles[].status: "behind"`** (opcjonalne pole, domyślnie
@@ -424,7 +433,7 @@ dołożyć, jedna jest opcjonalna.
 - [ ] Test serwera: wzorzec `ostatni-zjazd` staje bez `missing` na próbce, furgon ma `van-8`
       i 8 foteli, Rydwan `behind`, drużyna bez figur.
 - [ ] Oględziny w **Firefoksie** (Playwright, instancja E2E z `data/private`): lista
-      „Przykładowe”, dodanie, bieżnia na autostradzie, fotele i podpisy (osiem podpisów
+      „Przykładowe”, dodanie, bieżnia na estakadzie, fotele i podpisy (osiem podpisów
       pod czterema autami nie może na siebie nachodzić), przywrócenie Rydwanu, kolczatka
       eskorty, taran Pługiem w furgon.
 - [ ] Przebieg na sucho dwóch rund przez MG z dwoma kontami graczy (balans 3 graczy).
@@ -439,14 +448,11 @@ dołożyć, jedna jest opcjonalna.
       przeszkoda przed furgonem bez kontroli).
 - [ ] Testy `shared` i serwera przechodzą, oględziny w Firefoksie opisane w notatce sesji.
 
-## Do decyzji MG
+## Decyzje MG z 04.11
 
-1. **Nazwy wymyślone (Halcyon Bioformy, Matylda, Iskra)** czy korporacja ze świata gry
-   (np. Biotechnica)? Projekt trzyma się wymyślonych, żeby w publicznym repo nie było nic
-   z podręcznika poza id. Stara scena używała Maelstromu.
-2. **Wbudowana „Autostrada” czy własna mapa MG?** Projekt zakłada wbudowaną (zero nowej
-   grafiki, pkt 1 zakresu). „Estakada” pasuje równie dobrze i przepaść dodaje grozy, ale stara
-   scena też była na wiadukcie.
-3. **Kłoda z tarczą** — zasada „chybienie o 1–2 trafia Iskrę” jest domowa i ręczna. Zostawić
-   w notatce, czy wyciąć?
-4. **Portrety NPC-ów** — dziś kółka z inicjałem (to samo pytanie zostało otwarte po etapie 66).
+1. **Nazwy wymyślone** (Halcyon Bioformy, Matylda, Iskra i reszta) — zostają.
+2. **Tło: wbudowana „Estakada”** (nie Autostrada) — pas 3–15, start drużyny na dolnym pasie,
+   wstęp i bariery opisane pod estakadę.
+3. **Kłoda z Iskrą jako tarczą** (chybienie o 1–2 trafia Iskrę, ręcznie) — zostaje w notatce.
+4. **Portrety NPC-ów wybiera MG** — wzorzec ich nie niesie (figury z inicjałem), MG daje
+   portret na karcie po dodaniu sceny do kampanii. Notatka „Zanim ruszycie” o tym przypomina.

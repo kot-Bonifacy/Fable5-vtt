@@ -21,7 +21,7 @@ w plikach obok — czytaj je **na żądanie, nigdy rutynowo**:
 
 | stan         | etapy                                                                                          |
 | ------------ | ---------------------------------------------------------------------------------------------- |
-| ⬜ otwarty   | **66** Sceny przykładowe (🟨 zrobione 31.10, czeka na oględziny MG przy stole i wdrożenie; **66b** „Fabryka dronów” 🟨 zrobione 31.10, tak samo; **66c** „Ostatni zjazd” ⬜ projekt 04.11, czeka na akceptację MG i wdrożenie we wzorzec); **65** Scena pościgu i walka pojazdów (🟨 65a–65e ✅ 30–31.10, czeka na oględziny MG przy stole); **62** Sieć ze sceny (🟨 zrobione, czeka na oględziny MG na VPS po wdrożeniu); **61** Skradanie się (🟨 zrobione, czeka na słowo MG o rozstrzygnięciach); **28** Wdrożenie na VPS (🟨 działa na `https://vtt.tatanga.eu` z botami od 18.10; zostały off-site, utwardzenie, monitoring); **43b**, **43c** (UI walki); **60** Czytelny czat (zlecenie MG z 24.10; 🟨 60a–60c ✅, czeka na oględziny MG z pierwszego kryterium); T10; refaktoryzacja odłożona (MG 18.10) |
+| ⬜ otwarty   | **66** Sceny przykładowe (🟨 zrobione 31.10, czeka na oględziny MG przy stole i wdrożenie; **66b** „Fabryka dronów” 🟨 zrobione 31.10, tak samo; **66c** „Ostatni zjazd” ⬜ projekt 04.11 przyjęty przez MG, czeka na wdrożenie we wzorzec); **65** Scena pościgu i walka pojazdów (🟨 65a–65e ✅ 30–31.10, czeka na oględziny MG przy stole); **62** Sieć ze sceny (🟨 zrobione, czeka na oględziny MG na VPS po wdrożeniu); **61** Skradanie się (🟨 zrobione, czeka na słowo MG o rozstrzygnięciach); **28** Wdrożenie na VPS (🟨 działa na `https://vtt.tatanga.eu` z botami od 18.10; zostały off-site, utwardzenie, monitoring); **43b**, **43c** (UI walki); **60** Czytelny czat (zlecenie MG z 24.10; 🟨 60a–60c ✅, czeka na oględziny MG z pierwszego kryterium); T10; refaktoryzacja odłożona (MG 18.10) |
 | ✅ ukończone | 01–11, 13–20b, 23a–27f, 27h–27l, 29a–30d, 31–35, 37–42c, 43a, 44a–44d, 45, 46a1, 46a2, 46c1, 46c2, 46b1, 46b2, 47a, 47b, 48a, 48b, 48c, 49a, 49b, 50a, 50b, 50c, 51, 52, 53, 54, 55, 56, 57 (57a–57c), 58 (58a–58d), 59 (59a–59c), 63 (63a–63b; 63c wycofane 29.10), 64 (64a–64c) (ostatni zamknięty: 64, 2026-10-30) |
 | ⛔ wycofane  | 12, 21, 22 (głos), 27g (wydajność), 36 (makra); 27, 29, 30, 38 rozdzielone na etapy literowane |
 
@@ -99,7 +99,7 @@ z `data/public/scenes/<id>/scene.json`, wspólne dla każdego MG, a „Dodaj do 
 własną kopię (scena, pojazdy MG, karty NPC-ów, figury w fotelach, notatki MG). Wzorzec niesie id
 z alternatywami zamiast treści podręcznika. **Pierwszy wzorzec, „Pościg na wiadukcie”, MG skasował
 04.11** („niedokończony projekt”); następca to projekt **66c „Ostatni zjazd”**
-(`etap-66c-ostatni-zjazd.md`): pościg na 2–3 graczy na wbudowanej autostradzie, drużyna goni
+(`etap-66c-ostatni-zjazd.md`): pościg na 2–3 graczy na wbudowanej estakadzie, drużyna goni
 furgon z porwaną netrunnerką, trzy auta wroga, rozpisane rundy. Do wdrożenia potrzebuje dwóch
 drobnych rzeczy w kodzie (tło wzorca z `CHASE_ROADS`, auto w rezerwie `status: behind`). Testy
 serwera wzorców stoją na fiksturze `test-poscig` (`ServerConfig.sceneTemplatesDir`). Plik etapu `etap-66-sceny-przykladowe.md`, umowa
@@ -646,7 +646,7 @@ Starsze — w całości w `archiwum/dziennik-sesji.md`.
 **Zlecenie MG:** „przygotuj w jakimś pliku .md projekt przykładowej sceny (…) pościgu na 2–3
 graczy”, w trakcie: „poprzednia przykładowa scena była niedokończonym projektem” i „skasuj starą
 scenę pościgu z przykładowych”. **Zrobione:** projekt `etap-66c-ostatni-zjazd.md` (pomysł,
-autostrada z `CHASE_ROADS`, ustawienie aut w kratkach, 4 auta z `catalogIds`/ulepszeniami,
+estakada z `CHASE_ROADS` — decyzja MG, pierwotnie autostrada, ustawienie aut w kratkach, 4 auta z `catalogIds`/ulepszeniami,
 8 NPC-ów ze statblokami i alternatywami sprzętu, skalowanie, przebieg rund 1–6 z zegarem,
 drogi do celu, zakończenia, teksty dla graczy, zakres kodu i kryteria). Usunięty
 `data/public/scenes/poscig-wiadukt/` (scena + mapa MG; mapa zostaje w historii gita).
