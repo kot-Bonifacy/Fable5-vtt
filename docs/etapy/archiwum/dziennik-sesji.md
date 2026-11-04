@@ -1,5 +1,24 @@
 # Dziennik sesji — archiwum
 
+### Sesja 04.11, pierwsza — projekt sceny „Ostatni zjazd”, stary pościg skasowany
+
+**Zlecenie MG:** „przygotuj w jakimś pliku .md projekt przykładowej sceny (…) pościgu na 2–3
+graczy”, w trakcie: „poprzednia przykładowa scena była niedokończonym projektem” i „skasuj starą
+scenę pościgu z przykładowych”. **Zrobione:** projekt `etap-66c-ostatni-zjazd.md` (pomysł,
+estakada z `CHASE_ROADS` — decyzja MG, pierwotnie autostrada, ustawienie aut w kratkach, 4 auta z `catalogIds`/ulepszeniami,
+8 NPC-ów ze statblokami i alternatywami sprzętu, skalowanie, przebieg rund 1–6 z zegarem,
+drogi do celu, zakończenia, teksty dla graczy, zakres kodu i kryteria). Usunięty
+`data/public/scenes/poscig-wiadukt/` (scena + mapa MG; mapa zostaje w historii gita).
+`ServerConfig.sceneTemplatesDir` + `sceneTemplatesRoot` (`server/scene-templates.ts`), fikstura
+`src/fixtures/scene-templates/test-poscig` (dawny wiadukt bez tła), test izolacji na
+`fabryka-dronow`, test `shared` bez twardego id. Umowa na górze sceny przykładowe w `mapa`.
+**Nie sprawdzone:** czy na VPS są kopie wiaduktu w kampaniach (odczyt z produkcji
+zablokowany) — po wdrożeniu taka kopia zostanie bez tła; lokalnie `dev.db` i `e2e.db` czyste.
+**Pułapka środowiska:** lokalny klient Prisma był nieaktualny (`blockingId`, `assortment`) —
+`tsc` padał, a test izolacji dostawał 500 na `/api/archive/bot`; `npx prisma generate`
+w `packages/server` naprawia. **Testy:** `shared` 2941/2941, serwer 1732/1732, `tsc` serwera czysty (po `prisma generate`), ESLint i Prettier na zmienionym kodzie czyste. **W przeglądarce nieoglądane** —
+zmiana nie dotyka UI (lista „Przykładowe” ma o jeden wiersz mniej).
+
 ### Sesja 03.11, ósma — kreator sceny pościgu
 
 **Zlecenie MG:** „popraw interfejs tworzenia scen pościgowych”, z pytaniami przy wątpliwościach.

@@ -21,7 +21,7 @@ w plikach obok — czytaj je **na żądanie, nigdy rutynowo**:
 
 | stan         | etapy                                                                                          |
 | ------------ | ---------------------------------------------------------------------------------------------- |
-| ⬜ otwarty   | **66** Sceny przykładowe (🟨 zrobione 31.10, czeka na oględziny MG przy stole i wdrożenie; **66b** „Fabryka dronów” 🟨 zrobione 31.10, tak samo; **66c** „Ostatni zjazd” 🟨 wzorzec zrobiony 04.11, czeka na przebieg MG przy stole i wdrożenie); **65** Scena pościgu i walka pojazdów (🟨 65a–65e ✅ 30–31.10, czeka na oględziny MG przy stole); **62** Sieć ze sceny (🟨 zrobione, czeka na oględziny MG na VPS po wdrożeniu); **61** Skradanie się (🟨 zrobione, czeka na słowo MG o rozstrzygnięciach); **28** Wdrożenie na VPS (🟨 działa na `https://vtt.tatanga.eu` z botami od 18.10; zostały off-site, utwardzenie, monitoring); **43b**, **43c** (UI walki); **60** Czytelny czat (zlecenie MG z 24.10; 🟨 60a–60c ✅, czeka na oględziny MG z pierwszego kryterium); T10; refaktoryzacja odłożona (MG 18.10) |
+| ⬜ otwarty   | **66** Sceny przykładowe (🟨 zrobione 31.10, czeka na oględziny MG przy stole i wdrożenie; **66b** „Fabryka dronów” 🟨 zrobione 31.10, tak samo; **66c** „Ostatni zjazd” 🟨 wzorzec zrobiony 04.11, przebieg w przeglądarce przygotowany na `dev.db` — rozegranie w następnej sesji, potem stół MG i wdrożenie); **65** Scena pościgu i walka pojazdów (🟨 65a–65e ✅ 30–31.10, czeka na oględziny MG przy stole); **62** Sieć ze sceny (🟨 zrobione, czeka na oględziny MG na VPS po wdrożeniu); **61** Skradanie się (🟨 zrobione, czeka na słowo MG o rozstrzygnięciach); **28** Wdrożenie na VPS (🟨 działa na `https://vtt.tatanga.eu` z botami od 18.10; zostały off-site, utwardzenie, monitoring); **43b**, **43c** (UI walki); **60** Czytelny czat (zlecenie MG z 24.10; 🟨 60a–60c ✅, czeka na oględziny MG z pierwszego kryterium); T10; refaktoryzacja odłożona (MG 18.10) |
 | ✅ ukończone | 01–11, 13–20b, 23a–27f, 27h–27l, 29a–30d, 31–35, 37–42c, 43a, 44a–44d, 45, 46a1, 46a2, 46c1, 46c2, 46b1, 46b2, 47a, 47b, 48a, 48b, 48c, 49a, 49b, 50a, 50b, 50c, 51, 52, 53, 54, 55, 56, 57 (57a–57c), 58 (58a–58d), 59 (59a–59c), 63 (63a–63b; 63c wycofane 29.10), 64 (64a–64c) (ostatni zamknięty: 64, 2026-10-30) |
 | ⛔ wycofane  | 12, 21, 22 (głos), 27g (wydajność), 36 (makra); 27, 29, 30, 38 rozdzielone na etapy literowane |
 
@@ -102,7 +102,11 @@ z alternatywami zamiast treści podręcznika. **Pierwszy wzorzec, „Pościg na 
 `etap-66c-ostatni-zjazd.md`): pościg na 2–3 graczy na wbudowanej estakadzie. Drużyna goni
 furgon z porwaną netrunnerką Iskrą (uśpiona, stan Nieprzytomna), są trzy auta wroga, a Rydwan
 czeka w rezerwie (`status: behind`) do „Przywróć do pościgu”. Pięć notatek MG rozpisuje rundy,
-skalowanie, teksty dla graczy i zakończenia. Wzorzec umie od 66c tło z `CHASE_ROADS`, auto
+skalowanie, teksty dla graczy i zakończenia. **Przebieg w przeglądarce (zlecenie MG z 04.11)
+jest podzielony na dwie sesje:** przygotowanie zrobione (trzy postacie z kreatora — Rdza,
+Kosa, Szew — i scena w podglądzie w „Oględzinach 12.09” na `dev.db`), rozegranie 6 rund
+czeka — stan, konta, karty przeglądarek i plan kroków w `etap-66c-ostatni-zjazd.md`
+(„Przebieg przy stole — przygotowanie”). Wzorzec umie od 66c tło z `CHASE_ROADS`, auto
 w rezerwie i stany figur, a **załoga auta poza pościgiem nie istnieje dla gracza** (reguła ogólna,
 decyzja MG). Testy serwera wzorców stoją na fiksturze `test-poscig`
 (`ServerConfig.sceneTemplatesDir`). Plik etapu `etap-66-sceny-przykladowe.md`, umowy na górze
@@ -637,12 +641,27 @@ a nie do tego pliku.
 | `dane`      | `parse-manual.py`, kompendium poza repo, tabele z podręcznika  | 9    | 12      |
 | `kopie`     | `snapshot`, `archive`, paczki ZIP, wczytanie kampanii, „czeka na gracza”, kopie kampanii i cofnięcie, sklep i bot w paczce, zgłoszenie karty gracza, pojazdy w paczce, auta na scenie pościgu, przeszkody poza paczką | 22   | 6       |
 | `ogledziny` | CDP i Playwright MCP, zrzuty, dwie sesje, `window.confirm`    | 0    | 117     |
-| `testy`     | vitest, migotanie, `tsc --noEmit`, środowisko dev              | 0    | 153     |
+| `testy`     | vitest, migotanie, `tsc --noEmit`, środowisko dev              | 0    | 154     |
 
 
 ## Notatki z dwóch ostatnich sesji
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
+
+### Sesja 04.11, trzecia — przygotowanie przebiegu „Ostatniego zjazdu” w przeglądarce
+
+**Zlecenie MG:** „wykonaj w przeglądarce pełen przebieg przykładowej sceny z pościgiem”,
+z pytaniami; w trakcie: „podziel ten test na przygotowanie postaci i sceny, a jej rozegranie
+przeprowadzimy w kolejnej sesji”. **Odpowiedzi MG:** lokalny dev, pełna gra 6 rund, 3 graczy,
+rozsądne decyzje różnymi drogami do celu, postacie nowe z kreatora. **Zrobione (bez zmian
+kodu):** `dev.db` dostał trzy brakujące migracje z 02–03.11 (`migrate deploy`); w „Oględzinach
+12.09” nowe konto Ola i trzy postacie Krawędziarza przez prośbę → zgodę → kreator → przyjęcie:
+Rdza (Nomada, Tester), Kosa (Solo, Handlarz), Szew (Medyk, Ola), z pakietami Ról z podręcznika
+wydanymi „Dodaj za darmo”; „Ostatni zjazd” dodany z „Przykładowych” (podgląd, bez braków).
+Szczegóły i plan rozegrania — `etap-66c-ostatni-zjazd.md`. **Oglądane:** MG i Ola w Chromium,
+Tester i Handlarz w **Firefoksie** (Playwright MCP). **Zauważone:** lista obecności graczy
+między sesjami nie dostaje nowych osób (zaległość, `presence.ts`); pułapka „panel MG na
+Synchronizacji = brak migracji” w `testy`. **Testy:** kodu nie ruszano — nie puszczane.
 
 ### Sesja 04.11, druga — wzorzec „Ostatni zjazd” (66c)
 
@@ -668,22 +687,3 @@ daje Iskrze Ranę krytyczną. **Zaległości:** przeszkoda za autem ląduje na a
 `surgery.test.ts` migocze pod pełną suitą (1 z 2 przebiegów, osobno 3/3). **Testy:** `shared`
 2943/2943, serwer 1734/1734 (dwa ostatnie pełne przebiegi), klient 468/468, `tsc` w trzech pakietach, ESLint i Prettier
 na zmienionych plikach czyste.
-
-### Sesja 04.11, pierwsza — projekt sceny „Ostatni zjazd”, stary pościg skasowany
-
-**Zlecenie MG:** „przygotuj w jakimś pliku .md projekt przykładowej sceny (…) pościgu na 2–3
-graczy”, w trakcie: „poprzednia przykładowa scena była niedokończonym projektem” i „skasuj starą
-scenę pościgu z przykładowych”. **Zrobione:** projekt `etap-66c-ostatni-zjazd.md` (pomysł,
-estakada z `CHASE_ROADS` — decyzja MG, pierwotnie autostrada, ustawienie aut w kratkach, 4 auta z `catalogIds`/ulepszeniami,
-8 NPC-ów ze statblokami i alternatywami sprzętu, skalowanie, przebieg rund 1–6 z zegarem,
-drogi do celu, zakończenia, teksty dla graczy, zakres kodu i kryteria). Usunięty
-`data/public/scenes/poscig-wiadukt/` (scena + mapa MG; mapa zostaje w historii gita).
-`ServerConfig.sceneTemplatesDir` + `sceneTemplatesRoot` (`server/scene-templates.ts`), fikstura
-`src/fixtures/scene-templates/test-poscig` (dawny wiadukt bez tła), test izolacji na
-`fabryka-dronow`, test `shared` bez twardego id. Umowa na górze sceny przykładowe w `mapa`.
-**Nie sprawdzone:** czy na VPS są kopie wiaduktu w kampaniach (odczyt z produkcji
-zablokowany) — po wdrożeniu taka kopia zostanie bez tła; lokalnie `dev.db` i `e2e.db` czyste.
-**Pułapka środowiska:** lokalny klient Prisma był nieaktualny (`blockingId`, `assortment`) —
-`tsc` padał, a test izolacji dostawał 500 na `/api/archive/bot`; `npx prisma generate`
-w `packages/server` naprawia. **Testy:** `shared` 2941/2941, serwer 1732/1732, `tsc` serwera czysty (po `prisma generate`), ESLint i Prettier na zmienionym kodzie czyste. **W przeglądarce nieoglądane** —
-zmiana nie dotyka UI (lista „Przykładowe” ma o jeden wiersz mniej).

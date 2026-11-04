@@ -2,8 +2,9 @@
 
 **Faza:** przed betą (zlecenie MG z 04.11 spoza planu) · **Wymaga etapów:** 66 (wzorce scen),
 65 (scena pościgu, w tym kreator z wbudowanymi drogami z 03.11) · **Stan:** 🟨 wzorzec
-`data/public/scenes/ostatni-zjazd/` zrobiony 04.11 (druga sesja), czeka na przebieg MG przy stole
-(balans 3 graczy) i wdrożenie
+`data/public/scenes/ostatni-zjazd/` zrobiony 04.11 (druga sesja); przebieg w przeglądarce
+przygotowany na `dev.db` 04.11 (trzecia sesja), rozegranie w następnej; potem balans MG przy
+stole i wdrożenie
 
 ## Skąd ten etap
 
@@ -481,6 +482,66 @@ albo staranowało, ląduje za jego tylnym zderzakiem także wtedy, gdy stoi tam 
 pod Wozem, który pchał furgon). Podpis figury z przedniego fotela nachodzi na pierścień
 figury z fotela obok (Wóz i furgon u gracza). Obie rzeczy są w `zaleglosci.md`.
 
+### Przebieg przy stole — przygotowanie (04.11, trzecia sesja)
+
+**Zlecenie MG:** „wykonaj w przeglądarce pełen przebieg przykładowej sceny z pościgiem”, w trakcie:
+„podziel ten test na przygotowanie postaci i sceny, a jej rozegranie przeprowadzimy w kolejnej
+sesji”. **Odpowiedzi MG (04.11):** lokalny dev (`dev.db`, kampania-śmieć), pełna gra 6 rund
+z oceną balansu i notatek, **3 graczy** (wariant domyślny: Lutka jest, Rydwan w rundzie 3,
+zegar 6), gracze grają rozsądnie i po kolei sprawdzają drogi do celu, **postacie nowe
+z kreatora**.
+
+**Stan na `dev.db` po tej sesji:**
+
+- Kampania **„Oględziny 12.09 — do usunięcia”**, otwarta, sesja **nierozpoczęta**
+  (PRZYGOTOWANIE); aktywna scena dalej „Test Brak sceny”. **„Ostatni zjazd” dodany
+  z „Przykładowych” — w podglądzie, nieaktywowany**, bez komunikatu o brakach (katalog
+  z `data/private`). Na scenie nie stoi żadna figura drużyny.
+- Konta i postacie (Krawędziarz, 86 pkt, pakiety Ról z `data/private/cpred/creation.json` →
+  `streetrat`, dane przez MG „Dodaj za darmo” w Kompendium; pełne magazynki, bez zapasu
+  amunicji, 500 ed każdy):
+
+  | gracz | postać | Rola | Cechy (INT REF ZW TECH CHA SW SZ RUCH BC EMP) | PW | kluczowe umiejętności | sprzęt |
+  | --- | --- | --- | --- | --- | --- | --- |
+  | Tester | **Rdza** | Nomada | 6 6 8 4 8 6 6 7 7 4 | 45 | Prowadzenie 6, Broń krótka 6, Unik 6, Atletyka 6, Bijatyka 6, Percepcja 6 | Ciężki pistolet, Duża broń biała |
+  | Handlarz | **Kosa** | Solo | 7 8 6 5 6 6 6 7 8 5 | 45 | Broń długa 6, Broń krótka 6, Ogień ciągły 6, Unik 6, Percepcja 6, Taktyka 4 | Karabin szturmowy, Bardzo ciężki pistolet, Duża broń biała |
+  | Ola (nowe konto) | **Szew** | Medyk | 7 7 5 7 3 5 8 6 5 7 | 35 | Ratownictwo medyczne 6, Pierwsza pomoc 6, Unik 6, Percepcja 6 — **bez broni dystansowej** (lista Roli Krawędziarza jej nie ma) | Strzelba, Tarcza kuloodporna |
+
+  Każdy ma Lekką kurtkę kuloodporną na głowie i korpusie. Kosa ma **nierozdzielony Zmysł
+  Walki 4**, Rdza — Tabor Rodziny (Moto 4) do wybrania; oba nie przeszkadzają w scenie
+  (drużyna jedzie Wozem od Matyldy). Stare karty testowe Testera i Handlarza (Stym, Kruk,
+  Korpo) też są w drużynie — w przebiegu ich nie używać.
+- Przeglądarki (profile Playwright MCP trzymają ciasteczka): **Chromium** — karta 0 MG
+  (`localhost:5173`), karta 1 Ola (`[::1]:5173`); **Firefox** — karta 0 Tester
+  (`localhost:5173`), karta 1 Handlarz (`[::1]:5173`). Gdy sesja gracza wygaśnie: Panel MG →
+  kampania → „Linki” — linki odnowienia Testera, Handlarza i Oli są bez terminu.
+
+**Plan rozegrania (następna sesja):**
+
+1. `pnpm dev`; sprawdzić, że cztery karty są zalogowane (lista obecności u MG: MG, Handlarz,
+   Ola, Tester).
+2. MG: „Ostatni zjazd” → **Aktywuj**, potem **Rozpocznij sesję**. Przeczytać notatki 📌 i ❓.
+   Ocenić, czy notatka 2 wystarcza do rozsadzenia bez tego pliku.
+3. Rozsadzenie wg notatki 2: MG przeciąga Rdzę, Kosę i Szew z „Postaci” na dolny pas przy
+   fladze startu; gracze klikają fotele Wozu (Kosa i Szew z tyłu); Rdza siada jako pasażer, MG
+   daje „Może prowadzić”, Rdza przesiada się za kierownicę.
+4. Wstęp na czat (`/jako` albo zwykła wiadomość MG), „Włącz tryb turowy”, rundy 1–6 wg
+   „Przebiegu” i okrzyków. Drogi do celu po kolei: Kosa rozbija tylną szybę furgonu
+   i strzela w Wolta; Rdza taranuje furgon Pługiem (z Nitro); auto cywilne przed furgonem
+   w rundzie 3, roboty drogowe w 4, barykada w 6; Szew stabilizuje rannych i Iskrę po
+   zatrzymaniu. Rydwan „Przywróć do pościgu” w rundzie 3.
+5. Po każdej rundzie zapis: kto co zrobił, PUK aut, PW figur, co w UI zaskoczyło. Ocena
+   balansu (czy 6 rund wystarcza, czy Medyk bez broni ma co robić, czy furgon da się zatrzymać
+   bez rakiety) i notatek wzorca. Błędy → `zaleglosci.md`, poprawki notatek → wzorzec.
+
+**Zauważone przy przygotowaniu:** `dev.db` nie miał trzech migracji z 02–03.11 — panel MG
+wisiał na „Bez kampanii / Synchronizacja…” (pułapka w `testy`, `migrate deploy` naprawił).
+Lista obecności graczy między sesjami nie dostaje nowych osób (zaległość). Kreator: zbyt
+szybkie kliki automatu dostały `RATE_LIMITED` (20/s, zapas 60 — człowiek tego nie dobije),
+„Wczytaj zapis serwera” wrócił do prawdy; pula umiejętności dopuszcza przekroczenie z czerwonym
+licznikiem (z założenia). Kompendium przy pustym wyniku w złej kategorii podpowiada „Pokaż:
+Pancerz” — działa.
+
 ### Do zrobienia
 
 - [x] Czytnik wzorca: tło z `CHASE_ROADS` (pkt 1) + testy `shared` (przyjęcie drogi, odmowa
@@ -499,6 +560,9 @@ figury z fotela obok (Wóz i furgon u gracza). Obie rzeczy są w `zaleglosci.md`
       w różnych autach na siebie nie nachodzą), przywrócenie Rydwanu, kolczatka eskorty,
       taran Pługiem w furgon.
 - [x] Przebieg techniczny dwóch rund (MG + dwa konta graczy, spec) — wyżej.
+- [x] Przygotowanie przebiegu przy stole na `dev.db`: 3 postacie z kreatora, scena dodana
+      (04.11, trzecia sesja — wyżej).
+- [ ] Rozegranie 6 rund w przeglądarce (MG + 3 graczy) — następna sesja, plan wyżej.
 - [ ] Balans na 3 graczy przy prawdziwym stole — **MG**.
 
 ## Kryteria ukończenia

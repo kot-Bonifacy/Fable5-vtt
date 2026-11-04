@@ -6,6 +6,15 @@ w `POMYSLY.md` („Do sprawdzenia przy stole”), decyzje MG — w `decyzje-i-up
 
 ## Otwarte
 
+**04.11.2026 — lista obecności gracza między sesjami nie widzi nowych osób.** Przy
+przygotowaniu przebiegu 66c (kampania w PRZYGOTOWANIU) Tester wszedł pierwszy i do końca
+widział tylko „MG, Tester”, Handlarz — „MG, Handlarz, Tester” (bez Oli, która weszła po nim);
+MG widział wszystkich. `broadcastPresence` (`server/src/realtime/presence.ts`) wysyła
+`presence:update` tylko do pokoju stołu (`campaignRoom`), a gracze między sesjami siedzą
+w `lobbyRoom` i dostają listę raz, przy wejściu. Naprawa: wysyłać też do lobby kampanii
+(i test w `sessions.test.ts`). Nie blokuje przebiegu — po „Rozpocznij sesję” wszyscy są przy
+stole.
+
 **04.11.2026 — „Ostatni zjazd” (66c): przebieg przy stole i wdrożenie.** Technicznie przejechany
 specem oględzin (MG w Chromium, Marek i Ola w Firefoksie, `data/private`). Zostaje dla MG:
 balans na 3 graczy przy prawdziwym stole (czy 6 rund wystarcza, czy furgon da się zatrzymać
