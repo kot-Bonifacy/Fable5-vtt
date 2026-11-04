@@ -1,5 +1,30 @@
 # Dziennik sesji — archiwum
 
+### Sesja 04.11, druga — wzorzec „Ostatni zjazd” (66c)
+
+**Zlecenie MG:** wykonać `etap-66c-ostatni-zjazd.md`, z pytaniami przy wątpliwościach.
+**Odpowiedzi MG (04.11):** (1) załoga auta w rezerwie — **reguła ogólna**: figury w fotelach auta
+`behind`/`escaped` nie istnieją dla gracza (poza własnymi), nie zakładają walki przez zauważenie
+i nie wchodzą do `combat:start`; (2) stan figury we wzorcu — tak (Iskra Nieprzytomna);
+(3) przebieg techniczny robię sam, balans przy stole — MG. **Zrobione:** `readSceneTemplate`
+przyjmuje tło z `CHASE_ROADS` (rozmiar z listy), `vehicles[].status` (`racing`/`behind`)
+i `figures[].statuses` (serwer filtruje id stanów, nieznane → `missing` `status:<id>`);
+`sceneVehicleOffstage` (`shared/chase.ts`) + liść `realtime/chase-offstage.ts` wpięty
+w `fetchSceneTokensFor`, `emitTokenUpsert`, `eligibleFoes` i `combat:start`; `driftChaseRound`
+i `chase:restore` odświeżają graczom listę figur. Wzorzec
+`data/public/scenes/ostatni-zjazd/scene.json` (4 auta, 8 NPC-ów, 5 notatek ≤ 1740 znaków, opis
+461), fikstura `test-poscig` z autem w rezerwie i figurą ze stanem. Umowa na górze `mapa`.
+**Oglądane w Firefoksie** (Marek i Ola) **i Chromium** (MG): tymczasowy spec `99-ostatni-zjazd`
+na instancji E2E z `data/private`, 8/8 — przebieg w pliku etapu (dodanie bez braków, Rydwan
+i załoga niewidoczne, rozsadzenie, kolczatka, taran 70 → 47 bez obrażeń Wozu, szyba blokuje
+strzał w Wolta, przywrócenie z samoczynnym dołączeniem Grota i Kabla, furgon bez kontroli
+w przeszkodzie). Spec usunięty po przebiegu. **Wnioski do notatek wzorca:** aktywacja nie
+stawia figur drużyny (MG przeciąga z „Postaci”), kierowca siada najpierw jako pasażer, taran
+daje Iskrze Ranę krytyczną. **Zaległości:** przeszkoda za autem ląduje na aucie za nim (65e),
+`surgery.test.ts` migocze pod pełną suitą (1 z 2 przebiegów, osobno 3/3). **Testy:** `shared`
+2943/2943, serwer 1734/1734 (dwa ostatnie pełne przebiegi), klient 468/468, `tsc` w trzech pakietach, ESLint i Prettier
+na zmienionych plikach czyste.
+
 ### Sesja 04.11, pierwsza — projekt sceny „Ostatni zjazd”, stary pościg skasowany
 
 **Zlecenie MG:** „przygotuj w jakimś pliku .md projekt przykładowej sceny (…) pościgu na 2–3

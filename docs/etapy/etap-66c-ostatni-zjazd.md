@@ -3,8 +3,8 @@
 **Faza:** przed betą (zlecenie MG z 04.11 spoza planu) · **Wymaga etapów:** 66 (wzorce scen),
 65 (scena pościgu, w tym kreator z wbudowanymi drogami z 03.11) · **Stan:** 🟨 wzorzec
 `data/public/scenes/ostatni-zjazd/` zrobiony 04.11 (druga sesja); przebieg w przeglądarce
-przygotowany na `dev.db` 04.11 (trzecia sesja), rozegranie w następnej; potem balans MG przy
-stole i wdrożenie
+przygotowany na `dev.db` 04.11 (trzecia sesja) i rozegrany 04.11 (czwarta sesja, 7 rund,
+sukces z kosztem); czekają decyzje MG o balansie, stół MG i wdrożenie
 
 ## Skąd ten etap
 
@@ -542,6 +542,65 @@ szybkie kliki automatu dostały `RATE_LIMITED` (20/s, zapas 60 — człowiek teg
 licznikiem (z założenia). Kompendium przy pustym wyniku w złej kategorii podpowiada „Pokaż:
 Pancerz” — działa.
 
+### Rozegranie w przeglądarce (04.11, czwarta sesja)
+
+**Odpowiedzi MG przed rozegraniem:** błędy notuję i obchodzę ręką MG (naprawy w osobnej sesji);
+prowadzę jak MG przy stole — korekty z tabeli „za łatwo / za trudno”, a gdy scena kończy się
+wcześniej, zapisuję to jako wynik balansu i dogrywam brakujące drogi; notatki wzorca poprawiam
+od razu, gdy nie zgadzają się z tym, co robi VTT.
+
+**Oglądane:** MG i Ola (Szew) w Chromium, Tester (Rdza) i Handlarz (Kosa) w **Firefoksie**
+(Playwright MCP, `dev.db`, kopia `dev.db.bak-20261104-66c`). Konsola: Firefox 0 błędów, Chromium
+tylko znane `ERR_CACHE_OPERATION_NOT_SUPPORTED` dźwięków.
+
+**Przebieg (7 rund, wynik: sukces z kosztem).** Inicjatywa: Lutka 17, Kosa 11, Mewa/Wolt/Rdza 10,
+Szew/Szron/Kłoda 8 (Grot 13 i Kabel 7 od rundy 3).
+
+| runda | co się stało |
+| --- | --- |
+| 1 | Kosa przez „Cel za szybą → Ostrzelaj szybę” rozbija tylną szybę furgonu (15 → 0) **pierwszym strzałem**. Eskorta wjeżdża między Wóz a furgon, Wóz objeżdża ją górnym pasem. NPC-e: 2 trafienia, pancerz Rdzy trzyma. |
+| 2 | Furgon dryfuje −5. Kosa trafia Wolta przez rozbitą szybę (35 → 28). Mewa staje za furgonem i zrzuca kolczatkę. Rdza: Nitro + taran — **bokiem**, więc bez Pługa: furgon 70 → 68, Wóz 50 → 38, „Odgięciowy uraz kręgosłupa” dla wszystkich sześciu (w tym Iskry i całej drużyny). MG: Manewr Wolta po taranie — zdany. |
+| 3 | Rydwan wraca, Grot i Kabel dołączają sami. Auto cywilne przed furgonem: Wolt oblewa Gwałtowny skręt → MG wpycha go w auto (furgon 68 → 62, bez Ran krytycznych). Kosa rozbija prawe szyby. |
+| 4 | Auto cywilne dryfuje na furgon i znika (furgon → 53). **Grot: jedna seria z karabinu pokładowego = 40 obr., Wóz 38 → 0, wrak = porażka z notatki 1.** MG: „Cofnij” + korekta „za trudno” (zgaszony silnik Rydwanu). Roboty drogowe na górnym pasie. |
+| 5 | Roboty dojeżdżają do Wozu: Rdza taranuje je Pługiem przodem — bez obrażeń i bez kosztu ruchu. Mewa taranuje Wóz w tył (Wóz 38 → 20, eskorta 50 → 24). Kosa: Wolt 25 → 13. Taran Pługiem przodem w furgon niewykonalny — eskorta zderzak w zderzak za Wozem, a w lukę furgon–eskorta (dokładnie 5 kratek) Wóz nie wjedzie. |
+| 6 | Rydwan „zostaje w tyle”. Barykada przed furgonem: Kosa (Wolt 13 → 3), Wolt oblewa Skok (15 ≤ 17, −2 za rany) → MG wpycha furgon w barykadę (→ 44). Rdza dobija Wolta (śmiertelnie ranny). **Furgon stoi przed końcem rundy 6 → wygrana.** |
+| 7 | „Droga jedzie” wyłączona. Kłoda wysiada z Iskrą jako tarczą (przeciągnięcie MG). Wolt: automatyczny Test Przeżywalności — naturalna 10, śmierć. Rdza: prośba o Test → Perswazja PT 15 → 17, Kłoda się poddaje. |
+
+**Drogi do celu:** strzał przez szybę w kierowcę — działa (szyba pada od jednego strzału z
+karabinu, potem 4 trafienia na Wolta, SP 10). Taran Pługiem — przodem działa na przeszkodę;
+w furgon przodem się nie udało (eskorta blokuje tył furgonu, tak jak chce projekt), a bokiem
+to zwykły taran z Ranami dla wszystkich. Przeszkoda przed furgonem — działa dwukrotnie (auto
+cywilne, barykada), za każdym razem przez nieudany Manewr Wolta i wepchnięcie ręką MG.
+
+**Wnioski z balansu (do decyzji MG):**
+
+1. **Karabin pokładowy Rydwanu jest zabójczy dla Wozu** (Ogień ciągły 2k6 ×4 bez OB): jedna
+   seria = wrak = porażka w rundzie 4. Propozycje: Grot strzela w ludzi, nie w kadłub (wpisane
+   w notatkę ⚠️), albo Wóz z opancerzeniem kadłuba, albo Rydwan bez karabinu.
+2. **NPC-e trafiają słabo**: Szron i Kłoda w średnim pancerzu (−2 REF) mieli łącznie ok. 1 na 5,
+   Lutka i Mewa lepiej; drużyna przez 6 rund straciła 6–15 PW na osobę. Zagrożenie robiły
+   tylko tarany i karabin Rydwanu.
+3. **Medyk w pościgu nie ma Akcji**: Szew z tarczą nie dobędzie strzelby (dwuręczna), Broń
+   długa 0, nikt nie był śmiertelnie ranny w jej zasięgu. Na zatrzymanie rola jest, w pościgu —
+   nie.
+4. **Szyba to nie zagadka**: karabin Kosy rozbija ją jednym strzałem w rundzie 1.
+5. **Zegar 6 rund wystarczył** (furgon stanął w rundzie 6), ale dzięki dwóm nieudanym
+   Manewrom Wolta; samym strzelaniem Wolt padł dopiero w rundzie 6.
+6. **Taran bokiem kosztuje Iskrę Ranę krytyczną**, a gracz nie dostaje ostrzeżenia, że Pług nie
+   działa — w tym przebiegu stąd „sukces z kosztem”.
+
+**Poprawione notatki wzorca (`scene.json`):** 📌 — taran bokiem / w tył to nie Pług;
+❓ — klik w fotel z bronią w ręku celuje (najpierw slot broni), dołożenie pięciu NPC-ów
+w „Dołącz do walki”; ⚠️ — Gwałtowny skręt z menu furgonu i wepchnięcie po porażce, ostrzeżenie
+o serii Rydwanu, roboty drogowe Pługiem bez kosztu ruchu, przesiadka Kłody liczy metry sama;
+💬 — okrzyki zwykłą wiadomością (`/jako` tylko dla botów); 💰 — na stojącej drodze auto samo
+nie odjedzie.
+
+**Błędy i drobiazgi** — w `zaleglosci.md` (04.11): klik w fotel z bronią w ręku, marsz MG
+z fotela przez barierę, `/jako`, teksty paska „Zderzenie”, bryła `van-8`, kubek nad „Następna
+tura”, „Cofnij” zostawia rzut obrażeń, brak „Ucieka”, nazwa konta w prośbie o Test, kadr
+gracza, EMP 2 NPC-ów.
+
 ### Do zrobienia
 
 - [x] Czytnik wzorca: tło z `CHASE_ROADS` (pkt 1) + testy `shared` (przyjęcie drogi, odmowa
@@ -562,7 +621,8 @@ Pancerz” — działa.
 - [x] Przebieg techniczny dwóch rund (MG + dwa konta graczy, spec) — wyżej.
 - [x] Przygotowanie przebiegu przy stole na `dev.db`: 3 postacie z kreatora, scena dodana
       (04.11, trzecia sesja — wyżej).
-- [ ] Rozegranie 6 rund w przeglądarce (MG + 3 graczy) — następna sesja, plan wyżej.
+- [x] Rozegranie 6 rund w przeglądarce (MG + 3 graczy) — 04.11, czwarta sesja, wyżej.
+- [ ] Decyzje MG o balansie (karabin Rydwanu, Medyk, celność NPC-ów) i błędy z zaległości.
 - [ ] Balans na 3 graczy przy prawdziwym stole — **MG**.
 
 ## Kryteria ukończenia
@@ -572,8 +632,9 @@ Pancerz” — działa.
       katalogu z `data/private`.
 - [x] Rydwan jest niewidoczny dla graczy do „Przywróć do pościgu” (razem z załogą).
 - [ ] Wszystkie drogi do celu z tabeli działają przy stole (strzał przez szybę, taran Pługiem,
-      przeszkoda przed furgonem bez kontroli) — w specu działają wszystkie trzy, „przy stole”
-      potwierdza MG.
+      przeszkoda przed furgonem bez kontroli) — w specu działają wszystkie trzy; w rozegraniu
+      04.11 szyba i przeszkoda tak, taran Pługiem przodem w furgon zablokowała eskorta.
+      „Przy stole” potwierdza MG.
 - [x] Testy `shared` i serwera przechodzą, oględziny w Firefoksie opisane w notatce sesji.
 
 ## Decyzje MG z 04.11

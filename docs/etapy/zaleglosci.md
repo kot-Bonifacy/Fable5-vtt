@@ -6,6 +6,48 @@ w `POMYSLY.md` („Do sprawdzenia przy stole”), decyzje MG — w `decyzje-i-up
 
 ## Otwarte
 
+**04.11.2026 — klik w wolny fotel z bronią w ręku celuje w auto zamiast sadzać (przebieg 66c).**
+Gracz po zaznaczeniu figury ma broń „w ręku” (jedna broń w rękach z 29.10), więc pierwszy klik
+w fotel Wozu ładował kubek „Ciężki pistolet → Wóz od Matyldy”, a u Szew (gołe ręce) dawał
+odmowę „Do ataku wręcz cel musi być nie dalej niż 2 m”. `vehicleClickAt` w `MapArea.tsx` pyta
+`shootVehicleAt` **przed** fotelem i nie odróżnia auta drużyny. To samo u MG: klik w Rydwan przy
+zaznaczonej figurze tury (Lutka z PM) celował w Rydwan zamiast otworzyć menu. Obejście (wpisane
+w notatkę 2 wzorca): klik w slot broni zdejmuje ją z ręki. Do decyzji MG: fotel przed strzałem,
+gdy figura nie siedzi w żadnym aucie (i auto nie jest wrogie)?
+
+**04.11.2026 — przypadkowy klik MG w jezdnię wyprowadza NPC-a z fotela marszem, także przez
+barierę do przepaści (przebieg 66c).** W rundzie 7 klik w jezdnię przy zaznaczonej Lutce (fotel
+eskorty) dał `token:walk`: Lutka wysiadła i przeszła 3,2 m za cyjanową barierę. `token:walk`
+(`realtime/tokens.ts`) zwalnia MG z `IN_VEHICLE` (`!isGm && …`), a `token:move` — tylko rękę
+MG (`hand`). Naprawa: `IN_VEHICLE` także dla MG w `token:walk` (wysiadka zostaje przeciągnięciem).
+Przy okazji: przeciągnięcie MG w turze figury zjada jej metry (tak liczyło Kłodzie i Lutce).
+
+**04.11.2026 — drobiazgi z przebiegu 66c (UI pościgu i czatu).**
+
+- `/jako <imię>` szuka tylko botów (`BOT_NOT_FOUND` → „Nie znaleziono NPC-a o tym imieniu”),
+  a pole czatu podpowiada „/jako NPC”. NPC z karty sceny nie mówi na czacie — okrzyki idą zwykłą
+  wiadomością MG (notatka 💬 wzorca to mówi).
+- Pasek „Zderzenie” zawsze pisze „6k6 dla obu stron i Rana Krytyczna dla jadących”: przy
+  taranie Pługiem przodem nie mówi, że Wóz nic nie bierze, przy uderzeniu bokiem — że Pług nie
+  zadziała, a przy przeszkodzie Ran krytycznych nie ma (65e, rozstrzygnięcie 7). Pasek
+  przeszkody gracza nie wspomina Pługa. Rzut 6k6 w przeszkodę dostaje plakietkę „Rana
+  krytyczna!” (dwie szóstki), która niczego nie robi.
+- Bryła `van-8` jest ok. 0,6 kratki dłuższa niż grafika furgonu: Wóz „dotykał” go, stojąc na
+  obrazku 0,4 kratki dalej; „Zatrzymaj się przed” przy zderzeniu od pierwszego kroku nie rusza
+  auta wcale.
+- Kubek z polem Szczęścia zasłania „Następna tura” w lewym panelu MG (Playwright nie kliknie,
+  klawisz E działa). Esc z fokusem na kubku MG raz odłożył atak, dwa razy nie.
+- Po „Cofnij” na karcie obrażeń kadłuba karta ataku znów ma „Na kubek” / „Zastosuj”, a kubek
+  MG dostaje z powrotem rzut obrażeń — łatwo zastosować je drugi raz.
+- MG nie ma „Ucieka” / „Odjedź” w menu auta (notatki wzorca o nim wspominały): na stojącej
+  drodze eskorta zablokowana Wozem nie miała jak odjechać.
+- Prośba o Test u MG: „**Tester** prosi o Test”, „rzucał: Tester” — nazwa konta zamiast postaci
+  (Rdza). Do decyzji MG, czy reguła „bez nazw kont w grze” obejmuje widok MG.
+- Kamera gracza (`coverZoom` na estakadzie 35 × 18) mieści ok. 23 kratki długości — furgon
+  i Wóz nie były razem w kadrze, gracz przesuwa widok ręką.
+- Karty NPC-ów wzorca z EMP 2 (Kłoda, Szron, Grot, Kabel) mają na liście MG „EMP 2 · NA
+  GRANICY” — szum przy NPC-ach; do decyzji: EMP 3 we wzorcu?
+
 **04.11.2026 — lista obecności gracza między sesjami nie widzi nowych osób.** Przy
 przygotowaniu przebiegu 66c (kampania w PRZYGOTOWANIU) Tester wszedł pierwszy i do końca
 widział tylko „MG, Tester”, Handlarz — „MG, Handlarz, Tester” (bez Oli, która weszła po nim);
@@ -16,9 +58,10 @@ w `lobbyRoom` i dostają listę raz, przy wejściu. Naprawa: wysyłać też do l
 stole.
 
 **04.11.2026 — „Ostatni zjazd” (66c): przebieg przy stole i wdrożenie.** Technicznie przejechany
-specem oględzin (MG w Chromium, Marek i Ola w Firefoksie, `data/private`). Zostaje dla MG:
-balans na 3 graczy przy prawdziwym stole (czy 6 rund wystarcza, czy furgon da się zatrzymać
-bez rakiety), wygląd podpisów ośmiu NPC-ów w czterech autach na żywo i portrety. Na VPS
+specem oględzin (MG w Chromium, Marek i Ola w Firefoksie, `data/private`), a 04.11 (czwarta
+sesja) rozegrany w przeglądarce 7 rund na `dev.db` — wynik balansu w pliku etapu
+(„Rozegranie w przeglądarce”). Zostaje dla MG: decyzje balansu z tamtej listy (karabin Rydwanu,
+Medyk bez roli, celność NPC-ów z pancerzem średnim), przy stole wygląd podpisów i portrety. Na VPS
 wzorzec jedzie z repo (bez migracji); kopie skasowanego „Pościgu na wiadukcie” w kampaniach na
 VPS — nie sprawdzone (zostaną bez tła). Reguła „załoga auta poza pościgiem” (umowa na górze
 `mapa`) dotyczy też aut, które odpadły w zwykłym pościgu — warto rzucić okiem przy stole, czy
