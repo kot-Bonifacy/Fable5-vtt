@@ -105,8 +105,9 @@ czeka w rezerwie (`status: behind`) do „Przywróć do pościgu”. Pięć nota
 skalowanie, teksty dla graczy i zakończenia. **Rozegrany w przeglądarce 04.11** (Rdza, Kosa, Szew
 na `dev.db`, 7 rund, sukces z kosztem) i poprawiony wg decyzji MG: Rydwan bez karabinu
 pokładowego, pistolet dla postaci bez broni w schowku Wozu (notatka ❓ pkt 9), NPC-e +1 do broni
-(Szron i Kłoda +2). Kopia sceny w „Oględzinach 12.09” jest sprzed tych zmian. Czeka 11 błędów
-z `zaleglosci.md` (04.11). Szczegóły w `etap-66c-ostatni-zjazd.md`
+(Szron i Kłoda +2). Kopia sceny w „Oględzinach 12.09” jest sprzed tych zmian. Z 11 błędów
+z `zaleglosci.md` (04.11) pięć naprawionych 04.11 w piątej sesji (notatka sesji); drobiazgi
+UI pościgu i czatu czekają. Szczegóły w `etap-66c-ostatni-zjazd.md`
 („Rozegranie w przeglądarce”). Wzorzec umie od 66c tło z `CHASE_ROADS`, auto
 w rezerwie i stany figur, a **załoga auta poza pościgiem nie istnieje dla gracza** (reguła ogólna,
 decyzja MG). Testy serwera wzorców stoją na fiksturze `test-poscig`
@@ -625,7 +626,7 @@ a nie do tego pliku.
 
 | obszar      | co obejmuje                                                    | umów | pułapek |
 | ----------- | -------------------------------------------------------------- | ---- | ------- |
-| `mapa`      | figury, zaznaczanie, narzędzia, obiekty sceny, ściany, efekty, zamek drzwi, ukryta figura zauważona, ikony urządzeń, wspólny widok drużyny, scena pościgu, jazda kierowcy i dryf, Manewr i taranowanie, przeszkody pościgu, sceny przykładowe, wzorzec zwykłej mapy, ulepszenia pojazdu, stojące auto na drodze, kreator pościgu i wbudowane drogi, załoga auta poza pościgiem | 81   | 27      |
+| `mapa`      | figury, zaznaczanie, narzędzia, obiekty sceny, ściany, efekty, zamek drzwi, ukryta figura zauważona, ikony urządzeń, wspólny widok drużyny, scena pościgu, jazda kierowcy i dryf, Manewr i taranowanie, przeszkody pościgu, sceny przykładowe, wzorzec zwykłej mapy, ulepszenia pojazdu, stojące auto na drodze, kreator pościgu i wbudowane drogi, załoga auta poza pościgiem | 82   | 27      |
 | `czat`      | rodzaje wierszy, `visibleTo`, filtr, `seq`, `gmrecovery`, „to dotyczy mnie”, grupy kart, kolor gracza, czyszczenie, gęsta karta rzutu, przebieg ataku | 15   | 3       |
 | `serwer`    | Prisma i migracje, zdarzenia gniazda, zapisy karty, uploady    | 26   | 21      |
 | `ui`        | okna pływające, `z-index`, motyw, skróty, dostępność, wejście, panel decyzji MG | 37   | 15      |
@@ -649,6 +650,29 @@ a nie do tego pliku.
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
 
+### Sesja 04.11, piąta — zaległości z przebiegu „Ostatniego zjazdu” (66c)
+
+**Zlecenie MG:** naprawić kilka zaległości, nie za dużo naraz, pytać przy wątpliwościach.
+**Decyzje MG (04.11):** (1) pieszy z bronią klikiem w wolny fotel wsiada, nie strzela;
+(2) prawy klik w auto = menu auta (MG i gracz); (3) przeszkoda reaguje tylko z pierwszym autem,
+potem znika — **także kolczatka** (wyglądała, jakby tkwiła przy aucie); (4) **Barykada to beton**:
+nie do rozbicia, auto, które w nią wjedzie, jest od razu wrakiem z Raną Krytyczną jadących,
+a beton zostaje na drodze; (5) prośba o Test u MG podaje postać, nie konto.
+**Zrobione:** lista obecności w poczekalni na żywo (`broadcastPresence` → `lobbyRoom` bez
+`seq`); `token:walk` odmawia `IN_VEHICLE` także MG (wysiadka przeciągnięciem); klik w fotel
+i prawy klik (`onMapContextMenu`, umowa na górze `mapa`); przeszkody i kolczatka znikają po
+pierwszym aucie (`letPast`, `crossSpikes`, dryf, taran w jeździe), beton — `crashIntoConcrete`;
+podpowiedzi „beton” w palecie, menu i pasku kierowcy; postać zamiast konta w prośbie o Test
+(„rzucał:” wpisuje serwer). Zamknięte z diagnozą w `archiwum/zamkniete-zaleglosci.md`, zasady
+domowe w `decyzje-i-uproszczenia.md`.
+**Zostało:** drobiazgi UI 66c (pasek „Zderzenie”, bryła `van-8`, kubek nad „Następna tura”,
+„Cofnij” obrażeń kadłuba, „Odjedź” MG, kamera gracza, EMP 2, `/jako`) i nowa zaległość
+„resztki” (metry przy wysiadce ręką MG — do decyzji, wrak za autem, podpisy foteli).
+**Oglądane:** **nie w przeglądarce** — tylko testy i build (zaległość „oględziny w przeglądarce
+zmian pościgu i czatu”). **Testy:** shared 2943, client 468, server 1736 zielone, `tsc` i ESLint
+czyste, build klienta przechodzi; `chase-combat` raz migotnął pod `vitest run src/chase`
+(dopisane do zaległości o migotaniu). Bez migracji bazy.
+
 ### Sesja 04.11, czwarta — rozegranie „Ostatniego zjazdu” w przeglądarce (66c)
 
 **Zlecenie MG:** rozegrać w przeglądarce `etap-66c-ostatni-zjazd.md` na przygotowanych postaciach
@@ -666,18 +690,3 @@ wzorca. **Oglądane:** MG i Ola w Chromium, Tester i Handlarz w **Firefoksie** (
 postać bez broni bierze pistolet ze schowka Wozu (wstęp + notatka ❓), NPC-e +1 do broni,
 Szron i Kłoda +2, szyba bez zmian. **Testy:** kod aplikacji nietknięty; testy wzorców `shared`
 17/17, serwer 7/7 po zmianach `scene.json`.
-
-### Sesja 04.11, trzecia — przygotowanie przebiegu „Ostatniego zjazdu” w przeglądarce
-
-**Zlecenie MG:** „wykonaj w przeglądarce pełen przebieg przykładowej sceny z pościgiem”,
-z pytaniami; w trakcie: „podziel ten test na przygotowanie postaci i sceny, a jej rozegranie
-przeprowadzimy w kolejnej sesji”. **Odpowiedzi MG:** lokalny dev, pełna gra 6 rund, 3 graczy,
-rozsądne decyzje różnymi drogami do celu, postacie nowe z kreatora. **Zrobione (bez zmian
-kodu):** `dev.db` dostał trzy brakujące migracje z 02–03.11 (`migrate deploy`); w „Oględzinach
-12.09” nowe konto Ola i trzy postacie Krawędziarza przez prośbę → zgodę → kreator → przyjęcie:
-Rdza (Nomada, Tester), Kosa (Solo, Handlarz), Szew (Medyk, Ola), z pakietami Ról z podręcznika
-wydanymi „Dodaj za darmo”; „Ostatni zjazd” dodany z „Przykładowych” (podgląd, bez braków).
-Szczegóły i plan rozegrania — `etap-66c-ostatni-zjazd.md`. **Oglądane:** MG i Ola w Chromium,
-Tester i Handlarz w **Firefoksie** (Playwright MCP). **Zauważone:** lista obecności graczy
-między sesjami nie dostaje nowych osób (zaległość, `presence.ts`); pułapka „panel MG na
-Synchronizacji = brak migracji” w `testy`. **Testy:** kodu nie ruszano — nie puszczane.

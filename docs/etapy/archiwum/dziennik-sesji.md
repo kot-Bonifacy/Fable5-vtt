@@ -1,5 +1,20 @@
 # Dziennik sesji — archiwum
 
+### Sesja 04.11, trzecia — przygotowanie przebiegu „Ostatniego zjazdu” w przeglądarce
+
+**Zlecenie MG:** „wykonaj w przeglądarce pełen przebieg przykładowej sceny z pościgiem”,
+z pytaniami; w trakcie: „podziel ten test na przygotowanie postaci i sceny, a jej rozegranie
+przeprowadzimy w kolejnej sesji”. **Odpowiedzi MG:** lokalny dev, pełna gra 6 rund, 3 graczy,
+rozsądne decyzje różnymi drogami do celu, postacie nowe z kreatora. **Zrobione (bez zmian
+kodu):** `dev.db` dostał trzy brakujące migracje z 02–03.11 (`migrate deploy`); w „Oględzinach
+12.09” nowe konto Ola i trzy postacie Krawędziarza przez prośbę → zgodę → kreator → przyjęcie:
+Rdza (Nomada, Tester), Kosa (Solo, Handlarz), Szew (Medyk, Ola), z pakietami Ról z podręcznika
+wydanymi „Dodaj za darmo”; „Ostatni zjazd” dodany z „Przykładowych” (podgląd, bez braków).
+Szczegóły i plan rozegrania — `etap-66c-ostatni-zjazd.md`. **Oglądane:** MG i Ola w Chromium,
+Tester i Handlarz w **Firefoksie** (Playwright MCP). **Zauważone:** lista obecności graczy
+między sesjami nie dostaje nowych osób (zaległość, `presence.ts`); pułapka „panel MG na
+Synchronizacji = brak migracji” w `testy`. **Testy:** kodu nie ruszano — nie puszczane.
+
 ### Sesja 04.11, druga — wzorzec „Ostatni zjazd” (66c)
 
 **Zlecenie MG:** wykonać `etap-66c-ostatni-zjazd.md`, z pytaniami przy wątpliwościach.

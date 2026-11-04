@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import {
   CHASE_OBSTACLE_PRESETS,
   ROLE_GM,
+  chaseObstacleUnbreakable,
   type ChaseObstacleChoice,
   type ChaseObstacleView,
   type SceneVehicleView,
@@ -118,7 +119,11 @@ function obstacleStateLine(
 ): string {
   const kind = CHASE_OBSTACLE_PRESETS[obstacle.kind].label;
   const hp =
-    obstacle.kind === 'spikes' ? 'po niej się przejeżdża' : `${obstacle.hp}/${obstacle.hpMax} PW`;
+    obstacle.kind === 'spikes'
+      ? 'po niej się przejeżdża'
+      : chaseObstacleUnbreakable(obstacle.kind)
+        ? 'beton — nie do rozbicia'
+        : `${obstacle.hp}/${obstacle.hpMax} PW`;
   const wait = blocked ? ` · czeka na: ${blocked.name}` : '';
   return `${kind} · ${hp}${wait}`;
 }
@@ -134,12 +139,25 @@ export function useObstacleNotice(): void {
   const tokens = useTokenStore((s) => s.tokens);
   const user = useAuthStore((s) => s.user);
   // Przeszkoda MG (65e) albo stojące auto — wrak, zgaszony silnik (przegląd 03.11).
-  type Blocker = { id: string; name: string; hp: number; kind: 'obstacle' | 'vehicle' };
+  type Blocker = {
+    id: string;
+    name: string;
+    hp: number;
+    kind: 'obstacle' | 'vehicle';
+    /** Beton (04.11.2026): taranowanie i nieudany skręt robią z auta wrak. */
+    concrete?: boolean;
+  };
   const blockers: { blocker: Blocker; vehicleId: string }[] = [
     ...obstacles
       .filter((entry) => entry.blockingVehicleId !== null)
       .map((entry) => ({
-        blocker: { id: entry.id, name: entry.name, hp: entry.hp, kind: 'obstacle' as const },
+        blocker: {
+          id: entry.id,
+          name: entry.name,
+          hp: entry.hp,
+          kind: 'obstacle' as const,
+          concrete: chaseObstacleUnbreakable(entry.kind),
+        },
         vehicleId: entry.blockingVehicleId!,
       })),
     ...vehicles
@@ -178,14 +196,18 @@ export function useObstacleNotice(): void {
           });
     const hp =
       blocker.kind === 'obstacle'
-        ? blocker.hp > 0
-          ? ` (${blocker.hp} PW)`
-          : ''
+        ? blocker.concrete
+          ? ' (beton)'
+          : blocker.hp > 0
+            ? ` (${blocker.hp} PW)`
+            : ''
         : ` (${blocker.hp > 0 ? 'stoi na drodze' : 'wrak'})`;
     const what = blocker.kind === 'obstacle' ? 'auta i przeszkody' : 'obu aut';
     notifyChoice(
       'obstacle',
-      `Na drodze: ${blocker.name}${hp}. Gwałtowny skręt to Test PT 13 — porażka to utrata kontroli i zderzenie. Taranowanie to 6k6 dla ${what}.`,
+      blocker.concrete
+        ? `Na drodze: ${blocker.name}${hp}. Gwałtowny skręt to Test PT 13 — porażka to utrata kontroli i rozbicie auta. Taranowanie betonu robi z auta wrak, a jadący dostają Ranę Krytyczną.`
+        : `Na drodze: ${blocker.name}${hp}. Gwałtowny skręt to Test PT 13 — porażka to utrata kontroli i zderzenie. Taranowanie to 6k6 dla ${what}.`,
       [
         { label: 'Gwałtowny skręt', run: () => run('swerve') },
         { label: 'Taranuj', run: () => run('ram') },

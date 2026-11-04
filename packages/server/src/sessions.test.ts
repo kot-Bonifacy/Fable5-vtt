@@ -13,6 +13,7 @@ import type {
   CharacterView,
   ChatMessageBroadcast,
   CpredCharacterData,
+  PresenceBroadcast,
   SessionChangedPush,
   SocketAck,
   StateSyncPayload,
@@ -271,6 +272,22 @@ describe('przygotowanie i widok między sesjami', () => {
     expect(presence.find((entry) => entry.name === 'Kuba')).toMatchObject({ atTable: false });
     expect(presence.find((entry) => entry.role === ROLE_GM)).toMatchObject({ atTable: true });
 
+    disconnectAll();
+  });
+
+  it('gracz między sesjami widzi na liście obecności tych, którzy weszli po nim (04.11.2026)', async () => {
+    const delta = await makeGm('dorota', 'Kabuki', 'Tester');
+    const first = await seated(delta.playerCookie);
+    expect(first.sync.campaign?.sessionStartedAt).toBeNull();
+    const heard = nextEvent<PresenceBroadcast>(first.socket, 'presence:update');
+    const secondCookie = await joinPlayer(delta.campaignId, 'Handlarz');
+    await seated(secondCookie);
+    const update = await heard;
+    // Poza stołem bez `seq` — poczekalnia nie śledzi numeracji pokoju stołu.
+    expect(update.seq).toBeUndefined();
+    expect(update.presence.map((entry) => entry.name)).toEqual(
+      expect.arrayContaining(['Tester', 'Handlarz']),
+    );
     disconnectAll();
   });
 
@@ -597,8 +614,9 @@ describe('otwarcie innej kampanii', () => {
     expect(fresh.campaign?.id).toBe(second.id);
     expect(fresh.scene).toBeNull();
     await settle();
-    // Gracz kampanii A i drugi MG nie dostają niczego.
-    expect(playerHeard).toEqual([]);
+    // Gracz kampanii A i drugi MG nie dostają niczego z drugiej kampanii. Gracz
+    // w poczekalni słyszy tylko, że MG zniknął z listy obecności (04.11.2026).
+    expect(playerHeard.filter((event) => event !== 'presence:update')).toEqual([]);
     expect(otherHeard).toEqual([]);
     // Cudza i nieznana kampania wyglądają tak samo, gracz nie otwiera niczego.
     expect(await emitAck(gm.socket, 'campaign:open', { campaignId: beta.campaignId })).toEqual({

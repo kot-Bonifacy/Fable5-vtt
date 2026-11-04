@@ -1915,8 +1915,10 @@ export const tokenWalkEvent = defineEvent<TokenWalkPayload, { tokenId: string }>
     if (!isGm && token.hidden) throw new RealtimeError('TOKEN_NOT_FOUND');
     if (!isGm && token.ownerId !== user.id) throw new RealtimeError('FORBIDDEN');
     if (!isGm && scene.playerMove === 'stop') throw new RealtimeError('MOVE_LOCKED');
-    // Etap 65b: figura w fotelu jedzie z autem, nie chodzi.
-    if (!isGm && token.sceneVehicleId !== null) throw new RealtimeError('IN_VEHICLE');
+    // Etap 65b: figura w fotelu jedzie z autem, nie chodzi — także u MG
+    // (04.11.2026: przypadkowy klik w jezdnię wyprowadzał NPC-a z fotela przez
+    // barierę). Wysiadka zostaje przeciągnięciem ręką MG (`performTokenMove`).
+    if (token.sceneVehicleId !== null) throw new RealtimeError('IN_VEHICLE');
     // 02.11.2026 (MG): podłączony netrunner stoi, dopóki się nie odłączy.
     await refuseMoveWhileJackedIn(deps.ctx.prisma, token.id, isGm);
     await refuseMoveBeforeSightedFight(deps, scene.id, user);

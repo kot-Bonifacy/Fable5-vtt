@@ -6,21 +6,20 @@ w `POMYSLY.md` („Do sprawdzenia przy stole”), decyzje MG — w `decyzje-i-up
 
 ## Otwarte
 
-**04.11.2026 — klik w wolny fotel z bronią w ręku celuje w auto zamiast sadzać (przebieg 66c).**
-Gracz po zaznaczeniu figury ma broń „w ręku” (jedna broń w rękach z 29.10), więc pierwszy klik
-w fotel Wozu ładował kubek „Ciężki pistolet → Wóz od Matyldy”, a u Szew (gołe ręce) dawał
-odmowę „Do ataku wręcz cel musi być nie dalej niż 2 m”. `vehicleClickAt` w `MapArea.tsx` pyta
-`shootVehicleAt` **przed** fotelem i nie odróżnia auta drużyny. To samo u MG: klik w Rydwan przy
-zaznaczonej figurze tury (Lutka z PM) celował w Rydwan zamiast otworzyć menu. Obejście (wpisane
-w notatkę 2 wzorca): klik w slot broni zdejmuje ją z ręki. Do decyzji MG: fotel przed strzałem,
-gdy figura nie siedzi w żadnym aucie (i auto nie jest wrogie)?
+**04.11.2026 (piąta sesja) — oględziny w przeglądarce zmian pościgu i czatu.** Zmiany
+sprawdzone tylko testami (serwer, klient) i buildem, bez przeglądarki. Przy stole (Firefox):
+pieszy z bronią w ręku klikiem w wolny fotel Wozu wsiada, a klikiem w kadłub strzela; prawy
+klik w auto (MG i gracz) otwiera menu auta; klik MG w jezdnię przy NPC-u w fotelu daje odmowę
+„przeciągnij ją na jezdnię”; kolczatka i przeszkoda znikają po pierwszym aucie; Barykada —
+podpowiedź „beton” w palecie, menu i pasku kierowcy, taran = wrak; prośba o Test u MG podaje
+postać (konto w podpowiedzi). Lista obecności gracza w poczekalni odświeża się na żywo.
 
-**04.11.2026 — przypadkowy klik MG w jezdnię wyprowadza NPC-a z fotela marszem, także przez
-barierę do przepaści (przebieg 66c).** W rundzie 7 klik w jezdnię przy zaznaczonej Lutce (fotel
-eskorty) dał `token:walk`: Lutka wysiadła i przeszła 3,2 m za cyjanową barierę. `token:walk`
-(`realtime/tokens.ts`) zwalnia MG z `IN_VEHICLE` (`!isGm && …`), a `token:move` — tylko rękę
-MG (`hand`). Naprawa: `IN_VEHICLE` także dla MG w `token:walk` (wysiadka zostaje przeciągnięciem).
-Przy okazji: przeciągnięcie MG w turze figury zjada jej metry (tak liczyło Kłodzie i Lutce).
+**04.11.2026 — resztki z naprawionych zaległości 66c.** (1) Przeciągnięcie MG w turze figury
+zjada jej metry (tak liczyło Kłodzie i Lutce przy wysiadce) — do decyzji MG, czy wysiadka
+ręką MG ma być darmowa. (2) Wrak albo zgaszone auto po taranowaniu dalej ląduje za tylnym
+zderzakiem (`pushVehicleBehind`, decyzja z 03.11) i może trafić na auto jadące tuż za nim —
+przeszkody z palety już tak nie robią (znikają, beton zostaje w miejscu). (3) Podpis figury
+z przedniego fotela nachodzi na pierścień figury z fotela obok (`car-4`, `van-8`).
 
 **04.11.2026 — drobiazgi z przebiegu 66c (UI pościgu i czatu).**
 
@@ -41,21 +40,10 @@ Przy okazji: przeciągnięcie MG w turze figury zjada jej metry (tak liczyło K�
   MG dostaje z powrotem rzut obrażeń — łatwo zastosować je drugi raz.
 - MG nie ma „Ucieka” / „Odjedź” w menu auta (notatki wzorca o nim wspominały): na stojącej
   drodze eskorta zablokowana Wozem nie miała jak odjechać.
-- Prośba o Test u MG: „**Tester** prosi o Test”, „rzucał: Tester” — nazwa konta zamiast postaci
-  (Rdza). Do decyzji MG, czy reguła „bez nazw kont w grze” obejmuje widok MG.
 - Kamera gracza (`coverZoom` na estakadzie 35 × 18) mieści ok. 23 kratki długości — furgon
   i Wóz nie były razem w kadrze, gracz przesuwa widok ręką.
 - Karty NPC-ów wzorca z EMP 2 (Kłoda, Szron, Grot, Kabel) mają na liście MG „EMP 2 · NA
   GRANICY” — szum przy NPC-ach; do decyzji: EMP 3 we wzorcu?
-
-**04.11.2026 — lista obecności gracza między sesjami nie widzi nowych osób.** Przy
-przygotowaniu przebiegu 66c (kampania w PRZYGOTOWANIU) Tester wszedł pierwszy i do końca
-widział tylko „MG, Tester”, Handlarz — „MG, Handlarz, Tester” (bez Oli, która weszła po nim);
-MG widział wszystkich. `broadcastPresence` (`server/src/realtime/presence.ts`) wysyła
-`presence:update` tylko do pokoju stołu (`campaignRoom`), a gracze między sesjami siedzą
-w `lobbyRoom` i dostają listę raz, przy wejściu. Naprawa: wysyłać też do lobby kampanii
-(i test w `sessions.test.ts`). Nie blokuje przebiegu — po „Rozpocznij sesję” wszyscy są przy
-stole.
 
 **04.11.2026 — „Ostatni zjazd” (66c): przebieg przy stole i wdrożenie.** Technicznie przejechany
 specem oględzin (MG w Chromium, Marek i Ola w Firefoksie, `data/private`), a 04.11 (czwarta
@@ -68,16 +56,11 @@ VPS — nie sprawdzone (zostaną bez tła). Reguła „załoga auta poza pościg
 `mapa`) dotyczy też aut, które odpadły w zwykłym pościgu — warto rzucić okiem przy stole, czy
 nikogo nie dziwi, że załoga znika razem z autem.
 
-**04.11.2026 — przeszkoda za autem ląduje na aucie, które stoi tuż za nim (65e, widziane
-w przebiegu 66c).** Furgon bez kontroli staranował auto cywilne, a to wylądowało za jego tylnym
-zderzakiem — pod Wozem drużyny, który pchał furgon (przeszkody rysują się pod autami, więc jej
-nie widać). `chaseObstaclePastVehicle` nie pyta, czy miejsce jest wolne. Do oceny MG: czy
-przeszkoda ma wtedy zniknąć, przesunąć się dalej, czy uderzyć w auto za nim. Przy okazji:
-podpis figury z przedniego fotela nachodzi na pierścień figury z fotela obok (`car-4`, `van-8`).
-
 **04.11.2026 — `surgery.test.ts` migocze pod pełną suitą serwera.** W jednym z dwóch pełnych
 przebiegów padły 2 testy (Test montażu z `outcome.success` innym niż oczekiwany); osobno
 3/3 zielone. Nie dotyka zmian 66c — do zbadania przy najbliższym przeglądzie testów (`testy`).
+04.11 (piąta sesja): `chase-combat.test.ts` („kadłub: obrażenia minus OB 13…”) padł raz pod
+`vitest run src/chase`, osobno 7/7 i w pełnej suicie zielony — pewnie ta sama przyczyna.
 
 **03.11.2026 — kreator pościgu: oględziny w Firefoksie i przy stole, wdrożenie.** Oglądane
 tylko w Chromium (skrypt `playwright` na instancji E2E) — Firefoksa w kontenerze nie ma, Playwright

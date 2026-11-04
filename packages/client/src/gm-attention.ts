@@ -131,8 +131,8 @@ export function gmAttentionItems(sources: GmAttentionSources): GmAttentionItem[]
         kind: 'request',
         text:
           typeof message.request.system.sneakTokenId === 'string'
-            ? `${message.request.askedByName} prosi o skradanie: ${message.request.characterName}`
-            : `${message.request.askedByName} prosi o Test: ${message.request.rollLabel}`,
+            ? `${message.request.characterName} prosi o skradanie`
+            : `${message.request.characterName} prosi o Test: ${message.request.rollLabel}`,
         tab: 'chat',
         messageId: message.id,
       });

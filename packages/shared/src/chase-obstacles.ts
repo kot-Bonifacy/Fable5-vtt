@@ -45,6 +45,11 @@ export interface ChaseObstaclePreset {
   art: readonly string[];
   /** Grafika szara jak wrak (65d1). */
   wreckTint?: true;
+  /**
+   * Beton (decyzja MG z 04.11.2026): taranowanie go nie rusza, a auto, które
+   * w niego wjedzie, jest od razu wrakiem. Zostaje na drodze po uderzeniu.
+   */
+  unbreakable?: true;
 }
 
 /**
@@ -71,6 +76,7 @@ export const CHASE_OBSTACLE_PRESETS: Record<ChaseObstacleKind, ChaseObstaclePres
     lengthSq: 1,
     hp: 30,
     art: ['/art/obstacles/barricade.webp'],
+    unbreakable: true,
   },
   roadwork: {
     label: 'Roboty drogowe',
@@ -102,6 +108,11 @@ export const CHASE_OBSTACLE_PRESETS: Record<ChaseObstacleKind, ChaseObstaclePres
     art: [],
   },
 };
+
+/** Betonowa przeszkoda (04.11.2026): nie do rozbicia, auto rozbija się na niej. */
+export function chaseObstacleUnbreakable(kind: string): boolean {
+  return isChaseObstacleKind(kind) && CHASE_OBSTACLE_PRESETS[kind].unbreakable === true;
+}
 
 /** Czy przeszkoda tego rodzaju zatrzymuje auto (kolczatka — nie, po niej się przejeżdża). */
 export function chaseObstacleCollides(kind: ChaseObstacleKind): boolean {

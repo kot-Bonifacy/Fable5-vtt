@@ -328,7 +328,8 @@ describe('wezwanie do Testu', () => {
 
     const call = (await updated).message.check as CheckCallEntry;
     expect(call.resolved?.success).toBe(false);
-    expect(call.resolved?.byName).toBe('Vex');
+    // Gracz rzuca postacią — konto „Vex” nie trafia do gry (04.11.2026).
+    expect(call.resolved?.byName).toBe('Forty');
     expect(call.resolved?.messageId).toBe(card.message.id);
 
     // Zamknięte wezwanie nie przyjmuje drugiego rzutu.

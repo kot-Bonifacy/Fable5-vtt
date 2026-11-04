@@ -34,6 +34,7 @@ import {
   cpredSkillLevel,
   cpredVehicleChase,
   cpredVehicleSkillId,
+  chaseObstacleUnbreakable,
   cpredVehicleWrecked,
   parseCharacterData,
   readCpredTurn,
@@ -283,7 +284,18 @@ async function driveWithContacts(
     contact.obstacle,
     contact.front,
   );
-  if (!goesOn) return done(await placedView(prisma, placed.sceneId, placed.id));
+  if (!goesOn) {
+    // Przeszkoda, która przeżyła taranowanie, reaguje tylko z pierwszym autem
+    // i znika (04.11.2026); beton zostaje — auto rozbiło się na nim.
+    if (
+      contact.obstacle.kind === 'obstacle' &&
+      !chaseObstacleUnbreakable(contact.obstacle.obstacle.kind)
+    ) {
+      await prisma.chaseObstacle.deleteMany({ where: { id: contact.obstacle.id } });
+      await emitChase(deps, campaignId, placed.sceneId);
+    }
+    return done(await placedView(prisma, placed.sceneId, placed.id));
+  }
   const after = await requirePlaced(prisma, campaignId, placed.id);
   // Taranujący, którego zderzenie samo rozbiło, dalej nie jedzie (s. 191).
   if (cpredVehicleWrecked(readCpredVehicle(after.vehicle.system))) {

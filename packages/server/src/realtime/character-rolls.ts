@@ -1509,7 +1509,8 @@ async function performScopedRoll(
     if (call && result.outcome) {
       call.entry.resolved = {
         messageId: view.id,
-        byName: user.name,
+        // Gracz rzuca postacią — nazwa konta nie trafia do gry (04.11.2026).
+        byName: user.role === ROLE_GM ? user.name : call.entry.characterName,
         success: result.outcome.success,
         total: result.total,
       };

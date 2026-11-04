@@ -14,13 +14,13 @@ import {
   CHASE_OBSTACLE_PRESETS,
   CPRED_ACTION_SPIKES,
   CPRED_OBSTACLE_MANEUVER_ID,
+  chaseObstacleUnbreakable,
   CPRED_SPIKES_DAMAGE,
   CPRED_SPIKES_DV,
   ROLE_GM,
   chaseBodyHalfExtents,
   chaseObstacleDrifted,
   chaseObstacleGone,
-  chaseObstaclePastVehicle,
   chaseObstacleSpawnCentre,
   chaseObstacleSweep,
   chaseSpikesCrossed,
@@ -174,41 +174,34 @@ export const chaseObstacleRemoveEvent = defineEvent<ChaseObstacleRemovePayload, 
 });
 
 /**
- * Przeszkoda za autem po minięciu (Manewr udany albo zderzenie, którego nie
- * przeżyła w całości — przeszkoda ocalała, ale auto ją odepchnęło i jedzie
- * dalej). Za tylną krawędzią znika od razu.
+ * Przeszkoda po spotkaniu z autem (Manewr udany albo zderzenie, które
+ * przeżyła) znika z drogi — poza betonem, który zostaje. Reaguje tylko z pierwszym autem (decyzja MG
+ * z 04.11.2026): do tego dnia lądowała za tylnym zderzakiem, także na aucie,
+ * które jechało tuż za nim, i chowała się pod nim.
  */
 async function letPast(deps: RealtimeDeps, obstacle: ChaseObstacle, placed: Placed): Promise<void> {
   const prisma = deps.ctx.prisma;
-  const fresh = await prisma.chaseObstacle.findUnique({ where: { id: obstacle.id } });
-  if (!fresh) return;
-  const vehicle = await prisma.sceneVehicle.findUnique({ where: { id: placed.id } });
-  const { settings, frame } = chaseGeometry(placed.scene);
-  const body = chaseBodyOf(placed.vehicle);
-  const centre = chaseObstaclePastVehicle(
-    fresh,
-    { x: vehicle?.x ?? placed.x, y: vehicle?.y ?? placed.y, ...body },
-    settings.direction,
-    placed.scene.gridSizePx,
-  );
-  if (chaseObstacleGone(centre, fresh, settings.direction, frame)) {
-    await prisma.chaseObstacle.delete({ where: { id: fresh.id } });
+  // Beton zostaje na drodze (04.11.2026) — dryfuje dalej i może zatrzymać
+  // następne auto; tego, które go minęło albo się na nim rozbiło, już nie.
+  if (chaseObstacleUnbreakable(obstacle.kind)) {
+    const fresh = await prisma.chaseObstacle.findUnique({ where: { id: obstacle.id } });
+    if (!fresh) return;
+    await prisma.chaseObstacle.update({
+      where: { id: fresh.id },
+      data: {
+        blockingId: null,
+        passed: JSON.stringify([...new Set([...readPassed(fresh.passed), placed.id])]),
+      },
+    });
     return;
   }
-  await prisma.chaseObstacle.update({
-    where: { id: fresh.id },
-    data: {
-      ...centre,
-      blockingId: null,
-      passed: JSON.stringify([...new Set([...readPassed(fresh.passed), placed.id])]),
-    },
-  });
+  await prisma.chaseObstacle.deleteMany({ where: { id: obstacle.id } });
 }
 
 /**
  * Zderzenie auta z przeszkodą, która stoi przed jego zderzakiem — rozstrzyga
  * je `resolveRam` jak każde taranowanie (przeszkoda uderza w przód auta, więc
- * Pług bojowy działa). Ocalała przeszkoda zostaje za autem.
+ * Pług bojowy działa). Ocalała przeszkoda znika z drogi (04.11.2026).
  */
 async function collide(
   deps: RealtimeDeps,
@@ -387,20 +380,6 @@ async function spikesHit(
   );
 }
 
-/** Zapisuje, że auto już przejechało tę kolczatkę — drugi raz nie rzuca. */
-async function markPassed(
-  prisma: PrismaClient,
-  obstacle: ChaseObstacle,
-  vehicleIds: readonly string[],
-): Promise<string[]> {
-  const passed = [...new Set([...readPassed(obstacle.passed), ...vehicleIds])];
-  await prisma.chaseObstacle.update({
-    where: { id: obstacle.id },
-    data: { passed: JSON.stringify(passed) },
-  });
-  return passed;
-}
-
 /**
  * Kierowca przejechał autem `from → to` w swojej turze (`chase:move` w walce):
  * każda kolczatka na tej drodze, której to auto jeszcze nie przejechało,
@@ -437,7 +416,9 @@ export async function crossSpikes(
   );
   for (const id of crossed) {
     const row = open.find((entry) => entry.id === id)!;
-    await markPassed(prisma, row, [placed.id]);
+    // Kolczatka reaguje tylko z pierwszym autem, potem znika — jak przeszkoda
+    // (decyzja MG z 04.11.2026).
+    await prisma.chaseObstacle.deleteMany({ where: { id: row.id } });
     await spikesHit(deps, campaignId, user, placed.scene, placed, row);
   }
   if (crossed.length > 0) await emitChase(deps, campaignId, placed.sceneId);
@@ -598,10 +579,13 @@ export async function driftObstaclesRound(
     let centre = to;
     let blockingId: string | null = null;
     if (obstacle.kind === 'spikes') {
-      for (const hit of hits) {
-        passed.add(hit.id);
-        const vehicle = placed.get(hit.id);
-        if (vehicle) spikeHits.push({ vehicle, obstacle });
+      // Tylko pierwsze auto na drodze kolczatki — potem znika jak przeszkoda
+      // (decyzja MG z 04.11.2026; do tego dnia jechała dalej przez kolejne auta).
+      const vehicle = hits[0] ? placed.get(hits[0].id) : undefined;
+      if (vehicle) {
+        spikeHits.push({ vehicle, obstacle });
+        await prisma.chaseObstacle.delete({ where: { id: obstacle.id } });
+        continue;
       }
     } else if (hits[0]) {
       const vehicle = placed.get(hits[0].id);

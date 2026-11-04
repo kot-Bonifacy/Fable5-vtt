@@ -132,7 +132,7 @@ it('lists open Test requests and proposals only the GM can answer', () => {
   });
   expect(items[0]?.messageId).toBe(1);
   expect(items.map((item) => [item.key, item.kind, item.tab, item.text])).toEqual([
-    ['msg:1', 'request', 'chat', 'Marek prosi o Test: Percepcja (INT)'],
+    ['msg:1', 'request', 'chat', 'Stym prosi o Test: Percepcja (INT)'],
     ['msg:3', 'proposal', 'chat', 'Rico czeka na zatwierdzenie: Percepcja'],
   ]);
 });

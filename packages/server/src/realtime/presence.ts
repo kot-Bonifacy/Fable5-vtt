@@ -34,10 +34,16 @@ export async function computePresence(
   });
 }
 
-/** Broadcasts the full presence list to the campaign's table (with a new seq). */
+/**
+ * Broadcasts the full presence list to the campaign's table (with a new seq)
+ * and to the players waiting between sessions — without a seq, like every
+ * delivery outside the table: the lobby does not follow the table's numbering
+ * (04.11.2026 — a player who came in first never saw the ones after them).
+ */
 export async function broadcastPresence(deps: RealtimeDeps, campaignId: string): Promise<void> {
   const room = campaignRoom(campaignId);
   const presence = await computePresence(deps.io, campaignId);
   const payload: PresenceBroadcast = { seq: deps.seqs.next(room), presence };
   deps.io.to(room).emit('presence:update', payload);
+  deps.io.to(lobbyRoom(campaignId)).emit('presence:update', { presence } as PresenceBroadcast);
 }

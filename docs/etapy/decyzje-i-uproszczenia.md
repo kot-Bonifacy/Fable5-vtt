@@ -47,11 +47,17 @@ przestanie się bronić, przenieś ją stąd do `POMYSLY.md` jako zadanie — ni
   przy zderzaku. Za kierowcę-NPC-a odpowiada MG (pasek i menu przeszkody).
 - **Auto bez kontroli wjeżdża w przeszkodę samo** — pusty fotel kierowcy, kierowca leży albo
   utrata kontroli. Nikt nie skręca.
-- **Po minięciu przeszkoda staje za tylnym zderzakiem auta** — po udanym skręcie, ale też po
-  zderzeniu, którego nie rozbiła: auto ją odepchnęło i jedzie dalej. Podręcznik każe
-  taranującemu stanąć przy przeszkodzie, która przetrwała (s. 192), ale na bieżni auto, które
-  stanie, wypada z kadru — więc szkodą są kości, a nie zatrzymanie. To samo auto tej przeszkody
-  drugi raz nie spotka (`passed`).
+- **Barykada to beton — nie do rozbicia** (decyzja MG z 04.11.2026). Taranowanie albo nieudany
+  Gwałtowny skręt kończy się wrakiem auta (PUK 0, także z Pługiem) i Raną Krytyczną dla
+  jadących; beton nic nie bierze i zostaje na drodze (dryfuje dalej, może zatrzymać następne
+  auto, tego samego już nie — `passed`). Podręcznik (s. 192) liczy przeszkodzie PW jak osłonie.
+- **Przeszkoda reaguje tylko z pierwszym autem, potem znika** (decyzja MG z 04.11.2026) — po
+  udanym skręcie, ale też po zderzeniu, którego nie rozbiła: auto ją odepchnęło i jedzie dalej.
+  Podręcznik każe taranującemu stanąć przy przeszkodzie, która przetrwała (s. 192), ale na
+  bieżni auto, które stanie, wypada z kadru — więc szkodą są kości, a nie zatrzymanie. Do 04.11
+  minięta przeszkoda stawała za tylnym zderzakiem i lądowała na aucie jadącym tuż za nim.
+  Kolczatka tak samo: rzuca na pierwsze auto, które na nią wjedzie, i znika (wcześniej jechała
+  dalej i wyglądała, jakby tkwiła przy aucie).
 - **Taranowanie przeszkody to 6k6 w jej PW bez OB i bez „Cofnij”**, jak w osłonę (s. 179):
   przeszkoda to chwilowa dekoracja walki, nie wiersz z historią. Auto bierze swoje 6k6 jak przy
   taranowaniu auta (przez OB kadłuba, z „Cofnij”), Pług bojowy działa — przeszkoda zawsze trafia

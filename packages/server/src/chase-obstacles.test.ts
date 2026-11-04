@@ -432,7 +432,7 @@ describe('etap 65e: przeszkody, ruch uliczny i kolczatka', () => {
     ).toMatchObject({ ok: false, error: 'OBSTACLE_PENDING' });
   });
 
-  it('udany Gwałtowny skręt: przeszkoda zostaje za autem, auto bez szkody', async () => {
+  it('udany Gwałtowny skręt: przeszkoda znika z drogi, auto bez szkody', async () => {
     const [row] = await obstacleRows();
     // 8 + 4 + 5 = 17 ≥ 13.
     scriptDice([5]);
@@ -444,17 +444,15 @@ describe('etap 65e: przeszkody, ruch uliczny i kolczatka', () => {
       'chase:obstacle-answer swerve',
     );
     expect(view).toMatchObject({ control: 'driver', hp: 45 });
-    const [after] = await obstacleRows();
-    expect(after!.blockingId).toBeNull();
-    expect(after!.x).toBeCloseTo(1800 - 250 - 250 - 5, 0);
-    expect(JSON.parse(after!.passed)).toEqual([carA.id]);
+    // Przeszkoda reaguje tylko z pierwszym autem (decyzja MG z 04.11.2026).
+    expect((await obstacleRows()).some((entry) => entry.id === row!.id)).toBe(false);
     const card = await built.prisma.chatMessage.findFirst({
       where: { kind: 'roll', text: { startsWith: 'Manewr: Gwałtowny skręt' } },
     });
     expect(card).not.toBeNull();
     expect(
       await emitAck(player, 'chase:obstacle-answer', { obstacleId: row!.id, choice: 'ram' }),
-    ).toMatchObject({ ok: false, error: 'OBSTACLE_NOT_BLOCKING' });
+    ).toMatchObject({ ok: false });
   });
 
   it('taranowanie rozbija słabą przeszkodę i zabiera autu 6k6', async () => {
@@ -503,8 +501,8 @@ describe('etap 65e: przeszkody, ruch uliczny i kolczatka', () => {
     scriptDice([3, 3, 3, 3]);
     await nextRound('runda 3');
     expect((await statsOf((await placedRow(carC.id)).vehicleId)).hp).toBe(45 - 24);
-    const spikesAfter = (await obstacleRows()).find((entry) => entry.kind === 'spikes')!;
-    expect(JSON.parse(spikesAfter.passed)).toEqual(expect.arrayContaining([carB.id, carC.id]));
+    // Kolczatka reaguje tylko z pierwszym autem, potem znika (decyzja MG z 04.11.2026).
+    expect((await obstacleRows()).some((entry) => entry.kind === 'spikes')).toBe(false);
     // Gang jedzie z przodu — po własnej kolczatce nie przejeżdża.
     expect((await statsOf((await placedRow(carB.id)).vehicleId)).hp).toBe(45);
 
@@ -547,10 +545,9 @@ describe('etap 65e: przeszkody, ruch uliczny i kolczatka', () => {
     scriptDice([1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]);
     await nextRound('runda 4');
     expect((await statsOf((await placedRow(carC.id)).vehicleId)).hp).toBe(hpBefore - 6);
-    // Przeżyła z 44 PW i stoi za autem C, już bez wezwania.
-    const survivor = (await obstacleRows()).find((entry) => entry.id === lane.id);
-    expect(survivor).toMatchObject({ hp: 44, blockingId: null });
-    expect(survivor!.x).toBeCloseTo(300 - 250 - 250 - 5, 0);
+    // Przeżyła zderzenie (44 PW), ale reaguje tylko z pierwszym autem — znika
+    // (decyzja MG z 04.11.2026; do tego dnia stawała za autem C).
+    expect((await obstacleRows()).some((entry) => entry.id === lane.id)).toBe(false);
 
     for (const entry of await obstacleRows()) {
       expect((await emitAck(gm, 'chase:obstacle-remove', { obstacleId: entry.id })).ok).toBe(true);

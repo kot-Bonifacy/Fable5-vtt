@@ -10,6 +10,7 @@ import {
   chaseBodyHalfExtents,
   chaseFirstContact,
   chaseHitsWithFront,
+  chaseObstacleUnbreakable,
   cpredRamContinues,
   cpredRamOutcome,
   cpredVehicleHasPlow,
@@ -31,6 +32,7 @@ import {
   chaseGeometry,
   emitChase,
   placedOnScene,
+  readDrivers,
   type PlacedVehicle,
 } from './chase.js';
 import { emitTokensById } from './tokens.js';
@@ -39,6 +41,7 @@ import { logSpentAction } from './combat-log.js';
 import { rollServerSkillTest } from './character-rolls.js';
 import { INCLUDE_CHAT_NAMES, deliverRollMessage, toChatMessageView } from './chat-io.js';
 import { applyDamageRollTo, giveCriticalInjury } from './damage.js';
+import { emitVehicleUpsert } from './vehicles.js';
 import type { RealtimeDeps } from './registry.js';
 
 /**
@@ -300,6 +303,13 @@ export async function resolveRam(
     }
   }
 
+  // Beton (decyzja MG z 04.11.2026): przeszkoda nic nie bierze, auto jest od
+  // razu wrakiem, a jadący dostają Ranę Krytyczną — także z Pługiem.
+  if (obstacle.kind === 'obstacle' && chaseObstacleUnbreakable(obstacle.obstacle.kind)) {
+    await crashIntoConcrete(deps, campaignId, user, rammer, obstacle.obstacle);
+    return false;
+  }
+
   const title = `Taranowanie: ${rammer.vehicle.name} → ${struckName}`;
   let obstacleBroken = false;
   if (obstacle.kind === 'obstacle') {
@@ -346,6 +356,49 @@ export async function resolveRam(
     pedestrian: false,
     hpAfter: struck ? readCpredVehicle(struck.system).hp : 0,
   });
+}
+
+/**
+ * Auto wjechało w beton (04.11.2026): PUK 0 (wrak — gaśnie i odpada dryfem),
+ * Rana Krytyczna dla jadących, a przeszkoda zostaje na drodze bez wezwania
+ * i tego auta drugi raz nie zatrzyma (`passed`).
+ */
+async function crashIntoConcrete(
+  deps: RealtimeDeps,
+  campaignId: string,
+  user: SessionUser,
+  rammer: Placed,
+  obstacle: ObstacleRow,
+): Promise<void> {
+  const prisma = deps.ctx.prisma;
+  const vehicle = await prisma.vehicle.findUnique({ where: { id: rammer.vehicleId } });
+  if (vehicle) {
+    const stats = readCpredVehicle(vehicle.system);
+    const saved = await prisma.vehicle.update({
+      where: { id: vehicle.id },
+      data: { system: JSON.stringify({ ...stats, hp: 0 }) },
+    });
+    await emitVehicleUpsert(deps, campaignId, saved);
+  }
+  const line: CombatActionLogEntry = {
+    combatantId: '',
+    actorName: rammer.vehicle.name,
+    actionId: 'chase-concrete-crash',
+    actionName: 'Rozbite na betonie',
+    note: `${obstacle.name} nie ustępuje — auto to wrak`,
+  };
+  await logSpentAction(deps, campaignId, user, line);
+  await injureParticipants(deps, campaignId, user, await passengersOf(prisma, rammer.id));
+  const fresh = await prisma.chaseObstacle.findUnique({ where: { id: obstacle.id } });
+  if (fresh) {
+    const passed = new Set(readDrivers(fresh.passed));
+    passed.add(rammer.id);
+    await prisma.chaseObstacle.update({
+      where: { id: fresh.id },
+      data: { blockingId: null, passed: JSON.stringify([...passed]) },
+    });
+  }
+  await emitChase(deps, campaignId, rammer.scene.id);
 }
 
 /**

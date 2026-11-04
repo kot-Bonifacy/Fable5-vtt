@@ -9,6 +9,68 @@ go czytać.
 albo gdy chcesz sprawdzić, czy pozycja, która wygląda na nową, nie jest wracającą starą.
 Treść wpisów jest niezmieniona — łącznie z datami i odsyłaczami do notatek sesji.
 
+## Zamknięte 2026-11-04, piąta sesja (zaległości z przebiegu 66c)
+
+**04.11.2026 — lista obecności gracza między sesjami nie widzi nowych osób.** Przy
+przygotowaniu przebiegu 66c (kampania w PRZYGOTOWANIU) Tester wszedł pierwszy i do końca
+widział tylko „MG, Tester”, Handlarz — „MG, Handlarz, Tester” (bez Oli, która weszła po nim);
+MG widział wszystkich. `broadcastPresence` (`server/src/realtime/presence.ts`) wysyła
+`presence:update` tylko do pokoju stołu (`campaignRoom`), a gracze między sesjami siedzą
+w `lobbyRoom` i dostają listę raz, przy wejściu. Naprawa: wysyłać też do lobby kampanii
+(i test w `sessions.test.ts`). Nie blokuje przebiegu — po „Rozpocznij sesję” wszyscy są przy
+stole.
+**Naprawa (04.11, piąta sesja):** `broadcastPresence` wysyła listę także do `lobbyRoom` —
+bez `seq` (`PresenceBroadcast.seq` opcjonalne), jak każde dostarczenie poza stołem. Test
+w `sessions.test.ts`; stary test „przenoszą się tylko gniazda tego MG” przepuszcza teraz
+`presence:update` u gracza w poczekalni (MG zniknął z jego listy — to prawda).
+
+**04.11.2026 — przypadkowy klik MG w jezdnię wyprowadza NPC-a z fotela marszem, także przez
+barierę do przepaści (przebieg 66c).** W rundzie 7 klik w jezdnię przy zaznaczonej Lutce (fotel
+eskorty) dał `token:walk`: Lutka wysiadła i przeszła 3,2 m za cyjanową barierę. `token:walk`
+(`realtime/tokens.ts`) zwalnia MG z `IN_VEHICLE` (`!isGm && …`), a `token:move` — tylko rękę
+MG (`hand`). Naprawa: `IN_VEHICLE` także dla MG w `token:walk` (wysiadka zostaje przeciągnięciem).
+Przy okazji: przeciągnięcie MG w turze figury zjada jej metry (tak liczyło Kłodzie i Lutce).
+**Naprawa (04.11, piąta sesja):** `token:walk` odmawia `IN_VEHICLE` także MG (test w
+`chase.test.ts`), a MG dostaje zdanie „żeby wysiadła, przeciągnij ją na jezdnię” (`moveErrorText`).
+Wysiadka zostaje przeciągnięciem. Wątek „przeciągnięcie MG zjada metry” — w otwartej zaległości
+„resztki z naprawionych zaległości 66c”.
+
+**04.11.2026 — klik w wolny fotel z bronią w ręku celuje w auto zamiast sadzać (przebieg 66c).**
+Gracz po zaznaczeniu figury ma broń „w ręku” (jedna broń w rękach z 29.10), więc pierwszy klik
+w fotel Wozu ładował kubek „Ciężki pistolet → Wóz od Matyldy”, a u Szew (gołe ręce) dawał
+odmowę „Do ataku wręcz cel musi być nie dalej niż 2 m”. `vehicleClickAt` w `MapArea.tsx` pyta
+`shootVehicleAt` **przed** fotelem i nie odróżnia auta drużyny. To samo u MG: klik w Rydwan przy
+zaznaczonej figurze tury (Lutka z PM) celował w Rydwan zamiast otworzyć menu. Obejście (wpisane
+w notatkę 2 wzorca): klik w slot broni zdejmuje ją z ręki. Do decyzji MG: fotel przed strzałem,
+gdy figura nie siedzi w żadnym aucie (i auto nie jest wrogie)?
+**Naprawa (04.11, piąta sesja, decyzja MG):** `vehicleClickAt` w `MapArea.tsx` pyta o wolny
+fotel **przed** strzałem, gdy zaznaczona figura nie siedzi w żadnym aucie — pieszy wsiada,
+w auto strzela klikiem w kadłub poza wolnym fotelem albo w zajęty fotel; z auta strzela się
+jak dawniej. Dla MG: **prawy klik w auto zawsze otwiera menu auta** (u MG i gracza) —
+`MapRenderer.onMapContextMenu` przed odznaczeniem, `vehicleMenuAt` w `MapArea.tsx`.
+Bez oględzin w przeglądarce (zaległość „oględziny w przeglądarce zmian pościgu i czatu”).
+
+**04.11.2026 — przeszkoda za autem ląduje na aucie, które stoi tuż za nim (65e, widziane
+w przebiegu 66c).** Furgon bez kontroli staranował auto cywilne, a to wylądowało za jego tylnym
+zderzakiem — pod Wozem drużyny, który pchał furgon (przeszkody rysują się pod autami, więc jej
+nie widać). `chaseObstaclePastVehicle` nie pyta, czy miejsce jest wolne. Do oceny MG: czy
+przeszkoda ma wtedy zniknąć, przesunąć się dalej, czy uderzyć w auto za nim. Przy okazji:
+podpis figury z przedniego fotela nachodzi na pierścień figury z fotela obok (`car-4`, `van-8`).
+**Naprawa (04.11, piąta sesja, decyzja MG):** przeszkoda reaguje tylko z pierwszym autem
+i znika (`letPast` w `chase-obstacles.ts`, także po taranowaniu w jeździe kierowcy w
+`chase-driving.ts`); kolczatka tak samo — rzuca na pierwsze auto i znika (MG: wyglądała, jakby
+tkwiła przy aucie). Wyjątek: **Barykada to beton** (`CHASE_OBSTACLE_PRESETS.barricade.unbreakable`,
+`chaseObstacleUnbreakable`) — `crashIntoConcrete` w `chase-ram.ts` robi z auta wrak z Raną
+Krytyczną dla jadących, a beton zostaje na drodze z autem w `passed`. Zasady domowe
+w `decyzje-i-uproszczenia.md`. Podpis figury nachodzący na pierścień — w otwartych resztkach.
+
+**04.11.2026 — prośba o Test u MG z nazwą konta (przebieg 66c).** „Tester prosi o Test”,
+„rzucał: Tester” — nazwa konta zamiast postaci (Rdza).
+**Naprawa (04.11, piąta sesja, decyzja MG: u MG też postać):** karta prośby (`CheckRequest.tsx`)
+i pasek uwagi MG (`gm-attention.ts`) podają `characterName` (konto w podpowiedzi nagłówka),
+„wycofał:” — postać, a „rzucał:” na wezwaniu serwer wpisuje postać, gdy rzuca gracz
+(`character-rolls.ts`; MG zostaje MG). Stare wiersze w bazie mają dalej konto w „rzucał:”.
+
 ## Zamknięte 2026-11-03, czwarta sesja (zaległości bez MG i bez VPS)
 
 **31.10.2026 — Otwarte okno łupu nie wraca do handlu po zdjęciu naklejki.** Oględziny łupu

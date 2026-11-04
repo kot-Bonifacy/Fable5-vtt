@@ -480,19 +480,63 @@ describe('przegląd pościgu 03.11', () => {
       }),
       'chase:obstacle-spawn',
     );
+    // Bryła barykady (3 × 1, 30 PW), ale rozbijalna — beton rozbija auto
+    // (04.11.2026, osobny test niżej).
+    await built.prisma.chaseObstacle.update({
+      where: { id: spawned.id },
+      data: { x: 1350, driftRound: 0, kind: 'custom' },
+    });
+    // Przeszkoda 6 × 1 (30 → 24), auto gangu 6 × 1 (45 → 39).
+    scriptDice([1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]);
+    await newRound();
+    // Przeszkoda przeżyła (24 PW), ale reaguje tylko z pierwszym autem — znika
+    // z drogi (decyzja MG z 04.11.2026).
+    expect(await obstacle(spawned.id)).toBeNull();
+    expect(await hpOf(carB.id)).toBe(39);
+    expect((await placedRow(carB.id)).lostControl).toBe(false);
+  });
+
+  it('beton nie ustępuje: auto bez kontroli jest od razu wrakiem, barykada zostaje (04.11.2026)', async () => {
+    const before = await placedRow(carB.id);
+    const hpBefore = await hpOf(carB.id);
+    await built.prisma.sceneVehicle.update({ where: { id: carB.id }, data: { lostControl: true } });
+    const spawned = data(
+      await emitAck<ChaseObstacleView>(gm, 'chase:obstacle-spawn', {
+        sceneId: scene.id,
+        kind: 'barricade',
+        x: 500,
+        y: 750,
+      }),
+      'chase:obstacle-spawn',
+    );
     await built.prisma.chaseObstacle.update({
       where: { id: spawned.id },
       data: { x: 1350, driftRound: 0 },
     });
-    // Barykada 6 × 1 (30 → 24), auto gangu 6 × 1 (45 → 39).
-    scriptDice([1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]);
     await newRound();
+    // Bez kości taranowania: auto PUK 0, beton bez szkody.
+    expect(await hpOf(carB.id)).toBe(0);
     const row = await obstacle(spawned.id);
-    expect(row).toMatchObject({ blockingId: null, hp: 24 });
-    expect(row!.x).toBeCloseTo(1000 - 250 - 50 - 5, 0);
-    expect(await hpOf(carB.id)).toBe(39);
-    expect((await placedRow(carB.id)).lostControl).toBe(false);
+    expect(row).toMatchObject({ hp: 30, blockingId: null });
+    expect(JSON.parse(row!.passed)).toContain(carB.id);
+    const crash = await built.prisma.chatMessage.findFirst({
+      where: { kind: 'action', text: 'Rozbite na betonie' },
+    });
+    expect(crash).not.toBeNull();
+
+    // Sprzątanie dla kolejnych testów: auto wraca do stanu sprzed zderzenia.
     expect((await emitAck(gm, 'chase:obstacle-remove', { obstacleId: spawned.id })).ok).toBe(true);
+    const vehicle = await built.prisma.vehicle.findUniqueOrThrow({
+      where: { id: before.vehicleId },
+    });
+    await built.prisma.vehicle.update({
+      where: { id: vehicle.id },
+      data: { system: JSON.stringify({ ...readCpredVehicle(vehicle.system), hp: hpBefore }) },
+    });
+    await built.prisma.sceneVehicle.update({
+      where: { id: carB.id },
+      data: { x: before.x, y: before.y, lostControl: false },
+    });
   });
 
   it('MG przestawia auto z czekającą przeszkodą — przeszkoda już na nie nie czeka', async () => {

@@ -284,25 +284,42 @@ function obstacleClickAt(
   return true;
 }
 
+/** Auto pościgu pod punktem mapy (wierzchnie pierwsze) — `null` poza pościgiem. */
+function chaseVehicleAt(worldX: number, worldY: number): SceneVehicleView | null {
+  const scene = useSceneStore.getState().scene;
+  if (!scene || scene.kind !== 'chase') return null;
+  const point = { x: worldX, y: worldY };
+  const direction = scene.chase.direction;
+  const grid = scene.grid.sizePx;
+  return (
+    [...useChaseStore.getState().vehicles]
+      .reverse()
+      .find((entry) => chaseBodyContains(entry, entry, direction, grid, point)) ?? null
+  );
+}
+
+/**
+ * Prawy klik w auto (04.11.2026, decyzja MG): zawsze menu auta — u MG i gracza,
+ * z bronią w ręku czy bez. Lewy klik z bronią strzela.
+ */
+function vehicleMenuAt(worldX: number, worldY: number, clientX: number, clientY: number): boolean {
+  const vehicle = chaseVehicleAt(worldX, worldY);
+  if (!vehicle) return false;
+  useChaseStore.getState().openMenu(vehicle.id, clientX, clientY);
+  return true;
+}
+
 function vehicleClickAt(
   worldX: number,
   worldY: number,
   toClient: (point: ScenePoint) => ScenePoint | null,
 ): boolean {
   const scene = useSceneStore.getState().scene;
-  if (!scene || scene.kind !== 'chase') return false;
+  const vehicle = chaseVehicleAt(worldX, worldY);
+  if (!scene || scene.kind !== 'chase' || !vehicle) return false;
   const point = { x: worldX, y: worldY };
-  const vehicles = useChaseStore.getState().vehicles;
   const direction = scene.chase.direction;
   const grid = scene.grid.sizePx;
-  const vehicle = [...vehicles]
-    .reverse()
-    .find((entry) => chaseBodyContains(entry, entry, direction, grid, point));
-  if (!vehicle) return false;
-  // Broń w ręku (65d1): klik w cudze auto to strzał w nie, jak w osłonę.
-  const client = toClient(point);
-  if (client) useAimMenuStore.getState().placeAt(client.x, client.y);
-  if (shootVehicleAt(vehicle.id)) return true;
   const tokens = useTokenStore.getState().tokens;
   const user = useAuthStore.getState().user;
   const isGm = user?.role === ROLE_GM;
@@ -317,13 +334,24 @@ function vehicleClickAt(
     user?.id ?? null,
     isGm,
   );
-  if (seat !== null && !taken && figure) {
-    void seatInVehicle({ tokenId: figure.id, sceneVehicleId: vehicle.id, seat }).then((ack) => {
-      if (ack.ok) clearNotices('chase');
-      else notifyRefusal('chase', chaseErrorText(ack.error));
-    });
+  const free = seat !== null && !taken && figure !== null;
+  const sit = () => {
+    void seatInVehicle({ tokenId: figure!.id, sceneVehicleId: vehicle.id, seat: seat! }).then(
+      (ack) => {
+        if (ack.ok) clearNotices('chase');
+        else notifyRefusal('chase', chaseErrorText(ack.error));
+      },
+    );
     return true;
-  }
+  };
+  // Pieszy z bronią w ręku klikiem w wolny fotel wsiada, nie strzela (04.11.2026,
+  // decyzja MG) — w auto strzela klikiem w kadłub poza wolnym fotelem.
+  if (free && !figure.vehicleSeat) return sit();
+  // Broń w ręku (65d1): klik w cudze auto to strzał w nie, jak w osłonę.
+  const client = toClient(point);
+  if (client) useAimMenuStore.getState().placeAt(client.x, client.y);
+  if (shootVehicleAt(vehicle.id)) return true;
+  if (free) return sit();
   if (client) useChaseStore.getState().openMenu(vehicle.id, client.x, client.y);
   return true;
 }
@@ -358,8 +386,11 @@ function moveErrorText(code: string | undefined): string {
     case 'TOKEN_NOT_FOUND':
       return 'Nie znaleziono tokenu — odśwież stronę.';
     // Etap 65b: figura w fotelu jedzie z autem.
+    // Marsz MG też odmawia (04.11.2026) — z auta wysadza go tylko przeciągnięcie.
     case 'IN_VEHICLE':
-      return chaseErrorText(code);
+      return useAuthStore.getState().user?.role === ROLE_GM
+        ? 'Postać siedzi w aucie i jedzie razem z nim — żeby wysiadła, przeciągnij ją na jezdnię.'
+        : chaseErrorText(code);
     // 02.11.2026 (MG): podłączony netrunner stoi, dopóki się nie odłączy.
     case 'NET_JACKED_IN_MOVE':
       return netErrorText(code);
@@ -1158,6 +1189,7 @@ export function MapArea() {
     // jednej pozycji — oględzin. Do 41 był to wyłącznie panel MG, więc gracz nie
     // miał żadnego wejścia w cudzą figurę poza celownikiem; co w menu widzi kto,
     // rozstrzyga `TokenContextMenu`, nie ten warunek.
+    renderer.onMapContextMenu = vehicleMenuAt;
     renderer.onTokenMenu = (tokenId, clientX, clientY) => {
       setMenu({ tokenId, x: clientX, y: clientY });
     };

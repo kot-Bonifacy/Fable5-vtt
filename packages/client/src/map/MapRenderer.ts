@@ -995,6 +995,12 @@ export class MapRenderer {
    * „walk here", and exactly one of the two has to win it.
    */
   onMapClick: ((x: number, y: number) => boolean) | null = null;
+  /**
+   * Prawy klik w mapę poza figurą (world px i client px) — przed odznaczeniem.
+   * Zwraca, czy klik zużyto (04.11.2026: prawy klik w auto pościgu = jego menu).
+   */
+  onMapContextMenu: ((x: number, y: number, clientX: number, clientY: number) => boolean) | null =
+    null;
   /** MG puścił przeciągnięte auto (etap 65b) — środek bryły po przycięciu do pasa. */
   onVehicleMove: ((sceneVehicleId: string, x: number, y: number) => void) | null = null;
   /** MG puścił krawędź pasa jezdni (kreator pościgu, 03.11) — nowy pas w kratkach. */
@@ -2550,6 +2556,18 @@ export class MapRenderer {
       // Etap 54: najpierw schodzi wskazany cel marszu (i punkty trasy), dopiero
       // gdy go nie ma — zaznaczenie. Klik w podłoże już nie odznacza: rusza.
       if (event.button === 2 && !isTokenTarget(event.target)) {
+        const world = viewport.toWorld(event.global.x, event.global.y);
+        const rect = this.app.canvas.getBoundingClientRect();
+        if (
+          this.onMapContextMenu?.(
+            world.x,
+            world.y,
+            rect.left + event.global.x,
+            rect.top + event.global.y,
+          )
+        ) {
+          return;
+        }
         if (!this.march && this.cancelWalkTarget()) return;
         this.finishMarch(null);
         this.setSelection(null, 'dismiss');

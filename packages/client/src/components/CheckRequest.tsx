@@ -65,7 +65,10 @@ export function CheckRequestRow({
         <span className="chat-message-author">
           {sneakTokenIdOf(entry) ? 'Prośba o skradanie' : 'Prośba o Test'}
         </span>
-        <span className="chat-roll-gm-label">{entry.askedByName}</span>
+        {/* Gracz jest postacią, także u MG (04.11.2026) — konto w podpowiedzi. */}
+        <span className="chat-roll-gm-label" title={entry.askedByName}>
+          {entry.characterName}
+        </span>
       </div>
       <CheckRequestSummary entry={entry} />
 
@@ -79,7 +82,9 @@ export function CheckRequestRow({
             {checkRequestResolutionLabel(entry)}
           </span>
           <span className="chat-attack-detail">
-            {resolution.kind === 'withdrawn' ? 'wycofał' : 'od'}: {resolution.byName}
+            {resolution.kind === 'withdrawn'
+              ? `wycofał: ${entry.characterName}`
+              : `od: ${resolution.byName}`}
             {resolution.callMessageId !== undefined
               ? ` · wezwanie #${resolution.callMessageId}`
               : ''}

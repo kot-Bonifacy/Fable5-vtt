@@ -5,6 +5,7 @@ import {
   CHASE_OBSTACLE_NAME_MAX,
   CHASE_OBSTACLE_PRESETS,
   ROLE_GM,
+  chaseObstacleUnbreakable,
   type ChaseObstacleKind,
   type TokenAssetView,
 } from '@vtt/shared';
@@ -124,8 +125,10 @@ export function ChaseObstaclePalette() {
             aria-pressed={armed?.kind === kind}
             title={
               kind === 'spikes'
-                ? 'Kolczatka — kto po niej przejedzie, rzuca Prowadzenie PT 17 albo bierze 4k6 w słaby punkt. Kliknij drogę (Esc anuluje)'
-                : `${preset.label} — ${preset.hp} PW. Kierowca, przed którym stanie, wybiera Gwałtowny skręt albo taranowanie. Kliknij drogę (Esc anuluje)`
+                ? 'Kolczatka — pierwsze auto, które po niej przejedzie, rzuca Prowadzenie PT 17 albo bierze 4k6 w słaby punkt; potem znika. Kliknij drogę (Esc anuluje)'
+                : chaseObstacleUnbreakable(kind)
+                  ? `${preset.label} — beton, nie do rozbicia: auto, które w nią wjedzie, jest wrakiem. Kierowca, przed którym stanie, wybiera Gwałtowny skręt albo taranowanie. Zostaje na drodze. Kliknij drogę (Esc anuluje)`
+                  : `${preset.label} — ${preset.hp} PW. Kierowca, przed którym stanie, wybiera Gwałtowny skręt albo taranowanie. Kliknij drogę (Esc anuluje)`
             }
             onClick={() => pick(kind)}
           >

@@ -394,7 +394,8 @@ export interface ChatRecolorPush {
 
 /** Payload of `presence:update`. */
 export interface PresenceBroadcast {
-  seq: number;
+  /** Absent for players between sessions (`lobbyRoom`), who follow no table seq. */
+  seq?: number;
   presence: PresenceEntry[];
 }
 

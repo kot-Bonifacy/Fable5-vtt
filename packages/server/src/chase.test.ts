@@ -433,6 +433,11 @@ describe('etap 65b: scena pościgu, auta i fotele', () => {
         route: [{ x: 100, y: 100 }],
       }),
     ).toMatchObject({ ok: false, error: 'IN_VEHICLE' });
+    // 04.11.2026: klik MG w jezdnię też nie wyprowadza figury marszem —
+    // wysiadka to przeciągnięcie (`token:move` ręką MG).
+    expect(
+      await emitAck(gm, 'token:walk', { tokenId: riderToken.id, route: [{ x: 100, y: 100 }] }),
+    ).toMatchObject({ ok: false, error: 'IN_VEHICLE' });
   });
 
   it('ruch auta niesie figury z foteli', async () => {
