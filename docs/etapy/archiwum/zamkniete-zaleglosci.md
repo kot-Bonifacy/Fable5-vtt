@@ -9,6 +9,21 @@ go czytać.
 albo gdy chcesz sprawdzić, czy pozycja, która wygląda na nową, nie jest wracającą starą.
 Treść wpisów jest niezmieniona — łącznie z datami i odsyłaczami do notatek sesji.
 
+## Zamknięte 2026-11-05 (ponowny przebieg 66c w przeglądarce)
+
+**04.11.2026 (szósta sesja) — oględziny paska „Zderzenie” i `/jako` za NPC-a.** Sprawdzone
+testami i buildem, bez przeglądarki. Przy stole (Firefox): przeciągnięcie Wozu z Pługiem
+przodem w furgon — pasek mówi „Pług bojowy przodem… Twoje auto nic nie bierze”, bokiem — „Pług
+nie zadziała”, w pieszego, przeszkodę i beton — własne zdania; pasek przeszkody gracza i menu MG
+mówią to samo. `/jako Kłoda …` u MG — wiersz z imieniem Kłody u gracza, bez portretu.
+**Zamknięte 05.11:** obejrzane w Firefoksie przy ponownym przebiegu — Wóz z Pługiem przodem w eskortę:
+„Pług bojowy przodem: uderzone auto bierze 6k6 (pod Nitro +2k6), a jego jadący Ranę Krytyczną.
+Twoje auto nic nie bierze.”; eskorta w furgon/Wóz bez Pługa (MG): „Po 6k6 dla obu aut i Rana
+Krytyczna dla wszystkich jadących.”; przeszkoda u MG: „Przeszkoda bierze 6k6 w PW, auto 6k6,
+a jadący Ranę Krytyczną.”; pasek przeszkody gracza: „Taranuj: Pług bojowy: przeszkoda bierze 6k6
+w PW (pod Nitro +2k6), auto nic.” `/jako Szron Celuj w koła!` i `/jako Wolt …` u MG dały u gracza
+wiersz „Szron · Celuj w koła!” bez portretu.
+
 ## Zamknięte 2026-11-04, szósta sesja (drobiazgi z przebiegu 66c)
 
 **04.11.2026 — pasek „Zderzenie” nie mówił, kto ile bierze (z „drobiazgów z przebiegu 66c”).**

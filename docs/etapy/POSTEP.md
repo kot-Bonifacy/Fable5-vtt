@@ -21,13 +21,28 @@ w plikach obok — czytaj je **na żądanie, nigdy rutynowo**:
 
 | stan         | etapy                                                                                          |
 | ------------ | ---------------------------------------------------------------------------------------------- |
-| ⬜ otwarty   | **66** Sceny przykładowe (🟨 zrobione 31.10, czeka na oględziny MG przy stole i wdrożenie; **66b** „Fabryka dronów” 🟨 zrobione 31.10, tak samo; **66c** „Ostatni zjazd” 🟨 wzorzec zrobiony, rozegrany w przeglądarce i poprawiony wg decyzji MG 04.11 — czeka na błędy z zaległości, stół MG i wdrożenie); **65** Scena pościgu i walka pojazdów (🟨 65a–65e ✅ 30–31.10, czeka na oględziny MG przy stole); **62** Sieć ze sceny (🟨 zrobione, czeka na oględziny MG na VPS po wdrożeniu); **61** Skradanie się (🟨 zrobione, czeka na słowo MG o rozstrzygnięciach); **28** Wdrożenie na VPS (🟨 działa na `https://vtt.tatanga.eu` z botami od 18.10; zostały off-site, utwardzenie, monitoring); **43b**, **43c** (UI walki); **60** Czytelny czat (zlecenie MG z 24.10; 🟨 60a–60c ✅, czeka na oględziny MG z pierwszego kryterium); T10; refaktoryzacja odłożona (MG 18.10) |
+| ⬜ otwarty   | **66** Sceny przykładowe (🟨 zrobione 31.10, czeka na oględziny MG przy stole i wdrożenie; **66b** „Fabryka dronów” 🟨 zrobione 31.10, tak samo; **66c** „Ostatni zjazd” 🟨 wzorzec zrobiony, rozegrany w przeglądarce 04.11 i ponownie 05.11 po rebalansie (porażka o włos) — czeka na decyzje MG o balansie, błędy z zaległości, stół MG i wdrożenie); **65** Scena pościgu i walka pojazdów (🟨 65a–65e ✅ 30–31.10, czeka na oględziny MG przy stole); **62** Sieć ze sceny (🟨 zrobione, czeka na oględziny MG na VPS po wdrożeniu); **61** Skradanie się (🟨 zrobione, czeka na słowo MG o rozstrzygnięciach); **28** Wdrożenie na VPS (🟨 działa na `https://vtt.tatanga.eu` z botami od 18.10; zostały off-site, utwardzenie, monitoring); **43b**, **43c** (UI walki); **60** Czytelny czat (zlecenie MG z 24.10; 🟨 60a–60c ✅, czeka na oględziny MG z pierwszego kryterium); T10; refaktoryzacja odłożona (MG 18.10) |
 | ✅ ukończone | 01–11, 13–20b, 23a–27f, 27h–27l, 29a–30d, 31–35, 37–42c, 43a, 44a–44d, 45, 46a1, 46a2, 46c1, 46c2, 46b1, 46b2, 47a, 47b, 48a, 48b, 48c, 49a, 49b, 50a, 50b, 50c, 51, 52, 53, 54, 55, 56, 57 (57a–57c), 58 (58a–58d), 59 (59a–59c), 63 (63a–63b; 63c wycofane 29.10), 64 (64a–64c) (ostatni zamknięty: 64, 2026-10-30) |
 | ⛔ wycofane  | 12, 21, 22 (głos), 27g (wydajność), 36 (makra); 27, 29, 30, 38 rozdzielone na etapy literowane |
 
 Pełna tabela z nazwami i datami: `archiwum/tabela-etapow.md`.
 
 ## Od czego zacząć
+
+**Rama pościgu i auto bez kierowcy (decyzja MG z 05.11) — czeka na wdrożenie (migracja
+`20261105180000_chase_vehicle_momentum`) i oględziny przy stole (Firefox).** Przewijana droga
+znaczy jazdę: kadr jedzie z autem drużyny, więc gdy ono stoi (bez kierowcy, zgaszone, wrak), stoi
+droga, a jadące auta odjeżdżają mu do przodu; auto NPC-a bez kierowcy odpływa w tył. Kierowca,
+który zniknie albo padnie, zostawia auto toczące się pędem, co rundę o połowę wolniej
+(`SceneVehicle.momentum`). Jadące auto, które dryfem dojedzie do stojącego, pyta kierowcę o skręt
+albo taran. Umowa na górze `mapa`, zasady w `decyzje-i-uproszczenia.md`; luka (stan kierowcy z
+karty nie odświeża widoku aut) w `zaleglosci.md`.
+
+**„Ostatni zjazd” rozegrany ponownie 05.11 po rebalansie — porażka o włos** (Wolt 10/35 PW na koniec
+rundy 6, zdał oba Manewry). Wnioski i propozycje do decyzji MG w `etap-66c-ostatni-zjazd.md`
+(„Ponowne rozegranie”), znaleziska UI w `zaleglosci.md` (05.11). Notatka ⚠️ wzorca: barykada
+w rundzie 5. `dev.db` zostaje po przebiegu; kopie: `dev.db.bak-20261104-66c` (przed rozegraniem),
+`dev.db.bak-20261105-66c-po-przebiegu` (po przebiegu z 04.11).
 
 **Kreator pościgu (zlecenie MG z 03.11) — czeka na wdrożenie i oględziny przy stole (Firefox).**
 „Utwórz → Pościg” otwiera kreator: **Tło** (cztery wbudowane drogi — Autostrada, Ulica 2+2,
@@ -626,7 +641,7 @@ a nie do tego pliku.
 
 | obszar      | co obejmuje                                                    | umów | pułapek |
 | ----------- | -------------------------------------------------------------- | ---- | ------- |
-| `mapa`      | figury, zaznaczanie, narzędzia, obiekty sceny, ściany, efekty, zamek drzwi, ukryta figura zauważona, ikony urządzeń, wspólny widok drużyny, scena pościgu, jazda kierowcy i dryf, Manewr i taranowanie, przeszkody pościgu, sceny przykładowe, wzorzec zwykłej mapy, ulepszenia pojazdu, stojące auto na drodze, kreator pościgu i wbudowane drogi, załoga auta poza pościgiem | 82   | 27      |
+| `mapa`      | figury, zaznaczanie, narzędzia, obiekty sceny, ściany, efekty, zamek drzwi, ukryta figura zauważona, ikony urządzeń, wspólny widok drużyny, scena pościgu, jazda kierowcy i dryf, Manewr i taranowanie, przeszkody pościgu, sceny przykładowe, wzorzec zwykłej mapy, ulepszenia pojazdu, stojące auto na drodze, kreator pościgu i wbudowane drogi, załoga auta poza pościgiem, rama pościgu i pęd auta bez kierowcy | 83   | 27      |
 | `czat`      | rodzaje wierszy, `visibleTo`, filtr, `seq`, `gmrecovery`, „to dotyczy mnie”, grupy kart, kolor gracza, czyszczenie, gęsta karta rzutu, przebieg ataku, `/jako` za NPC-a | 16   | 3       |
 | `serwer`    | Prisma i migracje, zdarzenia gniazda, zapisy karty, uploady    | 26   | 21      |
 | `ui`        | okna pływające, `z-index`, motyw, skróty, dostępność, wejście, panel decyzji MG | 37   | 15      |
@@ -642,13 +657,33 @@ a nie do tego pliku.
 | `boty`      | llama-server, RAG, reindeks, dziennik i baza wiedzy, brama AI  | 10   | 10      |
 | `dane`      | `parse-manual.py`, kompendium poza repo, tabele z podręcznika  | 9    | 12      |
 | `kopie`     | `snapshot`, `archive`, paczki ZIP, wczytanie kampanii, „czeka na gracza”, kopie kampanii i cofnięcie, sklep i bot w paczce, zgłoszenie karty gracza, pojazdy w paczce, auta na scenie pościgu, przeszkody poza paczką | 22   | 6       |
-| `ogledziny` | CDP i Playwright MCP, zrzuty, dwie sesje, `window.confirm`    | 0    | 117     |
+| `ogledziny` | CDP i Playwright MCP, zrzuty, dwie sesje, `window.confirm`    | 0    | 118     |
 | `testy`     | vitest, migotanie, `tsc --noEmit`, środowisko dev              | 0    | 154     |
 
 
 ## Notatki z dwóch ostatnich sesji
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
+
+### Sesja 05.11 — ponowne rozegranie „Ostatniego zjazdu” i rama pościgu (66c)
+
+**Zlecenie MG:** „uruchom ponownie testy w przykładowej scenie pościgu w przeglądarce (ze
+stworzonymi wcześniej postaciami)”; w trakcie: „wóz bez kierowcy nie powinien się przemieszczać”,
+„przewijana pod autem droga to jednoznaczna cecha poruszania się auta”. **Decyzje MG (05.11):**
+auto bez kierowcy odpływa w tył, chyba że to auto graczy — wtedy pozostałe jadące auta odpływają
+do przodu; kierowca znika / pada → auto powoli zwalnia. **Zrobione:** rama `chaseFrameTempo` +
+`cpredVehicleSpeed` / `cpredCoastSpeed` + kolumna `SceneVehicle.momentum` (migracja), dryf,
+przeszkody, bieżnia, „nieruchomy pojazd” w ataku i menu auta liczą z prędkości; jadące auto
+dryfem w stojące → pytanie o skręt/taran. Commit `0c6acf6f`. Potem 6 rund + dogrywka na `dev.db`
+(MG i Ola w Chromium, Tester i Handlarz w **Firefoksie**): porażka o włos, wnioski w pliku etapu;
+notatki ❓ i ⚠️ wzorca poprawione (droga stoi bez kierowcy, barykada w R5, Wolt zwalnia).
+Zamknięta zaległość szóstej sesji (pasek „Zderzenie”, `/jako` — obejrzane w Firefoksie),
+częściowo piątej; nowe znaleziska (pasy na 0,03 kratki, paleta przeszkód uzbrojona, pasek MG
+nad paletą, Esc w menu auta i inne) w `zaleglosci.md`. Pułapki oględzin: `bringToFront` w
+Firefoksie, klik po „Następna tura” w jadącą kamerę. NPC-e Lutka, Grot, Kabel, Szew i Kłoda
+w rundach 5–6 częściowo bez akcji (skrót MG dla tempa przebiegu).
+**Testy:** shared 2951, client 471, server 1740 zielone (nowe: rama, pęd, zwalnianie, dryf do
+przodu w stojące auto), `tsc` i ESLint czyste. E2E `48-poscig` nie puszczone (wymaga `po-T6`).
 
 ### Sesja 04.11, szósta — drobiazgi z przebiegu „Ostatniego zjazdu” (66c)
 
@@ -664,26 +699,3 @@ gracza, EMP 2, i „resztki” (metry przy wysiadce, wrak za autem, podpisy fote
 **Oglądane:** **nie w przeglądarce** — zaległość „oględziny paska »Zderzenie« i `/jako`”.
 **Testy:** shared 2947, client 471, server 1737 zielone, `tsc` i ESLint czyste, build klienta
 przechodzi. Bez migracji bazy.
-
-### Sesja 04.11, piąta — zaległości z przebiegu „Ostatniego zjazdu” (66c)
-
-**Zlecenie MG:** naprawić kilka zaległości, nie za dużo naraz, pytać przy wątpliwościach.
-**Decyzje MG (04.11):** (1) pieszy z bronią klikiem w wolny fotel wsiada, nie strzela;
-(2) prawy klik w auto = menu auta (MG i gracz); (3) przeszkoda reaguje tylko z pierwszym autem,
-potem znika — **także kolczatka** (wyglądała, jakby tkwiła przy aucie); (4) **Barykada to beton**:
-nie do rozbicia, auto, które w nią wjedzie, jest od razu wrakiem z Raną Krytyczną jadących,
-a beton zostaje na drodze; (5) prośba o Test u MG podaje postać, nie konto.
-**Zrobione:** lista obecności w poczekalni na żywo (`broadcastPresence` → `lobbyRoom` bez
-`seq`); `token:walk` odmawia `IN_VEHICLE` także MG (wysiadka przeciągnięciem); klik w fotel
-i prawy klik (`onMapContextMenu`, umowa na górze `mapa`); przeszkody i kolczatka znikają po
-pierwszym aucie (`letPast`, `crossSpikes`, dryf, taran w jeździe), beton — `crashIntoConcrete`;
-podpowiedzi „beton” w palecie, menu i pasku kierowcy; postać zamiast konta w prośbie o Test
-(„rzucał:” wpisuje serwer). Zamknięte z diagnozą w `archiwum/zamkniete-zaleglosci.md`, zasady
-domowe w `decyzje-i-uproszczenia.md`.
-**Zostało:** drobiazgi UI 66c (pasek „Zderzenie”, bryła `van-8`, kubek nad „Następna tura”,
-„Cofnij” obrażeń kadłuba, „Odjedź” MG, kamera gracza, EMP 2, `/jako`) i nowa zaległość
-„resztki” (metry przy wysiadce ręką MG — do decyzji, wrak za autem, podpisy foteli).
-**Oglądane:** **nie w przeglądarce** — tylko testy i build (zaległość „oględziny w przeglądarce
-zmian pościgu i czatu”). **Testy:** shared 2943, client 468, server 1736 zielone, `tsc` i ESLint
-czyste, build klienta przechodzi; `chase-combat` raz migotnął pod `vitest run src/chase`
-(dopisane do zaległości o migotaniu). Bez migracji bazy.

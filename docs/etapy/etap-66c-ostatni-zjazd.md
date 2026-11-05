@@ -614,6 +614,50 @@ z fotela przez barierę, `/jako`, teksty paska „Zderzenie”, bryła `van-8`, 
 tura”, „Cofnij” zostawia rzut obrażeń, brak „Ucieka”, nazwa konta w prośbie o Test, kadr
 gracza, EMP 2 NPC-ów.
 
+### Ponowne rozegranie w przeglądarce (05.11, po rebalansie)
+
+**Zlecenie MG:** „uruchom ponownie testy w przykładowej scenie pościgu w przeglądarce (ze stworzonymi
+wcześniej postaciami)”. **W trakcie MG zdecydował** (05.11): przewijana pod autem droga to jazda —
+wóz bez kierowcy nie jedzie; stoi auto drużyny → stoi droga, a jadące auta odpływają do przodu; auto
+NPC-a bez kierowcy odpływa w tył; kierowca znika albo pada → auto powoli zwalnia. Wdrożone tą samą
+sesją (zasady w `decyzje-i-uproszczenia.md`, umowa na górze `mapa`).
+
+**Przygotowanie:** `dev.db` z kopii `dev.db.bak-20261104-66c` (postacie po kreatorze, przed
+rozegraniem; stan po rozegraniu z 04.11 w `dev.db.bak-20261105-66c-po-przebiegu`), stara kopia
+sceny usunięta, wzorzec dodany na nowo z „Przykładowych”, Szew dostała ciężki pistolet („Dodaj za
+darmo”, notatka ❓ pkt 9). **Oglądane:** MG i Ola (Szew) w Chromium, Tester (Rdza) i Handlarz (Kosa)
+w **Firefoksie** (Playwright MCP). Konsola: tylko znane `ERR_CACHE_OPERATION_NOT_SUPPORTED` dźwięków.
+
+**Przebieg (6 rund + dogrywka; wynik: porażka o włos).** Inicjatywa: Lutka 17, Mewa 16, Rdza 15,
+Kosa 12, Wolt 10, Szew 9, Kłoda 8, Szron 6 (Grot i Kabel 15 od rundy 3).
+
+| runda | co się stało |
+| --- | --- |
+| 1 | Rdza taranuje eskortę Pługiem przodem (−19 PUK, Rana trzech w eskorcie, Wóz cały). Kosa rozbija tylną szybę furgonu pierwszym strzałem. Szew zużywa Akcję na „Dobądź” pistoletu. Szron: krytyk w Rdzę 45 → 36. |
+| 2 | Mewa podjeżdża i zrzuca kolczatkę przed Wóz; Rdza omija ją dolnym pasem (najpierw pasek „Zderzenie” z eskortą — bryły zachodzą o 0,03 kratki). Kosa przez rozbitą szybę: Wolt 35 → 34. Szew rozbija lewe szyby eskorty do 7/15. Szron: Rdza 36 → 21. Kolczatka nikogo nie trafiła i odjechała w tył. |
+| 3 | Rydwan wraca, Grot i Kabel dołączają sami. Auto cywilne przed furgonem. Mewa trafia kadłub Wozu (50 → 40). Wóz jedzie obok furgonu, Kosa rozbija jego lewe szyby. Wolt zatrzymuje się przed autem cywilnym. Szew stabilizuje Rdzę (Pierwsza pomoc 15 vs PT 13). |
+| 4 | Auto cywilne staje przed furgonem (pasek MG „Gwałtowny skręt / Taranuj”); Wolt zdaje skręt 18 vs 13 i auto znika. Roboty drogowe na pasie Wozu. Grot i Kłoda: Rdza 21 → 12. |
+| 5 | Mewa taranuje Wóz w tył: Wóz 40 → 20, eskorta 31 → 11, Rany całej drużyny. Rdza przejeżdża roboty drogowe Pługiem (6k6 = 28, Wóz bez szkód). Kosa krytykiem: Wolt 34 → 18 i „Odcięta noga”. |
+| 6 | Barykada przy przedniej krawędzi — 5,5 kratki przed furgonem, nie zdąży. Kosa: Wolt 18 → 10. Wolt zdaje Skok (naturalna 10, 21 vs 17). Koniec rundy: furgon jedzie z kierowcą → **porażka**. |
+| 7 (dogrywka) | MG kładzie Wolta (0 PW). Furgon bez kierowcy: pęd 20 → 10, dryf −7,5; barykada dryfem trafia auto bez kontroli — „Rozbite na betonie… auto to wrak”, Rany Wolta, Kłody i Iskry, beton zostaje. |
+
+**Wnioski z balansu (do decyzji MG):**
+
+1. **Wynik o włos: porażka.** Wolt skończył rundę 6 z 10/35 PW i zdał oba Manewry (18 vs 13,
+   naturalna 10 przy Skoku) — droga „wepchnij w przeszkodę” stoi na jego porażce.
+2. **NPC-e po rebalansie są groźni, ale głównie dla kierowcy.** Rdza 45 → 12 (ściągała cały ogień),
+   Kosa 43, Szew 35. Trafienia: Lutka 3/5, Mewa 3/4, Kłoda 2/4, Grot 1/2, Szron 2/6 (24 PW). Lekka
+   kurtka (OB 11) zatrzymuje pistolety i pistolet maszynowy — boli karabin Szrona.
+3. **Pług w furgon wciąż nieosiągalny do rundy 5** — eskorta siedzi furgonowi na ogonie; dopiero jej
+   taran w Wóz zwolnił tył furgonu, a drużyna tego nie wykorzystała.
+4. **Barykada musi wyjść w rundzie 5** — przeszkoda rusza dryfem rundę później. Poprawione w notatce
+   ⚠️ (R5/R6), Skok jest w menu furgonu, a pasek przeszkody daje tylko Gwałtowny skręt / Taranuj.
+5. **Medyk z pistoletem ma niewiele, ale coś ma:** „Dobądź” zjada Akcję rundy 1, Broń krótka 0
+   (0/3 trafień), za to „Ustabilizowanie” w aucie zadziałało. Szyby padają od karabinu (tylna w R1,
+   lewe w R3) — zgodnie z decyzją z 04.11.
+6. Propozycje (nie wprowadzone): zegar 7 rund przy 3 graczach, Wolt z Prowadzeniem 2 albo barykada
+   już w rundzie 4–5 jako stały element przebiegu.
+
 ### Do zrobienia
 
 - [x] Czytnik wzorca: tło z `CHASE_ROADS` (pkt 1) + testy `shared` (przyjęcie drogi, odmowa
@@ -636,7 +680,8 @@ gracza, EMP 2 NPC-ów.
       (04.11, trzecia sesja — wyżej).
 - [x] Rozegranie 6 rund w przeglądarce (MG + 3 graczy) — 04.11, czwarta sesja, wyżej.
 - [x] Decyzje MG o balansie (karabin Rydwanu, Medyk, celność NPC-ów) — 04.11, we wzorcu.
-- [ ] Błędy z `zaleglosci.md` (04.11) i balans przy prawdziwym stole.
+- [x] Ponowne rozegranie po rebalansie w przeglądarce (05.11) — wyżej; nowe znaleziska w `zaleglosci.md`.
+- [ ] Błędy z `zaleglosci.md` (04.11, 05.11) i balans przy prawdziwym stole.
 - [ ] Balans na 3 graczy przy prawdziwym stole — **MG**.
 
 ## Kryteria ukończenia

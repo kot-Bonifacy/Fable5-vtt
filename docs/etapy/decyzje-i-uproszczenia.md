@@ -9,6 +9,20 @@ czytany na starcie każdej sesji został listą zadań, a nie archiwum ustaleń.
 inaczej, niż mówi podręcznik, albo gdy dotykasz wymienionego tu kodu. Jeśli któraś z tych decyzji
 przestanie się bronić, przenieś ją stąd do `POMYSLY.md` jako zadanie — nie odwrotnie.
 
+## Rama pościgu i auto bez kierowcy (05.11.2026, decyzje MG)
+
+- **Przewijana droga pod autem znaczy, że auto jedzie.** Kadr jedzie z autem drużyny: dopóki któreś
+  auto drużyny ma kierowcę, droga przewija się z tempem sceny, a auto NPC-a bez kierowcy odpływa
+  w tył; gdy auto drużyny stoi (pusty fotel kierowcy, kierowca leży, zgaszone, wrak), stoi też
+  droga, a jadące auta odjeżdżają do przodu (w walce dryfem, `(prędkość − rama) / 4`). Poza walką
+  nikt nie dryfuje — auto bez kierowcy stoi, a stojące auto drużyny zatrzymuje bieżnię.
+- **Kierowca znika albo pada — auto powoli zwalnia.** Pęd z ostatniej rundy spada co rundę o połowę
+  (Ruch 20: 10 → 5 → 0; Ruch 40: 20 → 10 → 5 → 0), poniżej 4 auto staje. Podręcznik każe autu bez
+  kierowcy po prostu „zwolnić i się zatrzymać” bez liczb — połowa na rundę to zasada domowa.
+  Utrata kontroli to co innego: kierowca jest, auto jedzie swoim Ruchem.
+- **Jadące auto, które dryfem dojedzie do stojącego, pyta kierowcę o skręt albo taranowanie** —
+  tak samo jak stojące auto, które dryfuje przed jadące (03.11). Bez kontroli wjeżdża od razu.
+
 ## Przegląd mechanik pościgu (03.11.2026, decyzje MG)
 
 - **Test zwykłej jazdy idzie w ramach Akcji Ruchu, nie Akcji.** Słaby kierowca (REF +

@@ -1,5 +1,28 @@
 # Dziennik sesji — archiwum
 
+### Sesja 04.11, piąta — zaległości z przebiegu „Ostatniego zjazdu” (66c)
+
+**Zlecenie MG:** naprawić kilka zaległości, nie za dużo naraz, pytać przy wątpliwościach.
+**Decyzje MG (04.11):** (1) pieszy z bronią klikiem w wolny fotel wsiada, nie strzela;
+(2) prawy klik w auto = menu auta (MG i gracz); (3) przeszkoda reaguje tylko z pierwszym autem,
+potem znika — **także kolczatka** (wyglądała, jakby tkwiła przy aucie); (4) **Barykada to beton**:
+nie do rozbicia, auto, które w nią wjedzie, jest od razu wrakiem z Raną Krytyczną jadących,
+a beton zostaje na drodze; (5) prośba o Test u MG podaje postać, nie konto.
+**Zrobione:** lista obecności w poczekalni na żywo (`broadcastPresence` → `lobbyRoom` bez
+`seq`); `token:walk` odmawia `IN_VEHICLE` także MG (wysiadka przeciągnięciem); klik w fotel
+i prawy klik (`onMapContextMenu`, umowa na górze `mapa`); przeszkody i kolczatka znikają po
+pierwszym aucie (`letPast`, `crossSpikes`, dryf, taran w jeździe), beton — `crashIntoConcrete`;
+podpowiedzi „beton” w palecie, menu i pasku kierowcy; postać zamiast konta w prośbie o Test
+(„rzucał:” wpisuje serwer). Zamknięte z diagnozą w `archiwum/zamkniete-zaleglosci.md`, zasady
+domowe w `decyzje-i-uproszczenia.md`.
+**Zostało:** drobiazgi UI 66c (pasek „Zderzenie”, bryła `van-8`, kubek nad „Następna tura”,
+„Cofnij” obrażeń kadłuba, „Odjedź” MG, kamera gracza, EMP 2, `/jako`) i nowa zaległość
+„resztki” (metry przy wysiadce ręką MG — do decyzji, wrak za autem, podpisy foteli).
+**Oglądane:** **nie w przeglądarce** — tylko testy i build (zaległość „oględziny w przeglądarce
+zmian pościgu i czatu”). **Testy:** shared 2943, client 468, server 1736 zielone, `tsc` i ESLint
+czyste, build klienta przechodzi; `chase-combat` raz migotnął pod `vitest run src/chase`
+(dopisane do zaległości o migotaniu). Bez migracji bazy.
+
 ### Sesja 04.11, czwarta — rozegranie „Ostatniego zjazdu” w przeglądarce (66c)
 
 **Zlecenie MG:** rozegrać w przeglądarce `etap-66c-ostatni-zjazd.md` na przygotowanych postaciach
