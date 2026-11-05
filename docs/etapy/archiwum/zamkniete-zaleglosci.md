@@ -9,6 +9,42 @@ go czytać.
 albo gdy chcesz sprawdzić, czy pozycja, która wygląda na nową, nie jest wracającą starą.
 Treść wpisów jest niezmieniona — łącznie z datami i odsyłaczami do notatek sesji.
 
+## Zamknięte 2026-11-05, czwarta sesja („wykonaj zaległości”, decyzje MG)
+
+**05.11.2026 — znaleziska z ponownego przebiegu 66c (ostatnie trzy z dziewięciu).**
+
+- Auta na sąsiednich pasach zahaczały przy wyprzedzaniu (eskorta y = 9,03 obok Wozu y = 12,
+  bryły szerokości 3). Diagnoza: `chaseFirstContact` brał każde zachodzenie brył w poprzek za
+  zderzenie, nawet o 3 px. Naprawa: otarcie (`GRAZE_FRACTION`, 0,1 połowy jadącego) przez cały
+  odcinek w przeszkodzie się nie liczy; skośny wjazd, który kończy się głęboko, dalej tak. Testy
+  w `vehiclecombat.test.ts`.
+- „Dobądź” pistoletu przy strzelbie pisało na czacie „Schowanie broni”. Diagnoza: zamiana płaci
+  `CPRED_ACTION_HOLSTER` (decyzja z 29.10), a wiersz brał napis z katalogu. Naprawa:
+  `requireTurnSpend(…, { actionName, note })` — czat pisze „Zamiana broni — Strzelba → Ciężki
+  pistolet”. Strzelba bez paska HUD: Szew ma tarczę (`dev.db`), a broń dwuręczna przy tarczy
+  dostawała `notDrawn: 'shield'` i `cpredHotbarInHand` zdejmował ją z paska, choć karta
+  (`cpredDrawnWeapons`, „pierwsza z karty”) trzymała ją w rękach. Naprawa: `heldBlocked` — zostaje
+  na pasku wygaszona z odmową tarczy. Testy w `combat-actions.test.ts` i `hotbar.test.ts`.
+- Karty NPC-ów zostające po usunięciu kopii sceny — decyzja MG: celowe („mogą się przydać”),
+  zapisane w `decyzje-i-uproszczenia.md`.
+
+**04.11.2026 — resztki z naprawionych zaległości 66c.** (1) Przeciągnięcie MG w turze figury
+zjadało jej metry — decyzja MG: ręka MG jest darmowa; klient dokłada `dragged` do upuszczenia
+z przeciągnięcia, `performTokenMove` pomija wtedy `validateTokenMove` (test w
+`movement.test.ts`). (2) Wrak po taranowaniu lądował za tylnym zderzakiem także na aucie jadącym
+tuż za taranującym — `chaseFreeSpotPastVehicle` cofa go dalej za każde auto, na które by wjechał.
+(3) Podpis figury z przedniego fotela nachodził na pierścień figury z fotela obok —
+`TokenNodeCtx.captionAbove`: figura nad środkiem auta ma podpis nad sobą (Firefox, Eskorta).
+
+**04.11.2026 — drobiazgi z przebiegu 66c (pięć z siedmiu).** Bryła `van-8` dłuższa od grafiki
+o 0,6 kratki: grafika 93×196 wpisana w 3×7 z zachowaniem proporcji wychodziła 6,3 kratki długa;
+`ChaseLayer` skaluje teraz po długości bryły i najwyżej zwęża w poprzek (Firefox). („Zatrzymaj się
+przed” przy zderzeniu od pierwszego kroku słusznie nie rusza auta — już stoi przy przeszkodzie.)
+Kubek z licznikiem Szczęścia zasłaniał „Następna tura”: rezerwa `.hud-rail` liczyła sam kubek;
+przy liczniku rośnie do 7,2 rem (Firefox: 73,6 → 115,2 px). „Cofnij” przywracający przyciski
+obrażeń — decyzja MG: zostaje. Brak „Ucieka” w menu auta MG — nowe zdarzenie `chase:escape`
+(test w `chase-driving.test.ts`, Firefox). EMP 2 NPC-ów wzorca — decyzja MG: EMP 3 we wzorcu.
+
 ## Zamknięte 2026-11-05, trzecia sesja („napraw kilka zaległości”)
 
 **05.11.2026 — rama pościgu: stan kierowcy z karty albo z obrażeń nie odświeżał aut.**

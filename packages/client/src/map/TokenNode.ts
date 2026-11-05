@@ -53,6 +53,13 @@ export interface TokenNodeCtx {
    * nie ma osobnego trybu „bez kadru".
    */
   portraitCrops: ReadonlyMap<string, PortraitCrop>;
+  /**
+   * Figury w fotelach górnej połowy auta (zaległość z 04.11), którym podpis
+   * staje **nad** figurą: pod nią stoi fotel obok (auto jadące w bok) albo
+   * rząd za nią (auto jadące w pionie), a podpis zasłaniał tamten pierścień.
+   * Puste poza pościgiem.
+   */
+  captionAbove?: ReadonlySet<string>;
 }
 
 const RING_OWN = 0x4ade80;
@@ -412,6 +419,7 @@ export class TokenNode extends Container {
       ctx.isGm,
       ctx.activeTokenId === token.id,
       ctx.combatTokenIds.has(token.id),
+      ctx.captionAbove?.has(token.id) === true,
       // Bez tego przestawienie kadru przez MG nie przerysowałoby figury:
       // podpis nie zmienia się, gdy zmienia się sam sposób ujęcia obrazka.
       cropFor(token.imageUrl, ctx),
@@ -503,10 +511,15 @@ export class TokenNode extends Container {
     // figure's feet, and a name printed over it reads as a caption on a shadow.
     // Od 12.09 podpis ustępuje też obrączce PW: ta wyszła poza kratkę i jej
     // dolny łuk kończył się dokładnie na pierwszym wierszu nazwy.
-    this.nameText.position.set(
-      center,
-      Math.max(extent, center + this.furniture) + Math.max(6, extent * 0.1),
-    );
+    const gap = Math.max(6, extent * 0.1);
+    if (ctx.captionAbove?.has(token.id) === true) {
+      // Fotel w górnej połowie auta: podpis nad oprawą, na zewnątrz auta.
+      this.nameText.anchor.set(0.5, 1);
+      this.nameText.position.set(center, Math.min(0, center - this.furniture) - gap);
+    } else {
+      this.nameText.anchor.set(0.5, 0);
+      this.nameText.position.set(center, Math.max(extent, center + this.furniture) + gap);
+    }
 
     this.updateStatuses(token, ctx, extent, condition);
     this.drawCombatMark(extent, ctx.combatTokenIds.has(token.id));

@@ -276,6 +276,44 @@ describe('broń dwuręczna przy tarczy na pasku akcji (10.10.2026)', () => {
     expect(slots.length).toBeGreaterThan(0);
     for (const slot of slots) expect(slot.disabled).toBe(CPRED_SHIELD_TWO_HANDED_REFUSAL);
   });
+
+  // 05.11.2026 (przebieg 66c, Szew): strzelba pierwsza na karcie stoi w „Rękach”,
+  // tarcza obok — pasek zgubił broń, zamiast pokazać ją z powodem.
+  it('broń dwuręczna w rękach przy tarczy zostaje na pasku, wygaszona', () => {
+    const resolve = (id: string | null | undefined) =>
+      id === 'weapon.rifle' ? { ...smg, hands: 2 as const } : pistol;
+    const held = cpredHotbarInHand(
+      hotbarSlotsFor(
+        input({
+          sheet: {
+            weapons: [weaponRow({ compendiumId: 'weapon.rifle' }), weaponRow({ id: 'row-2' })],
+            armor: [shield],
+          },
+          resolve,
+        }),
+      ),
+    ).slots.filter((slot) => slot.kind === 'weapon');
+    expect(held.length).toBeGreaterThan(0);
+    for (const slot of held) {
+      expect(slot.weaponRowId).toBe('row-1');
+      expect(slot.disabled).toBe(CPRED_SHIELD_TWO_HANDED_REFUSAL);
+    }
+
+    // Schowana — z paska znika jak każda inna.
+    const away = cpredHotbarInHand(
+      hotbarSlotsFor(
+        input({
+          sheet: {
+            weapons: [weaponRow({ compendiumId: 'weapon.rifle' }), weaponRow({ id: 'row-2' })],
+            armor: [shield],
+            drawnWeaponRowIds: ['row-2'],
+          },
+          resolve,
+        }),
+      ),
+    ).slots.filter((slot) => slot.kind === 'weapon');
+    expect(away.map((slot) => slot.weaponRowId)).not.toContain('row-1');
+  });
 });
 
 describe('cpredFireModes — the weapon decides how many slots it takes', () => {

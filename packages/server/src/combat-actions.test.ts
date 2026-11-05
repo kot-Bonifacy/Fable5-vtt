@@ -505,12 +505,17 @@ describe('action economy', () => {
   it('charges swapping weapons an Action — one weapon in hand (29.10.2026)', async () => {
     await giveTurnTo(vexTokenId);
     // Pistol in hand (first row, or the one the last shot put there).
+    const logged = waitFor<ChatMessageBroadcast>(gm, 'chat:message');
     const swap = await emitAck<{ hands: string[] }>(player, 'weapon:draw', {
       characterId: vexCharacterId,
       weaponRowId: 'w-blade',
     });
     expect(data(swap, 'weapon:draw').hands).toEqual(['w-blade']);
     expect(spent(rowOf(await tracker(), vexTokenId), 'action')).toEqual({ used: 1, max: 1 });
+    // It pays „Schowanie broni", but the table reads what the character did.
+    const line = (await logged).message.action;
+    expect(line?.actionName).toBe('Zamiana broni');
+    expect(line?.note).toMatch(/→/);
 
     // Dropping is free, and drawing into empty hands is free too.
     await emitAck(player, 'weapon:draw', {

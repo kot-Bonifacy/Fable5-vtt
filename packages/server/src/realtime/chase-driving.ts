@@ -1,4 +1,5 @@
 import type {
+  ChaseEscapePayload,
   ChaseMovePayload,
   ChaseRestorePayload,
   CombatActionLogEntry,
@@ -39,6 +40,7 @@ import {
   parseCharacterData,
   readCpredTurn,
   readCpredVehicle,
+  nextTurn,
   sortCombatants,
 } from '@vtt/shared';
 import type { PrismaClient } from '../db.js';
@@ -68,6 +70,8 @@ import {
   resolveRam,
 } from './chase-ram.js';
 import {
+  applyTurnPointer,
+  emitReloadedFor,
   findCombatantForToken,
   loadCombat,
   loadCombatById,
@@ -486,6 +490,82 @@ export const chaseRestoreEvent = defineEvent<ChaseRestorePayload, SceneVehicleVi
     // stało już w kadrze i nikt się nie ruszył.
     await emitSceneTokensToPlayers(deps, campaignId, scene);
     return placedView(deps.ctx.prisma, scene.id, row.id);
+  },
+});
+
+/**
+ * MG: auto ucieka z pościgu (zaległość z 04.11 — eskorta zablokowana Wozem na
+ * stojącej drodze nie miała jak odjechać). To samo, co wyjazd za przednią
+ * krawędź w dryfie: `escaped`, załoga znika graczom i wychodzi z kolejki,
+ * czat mówi „Ucieka”. Auto zostaje, gdzie stało — „Przywróć do pościgu”
+ * stawia je z powrotem w kadrze.
+ */
+export const chaseEscapeEvent = defineEvent<ChaseEscapePayload, SceneVehicleView>({
+  name: 'chase:escape',
+  role: ROLE_GM,
+  handler: async ({ deps, socket, user, payload }) => {
+    const campaignId = requireChaseCampaignId(socket.data);
+    const prisma = deps.ctx.prisma;
+    const placed = await requirePlaced(prisma, campaignId, payload?.sceneVehicleId);
+    if (placed.status !== 'racing') return placedView(prisma, placed.sceneId, placed.id);
+    const { scene } = placed;
+    await prisma.sceneVehicle.update({
+      where: { id: placed.id },
+      data: { status: 'escaped', blockingId: null, lostControl: false },
+    });
+    // Stojące auto, które czekało przed jego zderzakiem, już na nie nie czeka.
+    await prisma.sceneVehicle.updateMany({
+      where: { sceneId: scene.id, blockingId: placed.id },
+      data: { blockingId: null },
+    });
+    const crew = await prisma.token.findMany({
+      where: { sceneVehicleId: placed.id },
+      select: { id: true },
+    });
+    const leaving = new Set(crew.map((token) => token.id));
+    const combat = await loadCombat(prisma, scene.id);
+    if (combat && leaving.size > 0) {
+      // Kto ma turę w uciekającym aucie, oddaje ją dalej — jak `combat:remove`.
+      const active = combat.combatants.find((row) => row.id === combat.activeCombatantId);
+      if (active?.tokenId && leaving.has(active.tokenId)) {
+        const view = toCombatView(combat);
+        const staying = {
+          ...view,
+          combatants: view.combatants.filter(
+            (row) => row.id === active.id || !row.tokenId || !leaving.has(row.tokenId),
+          ),
+        };
+        const pointer = nextTurn(staying);
+        await applyTurnPointer(
+          deps,
+          combat,
+          {
+            ...pointer,
+            activeCombatantId:
+              pointer.activeCombatantId === active.id ? null : pointer.activeCombatantId,
+          },
+          true,
+        );
+      }
+      for (const combatant of combat.combatants) {
+        if (combatant.tokenId === null || !leaving.has(combatant.tokenId)) continue;
+        await clearGrapplesOf(deps, campaignId, combat, combatant);
+        await prisma.combatant.deleteMany({ where: { id: combatant.id } });
+      }
+      await emitReloadedFor(deps, campaignId, scene, combat.id, null);
+    }
+    await emitChase(deps, campaignId, scene.id);
+    // Załoga auta, które odpadło, znika graczom razem z autem (66c).
+    await emitSceneTokensToPlayers(deps, campaignId, scene);
+    const line: CombatActionLogEntry = {
+      combatantId: '',
+      actorName: placed.vehicle.name,
+      actionId: 'chase-escaped',
+      actionName: 'Ucieka',
+      note: 'odpada z pościgu',
+    };
+    await logSpentAction(deps, campaignId, user, line);
+    return placedView(prisma, scene.id, placed.id);
   },
 });
 

@@ -21,13 +21,20 @@ w plikach obok — czytaj je **na żądanie, nigdy rutynowo**:
 
 | stan         | etapy                                                                                          |
 | ------------ | ---------------------------------------------------------------------------------------------- |
-| ⬜ otwarty   | **66** Sceny przykładowe (🟨 zrobione 31.10, czeka na oględziny MG przy stole i wdrożenie; **66b** „Fabryka dronów” 🟨 zrobione 31.10, tak samo; **66c** „Ostatni zjazd” 🟨 wzorzec zrobiony, rozegrany w przeglądarce 04.11 i ponownie 05.11 po rebalansie (porażka o włos, balans zatwierdzony przez MG) — czeka na błędy z zaległości, stół MG i wdrożenie); **65** Scena pościgu i walka pojazdów (🟨 65a–65e ✅ 30–31.10, czeka na oględziny MG przy stole); **62** Sieć ze sceny (🟨 zrobione, czeka na oględziny MG na VPS po wdrożeniu); **61** Skradanie się (🟨 zrobione, czeka na słowo MG o rozstrzygnięciach); **28** Wdrożenie na VPS (🟨 działa na `https://vtt.tatanga.eu` z botami od 18.10; zostały off-site, utwardzenie, monitoring); **43b**, **43c** (UI walki); **60** Czytelny czat (zlecenie MG z 24.10; 🟨 60a–60c ✅, czeka na oględziny MG z pierwszego kryterium); T10; refaktoryzacja odłożona (MG 18.10) |
+| ⬜ otwarty   | **66** Sceny przykładowe (🟨 zrobione 31.10, czeka na oględziny MG przy stole i wdrożenie; **66b** „Fabryka dronów” 🟨 zrobione 31.10, tak samo; **66c** „Ostatni zjazd” 🟨 wzorzec zrobiony, rozegrany w przeglądarce 04.11 i ponownie 05.11 po rebalansie (porażka o włos, balans zatwierdzony przez MG) — zaległości z przebiegów zamknięte 05.11 poza Esc na kubku MG — czeka na stół MG i wdrożenie); **65** Scena pościgu i walka pojazdów (🟨 65a–65e ✅ 30–31.10, czeka na oględziny MG przy stole); **62** Sieć ze sceny (🟨 zrobione, czeka na oględziny MG na VPS po wdrożeniu); **61** Skradanie się (🟨 zrobione, czeka na słowo MG o rozstrzygnięciach); **28** Wdrożenie na VPS (🟨 działa na `https://vtt.tatanga.eu` z botami od 18.10; zostały off-site, utwardzenie, monitoring); **43b**, **43c** (UI walki); **60** Czytelny czat (zlecenie MG z 24.10; 🟨 60a–60c ✅, czeka na oględziny MG z pierwszego kryterium); T10; refaktoryzacja odłożona (MG 18.10) |
 | ✅ ukończone | 01–11, 13–20b, 23a–27f, 27h–27l, 29a–30d, 31–35, 37–42c, 43a, 44a–44d, 45, 46a1, 46a2, 46c1, 46c2, 46b1, 46b2, 47a, 47b, 48a, 48b, 48c, 49a, 49b, 50a, 50b, 50c, 51, 52, 53, 54, 55, 56, 57 (57a–57c), 58 (58a–58d), 59 (59a–59c), 63 (63a–63b; 63c wycofane 29.10), 64 (64a–64c) (ostatni zamknięty: 64, 2026-10-30) |
 | ⛔ wycofane  | 12, 21, 22 (głos), 27g (wydajność), 36 (makra); 27, 29, 30, 38 rozdzielone na etapy literowane |
 
 Pełna tabela z nazwami i datami: `archiwum/tabela-etapow.md`.
 
 ## Od czego zacząć
+
+**Zaległości 66c zamknięte w kodzie (05.11, czwarta sesja, decyzje MG) — czekają na wdrożenie
+(bez migracji) i oględziny przy stole.** Ręka MG jest darmowa (przeciągnięcie, także wysiadka,
+nie zjada metrów; marsz klikiem płaci), MG ma „Ucieka” w menu auta, auta mijają się o włos na
+sąsiednich pasach, wrak za autem nie ląduje na aucie z tyłu, czat pisze „Zamiana broni”,
+strzelba przy tarczy zostaje na pasku HUD wygaszona. Decyzje w `decyzje-i-uproszczenia.md`,
+otwarte resztki (Esc na kubku MG, kadr gracza) w `zaleglosci.md`.
 
 **„Neonowa ulica” — piąta wbudowana droga i nowe tło „Ostatniego zjazdu” (zlecenie MG z 05.11) —
 czeka na wdrożenie i oględziny przy stole.** Trzy mapy ulic MG sklejone w jedną pętlę ok. 238 kratek
@@ -648,13 +655,13 @@ a nie do tego pliku.
 
 | obszar      | co obejmuje                                                    | umów | pułapek |
 | ----------- | -------------------------------------------------------------- | ---- | ------- |
-| `mapa`      | figury, zaznaczanie, narzędzia, obiekty sceny, ściany, efekty, zamek drzwi, ukryta figura zauważona, ikony urządzeń, wspólny widok drużyny, scena pościgu, jazda kierowcy i dryf, Manewr i taranowanie, przeszkody pościgu, sceny przykładowe, wzorzec zwykłej mapy, ulepszenia pojazdu, stojące auto na drodze, kreator pościgu i wbudowane drogi, załoga auta poza pościgiem, rama pościgu i pęd auta bez kierowcy, długa pętla drogi | 85   | 27      |
+| `mapa`      | figury, zaznaczanie, narzędzia, obiekty sceny, ściany, efekty, zamek drzwi, ukryta figura zauważona, ikony urządzeń, wspólny widok drużyny, scena pościgu, jazda kierowcy i dryf, Manewr i taranowanie, przeszkody pościgu, sceny przykładowe, wzorzec zwykłej mapy, ulepszenia pojazdu, stojące auto na drodze, kreator pościgu i wbudowane drogi, załoga auta poza pościgiem, rama pościgu i pęd auta bez kierowcy, długa pętla drogi, ucieczka auta ręką MG, otarcie brył, wrak za autem, podpis w fotelu | 89   | 27      |
 | `czat`      | rodzaje wierszy, `visibleTo`, filtr, `seq`, `gmrecovery`, „to dotyczy mnie”, grupy kart, kolor gracza, czyszczenie, gęsta karta rzutu, przebieg ataku, `/jako` za NPC-a, karta rzutu bez konta | 17   | 3       |
 | `serwer`    | Prisma i migracje, zdarzenia gniazda, zapisy karty, uploady    | 26   | 21      |
-| `ui`        | okna pływające, `z-index`, motyw, skróty, dostępność, wejście, panel decyzji MG | 38   | 15      |
+| `ui`        | okna pływające, `z-index`, motyw, skróty, dostępność, wejście, panel decyzji MG, rezerwa panelu przy liczniku Szczęścia | 39   | 15      |
 | `kosci`     | kubek, `rollFormula`, wezwania i prośby o Test, tabele losowe, PT od MG | 24   | 2       |
-| `tura`      | budżet Akcji i metrów, kolejka, trasa, ruch przez ściany, skok, walka z zauważenia, pytanie MG o przekroczenie, Percepcja w drodze, ukryte figury, skradanie, kropki ataków, kierowca bez Biegu, Test jazdy w Akcji Ruchu | 35   | 7       |
-| `atak`      | broń i dodatki, amunicja, obrażenia, pancerz, rany krytyczne, trucizna na ostrzu, auto-unik, strach z Konfrontacji, auto jako cel, broń pokładowa, wybór celu ze stosu, skutki amunicji po karcie ataku, ikona gołych rąk | 56   | 8       |
+| `tura`      | budżet Akcji i metrów, kolejka, trasa, ruch przez ściany, skok, walka z zauważenia, pytanie MG o przekroczenie, Percepcja w drodze, ukryte figury, skradanie, kropki ataków, kierowca bez Biegu, Test jazdy w Akcji Ruchu, darmowa ręka MG, napis wiersza Akcji | 37   | 7       |
+| `atak`      | broń i dodatki, amunicja, obrażenia, pancerz, rany krytyczne, trucizna na ostrzu, auto-unik, strach z Konfrontacji, auto jako cel, broń pokładowa, wybór celu ze stosu, skutki amunicji po karcie ataku, ikona gołych rąk, broń dwuręczna w rękach przy tarczy | 57   | 8       |
 | `statysta`  | figura z kartą, `statBlock`, Wartość bojowa, `token:stat`, wzorce | 17   | 3       |
 | `karta`     | strony i zakładki, panele, `sheet.css`, walidacja list, usuwanie przedmiotu, „Używane” i „Plecak” | 12   | 12      |
 | `postac`    | kreator, PD i awanse, koszyk i cofanie awansów, Role i Zdolności, cyborgizacje, chrom zmieniający liczby, ekonomia, Test montażu gracza, pojazdy i Tabor | 58   | 3       |
@@ -672,6 +679,23 @@ a nie do tego pliku.
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
 
+### Sesja 05.11, czwarta — reszta zaległości 66c z decyzjami MG
+
+**Zlecenie MG:** „wykonaj zaległości. Karty NPC-ów zostają w kampanii”. **Decyzje MG:** ręka MG
+darmowa, „Cofnij” obrażeń bez zmian, EMP 3 NPC-ów wzorca, „Ucieka” w menu auta (zapisane
+w `decyzje-i-uproszczenia.md`). **Zrobione:** „Zamiana broni — X → Y” na czacie zamiast
+„Schowanie broni” (`requireTurnSpend` z `actionName`); strzelba w rękach przy tarczy zostaje na
+pasku HUD wygaszona (`heldBlocked`); otarcie aut o włos w poprzek nie jest zderzeniem
+(`GRAZE_FRACTION`); wrak za autem nie ląduje na aucie z tyłu (`chaseFreeSpotPastVehicle`);
+grafika auta trzyma długość bryły (furgon); podpis figury z górnej połowy auta nad nią
+(`captionAbove`); rezerwa lewego panelu przy liczniku Szczęścia; ręka MG bez kosztu metrów
+(`TokenMovePayload.dragged`); `chase:escape` („Ucieka”); EMP 3 we wzorcu. Esc na kubku MG nie
+odtworzone. Umowy na górze `mapa`, `tura`, `ui`, `atak`; diagnozy w
+`archiwum/zamkniete-zaleglosci.md`. **Testy:** shared 2957, client 471, server 1743 zielone
+(nowe: zamiana na czacie, `heldBlocked`, otarcie i skośny wjazd, wolne miejsce za autem, ręka MG,
+„Ucieka”), `tsc`, ESLint, Prettier czyste. **Oglądane w Firefoksie** tymczasowym specem E2E (MG,
+wzorzec „Ostatni zjazd”, `po-T6`, skasowany) — Firefox MCP znów zawisł na `browser_navigate`.
+
 ### Sesja 05.11, trzecia — siedem zaległości pościgu i czatu
 
 **Zlecenie MG:** „napraw kilka zaległości”. **Zrobione:** stan kierowcy z karty, obrażeń i ręki
@@ -688,15 +712,3 @@ klik, pasek „Na drodze” 6 px pod paletą i „Wrak” klikalny, Esc z checkb
 podpis betonu, karta Rany. „Ustabilizowanie” — tylko `tsc`. Firefox MCP stał na koncie
 `mg_primo` w cudzej kampanii, więc `dev.db` nieruszane.
 
-### Sesja 05.11, druga — „Neonowa ulica” z trzech map MG (66c)
-
-**Zlecenie MG:** „scal te grafiki drogi … aby tworzyły jeden odcinek drogi płynnie na siebie
-nachodzący … i wykorzystaj ją w przykładowej scenie pościgu”. **Decyzje MG:** grafiki są jego
-i mogą do repo; teksty wzorca przepisać z estakady na ulicę; kadr 24 kratki (chodniki i fronty).
-**Zrobione:** `tools/art/chase-neon-street.py` (wyrównanie jezdni skalą i mapą pionową, nowe linie
-przerywane jednym rytmem, jezdnia przenika się, budynki łączy cięcie minimalnego błędu, pętla
-C → A), pliki `neon-street*.webp`, wpis „Neonowa ulica” w `CHASE_ROADS` z polem `strip`,
-`ChaseLayer` przewija pętlę, wzorzec „Ostatni zjazd” na nowym tle. Skrzyżowanie z końca obrazu B
-wycięte. **Testy:** `chase-roads` i `scene-templates` (shared, server) zielone, `tsc`, ESLint,
-Prettier czyste. **Oglądane w Firefoksie** (tymczasowy spec E2E — Firefox MCP wisiał na
-`browser_navigate`): pusta scena z drogą przewija pętlę, wzorzec staje bez braków, konsola czysta.

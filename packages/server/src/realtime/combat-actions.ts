@@ -120,7 +120,7 @@ export async function requireTurnSpend(
   spend: SheetTurnSpend,
   user: SessionUser,
   actionId: string,
-  options: { silent?: boolean; note?: string | null } = {},
+  options: { silent?: boolean; note?: string | null; actionName?: string } = {},
 ): Promise<void> {
   const outcome = await spendTurnForToken(deps, scene, tokenId, spend, user);
   await settleSpend(
@@ -151,10 +151,13 @@ async function settleSpend(
   outcome: TurnSpendOutcome,
   actionId: string,
   note: string | null,
-  options: { silent?: boolean } = {},
+  options: { silent?: boolean; actionName?: string } = {},
 ): Promise<CombatView | null> {
   if (outcome.kind === 'not-in-combat') return null;
-  const name = sheetActionName(actionId);
+  // `actionName` podmienia sam napis wiersza, gdy ta sama pozycja katalogu
+  // znaczy przy stole coś innego — zamiana broni płaci „Schowanie broni"
+  // (29.10.2026), ale czat ma mówić, co postać zrobiła.
+  const name = options.actionName ?? sheetActionName(actionId);
 
   if (outcome.kind === 'refused') {
     const entry: CombatActionLogEntry = {

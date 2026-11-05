@@ -389,6 +389,15 @@ export interface ChaseContact {
 const CONTACT_EPSILON = 1e-6;
 /** Bryły zachodzące na siebie na starcie mniej niż o tyle pikseli tylko się dotykają (cofka po zderzeniu). */
 const TOUCH_TOLERANCE_PX = 0.05;
+/**
+ * Otarcie zamiast zderzenia (05.11.2026, przebieg 66c): bryły, które w chwili
+ * zetknięcia zachodzą na siebie w drugiej osi o mniej niż tyle połowy jadącego,
+ * tylko się mijają. Auto przeciągnięte przez MG o ułamek kratki w poprzek
+ * (eskorta y = 9,03 obok Wozu y = 12, szerokość 3) nie może zahaczać o sąsiedni
+ * pas przy wyprzedzaniu — 0,1 połowy to przy aucie szerokości 3 kratek
+ * 0,15 kratki.
+ */
+const GRAZE_FRACTION = 0.1;
 
 /**
  * Taranowanie (65d2): auto jedzie w linii prostej `from → to` (jak marsz
@@ -433,13 +442,29 @@ export function chaseFirstContact(
     if (enter < -TOUCH_TOLERANCE_PX / length) continue;
     if (enter >= 1 - CONTACT_EPSILON || exit <= Math.max(0, enter) + CONTACT_EPSILON) continue;
     if (best && best.t <= enter) continue;
+    const axis: ChaseContact['axis'] = sx[0] >= sy[0] ? 'x' : 'y';
+    // Otarcie: w osi, w której bryły się nie czołowały, zachodzą o włos przez
+    // cały odcinek w przeszkodzie — nie tylko w chwili zetknięcia, bo skośny
+    // wjazd zaczyna się od rogu, a kończy głęboko.
+    const deepest = (rel: number, d: number, extent: number): number => {
+      const start = Math.max(0, enter);
+      const end = Math.min(1, exit);
+      const offsets = [rel + d * start, rel + d * end];
+      if (Math.abs(d) >= CONTACT_EPSILON && -rel / d > start && -rel / d < end) offsets.push(0);
+      return extent - Math.min(...offsets.map(Math.abs));
+    };
+    const graze =
+      axis === 'x'
+        ? deepest(relY, dy, ey) < GRAZE_FRACTION * mover.hy
+        : deepest(relX, dx, ex) < GRAZE_FRACTION * mover.hx;
+    if (graze) continue;
     // Cofka o setną piksela, żeby bryły po zatrzymaniu nie zachodziły na siebie.
     const t = Math.max(0, enter - 0.01 / length);
     best = {
       id: box.id,
       t,
       centre: { x: from.x + dx * t, y: from.y + dy * t },
-      axis: sx[0] >= sy[0] ? 'x' : 'y',
+      axis,
     };
   }
   return best;
@@ -811,6 +836,15 @@ export interface VehicleRefillPayload {
 
 /** MG: `chase:restore` — auto, które odpadło z pościgu, wraca na drogę (65c). */
 export interface ChaseRestorePayload {
+  sceneVehicleId: string;
+}
+
+/**
+ * MG: `chase:escape` — auto ucieka z pościgu ręką MG (zaległość z 04.11):
+ * tak samo jak za przednią krawędzią — `escaped`, załoga znika graczom
+ * i wychodzi z kolejki, a „Przywróć do pościgu” je cofa.
+ */
+export interface ChaseEscapePayload {
   sceneVehicleId: string;
 }
 

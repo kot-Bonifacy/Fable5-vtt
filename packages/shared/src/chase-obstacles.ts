@@ -296,6 +296,44 @@ export function chaseObstaclePastVehicle(
 }
 
 /**
+ * Miejsce za autem `past`, które nie ląduje na innym aucie (zaległość z 04.11):
+ * wrak albo zgaszone auto po taranowaniu staje tuż za tylnym zderzakiem
+ * (`chaseObstaclePastVehicle`), a gdy tam stoi już auto jadące z tyłu, cofa
+ * się dalej — za tylny zderzak tego, na które by wjechało — aż trafi na wolne
+ * albo wypadnie za tylną krawędź (dryf następnej rundy go zdejmie).
+ * Położenie w poprzek zostaje, więc auto z sąsiedniego pasa nie przeszkadza.
+ */
+export function chaseFreeSpotPastVehicle(
+  obstacle: { x: number; y: number; widthSq: number; lengthSq: number },
+  past: { x: number; y: number; widthSq: number; lengthSq: number },
+  others: readonly { x: number; y: number; widthSq: number; lengthSq: number }[],
+  direction: ChaseSettings['direction'],
+  gridSizePx: number,
+): ScenePoint {
+  const own = chaseBodyHalfExtents(obstacle, direction, gridSizePx);
+  let spot = chaseObstaclePastVehicle(obstacle, past, direction, gridSizePx);
+  const seen = new Set<number>();
+  for (;;) {
+    const index = others.findIndex((other, at) => {
+      if (seen.has(at)) return false;
+      const half = chaseBodyHalfExtents(other, direction, gridSizePx);
+      return (
+        Math.abs(spot.x - other.x) < own.hx + half.hx &&
+        Math.abs(spot.y - other.y) < own.hy + half.hy
+      );
+    });
+    if (index < 0) return spot;
+    seen.add(index);
+    spot = chaseObstaclePastVehicle(
+      { ...obstacle, ...spot },
+      others[index]!,
+      direction,
+      gridSizePx,
+    );
+  }
+}
+
+/**
  * Kolczatka wyrzucona z auta (65e): tuż za tylnym zderzakiem, na środku auta
  * w poprzek. Zwraca środek bez przycięcia — za tylną krawędzią znika od razu.
  */

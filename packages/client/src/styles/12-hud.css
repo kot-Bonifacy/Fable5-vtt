@@ -34,6 +34,13 @@
   user-select: none;
 }
 
+/* Licznik Szczęścia stoi nad kubkiem (`.dice-cup-luck`, do ok. 6,6 rem od dołu
+   okna), więc przy nim rezerwa rośnie — inaczej przyklejone „Następna tura”
+   MG siadało pod licznikiem i nie dało się go kliknąć (zaległość z 04.11). */
+body:has(.dice-cup-luck) .hud-rail {
+  padding-bottom: 7.2rem;
+}
+
 /* Collapsed keeps the portrait and a sliver of health: „give me back the map"
    must not also mean „forget how hurt I am". */
 .hud-rail--collapsed {

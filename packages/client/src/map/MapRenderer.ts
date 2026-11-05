@@ -985,6 +985,8 @@ export class MapRenderer {
         final: boolean,
         path?: ScenePoint[],
         extra?: boolean,
+        /** Lądowanie przeciągnięcia ręką, nie marszu (05.11.2026). */
+        dragged?: boolean,
       ) => void)
     | null = null;
   /** Right-click on a token; coordinates are browser client px (for the menu). */
@@ -8381,7 +8383,15 @@ export class MapRenderer {
         ? snapTokenPosition(free.x, free.y, member.node.token.size, snapScene)
         : free;
       member.node.position.set(pos.x, pos.y);
-      this.onTokenMove?.(member.node.tokenId, pos.x, pos.y, final);
+      this.onTokenMove?.(
+        member.node.tokenId,
+        pos.x,
+        pos.y,
+        final,
+        undefined,
+        undefined,
+        final || undefined,
+      );
     }
     this.drawGroupRings();
   }
@@ -8461,7 +8471,9 @@ export class MapRenderer {
     drag.node.alpha = token.hidden ? 0.5 : 1;
     // The route travels with the drop: the first point is where the token
     // stood, and the server replaces both ends with its own numbers anyway.
-    if (commit) this.onTokenMove?.(token.id, pos.x, pos.y, true, drag.path.slice(1));
+    if (commit) {
+      this.onTokenMove?.(token.id, pos.x, pos.y, true, drag.path.slice(1), undefined, true);
+    }
     // Reszta grupy ląduje **po** chwyconej figurze i bez trasy: idą obok siebie,
     // a nie każda swoją drogą, więc trasa chwyconej jest jedyną, która cokolwiek
     // znaczy. Serwer i tak przycina każdą osobno.

@@ -14,20 +14,14 @@ i wjechał w barykadę jako wrak. Luka ze stanem kierowcy zamknięta 05.11
 (trzecia sesja, `archiwum/zamkniete-zaleglosci.md`). E2E `48-poscig` (wymaga `po-T6`) nie puszczone —
 stawiały auto drużyny bez kierowcy, więc oczekiwania dryfu mogą się zmienić.
 
-**05.11.2026 — znaleziska z ponownego przebiegu 66c.** Sześć z nich zamkniętych 05.11 (trzecia
-sesja, `archiwum/zamkniete-zaleglosci.md`); zostały:
-
-- Auta na sąsiednich pasach zahaczają o siebie, gdy jedno stoi o ułamek kratki w poprzek
-  (eskorta y = 9,03 po przeciągnięciu MG, Wóz y = 12,00, bryły szerokości 3): wyprzedzanie
-  dolnym pasem daje pasek „Zderzenie”. Do rozważenia tolerancja kontaktu w poprzek albo
-  przyciąganie aut do pasów.
-- „Dobądź (Akcja)” pistoletu przy strzelbie w rękach Szew zapisało się na czacie jako „Schowanie
-  broni”. Strzelba stoi w „Rękach” na karcie, ale pasek HUD jej nie pokazuje (tarcza + dwie ręce).
-  **05.11 (trzecia sesja):** sam wpis to cena zamiany z decyzji MG z 29.10 (dobycie przy pełnej
-  ręce chowa poprzednią broń za Akcję, `weapon:draw` → `CPRED_ACTION_HOLSTER`) — do rozważenia
-  tylko napis („Zamiana broni”); brak strzelby na pasku HUD nie zbadany.
-- Po usunięciu kopii sceny jej karty NPC-ów zostają w kampanii — listy (Postacie, Kompendium →
-  „Dodaj za darmo”) mają dwa komplety Wolt/Kłoda/… (do decyzji MG, czy to celowe).
+**05.11.2026 (czwarta sesja) — zaległości 66c zamknięte w kodzie: wdrożenie i oglądanie przy stole.**
+Bez migracji. Oglądane w **Firefoksie** tymczasowym specem E2E (MG, wzorzec „Ostatni zjazd”,
+`po-T6`, skasowany): furgon wypełnia bryłę, podpisy górnego rzędu Eskorty nad figurami, „Ucieka”
+w menu auta MG (auto `escaped`, przygasa u MG), rezerwa lewego panelu przy liczniku Szczęścia
+(73,6 → 115,2 px). **Nie widziane w przeglądarce:** „Zamiana broni” na czacie, strzelba Szew przy
+tarczy na pasku HUD (tylko testy), darmowa ręka MG w turze figury (test serwera), otarcie aut
+o włos i wrak za autem z autem z tyłu (testy `shared`). Przy stole: wysiadka NPC-a ręką MG w jego
+turze nie zjada metrów, a marsz klikiem dalej płaci.
 
 **04.11.2026 (piąta sesja) — oględziny w przeglądarce zmian pościgu i czatu.** Zmiany
 sprawdzone tylko testami (serwer, klient) i buildem, bez przeglądarki. Przy stole (Firefox):
@@ -44,31 +38,14 @@ nie wjechał), prawy klik gracza, prośba o Test, lista obecności w poczekalni,
 z fotela (Szron wysiadł z eskorty po kliku w trakcie ruchu kamery — pewnie przeciągnięcie, nie
 marsz; do powtórki przy stojącej kamerze).
 
-**04.11.2026 — resztki z naprawionych zaległości 66c.** (1) Przeciągnięcie MG w turze figury
-zjada jej metry (tak liczyło Kłodzie i Lutce przy wysiadce) — do decyzji MG, czy wysiadka
-ręką MG ma być darmowa. (2) Wrak albo zgaszone auto po taranowaniu dalej ląduje za tylnym
-zderzakiem (`pushVehicleBehind`, decyzja z 03.11) i może trafić na auto jadące tuż za nim —
-przeszkody z palety już tak nie robią (znikają, beton zostaje w miejscu). (3) Podpis figury
-z przedniego fotela nachodzi na pierścień figury z fotela obok (`car-4`, `van-8`).
+**04.11.2026 — drobiazgi z przebiegu 66c (UI pościgu i czatu).** Zamknięte 05.11 (czwarta
+sesja, `archiwum/zamkniete-zaleglosci.md`) poza dwoma:
 
-**04.11.2026 — drobiazgi z przebiegu 66c (UI pościgu i czatu).**
-
-- Bryła `van-8` jest ok. 0,6 kratki dłuższa niż grafika furgonu: Wóz „dotykał” go, stojąc na
-  obrazku 0,4 kratki dalej; „Zatrzymaj się przed” przy zderzeniu od pierwszego kroku nie rusza
-  auta wcale.
-- Kubek z polem Szczęścia zasłania „Następna tura” w lewym panelu MG (Playwright nie kliknie,
-  klawisz E działa). Esc z fokusem na kubku MG raz odłożył atak, dwa razy nie.
-- Po „Cofnij” na karcie obrażeń kadłuba karta ataku znów ma „Na kubek” / „Zastosuj”, a kubek
-  MG dostaje z powrotem rzut obrażeń — łatwo zastosować je drugi raz. **04.11 (szósta sesja):
-  to umowa, nie błąd** — tak samo przy figurach „Cofnij” przywraca przyciski, bo tak MG
-  przenosi trafienie na inny cel (`DamageControls.tsx`, `settled`). Do decyzji MG, czy po
-  „Cofnij” przyciski mają wracać tylko na prośbę.
-- MG nie ma „Ucieka” / „Odjedź” w menu auta (notatki wzorca o nim wspominały): na stojącej
-  drodze eskorta zablokowana Wozem nie miała jak odjechać.
-- Kamera gracza (`coverZoom` na estakadzie 35 × 18) mieści ok. 23 kratki długości — furgon
-  i Wóz nie były razem w kadrze, gracz przesuwa widok ręką.
-- Karty NPC-ów wzorca z EMP 2 (Kłoda, Szron, Grot, Kabel) mają na liście MG „EMP 2 · NA
-  GRANICY” — szum przy NPC-ach; do decyzji: EMP 3 we wzorcu?
+- Esc z fokusem na kubku MG raz odłożył atak, dwa razy nie (Playwright). W kodzie przyczyny nie
+  widać — wszystkie Esc kubka słuchają na `window` (`DiceCup.tsx`); do odtworzenia w przeglądarce.
+- Kamera gracza (`coverZoom` na estakadzie 35 × 18) mieściła ok. 23 kratki długości. Od 05.11
+  wzorzec stoi na „Neonowej ulicy” 35 × 24, przy której pokrycie ekranu 16:9 bierze całą
+  długość — sprawdzić przy stole, czy furgon i Wóz mieszczą się razem u gracza.
 
 **04.11.2026 — „Ostatni zjazd” (66c): przebieg przy stole i wdrożenie.** Technicznie przejechany
 specem oględzin (MG w Chromium, Marek i Ola w Firefoksie, `data/private`), a 04.11 (czwarta

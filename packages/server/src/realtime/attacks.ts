@@ -2333,6 +2333,7 @@ async function spendCharacterAction(
   character: Character,
   user: SessionUser,
   actionId: string = CPRED_ACTION_RELOAD,
+  options: { actionName?: string; note?: string } = {},
 ): Promise<void> {
   if (!sceneId) return;
   const scene = await deps.ctx.prisma.scene.findUnique({ where: { id: sceneId } });
@@ -2349,6 +2350,7 @@ async function spendCharacterAction(
     { kind: 'action', actionId },
     user,
     actionId,
+    options,
   );
 }
 
@@ -2455,6 +2457,8 @@ export const weaponDrawEvent = defineEvent<WeaponDrawPayload, { hands: string[] 
       if (needed === 2 && cpredShieldInHand(data)) throw new RealtimeError('HANDS_FULL');
       // Zamiana: poprzednia broń idzie do ekwipunku, a schowanie kosztuje Akcję.
       if (before.length >= CPRED_DRAWN_WEAPONS_MAX) {
+        // Płaci się „Schowanie broni", ale stół widzi zamianę (zaległość 05.11).
+        const previous = data.weapons.find((weapon) => weapon.id === before[0]);
         await spendCharacterAction(
           deps,
           campaignId,
@@ -2462,6 +2466,10 @@ export const weaponDrawEvent = defineEvent<WeaponDrawPayload, { hands: string[] 
           character,
           user,
           CPRED_ACTION_HOLSTER,
+          {
+            actionName: 'Zamiana broni',
+            ...(previous ? { note: `${previous.name} → ${row.name}` } : {}),
+          },
         );
       }
       hands = [row.id];

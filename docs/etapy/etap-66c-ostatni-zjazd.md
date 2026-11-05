@@ -21,15 +21,15 @@ tła). Test izolacji kampanii woła `fabryka-dronow`.
 
 ### Czego brakowało „Pościgowi na wiadukcie” — i co ten projekt ma domknąć
 
-| brak starej sceny | jak to rozwiązuje „Ostatni zjazd” |
-| --- | --- |
-| Jedno auto wrogów, ten sam obraz przez całe starcie | trzy auta wroga z różnymi rolami (cel, blokujący, posiłki), wejście posiłków w rundzie 3 |
-| Zwroty akcji jako „propozycje” bez kolejności | rozpisany przebieg rund 1–6 z zegarem i warunkiem porażki „ostatni zjazd” |
-| Wygrana = „zgub ich” (uciekający nie podejmuje decyzji) | drużyna goni i musi **zatrzymać** furgon, nie rozwalając ładunku — kilka dróg do celu |
-| Skrojone na 1–2 postacie, skalowanie jednym zdaniem | skalowanie 2 / 3 / 3 + bot w tabeli, z tym, co dokładnie zdjąć lub dołożyć |
-| Brak tekstu dla graczy | wstęp do przeczytania, okrzyki NPC-ów, zakończenia |
-| Tylko pościg, bez „co potem” | zakończenia, łup, nagroda, haki fabularne |
-| Mapa MG w repo (jedyna kopia tła) | wbudowana droga „Estakada” (CC0, już w repo) — nic nowego do grafiki |
+| brak starej sceny                                       | jak to rozwiązuje „Ostatni zjazd”                                                        |
+| ------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| Jedno auto wrogów, ten sam obraz przez całe starcie     | trzy auta wroga z różnymi rolami (cel, blokujący, posiłki), wejście posiłków w rundzie 3 |
+| Zwroty akcji jako „propozycje” bez kolejności           | rozpisany przebieg rund 1–6 z zegarem i warunkiem porażki „ostatni zjazd”                |
+| Wygrana = „zgub ich” (uciekający nie podejmuje decyzji) | drużyna goni i musi **zatrzymać** furgon, nie rozwalając ładunku — kilka dróg do celu    |
+| Skrojone na 1–2 postacie, skalowanie jednym zdaniem     | skalowanie 2 / 3 / 3 + bot w tabeli, z tym, co dokładnie zdjąć lub dołożyć               |
+| Brak tekstu dla graczy                                  | wstęp do przeczytania, okrzyki NPC-ów, zakończenia                                       |
+| Tylko pościg, bez „co potem”                            | zakończenia, łup, nagroda, haki fabularne                                                |
+| Mapa MG w repo (jedyna kopia tła)                       | wbudowana droga „Estakada” (CC0, już w repo) — nic nowego do grafiki                     |
 
 ## Pomysł w jednym akapicie
 
@@ -66,16 +66,16 @@ krawężnik i bariera (ok. 4 i 20), dalej chodniki pod neonami i fronty budynkó
 y = 8, 12, 16. Przeniesienie z estakady przesunęło wszystko o 3 kratki w dół; liczby
 i przebieg rund bez zmian.
 
-| pole | wartość | dlaczego |
-| --- | --- | --- |
-| `kind` | `chase` | |
-| `chase.direction` | `left` | domyślne od 04.11 (MG); przód kadru to lewa krawędź, tył — prawa |
-| `chase.tempo` | 40 | prędkość eskorty i auta drużyny — oba bez dryfu, furgon (Ruch 20) cofa się o 5 kratek na rundę |
-| `chase.road` | `{ from: 6, to: 18 }` | pas wbudowanej Neonowej ulicy (`CHASE_ROADS`), od linii do linii krawędziowej |
-| `chase.running` | `true` | droga jedzie od aktywacji |
-| `visibility` / `playerMove` | `open` / `stop` | jak każdy pościg |
-| `ambience` | `car` | |
-| `spawn` | `{ x: 33, y: 16 }` | dolny pas za autem drużyny — start na jezdni; poza walką nikt się z nikim nie zderza, a gracze klikają fotel tuż obok |
+| pole                        | wartość               | dlaczego                                                                                                              |
+| --------------------------- | --------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| `kind`                      | `chase`               |                                                                                                                       |
+| `chase.direction`           | `left`                | domyślne od 04.11 (MG); przód kadru to lewa krawędź, tył — prawa                                                      |
+| `chase.tempo`               | 40                    | prędkość eskorty i auta drużyny — oba bez dryfu, furgon (Ruch 20) cofa się o 5 kratek na rundę                        |
+| `chase.road`                | `{ from: 6, to: 18 }` | pas wbudowanej Neonowej ulicy (`CHASE_ROADS`), od linii do linii krawędziowej                                         |
+| `chase.running`             | `true`                | droga jedzie od aktywacji                                                                                             |
+| `visibility` / `playerMove` | `open` / `stop`       | jak każdy pościg                                                                                                      |
+| `ambience`                  | `car`                 |                                                                                                                       |
+| `spawn`                     | `{ x: 33, y: 16 }`    | dolny pas za autem drużyny — start na jezdni; poza walką nikt się z nikim nie zderza, a gracze klikają fotel tuż obok |
 
 ### Ustawienie startowe (środki brył w kratkach)
 
@@ -93,12 +93,12 @@ i przebieg rund bez zmian.
         ← kierunek jazdy (przód kadru)              tył kadru →
 ```
 
-| auto | środek (x, y) | bryła wzdłuż drogi | rola |
-| --- | --- | --- | --- |
-| Furgon Halcyonu | 9, 9 | x 5,5–12,5 (3 × 7) | cel pościgu, z przodu kadru |
-| Eskorta | 17,5, 13 | x 15–20 | blokuje i strzela, zrzuca kolczatki za siebie |
-| Wóz od Matyldy | 28, 9 | x 25,5–30,5 | auto drużyny, z tyłu kadru |
-| Rydwan | 32,5, 5 | — | posiłki, startują **za kadrem** (`status: behind`) |
+| auto            | środek (x, y) | bryła wzdłuż drogi | rola                                               |
+| --------------- | ------------- | ------------------ | -------------------------------------------------- |
+| Furgon Halcyonu | 9, 9          | x 5,5–12,5 (3 × 7) | cel pościgu, z przodu kadru                        |
+| Eskorta         | 17,5, 13      | x 15–20            | blokuje i strzela, zrzuca kolczatki za siebie      |
+| Wóz od Matyldy  | 28, 9         | x 25,5–30,5        | auto drużyny, z tyłu kadru                         |
+| Rydwan          | 32,5, 5       | —                  | posiłki, startują **za kadrem** (`status: behind`) |
 
 Odstępy: auto drużyny — eskorta ok. 5,5 kratki (zasięg strzału ~10 m), auto drużyny —
 furgon 13 kratek. Kierowca drużyny ma budżet 10 kratek na turę, więc furgon da się dogonić
@@ -111,12 +111,12 @@ z alternatywą z próbki (`vehicle.sample-kompakt`), jak w każdym wzorcu. **Bil
 liczony dla katalogu z podręcznika.** Na samej próbce wszystkie auta to kompakty z Ruchem 20,
 co wystarcza do testów, ale nie do gry. Opis „Wymaga…” w notatce mówi o tym MG.
 
-| klucz | nazwa | `catalogIds` | ulepszenia | grafika | wynik (katalog z podręcznika) |
-| --- | --- | --- | --- | --- | --- |
-| `matylda` | Wóz od Matyldy | `vehicle.samochod-sportowy`, `vehicle.sample-kompakt` | `ram`, `nitro` | `car-orange.webp` | PUK 50, Ruch 40, 4 fotele, Pług z przodu, 1 zbiornik Nitro |
-| `furgon` | Furgon Halcyonu | `vehicle.samochod-kompaktowy`, `vehicle.sample-kompakt` | `reinforced`, `armoredHull`, `bulletproofGlass`, `extraSeats`, `extraSeats`, `nitro` | `van-white.webp` | PUK 70, OB 13, Ruch 20, 8 foteli (`van-8`, bryła 3 × 7), cienkie szyby 15 PW na burtę, 1 zbiornik Nitro |
-| `eskorta` | Eskorta | `vehicle.samochod-sportowy`, `vehicle.sample-kompakt` | `bulletproofGlass`, `spikes`, `spikes` | `car-black-viper.webp` | PUK 50, Ruch 40, szyby 15 PW, **2 kolczatki** |
-| `rydwan` | Rydwan | `vehicle.samochod-sportowy`, `vehicle.sample-kompakt` | — (do 04.11 `machineGun`, decyzja MG) | `car-red.webp` | PUK 50, Ruch 40, bez broni pokładowej |
+| klucz     | nazwa           | `catalogIds`                                            | ulepszenia                                                                           | grafika                | wynik (katalog z podręcznika)                                                                           |
+| --------- | --------------- | ------------------------------------------------------- | ------------------------------------------------------------------------------------ | ---------------------- | ------------------------------------------------------------------------------------------------------- |
+| `matylda` | Wóz od Matyldy  | `vehicle.samochod-sportowy`, `vehicle.sample-kompakt`   | `ram`, `nitro`                                                                       | `car-orange.webp`      | PUK 50, Ruch 40, 4 fotele, Pług z przodu, 1 zbiornik Nitro                                              |
+| `furgon`  | Furgon Halcyonu | `vehicle.samochod-kompaktowy`, `vehicle.sample-kompakt` | `reinforced`, `armoredHull`, `bulletproofGlass`, `extraSeats`, `extraSeats`, `nitro` | `van-white.webp`       | PUK 70, OB 13, Ruch 20, 8 foteli (`van-8`, bryła 3 × 7), cienkie szyby 15 PW na burtę, 1 zbiornik Nitro |
+| `eskorta` | Eskorta         | `vehicle.samochod-sportowy`, `vehicle.sample-kompakt`   | `bulletproofGlass`, `spikes`, `spikes`                                               | `car-black-viper.webp` | PUK 50, Ruch 40, szyby 15 PW, **2 kolczatki**                                                           |
+| `rydwan`  | Rydwan          | `vehicle.samochod-sportowy`, `vehicle.sample-kompakt`   | — (do 04.11 `machineGun`, decyzja MG)                                                | `car-red.webp`         | PUK 50, Ruch 40, bez broni pokładowej                                                                   |
 
 **Dlaczego tak:**
 
@@ -148,9 +148,9 @@ Statystyki wymyślone (nie z podręcznika), ułożone pod NPC-a z poziomu „naj
 **Wolt — kierowca furgonu** (fotel 0, `hostile`). Słabszy kierowca, celowo: REF + Prowadzenie
 = 10, więc Gwałtowny skręt (PT 13) nie wychodzi mu w ok. 20% rzutów, a Skok (PT 17) w ok. 60%.
 
-| INT | REF | ZW | TECH | CHŁ | WOLA | SZCZ | RUCH | BC | EMP |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| 5 | 6 | 5 | 5 | 5 | 4 | 2 | 5 | 5 | 3 |
+| INT | REF | ZW  | TECH | CHŁ | WOLA | SZCZ | RUCH | BC  | EMP |
+| --- | --- | --- | ---- | --- | ---- | ---- | ---- | --- | --- |
+| 5   | 6   | 5   | 5    | 5   | 4    | 2    | 5    | 5   | 3   |
 
 Umiejętności: `driving` 4, `handgun` 5, `evasion` 3, `perception` 4, `athletics` 3.
 Sprzęt: `weapon.heavy-pistol` / `weapon.zgrzyt-9`; `armor.light-armorjack` /
@@ -159,9 +159,9 @@ Sprzęt: `weapon.heavy-pistol` / `weapon.zgrzyt-9`; `armor.light-armorjack` /
 **Kłoda — strażnik ładunku** (fotel 6, tył po lewej, `hostile`). Strzela przez tylną szybę we
 wszystko, co się zbliży. Gdy furgon stanie, łapie Iskrę jako tarczę (patrz „Zatrzymanie”).
 
-| INT | REF | ZW | TECH | CHŁ | WOLA | SZCZ | RUCH | BC | EMP |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| 4 | 6 | 6 | 3 | 6 | 6 | 2 | 5 | 8 | 2 |
+| INT | REF | ZW  | TECH | CHŁ | WOLA | SZCZ | RUCH | BC  | EMP |
+| --- | --- | --- | ---- | --- | ---- | ---- | ---- | --- | --- |
+| 4   | 6   | 6   | 3    | 6   | 6    | 2    | 5    | 8   | 3   |
 
 Umiejętności: `shoulder-arms` 8, `brawling` 6, `melee-weapon` 5, `evasion` 4, `perception` 5,
 `athletics` 5, `interrogation` 3. Sprzęt: `weapon.shotgun` / `weapon.huk-12`,
@@ -172,9 +172,9 @@ Umiejętności: `shoulder-arms` 8, `brawling` 6, `melee-weapon` 5, `evasion` 4, 
 bierze udziału w walce, MG nie dokłada jej do kolejki. Budzi się po zatrzymaniu (patrz
 „Zakończenia”). Bez broni i pancerza.
 
-| INT | REF | ZW | TECH | CHŁ | WOLA | SZCZ | RUCH | BC | EMP |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| 7 | 6 | 5 | 6 | 4 | 5 | 5 | 6 | 3 | 6 |
+| INT | REF | ZW  | TECH | CHŁ | WOLA | SZCZ | RUCH | BC  | EMP |
+| --- | --- | --- | ---- | --- | ---- | ---- | ---- | --- | --- |
+| 7   | 6   | 5   | 6    | 4   | 5    | 5    | 6    | 3   | 6   |
 
 `roleId` `netrunner`, `roleRank` 3. Umiejętności: `electronics-security` 5, `cryptography` 4,
 `education` 5, `perception` 4, `conversation` 3, `evasion` 3. **Mała BC = mało PZ — wybuch przy
@@ -185,9 +185,9 @@ furgonie naprawdę może ją zabić.** To świadomy hak sceny.
 **Mewa — kierowczyni eskorty** (fotel 0, `hostile`). Dobra kierowczyni (REF + Prowadzenie 15).
 Jej Akcja to kolczatka albo strzał, a Akcja Ruchu to zajeżdżanie drogi.
 
-| INT | REF | ZW | TECH | CHŁ | WOLA | SZCZ | RUCH | BC | EMP |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| 5 | 8 | 6 | 4 | 6 | 5 | 3 | 6 | 5 | 3 |
+| INT | REF | ZW  | TECH | CHŁ | WOLA | SZCZ | RUCH | BC  | EMP |
+| --- | --- | --- | ---- | --- | ---- | ---- | ---- | --- | --- |
+| 5   | 8   | 6   | 4    | 6   | 5    | 3    | 6    | 5   | 3   |
 
 Umiejętności: `driving` 7, `handgun` 6, `evasion` 5, `perception` 5, `athletics` 4.
 Sprzęt: `weapon.heavy-pistol` / `weapon.zgrzyt-9`; `armor.light-armorjack` /
@@ -196,9 +196,9 @@ Sprzęt: `weapon.heavy-pistol` / `weapon.zgrzyt-9`; `armor.light-armorjack` /
 **Szron — dowódca zespołu odzysku** (fotel 1, obok kierowcy, `hostile`). Najgroźniejszy
 strzelec. Gdy padnie, reszta zespołu traci zapał (patrz „Morale”).
 
-| INT | REF | ZW | TECH | CHŁ | WOLA | SZCZ | RUCH | BC | EMP |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| 6 | 7 | 6 | 4 | 7 | 6 | 3 | 6 | 7 | 2 |
+| INT | REF | ZW  | TECH | CHŁ | WOLA | SZCZ | RUCH | BC  | EMP |
+| --- | --- | --- | ---- | --- | ---- | ---- | ---- | --- | --- |
+| 6   | 7   | 6   | 4    | 7   | 6    | 3    | 6    | 7   | 3   |
 
 Umiejętności: `shoulder-arms` 8, `autofire` 7, `handgun` 6, `evasion` 5, `perception` 5,
 `tactics` 5, `brawling` 4. Sprzęt: `weapon.assault-rifle` / `weapon.grzechotnik`,
@@ -208,9 +208,9 @@ Umiejętności: `shoulder-arms` 8, `autofire` 7, `handgun` 6, `evasion` 5, `perc
 **Lutka — strzelczyni** (fotel 3, tył po prawej, `hostile`). **Tylko przy 3 graczach** —
 przy 2 MG zdejmuje jej figurę przed aktywacją.
 
-| INT | REF | ZW | TECH | CHŁ | WOLA | SZCZ | RUCH | BC | EMP |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| 4 | 7 | 7 | 3 | 5 | 4 | 2 | 6 | 5 | 3 |
+| INT | REF | ZW  | TECH | CHŁ | WOLA | SZCZ | RUCH | BC  | EMP |
+| --- | --- | --- | ---- | --- | ---- | ---- | ---- | --- | --- |
+| 4   | 7   | 7   | 3    | 5   | 4    | 2    | 6    | 5   | 3   |
 
 Umiejętności: `autofire` 6, `handgun` 6, `evasion` 6, `perception` 4, `athletics` 4.
 Sprzęt: `weapon.submachine-gun` / `weapon.zardzewiak`; `armor.light-armorjack` /
@@ -221,9 +221,9 @@ Sprzęt: `weapon.submachine-gun` / `weapon.zardzewiak`; `armor.light-armorjack` 
 **Grot — kierowca Rydwanu** (fotel 0, `hostile`). Prowadzi i strzela z ciężkiego pistoletu
 (karabin pokładowy zdjęty 04.11, decyzja MG).
 
-| INT | REF | ZW | TECH | CHŁ | WOLA | SZCZ | RUCH | BC | EMP |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| 4 | 7 | 5 | 4 | 5 | 4 | 2 | 5 | 6 | 2 |
+| INT | REF | ZW  | TECH | CHŁ | WOLA | SZCZ | RUCH | BC  | EMP |
+| --- | --- | --- | ---- | --- | ---- | ---- | ---- | --- | --- |
+| 4   | 7   | 5   | 4    | 5   | 4    | 2    | 5    | 6   | 3   |
 
 Umiejętności: `driving` 6, `handgun` 6, `evasion` 4, `perception` 4.
 Sprzęt: `weapon.heavy-pistol` / `weapon.zgrzyt-9`; `armor.light-armorjack` /
@@ -231,9 +231,9 @@ Sprzęt: `weapon.heavy-pistol` / `weapon.zgrzyt-9`; `armor.light-armorjack` /
 
 **Kabel — strzelec Rydwanu** (fotel 1, `hostile`).
 
-| INT | REF | ZW | TECH | CHŁ | WOLA | SZCZ | RUCH | BC | EMP |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| 3 | 6 | 6 | 3 | 5 | 5 | 2 | 6 | 7 | 2 |
+| INT | REF | ZW  | TECH | CHŁ | WOLA | SZCZ | RUCH | BC  | EMP |
+| --- | --- | --- | ---- | --- | ---- | ---- | ---- | --- | --- |
+| 3   | 6   | 6   | 3    | 5   | 5    | 2    | 6    | 7   | 3   |
 
 Umiejętności: `shoulder-arms` 6, `brawling` 5, `evasion` 4, `perception` 4, `athletics` 4.
 Sprzęt: `weapon.shotgun` / `weapon.huk-12`; `armor.light-armorjack` /
@@ -241,13 +241,13 @@ Sprzęt: `weapon.shotgun` / `weapon.huk-12`; `armor.light-armorjack` /
 
 ## Skalowanie
 
-| stół | Lutka | Rydwan | uwagi |
-| --- | --- | --- | --- |
-| **2 postacie** | zdjąć | nie przywracać | 4 wrogów walczących (Wolt jedzie, Kłoda, Mewa, Szron). Zegar 7 rund zamiast 6 |
-| **3 postacie** | jest | runda 3 | wariant domyślny wzorca |
-| **3 postacie + bot** | jest | runda 2 | bot siedzi z tyłu i strzela do figur. Szron celuje najpierw w kierowcę drużyny |
-| **za łatwo w trakcie** | — | drugi raz w rundzie 5 („Przywróć do pościgu” po wypadnięciu) | albo Mewa zrzuca drugą kolczatkę wcześniej |
-| **za trudno w trakcie** | ucieka z Rydwanem | zostaje w tyle (MG gasi silnik) | furgon łapie gumę: MG ręcznie −10 PUK i Wolt rzuca Manewr |
+| stół                    | Lutka             | Rydwan                                                       | uwagi                                                                          |
+| ----------------------- | ----------------- | ------------------------------------------------------------ | ------------------------------------------------------------------------------ |
+| **2 postacie**          | zdjąć             | nie przywracać                                               | 4 wrogów walczących (Wolt jedzie, Kłoda, Mewa, Szron). Zegar 7 rund zamiast 6  |
+| **3 postacie**          | jest              | runda 3                                                      | wariant domyślny wzorca                                                        |
+| **3 postacie + bot**    | jest              | runda 2                                                      | bot siedzi z tyłu i strzela do figur. Szron celuje najpierw w kierowcę drużyny |
+| **za łatwo w trakcie**  | —                 | drugi raz w rundzie 5 („Przywróć do pościgu” po wypadnięciu) | albo Mewa zrzuca drugą kolczatkę wcześniej                                     |
+| **za trudno w trakcie** | ucieka z Rydwanem | zostaje w tyle (MG gasi silnik)                              | furgon łapie gumę: MG ręcznie −10 PUK i Wolt rzuca Manewr                      |
 
 ## Przebieg (dla MG)
 
@@ -325,14 +325,14 @@ MG poza mechaniką, **nie dla furgonu** — Iskra by zginęła, a scena nie daje
 
 ## Jak zatrzymać furgon — drogi do celu
 
-| droga | mechanika VTT | koszt / ryzyko |
-| --- | --- | --- |
-| **Zdjąć Wolta** | rozbić szybę furgonu (15 PW, karta „Ostrzelaj szybę”), potem strzał w kierowcę | trzeba podjechać na zasięg; Kłoda strzela pierwszy |
-| **Taran Pługiem** | jazda kierowcy w furgon → „Taranuj” (`resolveRam`), Pług zdejmuje obrażenia z taranującego, z Nitro +2k6 | furgon ma 70 PUK i OB 13 — sam taran go nie zatrzyma, ale Wolt musi potem zdać Manewr (decyzja MG) |
-| **Wepchnąć w przeszkodę** | furgon bez kontroli albo po nieudanym Manewrze wjeżdża w przeszkodę od razu (65e, rozstrzygnięcie 5) | wymaga przeszkody przed furgonem — MG wypuszcza je w rundach 3 i 6 |
-| **Słaby punkt** | Celowanie −8, obrażenia po OB ×2 | przy OB 13 opłaca się dopiero z karabinu |
-| **Rakieta, granat** | wybuch bije figury w obszarze, kadłub zostaje (65d1, rozstrzygnięcie 10) | **trafia Iskrę** — to celowa pułapka; MG ostrzega raz („Tam jest Iskra!”) |
-| **Netrunning** | poza mechaniką pościgu (scena nie ma Sieci) | MG może pozwolić na hak narracyjny: auto Halcyonu ma Centrum komunikacji w kampanii — nie we wzorcu |
+| droga                     | mechanika VTT                                                                                            | koszt / ryzyko                                                                                      |
+| ------------------------- | -------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
+| **Zdjąć Wolta**           | rozbić szybę furgonu (15 PW, karta „Ostrzelaj szybę”), potem strzał w kierowcę                           | trzeba podjechać na zasięg; Kłoda strzela pierwszy                                                  |
+| **Taran Pługiem**         | jazda kierowcy w furgon → „Taranuj” (`resolveRam`), Pług zdejmuje obrażenia z taranującego, z Nitro +2k6 | furgon ma 70 PUK i OB 13 — sam taran go nie zatrzyma, ale Wolt musi potem zdać Manewr (decyzja MG)  |
+| **Wepchnąć w przeszkodę** | furgon bez kontroli albo po nieudanym Manewrze wjeżdża w przeszkodę od razu (65e, rozstrzygnięcie 5)     | wymaga przeszkody przed furgonem — MG wypuszcza je w rundach 3 i 6                                  |
+| **Słaby punkt**           | Celowanie −8, obrażenia po OB ×2                                                                         | przy OB 13 opłaca się dopiero z karabinu                                                            |
+| **Rakieta, granat**       | wybuch bije figury w obszarze, kadłub zostaje (65d1, rozstrzygnięcie 10)                                 | **trafia Iskrę** — to celowa pułapka; MG ostrzega raz („Tam jest Iskra!”)                           |
+| **Netrunning**            | poza mechaniką pościgu (scena nie ma Sieci)                                                              | MG może pozwolić na hak narracyjny: auto Halcyonu ma Centrum komunikacji w kampanii — nie we wzorcu |
 
 ## Zatrzymanie (po pościgu)
 
@@ -422,7 +422,7 @@ dołożyć, jedna jest opcjonalna.
    takiego auta nie wchodzą do kolejki. Gracz go nie widzi (`behind` jest tylko dla MG),
    a MG ma już „Przywróć do pościgu” i „Dołącz do walki”. Bez tego Rydwan musiałby stać
    w kadrze od początku albo MG dokładałby go ręcznie z zakładki „Pojazdy”.
-3. *(opcjonalnie)* **Stan figury we wzorcu** (`figures[].system.statuses`, np. Nieprzytomna
+3. _(opcjonalnie)_ **Stan figury we wzorcu** (`figures[].system.statuses`, np. Nieprzytomna
    dla Iskry). Bez tego MG po prostu nie dokłada Iskry do kolejki — notatka 2 o tym mówi.
    Jeśli to dojdzie, to raczej przy okazji, bo to nie blokuje sceny.
 
@@ -505,16 +505,17 @@ z kreatora**.
   `streetrat`, dane przez MG „Dodaj za darmo” w Kompendium; pełne magazynki, bez zapasu
   amunicji, 500 ed każdy):
 
-  | gracz | postać | Rola | Cechy (INT REF ZW TECH CHA SW SZ RUCH BC EMP) | PW | kluczowe umiejętności | sprzęt |
-  | --- | --- | --- | --- | --- | --- | --- |
-  | Tester | **Rdza** | Nomada | 6 6 8 4 8 6 6 7 7 4 | 45 | Prowadzenie 6, Broń krótka 6, Unik 6, Atletyka 6, Bijatyka 6, Percepcja 6 | Ciężki pistolet, Duża broń biała |
-  | Handlarz | **Kosa** | Solo | 7 8 6 5 6 6 6 7 8 5 | 45 | Broń długa 6, Broń krótka 6, Ogień ciągły 6, Unik 6, Percepcja 6, Taktyka 4 | Karabin szturmowy, Bardzo ciężki pistolet, Duża broń biała |
-  | Ola (nowe konto) | **Szew** | Medyk | 7 7 5 7 3 5 8 6 5 7 | 35 | Ratownictwo medyczne 6, Pierwsza pomoc 6, Unik 6, Percepcja 6 — **bez broni dystansowej** (lista Roli Krawędziarza jej nie ma) | Strzelba, Tarcza kuloodporna |
+  | gracz            | postać   | Rola   | Cechy (INT REF ZW TECH CHA SW SZ RUCH BC EMP) | PW  | kluczowe umiejętności                                                                                                          | sprzęt                                                     |
+  | ---------------- | -------- | ------ | --------------------------------------------- | --- | ------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------- |
+  | Tester           | **Rdza** | Nomada | 6 6 8 4 8 6 6 7 7 4                           | 45  | Prowadzenie 6, Broń krótka 6, Unik 6, Atletyka 6, Bijatyka 6, Percepcja 6                                                      | Ciężki pistolet, Duża broń biała                           |
+  | Handlarz         | **Kosa** | Solo   | 7 8 6 5 6 6 6 7 8 5                           | 45  | Broń długa 6, Broń krótka 6, Ogień ciągły 6, Unik 6, Percepcja 6, Taktyka 4                                                    | Karabin szturmowy, Bardzo ciężki pistolet, Duża broń biała |
+  | Ola (nowe konto) | **Szew** | Medyk  | 7 7 5 7 3 5 8 6 5 7                           | 35  | Ratownictwo medyczne 6, Pierwsza pomoc 6, Unik 6, Percepcja 6 — **bez broni dystansowej** (lista Roli Krawędziarza jej nie ma) | Strzelba, Tarcza kuloodporna                               |
 
   Każdy ma Lekką kurtkę kuloodporną na głowie i korpusie. Kosa ma **nierozdzielony Zmysł
   Walki 4**, Rdza — Tabor Rodziny (Moto 4) do wybrania; oba nie przeszkadzają w scenie
   (drużyna jedzie Wozem od Matyldy). Stare karty testowe Testera i Handlarza (Stym, Kruk,
   Korpo) też są w drużynie — w przebiegu ich nie używać.
+
 - Przeglądarki (profile Playwright MCP trzymają ciasteczka): **Chromium** — karta 0 MG
   (`localhost:5173`), karta 1 Ola (`[::1]:5173`); **Firefox** — karta 0 Tester
   (`localhost:5173`), karta 1 Handlarz (`[::1]:5173`). Gdy sesja gracza wygaśnie: Panel MG →
@@ -560,15 +561,15 @@ tylko znane `ERR_CACHE_OPERATION_NOT_SUPPORTED` dźwięków.
 **Przebieg (7 rund, wynik: sukces z kosztem).** Inicjatywa: Lutka 17, Kosa 11, Mewa/Wolt/Rdza 10,
 Szew/Szron/Kłoda 8 (Grot 13 i Kabel 7 od rundy 3).
 
-| runda | co się stało |
-| --- | --- |
-| 1 | Kosa przez „Cel za szybą → Ostrzelaj szybę” rozbija tylną szybę furgonu (15 → 0) **pierwszym strzałem**. Eskorta wjeżdża między Wóz a furgon, Wóz objeżdża ją górnym pasem. NPC-e: 2 trafienia, pancerz Rdzy trzyma. |
-| 2 | Furgon dryfuje −5. Kosa trafia Wolta przez rozbitą szybę (35 → 28). Mewa staje za furgonem i zrzuca kolczatkę. Rdza: Nitro + taran — **bokiem**, więc bez Pługa: furgon 70 → 68, Wóz 50 → 38, „Odgięciowy uraz kręgosłupa” dla wszystkich sześciu (w tym Iskry i całej drużyny). MG: Manewr Wolta po taranie — zdany. |
-| 3 | Rydwan wraca, Grot i Kabel dołączają sami. Auto cywilne przed furgonem: Wolt oblewa Gwałtowny skręt → MG wpycha go w auto (furgon 68 → 62, bez Ran krytycznych). Kosa rozbija prawe szyby. |
-| 4 | Auto cywilne dryfuje na furgon i znika (furgon → 53). **Grot: jedna seria z karabinu pokładowego = 40 obr., Wóz 38 → 0, wrak = porażka z notatki 1.** MG: „Cofnij” + korekta „za trudno” (zgaszony silnik Rydwanu). Roboty drogowe na górnym pasie. |
-| 5 | Roboty dojeżdżają do Wozu: Rdza taranuje je Pługiem przodem — bez obrażeń i bez kosztu ruchu. Mewa taranuje Wóz w tył (Wóz 38 → 20, eskorta 50 → 24). Kosa: Wolt 25 → 13. Taran Pługiem przodem w furgon niewykonalny — eskorta zderzak w zderzak za Wozem, a w lukę furgon–eskorta (dokładnie 5 kratek) Wóz nie wjedzie. |
-| 6 | Rydwan „zostaje w tyle”. Barykada przed furgonem: Kosa (Wolt 13 → 3), Wolt oblewa Skok (15 ≤ 17, −2 za rany) → MG wpycha furgon w barykadę (→ 44). Rdza dobija Wolta (śmiertelnie ranny). **Furgon stoi przed końcem rundy 6 → wygrana.** |
-| 7 | „Droga jedzie” wyłączona. Kłoda wysiada z Iskrą jako tarczą (przeciągnięcie MG). Wolt: automatyczny Test Przeżywalności — naturalna 10, śmierć. Rdza: prośba o Test → Perswazja PT 15 → 17, Kłoda się poddaje. |
+| runda | co się stało                                                                                                                                                                                                                                                                                                              |
+| ----- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1     | Kosa przez „Cel za szybą → Ostrzelaj szybę” rozbija tylną szybę furgonu (15 → 0) **pierwszym strzałem**. Eskorta wjeżdża między Wóz a furgon, Wóz objeżdża ją górnym pasem. NPC-e: 2 trafienia, pancerz Rdzy trzyma.                                                                                                      |
+| 2     | Furgon dryfuje −5. Kosa trafia Wolta przez rozbitą szybę (35 → 28). Mewa staje za furgonem i zrzuca kolczatkę. Rdza: Nitro + taran — **bokiem**, więc bez Pługa: furgon 70 → 68, Wóz 50 → 38, „Odgięciowy uraz kręgosłupa” dla wszystkich sześciu (w tym Iskry i całej drużyny). MG: Manewr Wolta po taranie — zdany.     |
+| 3     | Rydwan wraca, Grot i Kabel dołączają sami. Auto cywilne przed furgonem: Wolt oblewa Gwałtowny skręt → MG wpycha go w auto (furgon 68 → 62, bez Ran krytycznych). Kosa rozbija prawe szyby.                                                                                                                                |
+| 4     | Auto cywilne dryfuje na furgon i znika (furgon → 53). **Grot: jedna seria z karabinu pokładowego = 40 obr., Wóz 38 → 0, wrak = porażka z notatki 1.** MG: „Cofnij” + korekta „za trudno” (zgaszony silnik Rydwanu). Roboty drogowe na górnym pasie.                                                                       |
+| 5     | Roboty dojeżdżają do Wozu: Rdza taranuje je Pługiem przodem — bez obrażeń i bez kosztu ruchu. Mewa taranuje Wóz w tył (Wóz 38 → 20, eskorta 50 → 24). Kosa: Wolt 25 → 13. Taran Pługiem przodem w furgon niewykonalny — eskorta zderzak w zderzak za Wozem, a w lukę furgon–eskorta (dokładnie 5 kratek) Wóz nie wjedzie. |
+| 6     | Rydwan „zostaje w tyle”. Barykada przed furgonem: Kosa (Wolt 13 → 3), Wolt oblewa Skok (15 ≤ 17, −2 za rany) → MG wpycha furgon w barykadę (→ 44). Rdza dobija Wolta (śmiertelnie ranny). **Furgon stoi przed końcem rundy 6 → wygrana.**                                                                                 |
+| 7     | „Droga jedzie” wyłączona. Kłoda wysiada z Iskrą jako tarczą (przeciągnięcie MG). Wolt: automatyczny Test Przeżywalności — naturalna 10, śmierć. Rdza: prośba o Test → Perswazja PT 15 → 17, Kłoda się poddaje.                                                                                                            |
 
 **Drogi do celu:** strzał przez szybę w kierowcę — działa (szyba pada od jednego strzału z
 karabinu, potem 4 trafienia na Wolta, SP 10). Taran Pługiem — przodem działa na przeszkodę;
@@ -615,7 +616,7 @@ nie odjedzie.
 **Błędy i drobiazgi** — w `zaleglosci.md` (04.11): klik w fotel z bronią w ręku, marsz MG
 z fotela przez barierę, `/jako`, teksty paska „Zderzenie”, bryła `van-8`, kubek nad „Następna
 tura”, „Cofnij” zostawia rzut obrażeń, brak „Ucieka”, nazwa konta w prośbie o Test, kadr
-gracza, EMP 2 NPC-ów.
+gracza, EMP 2 NPC-ów (05.11: MG — EMP 3 we wzorcu, zrobione).
 
 ### Ponowne rozegranie w przeglądarce (05.11, po rebalansie)
 
@@ -634,15 +635,15 @@ w **Firefoksie** (Playwright MCP). Konsola: tylko znane `ERR_CACHE_OPERATION_NOT
 **Przebieg (6 rund + dogrywka; wynik: porażka o włos).** Inicjatywa: Lutka 17, Mewa 16, Rdza 15,
 Kosa 12, Wolt 10, Szew 9, Kłoda 8, Szron 6 (Grot i Kabel 15 od rundy 3).
 
-| runda | co się stało |
-| --- | --- |
-| 1 | Rdza taranuje eskortę Pługiem przodem (−19 PUK, Rana trzech w eskorcie, Wóz cały). Kosa rozbija tylną szybę furgonu pierwszym strzałem. Szew zużywa Akcję na „Dobądź” pistoletu. Szron: krytyk w Rdzę 45 → 36. |
-| 2 | Mewa podjeżdża i zrzuca kolczatkę przed Wóz; Rdza omija ją dolnym pasem (najpierw pasek „Zderzenie” z eskortą — bryły zachodzą o 0,03 kratki). Kosa przez rozbitą szybę: Wolt 35 → 34. Szew rozbija lewe szyby eskorty do 7/15. Szron: Rdza 36 → 21. Kolczatka nikogo nie trafiła i odjechała w tył. |
-| 3 | Rydwan wraca, Grot i Kabel dołączają sami. Auto cywilne przed furgonem. Mewa trafia kadłub Wozu (50 → 40). Wóz jedzie obok furgonu, Kosa rozbija jego lewe szyby. Wolt zatrzymuje się przed autem cywilnym. Szew stabilizuje Rdzę (Pierwsza pomoc 15 vs PT 13). |
-| 4 | Auto cywilne staje przed furgonem (pasek MG „Gwałtowny skręt / Taranuj”); Wolt zdaje skręt 18 vs 13 i auto znika. Roboty drogowe na pasie Wozu. Grot i Kłoda: Rdza 21 → 12. |
-| 5 | Mewa taranuje Wóz w tył: Wóz 40 → 20, eskorta 31 → 11, Rany całej drużyny. Rdza przejeżdża roboty drogowe Pługiem (6k6 = 28, Wóz bez szkód). Kosa krytykiem: Wolt 34 → 18 i „Odcięta noga”. |
-| 6 | Barykada przy przedniej krawędzi — 5,5 kratki przed furgonem, nie zdąży. Kosa: Wolt 18 → 10. Wolt zdaje Skok (naturalna 10, 21 vs 17). Koniec rundy: furgon jedzie z kierowcą → **porażka**. |
-| 7 (dogrywka) | MG kładzie Wolta (0 PW). Furgon bez kierowcy: pęd 20 → 10, dryf −7,5; barykada dryfem trafia auto bez kontroli — „Rozbite na betonie… auto to wrak”, Rany Wolta, Kłody i Iskry, beton zostaje. |
+| runda        | co się stało                                                                                                                                                                                                                                                                                         |
+| ------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1            | Rdza taranuje eskortę Pługiem przodem (−19 PUK, Rana trzech w eskorcie, Wóz cały). Kosa rozbija tylną szybę furgonu pierwszym strzałem. Szew zużywa Akcję na „Dobądź” pistoletu. Szron: krytyk w Rdzę 45 → 36.                                                                                       |
+| 2            | Mewa podjeżdża i zrzuca kolczatkę przed Wóz; Rdza omija ją dolnym pasem (najpierw pasek „Zderzenie” z eskortą — bryły zachodzą o 0,03 kratki). Kosa przez rozbitą szybę: Wolt 35 → 34. Szew rozbija lewe szyby eskorty do 7/15. Szron: Rdza 36 → 21. Kolczatka nikogo nie trafiła i odjechała w tył. |
+| 3            | Rydwan wraca, Grot i Kabel dołączają sami. Auto cywilne przed furgonem. Mewa trafia kadłub Wozu (50 → 40). Wóz jedzie obok furgonu, Kosa rozbija jego lewe szyby. Wolt zatrzymuje się przed autem cywilnym. Szew stabilizuje Rdzę (Pierwsza pomoc 15 vs PT 13).                                      |
+| 4            | Auto cywilne staje przed furgonem (pasek MG „Gwałtowny skręt / Taranuj”); Wolt zdaje skręt 18 vs 13 i auto znika. Roboty drogowe na pasie Wozu. Grot i Kłoda: Rdza 21 → 12.                                                                                                                          |
+| 5            | Mewa taranuje Wóz w tył: Wóz 40 → 20, eskorta 31 → 11, Rany całej drużyny. Rdza przejeżdża roboty drogowe Pługiem (6k6 = 28, Wóz bez szkód). Kosa krytykiem: Wolt 34 → 18 i „Odcięta noga”.                                                                                                          |
+| 6            | Barykada przy przedniej krawędzi — 5,5 kratki przed furgonem, nie zdąży. Kosa: Wolt 18 → 10. Wolt zdaje Skok (naturalna 10, 21 vs 17). Koniec rundy: furgon jedzie z kierowcą → **porażka**.                                                                                                         |
+| 7 (dogrywka) | MG kładzie Wolta (0 PW). Furgon bez kierowcy: pęd 20 → 10, dryf −7,5; barykada dryfem trafia auto bez kontroli — „Rozbite na betonie… auto to wrak”, Rany Wolta, Kłody i Iskry, beton zostaje.                                                                                                       |
 
 **Wnioski z balansu (do decyzji MG):**
 

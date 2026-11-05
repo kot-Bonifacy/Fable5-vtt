@@ -1,7 +1,7 @@
 import type { CombatActionLogEntry, RollResult, ScenePoint, SessionUser } from '@vtt/shared';
 import {
   CPRED_ACTION_NITRO,
-  chaseObstaclePastVehicle,
+  chaseFreeSpotPastVehicle,
   clampChaseVehicle,
   chaseIsHorizontal,
   CPRED_RAM_DODGE_DV,
@@ -472,9 +472,20 @@ export async function pushVehicleBehind(
   if (!moving || !past) return;
   const { settings, frame } = chaseGeometry(scene);
   const body = chaseBodyOf(moving.vehicle);
-  const behind = chaseObstaclePastVehicle(
+  // Auta jadące tuż za taranującym — wrak nie może wylądować na żadnym z nich
+  // (zaległość z 04.11); za nimi szuka wolnego miejsca dalej w tył.
+  const others = await prisma.sceneVehicle.findMany({
+    where: {
+      sceneId: scene.id,
+      id: { notIn: [moving.id, past.id] },
+      status: { in: ['racing', 'wrecked'] },
+    },
+    include: { vehicle: true },
+  });
+  const behind = chaseFreeSpotPastVehicle(
     { x: moving.x, y: moving.y, ...body },
     { x: past.x, y: past.y, ...chaseBodyOf(past.vehicle) },
+    others.map((other) => ({ x: other.x, y: other.y, ...chaseBodyOf(other.vehicle) })),
     settings.direction,
     scene.gridSizePx,
   );

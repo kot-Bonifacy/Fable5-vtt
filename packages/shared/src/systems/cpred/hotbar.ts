@@ -111,6 +111,13 @@ export interface CpredWeaponOption {
    */
   notDrawn?: 'holstered' | 'swap' | 'shield';
   /**
+   * Broń dwuręczna przy tarczy, która mimo to stoi w rękach karty (05.11.2026):
+   * domyślne „pierwsza broń z karty” nie pyta o tarczę. Odmowa zostaje
+   * (`notDrawn: 'shield'`), ale slot nie znika z paska — karta pokazuje ją
+   * w „Rękach”, więc pasek ma pokazać ją z powodem, a nie zgubić.
+   */
+  heldBlocked?: true;
+  /**
    * Etap 46c: naboje rodzaju z magazynka leżące w ekwipunku — `null`, gdy
    * karta nie liczy amunicji („bez dna”) albo broń nie ma kalibru.
    */
@@ -236,14 +243,15 @@ function weaponOptionsOf(
     const shieldInHand = cpredShieldInHand(sheet);
     return sheet.weapons.flatMap((row: CpredWeaponRow) => {
       const resolved = resolve(row.compendiumId);
-      const notDrawn: CpredWeaponOption['notDrawn'] =
-        resolved?.hands === 2 && shieldInHand
-          ? 'shield'
-          : cpredWeaponInHands(sheet, row.id, outside)
-            ? undefined
-            : handsEmpty
-              ? 'holstered'
-              : 'swap';
+      const inHands = cpredWeaponInHands(sheet, row.id, outside);
+      const blocked = resolved?.hands === 2 && shieldInHand;
+      const notDrawn: CpredWeaponOption['notDrawn'] = blocked
+        ? 'shield'
+        : inHands
+          ? undefined
+          : handsEmpty
+            ? 'holstered'
+            : 'swap';
       const primary: CpredWeaponOption = {
         rowId: row.id,
         attachmentId: null,
@@ -253,9 +261,12 @@ function weaponOptionsOf(
         ammoProfile: loadedAmmoFor(row, resolved, lookup),
         ...(row.jammed === true ? { jammed: true } : {}),
         ...(notDrawn ? { notDrawn } : {}),
+        ...(blocked && inHands ? { heldBlocked: true as const } : {}),
       };
       const secondary = secondaryOptionsOf(row, resolved, lookup, attachments).map((option) =>
-        notDrawn ? { ...option, notDrawn } : option,
+        notDrawn
+          ? { ...option, notDrawn, ...(primary.heldBlocked ? { heldBlocked: true as const } : {}) }
+          : option,
       );
       return [primary, ...secondary];
     });
@@ -850,7 +861,7 @@ export function hotbarSlotsFor(input: CpredHotbarInput): CpredHotbarSlot[] {
         stock: option.stock ?? null,
         ammoLabel: option.ammoProfile?.name ?? null,
         coneRangeM: spread && mode === 'single' ? spread.coneRangeM : null,
-        outOfHand: option.notDrawn !== undefined,
+        outOfHand: option.notDrawn !== undefined && option.heldBlocked !== true,
         disabled: weaponRefusal(
           option,
           mode,

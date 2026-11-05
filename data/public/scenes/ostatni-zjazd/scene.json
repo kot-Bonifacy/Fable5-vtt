@@ -160,7 +160,7 @@
           "luck": 2,
           "move": 5,
           "body": 8,
-          "emp": 2
+          "emp": 3
         },
         "skills": {
           "shoulder-arms": 8,
@@ -283,7 +283,7 @@
           "luck": 3,
           "move": 6,
           "body": 7,
-          "emp": 2
+          "emp": 3
         },
         "skills": {
           "shoulder-arms": 8,
@@ -371,7 +371,7 @@
           "luck": 2,
           "move": 5,
           "body": 6,
-          "emp": 2
+          "emp": 3
         },
         "skills": {
           "driving": 6,
@@ -409,7 +409,7 @@
           "luck": 2,
           "move": 6,
           "body": 7,
-          "emp": 2
+          "emp": 3
         },
         "skills": {
           "shoulder-arms": 6,

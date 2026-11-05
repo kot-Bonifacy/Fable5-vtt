@@ -3485,6 +3485,9 @@ export const refillVehicle = (sceneVehicleId: string) =>
   emitSceneAck<SceneVehicleView>('vehicle:refill', { sceneVehicleId });
 export const restoreChaseVehicle = (sceneVehicleId: string) =>
   emitSceneAck<SceneVehicleView>('chase:restore', { sceneVehicleId });
+/** MG: auto ucieka z pościgu (zaległość z 04.11) — jak wyjazd za przednią krawędź. */
+export const escapeChaseVehicle = (sceneVehicleId: string) =>
+  emitSceneAck<SceneVehicleView>('chase:escape', { sceneVehicleId });
 export const restoreVehicleControl = (sceneVehicleId: string) =>
   emitSceneAck<SceneVehicleView>('vehicle:control', { sceneVehicleId });
 /** Etap 65d2: Manewr kierowcy, wezwanie MG do Manewru, przeładowanie broni pokładowej. */
@@ -4734,6 +4737,7 @@ export function sendTokenMove(
   final: boolean,
   path?: ScenePoint[],
   extra?: boolean,
+  dragged?: boolean,
 ): Promise<SocketAck<{ x: number; y: number }>> | null {
   if (!final) {
     const now = Date.now();
@@ -4752,6 +4756,8 @@ export function sendTokenMove(
     ...(path && path.length > 0 ? { path: path.slice(0, TOKEN_PATH_MAX_POINTS) } : {}),
     // Etap 54: marsz w drugi pas zasięgu prosi o handel (CP RED — Bieg).
     ...(extra === true ? { extra: true } : {}),
+    // 05.11.2026 (MG): ręka MG jest darmowa — serwer musi wiedzieć, że to ręka.
+    ...(dragged === true ? { dragged: true } : {}),
   });
 }
 

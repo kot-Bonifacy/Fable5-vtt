@@ -508,6 +508,34 @@ describe('movement budget', () => {
     expect(rowOf(await tracker(), vexTokenId).turn?.overspent).toBe(1);
   });
 
+  // 05.11.2026 (decyzja MG): ręka MG jest darmowa — przeciągnięcie przez MG,
+  // także wysiadka z auta, nie zdejmuje figurze metrów. Marsz (bez `dragged`)
+  // płaci, jak test wyżej.
+  it('a GM drag by hand costs the figure no metres', async () => {
+    await giveTurnTo(vexTokenId);
+    const before = await distanceOf(vexTokenId);
+    const moved = await emitAck(gm, 'token:move', {
+      tokenId: vexTokenId,
+      x: 3 * PX_PER_M,
+      y: 0,
+      final: true,
+      dragged: true,
+    });
+    expect(moved.ok).toBe(true);
+    expect(await positionOf(vexTokenId)).toEqual({ x: 3 * PX_PER_M, y: 0 });
+    expect((await distanceOf(vexTokenId)).used).toBe(before.used);
+    // Gracz z tą samą flagą płaci jak zawsze.
+    const walked = await emitAck(player, 'token:move', {
+      tokenId: vexTokenId,
+      x: 4 * PX_PER_M,
+      y: 0,
+      final: true,
+      dragged: true,
+    });
+    expect(walked.ok).toBe(true);
+    expect((await distanceOf(vexTokenId)).used).toBeGreaterThan(before.used);
+  });
+
   it('leaves a token that is not in the fight alone', async () => {
     // The drag helper always walks along y = 0, and 50 m still fits the map —
     // short of the Bandzior the GM walked to 60 m, whom nobody may stand on (52).

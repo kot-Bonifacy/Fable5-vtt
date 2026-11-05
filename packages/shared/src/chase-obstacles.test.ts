@@ -5,6 +5,7 @@ import {
   chaseObstacleDrifted,
   chaseObstacleGone,
   chaseObstaclePastVehicle,
+  chaseFreeSpotPastVehicle,
   chaseObstacleSpawnCentre,
   chaseObstacleSweep,
   chaseSpikesCrossed,
@@ -141,6 +142,31 @@ describe('przecięcie toru przeszkody z bryłą auta (65e)', () => {
       GRID,
     );
     expect(up).toEqual({ x: 900, y: 1000 + 250 + 50 + 5 });
+  });
+});
+
+describe('wrak za autem nie ląduje na aucie z tyłu (zaległość z 04.11)', () => {
+  const wreck = { x: 1600, y: 900, ...CAR };
+  const rammer = { x: 1000, y: 900, ...CAR };
+
+  it('bez nikogo z tyłu staje tuż za zderzakiem', () => {
+    expect(chaseFreeSpotPastVehicle(wreck, rammer, [], 'right', GRID)).toEqual(
+      chaseObstaclePastVehicle(wreck, rammer, 'right', GRID),
+    );
+  });
+
+  it('auto tuż za taranującym przepycha wrak dalej w tył', () => {
+    const tail = { x: 480, y: 900, ...CAR };
+    const spot = chaseFreeSpotPastVehicle(wreck, rammer, [tail], 'right', GRID);
+    expect(spot).toEqual(chaseObstaclePastVehicle(wreck, tail, 'right', GRID));
+    expect(spot.x).toBeLessThan(tail.x - 250);
+  });
+
+  it('auto z sąsiedniego pasa niczego nie zmienia', () => {
+    const beside = { x: 480, y: 1300, ...CAR };
+    expect(chaseFreeSpotPastVehicle(wreck, rammer, [beside], 'right', GRID)).toEqual(
+      chaseObstaclePastVehicle(wreck, rammer, 'right', GRID),
+    );
   });
 });
 

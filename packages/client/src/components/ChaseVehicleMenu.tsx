@@ -25,6 +25,7 @@ import {
   refillVehicle,
   reloadVehicleMount,
   removeChaseVehicle,
+  escapeChaseVehicle,
   restoreChaseVehicle,
   restoreVehicleControl,
   seatInVehicle,
@@ -247,6 +248,16 @@ export function ChaseVehicleMenu() {
           />
         )}
         {drives && vehicle.mounts.length > 0 && <VehicleMounts vehicle={vehicle} act={act} />}
+        {isGm && vehicle.status === 'racing' && (
+          <button
+            type="button"
+            className="context-menu-item"
+            title="Auto odjeżdża z pościgu z całą załogą: znika graczom, a jego figury wychodzą z kolejki. „Przywróć do pościgu” je cofa."
+            onClick={() => act(() => escapeChaseVehicle(vehicle.id))}
+          >
+            Ucieka
+          </button>
+        )}
         {isGm && (vehicle.status === 'behind' || vehicle.status === 'escaped') && (
           <button
             type="button"

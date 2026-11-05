@@ -1,5 +1,18 @@
 # Dziennik sesji — archiwum
 
+### Sesja 05.11, druga — „Neonowa ulica” z trzech map MG (66c)
+
+**Zlecenie MG:** „scal te grafiki drogi … aby tworzyły jeden odcinek drogi płynnie na siebie
+nachodzący … i wykorzystaj ją w przykładowej scenie pościgu”. **Decyzje MG:** grafiki są jego
+i mogą do repo; teksty wzorca przepisać z estakady na ulicę; kadr 24 kratki (chodniki i fronty).
+**Zrobione:** `tools/art/chase-neon-street.py` (wyrównanie jezdni skalą i mapą pionową, nowe linie
+przerywane jednym rytmem, jezdnia przenika się, budynki łączy cięcie minimalnego błędu, pętla
+C → A), pliki `neon-street*.webp`, wpis „Neonowa ulica” w `CHASE_ROADS` z polem `strip`,
+`ChaseLayer` przewija pętlę, wzorzec „Ostatni zjazd” na nowym tle. Skrzyżowanie z końca obrazu B
+wycięte. **Testy:** `chase-roads` i `scene-templates` (shared, server) zielone, `tsc`, ESLint,
+Prettier czyste. **Oglądane w Firefoksie** (tymczasowy spec E2E — Firefox MCP wisiał na
+`browser_navigate`): pusta scena z drogą przewija pętlę, wzorzec staje bez braków, konsola czysta.
+
 ### Sesja 05.11 — ponowne rozegranie „Ostatniego zjazdu” i rama pościgu (66c)
 
 **Zlecenie MG:** „uruchom ponownie testy w przykładowej scenie pościgu w przeglądarce (ze

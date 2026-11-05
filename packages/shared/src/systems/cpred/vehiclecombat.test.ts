@@ -129,6 +129,23 @@ describe('zderzenie brył na drodze (`chaseFirstContact`)', () => {
       'a',
     );
   });
+
+  // 05.11.2026 (przebieg 66c): eskorta przeciągnięta o 0,03 kratki w poprzek
+  // (y = 9,03 obok Wozu na 12, szerokość 3) zahaczała przy wyprzedzaniu.
+  it('auta na sąsiednich pasach zachodzące o włos w poprzek tylko się mijają', () => {
+    // Kratka 100 px: bryły 300 px szerokości, środki 297 px od siebie.
+    const neighbour = { ...other, centre: { x: 1000, y: 797 } };
+    expect(chaseFirstContact({ x: 300, y: 500 }, { x: 1700, y: 500 }, car, [neighbour])).toBeNull();
+    // Zachodzące na pół kratki to już zderzenie.
+    const half = { ...other, centre: { x: 1000, y: 750 } };
+    expect(chaseFirstContact({ x: 300, y: 500 }, { x: 1700, y: 500 }, car, [half])?.id).toBe('b');
+  });
+
+  it('skośny wjazd od rogu, który kończy się głęboko, dalej jest zderzeniem', () => {
+    // Zaczyna o włos w poprzek, a kończy na środku przeszkody.
+    const contact = chaseFirstContact({ x: 300, y: 203 }, { x: 1000, y: 500 }, car, [other]);
+    expect(contact?.id).toBe('b');
+  });
 });
 
 describe('bronie pokładowe (s. 163–164)', () => {

@@ -9,6 +9,19 @@ czytany na starcie każdej sesji został listą zadań, a nie archiwum ustaleń.
 inaczej, niż mówi podręcznik, albo gdy dotykasz wymienionego tu kodu. Jeśli któraś z tych decyzji
 przestanie się bronić, przenieś ją stąd do `POMYSLY.md` jako zadanie — nie odwrotnie.
 
+## Ręka MG, „Cofnij” obrażeń i karty NPC-ów kopii sceny (05.11.2026, decyzje MG)
+
+- **Ręka MG jest darmowa.** Przeciągnięcie figury przez MG — także w jej turze i także wysiadka
+  z auta na jezdnię — nie zdejmuje jej metrów ani nie pyta o przekroczenie budżetu: MG koryguje
+  stół, nie gra za figurę. Marsz MG klikiem płaci jak dotąd (tak MG prowadzi NPC-a w jego turze).
+- **Po „Cofnij” na karcie obrażeń przyciski „Na kubek” / „Zastosuj” wracają** — to droga
+  przeniesienia trafienia na inny cel (także przy kadłubie auta). Ryzyko podwójnego zastosowania
+  MG przyjmuje.
+- **Karty NPC-ów zostają w kampanii po usunięciu kopii sceny ze wzorca** („mogą się przydać”).
+  Druga kopia wzorca dokłada drugi komplet kart (Wolt, Kłoda, …) — to nie błąd.
+- **NPC-e wzorca „Ostatni zjazd” mają EMP co najmniej 3** — przy EMP 2 lista MG świeciła „NA
+  GRANICY” przy zwykłych gangerach.
+
 ## Rama pościgu i auto bez kierowcy (05.11.2026, decyzje MG)
 
 - **Przewijana droga pod autem znaczy, że auto jedzie.** Kadr jedzie z autem drużyny: dopóki któreś

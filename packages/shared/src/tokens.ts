@@ -366,6 +366,13 @@ export interface TokenMovePayload {
    * Tylko na lądowaniu, jak `path`; serwer i tak liczy, czy był potrzebny.
    */
   extra?: boolean;
+  /**
+   * Lądowanie przeciągnięcia ręką, nie marszu klikiem (05.11.2026, decyzja MG):
+   * ręka MG jest darmowa — przestawienie figury, także wysiadka z auta, nie
+   * zdejmuje jej metrów ani nie pyta o budżet. Marsz MG klikiem płaci jak
+   * dotąd (tak MG prowadzi NPC-a w jego turze). Gracza flaga nie dotyczy.
+   */
+  dragged?: boolean;
 }
 
 /**

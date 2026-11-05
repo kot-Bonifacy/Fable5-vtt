@@ -678,6 +678,27 @@ function rememberWalkLearned(): void {
 const NO_COMBAT_TOKENS: ReadonlySet<string> = new Set();
 
 /** Figury w kolejce inicjatywy, które dostają znaczek „⚔” — wyłącznie u MG (etap 50a). */
+/**
+ * Figury w fotelach nad środkiem swojego auta (zaległość z 04.11) — ich podpis
+ * staje nad figurą, żeby nie wchodził na fotel obok albo rząd za nią.
+ */
+function seatCaptionsAbove(tokens: readonly TokenView[], gridSizePx: number): ReadonlySet<string> {
+  const vehicles = useChaseStore.getState().vehicles;
+  if (vehicles.length === 0) return EMPTY_IDS;
+  const centreOf = new Map(vehicles.map((vehicle) => [vehicle.id, vehicle.y]));
+  const above = new Set<string>();
+  for (const token of tokens) {
+    if (!token.vehicleSeat) continue;
+    const carY = centreOf.get(token.vehicleSeat.sceneVehicleId);
+    if (carY === undefined) continue;
+    const half = (Math.max(1, token.size) * gridSizePx) / 2;
+    if (token.y + half < carY - 1) above.add(token.id);
+  }
+  return above;
+}
+
+const EMPTY_IDS: ReadonlySet<string> = new Set();
+
 function combatTokenIdsFor(combat: CombatView | null, isGm: boolean): ReadonlySet<string> {
   if (!isGm || !combat) return NO_COMBAT_TOKENS;
   return new Set(combat.combatants.flatMap((c) => (c.tokenId ? [c.tokenId] : [])));
@@ -1090,8 +1111,8 @@ export function MapArea() {
         useAuthStore.getState().user?.id ?? null,
         useSceneStore.getState().scene,
       );
-    renderer.onTokenMove = (tokenId, x, y, final, path, extra) => {
-      const ack = sendTokenMove(tokenId, x, y, final, path, extra);
+    renderer.onTokenMove = (tokenId, x, y, final, path, extra, dragged) => {
+      const ack = sendTokenMove(tokenId, x, y, final, path, extra, dragged);
       void ack?.then((result) => {
         if (result.ok) {
           const landed = result.data;
@@ -1439,6 +1460,10 @@ export function MapArea() {
       // odwzorowanie adres → ujęcie, a nie polem figury: ten sam plik na dwóch
       // żetonach ma być ujęty tak samo.
       portraitCrops: usePortraitStore.getState().crops,
+      captionAbove: seatCaptionsAbove(
+        Object.values(tokenState.tokens),
+        current?.grid.sizePx ?? 100,
+      ),
     });
   }, []);
 
@@ -1669,6 +1694,8 @@ export function MapArea() {
     // MG przestawia kadr w oknie puli — figury mają zmienić ujęcie od razu,
     // a nie po przeładowaniu strony.
     const unsubPortraits = usePortraitStore.subscribe(pushTokens);
+    // Podpisy figur w fotelach (04.11) zależą od położenia auta.
+    const unsubChase = useChaseStore.subscribe(pushTokens);
     // Pula jest publiczna dla każdego zalogowanego, więc gracz czyta kadry tą
     // samą drogą co MG. Nieudane pobranie nie psuje mapy: bez wpisu figura
     // dostaje kadr domyślny.
@@ -1678,6 +1705,7 @@ export function MapArea() {
       unsubScene();
       unsubCombat();
       unsubPortraits();
+      unsubChase();
     };
   }, [ready, pushTokens]);
 

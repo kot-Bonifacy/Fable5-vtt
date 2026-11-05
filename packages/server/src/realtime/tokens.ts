@@ -2252,8 +2252,14 @@ export async function performTokenMove(
     if (final) {
       // Only the drop is judged (stage 14c). Intermediate frames are a hand in
       // motion, not a decision — charging them would bill a player for hovering.
+      // Ręka MG jest darmowa (05.11.2026, decyzja MG): przeciągnięcie przez MG
+      // — także wysiadka z auta na jezdnię — nie zdejmuje figurze metrów.
+      // Wszystkie odmowy `validateTokenMove` i tak MG przepuszczają, więc
+      // pominięcie go nie otwiera niczego poza budżetem. Marsz MG klikiem
+      // (bez `dragged`) i bot na koncie MG (bez `hand`) płacą jak dotąd.
+      const gmHand = isGm && options.hand === true && payload.dragged === true;
       try {
-        if (!judged)
+        if (!judged && !gmHand)
           await validateTokenMove(deps, campaignId, user, {
             scene,
             token,

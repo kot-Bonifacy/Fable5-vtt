@@ -227,6 +227,7 @@ import {
 import {
   chaseMoveEvent,
   chaseRestoreEvent,
+  chaseEscapeEvent,
   vehicleControlEvent,
   vehicleManeuverEvent,
   vehicleManeuverCallEvent,
@@ -434,6 +435,7 @@ export const EVENTS: RealtimeEvent<never, unknown>[] = [
   chasePlaceEvent,
   chaseMoveEvent,
   chaseRestoreEvent,
+  chaseEscapeEvent,
   vehicleControlEvent,
   vehicleManeuverEvent,
   vehicleManeuverCallEvent,

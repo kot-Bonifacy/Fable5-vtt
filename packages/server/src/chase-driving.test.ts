@@ -387,6 +387,51 @@ describe('etap 65c: jazda, tempo i odpadanie', () => {
     );
     expect(on.started).toBe(true);
   });
+
+  // Zaległość z 04.11: eskorta zablokowana na stojącej drodze nie miała jak
+  // odjechać — MG zdejmuje auto z pościgu ręką, jak wyjazd przednią krawędzią.
+  it('MG: „Ucieka” zdejmuje auto z pościgu razem z załogą i jej turą', async () => {
+    const joined = data(
+      await emitAck<CombatView>(gm, 'combat:add', { tokenIds: [heroToken.id] }),
+      'combat:add',
+    );
+    const hero = joined.combatants.find((row) => row.tokenId === heroToken.id)!;
+    await built.prisma.combat.update({
+      where: { id: joined.id },
+      data: { activeCombatantId: hero.id },
+    });
+    expect(await emitAck(owner, 'chase:escape', { sceneVehicleId: car.id })).toMatchObject({
+      ok: false,
+    });
+
+    const hidden = waitForMatch<ChaseSyncBroadcast>(
+      owner,
+      'chase:sync',
+      (payload) => payload.sceneId === scene.id && payload.vehicles.length === 0,
+    );
+    const gone = data(
+      await emitAck<SceneVehicleView>(gm, 'chase:escape', { sceneVehicleId: car.id }),
+      'chase:escape',
+    );
+    await hidden;
+    expect(gone.status).toBe('escaped');
+    const combat = await built.prisma.combat.findUnique({
+      where: { id: joined.id },
+      include: { combatants: true },
+    });
+    expect(combat?.combatants).toEqual([]);
+    expect(combat?.activeCombatantId).toBeNull();
+    const note = await built.prisma.chatMessage.findFirst({
+      where: { campaignId, kind: 'action', text: 'Ucieka' },
+    });
+    expect(note).not.toBeNull();
+
+    const back = data(
+      await emitAck<SceneVehicleView>(gm, 'chase:restore', { sceneVehicleId: car.id }),
+      'chase:restore after escape',
+    );
+    expect(back.status).toBe('racing');
+  });
 });
 
 describe('rama pościgu i auto bez kierowcy (decyzja MG z 05.11.2026)', () => {

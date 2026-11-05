@@ -725,9 +725,12 @@ export class ChaseLayer {
     if (node.sprite) {
       // Obrazek wpisany w bryłę z zachowaniem proporcji — auto z paczki
       // jest smuklejsze od kompaktu 3×5 i rozciągnięte wyglądałoby jak beczka.
+      // Długość obrazka to długość bryły (zaległość z 04.11): furgon 93×196
+      // wpisany w 3×7 wychodził o 0,7 kratki krótszy i auta „dotykały” go
+      // w powietrzu. Szerszy od bryły obrazek najwyżej się lekko zwęża.
       const texture = node.sprite.texture;
-      const fit = Math.min(width / texture.width, length / texture.height);
-      node.sprite.scale.set(fit);
+      const along = length / texture.height;
+      node.sprite.scale.set(Math.min(along, width / texture.width), along);
     }
     // Bryła bez grafiki (albo zanim grafika dojdzie): zaokrąglony kadłub
     // z przednią szybą, żeby było widać, gdzie przód.
