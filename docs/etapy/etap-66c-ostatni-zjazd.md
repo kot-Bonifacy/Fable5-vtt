@@ -658,6 +658,9 @@ Kosa 12, Wolt 10, Szew 9, Kłoda 8, Szron 6 (Grot i Kabel 15 od rundy 3).
 6. Propozycje (nie wprowadzone): zegar 7 rund przy 3 graczach, Wolt z Prowadzeniem 2 albo barykada
    już w rundzie 4–5 jako stały element przebiegu.
 
+**Decyzja MG (05.11): balans jest w porządku** — wzorzec zostaje bez zmian liczb (propozycje z pkt 6
+odrzucone); poprawione są tylko notatki ⚠️/❓ opisane wyżej.
+
 ### Do zrobienia
 
 - [x] Czytnik wzorca: tło z `CHASE_ROADS` (pkt 1) + testy `shared` (przyjęcie drogi, odmowa
@@ -682,7 +685,7 @@ Kosa 12, Wolt 10, Szew 9, Kłoda 8, Szron 6 (Grot i Kabel 15 od rundy 3).
 - [x] Decyzje MG o balansie (karabin Rydwanu, Medyk, celność NPC-ów) — 04.11, we wzorcu.
 - [x] Ponowne rozegranie po rebalansie w przeglądarce (05.11) — wyżej; nowe znaleziska w `zaleglosci.md`.
 - [ ] Błędy z `zaleglosci.md` (04.11, 05.11) i balans przy prawdziwym stole.
-- [ ] Balans na 3 graczy przy prawdziwym stole — **MG**.
+- [x] Balans na 3 graczy — MG uznał za w porządku po przebiegu z 05.11.
 
 ## Kryteria ukończenia
 

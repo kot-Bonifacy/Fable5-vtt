@@ -249,8 +249,14 @@ function RollRow({ message, isGm }: { message: ChatMessageView; isGm: boolean })
       data-total={roll.total}
     >
       <div className="chat-message-meta">
-        <span className="chat-message-author">{label}</span>
-        {roll.actor && <span className="chat-roll-actor-by">({message.authorName})</span>}
+        {/* Konto gracza nie pojawia się w rozgrywce (MG 05.11.2026) — karta mówi postacią,
+            a MG ma konto, które rzucało, tylko w podpowiedzi (jak w prośbie o Test). */}
+        <span
+          className="chat-message-author"
+          title={isGm && roll.actor ? `Rzucał: ${message.authorName}` : undefined}
+        >
+          {label}
+        </span>
         {isGmRoll && <span className="chat-roll-gm-label">rzut do MG</span>}
         <span className="chat-roll-notation">
           {roll.title ?? displayDiceNotation(roll.notation)}

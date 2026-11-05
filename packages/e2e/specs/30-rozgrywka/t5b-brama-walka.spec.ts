@@ -429,7 +429,7 @@ test.describe.serial('T5b: „Brama” — walka druga, Sieć, wieżyczka, pad A
 
   test('#39 strzał wieżyczki ze strefy nie idzie na konto gracza, który w nią wszedł', async () => {
     // Strefa strzela „ręką” tego, kto ruszył figurą (`fireZone` z użytkownikiem
-    // ruchu) — karta u stołu ma podpis „Wieżyczka (Marek)”.
+    // ruchu) — konto autora karty MG widzi w podpowiedzi „Rzucał: …” (od 05.11 bez podpisu na karcie).
     const row = queryOne<{ name: string; role: string }>(
       `SELECT u.name, u.role FROM ChatMessage m JOIN User u ON u.id = m.authorId WHERE m.id = ?`,
       zoneShotId,

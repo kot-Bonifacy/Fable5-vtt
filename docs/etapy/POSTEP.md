@@ -21,7 +21,7 @@ w plikach obok — czytaj je **na żądanie, nigdy rutynowo**:
 
 | stan         | etapy                                                                                          |
 | ------------ | ---------------------------------------------------------------------------------------------- |
-| ⬜ otwarty   | **66** Sceny przykładowe (🟨 zrobione 31.10, czeka na oględziny MG przy stole i wdrożenie; **66b** „Fabryka dronów” 🟨 zrobione 31.10, tak samo; **66c** „Ostatni zjazd” 🟨 wzorzec zrobiony, rozegrany w przeglądarce 04.11 i ponownie 05.11 po rebalansie (porażka o włos) — czeka na decyzje MG o balansie, błędy z zaległości, stół MG i wdrożenie); **65** Scena pościgu i walka pojazdów (🟨 65a–65e ✅ 30–31.10, czeka na oględziny MG przy stole); **62** Sieć ze sceny (🟨 zrobione, czeka na oględziny MG na VPS po wdrożeniu); **61** Skradanie się (🟨 zrobione, czeka na słowo MG o rozstrzygnięciach); **28** Wdrożenie na VPS (🟨 działa na `https://vtt.tatanga.eu` z botami od 18.10; zostały off-site, utwardzenie, monitoring); **43b**, **43c** (UI walki); **60** Czytelny czat (zlecenie MG z 24.10; 🟨 60a–60c ✅, czeka na oględziny MG z pierwszego kryterium); T10; refaktoryzacja odłożona (MG 18.10) |
+| ⬜ otwarty   | **66** Sceny przykładowe (🟨 zrobione 31.10, czeka na oględziny MG przy stole i wdrożenie; **66b** „Fabryka dronów” 🟨 zrobione 31.10, tak samo; **66c** „Ostatni zjazd” 🟨 wzorzec zrobiony, rozegrany w przeglądarce 04.11 i ponownie 05.11 po rebalansie (porażka o włos, balans zatwierdzony przez MG) — czeka na błędy z zaległości, stół MG i wdrożenie); **65** Scena pościgu i walka pojazdów (🟨 65a–65e ✅ 30–31.10, czeka na oględziny MG przy stole); **62** Sieć ze sceny (🟨 zrobione, czeka na oględziny MG na VPS po wdrożeniu); **61** Skradanie się (🟨 zrobione, czeka na słowo MG o rozstrzygnięciach); **28** Wdrożenie na VPS (🟨 działa na `https://vtt.tatanga.eu` z botami od 18.10; zostały off-site, utwardzenie, monitoring); **43b**, **43c** (UI walki); **60** Czytelny czat (zlecenie MG z 24.10; 🟨 60a–60c ✅, czeka na oględziny MG z pierwszego kryterium); T10; refaktoryzacja odłożona (MG 18.10) |
 | ✅ ukończone | 01–11, 13–20b, 23a–27f, 27h–27l, 29a–30d, 31–35, 37–42c, 43a, 44a–44d, 45, 46a1, 46a2, 46c1, 46c2, 46b1, 46b2, 47a, 47b, 48a, 48b, 48c, 49a, 49b, 50a, 50b, 50c, 51, 52, 53, 54, 55, 56, 57 (57a–57c), 58 (58a–58d), 59 (59a–59c), 63 (63a–63b; 63c wycofane 29.10), 64 (64a–64c) (ostatni zamknięty: 64, 2026-10-30) |
 | ⛔ wycofane  | 12, 21, 22 (głos), 27g (wydajność), 36 (makra); 27, 29, 30, 38 rozdzielone na etapy literowane |
 
@@ -39,8 +39,8 @@ albo taran. Umowa na górze `mapa`, zasady w `decyzje-i-uproszczenia.md`; luka (
 karty nie odświeża widoku aut) w `zaleglosci.md`.
 
 **„Ostatni zjazd” rozegrany ponownie 05.11 po rebalansie — porażka o włos** (Wolt 10/35 PW na koniec
-rundy 6, zdał oba Manewry). Wnioski i propozycje do decyzji MG w `etap-66c-ostatni-zjazd.md`
-(„Ponowne rozegranie”), znaleziska UI w `zaleglosci.md` (05.11). Notatka ⚠️ wzorca: barykada
+rundy 6, zdał oba Manewry) — **MG: balans w porządku**, liczby wzorca bez zmian. Wnioski
+w `etap-66c-ostatni-zjazd.md` („Ponowne rozegranie”), znaleziska UI w `zaleglosci.md` (05.11). Notatka ⚠️ wzorca: barykada
 w rundzie 5. `dev.db` zostaje po przebiegu; kopie: `dev.db.bak-20261104-66c` (przed rozegraniem),
 `dev.db.bak-20261105-66c-po-przebiegu` (po przebiegu z 04.11).
 
@@ -642,7 +642,7 @@ a nie do tego pliku.
 | obszar      | co obejmuje                                                    | umów | pułapek |
 | ----------- | -------------------------------------------------------------- | ---- | ------- |
 | `mapa`      | figury, zaznaczanie, narzędzia, obiekty sceny, ściany, efekty, zamek drzwi, ukryta figura zauważona, ikony urządzeń, wspólny widok drużyny, scena pościgu, jazda kierowcy i dryf, Manewr i taranowanie, przeszkody pościgu, sceny przykładowe, wzorzec zwykłej mapy, ulepszenia pojazdu, stojące auto na drodze, kreator pościgu i wbudowane drogi, załoga auta poza pościgiem, rama pościgu i pęd auta bez kierowcy | 83   | 27      |
-| `czat`      | rodzaje wierszy, `visibleTo`, filtr, `seq`, `gmrecovery`, „to dotyczy mnie”, grupy kart, kolor gracza, czyszczenie, gęsta karta rzutu, przebieg ataku, `/jako` za NPC-a | 16   | 3       |
+| `czat`      | rodzaje wierszy, `visibleTo`, filtr, `seq`, `gmrecovery`, „to dotyczy mnie”, grupy kart, kolor gracza, czyszczenie, gęsta karta rzutu, przebieg ataku, `/jako` za NPC-a, karta rzutu bez konta | 17   | 3       |
 | `serwer`    | Prisma i migracje, zdarzenia gniazda, zapisy karty, uploady    | 26   | 21      |
 | `ui`        | okna pływające, `z-index`, motyw, skróty, dostępność, wejście, panel decyzji MG | 37   | 15      |
 | `kosci`     | kubek, `rollFormula`, wezwania i prośby o Test, tabele losowe, PT od MG | 24   | 2       |
@@ -684,6 +684,9 @@ Firefoksie, klik po „Następna tura” w jadącą kamerę. NPC-e Lutka, Grot, 
 w rundach 5–6 częściowo bez akcji (skrót MG dla tempa przebiegu).
 **Testy:** shared 2951, client 471, server 1740 zielone (nowe: rama, pęd, zwalnianie, dryf do
 przodu w stojące auto), `tsc` i ESLint czyste. E2E `48-poscig` nie puszczone (wymaga `po-T6`).
+**Po sesji (MG):** balans 66c w porządku; konto gracza znika z karty rzutu — karta pisze postacią,
+MG ma „Rzucał: …” w podpowiedzi (umowa na górze `czat`). Oglądane: MG i Ola w Chromium, Tester
+i Handlarz w **Firefoksie** (skrypt biblioteki — Firefox MCP przestał startować).
 
 ### Sesja 04.11, szósta — drobiazgi z przebiegu „Ostatniego zjazdu” (66c)
 

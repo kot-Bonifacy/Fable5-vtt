@@ -866,12 +866,7 @@
   color: var(--text-dim);
 }
 
-/* Roll card: character name + modifier sources */
-.chat-roll-actor-by {
-  font-size: 0.72rem;
-  color: var(--text-dim);
-}
-
+/* Roll card: formula and modifier sources */
 .chat-roll-formula {
   font-size: 0.75rem;
   color: var(--text-dim);
