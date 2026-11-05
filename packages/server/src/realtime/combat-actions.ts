@@ -747,6 +747,11 @@ export const combatEndEvent = defineEvent({
     await calmVisibleFoes(deps, campaignId, scene);
     // Ending clears the state completely — round history is not persisted.
     await deps.ctx.prisma.combat.deleteMany({ where: { sceneId: scene.id } });
+    // Pęd aut pościgu (05.11.2026) żyje tylko w walce — poza nią auto bez kierowcy stoi.
+    await deps.ctx.prisma.sceneVehicle.updateMany({
+      where: { sceneId: scene.id, momentum: { not: null } },
+      data: { momentum: null },
+    });
     await emitCombatOfScene(deps, campaignId, scene);
     // Trwałe cele (etap 50c) kończą się z walką — decyzja MG z 10.10.
     releaseSceneTargets(deps, scene.id);

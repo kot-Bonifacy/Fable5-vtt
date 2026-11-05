@@ -232,8 +232,17 @@ describe('etap 65e: przeszkody, ruch uliczny i kolczatka', () => {
       (await built.prisma.vehicle.findUniqueOrThrow({ where: { id: vehicleId } })).system,
     );
   /** Dwie tury (gang 15, Vex 12) — nowa runda i dryf. */
+  /**
+   * Auto C nie ma kierowcy, więc samo z siebie stoi (decyzja MG z 05.11.2026) i jedzie
+   * z drogą razem z przeszkodami. Tu toczy się, jakby kierowca dopiero co wypadł: pęd 40
+   * to w następnej rundzie Ruch 20 (`cpredCoastSpeed`) — dryf −5, przeszkody −10.
+   */
+  const rollingC = () =>
+    built.prisma.sceneVehicle.update({ where: { id: carC.id }, data: { momentum: 40 } });
+
   const nextRound = async (label: string) => {
     data(await emitAck<CombatView>(gm, 'combat:next'), `${label}: Vex`);
+    await rollingC();
     data(await emitAck<CombatView>(gm, 'combat:next'), `${label}: nowa runda`);
   };
 
@@ -309,7 +318,7 @@ describe('etap 65e: przeszkody, ruch uliczny i kolczatka', () => {
       );
     carA = await place(ours.id, 1800, 1050);
     carB = await place(theirs.id, 1000, 750);
-    // Auto bez kierowcy jedzie za autem gangu — kolczatka jest dla niego.
+    // Auto bez kierowcy toczy się za autem gangu — kolczatka jest dla niego.
     carC = await place(empty.id, 300, 750);
     expect(carB.spikesLeft).toBe(1);
     expect(carA.spikesLeft).toBe(0);

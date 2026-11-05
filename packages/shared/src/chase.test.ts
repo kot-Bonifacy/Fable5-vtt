@@ -3,6 +3,7 @@ import {
   chaseBodyContains,
   chaseDriftSquares,
   chaseDriftedCentre,
+  chaseFrameTempo,
   chaseLimitMove,
   chaseMoveSquares,
   chaseOffscreen,
@@ -151,6 +152,36 @@ describe('jazda w pościgu (65c)', () => {
     expect(chaseOffscreen({ x: -250, y: 900 }, CAR, 'right', SCENE)).toBe('behind');
     expect(chaseOffscreen({ x: 2650, y: 900 }, CAR, 'right', SCENE)).toBe('escaped');
     expect(chaseOffscreen({ x: 1200, y: 2050 }, CAR, 'up', SCENE)).toBe('behind');
+  });
+
+  it('rama jedzie z autem drużyny: stojące zatrzymuje drogę (decyzja MG z 05.11)', () => {
+    const party = { status: 'racing' as const, party: true, control: 'driver' as const };
+    const npc = { status: 'racing' as const, party: false, control: 'driver' as const };
+    // Bez auta drużyny w kadrze — tempo sceny, choćby NPC stał.
+    expect(chaseFrameTempo(40, [{ ...npc, speed: 0, control: 'none' }])).toBe(40);
+    // Auto drużyny z kierowcą — tempo sceny, nawet wolniejsze od tempa.
+    expect(
+      chaseFrameTempo(40, [
+        { ...party, speed: 20 },
+        { ...npc, speed: 40 },
+      ]),
+    ).toBe(40);
+    // Auto drużyny bez kierowcy stoi — droga stoi.
+    expect(chaseFrameTempo(40, [{ ...party, speed: 0, control: 'none' }])).toBe(0);
+    // …toczy się — droga zwalnia razem z nim, najwyżej do tempa.
+    expect(chaseFrameTempo(40, [{ ...party, speed: 20, control: 'none' }])).toBe(20);
+    // Wrak drużyny w kadrze też stoi; auto za krawędzią się nie liczy.
+    expect(chaseFrameTempo(40, [{ ...party, status: 'wrecked', speed: 0 }])).toBe(0);
+    expect(chaseFrameTempo(40, [{ ...party, status: 'behind', speed: 0, control: 'none' }])).toBe(
+      40,
+    );
+    // Dwa auta drużyny: wystarczy, że jedno jedzie z kierowcą.
+    expect(
+      chaseFrameTempo(40, [
+        { ...party, speed: 0, control: 'none' },
+        { ...party, speed: 40 },
+      ]),
+    ).toBe(40);
   });
 
   it('przycina przeciągnięcie do budżetu w linii prostej', () => {

@@ -52,7 +52,7 @@ import {
   emitTokensOfCharacter,
   requireCampaignToken,
 } from './tokens.js';
-import { driftChaseRound, pointerAfterDrift } from './chase-driving.js';
+import { driftChaseRound, pointerAfterDrift, startChaseMomentum } from './chase-driving.js';
 import { sweepTimedEffects } from './timed-effects.js';
 import { runZonesAtTurnEnd } from './zones.js';
 import { sweepBackupArrivals } from './backup.js';
@@ -124,6 +124,9 @@ export async function advanceTurn(
   // Etap 65c: początek rundy na scenie pościgu — auta dryfują, a te, które
   // wyjechały z kadru, zabierają swoje figury z kolejki. Od rundy 2: pierwszą
   // ustawia MG.
+  if (pointer.round === 1 && combat.round === 0) {
+    await startChaseMomentum(deps.ctx.prisma, scene);
+  }
   if (pointer.round > combat.round && pointer.round >= 2) {
     const dropped = await driftChaseRound(deps, campaignId, scene, refreshed, pointer.round, user);
     if (dropped) {

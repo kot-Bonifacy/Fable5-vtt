@@ -1273,7 +1273,12 @@ export async function performAttackRoll(
           : coverTarget
             ? { name: coverTarget.name, coverId: coverTarget.id, metres, cover: true }
             : vehicleTarget
-              ? vehicleAttackTarget(vehicleTarget.placed, vehicleTarget.window, metres)
+              ? vehicleAttackTarget(
+                  vehicleTarget.placed,
+                  vehicleTarget.window,
+                  metres,
+                  vehicleTarget.moving,
+                )
               : { name: POINT_TARGET_NAME, metres, point: true },
         {
           modifiers: [

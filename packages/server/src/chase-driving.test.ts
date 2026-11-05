@@ -239,8 +239,17 @@ describe('etap 65c: jazda, tempo i odpadanie', () => {
       }),
       'chase:place',
     );
-    // Kompakt: Ruch 20 przy tempie 40 — 5 kratek na Akcję Ruchu, dryf −5.
-    expect(car).toMatchObject({ started: true, control: 'none', moveSq: 5, driftSq: -5 });
+    // Kompakt: Ruch 20 — 5 kratek na Akcję Ruchu. Auto drużyny bez kierowcy stoi,
+    // więc droga stoi razem z nim (decyzja MG z 05.11.2026): bez dryfu.
+    expect(car).toMatchObject({
+      started: true,
+      control: 'none',
+      moveSq: 5,
+      driftSq: 0,
+      speed: 0,
+      party: true,
+      moving: false,
+    });
 
     heroToken = data(
       await emitAck<TokenView>(gm, 'token:create', {
@@ -268,7 +277,8 @@ describe('etap 65c: jazda, tempo i odpadanie', () => {
       }),
       'chase:move out of combat',
     );
-    expect(moved).toMatchObject({ x: 1900, y: 900, control: 'driver' });
+    // Z kierowcą jedzie Ruchem 20 przy tempie 40: dryf −5.
+    expect(moved).toMatchObject({ x: 1900, y: 900, control: 'driver', driftSq: -5, moving: true });
     expect(
       await emitAck(rider, 'chase:move', { sceneVehicleId: car.id, x: 1000, y: 900 }),
     ).toMatchObject({ ok: false, error: 'NOT_DRIVER' });
@@ -376,5 +386,186 @@ describe('etap 65c: jazda, tempo i odpadanie', () => {
       'vehicle:engine on',
     );
     expect(on.started).toBe(true);
+  });
+});
+
+describe('rama pościgu i auto bez kierowcy (decyzja MG z 05.11.2026)', () => {
+  let gm: ClientSocket;
+  let owner: ClientSocket;
+  let scene: SceneView;
+  let party: SceneVehicleView;
+  let npc: SceneVehicleView;
+  let heroToken: TokenView;
+  let npcDriver: TokenView;
+
+  const row = (id: string) => built.prisma.sceneVehicle.findUniqueOrThrow({ where: { id } });
+  const viewOf = async (id: string) => {
+    const synced = waitForMatch<ChaseSyncBroadcast>(
+      gm,
+      'chase:sync',
+      (payload) => payload.sceneId === scene.id,
+    );
+    // Odświeżenie przez przestawienie auta w miejscu — `chase:sync` z widokami.
+    const current = await row(id);
+    await emitAck(gm, 'chase:move', { sceneVehicleId: id, x: current.x, y: current.y });
+    return (await synced).vehicles.find((vehicle) => vehicle.id === id)!;
+  };
+
+  it('stojące auto drużyny zatrzymuje drogę, a jadące auto NPC-a odjeżdża do przodu', async () => {
+    gm = await connect(gmCookie);
+    owner = await connect(ownerCookie);
+    scene = data(
+      await emitAck<SceneView>(gm, 'scene:create', { name: 'Estakada', kind: 'chase' }),
+      'scene:create',
+    );
+    scene = data(
+      await emitAck<SceneView>(gm, 'scene:update', {
+        sceneId: scene.id,
+        patch: {
+          width: 2400,
+          height: 1800,
+          grid: { sizePx: 100 },
+          chase: { direction: 'right', road: { from: 6, to: 12 }, tempo: 40 },
+        },
+      }),
+      'scene:update',
+    );
+    const activated = waitForMatch(owner, 'scene:activate', () => true);
+    await emitAck(gm, 'scene:activate', { sceneId: scene.id });
+    await activated;
+    // MG patrzy na tę scenę — `combat:next` idzie za oglądaną sceną gniazda.
+    data(await emitAck(gm, 'scene:view', { sceneId: scene.id }), 'scene:view');
+
+    const hero = data(
+      await emitAck<CharacterView>(gm, 'character:create', { name: 'Rdza', ownerId }),
+      'character:create',
+    );
+    const ours = data(
+      await emitAck<VehicleView>(gm, 'vehicle:create', {
+        catalogId: 'vehicle.sample-kompakt',
+        ownerCharacterId: hero.id,
+      }),
+      'vehicle:create ours',
+    );
+    const theirs = data(
+      await emitAck<VehicleView>(gm, 'vehicle:create', { catalogId: 'vehicle.sample-kompakt' }),
+      'vehicle:create theirs',
+    );
+    party = data(
+      await emitAck<SceneVehicleView>(gm, 'chase:place', {
+        sceneId: scene.id,
+        vehicleId: ours.id,
+        x: 1200,
+        y: 750,
+      }),
+      'chase:place ours',
+    );
+    npc = data(
+      await emitAck<SceneVehicleView>(gm, 'chase:place', {
+        sceneId: scene.id,
+        vehicleId: theirs.id,
+        x: 600,
+        y: 1050,
+      }),
+      'chase:place theirs',
+    );
+    heroToken = data(
+      await emitAck<TokenView>(gm, 'token:create', {
+        sceneId: scene.id,
+        name: 'Rdza',
+        x: 100,
+        y: 100,
+        ownerId,
+        characterId: hero.id,
+      }),
+      'token:create hero',
+    );
+    npcDriver = data(
+      await emitAck<TokenView>(gm, 'token:create', {
+        sceneId: scene.id,
+        name: 'Wolt',
+        x: 100,
+        y: 300,
+      }),
+      'token:create npc',
+    );
+    expect(
+      (
+        await emitAck(gm, 'vehicle:seat', {
+          tokenId: npcDriver.id,
+          sceneVehicleId: npc.id,
+          seat: 0,
+        })
+      ).ok,
+    ).toBe(true);
+
+    // Auto drużyny bez kierowcy stoi, więc rama stoi: NPC (Ruch 20) jedzie +5.
+    expect(await viewOf(party.id)).toMatchObject({
+      party: true,
+      speed: 0,
+      moving: false,
+      driftSq: 0,
+    });
+    expect(await viewOf(npc.id)).toMatchObject({
+      party: false,
+      speed: 20,
+      moving: true,
+      driftSq: 5,
+    });
+
+    const started = data(
+      await emitAck<CombatView>(gm, 'combat:start', {
+        sceneId: scene.id,
+        tokenIds: [npcDriver.id],
+      }),
+      'combat:start',
+    );
+    await built.prisma.combatant.updateMany({
+      where: { combatId: started.id },
+      data: { initiative: 10 },
+    });
+    data(await emitAck<CombatView>(gm, 'combat:next'), 'combat:next round 1');
+    // Runda 1 zapamiętuje pęd: NPC jedzie (20), auto drużyny stoi (0).
+    expect(await row(npc.id)).toMatchObject({ momentum: 20 });
+    expect(await row(party.id)).toMatchObject({ momentum: 0 });
+    data(await emitAck<CombatView>(gm, 'combat:next'), 'combat:next round 2');
+    expect((await row(party.id)).x).toBe(1200);
+    expect((await row(npc.id)).x).toBe(1100);
+  });
+
+  it('kierowca pada — auto toczy się i co rundę zwalnia o połowę', async () => {
+    // Drużyna siada za kierownicą — rama znów ma tempo 40.
+    expect(
+      (
+        await emitAck(owner, 'vehicle:seat', {
+          tokenId: heroToken.id,
+          sceneVehicleId: party.id,
+          seat: 0,
+        })
+      ).ok,
+    ).toBe(true);
+    await built.prisma.token.update({
+      where: { id: npcDriver.id },
+      data: { statuses: JSON.stringify(['unconscious']) },
+    });
+    // Pęd 20 → w następnej rundzie 10: dryf (10 − 40) / 4 = −7,5.
+    expect(await viewOf(npc.id)).toMatchObject({
+      control: 'none',
+      speed: 20,
+      moving: true,
+      driftSq: -7.5,
+    });
+    // Nieprzytomny Wolt traci turę, więc jedno „Następna tura” to rundy 3 i 4:
+    // NPC toczy się 10 (−7,5), potem 5 (−8,75) i wypada za tylną krawędź, a auto
+    // drużyny jedzie Ruchem 20 przy tempie 40 (−5 na rundę).
+    data(await emitAck<CombatView>(gm, 'combat:next'), 'combat:next rounds 3–4');
+    expect(await row(npc.id)).toMatchObject({ x: 1100 - 750 - 875, momentum: 5, status: 'behind' });
+    expect((await row(party.id)).x).toBe(1200 - 500 - 500);
+  });
+
+  it('koniec walki zdejmuje pęd — poza walką auto bez kierowcy stoi', async () => {
+    expect((await emitAck(gm, 'combat:end')).ok).toBe(true);
+    expect(await row(npc.id)).toMatchObject({ momentum: null });
+    expect(await viewOf(npc.id)).toMatchObject({ speed: 0, moving: false });
   });
 });

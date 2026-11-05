@@ -53,6 +53,8 @@ import {
   placedOnScene,
   placedView,
   requireChaseCampaignId,
+  sceneMotion,
+  seatedOnScene,
   requirePlaced,
   requirePoint,
   type PlacedVehicle,
@@ -603,8 +605,10 @@ export const vehicleManeuverCallEvent = defineEvent<VehicleManeuverCallPayload, 
 
 /**
  * Początek rundy na scenie pościgu (decyzja MG 12): każde auto w kadrze dryfuje
- * o `(Ruch − tempo) / 4` kratek wzdłuż drogi, a utrata kontroli z poprzedniej
- * rundy mija. Auto, którego bryła cała wyjechała za tylną krawędź, zostaje
+ * o `(prędkość − rama) / 4` kratek wzdłuż drogi, a utrata kontroli z poprzedniej
+ * rundy mija. Prędkość to Ruch auta z kierowcą, a bez niego malejący pęd
+ * (`SceneVehicle.momentum`); rama to tempo sceny, chyba że auto drużyny stoi
+ * (`chaseFrameTempo`, decyzja MG z 05.11.2026). Auto, którego bryła cała wyjechała za tylną krawędź, zostaje
  * w tyle (`behind`), za przednią — ucieka (`escaped`): znika graczom, jego
  * figury wychodzą z kolejki, a stół czyta o tym na czacie.
  *
@@ -656,12 +660,25 @@ export async function driftChaseRound(
   const riding = new Set(riders.map((row) => row.id));
   const crashes: { rammerId: string; struckId: string }[] = [];
   const blockedNow: { stalled: PlacedVehicle; driven: PlacedVehicle }[] = [];
+  // Rama tej rundy (decyzja MG z 05.11.2026): auto bez kierowcy toczy się
+  // malejącym pędem, a kadr jedzie z autem drużyny — gdy ono stoi, droga stoi,
+  // a jadące auta odpływają do przodu. Prędkość rundy staje się nowym pędem.
+  const { motions, nextFrameTempo: frameTempo } = sceneMotion(
+    placed,
+    await seatedOnScene(prisma, placed),
+    scene.chaseTempo,
+  );
+  const speedOf = (id: string) => motions.get(id)?.nextSpeed ?? 0;
+  // Stojące auto → jadące, które dojechało do niego od tyłu (zapis po pętli).
+  const forwardBlocks = new Map<string, string>();
   for (const row of placed) {
     if (row.status !== 'racing' || row.driftRound >= round || riding.has(row.id)) continue;
+    const speed = speedOf(row.id);
     const chase = cpredVehicleChase(readCpredVehicle(row.vehicle.system), {
-      tempo: scene.chaseTempo,
+      tempo: frameTempo,
       started: row.started,
       nitroUsed: row.nitroUsed,
+      speed,
     });
     const squares = scene.chaseRunning ? chase.driftSq : 0;
     const body = chaseBodyOf(row.vehicle);
@@ -696,10 +713,9 @@ export async function driftChaseRound(
     // kontroli wjeżdża w nie od razu — jak w przeszkodę MG (decyzja MG z 03.11).
     let blockingId: string | null = null;
     const struckBy = contact ? racing(contact.id) : null;
-    if (contact && struckBy && chase.moveSq === 0 && squares < 0) {
-      const driven = readCpredVehicle(struckBy.vehicle.system);
+    if (contact && struckBy && speed === 0 && squares < 0) {
       const driver = await driverOf(prisma, struckBy.id);
-      const stalledToo = !struckBy.started || cpredVehicleWrecked(driven);
+      const stalledToo = speedOf(struckBy.id) === 0;
       if (!stalledToo) {
         const controlled = driver !== null && driverCapable(driver) && !lostBefore.has(struckBy.id);
         if (controlled) {
@@ -707,6 +723,14 @@ export async function driftChaseRound(
           blockedNow.push({ stalled: row, driven: struckBy });
         } else crashes.push({ rammerId: struckBy.id, struckId: row.id });
       }
+    }
+    // Odwrotnie (05.11.2026): auto drużyny stoi, więc rama stoi, a jadące auto
+    // dojeżdża dryfem do stojącego od tyłu — to samo pytanie do kierowcy.
+    if (contact && struckBy && speed > 0 && squares > 0 && speedOf(struckBy.id) === 0) {
+      if (motions.get(row.id)?.control === 'driver') {
+        forwardBlocks.set(struckBy.id, row.id);
+        blockedNow.push({ stalled: struckBy, driven: row });
+      } else crashes.push({ rammerId: row.id, struckId: struckBy.id });
     }
     const off =
       squares === 0 || contact ? null : chaseOffscreen(centre, body, settings.direction, frame);
@@ -718,6 +742,7 @@ export async function driftChaseRound(
         driftRound: round,
         lostControl: false,
         blockingId,
+        momentum: speed,
         ...(off ? { status: off } : {}),
       },
     });
@@ -735,6 +760,10 @@ export async function driftChaseRound(
       });
     }
   }
+  for (const [stalledId, drivenId] of forwardBlocks) {
+    if (gone.has(drivenId)) continue;
+    await prisma.sceneVehicle.update({ where: { id: stalledId }, data: { blockingId: drivenId } });
+  }
   for (const row of riders) {
     const target = row.blockingId!;
     const from = starts.get(target) ?? centres.get(target)!;
@@ -748,6 +777,7 @@ export async function driftChaseRound(
         ...centre,
         driftRound: round,
         lostControl: false,
+        momentum: speedOf(row.id),
         ...(gone.has(target) ? { blockingId: null } : {}),
       },
     });
@@ -792,7 +822,7 @@ export async function driftChaseRound(
     );
     await pushVehicleBehind(deps, campaignId, scene, struck.id, rammer.id);
   }
-  await driftObstaclesRound(deps, campaignId, scene, round, user, moves, lostBefore);
+  await driftObstaclesRound(deps, campaignId, scene, round, user, moves, lostBefore, frameTempo);
   await emitChase(deps, campaignId, scene.id);
   if (dropped.length === 0) return false;
   // Załoga auta, które odpadło, znika graczom razem z autem (66c).
@@ -815,6 +845,22 @@ export async function driftChaseRound(
     await logSpentAction(deps, campaignId, user, line);
   }
   return true;
+}
+
+/**
+ * Pęd aut na start rundy 1 (decyzja MG z 05.11.2026): auto z kierowcą jedzie
+ * swoim Ruchem, bez kierowcy stoi. Od tej chwili kierowca, który zniknie albo
+ * padnie, zostawia auto toczące się tym pędem (`driftChaseRound` go zmniejsza).
+ */
+export async function startChaseMomentum(prisma: PrismaClient, scene: Scene): Promise<void> {
+  if (scene.kind !== 'chase') return;
+  const placed = await placedOnScene(prisma, scene.id);
+  const { motions } = sceneMotion(placed, await seatedOnScene(prisma, placed), scene.chaseTempo);
+  for (const row of placed) {
+    const momentum = motions.get(row.id)?.speed ?? 0;
+    if (row.momentum === momentum) continue;
+    await prisma.sceneVehicle.update({ where: { id: row.id }, data: { momentum } });
+  }
 }
 
 /**

@@ -444,7 +444,8 @@ function vehicleAim(
     scene.grid.sizePx,
     origin,
   );
-  const moving = scene.chase.running && vehicle.started && vehicle.hp > 0;
+  // Ten sam znacznik co serwer (05.11.2026): auto bez kierowcy, które się wytoczyło, stoi.
+  const moving = vehicle.moving;
   return {
     target: {
       name: ref.window ? `${vehicle.name} — ${VEHICLE_WINDOW_LABELS[ref.window]}` : vehicle.name,

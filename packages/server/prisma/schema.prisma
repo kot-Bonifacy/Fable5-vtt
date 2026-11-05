@@ -835,6 +835,13 @@ model SceneVehicle {
    * Gołe id bez relacji: auto zdjęte z drogi kod rozpoznaje i zwalnia sam.
    */
   blockingId   String?
+  /**
+   * Pęd auta w bieżącej rundzie walki — prędkość w jednostkach Ruchu, z jaką
+   * jechało przy ostatnim dryfie (decyzja MG z 05.11.2026). Auto, z którego
+   * kierowca zniknął albo padł, toczy się nim i co rundę zwalnia o połowę
+   * (`cpredCoastSpeed`). `null` poza walką — auto bez kierowcy wtedy stoi.
+   */
+  momentum     Int?
   createdAt DateTime @default(now())
 
   scene      Scene   @relation(fields: [sceneId], references: [id], onDelete: Cascade)

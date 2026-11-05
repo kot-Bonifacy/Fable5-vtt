@@ -509,7 +509,7 @@ export const chaseVehicleAnswerEvent = defineEvent<ChaseVehicleAnswerPayload, Sc
 
 /**
  * Początek rundy (65e), po dryfie aut: każda przeszkoda jedzie w kadrze w tył
- * o `tempo / 4` kratek, raz na rundę (`driftRound`). `lostBefore` to auta,
+ * o `rama / 4` kratek (tempo sceny, a gdy auto drużyny stoi — mniej, 05.11.2026), raz na rundę (`driftRound`). `lostBefore` to auta,
  * które weszły w rundę bez kontroli — dryf już ją oddał, ale przeszkoda tej
  * chwili jeszcze ich nie omija (przegląd 03.11). `moves` to auta w kadrze
  * z miejscem przed i po dryfie — tor przeszkody przecina się z ich bryłami
@@ -526,6 +526,8 @@ export async function driftObstaclesRound(
   user: SessionUser,
   moves: ReadonlyMap<string, { from: ScenePoint; to: ScenePoint }>,
   lostBefore: ReadonlySet<string> = new Set(),
+  /** Prędkość ramy tej rundy (`chaseFrameTempo`) — przeszkoda stoi na drodze, więc jedzie z nią. */
+  frameTempo: number = scene.chaseTempo,
 ): Promise<void> {
   const prisma = deps.ctx.prisma;
   const obstacles = await prisma.chaseObstacle.findMany({
@@ -567,7 +569,7 @@ export async function driftObstaclesRound(
       });
       continue;
     }
-    const to = chaseObstacleDrifted(from, settings, grid);
+    const to = chaseObstacleDrifted(from, { ...settings, tempo: frameTempo }, grid);
     const passed = new Set(readPassed(obstacle.passed));
     const candidates = sweepers.filter(
       (row) => !passed.has(row.id) && row.id !== obstacle.droppedById,

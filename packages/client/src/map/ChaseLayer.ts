@@ -6,6 +6,7 @@ import {
   chaseIsHorizontal,
   chaseLimitMove,
   chaseScrollSpeed,
+  chaseFrameTempo,
   CHASE_CONTROL_LABELS,
   chaseRoadCells,
   chaseRoadSpanPx,
@@ -24,7 +25,8 @@ import { DESTROY_TREE } from './pixi-destroy.js';
  * Scena pościgu na płótnie (etap 65b): bieżnia i auta.
  *
  * **Bieżnia** to tło sceny jako `TilingSprite` przewijany wzdłuż kierunku
- * jazdy — wyłącznie u klienta; serwer niesie tylko tempo i „droga jedzie”,
+ * jazdy — wyłącznie u klienta; serwer niesie tempo, „droga jedzie” i auta,
+ * z których rama (`chaseFrameTempo`) mówi, jak szybko przewija się droga,
  * a fazy przewijania nikt nie synchronizuje (dekoracja, na której nic nie
  * polega). Żeby zapętlić **każdą** mapę drogi, tekstura powstaje na płótnie:
  * ostatnie `CHASE_SEAM_SQUARES` kratek przenikają się z pierwszymi, więc szew
@@ -232,8 +234,9 @@ export class ChaseLayer {
   tick(seconds: number): void {
     const scene = this.scene;
     if (!scene || !this.road.visible || !scene.chase.running) return;
+    // Droga przewija się z ramą (05.11.2026): stojące auto drużyny ją zatrzymuje.
     const speed =
-      chaseScrollSpeed(scene.chase.tempo, scene.grid.sizePx) *
+      chaseScrollSpeed(chaseFrameTempo(scene.chase.tempo, this.vehicles), scene.grid.sizePx) *
       (prefersReducedMotion() ? REDUCED_MOTION_FACTOR : 1);
     const step = speed * seconds;
     // Auta jadą w `direction`, więc droga ucieka w przeciwną stronę.

@@ -113,6 +113,34 @@ export function chaseScrollSpeed(tempo: number, gridSizePx: number): number {
   return ((Math.max(0, tempo) / 4) * gridSizePx) / CHASE_ROUND_SECONDS;
 }
 
+/** Auto w rachunku ramy: gdzie stoi, czy wiezie drużynę, jak szybko jedzie i kto prowadzi. */
+export interface ChaseFrameVehicle {
+  status: SceneVehicleStatus;
+  party: boolean;
+  speed: number;
+  control: ChaseControl;
+}
+
+/**
+ * Prędkość ramy pościgu — z nią przewija się bieżnia i od niej liczy się dryf
+ * (decyzja MG z 05.11.2026: „przewijana pod autem droga to jednoznaczna cecha
+ * poruszania się auta”). Kadr jedzie z autem drużyny: dopóki któreś auto
+ * drużyny w kadrze ma kierowcę i jedzie, rama ma tempo sceny; gdy wszystkie
+ * stoją albo toczą się bez kierowcy — tyle, ile najszybsze z nich (najwyżej
+ * tempo), więc stojące auto drużyny zatrzymuje drogę, a jadące auta odpływają
+ * do przodu. Bez auta drużyny w kadrze rama ma tempo sceny, a auto bez
+ * kierowcy odpływa w tył.
+ */
+export function chaseFrameTempo(tempo: number, vehicles: readonly ChaseFrameVehicle[]): number {
+  const limit = Math.max(0, tempo);
+  const party = vehicles.filter(
+    (vehicle) => vehicle.party && (vehicle.status === 'racing' || vehicle.status === 'wrecked'),
+  );
+  if (party.length === 0) return limit;
+  if (party.some((vehicle) => vehicle.control !== 'none' && vehicle.speed > 0)) return limit;
+  return Math.min(limit, Math.max(0, ...party.map((vehicle) => vehicle.speed)));
+}
+
 /** Bryła auta, z której liczy się miejsce na mapie — pola z `Vehicle`. */
 export interface ChaseBody {
   widthSq: number;
@@ -656,8 +684,20 @@ export interface SceneVehicleView {
    * (brak — pełny). Klient kierowcy składa z nich wiersze broni paska.
    */
   mounts: { id: string; upgradeId: string; ammo?: number }[];
-  /** Auto jedzie: silnik pracuje, droga jedzie, auto nie jest wrakiem (przeładowanie broni pokładowej). */
+  /**
+   * Auto jedzie (05.11.2026): droga jedzie, a auto ma własną prędkość — kierowcę
+   * i silnik albo jeszcze się toczy bez kierowcy. Przeładowanie broni
+   * pokładowej, „nieruchomy pojazd” w ataku, odgłos jazdy.
+   */
   moving: boolean;
+  /**
+   * Własna prędkość auta w jednostkach Ruchu (05.11.2026): z kierowcą — Ruch,
+   * bez kierowcy — malejący pęd, zgaszone i wrak — 0. System liczy, rdzeń
+   * składa z niej ramę (`chaseFrameTempo`).
+   */
+  speed: number;
+  /** Auto wiezie drużynę: karta gracza jest jego właścicielem albo figura gracza siedzi w fotelu. */
+  party: boolean;
   /**
    * To auto stoi na drodze (wrak, zgaszony silnik) i dryfem stanęło przed
    * zderzakiem auta o tym id — czeka na wybór jego kierowcy, jak przeszkoda

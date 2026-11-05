@@ -330,7 +330,8 @@ describe('etap 65d2: Manewr, taranowanie i broń pokładowa', () => {
     // Menu auta: pięć manewrów jezdni z PT, broń pokładowa z pełnym magazynkiem.
     expect(carA.maneuvers.map((entry) => entry.label)).toContain('Zawrót na ręcznym (PT 17)');
     expect(carA.mounts).toEqual([{ id: 'u-mg', upgradeId: 'machineGun' }]);
-    expect(carA).toMatchObject({ maneuverCall: null, moving: true });
+    // Bez kierowcy auto stoi (decyzja MG z 05.11.2026) — rusza, gdy Vex siądzie za kierownicą.
+    expect(carA).toMatchObject({ maneuverCall: null, moving: false });
 
     vexToken = data(
       await emitAck<TokenView>(gm, 'token:create', {
@@ -556,7 +557,7 @@ describe('etap 65d2: Manewr, taranowanie i broń pokładowa', () => {
   });
 
   it('dryf nie przepycha auta przez auto — staje przy zderzaku, bez obrażeń', async () => {
-    // A ma zgaszony silnik (dryf −10), B stoi kratkę za nim w tym samym pasie.
+    // A ma zgaszony silnik, B stoi kratkę za nim w tym samym pasie.
     // B ma kierowcę (przegląd 03.11: auto bez kontroli wjechałoby w A od razu).
     const ganger = await built.prisma.token.findFirstOrThrow({
       where: { sceneVehicleId: carB.id },
@@ -573,8 +574,11 @@ describe('etap 65d2: Manewr, taranowanie i broń pokładowa', () => {
     const hpBefore = (await statsOf(theirs.id)).hp;
     data(await emitAck<CombatView>(gm, 'combat:next'), 'combat:next round 4');
     const afterA = await placedRow(carA.id);
-    // A staje przy przednim zderzaku B (środki o 500 px), zanim B sam dryfuje.
-    expect(afterA.x).toBeCloseTo(a.x - 100, 0);
+    const afterB = await placedRow(carB.id);
+    // A to auto drużyny ze zgaszonym silnikiem: stoi, więc rama stoi (decyzja MG
+    // z 05.11.2026) — A zostaje, a B dojeżdża dryfem (+5) do jego tylnego zderzaka.
+    expect(afterA.x).toBeCloseTo(a.x, 0);
+    expect(afterB.x).toBeCloseTo(a.x - 500, 0);
     expect((await statsOf(theirs.id)).hp).toBe(hpBefore);
     // Stojące A czeka na wybór kierowcy B: Gwałtowny skręt albo taranowanie.
     expect(afterA.blockingId).toBe(carB.id);

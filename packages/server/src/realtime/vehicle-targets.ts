@@ -6,7 +6,6 @@ import {
   cpredEffectiveStats,
   cpredInterfaceLinkDodges,
   cpredVehicleWindows,
-  cpredVehicleWrecked,
   isVehicleWindowSide,
   parseCharacterData,
   readCpredVehicle,
@@ -16,7 +15,14 @@ import {
 } from '@vtt/shared';
 import type { Scene, Token } from '../generated/prisma/client.js';
 import type { PrismaClient } from '../db.js';
-import { chaseBodyOf, chaseGeometry, driverCapable, type PlacedVehicle } from './chase.js';
+import {
+  chaseBodyOf,
+  chaseGeometry,
+  driverCapable,
+  seatedOnScene,
+  vehicleMotion,
+  type PlacedVehicle,
+} from './chase.js';
 import { RealtimeError, type RealtimeDeps } from './registry.js';
 
 /**
@@ -40,7 +46,7 @@ export async function requireTargetVehicle(
   user: SessionUser,
   sceneVehicleId: unknown,
   window: unknown,
-): Promise<{ placed: TargetVehicle; window: VehicleWindowSide | null }> {
+): Promise<{ placed: TargetVehicle; window: VehicleWindowSide | null; moving: boolean }> {
   if (typeof sceneVehicleId !== 'string') throw new RealtimeError('BAD_REQUEST');
   if (window !== undefined && !isVehicleWindowSide(window)) throw new RealtimeError('BAD_REQUEST');
   const placed = await deps.ctx.prisma.sceneVehicle.findUnique({
@@ -58,7 +64,10 @@ export async function requireTargetVehicle(
   if (window && !cpredVehicleWindows(readCpredVehicle(placed.vehicle.system))) {
     throw new RealtimeError('NO_BULLETPROOF_GLASS');
   }
-  return { placed, window: window ?? null };
+  // „Nieruchomy pojazd” (s. 191): stojąca droga albo auto bez własnej prędkości —
+  // zgaszone, wrak, bez kierowcy i już wytoczone (05.11.2026).
+  const motion = vehicleMotion(placed, await seatedOnScene(deps.ctx.prisma, [placed]));
+  return { placed, window: window ?? null, moving: placed.scene.chaseRunning && motion.speed > 0 };
 }
 
 /** Punkt bryły najbliższy strzelca — tam celuje strzał w auto, stąd liczy się zasięg. */
@@ -73,15 +82,13 @@ export function vehicleAimPoint(placed: TargetVehicle, origin: ScenePoint): Scen
   );
 }
 
-/** Strona planera: nazwa, jedzie czy stoi, szyba. */
+/** Strona planera: nazwa, jedzie czy stoi (`requireTargetVehicle`), szyba. */
 export function vehicleAttackTarget(
   placed: TargetVehicle,
   window: VehicleWindowSide | null,
   metres: number,
+  moving: boolean,
 ): CpredAttackTarget & { vehicleId: string; window?: VehicleWindowSide } {
-  const stats = readCpredVehicle(placed.vehicle.system);
-  // „Nieruchomy pojazd” (s. 191): stojąca droga, zgaszony silnik albo wrak.
-  const moving = placed.scene.chaseRunning && placed.started && !cpredVehicleWrecked(stats);
   return {
     name: window
       ? `${placed.vehicle.name} — ${VEHICLE_WINDOW_LABELS[window]}`

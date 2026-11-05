@@ -1103,6 +1103,11 @@ export const combatStartEvent = defineEvent<CombatStartPayload, CombatView>({
 
     // Starting a fight replaces whatever was running on that scene.
     await deps.ctx.prisma.combat.deleteMany({ where: { sceneId: scene.id } });
+    // Pęd aut pościgu (05.11.2026) żyje tylko w walce — poza nią auto bez kierowcy stoi.
+    await deps.ctx.prisma.sceneVehicle.updateMany({
+      where: { sceneId: scene.id, momentum: { not: null } },
+      data: { momentum: null },
+    });
     const combat = await deps.ctx.prisma.combat.create({
       data: {
         sceneId: scene.id,

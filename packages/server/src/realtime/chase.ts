@@ -15,8 +15,10 @@ import {
   ROLE_GM,
   VEHICLE_LAYOUTS,
   cpredDriverIncapable,
+  cpredCoastSpeed,
   cpredVehicleChase,
   cpredVehicleDerived,
+  cpredVehicleSpeed,
   cpredVehicleHasPlow,
   cpredVehicleUpgradeNames,
   cpredVehicleWindows,
@@ -28,6 +30,7 @@ import {
   isChaseObstacleKind,
   readCpredVehicle,
   chaseBodyContains,
+  chaseFrameTempo,
   clampChaseVehicle,
   isSceneVehicleStatus,
   isVehicleLayoutId,
@@ -35,6 +38,8 @@ import {
   seatedTokenPosition,
   vehicleSeatCentre,
   type ChaseBody,
+  type ChaseControl,
+  type ChaseFrameVehicle,
   type ScenePoint,
 } from '@vtt/shared';
 import type { PrismaClient } from '../db.js';
@@ -113,20 +118,23 @@ export function driverCapable(token: Pick<Token, 'statuses'>): boolean {
 function toSceneVehicleView(
   row: PlacedVehicle,
   context: {
-    tempo: number;
     running: boolean;
     driverTokens: readonly Pick<Token, 'id' | 'characterId'>[];
-    driver: Pick<Token, 'statuses'> | null;
+    motion: VehicleMotion;
+    /** Prędkość ramy w następnej rundzie — od niej dryf w menu auta. */
+    nextFrameTempo: number;
   },
 ): SceneVehicleView {
   const body = chaseBodyOf(row.vehicle);
   const drivers = new Set(readDrivers(row.drivers));
   const driverTokens = context.driverTokens;
   const stats = readCpredVehicle(row.vehicle.system);
+  const { motion } = context;
   const chase = cpredVehicleChase(stats, {
-    tempo: context.tempo,
+    tempo: context.nextFrameTempo,
     started: row.started,
     nitroUsed: row.nitroUsed,
+    speed: motion.nextSpeed,
   });
   const derived = cpredVehicleDerived(stats);
   const stored = isSceneVehicleStatus(row.status) ? row.status : 'racing';
@@ -150,11 +158,7 @@ function toSceneVehicleView(
       .filter((token) => token.characterId !== null && drivers.has(token.characterId))
       .map((token) => token.id),
     started: row.started,
-    control: row.lostControl
-      ? 'lost'
-      : context.driver && driverCapable(context.driver)
-        ? 'driver'
-        : 'none',
+    control: motion.control,
     moveSq: chase.moveSq,
     driftSq: chase.driftSq,
     nitroLeft: chase.nitroLeft,
@@ -177,7 +181,9 @@ function toSceneVehicleView(
         upgradeId: upgrade.upgradeId,
         ...(stats.mountAmmo[upgrade.id] !== undefined ? { ammo: stats.mountAmmo[upgrade.id] } : {}),
       })),
-    moving: vehicleMoving(row, stats, context.running),
+    moving: context.running && motion.speed > 0,
+    speed: motion.speed,
+    party: motion.party,
     blockingVehicleId: row.blockingId,
   };
 }
@@ -204,6 +210,88 @@ export function vehicleMoving(
   return row.started && running && !cpredVehicleWrecked(stats);
 }
 
+/**
+ * Ruch auta w ramie pościgu (decyzja MG z 05.11.2026): kto prowadzi, czy wiezie
+ * drużynę, prędkość teraz i w następnej rundzie (bez kierowcy — pęd zwalnia).
+ */
+export interface VehicleMotion {
+  control: ChaseControl;
+  party: boolean;
+  /** Własna prędkość teraz (`cpredVehicleSpeed`). */
+  speed: number;
+  /** Własna prędkość na następny dryf — bez kierowcy połowa pędu (`cpredCoastSpeed`). */
+  nextSpeed: number;
+}
+
+/** Figura w fotelu — tyle, ile ruch auta o niej musi wiedzieć. */
+type SeatedToken = Pick<Token, 'sceneVehicleId' | 'vehicleSeat' | 'statuses' | 'ownerId'>;
+
+/** Ruch auta z jego wiersza i figur w fotelach. */
+export function vehicleMotion(row: PlacedVehicle, seated: readonly SeatedToken[]): VehicleMotion {
+  const stats = readCpredVehicle(row.vehicle.system);
+  const inside = seated.filter((token) => token.sceneVehicleId === row.id);
+  const driver = inside.find((token) => token.vehicleSeat === 0) ?? null;
+  const control: ChaseControl = row.lostControl
+    ? 'lost'
+    : driver && driverCapable(driver)
+      ? 'driver'
+      : 'none';
+  const driven = control !== 'none';
+  const state = { started: row.started, driven, momentum: row.momentum };
+  const speed = cpredVehicleSpeed(stats, state);
+  const nextSpeed = cpredVehicleSpeed(stats, {
+    ...state,
+    momentum: cpredCoastSpeed(row.momentum ?? 0),
+  });
+  const party =
+    row.vehicle.ownerCharacterId !== null || inside.some((token) => token.ownerId !== null);
+  return { control, party, speed, nextSpeed };
+}
+
+/** Rama auta do `chaseFrameTempo` — status w kadrze liczy się jak w widoku (wrak z PUK 0). */
+export function frameVehicle(
+  row: PlacedVehicle,
+  motion: VehicleMotion,
+  speed: number,
+): ChaseFrameVehicle {
+  return {
+    status: isSceneVehicleStatus(row.status) ? row.status : 'racing',
+    party: motion.party,
+    speed,
+    control: motion.control,
+  };
+}
+
+/** Figury w fotelach aut tej sceny. */
+export async function seatedOnScene(
+  prisma: PrismaClient,
+  rows: readonly Pick<SceneVehicle, 'id'>[],
+): Promise<SeatedToken[]> {
+  if (rows.length === 0) return [];
+  return prisma.token.findMany({
+    where: { sceneVehicleId: { in: rows.map((row) => row.id) } },
+    select: { sceneVehicleId: true, vehicleSeat: true, statuses: true, ownerId: true },
+  });
+}
+
+/** Ruch wszystkich aut sceny i prędkości ramy: teraz i na następny dryf. */
+export function sceneMotion(
+  rows: readonly PlacedVehicle[],
+  seated: readonly SeatedToken[],
+  tempo: number,
+): { motions: Map<string, VehicleMotion>; frameTempo: number; nextFrameTempo: number } {
+  const motions = new Map(rows.map((row) => [row.id, vehicleMotion(row, seated)] as const));
+  const frameTempo = chaseFrameTempo(
+    tempo,
+    rows.map((row) => frameVehicle(row, motions.get(row.id)!, motions.get(row.id)!.speed)),
+  );
+  const nextFrameTempo = chaseFrameTempo(
+    tempo,
+    rows.map((row) => frameVehicle(row, motions.get(row.id)!, motions.get(row.id)!.nextSpeed)),
+  );
+  return { motions, frameTempo, nextFrameTempo };
+}
+
 /** Auta sceny jako widoki, z figurami, którym wolno prowadzić, i kierowcami. */
 export async function placedViews(
   prisma: PrismaClient,
@@ -223,16 +311,14 @@ export async function placedViews(
           where: { sceneId, characterId: { in: [...allowed] } },
           select: { id: true, characterId: true },
         });
-  const seated = await prisma.token.findMany({
-    where: { sceneVehicleId: { in: rows.map((row) => row.id) }, vehicleSeat: 0 },
-    select: { sceneVehicleId: true, statuses: true },
-  });
+  const seated = await seatedOnScene(prisma, rows);
+  const { motions, nextFrameTempo } = sceneMotion(rows, seated, scene?.chaseTempo ?? 0);
   return rows.map((row) =>
     toSceneVehicleView(row, {
-      tempo: scene?.chaseTempo ?? 0,
       running: scene?.chaseRunning ?? false,
       driverTokens: tokens,
-      driver: seated.find((token) => token.sceneVehicleId === row.id) ?? null,
+      motion: motions.get(row.id)!,
+      nextFrameTempo,
     }),
   );
 }

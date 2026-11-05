@@ -437,7 +437,14 @@ function vehicleStateLine(vehicle: SceneVehicleView): string {
       ? 'bez dryfu'
       : `dryf ${vehicle.driftSq > 0 ? '+' : '−'}${formatSq(Math.abs(vehicle.driftSq))}/rundę`;
   const move = vehicle.started ? `${formatSq(vehicle.moveSq)} kratek/turę` : 'silnik zgaszony';
-  return `${move} · ${drift} · ${CHASE_CONTROL_LABELS[vehicle.control]}`;
+  // Bez kierowcy auto toczy się i zwalnia, a potem stoi (05.11.2026).
+  const control =
+    vehicle.control === 'none' && vehicle.started
+      ? vehicle.speed > 0
+        ? 'bez kierowcy — toczy się i zwalnia'
+        : 'bez kierowcy — stoi'
+      : CHASE_CONTROL_LABELS[vehicle.control];
+  return `${move} · ${drift} · ${control}`;
 }
 
 function formatSq(value: number): string {
