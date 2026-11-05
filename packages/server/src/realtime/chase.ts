@@ -53,6 +53,7 @@ import type {
 import { RealtimeError, defineEvent, type RealtimeDeps } from './registry.js';
 import { chaseSettingsOf, requireCampaignScene } from './scenes.js';
 import { campaignRoom, gmRoom } from './state.js';
+import { provideChaseEmitter } from './chase-crew.js';
 import { emitTokensById, requireCampaignToken } from './tokens.js';
 import { requireTurnSpend } from './combat-actions.js';
 
@@ -420,6 +421,9 @@ export async function emitChase(
     } satisfies ChaseSyncBroadcast);
   }
 }
+
+// Stan kierowcy z karty i obrażeń odświeża auta przez liść (05.11).
+provideChaseEmitter(emitChase);
 
 /** Geometria sceny potrzebna do przycięcia auta i foteli. */
 export function chaseGeometry(scene: Scene): {

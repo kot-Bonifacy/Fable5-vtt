@@ -563,6 +563,36 @@ describe('rama pościgu i auto bez kierowcy (decyzja MG z 05.11.2026)', () => {
     expect((await row(party.id)).x).toBe(1200 - 500 - 500);
   });
 
+  it('stan kierowcy z ręki MG odświeża auta bez ruszania nimi (luka z 05.11)', async () => {
+    // Rdza za kierownicą Wozu prowadzi; MG nadaje mu „Nieprzytomny” — samo to
+    // ma rozesłać auta z `control: 'none'`, bez `chase:move` ani nowej rundy.
+    const lost = waitForMatch<ChaseSyncBroadcast>(
+      gm,
+      'chase:sync',
+      (payload) =>
+        payload.sceneId === scene.id &&
+        payload.vehicles.some((vehicle) => vehicle.id === party.id && vehicle.control === 'none'),
+    );
+    expect(
+      (
+        await emitAck(gm, 'token:update', {
+          tokenId: heroToken.id,
+          patch: { statuses: ['unconscious'] },
+        })
+      ).ok,
+    ).toBe(true);
+    await lost;
+    const back = waitForMatch<ChaseSyncBroadcast>(
+      owner,
+      'chase:sync',
+      (payload) =>
+        payload.sceneId === scene.id &&
+        payload.vehicles.some((vehicle) => vehicle.id === party.id && vehicle.control === 'driver'),
+    );
+    await emitAck(gm, 'token:update', { tokenId: heroToken.id, patch: { statuses: [] } });
+    await back;
+  });
+
   it('koniec walki zdejmuje pęd — poza walką auto bez kierowcy stoi', async () => {
     expect((await emitAck(gm, 'combat:end')).ok).toBe(true);
     expect(await row(npc.id)).toMatchObject({ momentum: null });

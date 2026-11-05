@@ -120,6 +120,25 @@ export function useMenuTop(y: number): {
 }
 
 /**
+ * Esc zamyka otwarte menu — i tylko menu (05.11, wzór z menu figury z 21.10):
+ * nasłuch w fazie przechwytywania na `window` łapie klawisz także wtedy, gdy
+ * fokus stoi na checkboksie menu, a drabinka Esc mapy go nie widzi, bo pomija
+ * pola formularzy.
+ */
+export function useMenuEscape(open: boolean, close: () => void): void {
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return;
+      event.stopPropagation();
+      close();
+    };
+    window.addEventListener('keydown', onKey, true);
+    return () => window.removeEventListener('keydown', onKey, true);
+  }, [open, close]);
+}
+
+/**
  * Tło pod menu: klik gdziekolwiek obok je zamyka, prawy przycisk też.
  *
  * Prawy przycisk zamyka **tylko wtedy, gdy wciśnięto go na tym tle** (25.09).

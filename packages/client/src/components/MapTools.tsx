@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   netDefenseSystemEntries,
   CHECK_CALL_DV_MAX,
@@ -260,6 +260,28 @@ export function MapTools() {
     if (!brushAvailable && tool === 'fog') setTool('pointer');
   }, [brushAvailable, tool, setTool]);
 
+  // Dolna krawędź paska narzędzi dla komunikatów (05.11): wiersz opcji
+  // narzędzia (paleta przeszkód, pędzel mgły…) sięga środka mapy, a kolumna
+  // komunikatów stoi właśnie tam — zjeżdża pod pasek, zamiast go zasłaniać.
+  const toolbarRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const toolbar = toolbarRef.current;
+    const host = toolbar?.parentElement;
+    if (!toolbar || !host) return;
+    const measure = () =>
+      host.style.setProperty(
+        '--map-tools-bottom',
+        `${toolbar.offsetTop + toolbar.offsetHeight + 6}px`,
+      );
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(toolbar);
+    return () => {
+      observer.disconnect();
+      host.style.removeProperty('--map-tools-bottom');
+    };
+  }, []);
+
   // Lista Architektur jedzie tylko na żądanie (26a), a selektor gniazda jej
   // potrzebuje — bez tego MG z nieotwartą zakładką „Sieć" ma pusty wybór.
   useEffect(() => {
@@ -325,7 +347,7 @@ export function MapTools() {
   );
 
   return (
-    <div className="map-tools" role="toolbar" aria-label="Narzędzia mapy">
+    <div ref={toolbarRef} className="map-tools" role="toolbar" aria-label="Narzędzia mapy">
       <button
         type="button"
         className={`map-tool${tool === 'ruler' ? ' map-tool--active' : ''}`}

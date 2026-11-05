@@ -272,6 +272,9 @@ function obstacleClickAt(
   const chase = useChaseStore.getState();
   if (chase.armed) {
     const armed = chase.armed;
+    // Jedna przeszkoda na klik (05.11): ręka MG pustoszeje, bo następny klik
+    // bywa celem strzału, a nie kolejną barykadą. Paleta zostaje otwarta.
+    chase.arm(null);
     void spawnChaseObstacle({ sceneId: scene.id, x: worldX, y: worldY, ...armed }).then((ack) => {
       if (!ack.ok) notifyRefusal('chase', chaseErrorText(ack.error));
     });

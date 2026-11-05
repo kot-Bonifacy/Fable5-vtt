@@ -218,6 +218,11 @@ export function DamageRow({
   isGm: boolean;
 }) {
   const stopped = entry.damageThrough === 0 && entry.bonusDamage === 0;
+  // Rana bez rzutu na obrażenia — z ręki MG albo z taranowania (05.11). Ciosu
+  // nie było, więc „Pancerz zatrzymał cios (0 obr., OB 0)” kłamał; kości
+  // obrażeń dają zawsze co najmniej 1, więc zero rzutu znaczy „nie rzucano”.
+  const injuryOnly =
+    entry.injury !== undefined && entry.damageRolled === 0 && entry.armorSp === 0 && !entry.armor;
   return (
     <div className={`chat-message chat-damage${entry.undone ? ' chat-damage--undone' : ''}`}>
       <div className="chat-message-meta">
@@ -242,43 +247,47 @@ export function DamageRow({
       </div>
       <div className="chat-damage-body">
         <span className="chat-damage-headline">
-          {stopped
-            ? entry.barrierSp !== undefined && entry.barrierSp >= entry.damageRolled
-              ? `Bariera zatrzymała cios (${entry.damageRolled} obr., bariera OB ${entry.barrierSp})`
-              : `Pancerz zatrzymał cios (${entry.damageRolled} obr., ${
-                  entry.barrierSp ? `bariera OB ${entry.barrierSp}, ` : ''
-                }OB ${entry.armorSp})`
-            : `Przebicie: ${entry.damageThrough} obr.${
-                entry.doubled ? ` (×${entry.headMultiplier ?? 2} w głowę)` : ''
-              }`}
+          {injuryOnly
+            ? 'Rana krytyczna bez obrażeń'
+            : stopped
+              ? entry.barrierSp !== undefined && entry.barrierSp >= entry.damageRolled
+                ? `Bariera zatrzymała cios (${entry.damageRolled} obr., bariera OB ${entry.barrierSp})`
+                : `Pancerz zatrzymał cios (${entry.damageRolled} obr., ${
+                    entry.barrierSp ? `bariera OB ${entry.barrierSp}, ` : ''
+                  }OB ${entry.armorSp})`
+              : `Przebicie: ${entry.damageThrough} obr.${
+                  entry.doubled ? ` (×${entry.headMultiplier ?? 2} w głowę)` : ''
+                }`}
         </span>
-        <span className="chat-damage-detail">
-          rzut {entry.damageRolled}
-          {/* Zasada domowa etapu 42b: siatka odejmuje swoje OB przed pancerzem
+        {!injuryOnly && (
+          <span className="chat-damage-detail">
+            rzut {entry.damageRolled}
+            {/* Zasada domowa etapu 42b: siatka odejmuje swoje OB przed pancerzem
               celu. Wypisana osobno, bo inaczej „20 − OB 11 = 2" się nie dodaje. */}
-          {entry.barrierSp ? ` − bariera OB ${entry.barrierSp}` : ''}
-          {/*
+            {entry.barrierSp ? ` − bariera OB ${entry.barrierSp}` : ''}
+            {/*
             „OB 6 (połowa)" rather than a bare 6: a player who knows the target
             wears OB 11 has to be told why six was subtracted, or the arithmetic
             reads as a bug (s. 176 — broń biała i sztuki walki).
           */}
-          {entry.armorSp > 0
-            ? ` − OB ${entry.armorSp}${entry.armorHalved ? ' (połowa pancerza)' : ''}`
-            : entry.armorHalved
-              ? ' · pancerz przepołowiony do zera'
-              : ' · bez pancerza'}
-          {/* Redukcja obrażeń Solo (etap 30a, s. 146). Nazwana z tego samego
+            {entry.armorSp > 0
+              ? ` − OB ${entry.armorSp}${entry.armorHalved ? ' (połowa pancerza)' : ''}`
+              : entry.armorHalved
+                ? ' · pancerz przepołowiony do zera'
+                : ' · bez pancerza'}
+            {/* Redukcja obrażeń Solo (etap 30a, s. 146). Nazwana z tego samego
               powodu, co połowa pancerza wyżej: bez tego zdania różnica między
               tym, co przeszło przez OB, a tym, co zeszło z PW, nie ma
               wytłumaczenia. */}
-          {entry.damageReduced ? ` − ${entry.damageReduced} (Redukcja obrażeń)` : ''}
-          {entry.bonusDamage > 0 ? ` + ${entry.bonusDamage} za ranę krytyczną` : ''}
-          {entry.hp
-            ? ` · PW ${entry.hp.before} → ${entry.hp.after}`
-            : entry.hpLost > 0
-              ? ` · −${entry.hpLost} PW`
-              : ''}
-        </span>
+            {entry.damageReduced ? ` − ${entry.damageReduced} (Redukcja obrażeń)` : ''}
+            {entry.bonusDamage > 0 ? ` + ${entry.bonusDamage} za ranę krytyczną` : ''}
+            {entry.hp
+              ? ` · PW ${entry.hp.before} → ${entry.hp.after}`
+              : entry.hpLost > 0
+                ? ` · −${entry.hpLost} PW`
+                : ''}
+          </span>
+        )}
         {entry.armor && (
           <span className="chat-damage-detail">
             {entry.armor.name}: OB {entry.armor.before} → {entry.armor.after}

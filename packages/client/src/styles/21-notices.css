@@ -23,6 +23,13 @@
   filter: var(--notice-shadow);
 }
 
+/* Otwarty wiersz opcji narzędzia (paleta przeszkód, pędzel mgły…) sięga środka
+   mapy — kolumna zjeżdża pod pasek narzędzi, inaczej pasek „Na drodze: …”
+   zasłania przyciski palety (05.11). `--map-tools-bottom` mierzy `MapTools`. */
+.map-area:has(.map-tools .map-tool-options) .notice-column {
+  top: var(--map-tools-bottom, 0.75rem);
+}
+
 .notice {
   pointer-events: auto;
   padding: 0.3rem 0.6rem 0.45rem;

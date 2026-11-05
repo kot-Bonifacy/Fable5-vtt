@@ -15,7 +15,7 @@ import { answerChaseObstacle, answerChaseVehicle, removeChaseObstacle } from '..
 import { clearNotices, notifyChoice, notifyRefusal } from '../notices.js';
 import { chaseErrorText } from './ChaseVehicleMenu.js';
 import { chaseRamText } from '../chase-ram.js';
-import { useMenuTop } from './TokenContextMenu.js';
+import { useMenuEscape, useMenuTop } from './TokenContextMenu.js';
 
 /**
  * Przeszkody na scenie pościgu (etap 65e) — menu przeszkody u MG i pasek
@@ -49,6 +49,7 @@ export function ChaseObstacleMenu() {
   const isGm = useAuthStore((s) => s.user?.role === ROLE_GM);
   const placement = useMenuTop((menu?.clientY ?? 0) + 12);
   const obstacle = menu ? obstacles.find((entry) => entry.id === menu.obstacleId) : undefined;
+  useMenuEscape(menu !== null && obstacle !== undefined && isGm, close);
   if (!menu || !obstacle || !isGm) return null;
   const blocked = obstacle.blockingVehicleId
     ? vehicles.find((entry) => entry.id === obstacle.blockingVehicleId)

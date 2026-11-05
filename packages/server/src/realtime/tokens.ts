@@ -1,5 +1,6 @@
 import { settleSeatAfterGmDrop } from './chase.js';
 import { offstageVehicleIds, seatedOffstage } from './chase-offstage.js';
+import { refreshChaseForDriver } from './chase-crew.js';
 import { deferView } from './presentation.js';
 import type {
   FogShapeView,
@@ -693,6 +694,10 @@ export async function emitTokenUpsert(
     )
   )
     return;
+  // Kierowca w fotelu (05.11): jego stany decydują, czy auto jedzie i czy
+  // stoi rama pościgu — odświeżenie aut idzie stąd, bo tu kończy się każda
+  // zmiana stanów. Przesunięcie stanów nie zmienia, a dryf rozsyła auta sam.
+  if (!options.moved) await refreshChaseForDriver(deps, campaignId, scene, token);
   const linked = linkedSheet !== undefined ? linkedSheet : await loadLinkedSheet(deps, token);
   // Only an upsert that moved the token may move it at the clients (#47).
   const moved = options.moved ? { moved: true as const } : {};

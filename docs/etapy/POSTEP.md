@@ -42,8 +42,8 @@ znaczy jazdę: kadr jedzie z autem drużyny, więc gdy ono stoi (bez kierowcy, z
 droga, a jadące auta odjeżdżają mu do przodu; auto NPC-a bez kierowcy odpływa w tył. Kierowca,
 który zniknie albo padnie, zostawia auto toczące się pędem, co rundę o połowę wolniej
 (`SceneVehicle.momentum`). Jadące auto, które dryfem dojedzie do stojącego, pyta kierowcę o skręt
-albo taran. Umowa na górze `mapa`, zasady w `decyzje-i-uproszczenia.md`; luka (stan kierowcy z
-karty nie odświeża widoku aut) w `zaleglosci.md`.
+albo taran. Umowa na górze `mapa`, zasady w `decyzje-i-uproszczenia.md`. Od 05.11 (trzecia
+sesja) stan kierowcy z karty i obrażeń od razu odświeża widok aut (liść `chase-crew.ts`).
 
 **„Ostatni zjazd” rozegrany ponownie 05.11 po rebalansie — porażka o włos** (Wolt 10/35 PW na koniec
 rundy 6, zdał oba Manewry) — **MG: balans w porządku**, liczby wzorca bez zmian. Wnioski
@@ -648,10 +648,10 @@ a nie do tego pliku.
 
 | obszar      | co obejmuje                                                    | umów | pułapek |
 | ----------- | -------------------------------------------------------------- | ---- | ------- |
-| `mapa`      | figury, zaznaczanie, narzędzia, obiekty sceny, ściany, efekty, zamek drzwi, ukryta figura zauważona, ikony urządzeń, wspólny widok drużyny, scena pościgu, jazda kierowcy i dryf, Manewr i taranowanie, przeszkody pościgu, sceny przykładowe, wzorzec zwykłej mapy, ulepszenia pojazdu, stojące auto na drodze, kreator pościgu i wbudowane drogi, załoga auta poza pościgiem, rama pościgu i pęd auta bez kierowcy, długa pętla drogi | 84   | 27      |
+| `mapa`      | figury, zaznaczanie, narzędzia, obiekty sceny, ściany, efekty, zamek drzwi, ukryta figura zauważona, ikony urządzeń, wspólny widok drużyny, scena pościgu, jazda kierowcy i dryf, Manewr i taranowanie, przeszkody pościgu, sceny przykładowe, wzorzec zwykłej mapy, ulepszenia pojazdu, stojące auto na drodze, kreator pościgu i wbudowane drogi, załoga auta poza pościgiem, rama pościgu i pęd auta bez kierowcy, długa pętla drogi | 85   | 27      |
 | `czat`      | rodzaje wierszy, `visibleTo`, filtr, `seq`, `gmrecovery`, „to dotyczy mnie”, grupy kart, kolor gracza, czyszczenie, gęsta karta rzutu, przebieg ataku, `/jako` za NPC-a, karta rzutu bez konta | 17   | 3       |
 | `serwer`    | Prisma i migracje, zdarzenia gniazda, zapisy karty, uploady    | 26   | 21      |
-| `ui`        | okna pływające, `z-index`, motyw, skróty, dostępność, wejście, panel decyzji MG | 37   | 15      |
+| `ui`        | okna pływające, `z-index`, motyw, skróty, dostępność, wejście, panel decyzji MG | 38   | 15      |
 | `kosci`     | kubek, `rollFormula`, wezwania i prośby o Test, tabele losowe, PT od MG | 24   | 2       |
 | `tura`      | budżet Akcji i metrów, kolejka, trasa, ruch przez ściany, skok, walka z zauważenia, pytanie MG o przekroczenie, Percepcja w drodze, ukryte figury, skradanie, kropki ataków, kierowca bez Biegu, Test jazdy w Akcji Ruchu | 35   | 7       |
 | `atak`      | broń i dodatki, amunicja, obrażenia, pancerz, rany krytyczne, trucizna na ostrzu, auto-unik, strach z Konfrontacji, auto jako cel, broń pokładowa, wybór celu ze stosu, skutki amunicji po karcie ataku, ikona gołych rąk | 56   | 8       |
@@ -672,6 +672,22 @@ a nie do tego pliku.
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
 
+### Sesja 05.11, trzecia — siedem zaległości pościgu i czatu
+
+**Zlecenie MG:** „napraw kilka zaległości”. **Zrobione:** stan kierowcy z karty, obrażeń i ręki
+MG odświeża auta (liść `realtime/chase-crew.ts`, `emitTokenUpsert` → `emitChase`); paleta
+przeszkód rozbraja się po każdej przeszkodzie; kolumna komunikatów schodzi pod otwarty wiersz
+opcji paska narzędzi (`--map-tools-bottom`); menu auta i przeszkody zamyka Esc także z fokusem na
+checkboksie (`useMenuEscape`); karta Rany bez rzutu pisze „Rana krytyczna bez obrażeń”;
+„Ustabilizowanie” w walce proponuje tylko figury w zasięgu ramienia; beton bez „· 30 PW” na
+mapie. Umowy na górze `mapa` i `ui`, diagnozy w `archiwum/zamkniete-zaleglosci.md`.
+**Testy:** server 1741, client 471 zielone (nowy: stan kierowcy z `token:update` → `chase:sync`
+z `control: 'none'`, pada bez poprawki), `tsc`, ESLint, Prettier czyste. **Oglądane
+w Firefoksie** tymczasowym specem E2E (MG, wiadukt, `po-T6`, skasowany): jedna przeszkoda na
+klik, pasek „Na drodze” 6 px pod paletą i „Wrak” klikalny, Esc z checkboksem, menu przeszkody,
+podpis betonu, karta Rany. „Ustabilizowanie” — tylko `tsc`. Firefox MCP stał na koncie
+`mg_primo` w cudzej kampanii, więc `dev.db` nieruszane.
+
 ### Sesja 05.11, druga — „Neonowa ulica” z trzech map MG (66c)
 
 **Zlecenie MG:** „scal te grafiki drogi … aby tworzyły jeden odcinek drogi płynnie na siebie
@@ -684,26 +700,3 @@ C → A), pliki `neon-street*.webp`, wpis „Neonowa ulica” w `CHASE_ROADS` z 
 wycięte. **Testy:** `chase-roads` i `scene-templates` (shared, server) zielone, `tsc`, ESLint,
 Prettier czyste. **Oglądane w Firefoksie** (tymczasowy spec E2E — Firefox MCP wisiał na
 `browser_navigate`): pusta scena z drogą przewija pętlę, wzorzec staje bez braków, konsola czysta.
-
-### Sesja 05.11 — ponowne rozegranie „Ostatniego zjazdu” i rama pościgu (66c)
-
-**Zlecenie MG:** „uruchom ponownie testy w przykładowej scenie pościgu w przeglądarce (ze
-stworzonymi wcześniej postaciami)”; w trakcie: „wóz bez kierowcy nie powinien się przemieszczać”,
-„przewijana pod autem droga to jednoznaczna cecha poruszania się auta”. **Decyzje MG (05.11):**
-auto bez kierowcy odpływa w tył, chyba że to auto graczy — wtedy pozostałe jadące auta odpływają
-do przodu; kierowca znika / pada → auto powoli zwalnia. **Zrobione:** rama `chaseFrameTempo` +
-`cpredVehicleSpeed` / `cpredCoastSpeed` + kolumna `SceneVehicle.momentum` (migracja), dryf,
-przeszkody, bieżnia, „nieruchomy pojazd” w ataku i menu auta liczą z prędkości; jadące auto
-dryfem w stojące → pytanie o skręt/taran. Commit `0c6acf6f`. Potem 6 rund + dogrywka na `dev.db`
-(MG i Ola w Chromium, Tester i Handlarz w **Firefoksie**): porażka o włos, wnioski w pliku etapu;
-notatki ❓ i ⚠️ wzorca poprawione (droga stoi bez kierowcy, barykada w R5, Wolt zwalnia).
-Zamknięta zaległość szóstej sesji (pasek „Zderzenie”, `/jako` — obejrzane w Firefoksie),
-częściowo piątej; nowe znaleziska (pasy na 0,03 kratki, paleta przeszkód uzbrojona, pasek MG
-nad paletą, Esc w menu auta i inne) w `zaleglosci.md`. Pułapki oględzin: `bringToFront` w
-Firefoksie, klik po „Następna tura” w jadącą kamerę. NPC-e Lutka, Grot, Kabel, Szew i Kłoda
-w rundach 5–6 częściowo bez akcji (skrót MG dla tempa przebiegu).
-**Testy:** shared 2951, client 471, server 1740 zielone (nowe: rama, pęd, zwalnianie, dryf do
-przodu w stojące auto), `tsc` i ESLint czyste. E2E `48-poscig` nie puszczone (wymaga `po-T6`).
-**Po sesji (MG):** balans 66c w porządku; konto gracza znika z karty rzutu — karta pisze postacią,
-MG ma „Rzucał: …” w podpowiedzi (umowa na górze `czat`). Oglądane: MG i Ola w Chromium, Tester
-i Handlarz w **Firefoksie** (skrypt biblioteki — Firefox MCP przestał startować).

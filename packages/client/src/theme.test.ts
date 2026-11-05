@@ -75,6 +75,7 @@ describe('motyw (etap 27e)', () => {
      * `--chat-kind-icon` (60b) to adres ikony rubryki, podawany przez `FeedRow`,
      * a `--player` (60c) wybiera z motywu barwę autora karty po `data-author-color`.
      * `--device-glyph` (28.10) to adres sylwetki urządzenia z `DeviceGlyph`.
+     * `--map-tools-bottom` (05.11) to dolna krawędź paska narzędzi z `MapTools`.
      */
     const local = new Set([
       '--chat-kind-icon',
@@ -82,6 +83,7 @@ describe('motyw (etap 27e)', () => {
       '--hud-hp-color',
       '--hud-icon',
       '--hud-mag-color',
+      '--map-tools-bottom',
       '--player',
       '--rattle',
       '--top-bar-control',

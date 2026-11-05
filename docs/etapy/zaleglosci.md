@@ -10,31 +10,24 @@ w `POMYSLY.md` („Do sprawdzenia przy stole”), decyzje MG — w `decyzje-i-up
 `20261105180000_chase_vehicle_momentum`) i oględziny przy stole.** Oglądane w Firefoksie i Chromium
 na `dev.db`: bez kierowcy Wozu droga stoi u MG i graczy, rusza po siadaniu za kierownicę, menu
 auta „bez dryfu · bez kierowcy — stoi”; w dogrywce furgon bez Wolta miał pęd 20 → 10 (dryf −7,5)
-i wjechał w barykadę jako wrak. **Luka:** zmiana stanu kierowcy z karty albo z obrażeń (Śmiertelnie
-ranny, Nieprzytomny) nie wysyła `emitChase`, więc menu auta i rama u klienta pokazują „kierowca
-prowadzi” do następnego dryfu (mechanika liczy ze świeżej bazy). `tokens.ts` nie może importować
-`chase.ts` — potrzebny liść albo zdarzenie. E2E `48-poscig` (wymaga `po-T6`) nie puszczone —
+i wjechał w barykadę jako wrak. Luka ze stanem kierowcy zamknięta 05.11
+(trzecia sesja, `archiwum/zamkniete-zaleglosci.md`). E2E `48-poscig` (wymaga `po-T6`) nie puszczone —
 stawiały auto drużyny bez kierowcy, więc oczekiwania dryfu mogą się zmienić.
 
-**05.11.2026 — znaleziska z ponownego przebiegu 66c.**
+**05.11.2026 — znaleziska z ponownego przebiegu 66c.** Sześć z nich zamkniętych 05.11 (trzecia
+sesja, `archiwum/zamkniete-zaleglosci.md`); zostały:
 
 - Auta na sąsiednich pasach zahaczają o siebie, gdy jedno stoi o ułamek kratki w poprzek
   (eskorta y = 9,03 po przeciągnięciu MG, Wóz y = 12,00, bryły szerokości 3): wyprzedzanie
   dolnym pasem daje pasek „Zderzenie”. Do rozważenia tolerancja kontaktu w poprzek albo
   przyciąganie aut do pasów.
-- Pasek przeszkody MG („Furgon Halcyonu — Na drodze…”) zasłania paletę „Przeszkody” (Roboty
-  drogowe, Wrak, Kolczatka): MG nie kliknie przycisku, dopóki pasek wisi.
-- Paleta przeszkód zostaje uzbrojona po postawieniu („Esc anuluje”), a klik MG w cel strzału
-  stawia przy okazji kolejną przeszkodę — w przebiegu powstały cztery roboty drogowe naraz.
-- Menu auta nie zamyka się Esc, gdy fokus stoi na checkboksie „Może prowadzić”.
 - „Dobądź (Akcja)” pistoletu przy strzelbie w rękach Szew zapisało się na czacie jako „Schowanie
   broni”. Strzelba stoi w „Rękach” na karcie, ale pasek HUD jej nie pokazuje (tarcza + dwie ręce).
-- Karta Rany z taranowania mówi „Pancerz zatrzymał cios (0 obr., OB 0)”, choć ciosu nie było
-  (Rana bez bonusowych obrażeń to decyzja z 31.10 — mylący jest sam tekst).
-- „Ustabilizowanie” wylicza wszystkie figury sceny, także wrogów w innych autach.
+  **05.11 (trzecia sesja):** sam wpis to cena zamiany z decyzji MG z 29.10 (dobycie przy pełnej
+  ręce chowa poprzednią broń za Akcję, `weapon:draw` → `CPRED_ACTION_HOLSTER`) — do rozważenia
+  tylko napis („Zamiana broni”); brak strzelby na pasku HUD nie zbadany.
 - Po usunięciu kopii sceny jej karty NPC-ów zostają w kampanii — listy (Postacie, Kompendium →
   „Dodaj za darmo”) mają dwa komplety Wolt/Kłoda/… (do decyzji MG, czy to celowe).
-- Barykada (beton, „nie do rozbicia”) ma podpis „Barykada · 30 PW”.
 
 **04.11.2026 (piąta sesja) — oględziny w przeglądarce zmian pościgu i czatu.** Zmiany
 sprawdzone tylko testami (serwer, klient) i buildem, bez przeglądarki. Przy stole (Firefox):

@@ -182,13 +182,23 @@ export function StabilizePicker({
   onDone: () => void;
 }) {
   const tokens = useTokenStore((s) => s.tokens);
+  const scene = useSceneStore((s) => s.effectiveScene);
   const acting = useActingCharacter(combatant);
 
-  const targets = useMemo(
-    () =>
-      // Uczestnik bez figury (Czarny LOD z 26c) nie jest celem żadnej z tych
-      // Akcji — Ustabilizowanie, Pochwycenie i reszta dotyczą ciał.
-      combat.combatants.filter(hasFigureRow).map((row) => {
+  const targets = useMemo(() => {
+    const medic = combatant.tokenId ? tokens[combatant.tokenId] : undefined;
+    // Uczestnik bez figury (Czarny LOD z 26c) nie jest celem żadnej z tych
+    // Akcji — Ustabilizowanie, Pochwycenie i reszta dotyczą ciał. Od 05.11
+    // tylko na wyciągnięcie ręki, jak poza walką: serwer i tak odrzuca dalszych
+    // (`requireStabilizeReach`), a w pościgu lista wyliczała wrogów z innych aut.
+    return combat.combatants
+      .filter(hasFigureRow)
+      .filter((row) => {
+        const token = tokens[row.tokenId];
+        if (row.tokenId === combatant.tokenId || !medic || !token || !scene) return true;
+        return metresForRules(reachMetresBetweenTokens(medic, token, scene)) <= CPRED_MELEE_REACH_M;
+      })
+      .map((row) => {
         const token = tokens[row.tokenId];
         return {
           tokenId: row.tokenId,
@@ -199,9 +209,8 @@ export function StabilizePicker({
           // konającego, ogłasza, że nikt nie jest ranny.
           wounds: observedWoundState({ hp: token?.hp, statuses: token?.statuses }),
         };
-      }),
-    [combat.combatants, tokens],
-  );
+      });
+  }, [combat.combatants, combatant.tokenId, scene, tokens]);
 
   return <StabilizeTargetList acting={acting} targets={targets} onDone={onDone} />;
 }

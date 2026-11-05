@@ -9,6 +9,41 @@ go czytać.
 albo gdy chcesz sprawdzić, czy pozycja, która wygląda na nową, nie jest wracającą starą.
 Treść wpisów jest niezmieniona — łącznie z datami i odsyłaczami do notatek sesji.
 
+## Zamknięte 2026-11-05, trzecia sesja („napraw kilka zaległości”)
+
+**05.11.2026 — rama pościgu: stan kierowcy z karty albo z obrażeń nie odświeżał aut.**
+Diagnoza: `driverCapable` czyta stany figury w fotelu 0, a stany zmieniają `syncWoundStatuses`,
+`token:update` MG, obrażenia i efekty tury — żadna z tych dróg nie wołała `emitChase`, więc menu
+auta i rama u klienta pokazywały „kierowca prowadzi” do następnego dryfu. `tokens.ts` nie mógł
+zaimportować `chase.ts` (cykl). Naprawa: liść `realtime/chase-crew.ts` — `emitTokenUpsert` woła
+`refreshChaseForDriver` (figura w fotelu 0 na scenie pościgu, upsert bez `moved`), a `chase.ts`
+podaje `emitChase` przez `provideChaseEmitter`. Test `chase-driving.test.ts` („stan kierowcy z ręki
+MG odświeża auta bez ruszania nimi”) pada bez poprawki. Umowa na górze `mapa`.
+
+**05.11.2026 — znaleziska z ponownego przebiegu 66c (sześć z dziewięciu).** Obejrzane
+w **Firefoksie** tymczasowym specem E2E (MG, wiadukt, `po-T6`, skasowany):
+
+- Paleta przeszkód zostawała uzbrojona po postawieniu, a klik MG w cel strzału stawiał kolejną
+  przeszkodę. Naprawa: `obstacleClickAt` (`MapArea.tsx`) odkłada przeszkodę z ręki po każdym
+  kliku (`arm(null)`), paleta zostaje otwarta. Drugi klik w drogę — nadal jedna przeszkoda.
+- Pasek przeszkody MG zasłaniał paletę: kolumna komunikatów stoi na górze-środku mapy, a wiersz
+  opcji paska narzędzi sięga do środka. Naprawa: `MapTools` mierzy dolną krawędź paska
+  (`--map-tools-bottom`, `ResizeObserver`), a przy otwartym `.map-tool-options` kolumna zjeżdża
+  pod pasek (`21-notices.css`). W Firefoksie pasek „Na drodze: Barykada” stanął 6 px pod paletą,
+  „Wrak” klikalny.
+- Menu auta nie zamykało się Esc z fokusem na checkboksie — w praktyce ani menu auta, ani menu
+  przeszkody nie miały własnej obsługi Esc, a drabinka Esc mapy pomija pola formularzy. Naprawa:
+  `useMenuEscape` (`TokenContextMenu.tsx`, faza przechwytywania jak w menu figury) w obu menu.
+- Karta Rany bez rzutu (taranowanie, Rana z ręki MG) mówiła „Pancerz zatrzymał cios (0 obr.,
+  OB 0)”. Naprawa: `DamageRow` rozpoznaje ranę bez rzutu (`injury`, rzut 0, OB 0, bez pancerza)
+  i pisze „Rana krytyczna bez obrażeń” bez wiersza rachunku.
+- „Ustabilizowanie” w walce wyliczało wszystkich uczestników (w pościgu — wrogów z innych aut),
+  choć serwer i tak odrzucał dalszych (`requireStabilizeReach`). Naprawa: `StabilizePicker`
+  filtruje jak `StabilizeNearbyPicker` — sam medyk i figury w zasięgu ramienia. Tylko `tsc`,
+  w przeglądarce nie oglądane.
+- Barykada (beton) miała na mapie podpis „Barykada · 30 PW”. Naprawa: `ChaseLayer` pisze PW tylko
+  przy przeszkodach do rozbicia (`chaseObstacleUnbreakable`), jak menu przeszkody.
+
 ## Zamknięte 2026-11-05 (ponowny przebieg 66c w przeglądarce)
 
 **04.11.2026 (szósta sesja) — oględziny paska „Zderzenie” i `/jako` za NPC-a.** Sprawdzone

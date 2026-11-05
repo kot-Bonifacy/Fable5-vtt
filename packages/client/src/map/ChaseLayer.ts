@@ -5,6 +5,7 @@ import {
   chaseHeadingDeg,
   chaseIsHorizontal,
   chaseLimitMove,
+  chaseObstacleUnbreakable,
   chaseScrollSpeed,
   chaseFrameTempo,
   CHASE_CONTROL_LABELS,
@@ -499,8 +500,11 @@ export class ChaseLayer {
         .stroke({ color: OBSTACLE_BLOCK_COLOR, width: Math.max(3, grid * 0.07), alpha: 1 });
     }
 
+    // Kolczatki i betonu się nie rozbija, więc PW przy nich tylko mylą (05.11).
     node.label.text =
-      obstacle.kind === 'spikes' ? obstacle.name : `${obstacle.name} · ${obstacle.hp} PW`;
+      obstacle.kind === 'spikes' || chaseObstacleUnbreakable(obstacle.kind)
+        ? obstacle.name
+        : `${obstacle.name} · ${obstacle.hp} PW`;
     node.label.style.fontSize = Math.max(11, grid * 0.18);
     const horizontal = chaseIsHorizontal(direction);
     node.label.position.set(0, -(horizontal ? width : length) / 2 - grid * 0.06);

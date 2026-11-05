@@ -33,7 +33,7 @@ import {
   answerChaseVehicle,
 } from '../socket.js';
 import { clearNotices, notifyChoice, notifyRefusal } from '../notices.js';
-import { useMenuTop } from './TokenContextMenu.js';
+import { useMenuEscape, useMenuTop } from './TokenContextMenu.js';
 import { missingMountWeaponsText } from '../chase-mounts.js';
 import { chaseRamText } from '../chase-ram.js';
 
@@ -156,6 +156,7 @@ export function ChaseVehicleMenu() {
   // mierzy się po renderze, jak w menu figury.
   const placement = useMenuTop((menu?.clientY ?? 0) + 12);
   const vehicle = menu ? vehicles.find((entry) => entry.id === menu.sceneVehicleId) : undefined;
+  useMenuEscape(menu !== null && vehicle !== undefined && user !== null, close);
   if (!menu || !vehicle || !user) return null;
   const isGm = user.role === ROLE_GM;
   const passengers = Object.values(tokens).filter(

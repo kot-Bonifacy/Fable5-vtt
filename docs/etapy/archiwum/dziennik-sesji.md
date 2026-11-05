@@ -1,5 +1,28 @@
 # Dziennik sesji — archiwum
 
+### Sesja 05.11 — ponowne rozegranie „Ostatniego zjazdu” i rama pościgu (66c)
+
+**Zlecenie MG:** „uruchom ponownie testy w przykładowej scenie pościgu w przeglądarce (ze
+stworzonymi wcześniej postaciami)”; w trakcie: „wóz bez kierowcy nie powinien się przemieszczać”,
+„przewijana pod autem droga to jednoznaczna cecha poruszania się auta”. **Decyzje MG (05.11):**
+auto bez kierowcy odpływa w tył, chyba że to auto graczy — wtedy pozostałe jadące auta odpływają
+do przodu; kierowca znika / pada → auto powoli zwalnia. **Zrobione:** rama `chaseFrameTempo` +
+`cpredVehicleSpeed` / `cpredCoastSpeed` + kolumna `SceneVehicle.momentum` (migracja), dryf,
+przeszkody, bieżnia, „nieruchomy pojazd” w ataku i menu auta liczą z prędkości; jadące auto
+dryfem w stojące → pytanie o skręt/taran. Commit `0c6acf6f`. Potem 6 rund + dogrywka na `dev.db`
+(MG i Ola w Chromium, Tester i Handlarz w **Firefoksie**): porażka o włos, wnioski w pliku etapu;
+notatki ❓ i ⚠️ wzorca poprawione (droga stoi bez kierowcy, barykada w R5, Wolt zwalnia).
+Zamknięta zaległość szóstej sesji (pasek „Zderzenie”, `/jako` — obejrzane w Firefoksie),
+częściowo piątej; nowe znaleziska (pasy na 0,03 kratki, paleta przeszkód uzbrojona, pasek MG
+nad paletą, Esc w menu auta i inne) w `zaleglosci.md`. Pułapki oględzin: `bringToFront` w
+Firefoksie, klik po „Następna tura” w jadącą kamerę. NPC-e Lutka, Grot, Kabel, Szew i Kłoda
+w rundach 5–6 częściowo bez akcji (skrót MG dla tempa przebiegu).
+**Testy:** shared 2951, client 471, server 1740 zielone (nowe: rama, pęd, zwalnianie, dryf do
+przodu w stojące auto), `tsc` i ESLint czyste. E2E `48-poscig` nie puszczone (wymaga `po-T6`).
+**Po sesji (MG):** balans 66c w porządku; konto gracza znika z karty rzutu — karta pisze postacią,
+MG ma „Rzucał: …” w podpowiedzi (umowa na górze `czat`). Oglądane: MG i Ola w Chromium, Tester
+i Handlarz w **Firefoksie** (skrypt biblioteki — Firefox MCP przestał startować).
+
 ### Sesja 04.11, szósta — drobiazgi z przebiegu „Ostatniego zjazdu” (66c)
 
 **Zlecenie MG:** „napraw kilka zaległości”. **Zrobione:** pasek „Zderzenie” (przeciągnięcie,
