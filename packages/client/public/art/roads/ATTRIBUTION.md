@@ -24,3 +24,11 @@ skryptu.
 | `badlands.webp` | Badlands   | 4–14                 |
 
 `*-thumb.webp` to miniatury do kreatora.
+
+## Neonowa ulica (05.11.2026)
+
+`neon-street.webp` (tło, 35 × 24 kratki, pas jezdni w wierszach 6–18) i `neon-street-strip.webp`
+(cała pętla, ok. 238 kratek, przewijana pod sceną zamiast tła) skleja `tools/art/chase-neon-street.py`
+z trzech map ulic własnego autorstwa MG (grafiki wygenerowane przez MG, przekazane do repozytorium
+przez MG 05.11.2026; źródła poza repozytorium). Skrypt wyrównuje jezdnie, łączy odcinki
+i rysuje od nowa linie przerywane.

@@ -8,6 +8,7 @@ import {
   chaseScrollSpeed,
   chaseFrameTempo,
   CHASE_CONTROL_LABELS,
+  chaseRoadByUrl,
   chaseRoadCells,
   chaseRoadSpanPx,
   clampChaseVehicle,
@@ -114,6 +115,24 @@ async function buildSeamlessTexture(
   return { texture: Texture.from(canvas), periodFraction: period / length };
 }
 
+/**
+ * Gotowa pętla wbudowanej drogi (`ChaseRoadPreset.strip`, MG 05.11): już
+ * zapętlona, więc bez przenikania szwu. Kopia na płótnie, bo `setScene`
+ * niszczy poprzednią teksturę bieżni, a tej z `Assets` nie wolno.
+ */
+async function buildStripTexture(url: string): Promise<Texture | null> {
+  const source = await Assets.load<Texture>(url);
+  const resource = source.source.resource as CanvasImageSource | undefined;
+  if (!resource) return null;
+  const canvas = document.createElement('canvas');
+  canvas.width = source.source.pixelWidth;
+  canvas.height = source.source.pixelHeight;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return null;
+  ctx.drawImage(resource, 0, 0);
+  return Texture.from(canvas);
+}
+
 function prefersReducedMotion(): boolean {
   return (
     typeof window !== 'undefined' &&
@@ -204,7 +223,29 @@ export class ChaseLayer {
       (CHASE_SEAM_SQUARES * scene.grid.sizePx) /
       (chaseIsHorizontal(scene.chase.direction) ? background.width : background.height);
     const key = `${background.url}|${scene.chase.direction}|${seamFraction.toFixed(4)}`;
-    if (key !== this.roadKey) {
+    // Pętla wbudowanej drogi jest pozioma — przy jeździe w pionie zostaje zwykłe tło.
+    const strip = chaseIsHorizontal(scene.chase.direction)
+      ? (chaseRoadByUrl(background.url)?.strip ?? null)
+      : null;
+    if (key !== this.roadKey && strip) {
+      this.roadKey = key;
+      this.road.visible = false;
+      void buildStripTexture(strip)
+        .then((texture) => {
+          if (this.destroyed || this.roadKey !== key || !texture) return;
+          this.roadTexture?.destroy(true);
+          this.roadTexture = texture;
+          this.road.texture = texture;
+          this.road.tilePosition.set(0, 0);
+          // Ta sama skala w obu osiach: wysokość pętli = wysokość tła.
+          const scale = background.height / texture.height;
+          this.road.tileScale.set(scale, scale);
+          this.road.visible = true;
+        })
+        .catch(() => {
+          // Bez pętli zostaje zwykłe tło (jak niżej).
+        });
+    } else if (key !== this.roadKey) {
       this.roadKey = key;
       this.road.visible = false;
       void buildSeamlessTexture(background.url, scene.chase.direction, seamFraction)

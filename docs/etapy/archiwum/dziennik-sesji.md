@@ -1,5 +1,20 @@
 # Dziennik sesji — archiwum
 
+### Sesja 04.11, szósta — drobiazgi z przebiegu „Ostatniego zjazdu” (66c)
+
+**Zlecenie MG:** „napraw kilka zaległości”. **Zrobione:** pasek „Zderzenie” (przeciągnięcie,
+pasek przeszkody gracza, menu MG) mówi konkretnie, kto ile bierze — Pług przodem, bokiem,
+pieszy, przeszkoda, beton (`chaseRamText`, nowe pole widoku `ramPlow`); rzut 6k6 w przeszkodę
+bez plakietki „Rana krytyczna!”; `/jako <imię>` mówi też za NPC-a z figury na scenie MG (umowa
+na górze `czat`); notatki 💬 i ❓ wzorca 66c poprawione. Zamknięte z diagnozą
+w `archiwum/zamkniete-zaleglosci.md`. **Nie ruszone, bo to decyzja MG:** „Cofnij” obrażeń
+kadłuba przywraca przyciski celowo (tak MG przenosi trafienie) — dopisane przy wpisie.
+**Zostało** z drobiazgów: bryła `van-8`, kubek nad „Następna tura”, „Odjedź” MG, kamera
+gracza, EMP 2, i „resztki” (metry przy wysiadce, wrak za autem, podpisy foteli).
+**Oglądane:** **nie w przeglądarce** — zaległość „oględziny paska »Zderzenie« i `/jako`”.
+**Testy:** shared 2947, client 471, server 1737 zielone, `tsc` i ESLint czyste, build klienta
+przechodzi. Bez migracji bazy.
+
 ### Sesja 04.11, piąta — zaległości z przebiegu „Ostatniego zjazdu” (66c)
 
 **Zlecenie MG:** naprawić kilka zaległości, nie za dużo naraz, pytać przy wątpliwościach.

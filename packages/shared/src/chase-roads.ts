@@ -7,6 +7,10 @@
  * przenika dwa identyczne pasy i znika. Wiersze jezdni poniżej są kopią
  * układu ze skryptu — zmieniasz jedno, zmieniasz drugie.
  *
+ * „Neonowa ulica” (MG, 05.11) jest inna: `tools/art/chase-neon-street.py`
+ * skleja trzy mapy MG w długą pętlę (`strip`, ok. 238 kratek), którą bieżnia
+ * przewija pod sceną 35 × 24 zamiast tła — droga nie powtarza się co 32 m.
+ *
  * Wolne miejsce na drodze (`chaseFreeSpot`) liczy klient przed „Na drogę”:
  * auta stawiane jedno po drugim nie lądują na sobie na środku sceny.
  */
@@ -21,7 +25,7 @@ import {
   type ChaseSettings,
 } from './chase.js';
 
-export const CHASE_ROAD_IDS = ['highway', 'street', 'viaduct', 'badlands'] as const;
+export const CHASE_ROAD_IDS = ['highway', 'street', 'viaduct', 'badlands', 'neon-street'] as const;
 export type ChaseRoadId = (typeof CHASE_ROAD_IDS)[number];
 
 export interface ChaseRoadPreset {
@@ -37,6 +41,12 @@ export interface ChaseRoadPreset {
   direction: ChaseDirection;
   /** Pas jezdni w wierszach kratek (`from` włącznie, `to` bez). */
   road: { from: number; to: number };
+  /**
+   * Długa, już zapętlona tekstura drogi (ta sama wysokość w kratkach co tło,
+   * dowolna długość) — bieżnia przewija ją zamiast tła, bez przenikania szwu.
+   * Tło (`url`) jest wtedy jej pierwszymi 35 kratkami, stopklatką sceny.
+   */
+  strip?: string;
 }
 
 /** Rozmiar każdej wbudowanej drogi: 35 × 18 kratek po 100 px (1 m na kratkę). */
@@ -48,6 +58,7 @@ function road(
   hint: string,
   from: number,
   to: number,
+  extra: Partial<Pick<ChaseRoadPreset, 'width' | 'height' | 'strip'>> = {},
 ): ChaseRoadPreset {
   return {
     id,
@@ -56,6 +67,7 @@ function road(
     url: `/art/roads/${id}.webp`,
     thumbUrl: `/art/roads/${id}-thumb.webp`,
     ...ROAD_SIZE,
+    ...extra,
     // Drogi są symetryczne w poziomie; domyślnie jazda w lewo (MG, 04.11).
     direction: 'left',
     road: { from, to },
@@ -90,6 +102,15 @@ export const CHASE_ROADS: readonly ChaseRoadPreset[] = [
     'Spękana dwupasmówka przez pustkowie — auto zjedzie na twarde pobocze.',
     4,
     14,
+  ),
+  // Układ powtarza `tools/art/chase-neon-street.py`: 24 kratki w poprzek, jezdnia 6–18.
+  road(
+    'neon-street',
+    'Neonowa ulica',
+    'Trzy pasy między neonami dzielnicy, chodniki i fronty budynków; droga nie powtarza się przez ponad 200 m.',
+    6,
+    18,
+    { height: 2400, strip: '/art/roads/neon-street-strip.webp' },
   ),
 ];
 

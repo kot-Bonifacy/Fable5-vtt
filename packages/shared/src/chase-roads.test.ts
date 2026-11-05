@@ -13,9 +13,15 @@ import { sanitizeScenePatch } from './scenes.js';
 const scene = { width: 3500, height: 1800, gridSizePx: 100, gridOffsetX: 0, gridOffsetY: 0 };
 
 describe('wbudowane drogi', () => {
-  it('każda droga ma okres 32 kratek i zapas na szew bieżni', () => {
+  it('każda droga ma okres 32 kratek i zapas na szew bieżni (albo własną pętlę)', () => {
     for (const preset of CHASE_ROADS) {
-      expect(preset.width / preset.gridSizePx - CHASE_SEAM_SQUARES).toBe(32);
+      if (preset.strip) {
+        // Pętla przewija się zamiast tła; tło to okno 35 kratek jak w innych drogach.
+        expect(preset.width / preset.gridSizePx).toBe(35);
+        expect(preset.strip.startsWith('/art/roads/')).toBe(true);
+      } else {
+        expect(preset.width / preset.gridSizePx - CHASE_SEAM_SQUARES).toBe(32);
+      }
       expect(preset.road.from).toBeGreaterThanOrEqual(0);
       expect(preset.road.to).toBeLessThanOrEqual(preset.height / preset.gridSizePx);
       expect(preset.road.to - preset.road.from).toBeGreaterThanOrEqual(8);
@@ -24,6 +30,7 @@ describe('wbudowane drogi', () => {
 
   it('rozpoznaje drogę po adresie tła, a obce adresy nie', () => {
     expect(chaseRoadByUrl('/art/roads/viaduct.webp')?.id).toBe('viaduct');
+    expect(chaseRoadByUrl('/art/roads/neon-street.webp')?.road).toEqual({ from: 6, to: 18 });
     expect(chaseRoadByUrl('/art/roads/../uploads/x.webp')).toBeNull();
     expect(chaseRoadByUrl('/uploads/c1/maps/a.webp')).toBeNull();
     expect(chaseRoadByUrl(null)).toBeNull();

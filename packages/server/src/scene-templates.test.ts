@@ -374,13 +374,13 @@ describe('etap 66: sceny przykładowe', () => {
 });
 
 describe('etap 66c: „Ostatni zjazd”', () => {
-  it('staje na estakadzie bez braków: cztery auta, osiem NPC-ów, Rydwan w rezerwie, drużyna bez figur', async () => {
+  it('staje na Neonowej ulicy bez braków: cztery auta, osiem NPC-ów, Rydwan w rezerwie, drużyna bez figur', async () => {
     const gm = await connect(gmCookie);
     const list = data(await emitAck<SceneTemplateSummary[]>(gm, 'scene:templates'), 'templates');
     expect(list.find((row) => row.id === 'ostatni-zjazd')).toMatchObject({
       name: 'Ostatni zjazd',
       kind: 'chase',
-      backgroundUrl: '/art/roads/viaduct.webp',
+      backgroundUrl: '/art/roads/neon-street.webp',
       vehicles: 4,
       figures: 8,
     });
@@ -395,19 +395,19 @@ describe('etap 66c: „Ostatni zjazd”', () => {
     const scene = await built.prisma.scene.findUniqueOrThrow({ where: { id: result.sceneId } });
     expect(scene).toMatchObject({
       kind: 'chase',
-      backgroundUrl: '/art/roads/viaduct.webp',
+      backgroundUrl: '/art/roads/neon-street.webp',
       backgroundWidth: 3500,
-      backgroundHeight: 1800,
+      backgroundHeight: 2400,
       width: 3500,
-      height: 1800,
+      height: 2400,
       gridSizePx: 100,
       chaseDirection: 'left',
       chaseTempo: 40,
       chaseRunning: true,
-      chaseRoadFrom: 3,
-      chaseRoadTo: 15,
+      chaseRoadFrom: 6,
+      chaseRoadTo: 18,
       spawnX: 3300,
-      spawnY: 1300,
+      spawnY: 1600,
     });
 
     const placed = await built.prisma.sceneVehicle.findMany({

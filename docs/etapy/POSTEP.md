@@ -29,6 +29,13 @@ Pełna tabela z nazwami i datami: `archiwum/tabela-etapow.md`.
 
 ## Od czego zacząć
 
+**„Neonowa ulica” — piąta wbudowana droga i nowe tło „Ostatniego zjazdu” (zlecenie MG z 05.11) —
+czeka na wdrożenie i oględziny przy stole.** Trzy mapy ulic MG sklejone w jedną pętlę ok. 238 kratek
+(`tools/art/chase-neon-street.py`, źródła poza repo w `C:/AI/materialy/mapy`), przewijaną pod sceną
+35 × 24 zamiast tła (`ChaseRoadPreset.strip`, umowa na górze `mapa`). Wzorzec 66c przeniesiony
+z estakady (wszystko +3 kratki w dół, jezdnia 6–18), wstęp, okrzyki i bariery przepisane na ulicę;
+liczby bez zmian. Scena z wzorca założona przed 05.11 zostaje na estakadzie.
+
 **Rama pościgu i auto bez kierowcy (decyzja MG z 05.11) — czeka na wdrożenie (migracja
 `20261105180000_chase_vehicle_momentum`) i oględziny przy stole (Firefox).** Przewijana droga
 znaczy jazdę: kadr jedzie z autem drużyny, więc gdy ono stoi (bez kierowcy, zgaszone, wrak), stoi
@@ -641,7 +648,7 @@ a nie do tego pliku.
 
 | obszar      | co obejmuje                                                    | umów | pułapek |
 | ----------- | -------------------------------------------------------------- | ---- | ------- |
-| `mapa`      | figury, zaznaczanie, narzędzia, obiekty sceny, ściany, efekty, zamek drzwi, ukryta figura zauważona, ikony urządzeń, wspólny widok drużyny, scena pościgu, jazda kierowcy i dryf, Manewr i taranowanie, przeszkody pościgu, sceny przykładowe, wzorzec zwykłej mapy, ulepszenia pojazdu, stojące auto na drodze, kreator pościgu i wbudowane drogi, załoga auta poza pościgiem, rama pościgu i pęd auta bez kierowcy | 83   | 27      |
+| `mapa`      | figury, zaznaczanie, narzędzia, obiekty sceny, ściany, efekty, zamek drzwi, ukryta figura zauważona, ikony urządzeń, wspólny widok drużyny, scena pościgu, jazda kierowcy i dryf, Manewr i taranowanie, przeszkody pościgu, sceny przykładowe, wzorzec zwykłej mapy, ulepszenia pojazdu, stojące auto na drodze, kreator pościgu i wbudowane drogi, załoga auta poza pościgiem, rama pościgu i pęd auta bez kierowcy, długa pętla drogi | 84   | 27      |
 | `czat`      | rodzaje wierszy, `visibleTo`, filtr, `seq`, `gmrecovery`, „to dotyczy mnie”, grupy kart, kolor gracza, czyszczenie, gęsta karta rzutu, przebieg ataku, `/jako` za NPC-a, karta rzutu bez konta | 17   | 3       |
 | `serwer`    | Prisma i migracje, zdarzenia gniazda, zapisy karty, uploady    | 26   | 21      |
 | `ui`        | okna pływające, `z-index`, motyw, skróty, dostępność, wejście, panel decyzji MG | 37   | 15      |
@@ -665,6 +672,19 @@ a nie do tego pliku.
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
 
+### Sesja 05.11, druga — „Neonowa ulica” z trzech map MG (66c)
+
+**Zlecenie MG:** „scal te grafiki drogi … aby tworzyły jeden odcinek drogi płynnie na siebie
+nachodzący … i wykorzystaj ją w przykładowej scenie pościgu”. **Decyzje MG:** grafiki są jego
+i mogą do repo; teksty wzorca przepisać z estakady na ulicę; kadr 24 kratki (chodniki i fronty).
+**Zrobione:** `tools/art/chase-neon-street.py` (wyrównanie jezdni skalą i mapą pionową, nowe linie
+przerywane jednym rytmem, jezdnia przenika się, budynki łączy cięcie minimalnego błędu, pętla
+C → A), pliki `neon-street*.webp`, wpis „Neonowa ulica” w `CHASE_ROADS` z polem `strip`,
+`ChaseLayer` przewija pętlę, wzorzec „Ostatni zjazd” na nowym tle. Skrzyżowanie z końca obrazu B
+wycięte. **Testy:** `chase-roads` i `scene-templates` (shared, server) zielone, `tsc`, ESLint,
+Prettier czyste. **Oglądane w Firefoksie** (tymczasowy spec E2E — Firefox MCP wisiał na
+`browser_navigate`): pusta scena z drogą przewija pętlę, wzorzec staje bez braków, konsola czysta.
+
 ### Sesja 05.11 — ponowne rozegranie „Ostatniego zjazdu” i rama pościgu (66c)
 
 **Zlecenie MG:** „uruchom ponownie testy w przykładowej scenie pościgu w przeglądarce (ze
@@ -687,18 +707,3 @@ przodu w stojące auto), `tsc` i ESLint czyste. E2E `48-poscig` nie puszczone (w
 **Po sesji (MG):** balans 66c w porządku; konto gracza znika z karty rzutu — karta pisze postacią,
 MG ma „Rzucał: …” w podpowiedzi (umowa na górze `czat`). Oglądane: MG i Ola w Chromium, Tester
 i Handlarz w **Firefoksie** (skrypt biblioteki — Firefox MCP przestał startować).
-
-### Sesja 04.11, szósta — drobiazgi z przebiegu „Ostatniego zjazdu” (66c)
-
-**Zlecenie MG:** „napraw kilka zaległości”. **Zrobione:** pasek „Zderzenie” (przeciągnięcie,
-pasek przeszkody gracza, menu MG) mówi konkretnie, kto ile bierze — Pług przodem, bokiem,
-pieszy, przeszkoda, beton (`chaseRamText`, nowe pole widoku `ramPlow`); rzut 6k6 w przeszkodę
-bez plakietki „Rana krytyczna!”; `/jako <imię>` mówi też za NPC-a z figury na scenie MG (umowa
-na górze `czat`); notatki 💬 i ❓ wzorca 66c poprawione. Zamknięte z diagnozą
-w `archiwum/zamkniete-zaleglosci.md`. **Nie ruszone, bo to decyzja MG:** „Cofnij” obrażeń
-kadłuba przywraca przyciski celowo (tak MG przenosi trafienie) — dopisane przy wpisie.
-**Zostało** z drobiazgów: bryła `van-8`, kubek nad „Następna tura”, „Odjedź” MG, kamera
-gracza, EMP 2, i „resztki” (metry przy wysiadce, wrak za autem, podpisy foteli).
-**Oglądane:** **nie w przeglądarce** — zaległość „oględziny paska »Zderzenie« i `/jako`”.
-**Testy:** shared 2947, client 471, server 1737 zielone, `tsc` i ESLint czyste, build klienta
-przechodzi. Bez migracji bazy.

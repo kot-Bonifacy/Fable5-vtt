@@ -34,7 +34,7 @@ tła). Test izolacji kampanii woła `fabryka-dronow`.
 ## Pomysł w jednym akapicie
 
 Fixerka **Matylda** (wymyślona) dostała cynk: zespół odzysku firmy **Halcyon Bioformy**
-(wymyślona korporacja medyczna) wiezie estakadą nad miastem porwaną netrunnerkę **Iskrę**, która
+(wymyślona korporacja medyczna) wiezie neonową arterią przez dzielnicę porwaną netrunnerkę **Iskrę**, która
 wykradła im coś ważnego (dopasuj do kampanii). Za sześć rund furgon zjedzie ostatnim
 zjazdem do strzeżonej enklawy Halcyonu i Iskry nikt już nie zobaczy. Drużyna dostaje od
 Matyldy szybki wóz z Pługiem bojowym i Nitro i siada furgonowi na ogon. Przed nimi jest
@@ -57,22 +57,25 @@ mechaniki: kolczatka wroga, słaby punkt, taranowanie z Pługiem, szyby i posił
 
 ## Mapa i ustawienia sceny
 
-**Tło: wbudowana droga „Estakada”** (`/art/roads/viaduct.webp`, 35 × 18 kratek po 100 px,
-1 m na kratkę, okres 32 kratek, szew bieżni niewidoczny; decyzja MG z 04.11). Trzy pasy
-w jedną stronę: **górny wiersze 3–7, środkowy 7–11, dolny 11–15**, neonowe bariery 2,5–3
-(cyjan) i 15–15,5 (magenta), poza nimi przepaść z nocnym miastem w dole. Pobocza nie ma: auto
-jedzie od bariery do bariery. Środki pasów: y = 5, 9, 13.
+**Tło: wbudowana droga „Neonowa ulica”** (od 05.11, MG; wcześniej „Estakada” z 04.11):
+`/art/roads/neon-street.webp`, 35 × 24 kratki po 100 px, 1 m na kratkę. Bieżnia przewija
+pod nią długą pętlę `neon-street-strip.webp` (ok. 238 kratek, trzy mapy ulic MG sklejone
+`tools/art/chase-neon-street.py`), więc droga nie powtarza się co 32 m. Trzy pasy w jedną
+stronę: **górny wiersze 6–10, środkowy 10–14, dolny 14–18**, za liniami krawędziowymi
+krawężnik i bariera (ok. 4 i 20), dalej chodniki pod neonami i fronty budynków. Środki pasów:
+y = 8, 12, 16. Przeniesienie z estakady przesunęło wszystko o 3 kratki w dół; liczby
+i przebieg rund bez zmian.
 
 | pole | wartość | dlaczego |
 | --- | --- | --- |
 | `kind` | `chase` | |
 | `chase.direction` | `left` | domyślne od 04.11 (MG); przód kadru to lewa krawędź, tył — prawa |
 | `chase.tempo` | 40 | prędkość eskorty i auta drużyny — oba bez dryfu, furgon (Ruch 20) cofa się o 5 kratek na rundę |
-| `chase.road` | `{ from: 3, to: 15 }` | pas wbudowanej estakady (`CHASE_ROADS`), od bariery do bariery |
+| `chase.road` | `{ from: 6, to: 18 }` | pas wbudowanej Neonowej ulicy (`CHASE_ROADS`), od linii do linii krawędziowej |
 | `chase.running` | `true` | droga jedzie od aktywacji |
 | `visibility` / `playerMove` | `open` / `stop` | jak każdy pościg |
 | `ambience` | `car` | |
-| `spawn` | `{ x: 33, y: 13 }` | dolny pas za autem drużyny — pod barierami jest przepaść, więc start na jezdni; poza walką nikt się z nikim nie zderza, a gracze klikają fotel tuż obok |
+| `spawn` | `{ x: 33, y: 16 }` | dolny pas za autem drużyny — start na jezdni; poza walką nikt się z nikim nie zderza, a gracze klikają fotel tuż obok |
 
 ### Ustawienie startowe (środki brył w kratkach)
 
@@ -304,13 +307,12 @@ uruchomione silniki. MG włącza tryb turowy. Pierwsza runda nie dryfuje (szyk u
 - Jeśli na koniec rundy furgon nadal jedzie i ma kierowcę, skręca w zjazd: **porażka**.
   MG ogłasza to narracyjnie i odsuwa furgon za przednią krawędź (albo ustawia „Ucieka”).
 
-### Bariery estakady
+### Bariery ulicy
 
-Mechanika nie zrzuca aut z estakady — auto nie wyjedzie poza pas jezdni. Bariery grają
-narracyjnie: auto po utracie kontroli na skrajnym pasie „szoruje po barierze w snopie iskier”,
-a wrak, który staje przy barierze, MG może opisać jako zawieszony nad przepaścią (dobry moment
-na Kłodę z Iskrą, jeśli to furgon). Zepchnięcie auta w przepaść to decyzja MG poza mechaniką,
-**nie dla furgonu** — Iskra by zginęła, a scena nie daje na to ostrzeżenia.
+Mechanika nie wyrzuca aut z jezdni na chodnik — auto nie wyjedzie poza pas jezdni. Bariery
+grają narracyjnie: auto po utracie kontroli na skrajnym pasie „szoruje po barierze w snopie
+iskier”, a przechodnie rozbiegają się spod szyldów. Wbicie auta w ścianę budynku to decyzja
+MG poza mechaniką, **nie dla furgonu** — Iskra by zginęła, a scena nie daje na to ostrzeżenia.
 
 ### Morale
 
@@ -336,7 +338,7 @@ na Kłodę z Iskrą, jeśli to furgon). Zepchnięcie auta w przepaść to decyzj
 
 Gdy furgon stoi (kierowca padł i Kłoda się nie przesiadł, wrak albo zderzenie): MG wyłącza
 „Droga jedzie”. Auta stoją, przeszkody nie dryfują, a walka toczy się dalej na stojącej
-estakadzie. MG wysadza figury z aut przeciągnięciem (wyskok na jezdnię robi tylko MG).
+ulicy. MG wysadza figury z aut przeciągnięciem (wyskok na jezdnię robi tylko MG).
 
 - **Kłoda z Iskrą jako tarczą.** Kłoda wysiada i trzyma Iskrę przed sobą (narracyjnie: kto
   strzela w Kłodę i chybi o 1–2 oczka, trafia Iskrę — decyzja MG, VTT tego nie liczy).
@@ -360,12 +362,13 @@ estakadzie. MG wysadza figury z aut przeciągnięciem (wyskok na jezdnię robi t
 
 **Wstęp (MG czyta przed rundą 1):**
 
-> Estakada wisi nad miastem jak neonowa nitka: magentowa bariera po lewej, cyjanowa po
-> prawej, a za nimi tylko pustka i światła dzielnic sto metrów niżej. Matylda rzuca wam
+> Arteria tnie dzielnicę jak neonowa blizna: trzy pasy mokrego asfaltu, za barierami chodniki
+> pod magentowymi i cyjanowymi szyldami, a nad nimi ślepe ściany bloków i buczące agregaty.
+> Matylda rzuca wam
 > kluczyki i nie tłumaczy, skąd ma ten pomarańczowy wóz z pługiem przyspawanym do zderzaka.
 > „Biały furgon Halcyonu, kilometr przed wami. W środku dziewczyna, która nazywa się Iskra
-> i która zrobiła mi kiedyś przysługę. Za dziesięć minut furgon zjedzie z estakady do ich
-> enklawy i będzie po niej. I jeszcze jedno: nie rozwalcie mi tego furgonu. Ona siedzi
+> i która zrobiła mi kiedyś przysługę. Za dziesięć minut furgon skręci w ostatni zjazd, prosto
+> do ich enklawy, i będzie po niej. I jeszcze jedno: nie rozwalcie mi tego furgonu. Ona siedzi
 > z tyłu.” Silnik ryczy. Przed wami, w smugach neonu, majaczy czarne auto, które jedzie
 > stanowczo zbyt blisko białej furgonetki.
 
