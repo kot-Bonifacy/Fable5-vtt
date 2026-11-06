@@ -30,6 +30,7 @@ import { registerArchiveRoutes } from './routes/archive.js';
 import { registerMusicRoutes } from './routes/music.js';
 import { setupRealtime, type RealtimeHandle } from './realtime/index.js';
 import { diceScriptPath } from './realtime/dice-script.js';
+import { reseatChasePassengers } from './realtime/chase.js';
 import { sweepUploadsInBackground } from './uploads-gc.js';
 import { campaignUploadReadable, migrateFlatUploads } from './campaign-uploads.js';
 import { MapPreviews } from './map-preview.js';
@@ -270,6 +271,10 @@ export async function buildApp(
   // Etap 65a (decyzja MG 10 z 30.10): wiersze „Pojazd” Taboru sprzed etapu
   // dostają prawdziwe pojazdy — raz, przed pierwszym żądaniem.
   await backfillFleetVehicles(prisma, ctx.compendium, ctx.cpred, app.log);
+  // Figury w fotelach aut na drogach według bieżącego układu foteli (06.11:
+  // furgony za kabiną) — stojące auto nie przesadzi ich samo.
+  const reseated = await reseatChasePassengers(prisma);
+  if (reseated > 0) app.log.info({ tokens: reseated }, 'chase passengers reseated');
   // Pliki, których nikt już nie wymienia (sesja naprawcza 22.08). W tle i po
   // cichu: nic tu nie jest pilne, a start stołu nie ma na co czekać.
   if (options.sweepUploads !== false) {

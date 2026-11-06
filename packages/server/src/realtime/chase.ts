@@ -500,6 +500,25 @@ export async function carryPassengers(
 }
 
 /**
+ * Przy starcie serwera przesadza figury w fotelach wszystkich aut na drogach
+ * według bieżącego układu foteli. `x`, `y` figury w fotelu są zapisane, a
+ * `carryPassengers` woła tylko ruch auta — po zmianie `VEHICLE_LAYOUTS`
+ * (06.11: furgony za kabiną) figury w stojącym aucie, np. we wraku, zostawały
+ * na starych miejscach (kierowca na masce). Zwraca liczbę przesadzonych figur.
+ */
+export async function reseatChasePassengers(prisma: PrismaClient): Promise<number> {
+  const placed = await prisma.sceneVehicle.findMany({
+    where: { passengers: { some: {} } },
+    include: { vehicle: true, scene: true },
+  });
+  let moved = 0;
+  for (const { scene, ...row } of placed) {
+    moved += (await carryPassengers(prisma, scene, row)).length;
+  }
+  return moved;
+}
+
+/**
  * Po zmianie sceny (rodzaj, kierunek, pas, tło, kratka): `chase → map` zdejmuje
  * auta z drogi i wysadza figury na miejscu, reszta przycina auta do nowej
  * geometrii i przesadza figury w fotelach.

@@ -26,6 +26,7 @@ import type { ServerConfig } from './config.js';
 import { buildApp, type BuiltApp } from './app.js';
 import { joinUrl } from './test-join.js';
 import { exportCampaign } from './archive.js';
+import { reseatChasePassengers } from './realtime/chase.js';
 
 /**
  * Etap 65b na żywych gniazdach: scena pościgu. MG zakłada scenę „Pościg”, stawia
@@ -462,6 +463,20 @@ describe('etap 65b: scena pościgu, auta i fotele', () => {
     expect(
       await emitAck(owner, 'chase:move', { sceneVehicleId: car.id, x: 0, y: 0 }),
     ).toMatchObject({ ok: false, error: 'NOT_DRIVER' });
+  });
+
+  it('start serwera przesadza figury stojącego auta na bieżący układ foteli', async () => {
+    // 06.11: furgony siadają za kabiną — figura zapisana według starego układu
+    // stała we wraku na masce, bo przesadza ją tylko ruch auta.
+    const before = await tokenRow(heroToken.id);
+    await built.prisma.token.update({
+      where: { id: heroToken.id },
+      data: { x: before.x - 200, y: before.y },
+    });
+    expect(await reseatChasePassengers(built.prisma)).toBe(1);
+    const row = await tokenRow(heroToken.id);
+    expect({ x: row.x, y: row.y }).toEqual({ x: before.x, y: before.y });
+    expect(await reseatChasePassengers(built.prisma)).toBe(0);
   });
 
   it('MG przesadza do innego auta upuszczeniem i wysadza na jezdnię', async () => {
