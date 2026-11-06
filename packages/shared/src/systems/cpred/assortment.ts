@@ -34,10 +34,12 @@ import {
   type CompendiumEntry,
   type CompendiumRegistry,
   type ShopTier,
+  type VehicleEntry,
 } from './compendium.js';
 import { cpredIsChemEntry } from './drugs.js';
 import { shopTierOf, type ShopTierContext } from './shop.js';
 import { purchasedSheetRow, type PurchasedRow } from './shopping.js';
+import { cpredVehicleForSale } from './vehicle-models.js';
 
 /** Kategorie, które MG ustawia osobno — te, które handlarz umie wystawić z kompendium. */
 export const CPRED_ASSORTMENT_CATEGORIES = [
@@ -47,6 +49,7 @@ export const CPRED_ASSORTMENT_CATEGORIES = [
   'gear',
   'chems',
   'program',
+  'vehicle',
 ] as const;
 export type CpredAssortmentCategory = (typeof CPRED_ASSORTMENT_CATEGORIES)[number];
 
@@ -57,7 +60,15 @@ export const CPRED_ASSORTMENT_CATEGORY_LABELS: Record<CpredAssortmentCategory, s
   gear: 'Sprzęt',
   chems: 'Używki i leki',
   program: 'Programy',
+  vehicle: 'Pojazdy',
 };
+
+/**
+ * Kategorie, których „pozostałe” nie obejmują (etap 67): bez osobnego poziomu
+ * handlarz ich nie prowadzi. Apteka z poziomem 4 „pozostałych” nie sprzedaje
+ * supersamochodów — salon to decyzja MG.
+ */
+export const CPRED_ASSORTMENT_OPT_IN: readonly CpredAssortmentCategory[] = ['vehicle'];
 
 export function isCpredAssortmentCategory(value: unknown): value is CpredAssortmentCategory {
   return (
@@ -154,7 +165,8 @@ export function cpredAssortmentLevel(
   category: CpredAssortmentCategory | null,
 ): CpredAssortmentLevel {
   if (category === null) return assortment.base;
-  return assortment.categories[category] ?? assortment.base;
+  const fallback = CPRED_ASSORTMENT_OPT_IN.includes(category) ? 0 : assortment.base;
+  return assortment.categories[category] ?? fallback;
 }
 
 /** Czy wpis mieści się w zakresie handlarza (półka i skup). Ran krytycznych nikt nie prowadzi. */
@@ -198,6 +210,26 @@ export function cpredAssortmentOffers(
     const resolved = entry.category === 'weapon' ? resolveWeapon(entry, registry) : null;
     const offer = purchasedSheetRow(entry, resolved, cpredCatalogRowId(entry.id));
     if (offer) offers.push(offer);
+  }
+  return offers;
+}
+
+/**
+ * Auta w salonie handlarza (etap 67): modele na sprzedaż w jego zakresie
+ * „Pojazdy”, w kolejności katalogu. Nie są wierszami półki — kupuje się je
+ * `vehicle:buy`, bo pojazd to `Vehicle`, a nie wiersz karty.
+ */
+export function cpredAssortmentVehicles(
+  entries: Iterable<CompendiumEntry>,
+  assortment: CpredMerchantAssortment | null,
+  context: ShopTierContext = {},
+): (VehicleEntry & { art: string })[] {
+  if (!assortment) return [];
+  const offers: (VehicleEntry & { art: string })[] = [];
+  for (const entry of entries) {
+    if (cpredVehicleForSale(entry) && cpredAssortmentCovers(entry, assortment, context)) {
+      offers.push(entry);
+    }
   }
   return offers;
 }

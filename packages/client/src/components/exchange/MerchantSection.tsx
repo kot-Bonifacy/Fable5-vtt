@@ -9,6 +9,7 @@ import type {
 } from '@vtt/shared';
 import {
   CPRED_ASSORTMENT_CATEGORIES,
+  CPRED_ASSORTMENT_OPT_IN,
   CPRED_ASSORTMENT_CATEGORY_LABELS,
   CPRED_ASSORTMENT_DEFAULT,
   ITEM_ROWS_MAX,
@@ -367,7 +368,11 @@ function AssortmentFields({
                     aria-label={`Poziom: ${CPRED_ASSORTMENT_CATEGORY_LABELS[category]}`}
                     onChange={(e) => setCategory(category, e.target.value)}
                   >
-                    <option value="">jak pozostałe</option>
+                    <option value="">
+                      {CPRED_ASSORTMENT_OPT_IN.includes(category)
+                        ? 'nie prowadzi'
+                        : 'jak pozostałe'}
+                    </option>
                     <LevelOptions />
                   </select>
                 </label>
@@ -377,7 +382,8 @@ function AssortmentFields({
           <p className="cp-shop-hint">
             Poziom handlarza nie zależy od poziomu odblokowanego w kampanii. Amunicji z kompendium
             handlarz nie wystawia — połóż ją na karcie jako wiersz „∞”; jej skup idzie poziomem
-            pozostałych.
+            pozostałych. Pojazdy prowadzi tylko handlarz z osobnym poziomem — gracz kupuje je w
+            salonie pod półką, a sprzedać ich nie może.
           </p>
         </>
       )}

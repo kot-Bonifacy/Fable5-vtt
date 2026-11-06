@@ -1,0 +1,121 @@
+{
+  "schemaVersion": 1,
+  "source": "Modele aut VTT (etap 67, tabela zatwierdzona przez MG 06.11.2026). Grafiki MG: tools/art/vehicle-models.py. Liczby (PUK, Ruch, rodzaj, Tabor) bierze klasa z katalogu: compact, sport albo super (id klas w CPRED_VEHICLE_CLASS_IDS, vehicle-models.ts).",
+  "models": [
+    {
+      "id": "vehicle.kagero",
+      "name": "Arasaka „Kagerō”",
+      "class": "super",
+      "art": "/art/vehicles/kagero.webp",
+      "price": 30000,
+      "tier": 4,
+      "forSale": true,
+      "description": "Korporacyjny supersamochód w barwach Arasaki. Dwa fotele, silnik, który słychać przecznicę dalej, i lakier, który mówi „mam ochronę”."
+    },
+    {
+      "id": "vehicle.widmo",
+      "name": "„Widmo”",
+      "class": "super",
+      "art": "/art/vehicles/widmo.webp",
+      "price": 30000,
+      "tier": 4,
+      "forSale": true,
+      "description": "Kanciasty supersamochód w matowym fiolecie, z błękitnymi światłami po bokach. Dwa fotele i nic, co by zwalniało."
+    },
+    {
+      "id": "vehicle.rajdowka-77",
+      "name": "„Rajdówka 77”",
+      "class": "sport",
+      "art": "/art/vehicles/rajdowka-77.webp",
+      "price": 15000,
+      "tier": 2,
+      "forSale": true,
+      "description": "Czarno-żółta wyścigówka z numerem 77 na dachu i szachownicą na tylnym błotniku. Cztery fotele, nielegalne wyścigi w cenie."
+    },
+    {
+      "id": "vehicle.nocny-neon",
+      "name": "„Nocny Neon”",
+      "class": "sport",
+      "art": "/art/vehicles/nocny-neon.webp",
+      "price": 15000,
+      "tier": 2,
+      "forSale": true,
+      "description": "Sportowe coupé w różowym neonie z napisem „Night City” na klapie. Cztery fotele, widać je z każdego wiaduktu."
+    },
+    {
+      "id": "vehicle.bastion",
+      "name": "„Bastion” (SUV pancerny)",
+      "class": "compact",
+      "art": "/art/vehicles/bastion.webp",
+      "seats": 6,
+      "price": 13500,
+      "tier": 2,
+      "forSale": true,
+      "description": "Duży, kanciasty SUV w stalowym błękicie, z grubymi zderzakami. Trzy rzędy foteli — cała ekipa w jednym wozie."
+    },
+    {
+      "id": "vehicle.ranczer",
+      "name": "„Ranczer” (pickup)",
+      "class": "compact",
+      "art": "/art/vehicles/ranczer.webp",
+      "price": 10000,
+      "tier": 1,
+      "forSale": true,
+      "description": "Zadbany czerwony pickup z orurowaniem i pustą skrzynią. Cztery fotele w kabinie, a na pace zmieści się wszystko inne."
+    },
+    {
+      "id": "vehicle.rdzawiec",
+      "name": "„Rdzawiec” (stary pickup)",
+      "class": "compact",
+      "art": "/art/vehicles/rdzawiec.webp",
+      "price": 6300,
+      "tier": 1,
+      "forSale": true,
+      "description": "Używany pickup, więcej rdzy niż lakieru. Pali, jeździ, nie zadaje pytań — za 70% ceny nowego."
+    },
+    {
+      "id": "vehicle.wloczega",
+      "name": "„Włóczęga” (stare kombi)",
+      "class": "compact",
+      "art": "/art/vehicles/wloczega.webp",
+      "price": 6300,
+      "tier": 1,
+      "forSale": true,
+      "description": "Używane kombi w oliwkowo-beżowych barwach, z bagażnikiem dachowym. Cztery fotele i miejsce na cały dobytek — za 70% ceny nowego."
+    },
+    {
+      "id": "vehicle.taksowka",
+      "name": "Taksówka",
+      "class": "compact",
+      "art": "/art/vehicles/taksowka.webp",
+      "forSale": false,
+      "description": "Żółta taksówka miejska z szachownicą na dachu. Pojazd MG."
+    },
+    {
+      "id": "vehicle.radiowoz",
+      "name": "Radiowóz",
+      "class": "sport",
+      "art": "/art/vehicles/radiowoz.webp",
+      "forSale": false,
+      "description": "Czarno-biały wóz patrolowy z belką świateł. Pojazd MG."
+    },
+    {
+      "id": "vehicle.karetka",
+      "name": "Karetka",
+      "class": "compact",
+      "art": "/art/vehicles/karetka.webp",
+      "seats": 8,
+      "forSale": false,
+      "description": "Biało-czerwony ambulans z czerwonym krzyżem na dachu. Pojazd MG."
+    },
+    {
+      "id": "vehicle.militech-furgon",
+      "name": "Militech — furgon",
+      "class": "compact",
+      "art": "/art/vehicles/militech-furgon.webp",
+      "seats": 8,
+      "forSale": false,
+      "description": "Opancerzony furgon konwojowy w barwach Militechu. Pojazd MG."
+    }
+  ]
+}

@@ -1,5 +1,21 @@
 # Dziennik sesji — archiwum
 
+### Sesja 05.11, trzecia — siedem zaległości pościgu i czatu
+
+**Zlecenie MG:** „napraw kilka zaległości”. **Zrobione:** stan kierowcy z karty, obrażeń i ręki
+MG odświeża auta (liść `realtime/chase-crew.ts`, `emitTokenUpsert` → `emitChase`); paleta
+przeszkód rozbraja się po każdej przeszkodzie; kolumna komunikatów schodzi pod otwarty wiersz
+opcji paska narzędzi (`--map-tools-bottom`); menu auta i przeszkody zamyka Esc także z fokusem na
+checkboksie (`useMenuEscape`); karta Rany bez rzutu pisze „Rana krytyczna bez obrażeń”;
+„Ustabilizowanie” w walce proponuje tylko figury w zasięgu ramienia; beton bez „· 30 PW” na
+mapie. Umowy na górze `mapa` i `ui`, diagnozy w `archiwum/zamkniete-zaleglosci.md`.
+**Testy:** server 1741, client 471 zielone (nowy: stan kierowcy z `token:update` → `chase:sync`
+z `control: 'none'`, pada bez poprawki), `tsc`, ESLint, Prettier czyste. **Oglądane
+w Firefoksie** tymczasowym specem E2E (MG, wiadukt, `po-T6`, skasowany): jedna przeszkoda na
+klik, pasek „Na drodze” 6 px pod paletą i „Wrak” klikalny, Esc z checkboksem, menu przeszkody,
+podpis betonu, karta Rany. „Ustabilizowanie” — tylko `tsc`. Firefox MCP stał na koncie
+`mg_primo` w cudzej kampanii, więc `dev.db` nieruszane.
+
 ### Sesja 05.11, druga — „Neonowa ulica” z trzech map MG (66c)
 
 **Zlecenie MG:** „scal te grafiki drogi … aby tworzyły jeden odcinek drogi płynnie na siebie

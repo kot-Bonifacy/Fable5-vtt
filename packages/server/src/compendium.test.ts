@@ -178,7 +178,11 @@ describe('compendium', () => {
     const gm = createSocket(gmCookie);
     const sync = await gm.firstSync;
     // Every sample entry declares itself as invented data, never rulebook text.
-    for (const entry of sync.compendium.entries.filter((e) => !e.custom)) {
+    // Car models (etap 67) are the table's own data on top of a sample class —
+    // their file has its own guard in `licensing.test.ts`.
+    const models = (e: { category: string; art?: unknown }) =>
+      e.category === 'vehicle' && typeof e.art === 'string';
+    for (const entry of sync.compendium.entries.filter((e) => !e.custom && !models(e))) {
       expect(entry.source ?? '').toContain('przykładowe');
     }
   });
@@ -235,7 +239,11 @@ describe('compendium', () => {
   it('refuses to shadow an imported entry id', async () => {
     const gm = createSocket(gmCookie);
     const sync = await gm.firstSync;
-    const imported = sync.compendium.entries.find((entry) => !entry.custom);
+    // A kind the payload below knows how to fill — the alphabetical first entry
+    // is a car model since etap 67 („Arasaka „Kagerō”").
+    const imported = sync.compendium.entries.find(
+      (entry) => !entry.custom && ['weapon', 'armor', 'gear'].includes(entry.category),
+    );
     expect(imported).toBeDefined();
     const ack = await emitAck(gm.socket, 'compendium:upsert', {
       entry: {

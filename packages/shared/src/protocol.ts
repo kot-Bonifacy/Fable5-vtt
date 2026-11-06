@@ -30,7 +30,7 @@ import type { MapNoteView } from './notes.js';
 import type { SceneSummary, SceneView } from './scenes.js';
 import type { TokenTargetView, TokenView } from './tokens.js';
 import type { TradeView } from './trade.js';
-import type { VehicleView } from './vehicles.js';
+import type { MerchantVehicleOfferView, VehicleView } from './vehicles.js';
 import type { SceneVehicleView } from './chase.js';
 import type { ChaseObstacleView } from './chase-obstacles.js';
 import type { ExchangeCounterpartKind, ExchangeUnavailable } from './exchange.js';
@@ -910,6 +910,11 @@ export interface MerchantView {
    */
   assortment: CpredMerchantAssortment | null;
   rows: MerchantShelfRowView[];
+  /**
+   * Salon (etap 67): modele aut z zakresu „Pojazdy”, kupowane `vehicle:buy`
+   * obok koszyka — pojazd nie jest wierszem karty. Pusto bez tej kategorii.
+   */
+  vehicles?: MerchantVehicleOfferView[];
   /** Tylko u MG: karta handlarza i surowe ustawienia. */
   characterId?: string;
   settings?: MerchantSettings;

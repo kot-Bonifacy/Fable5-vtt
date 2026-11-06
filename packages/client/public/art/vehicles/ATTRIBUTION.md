@@ -1,4 +1,28 @@
-# Atrybucja grafik pojazdów (etap 65b)
+# Atrybucja grafik pojazdów
+
+## Modele aut (etap 67, od 06.11.2026) — grafiki MG
+
+Grafiki własne MG projektu (źródła poza repo: `C:/AI/materialy/auta`), dostarczone 06.11.2026
+do zakupu aut przez graczy. Przetwarza je `tools/art/vehicle-models.py`: wycina namalowaną
+szachownicę przezroczystości, obraca przodem do góry, przycina i zapisuje jako WebP (dłuższy bok
+384 px). Każda grafika to jeden model z `data/public/cpred/vehicle-models.json`.
+
+| Plik                   | Źródło MG                  | Model                      |
+| ---------------------- | -------------------------- | -------------------------- |
+| `kagero.webp`          | `auto1.png`                | Arasaka „Kagerō”           |
+| `widmo.webp`           | `auto11.png`               | „Widmo”                    |
+| `rajdowka-77.webp`     | `auto2.png`                | „Rajdówka 77”              |
+| `nocny-neon.webp`      | `auto4.png`                | „Nocny Neon”               |
+| `bastion.webp`         | `auto12.png`               | „Bastion” (SUV pancerny)   |
+| `ranczer.webp`         | `auto5_ładny_pinckup.png`  | „Ranczer” (pickup)         |
+| `rdzawiec.webp`        | `auto9_stary_pickup.png`   | „Rdzawiec” (stary pickup)  |
+| `wloczega.webp`        | `auto10_stare_kombi.png`   | „Włóczęga” (stare kombi)   |
+| `taksowka.webp`        | `auto6_taxi.png`           | Taksówka (MG)              |
+| `radiowoz.webp`        | `auto8_policja.png`        | Radiowóz (MG)              |
+| `karetka.webp`         | `auto7_karetka.png`        | Karetka (MG)               |
+| `militech-furgon.webp` | `auto3_militech.png`       | Militech — furgon (MG)     |
+
+## Paczka CC0 (etap 65b) — przeszkody pościgu i sceny sprzed etapu 67
 
 Auta widziane z góry, przodem do góry — tak rysuje je scena pościgu (`ChaseLayer`), obracając
 obrazek do kierunku jazdy. Wbudowane grafiki (`/art/vehicles/`) gracz może dać własnemu pojazdowi

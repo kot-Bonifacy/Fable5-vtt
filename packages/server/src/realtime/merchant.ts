@@ -27,6 +27,7 @@ import type {
   MerchantViewResult,
   PurchasedRow,
   SessionUser,
+  VehicleEntry,
   ShopTier,
   TokenCondition,
 } from '@vtt/shared';
@@ -36,6 +37,9 @@ import {
   ROLE_GM,
   cpredAssortmentCovers,
   cpredAssortmentOffers,
+  cpredAssortmentVehicles,
+  cpredVehicleModelDetail,
+  cpredVehicleQuote,
   cpredItemLine,
   cpredMerchantDeal,
   cpredMerchantShelf,
@@ -168,6 +172,10 @@ interface MerchantPricing {
   ctx: CpredPriceContext;
   /** Wiersze z kompendium na półce; pusto bez asortymentu. */
   catalog: PurchasedRow[];
+  /** Salon (etap 67): modele aut z zakresu „Pojazdy”; pusto bez tej kategorii. */
+  vehicles: (VehicleEntry & { art: string })[];
+  /** Nazwa klasy modelu do wiersza „Supersamochód · 2 fotele…”. */
+  classNameOf: (id: string | undefined) => string | undefined;
 }
 
 function merchantPricing(
@@ -175,9 +183,12 @@ function merchantPricing(
   catalog: ShopCatalog,
   assortment: CpredMerchantAssortment | null,
 ): MerchantPricing {
-  if (!assortment) return { ctx: catalog.priceCtx, catalog: [] };
+  const classNameOf = (id: string | undefined) => (id ? catalog.entryOf(id)?.name : undefined);
+  if (!assortment) return { ctx: catalog.priceCtx, catalog: [], vehicles: [], classNameOf };
   const context = { overrides: catalog.overrides };
   return {
+    vehicles: cpredAssortmentVehicles(catalog.entries, assortment, context),
+    classNameOf,
     ctx: {
       ...catalog.priceCtx,
       buysBack: (id) => {
@@ -397,6 +408,19 @@ export function merchantViewFor(
     cash: merchant.settings.cashInfinite ? null : merchant.data.eddies,
     assortment: merchant.assortment,
     rows,
+    vehicles: pricing.vehicles.flatMap((entry) => {
+      const quote = cpredVehicleQuote(entry, { priceMul: merchant.settings.priceMul });
+      if (!quote) return [];
+      return [
+        {
+          entryId: entry.id,
+          name: entry.name,
+          art: entry.art,
+          detail: cpredVehicleModelDetail(entry, pricing.classNameOf(entry.classId)),
+          price: quote.listed,
+        },
+      ];
+    }),
     ...(isGm ? { characterId: merchant.card.id, settings: merchant.settings } : {}),
   };
 }
@@ -742,6 +766,55 @@ export const merchantDealEvent = defineEvent<MerchantDealPayload, MerchantDealRe
     return { total: quote.total, balance: outcome.balance };
   },
 });
+
+/* ------------------------------------------------------------------ *
+ * Salon — auto u lady (etap 67, `vehicle:buy` w `vehicle-shop.ts`)
+ * ------------------------------------------------------------------ */
+
+/**
+ * Lada, przy której gracz kupuje auto: te same bramki co „Zapłać” (dostęp,
+ * otwarty sklep, zasięg przy figurze), a do tego model w zakresie „Pojazdy”
+ * handlarza. Wołane w transakcji pod `withCampaignLock` — zwraca handlarza
+ * (karta do lustra kasy) i jego mnożnik ceny.
+ */
+export async function requireVehicleCounter(
+  deps: RealtimeDeps,
+  tx: Db,
+  socket: unknown,
+  campaignId: string,
+  merchantId: unknown,
+  buyerCardId: string,
+  entry: CompendiumEntry,
+): Promise<{
+  card: Character;
+  data: CpredCharacterData;
+  name: string;
+  priceMul: number;
+  cashInfinite: boolean;
+}> {
+  const viewer = viewerOf(socket as never);
+  const row = await requireMerchantRow(tx, campaignId, merchantId);
+  if (row.characterId === buyerCardId) throw new RealtimeError('BAD_REQUEST');
+  const merchant = await loadMerchant(deps, row, tx);
+  await requireMerchantAccess(tx, viewer, merchant);
+  if (merchant.closed) throw new RealtimeError('MERCHANT_CLOSED');
+  if (viewer.atTable && merchant.settings.access === 'reach') {
+    const metres = closestBetween(await placedTokens(tx, buyerCardId), merchant.placed);
+    if (metres === null || metres > CPRED_MELEE_REACH_M) throw new RealtimeError('OUT_OF_REACH');
+  }
+  const catalog = await shopCatalogFor(deps, campaignId);
+  const offers = merchantPricing(deps, catalog, merchant.assortment).vehicles;
+  if (!offers.some((offer) => offer.id === entry.id)) throw new RealtimeError('NOT_IN_RANGE');
+  return {
+    card: merchant.card,
+    data: merchant.data,
+    name: merchant.name,
+    priceMul: merchant.settings.priceMul,
+    cashInfinite: merchant.settings.cashInfinite,
+  };
+}
+
+export { withCampaignLock };
 
 /* ------------------------------------------------------------------ *
  * MG: merchant:config, merchant:row, campaign:catalog-shopping

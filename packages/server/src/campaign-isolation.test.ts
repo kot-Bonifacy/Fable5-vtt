@@ -881,6 +881,12 @@ const CASES: Record<string, Case> = {
   'vehicle:update': foreign((a) => ({ vehicleId: a.vehicleId, patch: { name: 'x' } })),
   'vehicle:delete': foreign((a) => ({ vehicleId: a.vehicleId })),
   'vehicle:rename': foreign((a) => ({ vehicleId: a.vehicleId, name: 'x' })),
+  // zakup auta (etap 67): cudza karta albo cudzy handlarz
+  'vehicle:buy': foreign((a) => ({
+    characterId: a.characterId,
+    entryId: 'vehicle.ranczer',
+    expectPrice: 1,
+  })),
   // chase (etap 65b)
   'chase:place': foreign((a) => ({ sceneId: a.sceneId, vehicleId: a.vehicleId, x: 1, y: 1 })),
   'chase:move': foreign((a) => ({ sceneVehicleId: a.sceneVehicleId, x: 1, y: 1 })),

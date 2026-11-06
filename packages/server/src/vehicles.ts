@@ -83,12 +83,15 @@ export async function createVehicle(
   ownerCharacterId: string | null,
   name: string,
   stats: CpredVehicleStats,
+  /** Wygląd modelu (etap 67, `VehicleEntry.art`); brak — domyślny wg bryły. */
+  imageUrl: string | null = null,
 ): Promise<Vehicle> {
   return db.vehicle.create({
     data: {
       campaignId,
       ownerCharacterId,
       name,
+      imageUrl,
       ...vehicleBodyColumns(stats),
       system: JSON.stringify(stats),
     },
@@ -198,7 +201,14 @@ export async function prepareFleet(
       fleetRowId: row.id,
       notes: guess?.guessed ? GUESSED_NOTE : '',
     });
-    const vehicle = await createVehicle(db, campaignId, characterId, row.name, stats);
+    const vehicle = await createVehicle(
+      db,
+      campaignId,
+      characterId,
+      row.name,
+      stats,
+      entry?.art ?? null,
+    );
     created.push(vehicle);
     row.vehicleId = vehicle.id;
     // Zgadnięty pojazd z progu wyższego niż kategoria starego wiersza nie wpisuje

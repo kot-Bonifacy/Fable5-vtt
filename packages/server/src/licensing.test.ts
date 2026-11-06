@@ -101,6 +101,23 @@ describe('licence guard', () => {
     for (const id of Object.keys(parsed.icons ?? {})) expect(invented).toContain(id);
   });
 
+  it('ships car models that name a class, never a catalogue entry (etap 67)', () => {
+    // Models are our own: name, the GM's art, seats and price. Their numbers
+    // come from a class looked up in code (`CPRED_VEHICLE_CLASS_IDS`), so the
+    // public file must not point at a rulebook entry by id or copy its stats.
+    const file = join(REPO_ROOT, 'data', 'public', 'cpred', 'vehicle-models.json');
+    if (!existsSync(file)) return;
+    const parsed = JSON.parse(readFileSync(file, 'utf8')) as {
+      models?: Record<string, unknown>[];
+    };
+    for (const model of parsed.models ?? []) {
+      expect(['compact', 'sport', 'super']).toContain(model.class);
+      for (const field of ['classIds', 'classId', 'hp', 'move', 'speedKmh', 'vehicleKind']) {
+        expect(model).not.toHaveProperty(field);
+      }
+    }
+  });
+
   it('ships only invented cover material values in data/public (stage 16c)', () => {
     // The material × thickness table is rulebook content (s. 180), so the
     // committed file carries the right *shape* with made-up numbers and the

@@ -66,5 +66,6 @@ export * from './advancement.js';
 export * from './readiness.js';
 export * from './scene-template.js';
 export * from './vehicles.js';
+export * from './vehicle-models.js';
 export * from './vehiclecombat.js';
 export * from './mountrows.js';

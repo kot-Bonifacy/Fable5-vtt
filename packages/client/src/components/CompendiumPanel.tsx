@@ -55,6 +55,8 @@ import {
   resolveWeapon,
   shopTierOf,
   shopTierRefusalText,
+  cpredVehicleForSale,
+  cpredVehicleModelDetail,
   shopTierVerdict,
 } from '@vtt/shared';
 import {
@@ -69,6 +71,7 @@ import {
   setShopTier,
 } from '../socket.js';
 import { useAuthStore } from '../stores/authStore.js';
+import { VehicleOffer } from './VehicleOffer.js';
 import { COMBAT_LOCKED_HINT, useCombatLocked } from '../stores/combatStore.js';
 import { useCharacterStore } from '../stores/characterStore.js';
 import {
@@ -1085,11 +1088,55 @@ function EntryCard({
       ) : null}
       {entry.source ? <p className="compendium-source">Źródło: {entry.source}</p> : null}
 
-      {/* Etap 65a: pojazd to nie wiersz karty — daje go MG albo Tabor Rodziny. */}
-      {entry.category === 'vehicle' ? (
+      {/* Etap 65a: pojazd to nie wiersz karty — klasę z podręcznika i auta
+          służb daje MG albo Tabor Rodziny. Etap 67: model na sprzedaż kupuje
+          się tu jak każdą rzecz (`vehicle:buy`), a auto ląduje w „Pojazdach”. */}
+      {entry.category === 'vehicle' && cpredVehicleForSale(entry) && targets.length > 0 ? (
+        <div className="compendium-assign compendium-vehicle-buy">
+          <select
+            value={target}
+            aria-label="Dla kogo auto"
+            onChange={(event) => setTargetId(event.target.value)}
+          >
+            {targets.map((character) => (
+              <option key={character.id} value={character.id}>
+                {character.name}
+              </option>
+            ))}
+          </select>
+          <ul className="vehicle-offers">
+            <VehicleOffer
+              characterId={target}
+              entryId={entry.id}
+              name={entry.name}
+              art={entry.art}
+              detail={cpredVehicleModelDetail(
+                entry,
+                entry.classId ? entriesById[entry.classId]?.name : undefined,
+              )}
+              listed={price ?? 0}
+              blockedHint={
+                inCombat
+                  ? COMBAT_LOCKED_HINT
+                  : catalogClosed
+                    ? 'MG ustawił „Zakupy z katalogu: tylko u handlarzy” — auto kupisz w salonie (handlarz z kategorią „Pojazdy”).'
+                    : locked && !isGm
+                      ? shopTierRefusalText(tier, shopTier)
+                      : null
+              }
+            />
+          </ul>
+        </div>
+      ) : entry.category === 'vehicle' && entry.art ? (
         <p className="compendium-note">
-          Pojazd daje MG — w sekcji „Pojazdy” na karcie postaci albo w zakładce „Pojazdy”. Nomada
-          bierze go wierszem Taboru Rodziny w panelu Moto.
+          Auto służb — nie jest na sprzedaż. Daje je MG w sekcji „Pojazdy” na karcie postaci albo w
+          zakładce „Pojazdy”.
+        </p>
+      ) : entry.category === 'vehicle' ? (
+        <p className="compendium-note">
+          Klasa z podręcznika — gracz kupuje konkretne modele aut z tej listy (z grafiką). Klasę
+          daje MG w sekcji „Pojazdy” na karcie postaci, a Nomada bierze ją wierszem Taboru Rodziny w
+          panelu Moto.
         </p>
       ) : null}
       {/* Etap 47b: gołe ręce ma każda karta z urzędu — nie ma czego kupić. */}

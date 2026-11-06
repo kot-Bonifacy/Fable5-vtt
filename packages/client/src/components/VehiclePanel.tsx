@@ -5,6 +5,7 @@ import {
   CPRED_VEHICLE_UPGRADE_PROBLEMS,
   ROLE_GM,
   VEHICLE_ART,
+  VEHICLE_ART_LEGACY,
   VEHICLE_LAYOUT_IDS,
   VEHICLE_LAYOUT_LABELS,
   VEHICLE_SIZE_MAX,
@@ -12,6 +13,7 @@ import {
   chaseFreeSpot,
   cpredVehicleDerived,
   cpredVehicleHpAfterUpgrades,
+  cpredVehicleIsModel,
   defaultVehicleArt,
   cpredVehicleUpgrade,
   cpredVehicleUpgradeProblem,
@@ -69,6 +71,8 @@ export function vehicleErrorText(code: string): string {
       return 'Tego pojazdu już nie ma.';
     case 'VEHICLE_NOT_IN_CATALOG':
       return 'Tego pojazdu nie ma w katalogu.';
+    case 'VEHICLE_LOOK_LOCKED':
+      return 'Wygląd to model auta — zmieniasz tylko nazwę. Inny wygląd daje MG.';
     case 'UPLOAD_NOT_FOUND':
       return 'Ta grafika nie należy do tej kampanii.';
     case 'FORBIDDEN':
@@ -115,6 +119,11 @@ export function VehicleCard({
   onEdit?: () => void;
 }) {
   const stats = readCpredVehicle(vehicle.system);
+  // Etap 67 (MG 06.11): auto z modelu ma jego wygląd — gracz zmienia nazwę.
+  const model = useCompendiumStore((s) =>
+    stats.catalogId ? s.entries[stats.catalogId] : undefined,
+  );
+  const lookLocked = cpredVehicleIsModel(model);
   const [name, setName] = useState(vehicle.name);
   useEffect(() => setName(vehicle.name), [vehicle.name]);
 
@@ -203,6 +212,11 @@ export function VehicleCard({
               Tabor
             </span>
           ) : null}
+          {lookLocked && model && model.name !== vehicle.name ? (
+            <span className="vehicle-card-tag" title="Model auta — jego wygląd zmienia tylko MG.">
+              {model.name}
+            </span>
+          ) : null}
           {placeable && onRoad ? <span className="vehicle-card-tag">Na drodze</span> : null}
           {placeable && !onRoad ? (
             <button
@@ -221,7 +235,9 @@ export function VehicleCard({
           ) : null}
         </div>
         <p className="vehicle-card-stats">{vehicleSummary(stats)}</p>
-        {canRename ? <VehicleArtPicker vehicle={vehicle} /> : null}
+        {canRename && (isGm || !lookLocked) ? (
+          <VehicleArtPicker vehicle={vehicle} isGm={isGm} />
+        ) : null}
         {stats.upgrades.length > 0 ? (
           <ul className="vehicle-card-upgrades">
             {stats.upgrades.map((row) => {
@@ -249,8 +265,11 @@ export function VehicleCard({
  * (`vehicle:rename` przyjmuje tylko `/art/vehicles/`). Grafika z biblioteki MG
  * stoi na liście jako „własna MG”, żeby wybór jej nie gubił po cichu.
  */
-function VehicleArtPicker({ vehicle }: { vehicle: VehicleView }) {
-  const builtIn = VEHICLE_ART.some((art) => art.url === vehicle.imageUrl);
+function VehicleArtPicker({ vehicle, isGm }: { vehicle: VehicleView; isGm: boolean }) {
+  // Służby (taksówka, radiowóz, karetka, Militech) daje MG — gracz ich nie wybiera.
+  const gallery = VEHICLE_ART.filter((art) => isGm || !art.gmOnly);
+  const builtIn = gallery.some((art) => art.url === vehicle.imageUrl);
+  const legacy = VEHICLE_ART_LEGACY.some((art) => art.url === vehicle.imageUrl);
   async function pick(value: string) {
     const ack = await renameVehicle({
       vehicleId: vehicle.id,
@@ -265,10 +284,14 @@ function VehicleArtPicker({ vehicle }: { vehicle: VehicleView }) {
         <option value="">domyślna</option>
         {vehicle.imageUrl && !builtIn ? (
           <option value={vehicle.imageUrl} disabled>
-            własna MG
+            {legacy
+              ? 'poprzednia grafika'
+              : VEHICLE_ART.some((art) => art.url === vehicle.imageUrl)
+                ? 'od MG'
+                : 'własna MG'}
           </option>
         ) : null}
-        {VEHICLE_ART.map((art) => (
+        {gallery.map((art) => (
           <option key={art.url} value={art.url}>
             {art.label}
           </option>

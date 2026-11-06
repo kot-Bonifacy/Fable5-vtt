@@ -21,13 +21,23 @@ w plikach obok — czytaj je **na żądanie, nigdy rutynowo**:
 
 | stan         | etapy                                                                                          |
 | ------------ | ---------------------------------------------------------------------------------------------- |
-| ⬜ otwarty   | **66** Sceny przykładowe (🟨 zrobione 31.10, czeka na oględziny MG przy stole i wdrożenie; **66b** „Fabryka dronów” 🟨 zrobione 31.10, tak samo; **66c** „Ostatni zjazd” 🟨 wzorzec zrobiony, rozegrany w przeglądarce 04.11 i ponownie 05.11 po rebalansie (porażka o włos, balans zatwierdzony przez MG) — zaległości z przebiegów zamknięte 05.11 poza Esc na kubku MG — czeka na stół MG i wdrożenie); **65** Scena pościgu i walka pojazdów (🟨 65a–65e ✅ 30–31.10, czeka na oględziny MG przy stole); **62** Sieć ze sceny (🟨 zrobione, czeka na oględziny MG na VPS po wdrożeniu); **61** Skradanie się (🟨 zrobione, czeka na słowo MG o rozstrzygnięciach); **28** Wdrożenie na VPS (🟨 działa na `https://vtt.tatanga.eu` z botami od 18.10; zostały off-site, utwardzenie, monitoring); **43b**, **43c** (UI walki); **60** Czytelny czat (zlecenie MG z 24.10; 🟨 60a–60c ✅, czeka na oględziny MG z pierwszego kryterium); T10; refaktoryzacja odłożona (MG 18.10) |
+| ⬜ otwarty   | **67** Zakup pojazdu (🟨 zrobione 06.11, czeka na wdrożenie i oględziny MG przy stole; grafiki motocykla i furgonu od MG); **66** Sceny przykładowe (🟨 zrobione 31.10, czeka na oględziny MG przy stole i wdrożenie; **66b** „Fabryka dronów” 🟨 zrobione 31.10, tak samo; **66c** „Ostatni zjazd” 🟨 wzorzec zrobiony, rozegrany w przeglądarce 04.11 i ponownie 05.11 po rebalansie (porażka o włos, balans zatwierdzony przez MG) — zaległości z przebiegów zamknięte 05.11 poza Esc na kubku MG — czeka na stół MG i wdrożenie); **65** Scena pościgu i walka pojazdów (🟨 65a–65e ✅ 30–31.10, czeka na oględziny MG przy stole); **62** Sieć ze sceny (🟨 zrobione, czeka na oględziny MG na VPS po wdrożeniu); **61** Skradanie się (🟨 zrobione, czeka na słowo MG o rozstrzygnięciach); **28** Wdrożenie na VPS (🟨 działa na `https://vtt.tatanga.eu` z botami od 18.10; zostały off-site, utwardzenie, monitoring); **43b**, **43c** (UI walki); **60** Czytelny czat (zlecenie MG z 24.10; 🟨 60a–60c ✅, czeka na oględziny MG z pierwszego kryterium); T10; refaktoryzacja odłożona (MG 18.10) |
 | ✅ ukończone | 01–11, 13–20b, 23a–27f, 27h–27l, 29a–30d, 31–35, 37–42c, 43a, 44a–44d, 45, 46a1, 46a2, 46c1, 46c2, 46b1, 46b2, 47a, 47b, 48a, 48b, 48c, 49a, 49b, 50a, 50b, 50c, 51, 52, 53, 54, 55, 56, 57 (57a–57c), 58 (58a–58d), 59 (59a–59c), 63 (63a–63b; 63c wycofane 29.10), 64 (64a–64c) (ostatni zamknięty: 64, 2026-10-30) |
 | ⛔ wycofane  | 12, 21, 22 (głos), 27g (wydajność), 36 (makra); 27, 29, 30, 38 rozdzielone na etapy literowane |
 
 Pełna tabela z nazwami i datami: `archiwum/tabela-etapow.md`.
 
 ## Od czego zacząć
+
+**Zakup auta przez gracza (etap 67, zlecenie MG z 06.11) — czeka na wdrożenie (bez migracji;
+na VPS dojdą `data/public/cpred/vehicle-models.json` i grafiki z repo) i oględziny MG przy
+stole.** 12 grafik MG (`tools/art/vehicle-models.py`) to 12 modeli aut
+(`vehicle-models.json`, tabela zatwierdzona przez MG): 8 na sprzedaż, 4 służby tylko od MG.
+Model bierze liczby z klasy podręcznika, wygląd i cenę ma swoje. Gracz kupuje go w Kompendium
+(„Kup” z potwierdzeniem, poziomy sklepu, „tylko u handlarzy”) albo w salonie okna „Wymiana”
+u handlarza z poziomem „Pojazdy” (domyślnie „nie prowadzi”); auto ląduje w „Pojazdach” karty,
+gracz zmienia mu nazwę, nie wygląd. Sprzedaży nie ma (MG). **Czeka na MG:** grafiki motocykla
+i cywilnego furgonu (propozycje w `etap-67-zakup-pojazdu.md`). Umowa na górze `ekwipunek`.
 
 **Zaległości 66c zamknięte w kodzie (05.11, czwarta sesja, decyzje MG) — czekają na wdrożenie
 (bez migracji) i oględziny przy stole.** Ręka MG jest darmowa (przeciągnięcie, także wysiadka,
@@ -665,7 +675,7 @@ a nie do tego pliku.
 | `statysta`  | figura z kartą, `statBlock`, Wartość bojowa, `token:stat`, wzorce | 17   | 3       |
 | `karta`     | strony i zakładki, panele, `sheet.css`, walidacja list, usuwanie przedmiotu, „Używane” i „Plecak” | 12   | 12      |
 | `postac`    | kreator, PD i awanse, koszyk i cofanie awansów, Role i Zdolności, cyborgizacje, chrom zmieniający liczby, ekonomia, Test montażu gracza, pojazdy i Tabor | 58   | 3       |
-| `ekwipunek` | wiersze wyposażenia, przekazanie, łup (także ciała graczy), handel, sklepy, asortyment handlarza z kompendium, zasięg, amunicja bez dna, egzoszkielet, latarka z ekwipunku, narkotyki i fiolki, siatka okna „Wymiana”, zgoda z góry, odświeżanie po naklejkach, znaczek „w użyciu” | 44   | 3       |
+| `ekwipunek` | wiersze wyposażenia, przekazanie, łup (także ciała graczy), handel, sklepy, asortyment handlarza z kompendium, zasięg, amunicja bez dna, egzoszkielet, latarka z ekwipunku, narkotyki i fiolki, siatka okna „Wymiana”, zgoda z góry, odświeżanie po naklejkach, znaczek „w użyciu”, zakup auta z modelu | 45   | 3       |
 | `czas`      | zegar świata, kalendarz, `statEffects`, leczenie po dobie, dawki i uzależnienia (`chems`) | 19   | 2       |
 | `siec`      | Programy, LOD, demony, piętra architektury, dek jako towar, strefy bronione, kamery, rozbrajanie, Sieć ze sceny, jedna próba i pamięć sukcesów | 14   | 5       |
 | `boty`      | llama-server, RAG, reindeks, dziennik i baza wiedzy, brama AI  | 10   | 10      |
@@ -678,6 +688,25 @@ a nie do tego pliku.
 ## Notatki z dwóch ostatnich sesji
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
+
+### Sesja 06.11 — etap 67: zakup auta przez gracza
+
+**Zlecenie MG:** kupno auta przez gracza z gotowych grafik `C:/AI/materialy/auta` i dwie
+propozycje kolejnych aut. **Decyzje MG (pytania na starcie):** kupno jak reszta rzeczy
+(Kompendium + handlarz), konkretne modele (tabela zatwierdzona), logotypy do repo, nowe grafiki
+zastępują paczkę CC0, bez sprzedaży. **Zrobione:** `tools/art/vehicle-models.py` (12 WebP,
+wycięta namalowana szachownica), `vehicle-models.json` + `vehicle-models.ts` (model = wpis
+kompendium na klasie), `vehicle:buy` (Kompendium i lada, targ Fixera, kasa handlarza, biała
+lista między sesjami), kategoria „Pojazdy” w asortymencie (opt-in), salon w oknie „Wymiana”,
+„Kup” z potwierdzeniem w Kompendium, blokada wyglądu modelu, galeria bez służb u gracza.
+Rozstrzygnięcia bez pytań (poziomy 1/2/4, klasa słowem w pliku repo) w `etap-67-zakup-pojazdu.md`.
+**Propozycje dla MG:** motocykl i cywilny furgon (8 foteli). **Testy:** shared 2964, client 471,
+server 1748 zielone poza znanym migotaniem `surgery.test.ts` (sam przechodzi, `zaleglosci.md`
+04.11); poprawione dwa założenia `compendium.test.ts` o pierwszym wpisie. `tsc`, ESLint,
+Prettier czyste. **Oglądane w Firefoksie** (Ola: Kompendium → „Kup” → „Na pewno?”, karta →
+„Pojazdy”, salon u handlarza ×110%) i **Chromium** (MG: wpisy Kagerō i Radiowóz) tymczasowym
+specem E2E na `po-T6`. Kompendium gracza nie pokazuje wpisów powyżej poziomu sklepu kampanii —
+Kagerō (4) gracz zobaczy dopiero po odblokowaniu.
 
 ### Sesja 05.11, czwarta — reszta zaległości 66c z decyzjami MG
 
@@ -695,20 +724,3 @@ odtworzone. Umowy na górze `mapa`, `tura`, `ui`, `atak`; diagnozy w
 (nowe: zamiana na czacie, `heldBlocked`, otarcie i skośny wjazd, wolne miejsce za autem, ręka MG,
 „Ucieka”), `tsc`, ESLint, Prettier czyste. **Oglądane w Firefoksie** tymczasowym specem E2E (MG,
 wzorzec „Ostatni zjazd”, `po-T6`, skasowany) — Firefox MCP znów zawisł na `browser_navigate`.
-
-### Sesja 05.11, trzecia — siedem zaległości pościgu i czatu
-
-**Zlecenie MG:** „napraw kilka zaległości”. **Zrobione:** stan kierowcy z karty, obrażeń i ręki
-MG odświeża auta (liść `realtime/chase-crew.ts`, `emitTokenUpsert` → `emitChase`); paleta
-przeszkód rozbraja się po każdej przeszkodzie; kolumna komunikatów schodzi pod otwarty wiersz
-opcji paska narzędzi (`--map-tools-bottom`); menu auta i przeszkody zamyka Esc także z fokusem na
-checkboksie (`useMenuEscape`); karta Rany bez rzutu pisze „Rana krytyczna bez obrażeń”;
-„Ustabilizowanie” w walce proponuje tylko figury w zasięgu ramienia; beton bez „· 30 PW” na
-mapie. Umowy na górze `mapa` i `ui`, diagnozy w `archiwum/zamkniete-zaleglosci.md`.
-**Testy:** server 1741, client 471 zielone (nowy: stan kierowcy z `token:update` → `chase:sync`
-z `control: 'none'`, pada bez poprawki), `tsc`, ESLint, Prettier czyste. **Oglądane
-w Firefoksie** tymczasowym specem E2E (MG, wiadukt, `po-T6`, skasowany): jedna przeszkoda na
-klik, pasek „Na drodze” 6 px pod paletą i „Wrak” klikalny, Esc z checkboksem, menu przeszkody,
-podpis betonu, karta Rany. „Ustabilizowanie” — tylko `tsc`. Firefox MCP stał na koncie
-`mg_primo` w cudzej kampanii, więc `dev.db` nieruszane.
-

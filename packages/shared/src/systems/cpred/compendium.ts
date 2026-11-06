@@ -572,6 +572,16 @@ export interface VehicleEntry extends CompendiumEntryBase {
   motoLevel?: number;
   /** Łódź kabinowa, jacht, aerozep: PUK i fotele „na kajutę”. */
   perRoom?: boolean;
+  /**
+   * Model z wyglądem (etap 67, `vehicle-models.ts`): wbudowana grafika
+   * `/art/vehicles/…`. Pojazd kupiony z modelu ma ją od razu, a gracz jej nie
+   * zmienia („wygląd = model”, MG 06.11).
+   */
+  art?: string;
+  /** Klasa z katalogu, z której model wziął liczby. */
+  classId?: string;
+  /** Model, który gracz może kupić; brak albo `false` — daje go tylko MG. */
+  forSale?: boolean;
 }
 
 export type CompendiumEntry =
@@ -973,6 +983,15 @@ function validateVehicle(
     if (level !== undefined) vehicle.motoLevel = level;
   }
   if (input.perRoom === true) vehicle.perRoom = true;
+  // Etap 67: model z pliku modeli — wpis MG o tym samym id zachowuje wygląd.
+  if (
+    typeof input.art === 'string' &&
+    /^\/art\/vehicles\/[a-z0-9-]+\.(webp|png|jpg)$/.test(input.art)
+  ) {
+    vehicle.art = input.art;
+  }
+  if (typeof input.classId === 'string') vehicle.classId = input.classId;
+  if (input.forSale === true) vehicle.forSale = true;
   return vehicle;
 }
 

@@ -156,6 +156,35 @@ export interface VehicleRenamePayload {
   imageUrl?: string | null;
 }
 
+/**
+ * Gracz (albo MG za kartę) kupuje auto z modelu: `vehicle:buy` (etap 67).
+ * Bez `merchantId` — z Kompendium (poziom sklepu kampanii, „Kup: wszędzie”),
+ * z nim — u lady handlarza z kategorią „Pojazdy”. `expectPrice` to cena, którą
+ * pokazał przycisk; inna po stronie serwera daje `QUOTE_CHANGED`.
+ */
+export interface VehicleBuyPayload {
+  characterId: string;
+  entryId: string;
+  merchantId?: string;
+  expectPrice: number;
+}
+
+export interface VehicleBuyResult {
+  vehicle: VehicleView;
+  balance: number;
+  price: number;
+}
+
+/** Auto w salonie handlarza (`MerchantView.vehicles`) — cena już z mnożnikiem sklepu. */
+export interface MerchantVehicleOfferView {
+  entryId: string;
+  name: string;
+  art: string;
+  /** „Supersamochód · 2 fotele · PUK 50 · Ruch 60”. */
+  detail: string;
+  price: number;
+}
+
 /** Server → client `vehicle:upsert`. */
 export interface VehicleUpsertBroadcast {
   vehicle: VehicleView;
@@ -174,24 +203,47 @@ export interface VehicleDeleteBroadcast {
 export const VEHICLE_ART_PREFIX = '/art/vehicles/';
 
 /**
- * Wbudowane grafiki aut (etap 65b, CC0 — `public/art/vehicles/ATTRIBUTION.md`),
- * rysowane przodem do góry. Motocykla w tym stylu nie ma — rysuje się bryłą.
+ * Wbudowane grafiki aut, rysowane przodem do góry. Od etapu 67 (MG 06.11.2026)
+ * to grafiki MG (`tools/art/vehicle-models.py`) — po jednej na model auta
+ * z `vehicle-models.json`; `gmOnly` — służby, których gracz nie dostaje
+ * w galerii. Grafiki z paczki CC0 (65b, `VEHICLE_ART_LEGACY`) leżą dalej
+ * w `/art/vehicles/` dla przeszkód pościgu i scen zapisanych przed 67.
+ * Motocykla jeszcze nie ma — rysuje się bryłą.
  */
-export const VEHICLE_ART: readonly { url: string; label: string }[] = [
+export const VEHICLE_ART: readonly { url: string; label: string; gmOnly?: true }[] = [
+  { url: '/art/vehicles/kagero.webp', label: 'Arasaka „Kagerō”' },
+  { url: '/art/vehicles/widmo.webp', label: '„Widmo”' },
+  { url: '/art/vehicles/rajdowka-77.webp', label: '„Rajdówka 77”' },
+  { url: '/art/vehicles/nocny-neon.webp', label: '„Nocny Neon”' },
+  { url: '/art/vehicles/bastion.webp', label: '„Bastion” (SUV)' },
+  { url: '/art/vehicles/ranczer.webp', label: '„Ranczer” (pickup)' },
+  { url: '/art/vehicles/rdzawiec.webp', label: '„Rdzawiec” (stary pickup)' },
+  { url: '/art/vehicles/wloczega.webp', label: '„Włóczęga” (stare kombi)' },
+  { url: '/art/vehicles/taksowka.webp', label: 'Taksówka', gmOnly: true },
+  { url: '/art/vehicles/radiowoz.webp', label: 'Radiowóz', gmOnly: true },
+  { url: '/art/vehicles/karetka.webp', label: 'Karetka', gmOnly: true },
+  { url: '/art/vehicles/militech-furgon.webp', label: 'Militech — furgon', gmOnly: true },
+];
+
+/** Grafiki z paczki CC0 sprzed etapu 67 — przeszkody pościgu i stare sceny. */
+export const VEHICLE_ART_LEGACY: readonly { url: string; label: string }[] = [
   { url: '/art/vehicles/car-red.webp', label: 'Czerwone sportowe' },
   { url: '/art/vehicles/car-black-viper.webp', label: 'Czarne w pasy' },
   { url: '/art/vehicles/car-orange.webp', label: 'Pomarańczowy muscle car' },
-  { url: '/art/vehicles/car-taxi.webp', label: 'Taksówka' },
-  { url: '/art/vehicles/car-police.webp', label: 'Radiowóz' },
+  { url: '/art/vehicles/car-taxi.webp', label: 'Taksówka (stara)' },
+  { url: '/art/vehicles/car-police.webp', label: 'Radiowóz (stary)' },
   { url: '/art/vehicles/pickup-blue.webp', label: 'Pickup' },
-  { url: '/art/vehicles/van-ambulance.webp', label: 'Karetka' },
+  { url: '/art/vehicles/van-ambulance.webp', label: 'Karetka (stara)' },
   { url: '/art/vehicles/van-white.webp', label: 'Furgon' },
 ];
 
-/** Grafika auta bez własnej: furgon dla `van-8`, auto dla reszty, motocykl — bryła. */
+/**
+ * Grafika auta bez własnej: kombi dla auta, furgon dla `van-8` (cywilnego
+ * furgonu w stylu MG jeszcze nie ma — propozycja z 06.11), motocykl — bryła.
+ */
 export function defaultVehicleArt(layout: VehicleLayoutId): string | null {
   if (layout === 'bike-2') return null;
-  return layout === 'van-8' ? '/art/vehicles/van-white.webp' : '/art/vehicles/car-red.webp';
+  return layout === 'van-8' ? '/art/vehicles/van-white.webp' : '/art/vehicles/wloczega.webp';
 }
 
 export function isVehicleArtUrl(value: unknown): value is string {

@@ -6,9 +6,12 @@ import {
   EMPTY_COMPENDIUM,
   buildCompendium,
   cpredScaleCatalogPrices,
+  parseVehicleModels,
   parseWeaponIcons,
+  withVehicleModels,
   withWeaponIcons,
   type CompendiumRegistry,
+  type CpredVehicleModel,
   type CpredWeaponIcon,
 } from '@vtt/shared';
 
@@ -57,10 +60,19 @@ export async function loadCompendium(
   }
   // Etap 47a: katalog z plików mówi cenami podręcznika, a stół płaci cennikiem
   // domowym. Przelicza się tu, raz — wpisy MG z bazy są już w nowej walucie.
-  const registry = withWeaponIcons(
+  const withIcons = withWeaponIcons(
     cpredScaleCatalogPrices(buildCompendium(files)),
     await loadWeaponIcons(dataPublicDir, dataPrivateDir, log),
   );
+  // Etap 67: modele aut po przeliczeniu cen — ich ceny są już w cenniku domowym.
+  const models = withVehicleModels(
+    withIcons,
+    await loadVehicleModels(dataPublicDir, dataPrivateDir, log),
+  );
+  if (models.skipped.length > 0) {
+    log.warn({ models: models.skipped }, 'vehicle models without a class in the catalogue');
+  }
+  const registry = models.registry;
   log.info(
     { weaponTypes: registry.weaponTypes.length, entries: registry.entries.length },
     'compendium loaded',
@@ -120,4 +132,36 @@ async function loadWeaponIcons(
     }
   }
   return icons;
+}
+
+/**
+ * `cpred/vehicle-models.json` (etap 67) — modele aut do kupienia: nazwa,
+ * grafika MG, fotele, cena, a liczby z klasy katalogu. Kolejność jak przy
+ * miniaturach: plik z repo, potem prywatny plik grupy wygrywa po id.
+ */
+async function loadVehicleModels(
+  dataPublicDir: string,
+  dataPrivateDir: string,
+  log: FastifyBaseLogger,
+): Promise<CpredVehicleModel[]> {
+  const byId = new Map<string, CpredVehicleModel>();
+  for (const dir of [dataPublicDir, dataPrivateDir]) {
+    const file = join(dir, 'cpred', 'vehicle-models.json');
+    let raw: string;
+    try {
+      raw = await readFile(file, 'utf8');
+    } catch {
+      continue;
+    }
+    try {
+      const parsed = parseVehicleModels(JSON.parse(raw));
+      if (parsed.issues.length > 0) {
+        log.warn({ file, issues: parsed.issues }, 'vehicle models: entries skipped');
+      }
+      for (const model of parsed.models) byId.set(model.id, model);
+    } catch (error) {
+      log.warn({ err: error, file }, 'vehicle models file skipped');
+    }
+  }
+  return [...byId.values()];
 }

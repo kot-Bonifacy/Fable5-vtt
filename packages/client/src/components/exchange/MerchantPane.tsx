@@ -21,6 +21,7 @@ import { COMBAT_LOCKED_HINT, useCombatLocked } from '../../stores/combatStore.js
 import { shopTierContextOf, useCompendiumStore } from '../../stores/compendiumStore.js';
 import { useExchangeStore } from '../../stores/exchangeStore.js';
 import { InlineNotice } from '../NoticeColumn.js';
+import { VehicleOffer } from '../VehicleOffer.js';
 import { useExchangeDrag } from './drag.js';
 import { ItemGrid, countLabel, useGridSelection, useItemTile, type GridTile } from './ItemGrid.js';
 import { formatEd, itemKey } from './items.js';
@@ -504,6 +505,35 @@ export function MerchantPane({ anchorId, merchantId }: { anchorId: string; merch
           </div>
         </div>
       </div>
+
+      {/* Etap 67: salon — auta z zakresu „Pojazdy”. Pojazd nie jest wierszem
+          karty, więc nie idzie przez koszyk: każde ma własne „Kup” (`vehicle:buy`). */}
+      {(view.vehicles ?? []).length > 0 && (
+        <section className="trade-salon" aria-label="Salon — auta">
+          <p className="trade-column-title">Salon — auta ({view.vehicles!.length})</p>
+          <ul className="vehicle-offers">
+            {view.vehicles!.map((offer) => (
+              <VehicleOffer
+                key={offer.entryId}
+                characterId={anchorId}
+                entryId={offer.entryId}
+                name={offer.name}
+                art={offer.art}
+                detail={offer.detail}
+                listed={offer.price}
+                merchantId={merchantId}
+                blockedHint={
+                  inCombat
+                    ? COMBAT_LOCKED_HINT
+                    : closed
+                      ? `${MERCHANT_CLOSED_LABELS[closed]} — kupić się nie da.`
+                      : null
+                }
+              />
+            ))}
+          </ul>
+        </section>
+      )}
 
       <div className="trade-footer">
         {quote && !empty && (

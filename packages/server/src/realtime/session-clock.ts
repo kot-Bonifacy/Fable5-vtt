@@ -39,6 +39,8 @@ export const BETWEEN_SESSIONS_EVENTS: ReadonlySet<string> = new Set([
   // Sklep i przelewy (04.10).
   'economy:buy',
   'economy:transfer',
+  // Zakup auta (etap 67) — ta sama lada co `economy:buy` i `merchant:deal`.
+  'vehicle:buy',
   // Przekazanie i handel między graczami tej kampanii (04.10).
   'inventory:give',
   'inventory:take',

@@ -174,3 +174,4 @@ a w `POSTEP.md` popraw tylko wiersz stanu.
 | 66     | Sceny przykładowe: wzorce scen w repo dla każdego MG, „Pościg na wiadukcie” (Maelstrom, taksówka; wzorzec skasowany 04.11) | 🟨     | 2026-10-31          |
 | 66b    | Wzorzec zwykłej mapy: ciemność, ściany, osłony, urządzenia, gniazda i Sieć; „Fabryka dronów” | 🟨     | 2026-10-31          |
 | 66c    | Scena przykładowa „Ostatni zjazd”: pościg na 2–3 graczy na wbudowanej estakadzie (drużyna goni furgon z porwaną); załoga auta poza pościgiem ukryta przed graczem | 🟨     | 2026-11-04          |
+| 67     | Zakup pojazdu przez gracza: modele aut z grafikami MG, „Kup” w Kompendium i salon u handlarza (`vehicle:buy`) | 🟨     | 2026-11-06          |

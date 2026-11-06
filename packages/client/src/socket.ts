@@ -307,6 +307,8 @@ import type {
   WeaponReloadPayload,
   VehicleCreatePayload,
   VehicleDeleteBroadcast,
+  VehicleBuyPayload,
+  VehicleBuyResult,
   VehicleRenamePayload,
   ChaseObstacleChoice,
   ChaseObstacleSpawnPayload,
@@ -5094,6 +5096,36 @@ export function buyCompendiumEntry(
   // overwrite the freshly charged balance with the pre-purchase one.
   flushCharacterSave(payload.characterId);
   return emitEconomy('economy:buy', payload);
+}
+
+/**
+ * Etap 67: zakup auta z modelu — z Kompendium albo u lady handlarza
+ * (`merchantId`). Pojazd ląduje w sekcji „Pojazdy” karty, nie w ekwipunku.
+ */
+export function buyVehicle(payload: VehicleBuyPayload): Promise<SocketAck<VehicleBuyResult>> {
+  flushCharacterSave(payload.characterId);
+  return emitEconomy('vehicle:buy', payload);
+}
+
+/** Odmowy `vehicle:buy` — lada handlarza po swojemu, reszta jak zakup z Kompendium. */
+export function vehicleBuyErrorText(code: string | undefined): string {
+  switch (code) {
+    case 'NOT_PURCHASABLE':
+      return 'Tego auta się nie kupuje — klasę z podręcznika i auta służb daje MG.';
+    case 'NOT_IN_RANGE':
+      return 'Ten handlarz nie sprzedaje tego auta.';
+    case 'CATALOG_CLOSED':
+      return 'MG ustawił zakupy tylko u handlarzy — auto kupisz w salonie.';
+    case 'QUOTE_CHANGED':
+      return 'Cena auta zmieniła się, zanim zapłaciłeś — sprawdź nową i kup jeszcze raz.';
+    case 'MERCHANT_NOT_FOUND':
+    case 'MERCHANT_CLOSED':
+    case 'OUT_OF_REACH':
+    case 'SESSION_NOT_RUNNING':
+      return merchantErrorText(code);
+    default:
+      return economyErrorText(code);
+  }
 }
 
 export function transferEddies(

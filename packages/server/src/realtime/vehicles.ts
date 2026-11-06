@@ -11,6 +11,7 @@ import type {
 import {
   ROLE_GM,
   cpredVehicleFromCatalog,
+  cpredVehicleIsModel,
   cpredVehiclePatch,
   isVehicleArtUrl,
   isVehicleEntry,
@@ -163,6 +164,7 @@ export const vehicleCreateEvent = defineEvent<VehicleCreatePayload, VehicleView>
       ownerCharacterId,
       name,
       cpredVehicleFromCatalog(entry),
+      entry.art ?? null,
     );
     await emitVehicleUpsert(deps, campaignId, row);
     return toVehicleView(row);
@@ -287,6 +289,13 @@ export const vehicleRenameEvent = defineEvent<VehicleRenamePayload, VehicleView>
     if (payload && 'imageUrl' in payload) {
       if (payload.imageUrl !== null && !isVehicleArtUrl(payload.imageUrl)) {
         throw new RealtimeError('FORBIDDEN');
+      }
+      // Etap 67 (MG 06.11): „wygląd = model” — kupione auto ma wygląd modelu
+      // i gracz go nie zmienia; MG tak (okno pojazdu, `vehicle:update`).
+      if (user.role !== ROLE_GM) {
+        const catalogId = readCpredVehicle(current.system).catalogId;
+        const entry = catalogId ? await campaignEntry(deps, campaignId, catalogId) : undefined;
+        if (cpredVehicleIsModel(entry)) throw new RealtimeError('VEHICLE_LOOK_LOCKED');
       }
       data.imageUrl = payload.imageUrl ?? null;
     }

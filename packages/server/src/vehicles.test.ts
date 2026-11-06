@@ -10,9 +10,12 @@ import type {
   CharacterView,
   CpredCharacterData,
   CpredVehicleStats,
+  MerchantConfigResult,
+  MerchantViewResult,
   SocketAck,
   StateSyncPayload,
   VehicleDeleteBroadcast,
+  VehicleBuyResult,
   VehicleUpsertBroadcast,
   VehicleView,
 } from '@vtt/shared';
@@ -643,5 +646,157 @@ describe('etap 65a: pojazd jako własność postaci', () => {
     expect((await emitAck(gm, 'character:delete', { characterId: heroId })).ok).toBe(true);
     await gone;
     expect((await orphan).vehicle.ownerCharacterId).toBeNull();
+  });
+});
+
+describe('etap 67: zakup auta z modelu', () => {
+  let gm: ClientSocket;
+  let player: ClientSocket;
+  let buyerId: string;
+
+  const buy = (socket: ClientSocket, body: Record<string, unknown>) =>
+    emitAck<VehicleBuyResult>(socket, 'vehicle:buy', { characterId: buyerId, ...body });
+
+  it('gracz kupuje model z Kompendium: wygląd, nazwa i liczby klasy, pieniądze schodzą', async () => {
+    gm = await connect(gmCookie);
+    player = await connect(playerCookie);
+    buyerId = data(
+      await emitAck<CharacterView>(gm, 'character:create', { name: 'Szron', ownerId: playerId }),
+      'character:create',
+    ).id;
+    await emitAck(gm, 'economy:adjust', { characterId: buyerId, balance: 25_000 });
+
+    const seen = waitForMatch<VehicleUpsertBroadcast>(
+      player,
+      'vehicle:upsert',
+      (payload) => payload.vehicle.ownerCharacterId === buyerId,
+    );
+    const bought = data(
+      await buy(player, { entryId: 'vehicle.ranczer', expectPrice: 10_000 }),
+      'vehicle:buy',
+    );
+    expect(bought).toMatchObject({ balance: 15_000, price: 10_000 });
+    expect(bought.vehicle).toMatchObject({
+      name: '„Ranczer” (pickup)',
+      imageUrl: '/art/vehicles/ranczer.webp',
+      ownerCharacterId: buyerId,
+      layout: 'car-4',
+    });
+    // Liczby z klasy: próbka z repo ma wymyślony kompakt (PUK 45, Ruch 20).
+    expect(statsOf(bought.vehicle)).toMatchObject({
+      catalogId: 'vehicle.ranczer',
+      kind: 'car',
+      hp: 45,
+      move: 20,
+    });
+    expect((await seen).vehicle.id).toBe(bought.vehicle.id);
+
+    // Bastion stoi na poziomie 2 — nowa kampania odblokowuje 1.
+    const lockedBastion = await buy(player, { entryId: 'vehicle.bastion', expectPrice: 13_500 });
+    expect(lockedBastion).toEqual({ ok: false, error: 'SHOP_TIER_LOCKED:2:1' });
+    expect((await emitAck(gm, 'shop:tier', { tier: 2 })).ok).toBe(true);
+    // Model z sześcioma fotelami (zasada domowa) dostaje trzy rzędy.
+    const bastion = data(
+      await buy(player, { entryId: 'vehicle.bastion', expectPrice: 13_500 }),
+      'vehicle:buy',
+    );
+    expect(bastion.vehicle.layout).toBe('car-6');
+    expect(bastion.balance).toBe(1_500);
+  });
+
+  it('odmowy: zła cena, brak pieniędzy, służby, klasa bez wyglądu, zamknięty poziom', async () => {
+    expect(await buy(player, { entryId: 'vehicle.rdzawiec', expectPrice: 1 })).toEqual({
+      ok: false,
+      error: 'QUOTE_CHANGED',
+    });
+    expect(await buy(player, { entryId: 'vehicle.rdzawiec', expectPrice: 6_300 })).toEqual({
+      ok: false,
+      error: 'NOT_ENOUGH_EDDIES',
+    });
+    for (const entryId of ['vehicle.radiowoz', 'vehicle.sample-kompakt']) {
+      expect(await buy(player, { entryId, expectPrice: 1 })).toEqual({
+        ok: false,
+        error: 'NOT_PURCHASABLE',
+      });
+    }
+    await emitAck(gm, 'economy:adjust', { characterId: buyerId, balance: 50_000 });
+    const locked = await buy(player, { entryId: 'vehicle.kagero', expectPrice: 30_000 });
+    expect(locked.ok).toBe(false);
+    expect(!locked.ok && locked.error).toMatch(/^SHOP_TIER_LOCKED:4:/);
+    // MG kupuje za kartę przez każdy poziom.
+    expect(
+      data(await buy(gm, { entryId: 'vehicle.kagero', expectPrice: 30_000 }), 'gm buy').balance,
+    ).toBe(20_000);
+  });
+
+  it('gracz zmienia nazwę kupionego auta, ale nie wygląd modelu', async () => {
+    const mine = (await syncOf(player)).vehicles.find((row) =>
+      row.imageUrl?.endsWith('ranczer.webp'),
+    )!;
+    expect(
+      await emitAck(player, 'vehicle:rename', {
+        vehicleId: mine.id,
+        imageUrl: '/art/vehicles/widmo.webp',
+      }),
+    ).toEqual({ ok: false, error: 'VEHICLE_LOOK_LOCKED' });
+    expect(
+      data(
+        await emitAck<VehicleView>(player, 'vehicle:rename', { vehicleId: mine.id, name: 'Byk' }),
+        'rename',
+      ).name,
+    ).toBe('Byk');
+  });
+
+  it('u handlarza: tylko z kategorią „Pojazdy”, cena z mnożnikiem, zapłata w jego kasie', async () => {
+    const dealerId = data(
+      await emitAck<CharacterView>(gm, 'character:create', { name: 'Salon Rdzy' }),
+      'dealer',
+    ).id;
+    await emitAck(gm, 'economy:adjust', { characterId: dealerId, balance: 100 });
+    const merchantId = data(
+      await emitAck<MerchantConfigResult>(gm, 'merchant:config', {
+        characterId: dealerId,
+        merchant: { access: 'remote', open: true, priceMul: 120 },
+        // Pozostałe 4, a pojazdów nie ustawiono — salonu jeszcze nie ma.
+        assortment: { base: 4, categories: {} },
+      }),
+      'merchant:config',
+    ).merchantId!;
+    const view = async () =>
+      data(await emitAck<MerchantViewResult>(player, 'merchant:view', { merchantId }), 'view')
+        .merchant;
+    expect((await view()).vehicles).toEqual([]);
+    expect(
+      await buy(player, { entryId: 'vehicle.rdzawiec', expectPrice: 7_560, merchantId }),
+    ).toEqual({ ok: false, error: 'NOT_IN_RANGE' });
+
+    await emitAck(gm, 'merchant:config', {
+      characterId: dealerId,
+      merchant: {},
+      assortment: { base: 1, categories: { vehicle: 2 } },
+    });
+    const offers = (await view()).vehicles ?? [];
+    expect(offers.map((offer) => offer.entryId)).toContain('vehicle.rdzawiec');
+    expect(offers.map((offer) => offer.entryId)).not.toContain('vehicle.kagero');
+    expect(offers.map((offer) => offer.entryId)).not.toContain('vehicle.radiowoz');
+    const rdzawiec = offers.find((offer) => offer.entryId === 'vehicle.rdzawiec')!;
+    expect(rdzawiec).toMatchObject({ price: 7_560, art: '/art/vehicles/rdzawiec.webp' });
+
+    // Katalog zamknięty dla gracza — lada handlarza dalej sprzedaje.
+    await emitAck(gm, 'campaign:catalog-shopping', { mode: 'merchants' });
+    expect(await buy(player, { entryId: 'vehicle.rdzawiec', expectPrice: 6_300 })).toEqual({
+      ok: false,
+      error: 'CATALOG_CLOSED',
+    });
+    const bought = data(
+      await buy(player, { entryId: 'vehicle.rdzawiec', expectPrice: 7_560, merchantId }),
+      'counter buy',
+    );
+    expect(bought.balance).toBe(20_000 - 7_560);
+    const dealer = JSON.parse(
+      (await built.prisma.character.findUniqueOrThrow({ where: { id: dealerId } })).data,
+    ) as CpredCharacterData;
+    expect(dealer.eddies).toBe(100 + 7_560);
+    await emitAck(gm, 'campaign:catalog-shopping', { mode: 'everywhere' });
   });
 });

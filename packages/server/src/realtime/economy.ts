@@ -172,7 +172,7 @@ async function lastMergeableAdjust(
 }
 
 /** The character, refused unless the caller may spend from its wallet. */
-async function requireWallet(
+export async function requireWallet(
   deps: RealtimeDeps,
   campaignId: string,
   user: SessionUser,
@@ -195,7 +195,7 @@ async function requireWallet(
 }
 
 /** Posts the private card: GM plus whoever the money belonged to. */
-async function postEconomyCard(
+export async function postEconomyCard(
   deps: RealtimeDeps,
   campaignId: string,
   user: SessionUser,

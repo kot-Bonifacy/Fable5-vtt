@@ -317,3 +317,81 @@ input.vehicle-card-name {
 .vehicle-hint.vehicle-warning {
   color: var(--warn);
 }
+
+/* Zakup auta (etap 67): oferta modelu w Kompendium i w salonie handlarza.
+   Grafika rysowana jest przodem do góry (pościg) — tu leży bokiem, przodem
+   w lewo, jak auto na wystawie. */
+.vehicle-offers {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr));
+  gap: 0.35rem;
+}
+
+.vehicle-offer {
+  display: grid;
+  grid-template-columns: 6.5rem minmax(0, 1fr);
+  grid-template-areas:
+    'art body'
+    'art buy';
+  gap: 0.2rem 0.5rem;
+  align-items: center;
+  padding: 0.3rem 0.4rem;
+  background: var(--cp-paper);
+  color: var(--cp-ink);
+  border: 1px solid var(--border);
+  font-size: 0.8rem;
+}
+
+.vehicle-offer-art {
+  grid-area: art;
+  position: relative;
+  width: 6.5rem;
+  height: 3.2rem;
+  overflow: hidden;
+  background: var(--cp-inset);
+}
+
+.vehicle-offer-art img {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  height: 6.2rem;
+  width: auto;
+  transform: translate(-50%, -50%) rotate(-90deg);
+}
+
+.vehicle-offer-body {
+  grid-area: body;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.vehicle-offer-name {
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.vehicle-offer-detail {
+  color: var(--text-dim);
+  font-size: 0.72rem;
+}
+
+.vehicle-offer-buy {
+  grid-area: buy;
+  justify-self: start;
+}
+
+.vehicle-offer-buy--confirm {
+  border-color: var(--accent, currentColor);
+  font-weight: 600;
+}
+
+.trade-salon {
+  margin-top: 0.4rem;
+}
