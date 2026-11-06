@@ -342,7 +342,11 @@ układzie foteli; serwer przesadza je teraz przy starcie (`reseatChasePassengers
 - [x] Oględziny w Firefoksie: lista „Przykładowe”, scena z wzorca na Neonowej ulicy.
 - [x] Rozegranie w przeglądarce (MG + 2 graczy) — 06.11, piąta sesja: pościg w 3 rundach
       (trzy tarany w jednej turze), zatrzymanie w 2; wnioski i propozycje wyżej.
-- [ ] Decyzje MG o balansie (taran na turę, przeszkoda w R2, Wzmocniona konstrukcja).
+- [x] Decyzje MG o balansie (06.11, szósta sesja): **jeden taran na turę** jako zasada ogólna
+      w kodzie (`RAM_USED`, pasek „Zderzenie” po taranie bez „Taranuj”); furgon bez Wzmocnionej
+      konstrukcji przy 2 graczach. Przy okazji udany Gwałtowny skręt z menu omija przeszkodę
+      przed zderzakiem (notatka R2 poprawiona). Auto cywilne w R2 (propozycja 2) — do oceny
+      przy stole.
 - [ ] Oceny MG przy stole i wdrożenie (bez migracji).
 
 ## Kryteria ukończenia

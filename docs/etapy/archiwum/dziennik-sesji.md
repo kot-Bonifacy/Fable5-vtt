@@ -1,5 +1,23 @@
 # Dziennik sesji — archiwum
 
+### Sesja 06.11, czwarta — etap 66d: scena przykładowa „Zastaw”
+
+**Zlecenie MG:** nowa przykładowa scena pościgu — dwóch graczy własnym kompaktem goni furgon
+Militechu (kierowca + ochroniarz w pierwszym rzędzie, z tyłu syn właściciela dziupli), zatrzymanie
+furgonu i odbicie chłopaka. **Decyzje MG (dwie rundy pytań):** projekt + wzorzec teraz,
+rozegranie osobno; wzorzec stawia kompakt (własne auto przez „Na drogę”); zwrot w połowie —
+radiowóz NCPD w rezerwie; otwarte drogi zatrzymania jak w 66c; chłopak przytomny i skrępowany;
+Neonowa ulica; **bez zegara**. **Zrobione bez pytań:** nazwa „Zastaw” i imiona, tempo 40 (dwa
+kompakty Ruch 20 stoją w kadrze — przy tempie 20 oba wyjeżdżały przednią krawędzią), kombi
+„Włóczęga” z Pługiem i Nitro od Szczęki, furgon bez Wzmocnionej konstrukcji (50 PUK, OB 13),
+Hak bez Ognia ciągłego i w lekkim pancerzu (lekcje z 66c), Śrubka Unieruchomiony z jedną akcją
+ręką MG w R4, radiowóz bez szyb kuloodpornych. Projekt `etap-66d-zastaw.md`, wzorzec
+`data/public/scenes/zastaw/` — bez zmian w kodzie. **Testy:** `scene-templates.test.ts` 8/8
+(nowy „etap 66d”), Prettier i ESLint czyste. **Oglądane w Firefoksie** (Ola) i Chromium (MG)
+tymczasowym specem E2E na `po-T6` (skasowany) — Firefox z Playwright MCP zawisł na nawigacji,
+a w dev stał tylko Vite. Z oględzin: kamera gracza nie mieści furgonu i kombi naraz (dopisane do
+zaległości „Kamera gracza” z 04.11).
+
 ### Sesja 06.11, trzecia — grafiki aut we wzorcu 66c, furgony na 6 foteli, auta w UI
 
 **Zlecenie MG:** nowe grafiki aut w przykładowym pościgu, lepsza widoczność kupowanych

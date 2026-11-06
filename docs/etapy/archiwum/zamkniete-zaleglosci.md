@@ -9,6 +9,52 @@ go czytać.
 albo gdy chcesz sprawdzić, czy pozycja, która wygląda na nową, nie jest wracającą starą.
 Treść wpisów jest niezmieniona — łącznie z datami i odsyłaczami do notatek sesji.
 
+## Zamknięte 2026-11-06, szósta sesja („wykonaj zaległości”, decyzje MG)
+
+**06.11.2026 — drobiazgi z przebiegu 66d (oba).**
+
+- „Rozpocznij walkę”, zanim gracze rzucą inicjatywę: Kosa (14) przy turze Haka (11) lądował
+  „po turze” i tracił rundę 1. Diagnoza: `nextTurn` liczy od miejsca aktywnego, a wyższy rzut
+  wpada nad nie. Naprawa (decyzja MG — „spóźniony rzut wchodzi przed aktywnego”):
+  `lateRoundOneTurn` w `shared/combat.ts` znajduje w rundzie 1 figurę z inicjatywą nad aktywnym,
+  która jeszcze nie grała, a `stepTurn` daje jej turę jako następnej i zapisuje `resume` na
+  zwykłego następnego. Bezcielesny Demon (bez figury) jest wyłączony — pierwsza wersja dała mu
+  drugą turę w rundzie (`netdemons.test.ts`). Testy: `combat.test.ts` w `shared` i serwerze.
+- Gwałtowny skręt z menu auta przy przeszkodzie wprost przed zderzakiem zużywał Akcję i nic nie
+  robił z przeszkodą. Naprawa (bez pytania, notatki obu wzorców pościgu to zakładały): udany skręt
+  z menu woła `passObstacleAhead` (`chase-obstacles.ts`) — przeszkoda MG pół kratki przed przodem
+  auta idzie przez `letPast` jak po pasku. Test w `chase-obstacles.test.ts`, notatka R2 „Zastawu”
+  poprawiona.
+
+**06.11.2026 — „Zastaw” (66d): pościg w 3 rundach przez trzy tarany w jednej turze.** Decyzja MG:
+jeden taran na turę (zasada ogólna). `CpredTurnState.rammed` + `TurnBudgetView.onceUsed`, odmowa
+`RAM_USED` w `chase:move`, pasek „Zderzenie” po taranie tylko z „Zatrzymaj się przed”. Testy:
+`turn.test.ts`, `chase-ram.test.ts`. Reszta wpisu (auto cywilne w R2, stół, wdrożenie) zostaje
+otwarta.
+
+**04.11.2026 — kamera gracza w pościgu nie mieści furgonu i auta drużyny.** Decyzja MG: zostaje
+jak jest — gracz sam oddala widok kółkiem.
+
+**04.11.2026 — `surgery.test.ts` migocze pod pełną suitą serwera; `chase-combat.test.ts` raz
+padł.** Odtworzone sześcioma równoległymi przebiegami (1 na 6). Diagnoza: `surgery.test.ts`
+czytał kolektor `chat:message` pacjenta zaraz po ack Medyka, a karta rzutu idzie innym gniazdem
+i pod obciążeniem dochodzi po ack (`test` = `undefined`). Naprawa: `waitForSurgeryRoll` czeka na
+kartę „Montaż…”. `chase-combat.test.ts` strzelał w słaby punkt (−8) bez skryptu kości, więc
+Krytyczna Porażka pudłowała ok. 2 % przebiegów — Broń krótka strzelca 5 → 9. Potem 16 przebiegów
+pod obciążeniem zielonych.
+
+**31.10.2026 — T4b 4.8 „pięść, która trafia” raz spudłowała.** Poprawka z 03.11 (czekanie na
+klatkę `final`) nie wystarczyła: 06.11 jeden z trzech przebiegów od `po-T4a` znów padł. Karta
+w bazie: pięść dostała skryptowane 8 (16), a „Unik Rzeźnik: 18 vs 16 → unik udany” — serwer rzuca
+Unik obrońcy sam po karcie ataku (`runAutoEvasions`) następną, nieskryptowaną kością. Naprawa:
+`scriptDice([8, 2])` (ZW 5 + Unik 5 + 2 = 12). Potem T4b od `po-T4a` 3 × 20/20.
+
+**03.11.2026 — stały E2E kreatora pościgu.** `48-poscig/t65-kreator` (`@szybkie`, 5 kroków): MG
+w Firefoksie przechodzi Tło → Droga → Auta → Gotowe na „Neonowej ulicy”, dwa auta z katalogu „Na
+drogę” nie lądują na sobie, „Pełna edycja sceny…” otwiera zakładkę „Pościg”, gracz w Chromium
+widzi drogę i auta. Przy okazji `t65-przeszkody` dostosowany do decyzji z 04–05.11 (kierunek
+w lewo, beton zostaje po skręcie, auto bez kierowcy stoi — kolczatkę bierze auto z kurierem).
+
 ## Zamknięte 2026-11-05, czwarta sesja („wykonaj zaległości”, decyzje MG)
 
 **05.11.2026 — znaleziska z ponownego przebiegu 66c (ostatnie trzy z dziewięciu).**

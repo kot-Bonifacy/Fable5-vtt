@@ -9,6 +9,26 @@ czytany na starcie każdej sesji został listą zadań, a nie archiwum ustaleń.
 inaczej, niż mówi podręcznik, albo gdy dotykasz wymienionego tu kodu. Jeśli któraś z tych decyzji
 przestanie się bronić, przenieś ją stąd do `POMYSLY.md` jako zadanie — nie odwrotnie.
 
+## Taran, skręt przed przeszkodą i spóźniona inicjatywa (06.11.2026, decyzje MG po „Zastawie”)
+
+- **Jeden taran na turę kierowcy** (zasada domowa, w każdym pościgu). Podręcznik limitu nie
+  podaje, ale Nitro daje 10 m, a taran przepycha auto o ok. 2 m — w „Zastawie” jedna Akcja Ruchu
+  zrobiła z furgonu wrak trzema taranami. Po taranie pasek „Zderzenie” daje tylko „Zatrzymaj się
+  przed”, a serwer odmawia drugiego (`RAM_USED`). Limit liczy się tylko w turze kierowcy: ręka MG
+  poza nią (poprawki) i wymuszona odpowiedź na przeszkodę przed zderzakiem (pasek po dryfie) go
+  nie zużywają ani nie sprawdzają.
+- **Udany Gwałtowny skręt z menu auta omija przeszkodę MG stojącą wprost przed zderzakiem**
+  (rozstrzygnięte bez pytania, zaległość 66d) — tak jak odpowiedź „Gwałtowny skręt” na pasku,
+  tylko za Akcję. Wcześniej skręt z menu tylko zużywał Akcję, a notatki obu wzorców pościgu
+  zakładały, że omija. Porażka bez zmian: utrata kontroli, przeszkoda dojeżdża dryfem. Auta i piesi
+  przed zderzakiem zostają — dla nich jest taran albo jazda obok.
+- **Spóźniony rzut inicjatywy w rundzie 1 gra zaraz po bieżącej turze.** MG kliknął „Rozpocznij
+  walkę”, zanim gracz rzucił, a rzut wyszedł wyżej niż grający — figura nie traci rundy 1: dostaje
+  turę jako następna, potem kolejka wraca tam, dokąd szła. Tylko runda 1 i tylko figury (Demon
+  i Czarny LOD grają z biegu Sieci); od rundy 2 zwykła kolejność.
+- **Kadr gracza w pościgu bez zmian** — gracz sam oddala widok kółkiem, gdy furgon stoi poza
+  kadrem (MG, zaległość 04.11).
+
 ## Warsztat: ulepszenia auta za ed i naprawa (etap 68, 06.11.2026, decyzje MG)
 
 - **Cena ulepszenia = cena pasma z s. 163 × 3** — Moto 1 „Bardzo kosztowne” 1000 → **3000 ed**,

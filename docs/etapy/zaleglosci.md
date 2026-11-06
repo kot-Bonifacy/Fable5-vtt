@@ -11,8 +11,8 @@ w `POMYSLY.md` („Do sprawdzenia przy stole”), decyzje MG — w `decyzje-i-up
 na `dev.db`: bez kierowcy Wozu droga stoi u MG i graczy, rusza po siadaniu za kierownicę, menu
 auta „bez dryfu · bez kierowcy — stoi”; w dogrywce furgon bez Wolta miał pęd 20 → 10 (dryf −7,5)
 i wjechał w barykadę jako wrak. Luka ze stanem kierowcy zamknięta 05.11
-(trzecia sesja, `archiwum/zamkniete-zaleglosci.md`). E2E `48-poscig` (wymaga `po-T6`) nie puszczone —
-stawiały auto drużyny bez kierowcy, więc oczekiwania dryfu mogą się zmienić.
+(trzecia sesja, `archiwum/zamkniete-zaleglosci.md`). E2E `48-poscig` puszczone 06.11 (szósta
+sesja): `t65-przeszkody` dostosowany (kolczatkę bierze auto z kurierem, bo puste stoi), 8/8.
 
 **05.11.2026 (czwarta sesja) — zaległości 66c zamknięte w kodzie: wdrożenie i oglądanie przy stole.**
 Bez migracji. Oglądane w **Firefoksie** tymczasowym specem E2E (MG, wzorzec „Ostatni zjazd”,
@@ -39,34 +39,20 @@ z fotela (Szron wysiadł z eskorty po kliku w trakcie ruchu kamery — pewnie pr
 marsz; do powtórki przy stojącej kamerze).
 
 **04.11.2026 — drobiazgi z przebiegu 66c (UI pościgu i czatu).** Zamknięte 05.11 (czwarta
-sesja, `archiwum/zamkniete-zaleglosci.md`) poza dwoma:
+sesja) i 06.11 (szósta — kamera gracza, decyzja MG: zostaje), `archiwum/zamkniete-zaleglosci.md`,
+poza jednym:
 
 - Esc z fokusem na kubku MG raz odłożył atak, dwa razy nie (Playwright). W kodzie przyczyny nie
   widać — wszystkie Esc kubka słuchają na `window` (`DiceCup.tsx`); do odtworzenia w przeglądarce.
-- Kamera gracza (`coverZoom` na estakadzie 35 × 18) mieściła ok. 23 kratki długości. Od 05.11
-  wzorzec stoi na „Neonowej ulicy” 35 × 24, przy której pokrycie ekranu 16:9 bierze całą
-  długość — sprawdzić przy stole, czy furgon i Wóz mieszczą się razem u gracza.
-  **06.11 (oględziny 66d „Zastaw”, Firefox 1600 × 1000): nie mieszczą się.** Gracz bez figury na
-  scenie dostaje kadr na miejscu startu (ok. 17 kratek szerokości), a z figurą w fotelu kombi —
-  na niej (ok. 12 kratek); furgon 10 kratek przed kombi stoi poza kadrem, dopóki gracz sam nie
-  oddali widoku. Dotyczy obu wzorców pościgu. Do decyzji MG: kadr pościgu u gracza na całą
-  długość drogi albo na auto drużyny z zapasem do przodu.
+  06.11 (szósta sesja): najpewniej okno Celowania — `AimMenu` łapie `keydown` w fazie capture
+  i robi `stopPropagation`, więc pierwsze Esc zamyka tylko Celowanie (pułapka z 24.10 w `testy`).
+  Próba w Firefoksie nie załadowała ataku (klik w auto z fotela kierowcy otwiera menu auta).
 
-**06.11.2026 — „Zastaw” (66d): decyzje MG o balansie, stół MG i wdrożenie.** Rozegrany 06.11
-(piąta sesja, MG w Chromium, Rdza i Kosa w Firefoksie): pościg skończył się w rundzie 3 — Nitro
-daje kierowcy 10 m, a taranowanie nie ma limitu na turę, więc kombi wjechało w furgon trzy razy
-w jednej turze i zrobiło wrak. Śrubka dostał Ranę ze skryptowego auta cywilnego, zanim gracze
-coś wybrali. Propozycje w `etap-66d-zastaw.md` („Wnioski z balansu”). Bez migracji.
-
-**06.11.2026 — drobiazgi z przebiegu 66d.**
-
-- „Rozpocznij walkę”, zanim gracze rzucą inicjatywę: figura, która potem wyrzuci więcej niż
-  aktywny NPC (Kosa 14 przy turze Haka 11), staje na początku kolejki jako „po turze” i traci
-  rundę 1. MG naprawia to „Poprzednią turą” (◀). Do decyzji: czekać na rzuty graczy albo
-  ostrzec MG.
-- Gwałtowny skręt z menu auta przy przeszkodzie wprost przed zderzakiem (po „Zatrzymaj się
-  przed”) zużywa Akcję i nic nie robi z przeszkodą — rozstrzyga ją dopiero pasek po dryfie.
-  Notatka ⚠️ „Zastawu” już to mówi; do decyzji, czy menu ma wtedy pytać o przeszkodę.
+**06.11.2026 — „Zastaw” (66d): stół MG i wdrożenie.** Rozegrany 06.11 (piąta sesja): pościg
+skończył się w rundzie 3 przez trzy tarany w jednej turze — od 06.11 (szósta sesja, decyzja MG)
+jeden taran na turę, wpis w archiwum. Zostaje do oceny przy stole propozycja 2 z „Wniosków
+z balansu” w `etap-66d-zastaw.md`: Śrubka dostaje Ranę ze skryptowego auta cywilnego w R2, zanim
+gracze coś wybiorą (auto cywilne na pasie kombi zamiast furgonu?). Bez migracji.
 
 **04.11.2026 — „Ostatni zjazd” (66c): przebieg przy stole i wdrożenie.** Technicznie przejechany
 specem oględzin (MG w Chromium, Marek i Ola w Firefoksie, `data/private`), a 04.11 (czwarta
@@ -79,25 +65,17 @@ VPS — nie sprawdzone (zostaną bez tła). Reguła „załoga auta poza pościg
 `mapa`) dotyczy też aut, które odpadły w zwykłym pościgu — warto rzucić okiem przy stole, czy
 nikogo nie dziwi, że załoga znika razem z autem.
 
-**04.11.2026 — `surgery.test.ts` migocze pod pełną suitą serwera.** W jednym z dwóch pełnych
-przebiegów padły 2 testy (Test montażu z `outcome.success` innym niż oczekiwany); osobno
-3/3 zielone. Nie dotyka zmian 66c — do zbadania przy najbliższym przeglądzie testów (`testy`).
-04.11 (piąta sesja): `chase-combat.test.ts` („kadłub: obrażenia minus OB 13…”) padł raz pod
-`vitest run src/chase`, osobno 7/7 i w pełnej suicie zielony — pewnie ta sama przyczyna.
-
-**03.11.2026 — kreator pościgu: oględziny w Firefoksie i przy stole, wdrożenie.** Oglądane
-tylko w Chromium (skrypt `playwright` na instancji E2E) — Firefoksa w kontenerze nie ma, Playwright
-MCP niepodłączony. Przy stole (Firefox): „Utwórz → Pościg” — kreator, każda z czterech dróg
+**03.11.2026 — kreator pościgu: oględziny przy stole, wdrożenie.** Od 06.11 stały E2E
+`48-poscig/t65-kreator` (MG w Firefoksie, gracz w Chromium; wpis w archiwum). Przy stole: „Utwórz → Pościg” — kreator, każda z czterech dróg
 w kafelku i na mapie (czy przewija się bez szwu na żywo i czy wygląd pasuje do stołu), „Wgraj
 własną mapę”, przeciągnięcie obu krawędzi pasa w kroku „Droga”, „Na drogę” dla trzech aut
 (nie lądują na sobie), „Pełna edycja sceny…” otwiera zakładkę „Pościg”. Na VPS pliki
-`/art/roads/*.webp` jadą w obrazie klienta (bez migracji). Stałego E2E kreatora nie ma
-(wymaga `po-T6` i Firefoksa) — dopisać do `48-poscig` przy najbliższym przebiegu.
+`/art/roads/*.webp` jadą w obrazie klienta (bez migracji).
 
 **03.11.2026 — przegląd mechanik pościgu: oględziny w przeglądarce i wdrożenie (migracja
 `20261103210000_chase_vehicle_blocking`).** Z kontenera nie oglądane (brak punktu `po-T6`, mapy
-wiaduktu z `C:\AI\materialy` i Firefoksa; Playwright MCP niepodłączony), E2E
-`48-poscig/t65-przeszkody` się pominęło z tych samych powodów. Przy stole (Firefox): zgaś silnik
+wiaduktu z `C:\AI\materialy` i Firefoksa; Playwright MCP niepodłączony); E2E
+`48-poscig/t65-przeszkody` zielony od 06.11 (szósta sesja). Przy stole (Firefox): zgaś silnik
 auta NPC-a przed autem gracza w tym samym pasie — w następnej rundzie gracz dostaje pasek „Na
 drodze: … (stoi na drodze)” z „Gwałtowny skręt / Taranuj”, a po wyborze auto NPC-a stoi za
 tylnym zderzakiem; to samo z wrakiem (PUK 0) i menu MG „Za kierowcę: …” na stojącym aucie. Słaby kierowca (REF + Prowadzenie ≤ 9): Nitro, potem jazda — karta „Zwykła jazda”
@@ -109,18 +87,6 @@ w oknie pojazdu „Zamontuj” Wzmocnioną konstrukcję — „PUK teraz” roś
 — po zapisie auto na scenie pościgu ma 6 foteli; menu auta MG po zrzucie kolczatki albo Nitro
 pokazuje „Uzupełnij Nitro i kolczatki”; czy przy którejś broni pokładowej stoi ostrzeżenie
 „Brak broni w katalogu” (jeśli tak — id wpisu do poprawy w `CPRED_VEHICLE_MOUNTS`). Bez migracji.
-
-**31.10.2026 — T4b 4.8 „pięść, która trafia” raz spudłowała.** Na trzy przebiegi T4b od
-`po-T4a` (sesja piąta 31.10) jeden padł w 4.8 na `punch.attack?.hit === false` (kość
-skryptowana 8, Iskra pod Rzeźnikiem); powtórka bez zmian w kodzie 20/20. Adnotacji z rozbiciem
-rzutu tamten przebieg nie zostawił (bez raportu JSON). Przy kolejnej porażce sprawdzić, czy kości
-skryptu nie zjada wcześniej ukryta Percepcja z marszu Iskry („Iskra przystanęła: ukryta rzecz
-po drodze” w 4.9).
-**03.11: przyczyna ustalona z kodu, naprawa w teście — do potwierdzenia przebiegiem.** Lądowanie
-marszu zapisuje pozycję w bazie przed ukrytą Percepcją (`runZonesAfterMove` /
-`runHiddenFiguresAfterMove`), a 4.8 wpisywał kość 8 zaraz po `waitAt`; teraz czeka na klatkę
-`final` u MG (`finalFrameOf`). Pułapka na górze sekcji `testy`. Zamknąć po kilku zielonych
-przebiegach T4b od `po-T4a`.
 
 **31.10.2026 — etap 65e „Przeszkody i ruch uliczny”: oględziny MG i wdrożenie.** Oglądane na
 instancji E2E (spec `99-ogledziny/t99-przeszkody`, skasowany): MG w Chromium, Ola w **Firefoksie**
