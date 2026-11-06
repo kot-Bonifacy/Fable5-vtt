@@ -81,6 +81,8 @@ export function chaseErrorText(code: string | undefined): string {
       return 'Silnik jest zgaszony — najpierw uruchom auto.';
     case 'VEHICLE_OUT_OF_CONTROL':
       return 'Kierowca stracił panowanie nad autem — do następnej rundy prowadzi je MG.';
+    case 'RAM_USED':
+      return 'Kierowca taranował już w tej turze — jeden taran na turę.';
     case 'NO_NITRO':
       return 'W tym aucie nie zostało Nitro.';
     case 'NITRO_COMBAT_ONLY':

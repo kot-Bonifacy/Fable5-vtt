@@ -21,6 +21,7 @@ import {
   CPRED_ACTION_STAND_UP,
   ROLE_GM,
   nextTurn,
+  lateRoundOneTurn,
   previousTurn,
 } from '@vtt/shared';
 import type { Scene } from '../generated/prisma/client.js';
@@ -621,7 +622,29 @@ async function stepTurn(
   // stood in it); no turn *begins* — the holder plays the Action they saved —
   // so the start hooks stay out of it.
   const held = dueHold(fight, pointer);
-  if (!held) return advanceTurn(deps, campaignId, scene, fight, pointer, user);
+  if (!held) {
+    // Spóźniony rzut inicjatywy w rundzie 1 (06.11.2026): figura, która
+    // wyrzuciła więcej niż grający, gra zaraz po nim, a kolejka wraca potem
+    // tam, dokąd i tak szła (`resume`) — nikt nie gra rundy drugi raz.
+    const late = lateRoundOneTurn(toCombatView(fight));
+    if (!late) return advanceTurn(deps, campaignId, scene, fight, pointer, user);
+    await advanceTurn(
+      deps,
+      campaignId,
+      scene,
+      fight,
+      { round: fight.round, activeCombatantId: late },
+      user,
+    );
+    await deps.ctx.prisma.combat.update({
+      where: { id: fight.id },
+      data: {
+        resumeCombatantId: pointer.activeCombatantId,
+        resumeRound: pointer.activeCombatantId === null ? null : pointer.round,
+      },
+    });
+    return;
+  }
   const leaving = fight.combatants.find((row) => row.id === fight.activeCombatantId);
   if (leaving) await runTurnEnd(deps, campaignId, scene, fight, leaving, user);
   await fireHeldAction(deps.ctx.prisma, fight, held, pointer);

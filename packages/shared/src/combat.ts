@@ -95,7 +95,16 @@ export interface TurnBudgetView {
    * id is the system's, and so is the button that answers it.
    */
   pendingRoll?: { id: string; label: string };
+  /**
+   * Once-per-turn things this turn has already used, by id (`TURN_ONCE_*`).
+   * The system decides what is limited; the core only asks before offering it
+   * again — the chase „Zderzenie” bar drops „Taranuj” after `TURN_ONCE_RAM`.
+   */
+  onceUsed?: string[];
 }
+
+/** `TurnBudgetView.onceUsed`: the driver already rammed this turn (06.11.2026). */
+export const TURN_ONCE_RAM = 'ram';
 
 /**
  * „Wstrzymanie Akcji" — the Action is reserved rather than spent, so the
@@ -353,6 +362,31 @@ export function nextTurn(combat: CombatView): TurnPointer {
   const next = ordered.slice(index + 1).find(inPlay);
   if (next) return { round: combat.round, activeCombatantId: next.id };
   return { round: combat.round + 1, activeCombatantId: first.id };
+}
+
+/**
+ * A late initiative in round 1 (decyzja MG z 06.11.2026, rozegranie „Zastawu”):
+ * the GM pressed „Rozpocznij walkę” before a player threw the cup, and the
+ * throw that came later sorts *above* the turn being played. Counting on from
+ * the active seat would skip them until round 2, so the queue owes them a turn
+ * right after this one. Returns the first such participant (highest seat), or
+ * null. A participant whose turn has begun at least once (`turn` present)
+ * already played round 1; one dropped out of the fight is not owed anything,
+ * and neither is a bodiless one (a Demon or Black ICE plays from its run, not
+ * from the pointer, so its `turn` stays empty for good).
+ *
+ * Round 1 only: later rounds keep their plain order, where a newcomer's seat
+ * counts from the next round as it always did.
+ */
+export function lateRoundOneTurn(combat: CombatView): string | null {
+  if (combat.round !== 1 || combat.activeCombatantId === null) return null;
+  const ordered = sortCombatants(combat.combatants);
+  const index = ordered.findIndex((c) => c.id === combat.activeCombatantId);
+  if (index <= 0) return null;
+  const late = ordered
+    .slice(0, index)
+    .find((c) => inPlay(c) && c.tokenId !== null && c.initiative !== null && c.turn === undefined);
+  return late ? late.id : null;
 }
 
 /**

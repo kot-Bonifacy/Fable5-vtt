@@ -178,7 +178,7 @@ import { NoticeColumn, type PinnedNotice } from './NoticeColumn.js';
 import { useFoesDefeatedNotice } from '../foes-defeated.js';
 import { useSightingNotice } from '../foe-sighting.js';
 import { clearNotices, noteAck, notifyChoice, notifyInfo, notifyRefusal } from '../notices.js';
-import { chaseObstacleAhead } from '../chase-ram.js';
+import { chaseObstacleAhead, chaseRamUsedThisTurn } from '../chase-ram.js';
 import { PLAYER_MOVE_PACE_NOTE, PLAYER_MOVE_STOP_NOTE } from '../map/player-move.js';
 import { MAP_TOOL_KEYS } from '../shortcuts.js';
 import {
@@ -1093,6 +1093,16 @@ export function MapArea() {
       }
       // Do odpowiedzi auto stoi tam, gdzie trzyma je serwer.
       useChaseStore.setState((state) => ({ vehicles: [...state.vehicles] }));
+      // Jeden taran na turę (06.11.2026): po taranie zostaje tylko postój przed przeszkodą.
+      if (vehicle && chaseRamUsedThisTurn(vehicle)) {
+        notifyChoice(
+          'chase',
+          `Na drodze: ${obstacle.name}. Taranowanie było już w tej turze — jeden taran na turę.`,
+          [{ label: 'Zatrzymaj się przed', run: () => send(false) }],
+          { title: 'Zderzenie' },
+        );
+        return;
+      }
       notifyChoice(
         'chase',
         `Na drodze: ${obstacle.name}. ${obstacle.text}`,

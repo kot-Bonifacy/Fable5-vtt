@@ -477,6 +477,22 @@ describe('etap 65d2: Manewr, taranowanie i broń pokładowa', () => {
     expect(line).not.toBeNull();
   });
 
+  it('jeden taran na turę: drugi w tej samej turze dostaje RAM_USED i nic nie kosztuje', async () => {
+    const vexRow = await built.prisma.combatant.findFirstOrThrow({
+      where: { tokenId: vexToken.id },
+    });
+    expect(JSON.parse(vexRow.turnState ?? '{}')).toMatchObject({ rammed: true });
+
+    scriptDice([6, 6, 6, 6, 6, 6]);
+    expect(
+      await emitAck(player, 'chase:move', { sceneVehicleId: carA.id, x: 1300, y: 900, ram: true }),
+    ).toMatchObject({ ok: false, error: 'RAM_USED' });
+    expect((await statsOf(theirs.id)).hp).toBe(9);
+    const after = await built.prisma.combatant.findFirstOrThrow({ where: { id: vexRow.id } });
+    expect(after.turnState).toBe(vexRow.turnState);
+    scriptDice([]);
+  });
+
   it('pieszy uskakuje Testem ZW + Unik PT 13 — bez obrażeń, auto jedzie dalej', async () => {
     const walker = data(
       await emitAck<TokenView>(gm, 'token:create', {

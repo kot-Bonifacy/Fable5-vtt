@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { TURN_ONCE_RAM } from '../../combat.js';
 import {
   CPRED_ACTIONS,
   CPRED_ACTION_ATTACK,
@@ -8,6 +9,7 @@ import {
   CPRED_ATTACKS_PER_ACTION,
   cpredAction,
   cpredMarkDrivingTested,
+  cpredMarkRammed,
   cpredMetresLeft,
   cpredMoveRefusal,
   cpredMoveTookRun,
@@ -248,6 +250,13 @@ describe('turn state round-trip and projection', () => {
       spendAll(freshCpredTurn(), [fast('a', 'Zgrzyt'), fast('b', 'Maczeta')]),
     );
     expect(budget.note).toBe('Atak: Zgrzyt + Maczeta');
+  });
+
+  it('one ram per turn: the flag survives a re-read and shows as onceUsed (06.11.2026)', () => {
+    expect(cpredTurnBudget(freshCpredTurn()).onceUsed).toBeUndefined();
+    const rammed = readCpredTurn(JSON.stringify(cpredMarkRammed(freshCpredTurn())));
+    expect(rammed.rammed).toBe(true);
+    expect(cpredTurnBudget(rammed).onceUsed).toEqual([TURN_ONCE_RAM]);
   });
 
   it('reports an overspending GM', () => {

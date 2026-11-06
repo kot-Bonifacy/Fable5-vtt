@@ -19,6 +19,7 @@ import {
   CPRED_SPIKES_DV,
   ROLE_GM,
   chaseBodyHalfExtents,
+  chaseHeadingDeg,
   chaseObstacleDrifted,
   chaseObstacleGone,
   chaseObstacleSpawnCentre,
@@ -53,7 +54,13 @@ import {
   toObstacleView,
   type PlacedVehicle,
 } from './chase.js';
-import { postServerRoll, pushVehicleBehind, resolveRam, rollRamDamage } from './chase-ram.js';
+import {
+  firstChaseContact,
+  postServerRoll,
+  pushVehicleBehind,
+  resolveRam,
+  rollRamDamage,
+} from './chase-ram.js';
 import { findCombatantForToken, loadCombat } from './combat.js';
 import { requireTurnSpend } from './combat-actions.js';
 import { logSpentAction } from './combat-log.js';
@@ -196,6 +203,30 @@ async function letPast(deps: RealtimeDeps, obstacle: ChaseObstacle, placed: Plac
     return;
   }
   await prisma.chaseObstacle.deleteMany({ where: { id: obstacle.id } });
+}
+
+/**
+ * Udany Gwałtowny skręt z menu auta (zaległość 66d z 06.11.2026): przeszkoda
+ * MG stojąca wprost przed zderzakiem — po „Zatrzymaj się przed” albo zanim
+ * dryf przyniósł pasek — zostaje ominięta tak samo jak po odpowiedzi na pasek
+ * (`letPast`: znika, beton zostaje za autem). Wcześniej skręt zużywał Akcję,
+ * a przeszkodę rozstrzygał dopiero pasek w następnej rundzie. Patrzy pół
+ * kratki przed przód auta, tą samą geometrią co taranowanie; inne auta i piesi
+ * zostają, gdzie są. Zwraca nazwę ominiętej przeszkody albo null.
+ */
+export async function passObstacleAhead(
+  deps: RealtimeDeps,
+  placed: Placed,
+): Promise<string | null> {
+  const { settings } = chaseGeometry(placed.scene);
+  const rad = (chaseHeadingDeg(settings.direction) * Math.PI) / 180;
+  const reach = placed.scene.gridSizePx / 2;
+  const from = { x: placed.x, y: placed.y };
+  const to = { x: placed.x + Math.sin(rad) * reach, y: placed.y - Math.cos(rad) * reach };
+  const contact = await firstChaseContact(deps.ctx.prisma, placed, from, to);
+  if (!contact || contact.obstacle.kind !== 'obstacle') return null;
+  await letPast(deps, contact.obstacle.obstacle, placed);
+  return contact.obstacle.obstacle.name;
 }
 
 /**

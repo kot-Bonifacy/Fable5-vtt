@@ -25,7 +25,7 @@
  * of a turn, hands spends back for judging, and paints the projection.
  */
 
-import type { TurnBudgetView } from '../../combat.js';
+import { TURN_ONCE_RAM, type TurnBudgetView } from '../../combat.js';
 import { JUMP_COST_M } from '../../jump.js';
 import { cpredTerrainFactor } from './movement.js';
 
@@ -554,6 +554,13 @@ export interface CpredTurnState {
    * driver can still fire one-handed or light the Nitro.
    */
   drivingTested?: boolean;
+  /**
+   * The driver already rammed something this turn (decyzja MG z 06.11.2026,
+   * rozegranie „Zastawu”): one ram per turn. Nitro buys 10 m and every ram
+   * pushes the other car only ~2 m, so without the limit a single Move Action
+   * rammed the same van three times.
+   */
+  rammed?: boolean;
 }
 
 /**
@@ -855,6 +862,7 @@ export function readCpredTurn(raw: unknown): CpredTurnState {
   const deathSavePending = raw.deathSavePending === true;
   const runBlocked = raw.runBlocked === true;
   const drivingTested = raw.drivingTested === true;
+  const rammed = raw.rammed === true;
 
   let action: CpredSpentAction | null = null;
   if (isReadable(raw.action) && typeof raw.action.id === 'string') {
@@ -907,12 +915,18 @@ export function readCpredTurn(raw: unknown): CpredTurnState {
     deathSavePending,
     ...(runBlocked ? { runBlocked: true } : {}),
     ...(drivingTested ? { drivingTested: true } : {}),
+    ...(rammed ? { rammed: true } : {}),
   };
 }
 
 /** The turn after the driver's „Zwykła jazda” Test — it is not rolled again this turn. */
 export function cpredMarkDrivingTested(state: CpredTurnState): CpredTurnState {
   return { ...state, drivingTested: true };
+}
+
+/** The turn in which the driver rammed — a second ram waits for the next turn. */
+export function cpredMarkRammed(state: CpredTurnState): CpredTurnState {
+  return { ...state, rammed: true };
 }
 
 /** The Death Save was rolled: the turn is the participant's to play (or not). */
@@ -1376,6 +1390,7 @@ export function cpredTurnBudget(
     ...(state.deathSavePending
       ? { pendingRoll: { id: CPRED_DEATH_SAVE_ROLL_ID, label: 'Test Przeżywalności' } }
       : {}),
+    ...(state.rammed ? { onceUsed: [TURN_ONCE_RAM] } : {}),
   };
 }
 

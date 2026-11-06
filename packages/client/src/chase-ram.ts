@@ -3,6 +3,7 @@ import {
   chaseFirstContact,
   chaseHitsWithFront,
   chaseObstacleUnbreakable,
+  TURN_ONCE_RAM,
   type ChaseObstacleBox,
   type ScenePoint,
   type SceneVehicleView,
@@ -39,6 +40,24 @@ export function chaseRamText(struck: ChaseRamStruck, plow: boolean, front: boole
         ? 'Uderzenie nie przodem — Pług nie zadziała: po 6k6 dla obu aut i Rana Krytyczna dla wszystkich jadących.'
         : 'Po 6k6 dla obu aut i Rana Krytyczna dla wszystkich jadących.';
   }
+}
+
+/**
+ * Kierowca tego auta taranował już w swojej trwającej turze (decyzja MG
+ * z 06.11.2026: jeden taran na turę) — pasek „Zderzenie” daje wtedy tylko
+ * „Zatrzymaj się przed”. Serwer i tak odmawia drugiego (`RAM_USED`).
+ */
+export function chaseRamUsedThisTurn(vehicle: SceneVehicleView): boolean {
+  const combat = useCombatStore.getState().combat;
+  if (!combat || combat.round < 1) return false;
+  const tokens = useTokenStore.getState().tokens;
+  const driver = Object.values(tokens).find(
+    (token) => token.vehicleSeat?.sceneVehicleId === vehicle.id && token.vehicleSeat?.seat === 0,
+  );
+  if (!driver) return false;
+  const row = combat.combatants.find((entry) => entry.tokenId === driver.id);
+  if (!row || combat.activeCombatantId !== row.id) return false;
+  return row.turn?.onceUsed?.includes(TURN_ONCE_RAM) === true;
 }
 
 /**

@@ -464,6 +464,41 @@ describe('etap 65e: przeszkody, ruch uliczny i kolczatka', () => {
     ).toMatchObject({ ok: false });
   });
 
+  it('Gwałtowny skręt z menu omija przeszkodę wprost przed zderzakiem (zaległość 66d)', async () => {
+    const spawned = data(
+      await emitAck<ChaseObstacleView>(gm, 'chase:obstacle-spawn', {
+        sceneId: scene.id,
+        kind: 'civilian-car',
+        name: 'Dostawczak',
+        hp: 10,
+        x: 500,
+        y: 1050,
+      }),
+      'chase:obstacle-spawn menu',
+    );
+    // Jak po „Zatrzymaj się przed”: przeszkoda dotyka zderzaka, paska jeszcze nie ma.
+    await built.prisma.chaseObstacle.update({
+      where: { id: spawned.id },
+      data: { x: (await placedRow(carA.id)).x + 500 },
+    });
+    // Za kierowcę rzuca MG: 8 + 4 + 5 = 17 ≥ 13.
+    scriptDice([5]);
+    const view = data(
+      await emitAck<SceneVehicleView>(gm, 'vehicle:maneuver', {
+        sceneVehicleId: carA.id,
+        maneuverId: 'swerve',
+      }),
+      'vehicle:maneuver swerve',
+    );
+    expect(view).toMatchObject({ control: 'driver', hp: 45 });
+    expect((await obstacleRows()).some((entry) => entry.id === spawned.id)).toBe(false);
+    const line = await built.prisma.chatMessage.findFirst({
+      where: { kind: 'action', text: 'Gwałtowny skręt' },
+      orderBy: { createdAt: 'desc' },
+    });
+    expect(line?.payload ?? '').toContain('omija: Dostawczak');
+  });
+
   it('taranowanie rozbija słabą przeszkodę i zabiera autu 6k6', async () => {
     data(
       await emitAck<ChaseObstacleView>(gm, 'chase:obstacle-spawn', {

@@ -651,4 +651,36 @@ describe('combat tracker', () => {
     expect(state.activeCombatantId).toBe(sniper.id);
     expect((await emitAck(gm, 'combat:end')).ok).toBe(true);
   });
+
+  it('a late round-1 initiative above the active turn plays right after it (06.11.2026)', async () => {
+    let state = data(
+      await emitAck<CombatView>(gm, 'combat:add', { tokenIds: [npcTokenId, hiddenTokenId] }),
+      'combat:add',
+    );
+    const id = (name: string) => state.combatants.find((c) => c.name === name)!.id;
+    const setInit = async (name: string, initiative: number) => {
+      state = data(
+        await emitAck<CombatView>(gm, 'combat:set-initiative', {
+          combatantId: id(name),
+          initiative,
+        }),
+        `combat:set-initiative ${name}`,
+      );
+    };
+    await setInit('Snajper', 8);
+    await setInit('Bandzior', 6);
+    state = data(await emitAck<CombatView>(gm, 'combat:next'), 'combat:next start');
+    expect(state.round).toBe(1);
+    expect(state.activeCombatantId).toBe(id('Snajper'));
+    // Ziti rzuca dopiero w turze Snajpera — i wyżej niż on.
+    await setInit('Ziti', 15);
+    state = data(await emitAck<CombatView>(gm, 'combat:next'), 'combat:next late');
+    expect(state).toMatchObject({ round: 1, activeCombatantId: id('Ziti') });
+    // Kolejka wraca tam, dokąd szła — Snajper nie gra drugi raz.
+    state = data(await emitAck<CombatView>(gm, 'combat:next'), 'combat:next resume');
+    expect(state).toMatchObject({ round: 1, activeCombatantId: id('Bandzior') });
+    state = data(await emitAck<CombatView>(gm, 'combat:next'), 'combat:next round 2');
+    expect(state).toMatchObject({ round: 2, activeCombatantId: id('Ziti') });
+    expect((await emitAck(gm, 'combat:end')).ok).toBe(true);
+  });
 });

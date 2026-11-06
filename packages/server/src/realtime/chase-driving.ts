@@ -16,6 +16,7 @@ import type {
 } from '@vtt/shared';
 import {
   CPRED_ACTION_MANEUVER,
+  CPRED_OBSTACLE_MANEUVER_ID,
   CPRED_ACTION_MOVE,
   CPRED_ACTION_NITRO,
   CPRED_ACTION_VEHICLE_START,
@@ -31,6 +32,7 @@ import {
   cpredEffectiveStat,
   cpredManeuverTitle,
   cpredMarkDrivingTested,
+  cpredMarkRammed,
   cpredManeuversFor,
   cpredSkillLevel,
   cpredVehicleChase,
@@ -61,7 +63,12 @@ import {
   requirePoint,
   type PlacedVehicle,
 } from './chase.js';
-import { crossSpikes, driftObstaclesRound, obstaclePendingFor } from './chase-obstacles.js';
+import {
+  crossSpikes,
+  driftObstaclesRound,
+  obstaclePendingFor,
+  passObstacleAhead,
+} from './chase-obstacles.js';
 import {
   firstChaseContact,
   obstacleBoxId,
@@ -71,6 +78,7 @@ import {
 } from './chase-ram.js';
 import {
   applyTurnPointer,
+  emitCombatOfScene,
   emitReloadedFor,
   findCombatantForToken,
   loadCombat,
@@ -202,6 +210,7 @@ export const chaseMoveEvent = defineEvent<ChaseMovePayload, SceneVehicleView>({
       if (!(await loadCombat(deps.ctx.prisma, placed.sceneId))) {
         return moveSceneVehicle(deps, campaignId, placed, point);
       }
+      if (ram) await requireRamLeft(deps.ctx.prisma, placed);
       const { settings, frame } = chaseGeometry(placed.scene);
       const target = clampChaseVehicle(point, chaseBodyOf(placed.vehicle), settings, frame);
       return driveWithContacts(deps, campaignId, user, placed, target, ram);
@@ -213,6 +222,8 @@ export const chaseMoveEvent = defineEvent<ChaseMovePayload, SceneVehicleView>({
     if (await obstaclePendingFor(deps.ctx.prisma, placed.id)) {
       throw new RealtimeError('OBSTACLE_PENDING');
     }
+    // Jeden taran na turę (06.11.2026) — odmowa, zanim cokolwiek pójdzie z budżetu.
+    if (ram) await requireRamLeft(deps.ctx.prisma, placed);
     const { settings, frame } = chaseGeometry(placed.scene);
     const target = clampChaseVehicle(point, chaseBodyOf(placed.vehicle), settings, frame);
     const pixels = Math.hypot(target.x - placed.x, target.y - placed.y);
@@ -256,6 +267,50 @@ export const chaseMoveEvent = defineEvent<ChaseMovePayload, SceneVehicleView>({
 });
 
 /**
+ * Wiersz kolejki kierowcy tego auta, gdy trwa jego tura — tylko wtedy liczy się
+ * „jeden taran na turę” (decyzja MG z 06.11.2026 po rozegraniu „Zastawu”:
+ * Nitro i trzy tarany w jednej Akcji Ruchu zrobiły z furgonu wrak). Ręka MG
+ * poza turą kierowcy (poprawki, auto bez kierowcy) limitu nie ma, tak samo
+ * jak wymuszona odpowiedź na przeszkodę przed zderzakiem (`chase:vehicle-answer`).
+ */
+async function driverTurnRow(
+  prisma: PrismaClient,
+  placed: PlacedWithScene,
+): Promise<{ id: string; turnState: string | null } | null> {
+  const driver = await prisma.token.findFirst({
+    where: { sceneVehicleId: placed.id, vehicleSeat: 0 },
+    select: { id: true },
+  });
+  if (!driver) return null;
+  const found = await findCombatantForToken(prisma, placed.sceneId, driver.id);
+  if (!found || found.combat.activeCombatantId !== found.combatant.id) return null;
+  return { id: found.combatant.id, turnState: found.combatant.turnState };
+}
+
+/** Odmowa drugiego taranu w tej samej turze kierowcy (`RAM_USED`). */
+async function requireRamLeft(prisma: PrismaClient, placed: PlacedWithScene): Promise<void> {
+  const row = await driverTurnRow(prisma, placed);
+  if (row && readCpredTurn(row.turnState ?? undefined).rammed === true) {
+    throw new RealtimeError('RAM_USED');
+  }
+}
+
+/** Tura kierowcy z taranem — pasek „Zderzenie” nie zaproponuje już drugiego. */
+async function markRammed(
+  deps: RealtimeDeps,
+  campaignId: string,
+  placed: PlacedWithScene,
+): Promise<void> {
+  const row = await driverTurnRow(deps.ctx.prisma, placed);
+  if (!row) return;
+  await deps.ctx.prisma.combatant.update({
+    where: { id: row.id },
+    data: { turnState: JSON.stringify(cpredMarkRammed(readCpredTurn(row.turnState ?? undefined))) },
+  });
+  await emitCombatOfScene(deps, campaignId, placed.scene);
+}
+
+/**
  * Jazda w walce z zderzeniami (65d2): auto jedzie do `target`, a gdy po drodze
  * trafi na inne auto albo pieszego — bez `ram` staje przed nim, z `ram` taranuje
  * (`resolveRam`) i jedzie dalej, jeśli przeszkoda ustąpiła, do następnej
@@ -281,6 +336,7 @@ async function driveWithContacts(
   const stopped = await moveSceneVehicle(deps, campaignId, placed, contact.centre);
   if (!ram) return done(stopped);
 
+  await markRammed(deps, campaignId, placed);
   const atContact = await requirePlaced(prisma, campaignId, placed.id);
   const goesOn = await resolveRam(
     deps,
@@ -652,6 +708,17 @@ export const vehicleManeuverEvent = defineEvent<VehicleManeuverPayload, SceneVeh
         note: `${maneuver.name} nieudany — MG prowadzi auto do końca rundy`,
       };
       await logSpentAction(deps, campaignId, user, line);
+    } else if (maneuver.id === CPRED_OBSTACLE_MANEUVER_ID) {
+      const passed = await passObstacleAhead(deps, placed);
+      if (passed) {
+        await logSpentAction(deps, campaignId, user, {
+          combatantId: '',
+          actorName: placed.vehicle.name,
+          actionId: 'chase-swerve-past',
+          actionName: maneuver.name,
+          note: `omija: ${passed}`,
+        });
+      }
     }
     await emitChase(deps, campaignId, placed.sceneId);
     return placedView(deps.ctx.prisma, placed.sceneId, placed.id);

@@ -4,6 +4,7 @@ import {
   filterCombatForPlayer,
   findInitiativeTies,
   foesDefeated,
+  lateRoundOneTurn,
   nextTurn,
   previousTurn,
   resolveInitiativeOrder,
@@ -222,6 +223,31 @@ describe('nextTurn', () => {
       round: 2,
       activeCombatantId: null,
     });
+  });
+});
+
+describe('lateRoundOneTurn', () => {
+  const played = { resources: [] };
+  const roster = [
+    combatant({ id: 'late', initiative: 15 }),
+    combatant({ id: 'a', initiative: 12, turn: played }),
+    combatant({ id: 'b', initiative: 6 }),
+  ];
+
+  it('names a round-1 roll above the active turn that has not played yet', () => {
+    expect(lateRoundOneTurn(combat(roster, { round: 1, activeCombatantId: 'a' }))).toBe('late');
+  });
+
+  it('ignores later rounds, those who played, the dead and the unrolled', () => {
+    expect(lateRoundOneTurn(combat(roster, { round: 2, activeCombatantId: 'a' }))).toBeNull();
+    const done = roster.map((c) => (c.id === 'late' ? { ...c, turn: played } : c));
+    expect(lateRoundOneTurn(combat(done, { round: 1, activeCombatantId: 'a' }))).toBeNull();
+    const dead = roster.map((c) => (c.id === 'late' ? { ...c, out: true as const } : c));
+    expect(lateRoundOneTurn(combat(dead, { round: 1, activeCombatantId: 'a' }))).toBeNull();
+    const bodiless = roster.map((c) => (c.id === 'late' ? { ...c, tokenId: null } : c));
+    expect(lateRoundOneTurn(combat(bodiless, { round: 1, activeCombatantId: 'a' }))).toBeNull();
+    // Below the active seat the plain order reaches them anyway.
+    expect(lateRoundOneTurn(combat(roster, { round: 1, activeCombatantId: 'late' }))).toBeNull();
   });
 });
 
