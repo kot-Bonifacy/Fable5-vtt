@@ -106,6 +106,27 @@ function waitFor<T>(socket: ClientSocket, event: string, ms = 3000): Promise<T> 
   });
 }
 
+/**
+ * Czeka na kartę rzutu „Montaż…” u `socket`. Karta idzie do pacjenta innym
+ * gniazdem niż ack Medyka, więc pod obciążeniem pełnej suity potrafi dojść po
+ * ack — odczyt kolektora zaraz po nim migotał (`undefined`, 04.11.2026).
+ */
+function waitForSurgeryRoll(socket: ClientSocket, ms = 5000): Promise<ChatMessageBroadcast> {
+  return new Promise((resolvePromise, reject) => {
+    const listener = (payload: ChatMessageBroadcast) => {
+      if (!payload.message.roll?.title?.startsWith('Montaż')) return;
+      clearTimeout(timer);
+      socket.off('chat:message', listener);
+      resolvePromise(payload);
+    };
+    const timer = setTimeout(() => {
+      socket.off('chat:message', listener);
+      reject(new Error('Montaż roll card timeout'));
+    }, ms);
+    socket.on('chat:message', listener);
+  });
+}
+
 /** Zbiera wszystko, co przyjdzie danym zdarzeniem, do chwili wywołania `stop`. */
 function collect<T>(socket: ClientSocket, event: string): { seen: T[]; stop: () => T[] } {
   const seen: T[] = [];
@@ -320,7 +341,7 @@ describe('prośba o operację u Medyka innego gracza (#41)', () => {
     const messageId = await request();
     const before = await sheetOf(gm, kowalId);
     const update = waitFor<ChatMessageBroadcast>(marek, 'chat:update');
-    const rolls = collect<ChatMessageBroadcast>(marek, 'chat:message');
+    const roll = waitForSurgeryRoll(marek);
     scriptDice([9]);
     const ack = data(
       await emitAck<{ pending: boolean }>(ola, 'cyberware:respond', {
@@ -336,7 +357,7 @@ describe('prośba o operację u Medyka innego gracza (#41)', () => {
       byName: 'Ola',
       price: 0,
     });
-    const test = rolls.stop().find((row) => row.message.roll?.title?.startsWith('Montaż'));
+    const test = await roll;
     expect(test?.message.roll?.actor).toBe('Iskra');
     expect(test?.message.roll?.outcome?.success).toBe(true);
 
@@ -354,7 +375,7 @@ describe('prośba o operację u Medyka innego gracza (#41)', () => {
     const messageId = await request();
     const before = await sheetOf(gm, kowalId);
     const update = waitFor<ChatMessageBroadcast>(marek, 'chat:update');
-    const rolls = collect<ChatMessageBroadcast>(marek, 'chat:message');
+    const roll = waitForSurgeryRoll(marek);
     scriptDice([2]);
     const ack = data(
       await emitAck<{ pending: boolean }>(ola, 'cyberware:respond', {
@@ -365,7 +386,7 @@ describe('prośba o operację u Medyka innego gracza (#41)', () => {
       'cyberware:respond',
     );
     expect(ack.pending).toBe(false);
-    const test = rolls.stop().find((row) => row.message.roll?.title?.startsWith('Montaż'));
+    const test = await roll;
     expect(test?.message.roll?.outcome?.success).toBe(false);
     const closed = (await update).message.surgery;
     expect(closed?.resolution).toMatchObject({ kind: 'failed', byName: 'Ola', price: 0 });

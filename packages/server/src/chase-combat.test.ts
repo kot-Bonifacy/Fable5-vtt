@@ -232,7 +232,10 @@ describe('etap 65d1: ostrzał auta i pasażera', () => {
         patch: {
           data: {
             stats: { ...(character.data as CpredCharacterData).stats, ref: 6, dex: 5 },
-            skills: { handgun: 5 },
+            // Broń krótka 9: strzał w słaby punkt (−8) z +20 trafia nawet po
+            // Krytycznej Porażce (6 + 9 + 20 − 8 + 1 − 10 = 18 > PT 15 na 21 m).
+            // Przy 5 dwa procent przebiegów pudłowało — test nie skryptuje kości.
+            skills: { handgun: 9 },
             weapons: [
               {
                 id: 'w-pistol',
