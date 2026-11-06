@@ -1,5 +1,25 @@
 # Dziennik sesji — archiwum
 
+### Sesja 06.11, druga — etap 68: warsztat (ulepszenia auta i naprawa za ed)
+
+**Zlecenie MG:** „sprawdzić możliwość montażu karabinu pokładowego i innych akcesoriów do auta
+i wcześniejsze kupno auta”. **Stan przed:** kupno auta działało (67), ulepszenia zakładał tylko
+MG (za darmo) albo Tabor. **Decyzje MG (trzy rundy pytań):** dorobić zakup; jak auta (Kompendium
++ handlarz); cena z podręcznika × 3; montaż od razu; poziomy 3/4; osobna kategoria asortymentu;
+bez aut z Taboru; do tego naprawa za ed — 50 ed/PUK, od razu, tylko w warsztacie, wrak też.
+**Zrobione:** kategoria Kompendium `vehicleUpgrade` (19 wpisów z kodu, edytor MG z polem
+„Ulepszenie”), `vehicle-upgrade-shop.ts` (cena, problemy montażu, naprawa), asortyment
+`vehicleUpgrade` (opt-in), `vehicle:upgrade-buy` i `vehicle:repair` ze wspólną zapłatą
+`payAtCounter`, `vehicleSeatColumns` wyjęte z `vehicle:update`, klient `VehicleWorkshop.tsx`
+(karta wpisu Kompendium i warsztat w oknie „Wymiana”). Rozstrzygnięcia bez pytań
+w `etap-68-warsztat.md`. **Testy:** shared 2973, client 471, server 1752 zielone (nowe: `vehicle-upgrade-shop.test.ts`, `vehicles.test.ts` › „etap 68”, macierz izolacji dla `vehicle:upgrade-buy` i `vehicle:repair`). `tsc`, ESLint, Prettier czyste. **Oglądane w Firefoksie**
+(Ola: Kompendium → „Pokładowy karabin maszynowy” → „Kup i zamontuj” → „Na pewno?”, rakiety
+wygaszone bez Wzmocnionej konstrukcji, warsztat u handlarza ×110%: naprawa 38 PUK = 2090 ed,
+Nitro) i **Chromium** (MG: wpis „Opancerzenie kadłuba” z poziomem) tymczasowym specem E2E na
+`po-T6` (skasowany). Z oględzin: przy całym aucie nie ma już przycisku „Napraw — 0 ed”,
+a ulepszenia innego rodzaju pojazdu nie stoją w warsztacie. Gracz widzi ulepszenia w Kompendium
+dopiero od poziomu sklepu 3.
+
 ### Sesja 06.11 — etap 67: zakup auta przez gracza
 
 **Zlecenie MG:** kupno auta przez gracza z gotowych grafik `C:/AI/materialy/auta` i dwie

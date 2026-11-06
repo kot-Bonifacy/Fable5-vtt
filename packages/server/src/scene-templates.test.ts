@@ -477,6 +477,90 @@ describe('etap 66c: „Ostatni zjazd”', () => {
   });
 });
 
+describe('etap 66d: „Zastaw”', () => {
+  it('staje na Neonowej ulicy bez braków: kombi, furgon Militechu, radiowóz w rezerwie, Śrubka skrępowany', async () => {
+    const gm = await connect(gmCookie);
+    const list = data(await emitAck<SceneTemplateSummary[]>(gm, 'scene:templates'), 'templates');
+    expect(list.find((row) => row.id === 'zastaw')).toMatchObject({
+      name: 'Zastaw',
+      kind: 'chase',
+      backgroundUrl: '/art/roads/neon-street.webp',
+      vehicles: 3,
+      figures: 5,
+    });
+    const result = data(
+      await emitAck<SceneTemplateCreateResult>(gm, 'scene:from-template', {
+        templateId: 'zastaw',
+      }),
+      'from-template',
+    );
+    expect(result.missing).toEqual([]);
+
+    const scene = await built.prisma.scene.findUniqueOrThrow({ where: { id: result.sceneId } });
+    expect(scene).toMatchObject({
+      kind: 'chase',
+      backgroundUrl: '/art/roads/neon-street.webp',
+      chaseDirection: 'left',
+      chaseTempo: 40,
+      chaseRunning: true,
+      chaseRoadFrom: 6,
+      chaseRoadTo: 18,
+      spawnX: 2600,
+      spawnY: 1600,
+    });
+
+    const placed = await built.prisma.sceneVehicle.findMany({
+      where: { sceneId: scene.id },
+      include: { vehicle: true },
+    });
+    const byName = new Map(placed.map((row) => [row.vehicle.name, row]));
+    expect([...byName.keys()].sort()).toEqual(
+      ['Furgon Militechu', 'Kombi drużyny', 'Radiowóz NCPD'].sort(),
+    );
+    const van = byName.get('Furgon Militechu')!;
+    expect(van.vehicle).toMatchObject({
+      layout: 'van-6',
+      imageUrl: '/art/vehicles/militech-furgon.webp',
+    });
+    expect(readCpredVehicle(van.vehicle.system).upgrades.map((row) => row.upgradeId)).toEqual([
+      'armoredHull',
+      'bulletproofGlass',
+      'nitro',
+    ]);
+    const party = byName.get('Kombi drużyny')!;
+    expect(readCpredVehicle(party.vehicle.system)).toMatchObject({ catalogId: 'vehicle.wloczega' });
+    expect(readCpredVehicle(party.vehicle.system).upgrades.map((row) => row.upgradeId)).toEqual([
+      'ram',
+      'nitro',
+    ]);
+    expect(byName.get('Radiowóz NCPD')!.status).toBe('behind');
+    // Furgon z przodu (jazda w lewo), kombi drużyny za nim, radiowóz za kadrem z tyłu.
+    expect(van.x).toBeLessThan(party.x);
+    expect(party.x).toBeLessThan(byName.get('Radiowóz NCPD')!.x);
+
+    const tokens = await built.prisma.token.findMany({ where: { sceneId: scene.id } });
+    expect(tokens).toHaveLength(5);
+    expect(tokens.some((row) => row.sceneVehicleId === party.id)).toBe(false);
+    const seats = Object.fromEntries(
+      tokens.map((row) => [
+        row.name,
+        [placed.find((car) => car.id === row.sceneVehicleId)?.vehicle.name, row.vehicleSeat],
+      ]),
+    );
+    expect(seats).toEqual({
+      Brzoza: ['Furgon Militechu', 0],
+      Hak: ['Furgon Militechu', 1],
+      Śrubka: ['Furgon Militechu', 5],
+      Wronka: ['Radiowóz NCPD', 0],
+      Lis: ['Radiowóz NCPD', 1],
+    });
+    const boy = tokens.find((row) => row.name === 'Śrubka')!;
+    expect(boy.disposition).toBe('neutral');
+    expect(JSON.parse(boy.statuses)).toEqual(['immobilized']);
+    expect(await built.prisma.mapNote.count({ where: { sceneId: scene.id } })).toBe(5);
+  });
+});
+
 describe('etap 66b: wzorzec zwykłej mapy — „Fabryka dronów”', () => {
   it('staje ciemna, ze ścianami, osłonami, urządzeniami, gniazdami i Siecią z uśpionymi dronami', async () => {
     const gm = await connect(gmCookie);

@@ -46,6 +46,16 @@ sesja, `archiwum/zamkniete-zaleglosci.md`) poza dwoma:
 - Kamera gracza (`coverZoom` na estakadzie 35 × 18) mieściła ok. 23 kratki długości. Od 05.11
   wzorzec stoi na „Neonowej ulicy” 35 × 24, przy której pokrycie ekranu 16:9 bierze całą
   długość — sprawdzić przy stole, czy furgon i Wóz mieszczą się razem u gracza.
+  **06.11 (oględziny 66d „Zastaw”, Firefox 1600 × 1000): nie mieszczą się.** Gracz bez figury na
+  scenie dostaje kadr na miejscu startu (ok. 17 kratek szerokości), a z figurą w fotelu kombi —
+  na niej (ok. 12 kratek); furgon 10 kratek przed kombi stoi poza kadrem, dopóki gracz sam nie
+  oddali widoku. Dotyczy obu wzorców pościgu. Do decyzji MG: kadr pościgu u gracza na całą
+  długość drogi albo na auto drużyny z zapasem do przodu.
+
+**06.11.2026 — „Zastaw” (66d): rozegranie w przeglądarce, stół MG i wdrożenie.** Wzorzec w repo
+(bez migracji), test serwera zielony, oglądany w Firefoksie tymczasowym specem. Nierozegrany:
+balans „kompakt na kompakt” bez zegara (czy scena kończy się w 4–7 rundach) czeka na przebieg
+MG + 2 graczy.
 
 **04.11.2026 — „Ostatni zjazd” (66c): przebieg przy stole i wdrożenie.** Technicznie przejechany
 specem oględzin (MG w Chromium, Marek i Ola w Firefoksie, `data/private`), a 04.11 (czwarta

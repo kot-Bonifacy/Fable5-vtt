@@ -21,13 +21,20 @@ w plikach obok — czytaj je **na żądanie, nigdy rutynowo**:
 
 | stan         | etapy                                                                                          |
 | ------------ | ---------------------------------------------------------------------------------------------- |
-| ⬜ otwarty   | **68** Warsztat: ulepszenia auta za ed i naprawa (🟨 zrobione 06.11, czeka na wdrożenie i oględziny MG przy stole); **67** Zakup pojazdu (🟨 zrobione 06.11, czeka na wdrożenie i oględziny MG przy stole); **66** Sceny przykładowe (🟨 zrobione 31.10, czeka na oględziny MG przy stole i wdrożenie; **66b** „Fabryka dronów” 🟨 zrobione 31.10, tak samo; **66c** „Ostatni zjazd” 🟨 wzorzec zrobiony, rozegrany w przeglądarce 04.11 i ponownie 05.11 po rebalansie (porażka o włos, balans zatwierdzony przez MG) — zaległości z przebiegów zamknięte 05.11 poza Esc na kubku MG — czeka na stół MG i wdrożenie); **65** Scena pościgu i walka pojazdów (🟨 65a–65e ✅ 30–31.10, czeka na oględziny MG przy stole); **62** Sieć ze sceny (🟨 zrobione, czeka na oględziny MG na VPS po wdrożeniu); **61** Skradanie się (🟨 zrobione, czeka na słowo MG o rozstrzygnięciach); **28** Wdrożenie na VPS (🟨 działa na `https://vtt.tatanga.eu` z botami od 18.10; zostały off-site, utwardzenie, monitoring); **43b**, **43c** (UI walki); **60** Czytelny czat (zlecenie MG z 24.10; 🟨 60a–60c ✅, czeka na oględziny MG z pierwszego kryterium); T10; refaktoryzacja odłożona (MG 18.10) |
+| ⬜ otwarty   | **68** Warsztat: ulepszenia auta za ed i naprawa (🟨 zrobione 06.11, czeka na wdrożenie i oględziny MG przy stole); **67** Zakup pojazdu (🟨 zrobione 06.11, czeka na wdrożenie i oględziny MG przy stole); **66d** Scena przykładowa „Zastaw” (🟨 projekt i wzorzec zrobione 06.11, czeka na rozegranie w przeglądarce, stół MG i wdrożenie); **66** Sceny przykładowe (🟨 zrobione 31.10, czeka na oględziny MG przy stole i wdrożenie; **66b** „Fabryka dronów” 🟨 zrobione 31.10, tak samo; **66c** „Ostatni zjazd” 🟨 wzorzec zrobiony, rozegrany w przeglądarce 04.11 i ponownie 05.11 po rebalansie (porażka o włos, balans zatwierdzony przez MG) — zaległości z przebiegów zamknięte 05.11 poza Esc na kubku MG — czeka na stół MG i wdrożenie); **65** Scena pościgu i walka pojazdów (🟨 65a–65e ✅ 30–31.10, czeka na oględziny MG przy stole); **62** Sieć ze sceny (🟨 zrobione, czeka na oględziny MG na VPS po wdrożeniu); **61** Skradanie się (🟨 zrobione, czeka na słowo MG o rozstrzygnięciach); **28** Wdrożenie na VPS (🟨 działa na `https://vtt.tatanga.eu` z botami od 18.10; zostały off-site, utwardzenie, monitoring); **43b**, **43c** (UI walki); **60** Czytelny czat (zlecenie MG z 24.10; 🟨 60a–60c ✅, czeka na oględziny MG z pierwszego kryterium); T10; refaktoryzacja odłożona (MG 18.10) |
 | ✅ ukończone | 01–11, 13–20b, 23a–27f, 27h–27l, 29a–30d, 31–35, 37–42c, 43a, 44a–44d, 45, 46a1, 46a2, 46c1, 46c2, 46b1, 46b2, 47a, 47b, 48a, 48b, 48c, 49a, 49b, 50a, 50b, 50c, 51, 52, 53, 54, 55, 56, 57 (57a–57c), 58 (58a–58d), 59 (59a–59c), 63 (63a–63b; 63c wycofane 29.10), 64 (64a–64c) (ostatni zamknięty: 64, 2026-10-30) |
 | ⛔ wycofane  | 12, 21, 22 (głos), 27g (wydajność), 36 (makra); 27, 29, 30, 38 rozdzielone na etapy literowane |
 
 Pełna tabela z nazwami i datami: `archiwum/tabela-etapow.md`.
 
 ## Od czego zacząć
+
+**Scena przykładowa „Zastaw” (etap 66d, zlecenie MG z 06.11) — czeka na rozegranie w przeglądarce
+(MG + 2 graczy), stół MG i wdrożenie (bez migracji).** Pościg na 2 graczy na Neonowej ulicy: kombi
+drużyny („Włóczęga” z Pługiem i Nitro) goni furgon Militechu (Brzoza, Hak, skrępowany Śrubka),
+w rundzie 3 od tyłu wjeżdża radiowóz NCPD z rezerwy. Bez zegara — porażka to wrak kombi albo
+furgon za przednią krawędzią; tempo 40 trzyma dwa kompakty w kadrze. Projekt i decyzje MG
+w `etap-66d-zastaw.md`, wzorzec `data/public/scenes/zastaw/`.
 
 **Grafiki MG w „Ostatnim zjeździe”, furgony na 6 foteli i auta widoczne w UI (zlecenie MG
 z 06.11) — czeka na wdrożenie (bez migracji) i oględziny MG przy stole.** Wzorzec 66c: Wóz od
@@ -710,6 +717,24 @@ a nie do tego pliku.
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
 
+### Sesja 06.11, czwarta — etap 66d: scena przykładowa „Zastaw”
+
+**Zlecenie MG:** nowa przykładowa scena pościgu — dwóch graczy własnym kompaktem goni furgon
+Militechu (kierowca + ochroniarz w pierwszym rzędzie, z tyłu syn właściciela dziupli), zatrzymanie
+furgonu i odbicie chłopaka. **Decyzje MG (dwie rundy pytań):** projekt + wzorzec teraz,
+rozegranie osobno; wzorzec stawia kompakt (własne auto przez „Na drogę”); zwrot w połowie —
+radiowóz NCPD w rezerwie; otwarte drogi zatrzymania jak w 66c; chłopak przytomny i skrępowany;
+Neonowa ulica; **bez zegara**. **Zrobione bez pytań:** nazwa „Zastaw” i imiona, tempo 40 (dwa
+kompakty Ruch 20 stoją w kadrze — przy tempie 20 oba wyjeżdżały przednią krawędzią), kombi
+„Włóczęga” z Pługiem i Nitro od Szczęki, furgon bez Wzmocnionej konstrukcji (50 PUK, OB 13),
+Hak bez Ognia ciągłego i w lekkim pancerzu (lekcje z 66c), Śrubka Unieruchomiony z jedną akcją
+ręką MG w R4, radiowóz bez szyb kuloodpornych. Projekt `etap-66d-zastaw.md`, wzorzec
+`data/public/scenes/zastaw/` — bez zmian w kodzie. **Testy:** `scene-templates.test.ts` 8/8
+(nowy „etap 66d”), Prettier i ESLint czyste. **Oglądane w Firefoksie** (Ola) i Chromium (MG)
+tymczasowym specem E2E na `po-T6` (skasowany) — Firefox z Playwright MCP zawisł na nawigacji,
+a w dev stał tylko Vite. Z oględzin: kamera gracza nie mieści furgonu i kombi naraz (dopisane do
+zaległości „Kamera gracza” z 04.11).
+
 ### Sesja 06.11, trzecia — grafiki aut we wzorcu 66c, furgony na 6 foteli, auta w UI
 
 **Zlecenie MG:** nowe grafiki aut w przykładowym pościgu, lepsza widoczność kupowanych
@@ -728,23 +753,3 @@ Halcyonu). **Testy:** shared 2973, client 471, server 1752 zielone poza znanym m
 (Ola: Kompendium → „Graty” → „Kup”, lista „Pojazdy”, karta → Ekwipunek) i **Chromium** (MG:
 scena z wzorca „Ostatni zjazd” na Neonowej ulicy, zbliżenie na furgon) tymczasowym specem E2E
 na `po-T6` (skasowany); Firefox z Playwright MCP nie wstał (pułapka z 03.10).
-
-### Sesja 06.11, druga — etap 68: warsztat (ulepszenia auta i naprawa za ed)
-
-**Zlecenie MG:** „sprawdzić możliwość montażu karabinu pokładowego i innych akcesoriów do auta
-i wcześniejsze kupno auta”. **Stan przed:** kupno auta działało (67), ulepszenia zakładał tylko
-MG (za darmo) albo Tabor. **Decyzje MG (trzy rundy pytań):** dorobić zakup; jak auta (Kompendium
-+ handlarz); cena z podręcznika × 3; montaż od razu; poziomy 3/4; osobna kategoria asortymentu;
-bez aut z Taboru; do tego naprawa za ed — 50 ed/PUK, od razu, tylko w warsztacie, wrak też.
-**Zrobione:** kategoria Kompendium `vehicleUpgrade` (19 wpisów z kodu, edytor MG z polem
-„Ulepszenie”), `vehicle-upgrade-shop.ts` (cena, problemy montażu, naprawa), asortyment
-`vehicleUpgrade` (opt-in), `vehicle:upgrade-buy` i `vehicle:repair` ze wspólną zapłatą
-`payAtCounter`, `vehicleSeatColumns` wyjęte z `vehicle:update`, klient `VehicleWorkshop.tsx`
-(karta wpisu Kompendium i warsztat w oknie „Wymiana”). Rozstrzygnięcia bez pytań
-w `etap-68-warsztat.md`. **Testy:** shared 2973, client 471, server 1752 zielone (nowe: `vehicle-upgrade-shop.test.ts`, `vehicles.test.ts` › „etap 68”, macierz izolacji dla `vehicle:upgrade-buy` i `vehicle:repair`). `tsc`, ESLint, Prettier czyste. **Oglądane w Firefoksie**
-(Ola: Kompendium → „Pokładowy karabin maszynowy” → „Kup i zamontuj” → „Na pewno?”, rakiety
-wygaszone bez Wzmocnionej konstrukcji, warsztat u handlarza ×110%: naprawa 38 PUK = 2090 ed,
-Nitro) i **Chromium** (MG: wpis „Opancerzenie kadłuba” z poziomem) tymczasowym specem E2E na
-`po-T6` (skasowany). Z oględzin: przy całym aucie nie ma już przycisku „Napraw — 0 ed”,
-a ulepszenia innego rodzaju pojazdu nie stoją w warsztacie. Gracz widzi ulepszenia w Kompendium
-dopiero od poziomu sklepu 3.
