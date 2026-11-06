@@ -16,9 +16,10 @@ import { scriptDice } from '../../instance/instance.ts';
  * (Chromium) wypuszcza barykadę z palety „Przeszkody” — poza walką przycisk
  * jest wyszarzony. Na początku rundy barykada dojeżdża do auta Iskry (Ola,
  * **Firefox**) i staje przy zderzaku, a Ola dostaje pasek z „Gwałtowny skręt /
- * Taranuj”. Udany skręt (kości skryptowane) zostawia barykadę za autem. Auto
- * gangu zrzuca kolczatkę, a puste auto za nim wjeżdża na nią: bez kierowcy
- * Testu nie ma — 4k6 w słaby punkt.
+ * Taranuj”. Udany skręt (kości skryptowane) zostawia beton na drodze, ale auto
+ * go minęło. Auto gangu zrzuca kolczatkę, a ta odpływa na auto kuriera za nim:
+ * jego kierowca oblewa Prowadzenie PT 17 — 4k6 w słaby punkt. (Od 05.11 auto
+ * bez kierowcy stoi i odpływa razem z drogą, więc na kolczatkę by nie wjechało.)
  *
  * Geometrię i reguły sprawdzają `chase-obstacles.test.ts` w `shared` i serwerze.
  */
@@ -88,7 +89,8 @@ test.describe.serial('@szybkie T65e pościg: przeszkody i kolczatka', () => {
         patch: {
           background: map,
           grid: { sizePx: grid },
-          chase: { road: { from: 6, to: 13 }, tempo: 40 },
+          // Od 04.11 pościg domyślnie jedzie w lewo — ten spec liczy jazdę w prawo.
+          chase: { direction: 'right', road: { from: 6, to: 13 }, tempo: 40 },
         },
       }),
     );
@@ -117,7 +119,7 @@ test.describe.serial('@szybkie T65e pościg: przeszkody i kolczatka', () => {
       grid * 15,
       grid * 7.5,
     );
-    emptyCar = await place(await create({ name: 'Porzucony wóz' }), grid * 8, grid * 7.5);
+    emptyCar = await place(await create({ name: 'Wóz kuriera' }), grid * 8, grid * 7.5);
 
     const iskra = dataOf<{ id: string }>(
       await emitAck(gm, 'token:create', {
@@ -145,6 +147,24 @@ test.describe.serial('@szybkie T65e pościg: przeszkody i kolczatka', () => {
       await emitAck(gm, 'vehicle:seat', {
         tokenId: ganger.id,
         sceneVehicleId: gangCar.id,
+        seat: 0,
+      }),
+    );
+
+    // Kurier bez karty: Prowadzenie 0, Cecha 5 — PT 17 obleje każda kość poza krytykiem.
+    const courier = dataOf<{ id: string }>(
+      await emitAck(gm, 'token:create', {
+        sceneId,
+        name: 'Kurier',
+        x: grid * 2,
+        y: grid * 6,
+        hp: { current: 20, max: 20 },
+      }),
+    );
+    dataOf(
+      await emitAck(gm, 'vehicle:seat', {
+        tokenId: courier.id,
+        sceneVehicleId: emptyCar.id,
         seat: 0,
       }),
     );
@@ -210,21 +230,23 @@ test.describe.serial('@szybkie T65e pościg: przeszkody i kolczatka', () => {
       )
       .toBeNull();
     await expect(bar).toBeHidden();
-    expect((await obstacles(ola))[0]!.x).toBeLessThan(olaCar.x);
+    // Beton zostaje na drodze (decyzja MG z 04.11) i odpływa dryfem — auto, które
+    // go minęło, nie dostanie już paska.
+    expect((await obstacles(ola))[0]!.x).toBeGreaterThan(olaCar.x);
     expect(await vehicle(ola, olaCar.id)).toMatchObject({ control: 'driver', hp: olaCar.hp });
     await expect(
       ola.page.locator('.chat-row', { hasText: 'Manewr: Gwałtowny skręt' }).last(),
     ).toBeVisible({ timeout: 15_000 });
   });
 
-  test('kolczatka z auta gangu: puste auto za nim bierze 4k6 w słaby punkt', async () => {
+  test('kolczatka z auta gangu: kurier za nim oblewa PT 17 i bierze 4k6 w słaby punkt', async () => {
     // Tura gangu (inicjatywa 18) — MG zrzuca kolczatkę za kierowcę-NPC-a.
     dataOf(await emitAck(gm, 'vehicle:spikes', { sceneVehicleId: gangCar.id }));
     await expect
       .poll(async () => (await obstacles(ola)).some((row) => row.kind === 'spikes'))
       .toBe(true);
-    // 3 + 3 + 3 + 3 = 12 przez OB 0, ×2 w słaby punkt.
-    scriptDice([3, 3, 3, 3]);
+    // Test kuriera 5 + 0 + 2 = 7 < 17, potem 3 + 3 + 3 + 3 = 12 przez OB 0, ×2 w słaby punkt.
+    scriptDice([2, 3, 3, 3, 3]);
     dataOf(await emitAck(gm, 'combat:next', undefined));
     dataOf(await emitAck(gm, 'combat:next', undefined));
     await expect
