@@ -62,10 +62,14 @@ describe('loadCompendium', () => {
 
     warnings.length = 0;
     const registry = await loadCompendium(PUBLIC_DIR, privateDir, silent);
-    // Obok danych grupy stoją jeszcze farmaceutyki z `shared` (24.10).
-    expect(registry.entries.map((e) => e.id).filter((id) => !cpredPharmaOfEntryId(id))).toEqual([
-      'gear.wlasny-wpis',
-    ]);
+    // Obok danych grupy stoją jeszcze farmaceutyki z `shared` (24.10) i ulepszenia
+    // pojazdów z kodu (etap 68) — oba to nasze wpisy, nie próbka.
+    expect(
+      registry.entries
+        .filter((e) => !cpredPharmaOfEntryId(e.id) && e.category !== 'vehicleUpgrade')
+        .map((e) => e.id),
+    ).toEqual(['gear.wlasny-wpis']);
+    expect(registry.entries.filter((e) => e.category === 'vehicleUpgrade')).toHaveLength(19);
     expect(registry.entries.filter((e) => cpredPharmaOfEntryId(e.id))).toHaveLength(5);
     expect(onSample()).toEqual([]);
     expect(registry.weaponTypes).toEqual([]);

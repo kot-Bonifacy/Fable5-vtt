@@ -23,7 +23,7 @@ import {
 import { requireOwnUploadUrl } from '../campaign-uploads.js';
 import type { PrismaClient } from '../db.js';
 import type { Vehicle } from '../generated/prisma/client.js';
-import { createVehicle, toVehicleView, vehicleBodyColumns } from '../vehicles.js';
+import { createVehicle, toVehicleView, vehicleSeatColumns } from '../vehicles.js';
 import { refreshChaseScenes, refreshVehiclePlacement } from './chase.js';
 import { campaignEntry } from './compendium.js';
 import { RealtimeError, defineEvent, type RealtimeDeps } from './registry.js';
@@ -226,22 +226,15 @@ export const vehicleUpdateEvent = defineEvent<VehicleUpdatePayload, VehicleView>
       // w tej samej łacie sam. Okno pojazdu wysyła układ i rozmiar zawsze —
       // wartość równa obecnej to „nie ruszałem”, nie decyzja MG (inaczej
       // Ulepszenie foteli z okna nigdy nie dokładało foteli na mapie).
-      const body = vehicleBodyColumns(result.stats);
-      const before = readCpredVehicle(current.system);
-      const seatsChanged =
-        before.seats !== result.stats.seats ||
-        JSON.stringify(before.upgrades) !== JSON.stringify(result.stats.upgrades);
-      if (seatsChanged) {
-        const layoutChosen = 'layout' in patch && patch.layout !== current.layout;
-        const sizeChosen =
-          ('widthSq' in patch && patch.widthSq !== current.widthSq) ||
-          ('lengthSq' in patch && patch.lengthSq !== current.lengthSq);
-        if (!layoutChosen) data.layout = body.layout;
-        if (!sizeChosen && body.layout !== current.layout) {
-          data.widthSq = body.widthSq;
-          data.lengthSq = body.lengthSq;
-        }
-      }
+      Object.assign(
+        data,
+        vehicleSeatColumns(current, readCpredVehicle(current.system), result.stats, {
+          layout: 'layout' in patch && patch.layout !== current.layout,
+          size:
+            ('widthSq' in patch && patch.widthSq !== current.widthSq) ||
+            ('lengthSq' in patch && patch.lengthSq !== current.lengthSq),
+        }),
+      );
     }
 
     const formerUserId =

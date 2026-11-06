@@ -3,7 +3,9 @@ import type {
   CompendiumEntry,
   CyberwareSurgeon,
   CyberwareSurgeonView,
+  CpredVehicleUpgradeRepeat,
   ShopTier,
+  VehicleUpgradeEntry,
   WeaponTypeDefinition,
 } from '@vtt/shared';
 import {
@@ -56,6 +58,7 @@ import {
   shopTierOf,
   shopTierRefusalText,
   cpredVehicleForSale,
+  cpredVehicleUpgrade,
   cpredVehicleModelDetail,
   shopTierVerdict,
 } from '@vtt/shared';
@@ -72,6 +75,7 @@ import {
 } from '../socket.js';
 import { useAuthStore } from '../stores/authStore.js';
 import { VehicleOffer } from './VehicleOffer.js';
+import { CompendiumUpgradeBuy } from './VehicleWorkshop.js';
 import { COMBAT_LOCKED_HINT, useCombatLocked } from '../stores/combatStore.js';
 import { useCharacterStore } from '../stores/characterStore.js';
 import {
@@ -400,6 +404,8 @@ function shortStats(
       return `2k6 = ${entry.roll} · ${CRITICAL_INJURY_TABLE_LABELS[entry.table]}`;
     case 'vehicle':
       return `${CPRED_VEHICLE_KIND_LABELS[entry.vehicleKind]} · PUK ${entry.hp} · Ruch ${entry.move} · ${formatCost(entry)}`;
+    case 'vehicleUpgrade':
+      return `Moto ${cpredVehicleUpgrade(entry.upgradeId)?.motoLevel ?? '—'} · ${formatCost(entry)}`;
     case 'program':
       return `${entry.blackIce ? 'Czarny LOD' : NET_PROGRAM_CLASS_LABELS[entry.programClass]} · ATK ${entry.atk} / OBR ${entry.def} / REZ ${entry.rez} · ${formatCost(entry)}`;
     case 'netDefense':
@@ -1024,6 +1030,7 @@ function EntryCard({
             ) : null}
           </>
         ) : null}
+        {entry.category === 'vehicleUpgrade' ? <VehicleUpgradeStats entry={entry} /> : null}
         {entry.category === 'criticalInjury' ? null : (
           <>
             <Stat label="Cena" value={formatCost(entry)} />
@@ -1127,6 +1134,23 @@ function EntryCard({
             />
           </ul>
         </div>
+      ) : entry.category === 'vehicleUpgrade' && targets.length > 0 ? (
+        <CompendiumUpgradeBuy
+          entry={entry}
+          targets={targets}
+          target={target}
+          onTarget={setTargetId}
+          listed={price ?? 0}
+          blockedHint={
+            inCombat
+              ? COMBAT_LOCKED_HINT
+              : catalogClosed
+                ? 'MG ustawił „Zakupy z katalogu: tylko u handlarzy” — ulepszenie kupisz w warsztacie (handlarz z kategorią „Ulepszenia pojazdów”).'
+                : locked && !isGm
+                  ? shopTierRefusalText(tier, shopTier)
+                  : null
+          }
+        />
       ) : entry.category === 'vehicle' && entry.art ? (
         <p className="compendium-note">
           Auto służb — nie jest na sprzedaż. Daje je MG w sekcji „Pojazdy” na karcie postaci albo w
@@ -1162,7 +1186,8 @@ function EntryCard({
       !cpredIsBareHandsEntry(entry.id) &&
       entry.category !== 'criticalInjury' &&
       entry.category !== 'netDefense' &&
-      entry.category !== 'vehicle' ? (
+      entry.category !== 'vehicle' &&
+      entry.category !== 'vehicleUpgrade' ? (
         <div className="compendium-assign">
           <select value={target} onChange={(event) => setTargetId(event.target.value)}>
             {targets.map((character) => (
@@ -1411,6 +1436,49 @@ function ShopEntryTierChoice({
 
 /** `hint` becomes a tooltip — the place to explain a rulebook abbreviation. */
 /** Co robi narkotyk albo fiolka trucizny — to samo, co liczy karta przy „Zażyj”. */
+/** Etap 68: ulepszenie pojazdu — próg Moto, gdzie się montuje i czego wymaga. */
+function VehicleUpgradeStats({ entry }: { entry: VehicleUpgradeEntry }) {
+  const upgrade = cpredVehicleUpgrade(entry.upgradeId);
+  if (!upgrade) return null;
+  return (
+    <>
+      <Stat
+        label="Wymagany Poziom Moto"
+        value={String(upgrade.motoLevel)}
+        hint="Od tego poziomu Moto Nomada montuje je w Taborze Rodziny (s. 163)."
+      />
+      <Stat
+        label="Pasuje do"
+        value={upgrade.kinds.map((kind) => CPRED_VEHICLE_KIND_LABELS[kind]).join(', ')}
+        wide
+      />
+      {upgrade.requiresReinforced ? (
+        <Stat label="Wymaga" value="Wzmocnionej konstrukcji w tym aucie" wide />
+      ) : null}
+      <Stat
+        label="Ile razy"
+        value={CPRED_UPGRADE_REPEAT_LABELS[upgrade.repeat]}
+        hint="„O ile nie napisano inaczej, dane ulepszenie można zamontować w pojeździe tylko raz” (s. 163)."
+      />
+      {upgrade.combat ? null : (
+        <Stat
+          label="Mechanika"
+          value="opis przy stole — VTT tego nie liczy"
+          hint="Ulepszenie siedzi w aucie jako wiersz z opisem; skutki rozstrzyga MG."
+          wide
+        />
+      )}
+    </>
+  );
+}
+
+const CPRED_UPGRADE_REPEAT_LABELS: Record<CpredVehicleUpgradeRepeat, string> = {
+  once: 'raz',
+  twice: 'dwa razy (drugie — grube szyby)',
+  many: 'wiele razy',
+  'small-once': 'wiele razy (motocykl, skuter, żyrokopter — raz)',
+};
+
 function ChemStats({ entry }: { entry: CompendiumEntry }) {
   const row = { name: entry.name, compendiumId: entry.id };
   const drug = cpredDrugOfRow(row);

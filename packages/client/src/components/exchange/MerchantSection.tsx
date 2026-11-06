@@ -383,7 +383,9 @@ function AssortmentFields({
             Poziom handlarza nie zależy od poziomu odblokowanego w kampanii. Amunicji z kompendium
             handlarz nie wystawia — połóż ją na karcie jako wiersz „∞”; jej skup idzie poziomem
             pozostałych. Pojazdy prowadzi tylko handlarz z osobnym poziomem — gracz kupuje je w
-            salonie pod półką, a sprzedać ich nie może.
+            salonie pod półką, a sprzedać ich nie może. Tak samo „Ulepszenia pojazdów”: handlarz z
+            tym poziomem to warsztat — montuje ulepszenia w aucie gracza i naprawia auta (50 ed za
+            PUK).
           </p>
         </>
       )}

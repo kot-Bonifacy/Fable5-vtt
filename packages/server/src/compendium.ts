@@ -9,6 +9,7 @@ import {
   parseVehicleModels,
   parseWeaponIcons,
   withVehicleModels,
+  withVehicleUpgradeEntries,
   withWeaponIcons,
   type CompendiumRegistry,
   type CpredVehicleModel,
@@ -72,7 +73,8 @@ export async function loadCompendium(
   if (models.skipped.length > 0) {
     log.warn({ models: models.skipped }, 'vehicle models without a class in the catalogue');
   }
-  const registry = models.registry;
+  // Etap 68: ulepszenia pojazdów do kupienia — też po cenniku (cena pasma × 3).
+  const registry = withVehicleUpgradeEntries(models.registry);
   log.info(
     { weaponTypes: registry.weaponTypes.length, entries: registry.entries.length },
     'compendium loaded',

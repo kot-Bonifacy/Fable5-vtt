@@ -175,6 +175,37 @@ export interface VehicleBuyResult {
   price: number;
 }
 
+/**
+ * Etap 68: ulepszenie kupione do własnego auta — `vehicle:upgrade-buy`. Bez
+ * `merchantId` z Kompendium, z nim — w warsztacie handlarza z kategorią
+ * „Ulepszenia pojazdów”. Ulepszenie siedzi w aucie od razu po zapłacie.
+ */
+export interface VehicleUpgradeBuyPayload {
+  characterId: string;
+  vehicleId: string;
+  entryId: string;
+  merchantId?: string;
+  expectPrice: number;
+}
+
+/** Etap 68: naprawa auta w warsztacie handlarza — `vehicle:repair`. */
+export interface VehicleRepairPayload {
+  characterId: string;
+  vehicleId: string;
+  merchantId: string;
+  expectPrice: number;
+}
+
+/** Ulepszenie w warsztacie handlarza (`MerchantView.vehicleUpgrades`) — cena z mnożnikiem. */
+export interface MerchantVehicleUpgradeOfferView {
+  entryId: string;
+  /** Id ulepszenia z systemu gry — klient sprawdza nim reguły montażu. */
+  upgradeId: string;
+  name: string;
+  text: string;
+  price: number;
+}
+
 /** Auto w salonie handlarza (`MerchantView.vehicles`) — cena już z mnożnikiem sklepu. */
 export interface MerchantVehicleOfferView {
   entryId: string;

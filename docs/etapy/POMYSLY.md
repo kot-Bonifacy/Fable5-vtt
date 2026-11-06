@@ -1,5 +1,11 @@
 # Pomysły poza zakresem etapów
 
+**06.11.2026 (etap 68, warsztat) — czego warsztat jeszcze nie umie.** (1) **Demontaż przez
+gracza i odkup ulepszenia** (dziś zdejmuje MG w oknie pojazdu, bez zwrotu). (2) **Płatne
+uzupełnianie** rakiet wyrzutni i zbiorników Nitro (dziś naboje bez dna, Nitro odnawia MG
+`vehicle:refill`). (3) **Naprawa Testem gracza** (Naprawa pojazdów lądowych, PT 9/13/17 z s. 147)
+zamiast warsztatu. (4) **Auto w warsztacie do daty** zegara świata (3 godziny / dzień / tydzień).
+
 **06.11.2026 (etap 67, zakup auta) — czego salon jeszcze nie umie.** (1) **Sprzedaż i odkup
 auta** u handlarza z kategorią „Pojazdy” (MG 06.11: nie teraz) — auto musiałoby nie stać na
 scenie pościgu, a odkup liczyłby się procentem jak skup rzeczy. (2) **Własny wpis MG jako model**

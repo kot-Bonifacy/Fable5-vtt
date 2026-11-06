@@ -21,13 +21,23 @@ w plikach obok — czytaj je **na żądanie, nigdy rutynowo**:
 
 | stan         | etapy                                                                                          |
 | ------------ | ---------------------------------------------------------------------------------------------- |
-| ⬜ otwarty   | **67** Zakup pojazdu (🟨 zrobione 06.11, czeka na wdrożenie i oględziny MG przy stole); **66** Sceny przykładowe (🟨 zrobione 31.10, czeka na oględziny MG przy stole i wdrożenie; **66b** „Fabryka dronów” 🟨 zrobione 31.10, tak samo; **66c** „Ostatni zjazd” 🟨 wzorzec zrobiony, rozegrany w przeglądarce 04.11 i ponownie 05.11 po rebalansie (porażka o włos, balans zatwierdzony przez MG) — zaległości z przebiegów zamknięte 05.11 poza Esc na kubku MG — czeka na stół MG i wdrożenie); **65** Scena pościgu i walka pojazdów (🟨 65a–65e ✅ 30–31.10, czeka na oględziny MG przy stole); **62** Sieć ze sceny (🟨 zrobione, czeka na oględziny MG na VPS po wdrożeniu); **61** Skradanie się (🟨 zrobione, czeka na słowo MG o rozstrzygnięciach); **28** Wdrożenie na VPS (🟨 działa na `https://vtt.tatanga.eu` z botami od 18.10; zostały off-site, utwardzenie, monitoring); **43b**, **43c** (UI walki); **60** Czytelny czat (zlecenie MG z 24.10; 🟨 60a–60c ✅, czeka na oględziny MG z pierwszego kryterium); T10; refaktoryzacja odłożona (MG 18.10) |
+| ⬜ otwarty   | **68** Warsztat: ulepszenia auta za ed i naprawa (🟨 zrobione 06.11, czeka na wdrożenie i oględziny MG przy stole); **67** Zakup pojazdu (🟨 zrobione 06.11, czeka na wdrożenie i oględziny MG przy stole); **66** Sceny przykładowe (🟨 zrobione 31.10, czeka na oględziny MG przy stole i wdrożenie; **66b** „Fabryka dronów” 🟨 zrobione 31.10, tak samo; **66c** „Ostatni zjazd” 🟨 wzorzec zrobiony, rozegrany w przeglądarce 04.11 i ponownie 05.11 po rebalansie (porażka o włos, balans zatwierdzony przez MG) — zaległości z przebiegów zamknięte 05.11 poza Esc na kubku MG — czeka na stół MG i wdrożenie); **65** Scena pościgu i walka pojazdów (🟨 65a–65e ✅ 30–31.10, czeka na oględziny MG przy stole); **62** Sieć ze sceny (🟨 zrobione, czeka na oględziny MG na VPS po wdrożeniu); **61** Skradanie się (🟨 zrobione, czeka na słowo MG o rozstrzygnięciach); **28** Wdrożenie na VPS (🟨 działa na `https://vtt.tatanga.eu` z botami od 18.10; zostały off-site, utwardzenie, monitoring); **43b**, **43c** (UI walki); **60** Czytelny czat (zlecenie MG z 24.10; 🟨 60a–60c ✅, czeka na oględziny MG z pierwszego kryterium); T10; refaktoryzacja odłożona (MG 18.10) |
 | ✅ ukończone | 01–11, 13–20b, 23a–27f, 27h–27l, 29a–30d, 31–35, 37–42c, 43a, 44a–44d, 45, 46a1, 46a2, 46c1, 46c2, 46b1, 46b2, 47a, 47b, 48a, 48b, 48c, 49a, 49b, 50a, 50b, 50c, 51, 52, 53, 54, 55, 56, 57 (57a–57c), 58 (58a–58d), 59 (59a–59c), 63 (63a–63b; 63c wycofane 29.10), 64 (64a–64c) (ostatni zamknięty: 64, 2026-10-30) |
 | ⛔ wycofane  | 12, 21, 22 (głos), 27g (wydajność), 36 (makra); 27, 29, 30, 38 rozdzielone na etapy literowane |
 
 Pełna tabela z nazwami i datami: `archiwum/tabela-etapow.md`.
 
 ## Od czego zacząć
+
+**Warsztat — ulepszenia kupionego auta i naprawa za ed (etap 68, zlecenie MG z 06.11) — czeka na
+wdrożenie (bez migracji) i oględziny MG przy stole.** 19 ulepszeń z s. 163–165 to wpisy
+Kompendium „Ulepszenia pojazdów” (`vehicle-upgrade.<id>`, cena pasma × 3: 3000 / 15 000 ed,
+poziom 3 / 4). Gracz kupuje je do własnego auta spoza Taboru w Kompendium („Kup i zamontuj”,
+postać + auto) albo w warsztacie okna „Wymiana” — u handlarza z nową kategorią asortymentu
+„Ulepszenia pojazdów” (domyślnie „nie prowadzi”); montaż od razu, reguły jak w oknie MG.
+Warsztat naprawia auto: 50 ed za brakujący PUK, szyby w cenie, wrak też. Karabin pokładowy po
+zakupie działa jak z okna MG (65d2). Decyzje w `decyzje-i-uproszczenia.md`, umowa na górze
+`ekwipunek`, opis w `etap-68-warsztat.md`.
 
 **Zakup auta przez gracza (etap 67, zlecenie MG z 06.11) — czeka na wdrożenie (bez migracji;
 na VPS dojdą `data/public/cpred/vehicle-models.json` i grafiki z repo) i oględziny MG przy
@@ -676,7 +686,7 @@ a nie do tego pliku.
 | `statysta`  | figura z kartą, `statBlock`, Wartość bojowa, `token:stat`, wzorce | 17   | 3       |
 | `karta`     | strony i zakładki, panele, `sheet.css`, walidacja list, usuwanie przedmiotu, „Używane” i „Plecak” | 12   | 12      |
 | `postac`    | kreator, PD i awanse, koszyk i cofanie awansów, Role i Zdolności, cyborgizacje, chrom zmieniający liczby, ekonomia, Test montażu gracza, pojazdy i Tabor | 58   | 3       |
-| `ekwipunek` | wiersze wyposażenia, przekazanie, łup (także ciała graczy), handel, sklepy, asortyment handlarza z kompendium, zasięg, amunicja bez dna, egzoszkielet, latarka z ekwipunku, narkotyki i fiolki, siatka okna „Wymiana”, zgoda z góry, odświeżanie po naklejkach, znaczek „w użyciu”, zakup auta z modelu | 45   | 3       |
+| `ekwipunek` | wiersze wyposażenia, przekazanie, łup (także ciała graczy), handel, sklepy, asortyment handlarza z kompendium, zasięg, amunicja bez dna, egzoszkielet, latarka z ekwipunku, narkotyki i fiolki, siatka okna „Wymiana”, zgoda z góry, odświeżanie po naklejkach, znaczek „w użyciu”, zakup auta z modelu, warsztat (ulepszenia i naprawa auta) | 46   | 3       |
 | `czas`      | zegar świata, kalendarz, `statEffects`, leczenie po dobie, dawki i uzależnienia (`chems`) | 19   | 2       |
 | `siec`      | Programy, LOD, demony, piętra architektury, dek jako towar, strefy bronione, kamery, rozbrajanie, Sieć ze sceny, jedna próba i pamięć sukcesów | 14   | 5       |
 | `boty`      | llama-server, RAG, reindeks, dziennik i baza wiedzy, brama AI  | 10   | 10      |
@@ -689,6 +699,26 @@ a nie do tego pliku.
 ## Notatki z dwóch ostatnich sesji
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
+
+### Sesja 06.11, druga — etap 68: warsztat (ulepszenia auta i naprawa za ed)
+
+**Zlecenie MG:** „sprawdzić możliwość montażu karabinu pokładowego i innych akcesoriów do auta
+i wcześniejsze kupno auta”. **Stan przed:** kupno auta działało (67), ulepszenia zakładał tylko
+MG (za darmo) albo Tabor. **Decyzje MG (trzy rundy pytań):** dorobić zakup; jak auta (Kompendium
++ handlarz); cena z podręcznika × 3; montaż od razu; poziomy 3/4; osobna kategoria asortymentu;
+bez aut z Taboru; do tego naprawa za ed — 50 ed/PUK, od razu, tylko w warsztacie, wrak też.
+**Zrobione:** kategoria Kompendium `vehicleUpgrade` (19 wpisów z kodu, edytor MG z polem
+„Ulepszenie”), `vehicle-upgrade-shop.ts` (cena, problemy montażu, naprawa), asortyment
+`vehicleUpgrade` (opt-in), `vehicle:upgrade-buy` i `vehicle:repair` ze wspólną zapłatą
+`payAtCounter`, `vehicleSeatColumns` wyjęte z `vehicle:update`, klient `VehicleWorkshop.tsx`
+(karta wpisu Kompendium i warsztat w oknie „Wymiana”). Rozstrzygnięcia bez pytań
+w `etap-68-warsztat.md`. **Testy:** shared 2973, client 471, server 1752 zielone (nowe: `vehicle-upgrade-shop.test.ts`, `vehicles.test.ts` › „etap 68”, macierz izolacji dla `vehicle:upgrade-buy` i `vehicle:repair`). `tsc`, ESLint, Prettier czyste. **Oglądane w Firefoksie**
+(Ola: Kompendium → „Pokładowy karabin maszynowy” → „Kup i zamontuj” → „Na pewno?”, rakiety
+wygaszone bez Wzmocnionej konstrukcji, warsztat u handlarza ×110%: naprawa 38 PUK = 2090 ed,
+Nitro) i **Chromium** (MG: wpis „Opancerzenie kadłuba” z poziomem) tymczasowym specem E2E na
+`po-T6` (skasowany). Z oględzin: przy całym aucie nie ma już przycisku „Napraw — 0 ed”,
+a ulepszenia innego rodzaju pojazdu nie stoją w warsztacie. Gracz widzi ulepszenia w Kompendium
+dopiero od poziomu sklepu 3.
 
 ### Sesja 06.11 — etap 67: zakup auta przez gracza
 
@@ -710,19 +740,3 @@ Prettier czyste. **Oglądane w Firefoksie** (Ola: Kompendium → „Kup” → �
 specem E2E na `po-T6`. Kompendium gracza nie pokazuje wpisów powyżej poziomu sklepu kampanii —
 Kagerō (4) gracz zobaczy dopiero po odblokowaniu.
 
-### Sesja 05.11, czwarta — reszta zaległości 66c z decyzjami MG
-
-**Zlecenie MG:** „wykonaj zaległości. Karty NPC-ów zostają w kampanii”. **Decyzje MG:** ręka MG
-darmowa, „Cofnij” obrażeń bez zmian, EMP 3 NPC-ów wzorca, „Ucieka” w menu auta (zapisane
-w `decyzje-i-uproszczenia.md`). **Zrobione:** „Zamiana broni — X → Y” na czacie zamiast
-„Schowanie broni” (`requireTurnSpend` z `actionName`); strzelba w rękach przy tarczy zostaje na
-pasku HUD wygaszona (`heldBlocked`); otarcie aut o włos w poprzek nie jest zderzeniem
-(`GRAZE_FRACTION`); wrak za autem nie ląduje na aucie z tyłu (`chaseFreeSpotPastVehicle`);
-grafika auta trzyma długość bryły (furgon); podpis figury z górnej połowy auta nad nią
-(`captionAbove`); rezerwa lewego panelu przy liczniku Szczęścia; ręka MG bez kosztu metrów
-(`TokenMovePayload.dragged`); `chase:escape` („Ucieka”); EMP 3 we wzorcu. Esc na kubku MG nie
-odtworzone. Umowy na górze `mapa`, `tura`, `ui`, `atak`; diagnozy w
-`archiwum/zamkniete-zaleglosci.md`. **Testy:** shared 2957, client 471, server 1743 zielone
-(nowe: zamiana na czacie, `heldBlocked`, otarcie i skośny wjazd, wolne miejsce za autem, ręka MG,
-„Ucieka”), `tsc`, ESLint, Prettier czyste. **Oglądane w Firefoksie** tymczasowym specem E2E (MG,
-wzorzec „Ostatni zjazd”, `po-T6`, skasowany) — Firefox MCP znów zawisł na `browser_navigate`.

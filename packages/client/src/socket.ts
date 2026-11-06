@@ -309,6 +309,8 @@ import type {
   VehicleDeleteBroadcast,
   VehicleBuyPayload,
   VehicleBuyResult,
+  VehicleRepairPayload,
+  VehicleUpgradeBuyPayload,
   VehicleRenamePayload,
   ChaseObstacleChoice,
   ChaseObstacleSpawnPayload,
@@ -330,6 +332,7 @@ import {
   CHAT_COMMANDS_HELP,
   describeXpAwardNotice,
   CPRED_ADVANCE_PROBLEMS,
+  CPRED_VEHICLE_UPGRADE_BUY_PROBLEMS,
   ADVANCEMENT_UNDO_PROBLEMS,
   CPRED_ROLE_CHANGE_PROBLEMS,
   CPRED_ATTACHMENT_PROBLEM_MESSAGES,
@@ -5125,6 +5128,48 @@ export function vehicleBuyErrorText(code: string | undefined): string {
       return merchantErrorText(code);
     default:
       return economyErrorText(code);
+  }
+}
+
+/**
+ * Etap 68: ulepszenie do własnego auta — z Kompendium albo w warsztacie
+ * handlarza (`merchantId`). Montaż od razu, pieniądze schodzą z karty.
+ */
+export function buyVehicleUpgrade(
+  payload: VehicleUpgradeBuyPayload,
+): Promise<SocketAck<VehicleBuyResult>> {
+  flushCharacterSave(payload.characterId);
+  return emitEconomy('vehicle:upgrade-buy', payload);
+}
+
+/** Etap 68: naprawa auta w warsztacie handlarza — pełne PUK i szyby. */
+export function repairVehicle(payload: VehicleRepairPayload): Promise<SocketAck<VehicleBuyResult>> {
+  flushCharacterSave(payload.characterId);
+  return emitEconomy('vehicle:repair', payload);
+}
+
+/** Odmowy warsztatu (etap 68) — reguły montażu po swojemu, reszta jak zakup auta. */
+export function vehicleWorkshopErrorText(code: string | undefined): string {
+  switch (code) {
+    case 'NOT_PURCHASABLE':
+      return 'Tego się w warsztacie nie kupuje.';
+    case 'NOT_IN_RANGE':
+      return 'Ten handlarz nie prowadzi warsztatu z tym ulepszeniem.';
+    case 'CATALOG_CLOSED':
+      return 'MG ustawił zakupy tylko u handlarzy — ulepszenie kupisz w warsztacie.';
+    case 'QUOTE_CHANGED':
+      return 'Cena zmieniła się, zanim zapłaciłeś — sprawdź nową i spróbuj jeszcze raz.';
+    case 'VEHICLE_NOT_FOUND':
+      return 'To nie jest auto tej postaci.';
+    case 'NOTHING_TO_REPAIR':
+      return 'Auto jest całe — nie ma czego naprawiać.';
+    case 'VEHICLE_IN_FLEET':
+    case 'UPGRADE_NOT_FOR_KIND':
+    case 'UPGRADE_ONCE':
+    case 'UPGRADE_NEEDS_REINFORCED':
+      return CPRED_VEHICLE_UPGRADE_BUY_PROBLEMS[code];
+    default:
+      return vehicleBuyErrorText(code);
   }
 }
 

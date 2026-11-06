@@ -28,6 +28,7 @@ import type {
   PurchasedRow,
   SessionUser,
   VehicleEntry,
+  VehicleUpgradeEntry,
   ShopTier,
   TokenCondition,
 } from '@vtt/shared';
@@ -37,7 +38,9 @@ import {
   ROLE_GM,
   cpredAssortmentCovers,
   cpredAssortmentOffers,
+  cpredAssortmentVehicleUpgrades,
   cpredAssortmentVehicles,
+  cpredMerchantRepairsVehicles,
   cpredVehicleModelDetail,
   cpredVehicleQuote,
   cpredItemLine,
@@ -174,6 +177,8 @@ interface MerchantPricing {
   catalog: PurchasedRow[];
   /** Salon (etap 67): modele aut z zakresu „Pojazdy”; pusto bez tej kategorii. */
   vehicles: (VehicleEntry & { art: string })[];
+  /** Warsztat (etap 68): ulepszenia z zakresu „Ulepszenia pojazdów”. */
+  vehicleUpgrades: VehicleUpgradeEntry[];
   /** Nazwa klasy modelu do wiersza „Supersamochód · 2 fotele…”. */
   classNameOf: (id: string | undefined) => string | undefined;
 }
@@ -184,10 +189,13 @@ function merchantPricing(
   assortment: CpredMerchantAssortment | null,
 ): MerchantPricing {
   const classNameOf = (id: string | undefined) => (id ? catalog.entryOf(id)?.name : undefined);
-  if (!assortment) return { ctx: catalog.priceCtx, catalog: [], vehicles: [], classNameOf };
+  if (!assortment) {
+    return { ctx: catalog.priceCtx, catalog: [], vehicles: [], vehicleUpgrades: [], classNameOf };
+  }
   const context = { overrides: catalog.overrides };
   return {
     vehicles: cpredAssortmentVehicles(catalog.entries, assortment, context),
+    vehicleUpgrades: cpredAssortmentVehicleUpgrades(catalog.entries, assortment, context),
     classNameOf,
     ctx: {
       ...catalog.priceCtx,
@@ -421,6 +429,22 @@ export function merchantViewFor(
         },
       ];
     }),
+    vehicleUpgrades: pricing.vehicleUpgrades.flatMap((entry) => {
+      const quote = cpredVehicleQuote(entry, { priceMul: merchant.settings.priceMul });
+      if (!quote) return [];
+      return [
+        {
+          entryId: entry.id,
+          upgradeId: entry.upgradeId,
+          name: entry.name,
+          text: entry.description ?? '',
+          price: quote.listed,
+        },
+      ];
+    }),
+    ...(cpredMerchantRepairsVehicles(merchant.assortment)
+      ? { repairsVehicles: true as const }
+      : {}),
     ...(isGm ? { characterId: merchant.card.id, settings: merchant.settings } : {}),
   };
 }
@@ -776,6 +800,9 @@ export const merchantDealEvent = defineEvent<MerchantDealPayload, MerchantDealRe
  * otwarty sklep, zasięg przy figurze), a do tego model w zakresie „Pojazdy”
  * handlarza. Wołane w transakcji pod `withCampaignLock` — zwraca handlarza
  * (karta do lustra kasy) i jego mnożnik ceny.
+ *
+ * Etap 68 — ta sama lada w warsztacie: ulepszenie musi być w zakresie
+ * „Ulepszenia pojazdów”, a `'repair'` (naprawa auta) — sama ta kategoria.
  */
 export async function requireVehicleCounter(
   deps: RealtimeDeps,
@@ -784,7 +811,7 @@ export async function requireVehicleCounter(
   campaignId: string,
   merchantId: unknown,
   buyerCardId: string,
-  entry: CompendiumEntry,
+  entry: CompendiumEntry | 'repair',
 ): Promise<{
   card: Character;
   data: CpredCharacterData;
@@ -802,9 +829,16 @@ export async function requireVehicleCounter(
     const metres = closestBetween(await placedTokens(tx, buyerCardId), merchant.placed);
     if (metres === null || metres > CPRED_MELEE_REACH_M) throw new RealtimeError('OUT_OF_REACH');
   }
-  const catalog = await shopCatalogFor(deps, campaignId);
-  const offers = merchantPricing(deps, catalog, merchant.assortment).vehicles;
-  if (!offers.some((offer) => offer.id === entry.id)) throw new RealtimeError('NOT_IN_RANGE');
+  if (entry === 'repair') {
+    if (!cpredMerchantRepairsVehicles(merchant.assortment)) {
+      throw new RealtimeError('NOT_IN_RANGE');
+    }
+  } else {
+    const catalog = await shopCatalogFor(deps, campaignId);
+    const pricing = merchantPricing(deps, catalog, merchant.assortment);
+    const offers = entry.category === 'vehicleUpgrade' ? pricing.vehicleUpgrades : pricing.vehicles;
+    if (!offers.some((offer) => offer.id === entry.id)) throw new RealtimeError('NOT_IN_RANGE');
+  }
   return {
     card: merchant.card,
     data: merchant.data,

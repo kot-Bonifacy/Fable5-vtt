@@ -35,11 +35,13 @@ import {
   type CompendiumRegistry,
   type ShopTier,
   type VehicleEntry,
+  type VehicleUpgradeEntry,
 } from './compendium.js';
 import { cpredIsChemEntry } from './drugs.js';
 import { shopTierOf, type ShopTierContext } from './shop.js';
 import { purchasedSheetRow, type PurchasedRow } from './shopping.js';
 import { cpredVehicleForSale } from './vehicle-models.js';
+import { cpredVehicleUpgradeForSale } from './vehicle-upgrade-shop.js';
 
 /** Kategorie, które MG ustawia osobno — te, które handlarz umie wystawić z kompendium. */
 export const CPRED_ASSORTMENT_CATEGORIES = [
@@ -50,6 +52,7 @@ export const CPRED_ASSORTMENT_CATEGORIES = [
   'chems',
   'program',
   'vehicle',
+  'vehicleUpgrade',
 ] as const;
 export type CpredAssortmentCategory = (typeof CPRED_ASSORTMENT_CATEGORIES)[number];
 
@@ -61,14 +64,19 @@ export const CPRED_ASSORTMENT_CATEGORY_LABELS: Record<CpredAssortmentCategory, s
   chems: 'Używki i leki',
   program: 'Programy',
   vehicle: 'Pojazdy',
+  vehicleUpgrade: 'Ulepszenia pojazdów',
 };
 
 /**
  * Kategorie, których „pozostałe” nie obejmują (etap 67): bez osobnego poziomu
  * handlarz ich nie prowadzi. Apteka z poziomem 4 „pozostałych” nie sprzedaje
- * supersamochodów — salon to decyzja MG.
+ * supersamochodów — salon to decyzja MG. Tak samo warsztat (etap 68):
+ * „Ulepszenia pojazdów” i naprawa aut tylko u handlarza z tą kategorią.
  */
-export const CPRED_ASSORTMENT_OPT_IN: readonly CpredAssortmentCategory[] = ['vehicle'];
+export const CPRED_ASSORTMENT_OPT_IN: readonly CpredAssortmentCategory[] = [
+  'vehicle',
+  'vehicleUpgrade',
+];
 
 export function isCpredAssortmentCategory(value: unknown): value is CpredAssortmentCategory {
   return (
@@ -232,6 +240,34 @@ export function cpredAssortmentVehicles(
     }
   }
   return offers;
+}
+
+/**
+ * Warsztat handlarza (etap 68): ulepszenia pojazdów na sprzedaż w jego
+ * zakresie „Ulepszenia pojazdów”, w kolejności katalogu. Jak auta — nie
+ * wiersze półki, bo kupione siedzi od razu w aucie (`vehicle:upgrade-buy`).
+ */
+export function cpredAssortmentVehicleUpgrades(
+  entries: Iterable<CompendiumEntry>,
+  assortment: CpredMerchantAssortment | null,
+  context: ShopTierContext = {},
+): VehicleUpgradeEntry[] {
+  if (!assortment) return [];
+  const offers: VehicleUpgradeEntry[] = [];
+  for (const entry of entries) {
+    if (cpredVehicleUpgradeForSale(entry) && cpredAssortmentCovers(entry, assortment, context)) {
+      offers.push(entry);
+    }
+  }
+  return offers;
+}
+
+/**
+ * Czy handlarz naprawia auta (etap 68): warsztat to kategoria „Ulepszenia
+ * pojazdów” z poziomem 1 albo wyższym — naprawa nie ma własnego poziomu.
+ */
+export function cpredMerchantRepairsVehicles(assortment: CpredMerchantAssortment | null): boolean {
+  return assortment !== null && cpredAssortmentLevel(assortment, 'vehicleUpgrade') > 0;
 }
 
 /** Jedno zdanie o asortymencie — pod nagłówkiem sekcji „Sklep” i w oknie gracza. */

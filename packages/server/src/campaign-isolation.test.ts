@@ -887,6 +887,19 @@ const CASES: Record<string, Case> = {
     entryId: 'vehicle.ranczer',
     expectPrice: 1,
   })),
+  // warsztat (etap 68): cudza karta, cudze auto albo cudzy handlarz
+  'vehicle:upgrade-buy': foreign((a) => ({
+    characterId: a.characterId,
+    vehicleId: a.vehicleId,
+    entryId: 'vehicle-upgrade.nitro',
+    expectPrice: 1,
+  })),
+  'vehicle:repair': foreign((a) => ({
+    characterId: a.characterId,
+    vehicleId: a.vehicleId,
+    merchantId: a.merchantId,
+    expectPrice: 1,
+  })),
   // chase (etap 65b)
   'chase:place': foreign((a) => ({ sceneId: a.sceneId, vehicleId: a.vehicleId, x: 1, y: 1 })),
   'chase:move': foreign((a) => ({ sceneVehicleId: a.sceneVehicleId, x: 1, y: 1 })),

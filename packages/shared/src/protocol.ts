@@ -30,7 +30,11 @@ import type { MapNoteView } from './notes.js';
 import type { SceneSummary, SceneView } from './scenes.js';
 import type { TokenTargetView, TokenView } from './tokens.js';
 import type { TradeView } from './trade.js';
-import type { MerchantVehicleOfferView, VehicleView } from './vehicles.js';
+import type {
+  MerchantVehicleOfferView,
+  MerchantVehicleUpgradeOfferView,
+  VehicleView,
+} from './vehicles.js';
 import type { SceneVehicleView } from './chase.js';
 import type { ChaseObstacleView } from './chase-obstacles.js';
 import type { ExchangeCounterpartKind, ExchangeUnavailable } from './exchange.js';
@@ -915,6 +919,13 @@ export interface MerchantView {
    * obok koszyka — pojazd nie jest wierszem karty. Pusto bez tej kategorii.
    */
   vehicles?: MerchantVehicleOfferView[];
+  /**
+   * Warsztat (etap 68): ulepszenia z zakresu „Ulepszenia pojazdów”, kupowane
+   * `vehicle:upgrade-buy` do auta kupującego. Pusto bez tej kategorii.
+   */
+  vehicleUpgrades?: MerchantVehicleUpgradeOfferView[];
+  /** Warsztat naprawia auta (`vehicle:repair`) — kategoria „Ulepszenia pojazdów” ≥ 1. */
+  repairsVehicles?: true;
   /** Tylko u MG: karta handlarza i surowe ustawienia. */
   characterId?: string;
   settings?: MerchantSettings;

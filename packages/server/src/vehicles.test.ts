@@ -812,3 +812,226 @@ describe('etap 67: zakup auta z modelu', () => {
     expect(van.vehicle).toMatchObject({ layout: 'van-8', lengthSq: 7 });
   });
 });
+
+describe('etap 68: warsztat — ulepszenia do kupionego auta i naprawa', () => {
+  let gm: ClientSocket;
+  let player: ClientSocket;
+  let ownerId: string;
+  let carId: string;
+
+  const upgrade = (socket: ClientSocket, body: Record<string, unknown>) =>
+    emitAck<VehicleBuyResult>(socket, 'vehicle:upgrade-buy', {
+      characterId: ownerId,
+      vehicleId: carId,
+      ...body,
+    });
+  const upgradesOf = (vehicle: VehicleView) =>
+    statsOf(vehicle).upgrades.map((row) => row.upgradeId);
+
+  it('gracz kupuje karabin pokładowy z Kompendium — od poziomu Wojskowe, montaż od razu', async () => {
+    gm = await connect(gmCookie);
+    player = await connect(playerCookie);
+    await emitAck(gm, 'shop:tier', { tier: 1 });
+    ownerId = data(
+      await emitAck<CharacterView>(gm, 'character:create', { name: 'Iskra', ownerId: playerId }),
+      'character:create',
+    ).id;
+    await emitAck(gm, 'economy:adjust', { characterId: ownerId, balance: 100_000 });
+    carId = data(
+      await emitAck<VehicleBuyResult>(player, 'vehicle:buy', {
+        characterId: ownerId,
+        entryId: 'vehicle.ranczer',
+        expectPrice: 10_000,
+      }),
+      'vehicle:buy',
+    ).vehicle.id;
+
+    // Moto 1 → Bardzo kosztowne × 3 = 3000 ed, poziom 3 (decyzje MG z 06.11).
+    const locked = await upgrade(player, {
+      entryId: 'vehicle-upgrade.machine-gun',
+      expectPrice: 3_000,
+    });
+    expect(locked).toEqual({ ok: false, error: 'SHOP_TIER_LOCKED:3:1' });
+    await emitAck(gm, 'shop:tier', { tier: 3 });
+    expect(
+      await upgrade(player, { entryId: 'vehicle-upgrade.machine-gun', expectPrice: 1 }),
+    ).toEqual({ ok: false, error: 'QUOTE_CHANGED' });
+
+    const seen = waitForMatch<VehicleUpsertBroadcast>(
+      player,
+      'vehicle:upsert',
+      (payload) => payload.vehicle.id === carId && upgradesOf(payload.vehicle).length > 0,
+    );
+    const bought = data(
+      await upgrade(player, { entryId: 'vehicle-upgrade.machine-gun', expectPrice: 3_000 }),
+      'upgrade',
+    );
+    expect(bought).toMatchObject({ balance: 87_000, price: 3_000 });
+    expect(upgradesOf(bought.vehicle)).toEqual(['machineGun']);
+    expect(upgradesOf((await seen).vehicle)).toEqual(['machineGun']);
+  });
+
+  it('reguły montażu jak w oknie MG: Wzmocniona konstrukcja, „tylko raz”, fotele', async () => {
+    // Moto 5 → Luksusowe × 3 = 15 000 ed, poziom 4.
+    expect(
+      (await upgrade(player, { entryId: 'vehicle-upgrade.rocket-pod', expectPrice: 15_000 })).ok,
+    ).toBe(false);
+    await emitAck(gm, 'shop:tier', { tier: 4 });
+    expect(
+      await upgrade(player, { entryId: 'vehicle-upgrade.rocket-pod', expectPrice: 15_000 }),
+    ).toEqual({ ok: false, error: 'UPGRADE_NEEDS_REINFORCED' });
+    const reinforced = data(
+      await upgrade(player, { entryId: 'vehicle-upgrade.reinforced', expectPrice: 3_000 }),
+      'reinforced',
+    );
+    // Wzmocniona konstrukcja dokłada 20 także do bieżących PUK (próbka: kompakt 45).
+    expect(statsOf(reinforced.vehicle).hp).toBe(65);
+    data(
+      await upgrade(player, { entryId: 'vehicle-upgrade.rocket-pod', expectPrice: 15_000 }),
+      'rocket pod',
+    );
+    expect(
+      await upgrade(player, { entryId: 'vehicle-upgrade.reinforced', expectPrice: 3_000 }),
+    ).toEqual({ ok: false, error: 'UPGRADE_ONCE' });
+    const seats = data(
+      await upgrade(player, { entryId: 'vehicle-upgrade.extra-seats', expectPrice: 3_000 }),
+      'extra seats',
+    );
+    expect(seats.vehicle.layout).toBe('car-6');
+    expect(upgradesOf(seats.vehicle)).toEqual([
+      'machineGun',
+      'reinforced',
+      'rocketPod',
+      'extraSeats',
+    ]);
+    expect(seats.balance).toBe(87_000 - 3_000 - 15_000 - 3_000);
+  });
+
+  it('odmowy: cudze auto, auto z Taboru, wpis spoza warsztatu, zamknięty katalog', async () => {
+    const someoneElse = data(
+      await emitAck<VehicleView>(gm, 'vehicle:create', { catalogId: 'vehicle.sample-kompakt' }),
+      'npc car',
+    );
+    expect(
+      await upgrade(player, {
+        vehicleId: someoneElse.id,
+        entryId: 'vehicle-upgrade.nitro',
+        expectPrice: 3_000,
+      }),
+    ).toEqual({ ok: false, error: 'VEHICLE_NOT_FOUND' });
+    expect(await upgrade(player, { entryId: 'vehicle.ranczer', expectPrice: 10_000 })).toEqual({
+      ok: false,
+      error: 'NOT_PURCHASABLE',
+    });
+
+    // Auto z Taboru Rodziny ulepsza się za Moto (decyzja MG z 06.11).
+    const fleetCar = data(
+      await emitAck<VehicleView>(gm, 'vehicle:create', {
+        catalogId: 'vehicle.sample-kompakt',
+        ownerCharacterId: ownerId,
+      }),
+      'fleet car',
+    );
+    const row = await built.prisma.vehicle.findUniqueOrThrow({ where: { id: fleetCar.id } });
+    await built.prisma.vehicle.update({
+      where: { id: fleetCar.id },
+      data: {
+        system: JSON.stringify({
+          ...(JSON.parse(row.system) as object),
+          fleetRowId: 'tabor-1',
+        }),
+      },
+    });
+    expect(
+      await upgrade(player, {
+        vehicleId: fleetCar.id,
+        entryId: 'vehicle-upgrade.nitro',
+        expectPrice: 3_000,
+      }),
+    ).toEqual({ ok: false, error: 'VEHICLE_IN_FLEET' });
+
+    await emitAck(gm, 'campaign:catalog-shopping', { mode: 'merchants' });
+    expect(await upgrade(player, { entryId: 'vehicle-upgrade.nitro', expectPrice: 3_000 })).toEqual(
+      { ok: false, error: 'CATALOG_CLOSED' },
+    );
+    await emitAck(gm, 'campaign:catalog-shopping', { mode: 'everywhere' });
+  });
+
+  it('warsztat handlarza: osobna kategoria, cena z mnożnikiem, naprawa za brakujące PUK', async () => {
+    const shopId = data(
+      await emitAck<CharacterView>(gm, 'character:create', { name: 'Warsztat Grubego' }),
+      'shop',
+    ).id;
+    await emitAck(gm, 'economy:adjust', { characterId: shopId, balance: 0 });
+    const merchantId = data(
+      await emitAck<MerchantConfigResult>(gm, 'merchant:config', {
+        characterId: shopId,
+        merchant: { access: 'remote', open: true, priceMul: 120 },
+        // Salon na 4 i pozostałe na 4 — warsztatu bez osobnego poziomu nie ma.
+        assortment: { base: 4, categories: { vehicle: 4 } },
+      }),
+      'merchant:config',
+    ).merchantId!;
+    const view = async () =>
+      data(await emitAck<MerchantViewResult>(player, 'merchant:view', { merchantId }), 'view')
+        .merchant;
+    expect((await view()).vehicleUpgrades).toEqual([]);
+    expect((await view()).repairsVehicles).toBeUndefined();
+    expect(
+      await upgrade(player, {
+        entryId: 'vehicle-upgrade.nitro',
+        expectPrice: 3_600,
+        merchantId,
+      }),
+    ).toEqual({ ok: false, error: 'NOT_IN_RANGE' });
+
+    await emitAck(gm, 'merchant:config', {
+      characterId: shopId,
+      merchant: {},
+      assortment: { base: 1, categories: { vehicleUpgrade: 3 } },
+    });
+    const shop = await view();
+    expect(shop.repairsVehicles).toBe(true);
+    const offered = (shop.vehicleUpgrades ?? []).map((offer) => offer.entryId);
+    expect(offered).toContain('vehicle-upgrade.nitro');
+    expect(offered).not.toContain('vehicle-upgrade.armored-hull');
+    expect(
+      shop.vehicleUpgrades!.find((offer) => offer.entryId === 'vehicle-upgrade.nitro'),
+    ).toMatchObject({ upgradeId: 'nitro', price: 3_600 });
+    const nitro = data(
+      await upgrade(player, { entryId: 'vehicle-upgrade.nitro', expectPrice: 3_600, merchantId }),
+      'nitro at counter',
+    );
+    expect(upgradesOf(nitro.vehicle)).toContain('nitro');
+
+    // Naprawa: całe auto — nic do roboty; poza warsztatem — odmowa.
+    const repair = (body: Record<string, unknown>) =>
+      emitAck<VehicleBuyResult>(player, 'vehicle:repair', {
+        characterId: ownerId,
+        vehicleId: carId,
+        merchantId,
+        ...body,
+      });
+    expect(await repair({ expectPrice: 50 })).toEqual({ ok: false, error: 'NOTHING_TO_REPAIR' });
+    await emitAck(gm, 'vehicle:update', { vehicleId: carId, patch: { system: { hp: 15 } } });
+    expect(await repair({ expectPrice: 3_000, merchantId: undefined })).toEqual({
+      ok: false,
+      error: 'BAD_REQUEST',
+    });
+    // 50 brakujących PUK × 50 ed × 120% = 3000 ed.
+    expect(await repair({ expectPrice: 2_500 })).toEqual({ ok: false, error: 'QUOTE_CHANGED' });
+    const before = nitro.balance;
+    const fixed = data(await repair({ expectPrice: 3_000 }), 'repair');
+    expect(statsOf(fixed.vehicle).hp).toBe(65);
+    expect(fixed.balance).toBe(before - 3_000);
+    const cash = JSON.parse(
+      (await built.prisma.character.findUniqueOrThrow({ where: { id: shopId } })).data,
+    ) as CpredCharacterData;
+    expect(cash.eddies).toBe(3_600 + 3_000);
+
+    // Wrak też się naprawia — wszystkie PUK.
+    await emitAck(gm, 'vehicle:update', { vehicleId: carId, patch: { system: { hp: 0 } } });
+    const wreck = data(await repair({ expectPrice: 65 * 50 * 1.2 }), 'wreck repair');
+    expect(statsOf(wreck.vehicle).hp).toBe(65);
+  });
+});

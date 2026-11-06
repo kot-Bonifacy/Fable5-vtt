@@ -77,6 +77,30 @@ export function vehicleBodyColumns(stats: CpredVehicleStats): {
   return { ...cpredVehicleSize(stats), layout: cpredVehicleLayout(stats) };
 }
 
+/**
+ * Układ i bryła po zmianie foteli albo listy ulepszeń (03.11, etap 68): fotele
+ * z Ulepszenia foteli zmieniają układ i bryłę, chyba że łata wybrała je sama
+ * (`chosen`). Rozmiar idzie za układem tylko wtedy, gdy układ się zmienia.
+ */
+export function vehicleSeatColumns(
+  current: Pick<Vehicle, 'layout'>,
+  before: CpredVehicleStats,
+  after: CpredVehicleStats,
+  chosen: { layout?: boolean; size?: boolean } = {},
+): Partial<Pick<Vehicle, 'layout' | 'widthSq' | 'lengthSq'>> {
+  const seatsChanged =
+    before.seats !== after.seats ||
+    JSON.stringify(before.upgrades) !== JSON.stringify(after.upgrades);
+  if (!seatsChanged) return {};
+  const body = vehicleBodyColumns(after);
+  return {
+    ...(chosen.layout ? {} : { layout: body.layout }),
+    ...(!chosen.size && body.layout !== current.layout
+      ? { widthSq: body.widthSq, lengthSq: body.lengthSq }
+      : {}),
+  };
+}
+
 export async function createVehicle(
   db: Db,
   campaignId: string,

@@ -395,3 +395,28 @@ input.vehicle-card-name {
 .trade-salon {
   margin-top: 0.4rem;
 }
+
+/* Warsztat (etap 68): ulepszenie i naprawa — oferta bez grafiki, opis pod
+   nazwą, przycisk pod spodem. */
+.vehicle-offer.vehicle-upgrade-offer {
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-areas:
+    'body'
+    'buy';
+}
+
+.vehicle-upgrade-offer .vehicle-offer-name {
+  white-space: normal;
+}
+
+.trade-workshop-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  margin-bottom: 0.3rem;
+}
+
+.trade-workshop-head .trade-column-title {
+  margin: 0;
+}

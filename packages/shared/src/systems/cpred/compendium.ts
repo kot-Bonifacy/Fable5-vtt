@@ -63,8 +63,10 @@ import {
   CPRED_VEHICLE_HP_MAX,
   CPRED_VEHICLE_MOVE_MAX,
   CPRED_VEHICLE_SEATS_MAX,
+  cpredVehicleUpgrade,
   isCpredVehicleKind,
   type CpredVehicleKind,
+  type CpredVehicleUpgradeId,
 } from './vehicles.js';
 
 /**
@@ -95,6 +97,7 @@ export const COMPENDIUM_CATEGORIES = [
   'netDefense',
   'criticalInjury',
   'vehicle',
+  'vehicleUpgrade',
 ] as const;
 export type CompendiumCategory = (typeof COMPENDIUM_CATEGORIES)[number];
 
@@ -109,6 +112,7 @@ export const COMPENDIUM_CATEGORY_LABELS: Record<CompendiumCategory, string> = {
   netDefense: 'Obrona Sieci',
   criticalInjury: 'Rany krytyczne',
   vehicle: 'Pojazdy',
+  vehicleUpgrade: 'Ulepszenia pojazdów',
 };
 
 /**
@@ -119,7 +123,8 @@ export const COMPENDIUM_CATEGORY_LABELS: Record<CompendiumCategory, string> = {
  * but *bolted on* (stage 31); and Net defenders belong to an architecture,
  * never to a person. A Program is a backpack row since stage 48b — it goes
  * into a deck slot from there. A vehicle (stage 65a) is a row of its own table,
- * not of the sheet — the GM gives it from the „Pojazdy” panel.
+ * not of the sheet — the GM gives it from the „Pojazdy” panel — and a vehicle
+ * upgrade (stage 68) is bolted straight into a car (`vehicle:upgrade-buy`).
  */
 export const COMPENDIUM_ITEM_CATEGORIES = COMPENDIUM_CATEGORIES.filter(
   (category) =>
@@ -127,7 +132,8 @@ export const COMPENDIUM_ITEM_CATEGORIES = COMPENDIUM_CATEGORIES.filter(
     category !== 'ammo' &&
     category !== 'attachment' &&
     category !== 'netDefense' &&
-    category !== 'vehicle',
+    category !== 'vehicle' &&
+    category !== 'vehicleUpgrade',
 );
 
 /** Weapon quality from the rulebook: poor jams on a 1, excellent adds +1. */
@@ -584,6 +590,18 @@ export interface VehicleEntry extends CompendiumEntryBase {
   forSale?: boolean;
 }
 
+/**
+ * Ulepszenie pojazdu do kupienia (etap 68, zlecenie MG z 06.11.2026) — wpis
+ * kompendium nad wierszem `CPRED_VEHICLE_UPGRADES`: nazwa, opis, cena
+ * i poziom są wpisu (MG może je zmienić własnym wpisem o tym samym id),
+ * a zasadę montażu i mechanikę daje `upgradeId`. Nie jest wierszem karty —
+ * kupione od razu siedzi w aucie (`vehicle:upgrade-buy`).
+ */
+export interface VehicleUpgradeEntry extends CompendiumEntryBase {
+  category: 'vehicleUpgrade';
+  upgradeId: CpredVehicleUpgradeId;
+}
+
 export type CompendiumEntry =
   | WeaponEntry
   | AmmoEntry
@@ -594,10 +612,15 @@ export type CompendiumEntry =
   | ProgramEntry
   | NetDefenseEntry
   | CriticalInjuryEntry
-  | VehicleEntry;
+  | VehicleEntry
+  | VehicleUpgradeEntry;
 
 export function isVehicleEntry(entry: CompendiumEntry): entry is VehicleEntry {
   return entry.category === 'vehicle';
+}
+
+export function isVehicleUpgradeEntry(entry: CompendiumEntry): entry is VehicleUpgradeEntry {
+  return entry.category === 'vehicleUpgrade';
 }
 
 export function isCriticalInjuryEntry(entry: CompendiumEntry): entry is CriticalInjuryEntry {
@@ -778,7 +801,9 @@ export function validateCompendiumEntry(
         ? input.defenseKind === 'demon'
           ? 'demon'
           : 'defense'
-        : category;
+        : category === 'vehicleUpgrade'
+          ? 'vehicle-upgrade'
+          : category;
   const id =
     typeof input.id === 'string' && input.id.length > 0
       ? input.id
@@ -855,6 +880,7 @@ export function validateCompendiumEntry(
   else if (category === 'netDefense') entry = validateNetDefense(input, base, issues);
   else if (category === 'criticalInjury') entry = validateCriticalInjury(input, base, issues);
   else if (category === 'vehicle') entry = validateVehicle(input, base, issues);
+  else if (category === 'vehicleUpgrade') entry = validateVehicleUpgrade(input, base, issues);
   else entry = validateGear(input, base, issues);
 
   if (issues.length > 0 || !entry) return { ok: false, issues };
@@ -993,6 +1019,19 @@ function validateVehicle(
   if (typeof input.classId === 'string') vehicle.classId = input.classId;
   if (input.forSale === true) vehicle.forSale = true;
   return vehicle;
+}
+
+function validateVehicleUpgrade(
+  input: Record<string, unknown>,
+  base: CompendiumEntryBase,
+  issues: CompendiumIssue[],
+): VehicleUpgradeEntry | undefined {
+  const upgrade = typeof input.upgradeId === 'string' ? cpredVehicleUpgrade(input.upgradeId) : null;
+  if (!upgrade) {
+    issues.push({ field: 'upgradeId', message: 'Wybierz ulepszenie z listy podręcznika.' });
+    return undefined;
+  }
+  return { ...base, category: 'vehicleUpgrade', upgradeId: upgrade.id };
 }
 
 function validateFeatures(raw: unknown, issues: CompendiumIssue[]): string[] {

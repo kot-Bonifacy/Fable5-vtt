@@ -180,8 +180,10 @@ describe('compendium', () => {
     // Every sample entry declares itself as invented data, never rulebook text.
     // Car models (etap 67) are the table's own data on top of a sample class —
     // their file has its own guard in `licensing.test.ts`.
+    // Vehicle upgrades (etap 68) are our own summaries from `vehicles.ts` with the
+    // table's prices, generated in code — not entries of any data file.
     const models = (e: { category: string; art?: unknown }) =>
-      e.category === 'vehicle' && typeof e.art === 'string';
+      (e.category === 'vehicle' && typeof e.art === 'string') || e.category === 'vehicleUpgrade';
     for (const entry of sync.compendium.entries.filter((e) => !e.custom && !models(e))) {
       expect(entry.source ?? '').toContain('przykładowe');
     }

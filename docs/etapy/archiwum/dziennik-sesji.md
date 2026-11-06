@@ -1,5 +1,22 @@
 # Dziennik sesji — archiwum
 
+### Sesja 05.11, czwarta — reszta zaległości 66c z decyzjami MG
+
+**Zlecenie MG:** „wykonaj zaległości. Karty NPC-ów zostają w kampanii”. **Decyzje MG:** ręka MG
+darmowa, „Cofnij” obrażeń bez zmian, EMP 3 NPC-ów wzorca, „Ucieka” w menu auta (zapisane
+w `decyzje-i-uproszczenia.md`). **Zrobione:** „Zamiana broni — X → Y” na czacie zamiast
+„Schowanie broni” (`requireTurnSpend` z `actionName`); strzelba w rękach przy tarczy zostaje na
+pasku HUD wygaszona (`heldBlocked`); otarcie aut o włos w poprzek nie jest zderzeniem
+(`GRAZE_FRACTION`); wrak za autem nie ląduje na aucie z tyłu (`chaseFreeSpotPastVehicle`);
+grafika auta trzyma długość bryły (furgon); podpis figury z górnej połowy auta nad nią
+(`captionAbove`); rezerwa lewego panelu przy liczniku Szczęścia; ręka MG bez kosztu metrów
+(`TokenMovePayload.dragged`); `chase:escape` („Ucieka”); EMP 3 we wzorcu. Esc na kubku MG nie
+odtworzone. Umowy na górze `mapa`, `tura`, `ui`, `atak`; diagnozy w
+`archiwum/zamkniete-zaleglosci.md`. **Testy:** shared 2957, client 471, server 1743 zielone
+(nowe: zamiana na czacie, `heldBlocked`, otarcie i skośny wjazd, wolne miejsce za autem, ręka MG,
+„Ucieka”), `tsc`, ESLint, Prettier czyste. **Oglądane w Firefoksie** tymczasowym specem E2E (MG,
+wzorzec „Ostatni zjazd”, `po-T6`, skasowany) — Firefox MCP znów zawisł na `browser_navigate`.
+
 ### Sesja 05.11, trzecia — siedem zaległości pościgu i czatu
 
 **Zlecenie MG:** „napraw kilka zaległości”. **Zrobione:** stan kierowcy z karty, obrażeń i ręki

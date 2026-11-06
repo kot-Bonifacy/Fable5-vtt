@@ -9,6 +9,23 @@ czytany na starcie każdej sesji został listą zadań, a nie archiwum ustaleń.
 inaczej, niż mówi podręcznik, albo gdy dotykasz wymienionego tu kodu. Jeśli któraś z tych decyzji
 przestanie się bronić, przenieś ją stąd do `POMYSLY.md` jako zadanie — nie odwrotnie.
 
+## Warsztat: ulepszenia auta za ed i naprawa (etap 68, 06.11.2026, decyzje MG)
+
+- **Cena ulepszenia = cena pasma z s. 163 × 3** — Moto 1 „Bardzo kosztowne” 1000 → **3000 ed**,
+  reszta „Luksusowe” 5000 → **15 000 ed** (cennik ×10 dawał opancerzenie droższe od auta).
+  `CPRED_VEHICLE_UPGRADE_PRICE_SCALE` w `vehicle-upgrade-shop.ts`.
+- **Poziom sklepu z pasma:** Moto 1 → 3 (Wojskowe), reszta → 4 (Czarny rynek) — „bardzo rzadko
+  pojawiają się w sprzedaży”. MG przestawia pojedynczy wpis w Kompendium.
+- **Montaż od razu po zapłacie**, bez Testu i bez czasu; reguły montażu jak w oknie MG.
+- **Tylko do własnych aut spoza Taboru Rodziny** — auto Rodziny ulepsza się za Moto. Naprawa auta
+  z Taboru jest dozwolona („zwykłe naprawy należą do obowiązków Nomady”, s. 162).
+- **Naprawa tylko w warsztacie** (handlarz z kategorią „Ulepszenia pojazdów”): **50 ed za
+  brakujący PUK** kadłuba, szyby w cenie, same szyby — jak 1 PUK, wrak też. Auto wraca od razu;
+  PT i czas z „Naprawy pojazdów” (s. 147) stoją tylko na karcie czatu. Podręcznik ceny naprawy nie
+  podaje. Stopień uszkodzeń (zasada domowa): PUK 0 — zniszczony, połowa PUK albo mniej — poważne,
+  reszta — lekkie.
+- **Demontażu przez gracza i odkupu ulepszeń nie ma** — zdejmuje MG w oknie pojazdu, bez zwrotu.
+
 ## Ręka MG, „Cofnij” obrażeń i karty NPC-ów kopii sceny (05.11.2026, decyzje MG)
 
 - **Ręka MG jest darmowa.** Przeciągnięcie figury przez MG — także w jej turze i także wysiadka
@@ -917,7 +934,7 @@ szansa` — kształt Rzutu na Śmierć, nie Testu na PT.
   podręcznik: wpisów jest najwyżej tyle, ile poziomów Moto, i żaden nie jest z kategorii wyższej
   niż poziom. Ulepszenia pojazdów z s. 163–165 (kilkadziesiąt pozycji) zostają w podręczniku:
   bez pojazdów nie miałyby czego ulepszać, a wiersz Taboru „Opancerzenie kadłuba" mówi przy stole
-  dokładnie to samo.
+  dokładnie to samo. *(Nieaktualne: od 65a pojazdy i ulepszenia są w VTT, od 68 — także za ed.)*
 
 - **Etap 29a — „nieco czasu na obecnym poziomie" zostaje przy stole.** Podręcznik po tabelach
   kosztów dopisuje: „Należy spędzić nieco czasu na obecnym poziomie, zanim wykupi się kolejny"

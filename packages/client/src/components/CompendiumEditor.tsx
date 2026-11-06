@@ -34,6 +34,7 @@ import {
   ARMOR_LOCATION_LABELS,
   COMPENDIUM_CATEGORIES,
   CPRED_VEHICLE_KINDS,
+  CPRED_VEHICLE_UPGRADES,
   CPRED_VEHICLE_KIND_LABELS,
   COMPENDIUM_DESCRIPTION_MAX_LENGTH,
   CPRED_AMMO_PATTERNS,
@@ -1421,6 +1422,25 @@ export function CompendiumEditor() {
             </>
           ) : null}
 
+          {form.category === 'vehicleUpgrade' ? (
+            <label
+              className="bot-field"
+              title="Reguły montażu i mechanika idą za ulepszeniem z podręcznika; nazwa, opis, cena i poziom są tego wpisu."
+            >
+              Ulepszenie (s. 163–165)
+              <select
+                value={form.vehicleUpgradeId}
+                onChange={(event) => patch({ vehicleUpgradeId: event.target.value })}
+              >
+                {CPRED_VEHICLE_UPGRADES.map((upgrade) => (
+                  <option key={upgrade.id} value={upgrade.id}>
+                    {upgrade.name} (Moto {upgrade.motoLevel})
+                  </option>
+                ))}
+              </select>
+            </label>
+          ) : null}
+
           {form.category === 'criticalInjury' ? (
             <>
               <div className="bot-row-inline">
@@ -1834,6 +1854,7 @@ interface EditorForm {
   vehicleMove: string;
   vehicleSpeed: string;
   vehicleMotoLevel: string;
+  vehicleUpgradeId: string;
 }
 
 function toForm(entry: CompendiumEntry | undefined): EditorForm {
@@ -1994,6 +2015,8 @@ function toForm(entry: CompendiumEntry | undefined): EditorForm {
     vehicleMove: numberField(entry?.category === 'vehicle' ? entry.move : undefined),
     vehicleSpeed: numberField(entry?.category === 'vehicle' ? entry.speedKmh : undefined),
     vehicleMotoLevel: numberField(entry?.category === 'vehicle' ? entry.motoLevel : undefined),
+    vehicleUpgradeId:
+      entry?.category === 'vehicleUpgrade' ? entry.upgradeId : CPRED_VEHICLE_UPGRADES[0]!.id,
   };
 }
 
@@ -2249,6 +2272,9 @@ function fromForm(form: EditorForm, existingId: string | undefined): Record<stri
       speedKmh: numberOrUndefined(form.vehicleSpeed),
       motoLevel: numberOrUndefined(form.vehicleMotoLevel),
     };
+  }
+  if (form.category === 'vehicleUpgrade') {
+    return { ...base, upgradeId: form.vehicleUpgradeId };
   }
   if (form.category === 'criticalInjury') {
     return {

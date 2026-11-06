@@ -22,6 +22,7 @@ import { shopTierContextOf, useCompendiumStore } from '../../stores/compendiumSt
 import { useExchangeStore } from '../../stores/exchangeStore.js';
 import { InlineNotice } from '../NoticeColumn.js';
 import { VehicleOffer } from '../VehicleOffer.js';
+import { MerchantWorkshop } from '../VehicleWorkshop.js';
 import { useExchangeDrag } from './drag.js';
 import { ItemGrid, countLabel, useGridSelection, useItemTile, type GridTile } from './ItemGrid.js';
 import { formatEd, itemKey } from './items.js';
@@ -534,6 +535,23 @@ export function MerchantPane({ anchorId, merchantId }: { anchorId: string; merch
           </ul>
         </section>
       )}
+
+      {/* Etap 68: warsztat — ulepszenia do auta gracza i naprawa (`vehicle:upgrade-buy`,
+          `vehicle:repair`), u handlarza z kategorią „Ulepszenia pojazdów”. */}
+      <MerchantWorkshop
+        characterId={anchorId}
+        merchantId={merchantId}
+        offers={view.vehicleUpgrades ?? []}
+        repairs={view.repairsVehicles === true}
+        priceMul={view.priceMul}
+        blockedHint={
+          inCombat
+            ? COMBAT_LOCKED_HINT
+            : closed
+              ? `${MERCHANT_CLOSED_LABELS[closed]} — warsztat nie pracuje.`
+              : null
+        }
+      />
 
       <div className="trade-footer">
         {quote && !empty && (
