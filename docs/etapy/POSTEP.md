@@ -21,7 +21,7 @@ w plikach obok — czytaj je **na żądanie, nigdy rutynowo**:
 
 | stan         | etapy                                                                                          |
 | ------------ | ---------------------------------------------------------------------------------------------- |
-| ⬜ otwarty   | **68** Warsztat: ulepszenia auta za ed i naprawa (🟨 zrobione 06.11, czeka na wdrożenie i oględziny MG przy stole); **67** Zakup pojazdu (🟨 zrobione 06.11, czeka na wdrożenie i oględziny MG przy stole); **66d** Scena przykładowa „Zastaw” (🟨 projekt i wzorzec zrobione 06.11, czeka na rozegranie w przeglądarce, stół MG i wdrożenie); **66** Sceny przykładowe (🟨 zrobione 31.10, czeka na oględziny MG przy stole i wdrożenie; **66b** „Fabryka dronów” 🟨 zrobione 31.10, tak samo; **66c** „Ostatni zjazd” 🟨 wzorzec zrobiony, rozegrany w przeglądarce 04.11 i ponownie 05.11 po rebalansie (porażka o włos, balans zatwierdzony przez MG) — zaległości z przebiegów zamknięte 05.11 poza Esc na kubku MG — czeka na stół MG i wdrożenie); **65** Scena pościgu i walka pojazdów (🟨 65a–65e ✅ 30–31.10, czeka na oględziny MG przy stole); **62** Sieć ze sceny (🟨 zrobione, czeka na oględziny MG na VPS po wdrożeniu); **61** Skradanie się (🟨 zrobione, czeka na słowo MG o rozstrzygnięciach); **28** Wdrożenie na VPS (🟨 działa na `https://vtt.tatanga.eu` z botami od 18.10; zostały off-site, utwardzenie, monitoring); **43b**, **43c** (UI walki); **60** Czytelny czat (zlecenie MG z 24.10; 🟨 60a–60c ✅, czeka na oględziny MG z pierwszego kryterium); T10; refaktoryzacja odłożona (MG 18.10) |
+| ⬜ otwarty   | **68** Warsztat: ulepszenia auta za ed i naprawa (🟨 zrobione 06.11, czeka na wdrożenie i oględziny MG przy stole); **67** Zakup pojazdu (🟨 zrobione 06.11, czeka na wdrożenie i oględziny MG przy stole); **66d** Scena przykładowa „Zastaw” (🟨 wzorzec zrobiony i rozegrany w przeglądarce 06.11 — pościg w 3 rundach, za szybko; czeka na decyzje MG o balansie, stół MG i wdrożenie); **66** Sceny przykładowe (🟨 zrobione 31.10, czeka na oględziny MG przy stole i wdrożenie; **66b** „Fabryka dronów” 🟨 zrobione 31.10, tak samo; **66c** „Ostatni zjazd” 🟨 wzorzec zrobiony, rozegrany w przeglądarce 04.11 i ponownie 05.11 po rebalansie (porażka o włos, balans zatwierdzony przez MG) — zaległości z przebiegów zamknięte 05.11 poza Esc na kubku MG — czeka na stół MG i wdrożenie); **65** Scena pościgu i walka pojazdów (🟨 65a–65e ✅ 30–31.10, czeka na oględziny MG przy stole); **62** Sieć ze sceny (🟨 zrobione, czeka na oględziny MG na VPS po wdrożeniu); **61** Skradanie się (🟨 zrobione, czeka na słowo MG o rozstrzygnięciach); **28** Wdrożenie na VPS (🟨 działa na `https://vtt.tatanga.eu` z botami od 18.10; zostały off-site, utwardzenie, monitoring); **43b**, **43c** (UI walki); **60** Czytelny czat (zlecenie MG z 24.10; 🟨 60a–60c ✅, czeka na oględziny MG z pierwszego kryterium); T10; refaktoryzacja odłożona (MG 18.10) |
 | ✅ ukończone | 01–11, 13–20b, 23a–27f, 27h–27l, 29a–30d, 31–35, 37–42c, 43a, 44a–44d, 45, 46a1, 46a2, 46c1, 46c2, 46b1, 46b2, 47a, 47b, 48a, 48b, 48c, 49a, 49b, 50a, 50b, 50c, 51, 52, 53, 54, 55, 56, 57 (57a–57c), 58 (58a–58d), 59 (59a–59c), 63 (63a–63b; 63c wycofane 29.10), 64 (64a–64c) (ostatni zamknięty: 64, 2026-10-30) |
 | ⛔ wycofane  | 12, 21, 22 (głos), 27g (wydajność), 36 (makra); 27, 29, 30, 38 rozdzielone na etapy literowane |
 
@@ -29,12 +29,16 @@ Pełna tabela z nazwami i datami: `archiwum/tabela-etapow.md`.
 
 ## Od czego zacząć
 
-**Scena przykładowa „Zastaw” (etap 66d, zlecenie MG z 06.11) — czeka na rozegranie w przeglądarce
-(MG + 2 graczy), stół MG i wdrożenie (bez migracji).** Pościg na 2 graczy na Neonowej ulicy: kombi
-drużyny („Włóczęga” z Pługiem i Nitro) goni furgon Militechu (Brzoza, Hak, skrępowany Śrubka),
-w rundzie 3 od tyłu wjeżdża radiowóz NCPD z rezerwy. Bez zegara — porażka to wrak kombi albo
-furgon za przednią krawędzią; tempo 40 trzyma dwa kompakty w kadrze. Projekt i decyzje MG
-w `etap-66d-zastaw.md`, wzorzec `data/public/scenes/zastaw/`.
+**Scena przykładowa „Zastaw” (etap 66d, zlecenie MG z 06.11) — rozegrana w przeglądarce 06.11;
+czeka na decyzje MG o balansie, stół MG i wdrożenie (bez migracji).** Pościg na 2 graczy na
+Neonowej ulicy: kombi drużyny („Włóczęga” z Pługiem i Nitro) goni furgon Militechu (Brzoza, Hak,
+skrępowany Śrubka), w rundzie 3 wjeżdża radiowóz NCPD. W przebiegu pościg skończył się w rundzie 3:
+Nitro daje kierowcy 10 m, a taranowanie nie ma limitu na turę — trzy tarany Pługiem w jednej turze
+zrobiły z furgonu wrak; Śrubka dostał Ranę ze skryptowego auta cywilnego. Zatrzymanie (tarcza,
+koperta Wronki, Perswazje) zadziałało w 2 rundy. Wnioski i propozycje w `etap-66d-zastaw.md`
+(„Rozegranie w przeglądarce”), notatka ⚠️ wzorca poprawiona. Przy okazji (zgłoszenie MG): figury
+w stojącym aucie starej sceny siedziały na starym układzie foteli — serwer przesadza je przy
+starcie (`reseatChasePassengers`).
 
 **Grafiki MG w „Ostatnim zjeździe”, furgony na 6 foteli i auta widoczne w UI (zlecenie MG
 z 06.11) — czeka na wdrożenie (bez migracji) i oględziny MG przy stole.** Wzorzec 66c: Wóz od
@@ -693,7 +697,7 @@ a nie do tego pliku.
 
 | obszar      | co obejmuje                                                    | umów | pułapek |
 | ----------- | -------------------------------------------------------------- | ---- | ------- |
-| `mapa`      | figury, zaznaczanie, narzędzia, obiekty sceny, ściany, efekty, zamek drzwi, ukryta figura zauważona, ikony urządzeń, wspólny widok drużyny, scena pościgu, jazda kierowcy i dryf, Manewr i taranowanie, przeszkody pościgu, sceny przykładowe, wzorzec zwykłej mapy, ulepszenia pojazdu, stojące auto na drodze, kreator pościgu i wbudowane drogi, załoga auta poza pościgiem, rama pościgu i pęd auta bez kierowcy, długa pętla drogi, ucieczka auta ręką MG, otarcie brył, wrak za autem, podpis w fotelu, furgon z wyglądu (`van-6`) | 90   | 27      |
+| `mapa`      | figury, zaznaczanie, narzędzia, obiekty sceny, ściany, efekty, zamek drzwi, ukryta figura zauważona, ikony urządzeń, wspólny widok drużyny, scena pościgu, jazda kierowcy i dryf, Manewr i taranowanie, przeszkody pościgu, sceny przykładowe, wzorzec zwykłej mapy, ulepszenia pojazdu, stojące auto na drodze, kreator pościgu i wbudowane drogi, załoga auta poza pościgiem, rama pościgu i pęd auta bez kierowcy, długa pętla drogi, ucieczka auta ręką MG, otarcie brył, wrak za autem, podpis w fotelu, furgon z wyglądu (`van-6`), przesadzanie foteli przy starcie | 91   | 27      |
 | `czat`      | rodzaje wierszy, `visibleTo`, filtr, `seq`, `gmrecovery`, „to dotyczy mnie”, grupy kart, kolor gracza, czyszczenie, gęsta karta rzutu, przebieg ataku, `/jako` za NPC-a, karta rzutu bez konta | 17   | 3       |
 | `serwer`    | Prisma i migracje, zdarzenia gniazda, zapisy karty, uploady    | 26   | 21      |
 | `ui`        | okna pływające, `z-index`, motyw, skróty, dostępność, wejście, panel decyzji MG, rezerwa panelu przy liczniku Szczęścia | 39   | 15      |
@@ -717,6 +721,25 @@ a nie do tego pliku.
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
 
+### Sesja 06.11, piąta — etap 66d: „Zastaw” rozegrany w przeglądarce
+
+**Zlecenie MG:** „rozegraj w przeglądarce `etap-66d-zastaw.md`”. Prowadzone jak 66c: błędy
+obchodzone ręką MG, gracze grają rozsądnie, notatki wzorca poprawiane od razu. **Stół:** `dev.db`
+(kopia `dev.db.bak-20261106-66d`), „Oględziny 12.09”, Rdza (kierowca) i Kosa z 66c wyleczone ręką
+MG. **Wynik:** sukces z kosztem — pościg 3 rundy, zatrzymanie 2. Nitro (10 m) i brak limitu
+taranów na turę dały trzy tarany Pługiem w jednej turze (furgon 45 → wrak); Śrubka dostał Ranę
+ze skryptowego auta cywilnego (oblany skręt Brzozy w R3). Hak trafił Rdzę 3/3 (45 → 19).
+**Do decyzji MG:** jeden taran na turę albo Wzmocniona konstrukcja furgonu, auto cywilne w R2 na
+pasie kombi. **Poprawione:** notatka ⚠️ (R2: przeszkodę rozstrzyga pasek po dryfie, nie skręt
+z menu; przesiadka Haka to darmowa ręka MG). **W trakcie, zgłoszenie MG („kierowca siedzi na
+masce”, „stare grafiki aut”):** stara scena 66c miała Wolta na starym fotelu `van-8` — położenie
+figury w fotelu zapisane w bazie przeliczał tylko ruch auta, a wrak stał. `reseatChasePassengers`
+przy starcie serwera (umowa na górze `mapa`, test w `chase.test.ts`); stare grafiki to stara
+scena — wzorzec nie zmienia scen już dodanych. Zaległości: start walki przed rzutami graczy,
+skręt z menu przy przeszkodzie. **Testy:** `chase.test.ts` 10/10, `scene-templates.test.ts` 8/8.
+**Oglądane:** MG w Chromium, Rdza i Kosa w **Firefoksie** (Playwright MCP), konsola 0 błędów.
+Pnpm dev MG stał bez serwera API (`tsx watch` nie słuchał na 3001) — serwer uruchomiony osobno.
+
 ### Sesja 06.11, czwarta — etap 66d: scena przykładowa „Zastaw”
 
 **Zlecenie MG:** nowa przykładowa scena pościgu — dwóch graczy własnym kompaktem goni furgon
@@ -735,21 +758,3 @@ tymczasowym specem E2E na `po-T6` (skasowany) — Firefox z Playwright MCP zawis
 a w dev stał tylko Vite. Z oględzin: kamera gracza nie mieści furgonu i kombi naraz (dopisane do
 zaległości „Kamera gracza” z 04.11).
 
-### Sesja 06.11, trzecia — grafiki aut we wzorcu 66c, furgony na 6 foteli, auta w UI
-
-**Zlecenie MG:** nowe grafiki aut w przykładowym pościgu, lepsza widoczność kupowanych
-i posiadanych aut, furgony z 6 miejscami zamiast 8 i fotele dopasowane do układu auta (pierwszy
-rząd stał na masce furgonu). **Zrobione bez pytań:** układ `van-6` i przesunięty `van-8`
-(rzędy od 0,33–0,36 długości, sprawdzone nakładką na czterech grafikach furgonów w skali 3×7),
-`van` w modelu → wpis → liczby auta (bryła furgonu przy 6 fotelach), cztery furgony z 6
-fotelami. Wzorzec 66c: grafiki „Nocny Neon” / „Rajdówka 77” / „Widmo”, furgon z modelu
-„Militech — furgon” bez Ulepszenia foteli (Kłoda w fotelu 4, Iskra w 5), wstęp z nowymi autami
-(biały furgon z logo Militechu wynajęty przez Halcyon). UI: `VehicleArt` (auto bokiem), duża
-grafika i „W garażu: …” we wpisie Kompendium, miniatury i znaczek na liście, oferta z „W
-garażu”, karta pojazdu z paskiem PUK i plakietkami, sekcja „Pojazdy (N)” pod gotówką.
-**Do decyzji MG:** dobór grafik do aut wzorca (zwłaszcza Militech zamiast „Gratów” dla furgonu
-Halcyonu). **Testy:** shared 2973, client 471, server 1752 zielone poza znanym migotaniem
-`surgery.test.ts` (sam 3/3); `tsc` klienta, ESLint, Prettier czyste. **Oglądane w Firefoksie**
-(Ola: Kompendium → „Graty” → „Kup”, lista „Pojazdy”, karta → Ekwipunek) i **Chromium** (MG:
-scena z wzorca „Ostatni zjazd” na Neonowej ulicy, zbliżenie na furgon) tymczasowym specem E2E
-na `po-T6` (skasowany); Firefox z Playwright MCP nie wstał (pułapka z 03.10).

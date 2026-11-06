@@ -2,8 +2,9 @@
 
 **Faza:** przed betą (zlecenie MG z 06.11 spoza planu) · **Wymaga etapów:** 66 (wzorce scen),
 65 (pościg), 66c (auto w rezerwie, stany figur we wzorcu, tło z wbudowanej drogi), 67 (modele aut
-z grafikami MG) · **Stan:** 🟨 projekt i wzorzec `data/public/scenes/zastaw/` zrobione 06.11;
-czeka na rozegranie w przeglądarce, oceny MG przy stole i wdrożenie
+z grafikami MG) · **Stan:** 🟨 projekt i wzorzec `data/public/scenes/zastaw/` zrobione 06.11,
+rozegrany w przeglądarce 06.11 (pościg w 3 rundach — za szybko); czeka na decyzje MG o balansie,
+stół MG i wdrożenie
 
 ## Skąd ten etap
 
@@ -272,6 +273,64 @@ Vite — oglądane **tymczasowym specem E2E** (skasowany) na `po-T6`: MG w Chrom
   przypadkach furgon 10 kratek przed kombi jest poza kadrem, dopóki gracz nie oddali widoku.
   To ta sama otwarta zaległość co w 66c („Kamera gracza”, `zaleglosci.md`) — pomiar dopisany tam.
 
+## Rozegranie w przeglądarce (06.11, piąta sesja)
+
+**Zlecenie MG:** „rozegraj w przeglądarce”. Prowadzone jak 66c (odpowiedzi MG z 04.11): błędy
+notuję i obchodzę ręką MG, gracze grają rozsądnie, notatki wzorca poprawiam od razu, gdy nie
+zgadzają się z VTT. **Stół:** `dev.db` (kopia `dev.db.bak-20261106-66d`), kampania „Oględziny
+12.09”, „Zastaw” dodany z „Przykładowych” bez listy braków. **Rdza** (Nomada, Tester) za
+kierownicą kombi, **Kosa** (Solo, Handlarz, karabin) obok — postacie z kreatora 04.11, przed
+sceną wyleczone ręką MG (pełne PW, bez Ran z 66c, pełne magazynki). Kombi z wzorca, bez zmian.
+**Oglądane:** MG w Chromium, Rdza i Kosa w **Firefoksie** (Playwright MCP). Konsola: 0 błędów
+we wszystkich trzech kartach.
+
+**Przebieg (3 rundy pościgu + 2 rundy zatrzymania; wynik: sukces z kosztem).** Inicjatywa: Kosa
+14, Hak 11, Brzoza 9, Rdza 7 (Wronka 13 i Lis 9 od rundy 3).
+
+| runda | co się stało                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| ----- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1     | Kosa → tylna szyba furgonu 15 → 7. Hak trafia Rdzę (45 → 40). Brzoza i Rdza jadą po 5 kratek (pierwsza runda nie dryfuje). Rdza z pistoletu: szyba 7 → 2.                                                                                                                                                                                                                                                                                                                                                                                                 |
+| 2     | Dryf −5 oddaje oba auta na start. MG stawia auto cywilne przy przedniej krawędzi na pasie furgonu. Kosa rozbija szybę (Śrubka: „Tutaj!”). Hak: Rdza 40 → 35. Brzoza wjeżdża w auto — pasek daje tylko „Taranuj / Zatrzymaj się”, więc staje; Gwałtowny skręt z menu furgonu zdany (18), ale przeszkoda zostaje (zużyta Akcja). Rdza dojeżdża na kratkę za furgon i trafia Brzozę (40 → 38).                                                                                                                                                               |
+| 3     | Auto cywilne dojeżdża dryfem: pasek MG „Gwałtowny skręt / Taranuj”, Brzoza **oblewa** — utrata kontroli, furgon 50 → 45, **Rana krytyczna Brzozy, Haka i Śrubki**. Radiowóz wraca. Kosa: Brzoza 38 → 32. Wronka (10 kratek) staje obok kombi, Rdza 35 → 32. Hak: Rdza 32 → **19**, Poważnie ranna, „Strzaskane palce”. Lis — Kosa unika. **Rdza: Nitro + trzy tarany Pługiem w jednej turze** (27, 32, 36 obr. − OB 13): furgon 45 → 31 → 12 → **wrak**. Bez nowych Ran — jadący mieli już ten sam uraz. Wrak ląduje za kombi; MG wyłącza „Droga jedzie”. |
+| 4     | Kosa i Wronka wołają do wraku. Hak wysiada ze Śrubką jako tarczą (przeciągnięcie MG). Rdza: Perswazja PT 15 — **fumble** (9).                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| 5     | Śrubka zdradza kopertę Wronki. Kosa: Perswazja PT 13 → 15 (2 pkt Szczęścia), NCPD „Ucieka”. Śrubka gryzie Haka (Hak traci Akcję). Rdza: Perswazja PT 15 → 21, Hak puszcza chłopaka, Brzoza się poddaje.                                                                                                                                                                                                                                                                                                                                                   |
+
+**Drogi do celu:** szyba i kierowca — działa, ale wolno (szyba pada w R2, Brzoza po dwóch
+trafieniach ma 32/40 — kurtka OB 11 zjada większość). Przeszkoda na pasie furgonu — zadziałała
+w R3, ale **bez udziału graczy** i z Raną Śrubki. Taran Pługiem z Nitro — rozstrzygnął pościg
+w jednej turze. Zatrzymanie (tarcza, koperta Wronki, ugryzienie) — działa jak w notatce 💰.
+
+**Wnioski z balansu (do decyzji MG):**
+
+1. **Pościg skończył się w rundzie 3, nie w 4–7.** Taranowanie nie ma limitu na turę: Nitro
+   podnosi budżet kierowcy do 10 m, każdy taran pcha furgon ok. 2 m, więc kombi wjechało w niego
+   trzy razy w jednej turze (8k6 − 13 za każdym razem, bo Nitro działa całą turę) — 45 PUK
+   zniknęło w jednej Akcji Ruchu. Projekt zakładał 3–4 uderzenia w kolejnych rundach. Propozycje:
+   jeden taran na turę (zmiana kodu, `chase:move` z `ram`), Nitro tylko do pierwszego taranu
+   albo furgon z Wzmocnioną konstrukcją (+20 PUK) także przy 2 graczach.
+2. **Śrubka dostaje Ranę ze skryptowej przeszkody**, zanim gracze cokolwiek wybiorą (R2/R3: auto
+   cywilne na pasie furgonu, Brzoza oblewa skręt ~30%). „Pełny sukces” zależy więc od kości
+   Brzozy. A gdy Śrubka ma już „Odgięciowy uraz”, kolejne tarany nie kosztują go nic — droga
+   „taran kosztuje chłopaka Ranę” przestaje hamować graczy. Propozycja: auto cywilne w R2 na pasie
+   kombi zamiast furgonu albo „Zatrzymaj się” zamiast skrętu jako domyślna reakcja Brzozy.
+3. **Hak jest groźny zgodnie z planem:** 3/3 trafienia w kierowcę, Rdza 45 → 19 w trzy rundy
+   (krytyk w R3). Bez szybkiego taranu Rdza byłaby Śmiertelnie ranna w R4–R5.
+4. **Zatrzymanie trwa 2 rundy i ma sens:** dwie Perswazje, ugryzienie Śrubki, koperta Wronki —
+   każdy element notatki 💰 został użyty. Radiowóz nie zdążył wpłynąć na pościg (1 runda).
+5. **Kompakt na kompakt przy tempie 40 trzyma kadr:** oba auta wracały dryfem na start co rundę,
+   dystans zmieniła tylko przeszkoda (furgon stanął w R2) — zgodnie z projektem.
+
+**Poprawione notatki wzorca (`scene.json`, ⚠️):** R2 — wjazd w przeszkodę daje tylko „Taranuj /
+Zatrzymaj się”, przeszkodę rozstrzyga pasek po dryfie w R3, skręt z menu furgonu tylko zużywa
+Akcję; morale — przesiadka Haka to darmowa ręka MG (decyzja z 05.11), nie metry. Krótsze R1, R4
+i R6+, żeby notatka została poniżej 2000 znaków.
+
+**Błędy i drobiazgi** (w `zaleglosci.md`, 06.11): „Rozpocznij walkę” przed rzutami graczy —
+Kosa z inicjatywą 14 wylądował jako „po turze” (MG cofnął ◀); Gwałtowny skręt z menu auta nie
+rusza przeszkody przed zderzakiem. **Naprawione od razu (zgłoszenie MG w trakcie sesji):**
+kierowca na masce furgonu w starej scenie 66c — figury w stojącym aucie zostawały na starym
+układzie foteli; serwer przesadza je teraz przy starcie (`reseatChasePassengers`, umowa w `mapa`).
+
 ## Do zrobienia
 
 - [x] Pytania do MG (dwie rundy, 06.11) — tabela wyżej.
@@ -281,8 +340,9 @@ Vite — oglądane **tymczasowym specem E2E** (skasowany) na `po-T6`: MG w Chrom
       próbce, furgon `van-6` z trzema ulepszeniami, kombi z modelu „Włóczęga” z Pługiem i Nitro,
       radiowóz `behind`, Śrubka w fotelu 5 Unieruchomiony.
 - [x] Oględziny w Firefoksie: lista „Przykładowe”, scena z wzorca na Neonowej ulicy.
-- [ ] Rozegranie w przeglądarce (MG + 2 graczy) — osobna sesja, ocena balansu „kompakt na
-      kompakt” bez zegara.
+- [x] Rozegranie w przeglądarce (MG + 2 graczy) — 06.11, piąta sesja: pościg w 3 rundach
+      (trzy tarany w jednej turze), zatrzymanie w 2; wnioski i propozycje wyżej.
+- [ ] Decyzje MG o balansie (taran na turę, przeszkoda w R2, Wzmocniona konstrukcja).
 - [ ] Oceny MG przy stole i wdrożenie (bez migracji).
 
 ## Kryteria ukończenia

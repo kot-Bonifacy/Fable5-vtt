@@ -1,5 +1,24 @@
 # Dziennik sesji — archiwum
 
+### Sesja 06.11, trzecia — grafiki aut we wzorcu 66c, furgony na 6 foteli, auta w UI
+
+**Zlecenie MG:** nowe grafiki aut w przykładowym pościgu, lepsza widoczność kupowanych
+i posiadanych aut, furgony z 6 miejscami zamiast 8 i fotele dopasowane do układu auta (pierwszy
+rząd stał na masce furgonu). **Zrobione bez pytań:** układ `van-6` i przesunięty `van-8`
+(rzędy od 0,33–0,36 długości, sprawdzone nakładką na czterech grafikach furgonów w skali 3×7),
+`van` w modelu → wpis → liczby auta (bryła furgonu przy 6 fotelach), cztery furgony z 6
+fotelami. Wzorzec 66c: grafiki „Nocny Neon” / „Rajdówka 77” / „Widmo”, furgon z modelu
+„Militech — furgon” bez Ulepszenia foteli (Kłoda w fotelu 4, Iskra w 5), wstęp z nowymi autami
+(biały furgon z logo Militechu wynajęty przez Halcyon). UI: `VehicleArt` (auto bokiem), duża
+grafika i „W garażu: …” we wpisie Kompendium, miniatury i znaczek na liście, oferta z „W
+garażu”, karta pojazdu z paskiem PUK i plakietkami, sekcja „Pojazdy (N)” pod gotówką.
+**Do decyzji MG:** dobór grafik do aut wzorca (zwłaszcza Militech zamiast „Gratów” dla furgonu
+Halcyonu). **Testy:** shared 2973, client 471, server 1752 zielone poza znanym migotaniem
+`surgery.test.ts` (sam 3/3); `tsc` klienta, ESLint, Prettier czyste. **Oglądane w Firefoksie**
+(Ola: Kompendium → „Graty” → „Kup”, lista „Pojazdy”, karta → Ekwipunek) i **Chromium** (MG:
+scena z wzorca „Ostatni zjazd” na Neonowej ulicy, zbliżenie na furgon) tymczasowym specem E2E
+na `po-T6` (skasowany); Firefox z Playwright MCP nie wstał (pułapka z 03.10).
+
 ### Sesja 06.11, druga — etap 68: warsztat (ulepszenia auta i naprawa za ed)
 
 **Zlecenie MG:** „sprawdzić możliwość montażu karabinu pokładowego i innych akcesoriów do auta

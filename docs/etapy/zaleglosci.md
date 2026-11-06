@@ -52,10 +52,21 @@ sesja, `archiwum/zamkniete-zaleglosci.md`) poza dwoma:
   oddali widoku. Dotyczy obu wzorców pościgu. Do decyzji MG: kadr pościgu u gracza na całą
   długość drogi albo na auto drużyny z zapasem do przodu.
 
-**06.11.2026 — „Zastaw” (66d): rozegranie w przeglądarce, stół MG i wdrożenie.** Wzorzec w repo
-(bez migracji), test serwera zielony, oglądany w Firefoksie tymczasowym specem. Nierozegrany:
-balans „kompakt na kompakt” bez zegara (czy scena kończy się w 4–7 rundach) czeka na przebieg
-MG + 2 graczy.
+**06.11.2026 — „Zastaw” (66d): decyzje MG o balansie, stół MG i wdrożenie.** Rozegrany 06.11
+(piąta sesja, MG w Chromium, Rdza i Kosa w Firefoksie): pościg skończył się w rundzie 3 — Nitro
+daje kierowcy 10 m, a taranowanie nie ma limitu na turę, więc kombi wjechało w furgon trzy razy
+w jednej turze i zrobiło wrak. Śrubka dostał Ranę ze skryptowego auta cywilnego, zanim gracze
+coś wybrali. Propozycje w `etap-66d-zastaw.md` („Wnioski z balansu”). Bez migracji.
+
+**06.11.2026 — drobiazgi z przebiegu 66d.**
+
+- „Rozpocznij walkę”, zanim gracze rzucą inicjatywę: figura, która potem wyrzuci więcej niż
+  aktywny NPC (Kosa 14 przy turze Haka 11), staje na początku kolejki jako „po turze” i traci
+  rundę 1. MG naprawia to „Poprzednią turą” (◀). Do decyzji: czekać na rzuty graczy albo
+  ostrzec MG.
+- Gwałtowny skręt z menu auta przy przeszkodzie wprost przed zderzakiem (po „Zatrzymaj się
+  przed”) zużywa Akcję i nic nie robi z przeszkodą — rozstrzyga ją dopiero pasek po dryfie.
+  Notatka ⚠️ „Zastawu” już to mówi; do decyzji, czy menu ma wtedy pytać o przeszkodę.
 
 **04.11.2026 — „Ostatni zjazd” (66c): przebieg przy stole i wdrożenie.** Technicznie przejechany
 specem oględzin (MG w Chromium, Marek i Ola w Firefoksie, `data/private`), a 04.11 (czwarta
