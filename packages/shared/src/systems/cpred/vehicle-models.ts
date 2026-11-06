@@ -27,7 +27,7 @@ import { entryPrice } from './economy.js';
 import { cpredHaggledPrice } from './roleability.js';
 import { CPRED_VEHICLE_SEATS_MAX } from './vehicles.js';
 
-export const CPRED_VEHICLE_CLASSES = ['compact', 'sport', 'super'] as const;
+export const CPRED_VEHICLE_CLASSES = ['compact', 'sport', 'super', 'bike'] as const;
 export type CpredVehicleClass = (typeof CPRED_VEHICLE_CLASSES)[number];
 
 /** Klasa → wpisy katalogu, z których model bierze liczby; pierwszy istniejący wygrywa. */
@@ -35,6 +35,7 @@ export const CPRED_VEHICLE_CLASS_IDS: Record<CpredVehicleClass, readonly string[
   compact: ['vehicle.samochod-kompaktowy', 'vehicle.sample-kompakt'],
   sport: ['vehicle.samochod-sportowy', 'vehicle.sample-kompakt'],
   super: ['vehicle.supersamochod', 'vehicle.sample-strzala'],
+  bike: ['vehicle.motocykl', 'vehicle.sample-skuter-miejski'],
 };
 
 function isCpredVehicleClass(value: unknown): value is CpredVehicleClass {
@@ -90,7 +91,7 @@ export function parseVehicleModels(raw: unknown): {
     const art = typeof row.art === 'string' && ART_PATTERN.test(row.art) ? row.art : null;
     if (!id || !name || !vehicleClass || !art) {
       issues.push(
-        `${where}: potrzebne id „vehicle.…”, name, class (compact/sport/super) i art z /art/vehicles/.`,
+        `${where}: potrzebne id „vehicle.…”, name, class (compact/sport/super/bike) i art z /art/vehicles/.`,
       );
       return;
     }

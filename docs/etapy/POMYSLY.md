@@ -5,8 +5,8 @@ auta** u handlarza z kategorią „Pojazdy” (MG 06.11: nie teraz) — auto mus
 scenie pościgu, a odkup liczyłby się procentem jak skup rzeczy. (2) **Własny wpis MG jako model**
 — Edytor Kompendium nie ma pola „Grafika” ani „Na sprzedaż”, więc kupić da się tylko modele
 z `vehicle-models.json`; wpis MG o tym samym id zachowuje wygląd, ale nowego modelu MG nie
-założy z UI. (3) **Używane auto z uszkodzeniami** (niższe PUK za niższą cenę). (4) **Motocykl
-i cywilny furgon** — czekają na grafiki MG (propozycje w `etap-67-zakup-pojazdu.md`).
+założy z UI. (3) **Używane auto z uszkodzeniami** (niższe PUK za niższą cenę). (4) ~~Motocykl
+i cywilny furgon~~ — dostarczone i dodane 06.11.
 (5) **Auto MG z modelu służb w Taborze** — dziś służby nie mają progu Moto.
 
 **03.11.2026 (Ekwipunek „Używane” / „Plecak”) — czego podział jeszcze nie robi.** (1) **„Upuść”

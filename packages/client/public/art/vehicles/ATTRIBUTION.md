@@ -3,6 +3,7 @@
 ## Modele aut (etap 67, od 06.11.2026) — grafiki MG
 
 Grafiki własne MG projektu (źródła poza repo: `C:/AI/materialy/auta`), dostarczone 06.11.2026
+(auta, potem furgony i motocykle)
 do zakupu aut przez graczy. Przetwarza je `tools/art/vehicle-models.py`: wycina namalowaną
 szachownicę przezroczystości, obraca przodem do góry, przycina i zapisuje jako WebP (dłuższy bok
 384 px). Każda grafika to jeden model z `data/public/cpred/vehicle-models.json`.
@@ -21,6 +22,10 @@ szachownicę przezroczystości, obraca przodem do góry, przycina i zapisuje jak
 | `radiowoz.webp`        | `auto8_policja.png`        | Radiowóz (MG)              |
 | `karetka.webp`         | `auto7_karetka.png`        | Karetka (MG)               |
 | `militech-furgon.webp` | `auto3_militech.png`       | Militech — furgon (MG)     |
+| `graty.webp`           | `furgon1.png`              | „Graty” (furgon)           |
+| `nomada.webp`          | `furgon2.png`              | „Nomada” (kamper)          |
+| `zadlo.webp`           | `motocykl1.png`            | „Żądło” (motocykl)         |
+| `osa.webp`             | `motocykl2.png`            | „Osa” (motocykl)           |
 
 ## Paczka CC0 (etap 65b) — przeszkody pościgu i sceny sprzed etapu 67
 
@@ -45,5 +50,5 @@ marginesy i zapisane jako WebP; ciągnik siodłowy i klatki animacji pominięte.
 | `van-ambulance.webp`   | `Ambulance.png`   | karetka               |
 | `van-white.webp`       | `Mini_van.png`    | biały furgon          |
 
-Motocykla z wolną licencją w tym stylu nie znaleziono (30.10.2026) — motocykl rysuje się bryłą
-zastępczą z `ChaseLayer`, a MG może wgrać własną grafikę.
+Motocykla z wolną licencją w tym stylu nie znaleziono (30.10.2026); od 06.11 motocykl bez własnej
+grafiki dostaje „Żądło” MG.

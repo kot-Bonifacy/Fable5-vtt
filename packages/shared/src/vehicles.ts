@@ -208,7 +208,7 @@ export const VEHICLE_ART_PREFIX = '/art/vehicles/';
  * z `vehicle-models.json`; `gmOnly` — służby, których gracz nie dostaje
  * w galerii. Grafiki z paczki CC0 (65b, `VEHICLE_ART_LEGACY`) leżą dalej
  * w `/art/vehicles/` dla przeszkód pościgu i scen zapisanych przed 67.
- * Motocykla jeszcze nie ma — rysuje się bryłą.
+ * Furgony i motocykle — druga dostawa MG z 06.11.
  */
 export const VEHICLE_ART: readonly { url: string; label: string; gmOnly?: true }[] = [
   { url: '/art/vehicles/kagero.webp', label: 'Arasaka „Kagerō”' },
@@ -219,6 +219,10 @@ export const VEHICLE_ART: readonly { url: string; label: string; gmOnly?: true }
   { url: '/art/vehicles/ranczer.webp', label: '„Ranczer” (pickup)' },
   { url: '/art/vehicles/rdzawiec.webp', label: '„Rdzawiec” (stary pickup)' },
   { url: '/art/vehicles/wloczega.webp', label: '„Włóczęga” (stare kombi)' },
+  { url: '/art/vehicles/graty.webp', label: '„Graty” (furgon)' },
+  { url: '/art/vehicles/nomada.webp', label: '„Nomada” (kamper)' },
+  { url: '/art/vehicles/zadlo.webp', label: '„Żądło” (motocykl)' },
+  { url: '/art/vehicles/osa.webp', label: '„Osa” (motocykl)' },
   { url: '/art/vehicles/taksowka.webp', label: 'Taksówka', gmOnly: true },
   { url: '/art/vehicles/radiowoz.webp', label: 'Radiowóz', gmOnly: true },
   { url: '/art/vehicles/karetka.webp', label: 'Karetka', gmOnly: true },
@@ -238,12 +242,13 @@ export const VEHICLE_ART_LEGACY: readonly { url: string; label: string }[] = [
 ];
 
 /**
- * Grafika auta bez własnej: kombi dla auta, furgon dla `van-8` (cywilnego
- * furgonu w stylu MG jeszcze nie ma — propozycja z 06.11), motocykl — bryła.
+ * Grafika pojazdu bez własnej (od 06.11 grafiki MG): „Żądło” dla motocykla,
+ * „Graty” dla furgonu `van-8`, „Włóczęga” dla auta. `null` zostaje w typie
+ * na wypadek układu, któremu grafiki zabraknie — wtedy rysuje się bryła.
  */
 export function defaultVehicleArt(layout: VehicleLayoutId): string | null {
-  if (layout === 'bike-2') return null;
-  return layout === 'van-8' ? '/art/vehicles/van-white.webp' : '/art/vehicles/wloczega.webp';
+  if (layout === 'bike-2') return '/art/vehicles/zadlo.webp';
+  return layout === 'van-8' ? '/art/vehicles/graty.webp' : '/art/vehicles/wloczega.webp';
 }
 
 export function isVehicleArtUrl(value: unknown): value is string {

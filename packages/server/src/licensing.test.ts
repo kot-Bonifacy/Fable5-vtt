@@ -111,7 +111,7 @@ describe('licence guard', () => {
       models?: Record<string, unknown>[];
     };
     for (const model of parsed.models ?? []) {
-      expect(['compact', 'sport', 'super']).toContain(model.class);
+      expect(['compact', 'sport', 'super', 'bike']).toContain(model.class);
       for (const field of ['classIds', 'classId', 'hp', 'move', 'speedKmh', 'vehicleKind']) {
         expect(model).not.toHaveProperty(field);
       }

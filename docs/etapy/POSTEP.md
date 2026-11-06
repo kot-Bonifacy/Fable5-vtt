@@ -21,7 +21,7 @@ w plikach obok — czytaj je **na żądanie, nigdy rutynowo**:
 
 | stan         | etapy                                                                                          |
 | ------------ | ---------------------------------------------------------------------------------------------- |
-| ⬜ otwarty   | **67** Zakup pojazdu (🟨 zrobione 06.11, czeka na wdrożenie i oględziny MG przy stole; grafiki motocykla i furgonu od MG); **66** Sceny przykładowe (🟨 zrobione 31.10, czeka na oględziny MG przy stole i wdrożenie; **66b** „Fabryka dronów” 🟨 zrobione 31.10, tak samo; **66c** „Ostatni zjazd” 🟨 wzorzec zrobiony, rozegrany w przeglądarce 04.11 i ponownie 05.11 po rebalansie (porażka o włos, balans zatwierdzony przez MG) — zaległości z przebiegów zamknięte 05.11 poza Esc na kubku MG — czeka na stół MG i wdrożenie); **65** Scena pościgu i walka pojazdów (🟨 65a–65e ✅ 30–31.10, czeka na oględziny MG przy stole); **62** Sieć ze sceny (🟨 zrobione, czeka na oględziny MG na VPS po wdrożeniu); **61** Skradanie się (🟨 zrobione, czeka na słowo MG o rozstrzygnięciach); **28** Wdrożenie na VPS (🟨 działa na `https://vtt.tatanga.eu` z botami od 18.10; zostały off-site, utwardzenie, monitoring); **43b**, **43c** (UI walki); **60** Czytelny czat (zlecenie MG z 24.10; 🟨 60a–60c ✅, czeka na oględziny MG z pierwszego kryterium); T10; refaktoryzacja odłożona (MG 18.10) |
+| ⬜ otwarty   | **67** Zakup pojazdu (🟨 zrobione 06.11, czeka na wdrożenie i oględziny MG przy stole); **66** Sceny przykładowe (🟨 zrobione 31.10, czeka na oględziny MG przy stole i wdrożenie; **66b** „Fabryka dronów” 🟨 zrobione 31.10, tak samo; **66c** „Ostatni zjazd” 🟨 wzorzec zrobiony, rozegrany w przeglądarce 04.11 i ponownie 05.11 po rebalansie (porażka o włos, balans zatwierdzony przez MG) — zaległości z przebiegów zamknięte 05.11 poza Esc na kubku MG — czeka na stół MG i wdrożenie); **65** Scena pościgu i walka pojazdów (🟨 65a–65e ✅ 30–31.10, czeka na oględziny MG przy stole); **62** Sieć ze sceny (🟨 zrobione, czeka na oględziny MG na VPS po wdrożeniu); **61** Skradanie się (🟨 zrobione, czeka na słowo MG o rozstrzygnięciach); **28** Wdrożenie na VPS (🟨 działa na `https://vtt.tatanga.eu` z botami od 18.10; zostały off-site, utwardzenie, monitoring); **43b**, **43c** (UI walki); **60** Czytelny czat (zlecenie MG z 24.10; 🟨 60a–60c ✅, czeka na oględziny MG z pierwszego kryterium); T10; refaktoryzacja odłożona (MG 18.10) |
 | ✅ ukończone | 01–11, 13–20b, 23a–27f, 27h–27l, 29a–30d, 31–35, 37–42c, 43a, 44a–44d, 45, 46a1, 46a2, 46c1, 46c2, 46b1, 46b2, 47a, 47b, 48a, 48b, 48c, 49a, 49b, 50a, 50b, 50c, 51, 52, 53, 54, 55, 56, 57 (57a–57c), 58 (58a–58d), 59 (59a–59c), 63 (63a–63b; 63c wycofane 29.10), 64 (64a–64c) (ostatni zamknięty: 64, 2026-10-30) |
 | ⛔ wycofane  | 12, 21, 22 (głos), 27g (wydajność), 36 (makra); 27, 29, 30, 38 rozdzielone na etapy literowane |
 
@@ -31,13 +31,14 @@ Pełna tabela z nazwami i datami: `archiwum/tabela-etapow.md`.
 
 **Zakup auta przez gracza (etap 67, zlecenie MG z 06.11) — czeka na wdrożenie (bez migracji;
 na VPS dojdą `data/public/cpred/vehicle-models.json` i grafiki z repo) i oględziny MG przy
-stole.** 12 grafik MG (`tools/art/vehicle-models.py`) to 12 modeli aut
-(`vehicle-models.json`, tabela zatwierdzona przez MG): 8 na sprzedaż, 4 służby tylko od MG.
+stole.** 16 grafik MG (`tools/art/vehicle-models.py`) to 16 modeli
+(`vehicle-models.json`, tabele zatwierdzone przez MG): 12 na sprzedaż (w tym dwa furgony
+i dwa motocykle), 4 służby tylko od MG.
 Model bierze liczby z klasy podręcznika, wygląd i cenę ma swoje. Gracz kupuje go w Kompendium
 („Kup” z potwierdzeniem, poziomy sklepu, „tylko u handlarzy”) albo w salonie okna „Wymiana”
 u handlarza z poziomem „Pojazdy” (domyślnie „nie prowadzi”); auto ląduje w „Pojazdach” karty,
-gracz zmienia mu nazwę, nie wygląd. Sprzedaży nie ma (MG). **Czeka na MG:** grafiki motocykla
-i cywilnego furgonu (propozycje w `etap-67-zakup-pojazdu.md`). Umowa na górze `ekwipunek`.
+gracz zmienia mu nazwę, nie wygląd. Sprzedaży nie ma (MG). Motocykl bez własnej grafiki ma
+„Żądło” zamiast bryły, furgon — „Graty”. Umowa na górze `ekwipunek`.
 
 **Zaległości 66c zamknięte w kodzie (05.11, czwarta sesja, decyzje MG) — czekają na wdrożenie
 (bez migracji) i oględziny przy stole.** Ręka MG jest darmowa (przeciągnięcie, także wysiadka,
@@ -700,7 +701,8 @@ kompendium na klasie), `vehicle:buy` (Kompendium i lada, targ Fixera, kasa handl
 lista między sesjami), kategoria „Pojazdy” w asortymencie (opt-in), salon w oknie „Wymiana”,
 „Kup” z potwierdzeniem w Kompendium, blokada wyglądu modelu, galeria bez służb u gracza.
 Rozstrzygnięcia bez pytań (poziomy 1/2/4, klasa słowem w pliku repo) w `etap-67-zakup-pojazdu.md`.
-**Propozycje dla MG:** motocykl i cywilny furgon (8 foteli). **Testy:** shared 2964, client 471,
+**Druga dostawa MG tego dnia:** dwa furgony (8 foteli) i dwa motocykle (klasa Motocykl,
+decyzja MG), domyślne grafiki motocykla i furgonu — oglądane w Firefoksie na pościgu. **Testy:** shared 2964, client 471,
 server 1748 zielone poza znanym migotaniem `surgery.test.ts` (sam przechodzi, `zaleglosci.md`
 04.11); poprawione dwa założenia `compendium.test.ts` o pierwszym wpisie. `tsc`, ESLint,
 Prettier czyste. **Oglądane w Firefoksie** (Ola: Kompendium → „Kup” → „Na pewno?”, karta →

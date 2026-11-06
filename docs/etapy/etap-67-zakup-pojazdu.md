@@ -84,18 +84,24 @@ przezroczystości namalowana w pikselach.
 5. **Auto nie idzie przez koszyk** — pojazd to `Vehicle`, nie wiersz karty, więc salon ma własne
    „Kup” pod kolumnami okna. Jedno zdarzenie `vehicle:buy` dla obu dróg.
 6. **Potwierdzenie drugim kliknięciem** (gaśnie po 5 s) — auto to kilka miesięcy czynszu.
-7. **Domyślna grafika auta bez własnej** to „Włóczęga”; furgon `van-8` zostaje przy starym białym
-   furgonie, dopóki MG nie dostarczy cywilnego furgonu (propozycja niżej).
+7. **Domyślna grafika auta bez własnej** to „Włóczęga” (furgon i motocykl — druga dostawa niżej).
 
-## Propozycje grafik od MG (06.11)
+## Druga dostawa MG (06.11): furgony i motocykle
 
-1. **Motocykl** (miejski / sportowy) — katalog ma Motocykl i Supermotocykl, Nomadzi biorą go
-   w Taborze, a na pościgu rysuje się dziś bryłą zastępczą. Ok. 700 × 220 px, przodem w lewo.
-2. **Cywilny furgon drużyny** (8 foteli, kamper albo dostawczak bez logo) — jedyne furgony to
-   karetka i Militech, których gracz nie kupi; wóz ekipy, baza Nomadów, domyślny `van-8`.
+Propozycje z pierwszej rozmowy (motocykl, cywilny furgon) MG dostarczył tego samego dnia:
+`furgon1.png`, `furgon2.png`, `motocykl1.png`, `motocykl2.png` (prawdziwa przezroczystość).
+**Decyzja MG:** oba motocykle zwykłe (klasa Motocykl), nie Supermotocykl.
 
-Najlepiej z prawdziwą przezroczystością. Po dostarczeniu: wpis w `MODELS` skryptu, model w JSON
-i `VEHICLE_ART`.
+| Grafika   | Model              | Klasa      | Fotele | Cena      | Poziom |
+| --------- | ------------------ | ---------- | ------ | --------- | ------ |
+| furgon1   | „Graty” (furgon)   | Kompaktowy | 8      | 9 000 ed  | 1      |
+| furgon2   | „Nomada” (kamper)  | Kompaktowy | 8      | 12 000 ed | 1      |
+| motocykl1 | „Żądło” (motocykl) | Motocykl   | 2      | 6 000 ed  | 1      |
+| motocykl2 | „Osa” (motocykl)   | Motocykl   | 2      | 6 000 ed  | 1      |
+
+Klasa modelu `bike` (`CPRED_VEHICLE_CLASS_IDS`: Motocykl, w próbce skuter). Domyślne grafiki:
+motocykl bez własnej — „Żądło” (koniec bryły zastępczej na pościgu), furgon `van-8` — „Graty”
+(zamiast białego furgonu CC0). Oglądane w Firefoksie na scenie pościgu (Autostrada).
 
 ## Kryteria ukończenia
 

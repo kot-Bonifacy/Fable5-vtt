@@ -798,5 +798,17 @@ describe('etap 67: zakup auta z modelu', () => {
     ) as CpredCharacterData;
     expect(dealer.eddies).toBe(100 + 7_560);
     await emitAck(gm, 'campaign:catalog-shopping', { mode: 'everywhere' });
+
+    // Motocykl z drugiej dostawy MG: klasa „bike” daje jednoślad i tandem.
+    const bike = data(
+      await buy(player, { entryId: 'vehicle.zadlo', expectPrice: 6_000 }),
+      'bike buy',
+    );
+    expect(bike.vehicle).toMatchObject({ layout: 'bike-2', imageUrl: '/art/vehicles/zadlo.webp' });
+    expect(statsOf(bike.vehicle).kind).toBe('motorcycle');
+    // Furgon z ośmioma fotelami — bryła furgonu.
+    await emitAck(gm, 'economy:adjust', { characterId: buyerId, balance: 9_000 });
+    const van = data(await buy(player, { entryId: 'vehicle.graty', expectPrice: 9_000 }), 'van');
+    expect(van.vehicle).toMatchObject({ layout: 'van-8', lengthSq: 7 });
   });
 });

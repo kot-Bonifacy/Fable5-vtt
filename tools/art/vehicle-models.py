@@ -46,6 +46,11 @@ MODELS: dict[str, str] = {
     "auto8": "radiowoz",
     "auto7": "karetka",
     "auto3": "militech-furgon",
+    # 06.11, druga dostawa MG: furgony i motocykle (prawdziwa przezroczystość).
+    "furgon1": "graty",
+    "furgon2": "nomada",
+    "motocykl1": "zadlo",
+    "motocykl2": "osa",
 }
 
 LONG_SIDE = 384

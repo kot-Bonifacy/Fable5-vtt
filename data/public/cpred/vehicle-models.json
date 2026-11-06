@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "source": "Modele aut VTT (etap 67, tabela zatwierdzona przez MG 06.11.2026). Grafiki MG: tools/art/vehicle-models.py. Liczby (PUK, Ruch, rodzaj, Tabor) bierze klasa z katalogu: compact, sport albo super (id klas w CPRED_VEHICLE_CLASS_IDS, vehicle-models.ts).",
+  "source": "Modele aut VTT (etap 67, tabela zatwierdzona przez MG 06.11.2026). Grafiki MG: tools/art/vehicle-models.py. Liczby (PUK, Ruch, rodzaj, Tabor) bierze klasa z katalogu: compact, sport, super albo bike (id klas w CPRED_VEHICLE_CLASS_IDS, vehicle-models.ts).",
   "models": [
     {
       "id": "vehicle.kagero",
@@ -82,6 +82,48 @@
       "tier": 1,
       "forSale": true,
       "description": "Używane kombi w oliwkowo-beżowych barwach, z bagażnikiem dachowym. Cztery fotele i miejsce na cały dobytek — za 70% ceny nowego."
+    },
+    {
+      "id": "vehicle.graty",
+      "name": "„Graty” (furgon)",
+      "class": "compact",
+      "art": "/art/vehicles/graty.webp",
+      "seats": 8,
+      "price": 9000,
+      "tier": 1,
+      "forSale": true,
+      "description": "Czerwony, podrdzewiały furgon z włazem w dachu. Cztery rzędy miejsc albo jeden rząd i cała paka sprzętu."
+    },
+    {
+      "id": "vehicle.nomada",
+      "name": "„Nomada” (kamper)",
+      "class": "compact",
+      "art": "/art/vehicles/nomada.webp",
+      "seats": 8,
+      "price": 12000,
+      "tier": 1,
+      "forSale": true,
+      "description": "Niebieski kamper z białym pasem i orurowaniem dookoła. Dom na kołach dla całej ekipy — osiem miejsc."
+    },
+    {
+      "id": "vehicle.zadlo",
+      "name": "„Żądło” (motocykl)",
+      "class": "bike",
+      "art": "/art/vehicles/zadlo.webp",
+      "price": 6000,
+      "tier": 1,
+      "forSale": true,
+      "description": "Czerwony motocykl sportowy z chromowanymi wydechami. Kierowca i pasażer, przeciska się tam, gdzie auto stanie w korku."
+    },
+    {
+      "id": "vehicle.osa",
+      "name": "„Osa” (motocykl)",
+      "class": "bike",
+      "art": "/art/vehicles/osa.webp",
+      "price": 6000,
+      "tier": 1,
+      "forSale": true,
+      "description": "Żółto-czarny motocykl sportowy o owadzich owiewkach. Kierowca i pasażer, głośna i zwrotna."
     },
     {
       "id": "vehicle.taksowka",
