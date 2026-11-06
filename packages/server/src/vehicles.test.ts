@@ -806,10 +806,11 @@ describe('etap 67: zakup auta z modelu', () => {
     );
     expect(bike.vehicle).toMatchObject({ layout: 'bike-2', imageUrl: '/art/vehicles/zadlo.webp' });
     expect(statsOf(bike.vehicle).kind).toBe('motorcycle');
-    // Furgon z ośmioma fotelami — bryła furgonu.
+    // Furgon z sześcioma fotelami (MG 06.11) — bryła i rzędy furgonu, nie auta.
     await emitAck(gm, 'economy:adjust', { characterId: buyerId, balance: 9_000 });
     const van = data(await buy(player, { entryId: 'vehicle.graty', expectPrice: 9_000 }), 'van');
-    expect(van.vehicle).toMatchObject({ layout: 'van-8', lengthSq: 7 });
+    expect(van.vehicle).toMatchObject({ layout: 'van-6', widthSq: 3, lengthSq: 7 });
+    expect(statsOf(van.vehicle)).toMatchObject({ seats: 6, van: true });
   });
 });
 

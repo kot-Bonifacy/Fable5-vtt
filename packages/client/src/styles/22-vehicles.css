@@ -10,39 +10,137 @@
   gap: 0.3rem;
 }
 
-.vehicle-card {
-  display: grid;
-  grid-template-columns: 3rem minmax(0, 1fr);
-  gap: 0.5rem;
-  align-items: start;
-  padding: 0.3rem 0.4rem;
-  background: var(--cp-paper);
-  color: var(--cp-ink);
-  border: 1px solid var(--border);
-  font-size: 0.8rem;
+/* Grafika auta bokiem (06.11, MG: widoczność kupowanych i posiadanych aut).
+   Pliki są rysowane przodem do góry (pościg) — tu leżą przodem w lewo na
+   ciemnym asfalcie, niezależnie od motywu: jasny papier gubił kontury aut.
+   `--vehicle-art-len` to długość auta po obrocie, a ramka ma ok. połowę tego na wysokość. */
+.vehicle-art {
+  --vehicle-art-len: 9rem;
+  position: relative;
+  display: inline-block;
+  flex: none;
+  width: calc(var(--vehicle-art-len) + 0.6rem);
+  height: calc(var(--vehicle-art-len) * 0.52 + 0.4rem);
+  overflow: hidden;
+  background: radial-gradient(
+    ellipse at 50% 55%,
+    var(--vehicle-art-asphalt) 0%,
+    var(--vehicle-art-asphalt-edge) 75%
+  );
+  border: 1px solid var(--border-strong);
+  font-size: 1.6rem;
+  line-height: 1;
 }
 
-.vehicle-card-thumb {
-  width: 3rem;
-  height: 3rem;
+.vehicle-art img {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  height: var(--vehicle-art-len);
+  width: auto;
+  transform: translate(-50%, -50%) rotate(-90deg);
+  filter: drop-shadow(0 0 0.25rem var(--vehicle-art-shadow));
+}
+
+.vehicle-art > span {
+  position: absolute;
+  inset: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--cp-inset);
-  font-size: 1.4rem;
+}
+
+.vehicle-art--row {
+  --vehicle-art-len: 2.6rem;
+  align-self: center;
+  border-radius: 3px;
+}
+
+.vehicle-art--hero {
+  --vehicle-art-len: min(17rem, 80cqw);
+  display: block;
+  width: 100%;
+  height: calc(var(--vehicle-art-len) * 0.52 + 1rem);
+}
+
+/* Wrak: szary kadłub, jak na scenie pościgu. */
+.vehicle-art--wrecked img {
+  filter: grayscale(1) brightness(0.7) drop-shadow(0 0 0.25rem var(--vehicle-art-shadow));
+}
+
+/* Karta pojazdu (karta postaci, zakładka MG): auto bokiem z lewej, a obok
+   nazwa, PUK z paskiem, plakietki liczb i ulepszenia. Wąska kolumna kładzie
+   grafikę nad resztą. */
+.vehicle-card {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 0.7rem;
+  align-items: flex-start;
+  padding: 0.45rem 0.5rem;
+  background: var(--cp-paper);
+  color: var(--cp-ink);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--border-strong);
+  font-size: 0.8rem;
+}
+
+.vehicle-card > .vehicle-art {
+  --vehicle-art-len: 10rem;
+}
+
+.vehicle-card-hp {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.78rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.vehicle-card-hp-label {
+  white-space: nowrap;
+  font-weight: 600;
+}
+
+.vehicle-card-hp-bar {
+  flex: 1;
+  max-width: 12rem;
+  height: 0.4rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--text-dim) 25%, transparent);
   overflow: hidden;
 }
 
-.vehicle-card-thumb img {
-  max-width: 100%;
-  max-height: 100%;
-  object-fit: contain;
+.vehicle-card-hp-bar > span {
+  display: block;
+  height: 100%;
+  background: var(--ok);
+}
+
+.vehicle-card-hp.is-wrecked .vehicle-card-hp-label {
+  color: var(--err);
+}
+
+.vehicle-card-chips {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.2rem;
+}
+
+.vehicle-card-chips li {
+  padding: 0.05rem 0.35rem;
+  background: var(--cp-inset);
+  font-size: 0.72rem;
+  white-space: nowrap;
 }
 
 .vehicle-card-body {
+  flex: 1 1 14rem;
   display: flex;
   flex-direction: column;
-  gap: 0.2rem;
+  gap: 0.3rem;
   min-width: 0;
 }
 
@@ -58,8 +156,13 @@
   font-weight: 600;
 }
 
+b.vehicle-card-name {
+  font-size: 0.95rem;
+}
+
 input.vehicle-card-name {
-  font-size: 0.82rem;
+  font-size: 0.9rem;
+  font-weight: 600;
 }
 
 .vehicle-card-tag {
@@ -332,7 +435,7 @@ input.vehicle-card-name {
 
 .vehicle-offer {
   display: grid;
-  grid-template-columns: 6.5rem minmax(0, 1fr);
+  grid-template-columns: auto minmax(0, 1fr);
   grid-template-areas:
     'art body'
     'art buy';
@@ -345,22 +448,42 @@ input.vehicle-card-name {
   font-size: 0.8rem;
 }
 
-.vehicle-offer-art {
+.vehicle-offer > .vehicle-art {
   grid-area: art;
-  position: relative;
-  width: 6.5rem;
-  height: 3.2rem;
-  overflow: hidden;
-  background: var(--cp-inset);
+  --vehicle-art-len: 8rem;
 }
 
-.vehicle-offer-art img {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  height: 6.2rem;
-  width: auto;
-  transform: translate(-50%, -50%) rotate(-90deg);
+/* „W garażu” — postać ma już auto tego modelu (06.11). */
+.vehicle-owned-tag {
+  align-self: flex-start;
+  margin-top: 0.15rem;
+  padding: 0 0.35rem;
+  border: 1px solid var(--ok);
+  color: var(--ok);
+  font-size: 0.66rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+/* Duża grafika modelu na górze wpisu Kompendium. */
+.compendium-vehicle-hero {
+  container-type: inline-size;
+  margin: 0.2rem 0 0.5rem;
+}
+
+.compendium-vehicle-owners {
+  margin: 0.25rem 0 0;
+  color: var(--ok);
+  font-size: 0.78rem;
+}
+
+.compendium-row-name .vehicle-art--row {
+  align-self: center;
+}
+
+.compendium-tag.compendium-tag--owned {
+  border-color: var(--ok);
+  color: var(--ok);
 }
 
 .vehicle-offer-body {

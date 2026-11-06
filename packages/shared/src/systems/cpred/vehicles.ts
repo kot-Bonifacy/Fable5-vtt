@@ -64,9 +64,9 @@ export function cpredVehicleSkillId(kind: CpredVehicleKind): string {
   return 'driving';
 }
 
-/** Bryła rdzenia dla rodzaju i liczby foteli. */
-export function cpredVehicleBody(kind: CpredVehicleKind, seats: number): VehicleBody {
-  return vehicleBodyFor(kind === 'motorcycle' || kind === 'jetski', seats);
+/** Bryła rdzenia dla rodzaju i liczby foteli; `van` — furgon z modelu (06.11). */
+export function cpredVehicleBody(kind: CpredVehicleKind, seats: number, van = false): VehicleBody {
+  return vehicleBodyFor(kind === 'motorcycle' || kind === 'jetski', seats, van);
 }
 
 // ───────────────────────── Ulepszenia (s. 163–165) ─────────────────────────
@@ -356,6 +356,11 @@ export interface CpredVehicleStats {
   hp: number;
   /** Fotele bazowe (bez Ulepszenia foteli). */
   seats: number;
+  /**
+   * Furgon z wyglądu (model MG z `van`, 06.11): bryła 3×7 i rzędy furgonu
+   * także przy sześciu fotelach. Bez tego bryła idzie za liczbą foteli.
+   */
+  van: boolean;
   /** Szybkość bitewna — Cecha Ruch pojazdu. */
   move: number;
   upgrades: CpredVehicleUpgradeRow[];
@@ -422,6 +427,7 @@ export function readCpredVehicle(raw: unknown): CpredVehicleStats {
     hpMax,
     hp: 0,
     seats: clampInt(input.seats, 1, CPRED_VEHICLE_SEATS_MAX, CPRED_VEHICLE_FALLBACK.seats),
+    van: input.van === true,
     move: clampInt(input.move, 0, CPRED_VEHICLE_MOVE_MAX, CPRED_VEHICLE_FALLBACK.move),
     upgrades: readUpgradeRows(input.upgrades),
     fleetRowId: typeof input.fleetRowId === 'string' && input.fleetRowId ? input.fleetRowId : null,
@@ -515,13 +521,13 @@ export function cpredVehicleDerived(
 /** Układ foteli na mapie dla tego pojazdu — z foteli po ulepszeniach. */
 export function cpredVehicleLayout(stats: CpredVehicleStats): VehicleLayoutId {
   const seats = cpredVehicleDerived(stats).seats;
-  return vehicleLayoutFor(cpredVehicleBody(stats.kind, seats), seats);
+  return vehicleLayoutFor(cpredVehicleBody(stats.kind, seats, stats.van), seats);
 }
 
 /** Rozmiar bryły w kratkach dla tego pojazdu. */
 export function cpredVehicleSize(stats: CpredVehicleStats): { widthSq: number; lengthSq: number } {
   const seats = cpredVehicleDerived(stats).seats;
-  return { ...VEHICLE_BODY_SIZES[cpredVehicleBody(stats.kind, seats)] };
+  return { ...VEHICLE_BODY_SIZES[cpredVehicleBody(stats.kind, seats, stats.van)] };
 }
 
 export type CpredVehicleUpgradeProblem =
@@ -603,10 +609,16 @@ export function cpredVehicleHpAfterUpgrades(
 
 /** Nowy pojazd z wpisu katalogu: pełne PUK, bez ulepszeń. */
 export function cpredVehicleFromCatalog(
-  entry: Pick<VehicleEntry, 'id' | 'vehicleKind' | 'hp' | 'seats' | 'move'> | null,
+  entry: Pick<VehicleEntry, 'id' | 'vehicleKind' | 'hp' | 'seats' | 'move' | 'van'> | null,
 ): CpredVehicleStats {
   const base = entry
-    ? { kind: entry.vehicleKind, hpMax: entry.hp, seats: entry.seats, move: entry.move }
+    ? {
+        kind: entry.vehicleKind,
+        hpMax: entry.hp,
+        seats: entry.seats,
+        move: entry.move,
+        van: entry.van === true,
+      }
     : CPRED_VEHICLE_FALLBACK;
   return readCpredVehicle({ ...base, catalogId: entry?.id ?? null, hp: base.hpMax });
 }

@@ -49,6 +49,7 @@ import { useCharacterStore } from '../stores/characterStore.js';
 import { useCompendiumStore } from '../stores/compendiumStore.js';
 import { useVehicleStore, vehiclesOf } from '../stores/vehicleStore.js';
 import { EmptyState } from './EmptyState.js';
+import { VehicleArt } from './VehicleArt.js';
 
 /**
  * Pojazdy (etap 65a): karta pojazdu, sekcja „Pojazdy” na karcie postaci,
@@ -94,19 +95,41 @@ function useVehicleCatalog(): VehicleEntry[] {
   );
 }
 
-/** Jedno zdanie o liczbach — to, co MG mówi przy stole: „PUK 45/65, Ruch 20, 6 foteli”. */
-function vehicleSummary(stats: CpredVehicleStats): string {
+/**
+ * Liczby auta na karcie (06.11): rodzaj, Ruch, fotele, pancerz i szyby jako
+ * plakietki, a PUK z paskiem — stan auta widać od razu, bez czytania zdania.
+ */
+function VehicleStats({ stats }: { stats: CpredVehicleStats }) {
   const derived = cpredVehicleDerived(stats);
-  return [
+  const chips = [
     CPRED_VEHICLE_KIND_LABELS[stats.kind],
-    `PUK ${stats.hp}/${derived.hpMax}`,
     `Ruch ${stats.move}`,
     `fotele ${derived.seats}`,
     derived.hullSp ? `OB kadłuba ${derived.hullSp}` : '',
     derived.windowHp ? `szyby ${derived.windowHp} PW` : '',
-  ]
-    .filter(Boolean)
-    .join(' · ');
+  ].filter(Boolean);
+  const share = derived.hpMax > 0 ? Math.max(0, Math.min(1, stats.hp / derived.hpMax)) : 0;
+  return (
+    <>
+      <div
+        className={`vehicle-card-hp${stats.hp === 0 ? ' is-wrecked' : ''}`}
+        title="Punkty Uszkodzeń Kadłuba — przy zerze auto jest wrakiem."
+      >
+        <span className="vehicle-card-hp-label">
+          PUK {stats.hp}/{derived.hpMax}
+          {stats.hp === 0 ? ' · wrak' : ''}
+        </span>
+        <span className="vehicle-card-hp-bar" aria-hidden="true">
+          <span style={{ width: `${share * 100}%` }} />
+        </span>
+      </div>
+      <ul className="vehicle-card-chips">
+        {chips.map((chip) => (
+          <li key={chip}>{chip}</li>
+        ))}
+      </ul>
+    </>
+  );
 }
 
 export function VehicleCard({
@@ -180,13 +203,11 @@ export function VehicleCard({
       onDragStart={placeable ? (event) => startVehicleDrag(event, vehicle.id) : undefined}
       title={placeable ? 'Przeciągnij na drogę sceny pościgu' : undefined}
     >
-      <div className="vehicle-card-thumb" aria-hidden="true">
-        {(vehicle.imageUrl ?? defaultVehicleArt(vehicle.layout)) ? (
-          <img src={vehicle.imageUrl ?? defaultVehicleArt(vehicle.layout) ?? ''} alt="" />
-        ) : (
-          <span>🏍</span>
-        )}
-      </div>
+      <VehicleArt
+        url={vehicle.imageUrl ?? defaultVehicleArt(vehicle.layout)}
+        size="card"
+        wrecked={stats.hp === 0}
+      />
       <div className="vehicle-card-body">
         <div className="vehicle-card-head">
           {canRename ? (
@@ -234,7 +255,7 @@ export function VehicleCard({
             </button>
           ) : null}
         </div>
-        <p className="vehicle-card-stats">{vehicleSummary(stats)}</p>
+        <VehicleStats stats={stats} />
         {canRename && (isGm || !lookLocked) ? (
           <VehicleArtPicker vehicle={vehicle} isGm={isGm} />
         ) : null}
@@ -353,7 +374,9 @@ export function CharacterVehiclesSection({ characterId }: { characterId: string 
   return (
     <div className="cp-panel vehicle-section" data-sheet-panel="vehicles">
       <div className="cp-field cp-field--notch">
-        <span className="cp-label">Pojazdy</span>
+        <span className="cp-label">
+          Pojazdy{vehicles.length > 0 ? ` (${vehicles.length})` : ''}
+        </span>
       </div>
       {vehicles.length > 0 ? (
         <ul className="vehicle-list">

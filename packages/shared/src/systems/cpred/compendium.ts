@@ -588,6 +588,8 @@ export interface VehicleEntry extends CompendiumEntryBase {
   classId?: string;
   /** Model, który gracz może kupić; brak albo `false` — daje go tylko MG. */
   forSale?: boolean;
+  /** Model z wyglądem furgonu (06.11): bryła 3×7 i rzędy furgonu przy każdej liczbie foteli. */
+  van?: boolean;
 }
 
 /**

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { CompendiumEntry, CompendiumRegistry, VehicleEntry } from './compendium.js';
 import { cpredAssortmentCovers, cpredAssortmentVehicles } from './assortment.js';
+import { cpredVehicleFromCatalog, cpredVehicleLayout, cpredVehicleSize } from './vehicles.js';
 import {
   CPRED_VEHICLE_CLASS_IDS,
   cpredVehicleForSale,
@@ -50,7 +51,8 @@ const FILE = {
       name: 'Karetka',
       class: 'compact',
       art: '/art/vehicles/karetka.webp',
-      seats: 8,
+      seats: 6,
+      van: true,
       forSale: false,
     },
     { id: 'vehicle.widmo', name: '„Widmo”', class: 'super', art: '/art/vehicles/widmo.webp' },
@@ -92,9 +94,16 @@ describe('modele aut (etap 67)', () => {
       forSale: true,
     });
     const karetka = registry.entryById.get('vehicle.karetka') as VehicleEntry;
-    // Służby: cena klasy, osiem foteli, bez Taboru — nie ma furtki do radiowozu.
-    expect(karetka).toMatchObject({ cost: 450, seats: 8, forSale: false });
+    // Służby: cena klasy, sześć foteli furgonu, bez Taboru — nie ma furtki do radiowozu.
+    expect(karetka).toMatchObject({ cost: 450, seats: 6, van: true, forSale: false });
     expect(karetka.motoLevel).toBeUndefined();
+    expect(ranczer.van).toBeUndefined();
+    // Furgon z wyglądu: bryła 3×7 i rzędy furgonu przy sześciu fotelach.
+    const fromModel = cpredVehicleFromCatalog(karetka);
+    expect(fromModel.van).toBe(true);
+    expect(cpredVehicleLayout(fromModel)).toBe('van-6');
+    expect(cpredVehicleSize(fromModel)).toEqual({ widthSq: 3, lengthSq: 7 });
+    expect(cpredVehicleLayout(cpredVehicleFromCatalog(ranczer))).toBe('car-4');
     expect(registry.entries).toHaveLength(3);
   });
 

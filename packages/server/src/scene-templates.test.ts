@@ -419,13 +419,22 @@ describe('etap 66c: „Ostatni zjazd”', () => {
       ['Eskorta', 'Furgon Halcyonu', 'Rydwan', 'Wóz od Matyldy'].sort(),
     );
     const van = byName.get('Furgon Halcyonu')!;
-    expect(van.vehicle).toMatchObject({ layout: 'van-8', widthSq: 3, lengthSq: 7 });
+    // Furgon to model MG (06.11): sześć foteli w rzędach furgonu, grafika Militechu.
+    expect(van.vehicle).toMatchObject({
+      layout: 'van-6',
+      widthSq: 3,
+      lengthSq: 7,
+      imageUrl: '/art/vehicles/militech-furgon.webp',
+    });
+    expect(readCpredVehicle(van.vehicle.system)).toMatchObject({
+      catalogId: 'vehicle.militech-furgon',
+      seats: 6,
+      van: true,
+    });
     expect(readCpredVehicle(van.vehicle.system).upgrades.map((row) => row.upgradeId)).toEqual([
       'reinforced',
       'armoredHull',
       'bulletproofGlass',
-      'extraSeats',
-      'extraSeats',
       'nitro',
     ]);
     expect(byName.get('Rydwan')!.status).toBe('behind');
@@ -453,8 +462,8 @@ describe('etap 66c: „Ostatni zjazd”', () => {
     );
     expect(seats).toEqual({
       Wolt: ['Furgon Halcyonu', 0],
-      Kłoda: ['Furgon Halcyonu', 6],
-      Iskra: ['Furgon Halcyonu', 7],
+      Kłoda: ['Furgon Halcyonu', 4],
+      Iskra: ['Furgon Halcyonu', 5],
       Mewa: ['Eskorta', 0],
       Szron: ['Eskorta', 1],
       Lutka: ['Eskorta', 3],

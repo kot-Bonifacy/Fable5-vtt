@@ -50,8 +50,10 @@ export interface CpredVehicleModel {
   class: CpredVehicleClass;
   /** Wbudowana grafika (`/art/vehicles/…`), rysowana przodem do góry. */
   art: string;
-  /** Fotele modelu; brak — jak w klasie. 6 i 8 to zasada domowa (MG 06.11). */
+  /** Fotele modelu; brak — jak w klasie. 6 to zasada domowa (MG 06.11). */
   seats?: number;
+  /** Furgon z wyglądu: bryła i rzędy furgonu (`van-6`), nie auta (MG 06.11). */
+  van?: boolean;
   /** Cena w ed cennika domowego; brak — cena klasy. */
   price?: number;
   /** Czy gracz może go kupić; `false` — służby, daje je MG. */
@@ -102,6 +104,7 @@ export function parseVehicleModels(raw: unknown): {
       art,
       forSale: row.forSale === true,
     };
+    if (row.van === true) model.van = true;
     if (row.seats !== undefined) {
       if (
         typeof row.seats !== 'number' ||
@@ -157,6 +160,7 @@ export function cpredVehicleModelEntry(
     art: model.art,
     classId: base.id,
     forSale: model.forSale,
+    ...(model.van ? { van: true } : {}),
     source: `Model VTT na klasie „${base.name}”`,
   };
   if (base.costCategory) entry.costCategory = base.costCategory;

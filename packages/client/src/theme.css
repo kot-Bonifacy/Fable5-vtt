@@ -711,3 +711,11 @@
   --wound-mark-bad: #ff6b5b;
   --wound-mark-good: #7fd99a;
 }
+
+/* Auto bokiem (06.11, `VehicleArt`): asfalt pod grafiką auta. Ten sam w dzień
+   i w nocy — auto to element fikcji jak mapa, a jasny papier gubił kontury. */
+:root {
+  --vehicle-art-asphalt: #3d3934;
+  --vehicle-art-asphalt-edge: #1c1a18;
+  --vehicle-art-shadow: rgb(0 0 0 / 70%);
+}

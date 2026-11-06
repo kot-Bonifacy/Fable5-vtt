@@ -243,6 +243,20 @@ describe('catalogue and body', () => {
     });
     expect(cpredVehicleLayout(van)).toBe('van-8');
     expect(cpredVehicleSize(van)).toEqual({ widthSq: 3, lengthSq: 7 });
+    // Furgon z modelu z Ulepszeniem foteli: osiem miejsc w bryle furgonu.
+    expect(cpredVehicleLayout(readCpredVehicle({ kind: 'car', seats: 6, van: true }))).toBe(
+      'van-6',
+    );
+    expect(
+      cpredVehicleLayout(
+        readCpredVehicle({
+          kind: 'car',
+          seats: 6,
+          van: true,
+          upgrades: [{ id: 'a', upgradeId: 'extraSeats' }],
+        }),
+      ),
+    ).toBe('van-8');
   });
 
   it('every layout puts the driver first and keeps seats inside the body', () => {
@@ -258,6 +272,13 @@ describe('catalogue and body', () => {
     }
     expect(vehicleLayoutFor('bike', 4)).toBe('car-4');
     expect(vehicleLayoutFor('car', 30)).toBe('van-8');
+    // Furgon (MG 06.11): sześć foteli w trzech rzędach za kabiną, osiem — w czterech.
+    expect(vehicleLayoutFor('van', 6)).toBe('van-6');
+    expect(vehicleLayoutFor('van', 4)).toBe('van-6');
+    expect(vehicleLayoutFor('van', 8)).toBe('van-8');
+    for (const id of ['van-6', 'van-8'] as const) {
+      expect(VEHICLE_LAYOUTS[id][0]!.y).toBeGreaterThanOrEqual(0.3);
+    }
   });
 
   it('the driving skill follows the kind', () => {

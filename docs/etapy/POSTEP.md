@@ -29,6 +29,16 @@ Pełna tabela z nazwami i datami: `archiwum/tabela-etapow.md`.
 
 ## Od czego zacząć
 
+**Grafiki MG w „Ostatnim zjeździe”, furgony na 6 foteli i auta widoczne w UI (zlecenie MG
+z 06.11) — czeka na wdrożenie (bez migracji) i oględziny MG przy stole.** Wzorzec 66c: Wóz od
+Matyldy „Nocny Neon”, eskorta „Rajdówka 77”, Rydwan „Widmo”, furgon to model „Militech —
+furgon” (6 foteli, rzędy za kabiną; liczby bez zmian, wstęp opisuje nowe auta). Wszystkie cztery
+furgony MG mają 6 foteli i bryłę furgonu (`van-6`), a `van-8` też siada za kabiną, nie na masce.
+Auto widać bokiem: duża grafika na górze wpisu Kompendium, miniatury na liście, „W garażu” przy
+modelu, który postać już ma, a „Pojazdy” na karcie stoją pod gotówką z paskiem PUK. Scena
+założona z wzorca wcześniej zostaje przy starych grafikach i ośmiu fotelach. Umowy na górze
+`mapa` i `ekwipunek`.
+
 **Warsztat — ulepszenia kupionego auta i naprawa za ed (etap 68, zlecenie MG z 06.11) — czeka na
 wdrożenie (bez migracji) i oględziny MG przy stole.** 19 ulepszeń z s. 163–165 to wpisy
 Kompendium „Ulepszenia pojazdów” (`vehicle-upgrade.<id>`, cena pasma × 3: 3000 / 15 000 ed,
@@ -676,7 +686,7 @@ a nie do tego pliku.
 
 | obszar      | co obejmuje                                                    | umów | pułapek |
 | ----------- | -------------------------------------------------------------- | ---- | ------- |
-| `mapa`      | figury, zaznaczanie, narzędzia, obiekty sceny, ściany, efekty, zamek drzwi, ukryta figura zauważona, ikony urządzeń, wspólny widok drużyny, scena pościgu, jazda kierowcy i dryf, Manewr i taranowanie, przeszkody pościgu, sceny przykładowe, wzorzec zwykłej mapy, ulepszenia pojazdu, stojące auto na drodze, kreator pościgu i wbudowane drogi, załoga auta poza pościgiem, rama pościgu i pęd auta bez kierowcy, długa pętla drogi, ucieczka auta ręką MG, otarcie brył, wrak za autem, podpis w fotelu | 89   | 27      |
+| `mapa`      | figury, zaznaczanie, narzędzia, obiekty sceny, ściany, efekty, zamek drzwi, ukryta figura zauważona, ikony urządzeń, wspólny widok drużyny, scena pościgu, jazda kierowcy i dryf, Manewr i taranowanie, przeszkody pościgu, sceny przykładowe, wzorzec zwykłej mapy, ulepszenia pojazdu, stojące auto na drodze, kreator pościgu i wbudowane drogi, załoga auta poza pościgiem, rama pościgu i pęd auta bez kierowcy, długa pętla drogi, ucieczka auta ręką MG, otarcie brył, wrak za autem, podpis w fotelu, furgon z wyglądu (`van-6`) | 90   | 27      |
 | `czat`      | rodzaje wierszy, `visibleTo`, filtr, `seq`, `gmrecovery`, „to dotyczy mnie”, grupy kart, kolor gracza, czyszczenie, gęsta karta rzutu, przebieg ataku, `/jako` za NPC-a, karta rzutu bez konta | 17   | 3       |
 | `serwer`    | Prisma i migracje, zdarzenia gniazda, zapisy karty, uploady    | 26   | 21      |
 | `ui`        | okna pływające, `z-index`, motyw, skróty, dostępność, wejście, panel decyzji MG, rezerwa panelu przy liczniku Szczęścia | 39   | 15      |
@@ -686,7 +696,7 @@ a nie do tego pliku.
 | `statysta`  | figura z kartą, `statBlock`, Wartość bojowa, `token:stat`, wzorce | 17   | 3       |
 | `karta`     | strony i zakładki, panele, `sheet.css`, walidacja list, usuwanie przedmiotu, „Używane” i „Plecak” | 12   | 12      |
 | `postac`    | kreator, PD i awanse, koszyk i cofanie awansów, Role i Zdolności, cyborgizacje, chrom zmieniający liczby, ekonomia, Test montażu gracza, pojazdy i Tabor | 58   | 3       |
-| `ekwipunek` | wiersze wyposażenia, przekazanie, łup (także ciała graczy), handel, sklepy, asortyment handlarza z kompendium, zasięg, amunicja bez dna, egzoszkielet, latarka z ekwipunku, narkotyki i fiolki, siatka okna „Wymiana”, zgoda z góry, odświeżanie po naklejkach, znaczek „w użyciu”, zakup auta z modelu, warsztat (ulepszenia i naprawa auta) | 46   | 3       |
+| `ekwipunek` | wiersze wyposażenia, przekazanie, łup (także ciała graczy), handel, sklepy, asortyment handlarza z kompendium, zasięg, amunicja bez dna, egzoszkielet, latarka z ekwipunku, narkotyki i fiolki, siatka okna „Wymiana”, zgoda z góry, odświeżanie po naklejkach, znaczek „w użyciu”, zakup auta z modelu, warsztat (ulepszenia i naprawa auta), auto bokiem i „w garażu” | 47   | 3       |
 | `czas`      | zegar świata, kalendarz, `statEffects`, leczenie po dobie, dawki i uzależnienia (`chems`) | 19   | 2       |
 | `siec`      | Programy, LOD, demony, piętra architektury, dek jako towar, strefy bronione, kamery, rozbrajanie, Sieć ze sceny, jedna próba i pamięć sukcesów | 14   | 5       |
 | `boty`      | llama-server, RAG, reindeks, dziennik i baza wiedzy, brama AI  | 10   | 10      |
@@ -699,6 +709,25 @@ a nie do tego pliku.
 ## Notatki z dwóch ostatnich sesji
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
+
+### Sesja 06.11, trzecia — grafiki aut we wzorcu 66c, furgony na 6 foteli, auta w UI
+
+**Zlecenie MG:** nowe grafiki aut w przykładowym pościgu, lepsza widoczność kupowanych
+i posiadanych aut, furgony z 6 miejscami zamiast 8 i fotele dopasowane do układu auta (pierwszy
+rząd stał na masce furgonu). **Zrobione bez pytań:** układ `van-6` i przesunięty `van-8`
+(rzędy od 0,33–0,36 długości, sprawdzone nakładką na czterech grafikach furgonów w skali 3×7),
+`van` w modelu → wpis → liczby auta (bryła furgonu przy 6 fotelach), cztery furgony z 6
+fotelami. Wzorzec 66c: grafiki „Nocny Neon” / „Rajdówka 77” / „Widmo”, furgon z modelu
+„Militech — furgon” bez Ulepszenia foteli (Kłoda w fotelu 4, Iskra w 5), wstęp z nowymi autami
+(biały furgon z logo Militechu wynajęty przez Halcyon). UI: `VehicleArt` (auto bokiem), duża
+grafika i „W garażu: …” we wpisie Kompendium, miniatury i znaczek na liście, oferta z „W
+garażu”, karta pojazdu z paskiem PUK i plakietkami, sekcja „Pojazdy (N)” pod gotówką.
+**Do decyzji MG:** dobór grafik do aut wzorca (zwłaszcza Militech zamiast „Gratów” dla furgonu
+Halcyonu). **Testy:** shared 2973, client 471, server 1752 zielone poza znanym migotaniem
+`surgery.test.ts` (sam 3/3); `tsc` klienta, ESLint, Prettier czyste. **Oglądane w Firefoksie**
+(Ola: Kompendium → „Graty” → „Kup”, lista „Pojazdy”, karta → Ekwipunek) i **Chromium** (MG:
+scena z wzorca „Ostatni zjazd” na Neonowej ulicy, zbliżenie na furgon) tymczasowym specem E2E
+na `po-T6` (skasowany); Firefox z Playwright MCP nie wstał (pułapka z 03.10).
 
 ### Sesja 06.11, druga — etap 68: warsztat (ulepszenia auta i naprawa za ed)
 
@@ -719,24 +748,3 @@ Nitro) i **Chromium** (MG: wpis „Opancerzenie kadłuba” z poziomem) tymczaso
 `po-T6` (skasowany). Z oględzin: przy całym aucie nie ma już przycisku „Napraw — 0 ed”,
 a ulepszenia innego rodzaju pojazdu nie stoją w warsztacie. Gracz widzi ulepszenia w Kompendium
 dopiero od poziomu sklepu 3.
-
-### Sesja 06.11 — etap 67: zakup auta przez gracza
-
-**Zlecenie MG:** kupno auta przez gracza z gotowych grafik `C:/AI/materialy/auta` i dwie
-propozycje kolejnych aut. **Decyzje MG (pytania na starcie):** kupno jak reszta rzeczy
-(Kompendium + handlarz), konkretne modele (tabela zatwierdzona), logotypy do repo, nowe grafiki
-zastępują paczkę CC0, bez sprzedaży. **Zrobione:** `tools/art/vehicle-models.py` (12 WebP,
-wycięta namalowana szachownica), `vehicle-models.json` + `vehicle-models.ts` (model = wpis
-kompendium na klasie), `vehicle:buy` (Kompendium i lada, targ Fixera, kasa handlarza, biała
-lista między sesjami), kategoria „Pojazdy” w asortymencie (opt-in), salon w oknie „Wymiana”,
-„Kup” z potwierdzeniem w Kompendium, blokada wyglądu modelu, galeria bez służb u gracza.
-Rozstrzygnięcia bez pytań (poziomy 1/2/4, klasa słowem w pliku repo) w `etap-67-zakup-pojazdu.md`.
-**Druga dostawa MG tego dnia:** dwa furgony (8 foteli) i dwa motocykle (klasa Motocykl,
-decyzja MG), domyślne grafiki motocykla i furgonu — oglądane w Firefoksie na pościgu. **Testy:** shared 2964, client 471,
-server 1748 zielone poza znanym migotaniem `surgery.test.ts` (sam przechodzi, `zaleglosci.md`
-04.11); poprawione dwa założenia `compendium.test.ts` o pierwszym wpisie. `tsc`, ESLint,
-Prettier czyste. **Oglądane w Firefoksie** (Ola: Kompendium → „Kup” → „Na pewno?”, karta →
-„Pojazdy”, salon u handlarza ×110%) i **Chromium** (MG: wpisy Kagerō i Radiowóz) tymczasowym
-specem E2E na `po-T6`. Kompendium gracza nie pokazuje wpisów powyżej poziomu sklepu kampanii —
-Kagerō (4) gracz zobaczy dopiero po odblokowaniu.
-

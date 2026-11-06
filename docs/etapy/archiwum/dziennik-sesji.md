@@ -1,5 +1,25 @@
 # Dziennik sesji — archiwum
 
+### Sesja 06.11 — etap 67: zakup auta przez gracza
+
+**Zlecenie MG:** kupno auta przez gracza z gotowych grafik `C:/AI/materialy/auta` i dwie
+propozycje kolejnych aut. **Decyzje MG (pytania na starcie):** kupno jak reszta rzeczy
+(Kompendium + handlarz), konkretne modele (tabela zatwierdzona), logotypy do repo, nowe grafiki
+zastępują paczkę CC0, bez sprzedaży. **Zrobione:** `tools/art/vehicle-models.py` (12 WebP,
+wycięta namalowana szachownica), `vehicle-models.json` + `vehicle-models.ts` (model = wpis
+kompendium na klasie), `vehicle:buy` (Kompendium i lada, targ Fixera, kasa handlarza, biała
+lista między sesjami), kategoria „Pojazdy” w asortymencie (opt-in), salon w oknie „Wymiana”,
+„Kup” z potwierdzeniem w Kompendium, blokada wyglądu modelu, galeria bez służb u gracza.
+Rozstrzygnięcia bez pytań (poziomy 1/2/4, klasa słowem w pliku repo) w `etap-67-zakup-pojazdu.md`.
+**Druga dostawa MG tego dnia:** dwa furgony (8 foteli) i dwa motocykle (klasa Motocykl,
+decyzja MG), domyślne grafiki motocykla i furgonu — oglądane w Firefoksie na pościgu. **Testy:** shared 2964, client 471,
+server 1748 zielone poza znanym migotaniem `surgery.test.ts` (sam przechodzi, `zaleglosci.md`
+04.11); poprawione dwa założenia `compendium.test.ts` o pierwszym wpisie. `tsc`, ESLint,
+Prettier czyste. **Oglądane w Firefoksie** (Ola: Kompendium → „Kup” → „Na pewno?”, karta →
+„Pojazdy”, salon u handlarza ×110%) i **Chromium** (MG: wpisy Kagerō i Radiowóz) tymczasowym
+specem E2E na `po-T6`. Kompendium gracza nie pokazuje wpisów powyżej poziomu sklepu kampanii —
+Kagerō (4) gracz zobaczy dopiero po odblokowaniu.
+
 ### Sesja 05.11, czwarta — reszta zaległości 66c z decyzjami MG
 
 **Zlecenie MG:** „wykonaj zaległości. Karty NPC-ów zostają w kampanii”. **Decyzje MG:** ręka MG

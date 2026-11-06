@@ -75,6 +75,7 @@ import {
 } from '../socket.js';
 import { useAuthStore } from '../stores/authStore.js';
 import { VehicleOffer } from './VehicleOffer.js';
+import { VehicleArt, useModelOwners } from './VehicleArt.js';
 import { CompendiumUpgradeBuy } from './VehicleWorkshop.js';
 import { COMBAT_LOCKED_HINT, useCombatLocked } from '../stores/combatStore.js';
 import { useCharacterStore } from '../stores/characterStore.js';
@@ -264,7 +265,11 @@ export function CompendiumPanel() {
                     entry.category === 'attachment' ? (
                       <ItemIcon icon={entryIcon(entry)} />
                     ) : null}
+                    {entry.category === 'vehicle' && entry.art ? (
+                      <VehicleArt url={entry.art} size="row" />
+                    ) : null}
                     {entry.name}
+                    {entry.category === 'vehicle' ? <VehicleOwnedTag entryId={entry.id} /> : null}
                     {category === null ? (
                       <span className="compendium-tag">
                         {COMPENDIUM_SHELF_LABELS[shelfOf(entry)]}
@@ -680,6 +685,13 @@ function EntryCard({
       </h3>
       {entry.nameOriginal && entry.nameOriginal !== entry.name ? (
         <p className="compendium-card-original">{entry.nameOriginal}</p>
+      ) : null}
+      {/* 06.11 (MG): model auta widać w całości, zanim padnie „Kup”. */}
+      {entry.category === 'vehicle' && entry.art ? (
+        <div className="compendium-vehicle-hero">
+          <VehicleArt url={entry.art} size="hero" />
+          <VehicleOwnersLine entryId={entry.id} />
+        </div>
       ) : null}
 
       <dl className="compendium-stats">
@@ -1542,4 +1554,22 @@ function Stat({
       <dd>{value}</dd>
     </div>
   );
+}
+
+/** Znaczek „w garażu” przy modelu auta na liście Kompendium (06.11). */
+function VehicleOwnedTag({ entryId }: { entryId: string }) {
+  const owners = useModelOwners(entryId);
+  if (owners.length === 0) return null;
+  return (
+    <span className="compendium-tag compendium-tag--owned" title={`W garażu: ${owners.join(', ')}`}>
+      w garażu
+    </span>
+  );
+}
+
+/** „W garażu: Iskra” pod dużą grafiką modelu — kto już ma takie auto. */
+function VehicleOwnersLine({ entryId }: { entryId: string }) {
+  const owners = useModelOwners(entryId);
+  if (owners.length === 0) return null;
+  return <p className="compendium-vehicle-owners">W garażu: {owners.join(', ')}</p>;
 }

@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react';
-import { cpredHaggledPrice } from '@vtt/shared';
+import { cpredHaggledPrice, readCpredVehicle } from '@vtt/shared';
 import { clearNotices, notifyInfo, notifyRefusal } from '../notices.js';
 import { buyVehicle, vehicleBuyErrorText } from '../socket.js';
 import { useCharacterStore } from '../stores/characterStore.js';
+import { useVehicleStore } from '../stores/vehicleStore.js';
+import { VehicleArt } from './VehicleArt.js';
 import { formatEd } from './exchange/items.js';
 
 /**
@@ -39,6 +41,15 @@ export function VehicleOffer({
     card?.data.haggle && card.data.haggle.discount > 0 ? card.data.haggle.discount : 0;
   const price = cpredHaggledPrice(listed, discount);
   const wallet = card?.data.eddies ?? 0;
+  // Ile aut tego modelu ta postać już ma (06.11) — drugi zakup ma być świadomy.
+  const owned = useVehicleStore(
+    (s) =>
+      Object.values(s.vehicles).filter(
+        (vehicle) =>
+          vehicle.ownerCharacterId === characterId &&
+          readCpredVehicle(vehicle.system).catalogId === entryId,
+      ).length,
+  );
   const [confirming, setConfirming] = useState(false);
   const [busy, setBusy] = useState(false);
 
@@ -81,12 +92,18 @@ export function VehicleOffer({
 
   return (
     <li className="vehicle-offer" data-vehicle-offer={entryId}>
-      <div className="vehicle-offer-art" aria-hidden="true">
-        <img src={art} alt="" />
-      </div>
+      <VehicleArt url={art} size="card" />
       <div className="vehicle-offer-body">
         <b className="vehicle-offer-name">{name}</b>
         <span className="vehicle-offer-detail">{detail}</span>
+        {owned > 0 ? (
+          <span
+            className="vehicle-owned-tag"
+            title={`${card?.name ?? 'Postać'} ma już ${owned === 1 ? 'to auto' : `${owned} takie auta`} — stoi w sekcji „Pojazdy” na karcie (Ekwipunek).`}
+          >
+            W garażu{owned > 1 ? ` ×${owned}` : ''}
+          </span>
+        ) : null}
       </div>
       <button
         type="button"

@@ -7,8 +7,8 @@ import { expect, type Actor } from './actors.ts';
  * przyciskiem „Dodaj za darmo”, gracz kupuje je „Kup”.
  */
 
-/** Znaczki za nazwą wiersza: „własny”, „?” (dane niepełne), poziom sklepu („Wojskowe”). */
-const ROW_TAGS = String.raw`(?:własny|\?|\p{Lu}\p{Ll}+)*`;
+/** Znaczki za nazwą wiersza: „własny”, „w garażu” (auto), „?” (dane niepełne), poziom sklepu („Wojskowe”). */
+const ROW_TAGS = String.raw`(?:własny|w garażu|\?|\p{Lu}\p{Ll}+)*`;
 
 /**
  * Karta wpisu: szukanie po nazwie, po kategoriach, klik w wiersz. Domyślnie nazwa

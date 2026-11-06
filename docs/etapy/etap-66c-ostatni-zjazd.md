@@ -111,12 +111,19 @@ z alternatywą z próbki (`vehicle.sample-kompakt`), jak w każdym wzorcu. **Bil
 liczony dla katalogu z podręcznika.** Na samej próbce wszystkie auta to kompakty z Ruchem 20,
 co wystarcza do testów, ale nie do gry. Opis „Wymaga…” w notatce mówi o tym MG.
 
-| klucz     | nazwa           | `catalogIds`                                            | ulepszenia                                                                           | grafika                | wynik (katalog z podręcznika)                                                                           |
-| --------- | --------------- | ------------------------------------------------------- | ------------------------------------------------------------------------------------ | ---------------------- | ------------------------------------------------------------------------------------------------------- |
-| `matylda` | Wóz od Matyldy  | `vehicle.samochod-sportowy`, `vehicle.sample-kompakt`   | `ram`, `nitro`                                                                       | `car-orange.webp`      | PUK 50, Ruch 40, 4 fotele, Pług z przodu, 1 zbiornik Nitro                                              |
-| `furgon`  | Furgon Halcyonu | `vehicle.samochod-kompaktowy`, `vehicle.sample-kompakt` | `reinforced`, `armoredHull`, `bulletproofGlass`, `extraSeats`, `extraSeats`, `nitro` | `van-white.webp`       | PUK 70, OB 13, Ruch 20, 8 foteli (`van-8`, bryła 3 × 7), cienkie szyby 15 PW na burtę, 1 zbiornik Nitro |
-| `eskorta` | Eskorta         | `vehicle.samochod-sportowy`, `vehicle.sample-kompakt`   | `bulletproofGlass`, `spikes`, `spikes`                                               | `car-black-viper.webp` | PUK 50, Ruch 40, szyby 15 PW, **2 kolczatki**                                                           |
-| `rydwan`  | Rydwan          | `vehicle.samochod-sportowy`, `vehicle.sample-kompakt`   | — (do 04.11 `machineGun`, decyzja MG)                                                | `car-red.webp`         | PUK 50, Ruch 40, bez broni pokładowej                                                                   |
+| klucz     | nazwa           | `catalogIds`                                                                       | ulepszenia                                               | grafika                | wynik (katalog z podręcznika)                                                                           |
+| --------- | --------------- | ---------------------------------------------------------------------------------- | -------------------------------------------------------- | ---------------------- | ------------------------------------------------------------------------------------------------------- |
+| `matylda` | Wóz od Matyldy  | `vehicle.samochod-sportowy`, `vehicle.sample-kompakt`                              | `ram`, `nitro`                                           | `nocny-neon.webp`      | PUK 50, Ruch 40, 4 fotele, Pług z przodu, 1 zbiornik Nitro                                              |
+| `furgon`  | Furgon Halcyonu | `vehicle.militech-furgon`, `vehicle.samochod-kompaktowy`, `vehicle.sample-kompakt` | `reinforced`, `armoredHull`, `bulletproofGlass`, `nitro` | `militech-furgon.webp` | PUK 70, OB 13, Ruch 20, 6 foteli (`van-6`, bryła 3 × 7), cienkie szyby 15 PW na burtę, 1 zbiornik Nitro |
+| `eskorta` | Eskorta         | `vehicle.samochod-sportowy`, `vehicle.sample-kompakt`                              | `bulletproofGlass`, `spikes`, `spikes`                   | `rajdowka-77.webp`     | PUK 50, Ruch 40, szyby 15 PW, **2 kolczatki**                                                           |
+| `rydwan`  | Rydwan          | `vehicle.samochod-sportowy`, `vehicle.sample-kompakt`                              | — (do 04.11 `machineGun`, decyzja MG)                    | `widmo.webp`           | PUK 50, Ruch 40, bez broni pokładowej                                                                   |
+
+**Grafiki MG i furgon na 6 foteli (zlecenie MG z 06.11):** auta wzorca mają grafiki modeli
+z etapu 67 (Wóz — „Nocny Neon”, eskorta — „Rajdówka 77”, Rydwan — „Widmo”), a furgon to model
+„Militech — furgon” (klasa kompaktowa, 6 foteli, bryła furgonu `van-6` z rzędami za kabiną).
+Liczby bez zmian; Ulepszenie foteli zniknęło, bo fotele daje model. Kłoda siedzi w fotelu 4,
+Iskra w 5 (tylny rząd). Wstęp opisuje nowe auta. Scena założona z wzorca przed 06.11 zostaje
+przy starych grafikach i ośmiu fotelach.
 
 **Dlaczego tak:**
 
@@ -156,7 +163,7 @@ Umiejętności: `driving` 4, `handgun` 5, `evasion` 3, `perception` 4, `athletic
 Sprzęt: `weapon.heavy-pistol` / `weapon.zgrzyt-9`; `armor.light-armorjack` /
 `armor.kurtka-warsztatowa`.
 
-**Kłoda — strażnik ładunku** (fotel 6, tył po lewej, `hostile`). Strzela przez tylną szybę we
+**Kłoda — strażnik ładunku** (fotel 4, tył po lewej, `hostile`). Strzela przez tylną szybę we
 wszystko, co się zbliży. Gdy furgon stanie, łapie Iskrę jako tarczę (patrz „Zatrzymanie”).
 
 | INT | REF | ZW  | TECH | CHŁ | WOLA | SZCZ | RUCH | BC  | EMP |
@@ -168,7 +175,7 @@ Umiejętności: `shoulder-arms` 8, `brawling` 6, `melee-weapon` 5, `evasion` 4, 
 `weapon.heavy-melee` / `weapon.szpon`; tułów `armor.medium-armorjack` /
 `armor.kurtka-warsztatowa`, głowa `armor.light-armorjack` / `armor.helm-kurierski`.
 
-**Iskra — porwana netrunnerka** (fotel 7, tył po prawej, `neutral`). Uśpiona środkami: nie
+**Iskra — porwana netrunnerka** (fotel 5, tył po prawej, `neutral`). Uśpiona środkami: nie
 bierze udziału w walce, MG nie dokłada jej do kolejki. Budzi się po zatrzymaniu (patrz
 „Zakończenia”). Bez broni i pancerza.
 
@@ -365,12 +372,13 @@ ulicy. MG wysadza figury z aut przeciągnięciem (wyskok na jezdnię robi tylko 
 > Arteria tnie dzielnicę jak neonowa blizna: trzy pasy mokrego asfaltu, za barierami chodniki
 > pod magentowymi i cyjanowymi szyldami, a nad nimi ślepe ściany bloków i buczące agregaty.
 > Matylda rzuca wam
-> kluczyki i nie tłumaczy, skąd ma ten pomarańczowy wóz z pługiem przyspawanym do zderzaka.
-> „Biały furgon Halcyonu, kilometr przed wami. W środku dziewczyna, która nazywa się Iskra
+> kluczyki i nie tłumaczy, skąd ma to różowe coupé z napisem „Night City” i pługiem
+> przyspawanym do zderzaka. „Biały pancerny furgon, na dachu logo Militechu — Halcyon wynajął
+> pancerkę, ale prowadzą go ich ludzie. Kilometr przed wami. W środku dziewczyna, która nazywa się Iskra
 > i która zrobiła mi kiedyś przysługę. Za dziesięć minut furgon skręci w ostatni zjazd, prosto
 > do ich enklawy, i będzie po niej. I jeszcze jedno: nie rozwalcie mi tego furgonu. Ona siedzi
-> z tyłu.” Silnik ryczy. Przed wami, w smugach neonu, majaczy czarne auto, które jedzie
-> stanowczo zbyt blisko białej furgonetki.
+> z tyłu.” Silnik ryczy. Przed wami, w smugach neonu, majaczy czarno-żółta wyścigówka
+> z numerem 77 na dachu, która jedzie stanowczo zbyt blisko białej furgonetki.
 
 **Okrzyki NPC-ów (do czatu albo na głos):**
 

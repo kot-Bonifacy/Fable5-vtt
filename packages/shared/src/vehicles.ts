@@ -34,10 +34,15 @@ export interface VehicleSeatPoint {
   driver?: true;
 }
 
-export const VEHICLE_LAYOUT_IDS = ['bike-2', 'car-2', 'car-4', 'car-6', 'van-8'] as const;
+export const VEHICLE_LAYOUT_IDS = ['bike-2', 'car-2', 'car-4', 'car-6', 'van-6', 'van-8'] as const;
 export type VehicleLayoutId = (typeof VEHICLE_LAYOUT_IDS)[number];
 
-/** Kierowca zawsze na pierwszym miejscu listy — numer fotela 0. */
+/**
+ * Kierowca zawsze na pierwszym miejscu listy — numer fotela 0. Furgony
+ * (06.11, MG) siadają za kabiną, nie na masce: grafiki MG mają przednią szybę
+ * między 0,2 a 0,45 długości (karetka i Militech z długą maską), więc pierwszy
+ * rząd stoi na 0,33–0,36, a ostatni przy tylnych drzwiach.
+ */
 export const VEHICLE_LAYOUTS: Record<VehicleLayoutId, readonly VehicleSeatPoint[]> = {
   'bike-2': [
     { x: 0.5, y: 0.35, driver: true },
@@ -61,13 +66,21 @@ export const VEHICLE_LAYOUTS: Record<VehicleLayoutId, readonly VehicleSeatPoint[
     { x: 0.3, y: 0.74 },
     { x: 0.7, y: 0.74 },
   ],
+  'van-6': [
+    { x: 0.3, y: 0.36, driver: true },
+    { x: 0.7, y: 0.36 },
+    { x: 0.3, y: 0.6 },
+    { x: 0.7, y: 0.6 },
+    { x: 0.3, y: 0.84 },
+    { x: 0.7, y: 0.84 },
+  ],
   'van-8': [
-    { x: 0.3, y: 0.18, driver: true },
-    { x: 0.7, y: 0.18 },
-    { x: 0.3, y: 0.4 },
-    { x: 0.7, y: 0.4 },
-    { x: 0.3, y: 0.62 },
-    { x: 0.7, y: 0.62 },
+    { x: 0.3, y: 0.33, driver: true },
+    { x: 0.7, y: 0.33 },
+    { x: 0.3, y: 0.5 },
+    { x: 0.7, y: 0.5 },
+    { x: 0.3, y: 0.67 },
+    { x: 0.7, y: 0.67 },
     { x: 0.3, y: 0.84 },
     { x: 0.7, y: 0.84 },
   ],
@@ -78,6 +91,7 @@ export const VEHICLE_LAYOUT_LABELS: Record<VehicleLayoutId, string> = {
   'car-2': 'Auto — dwa fotele',
   'car-4': 'Auto — 2 + 2',
   'car-6': 'Auto — trzy rzędy (6)',
+  'van-6': 'Furgon — trzy rzędy (6)',
   'van-8': 'Furgon — cztery rzędy (8)',
 };
 
@@ -91,22 +105,27 @@ export function vehicleSeatCount(layout: VehicleLayoutId): number {
 
 /**
  * Najmniejszy układ, który mieści tyle foteli. Motocykl ma własny tandem, póki
- * wystarcza; z koszem (Ulepszenie foteli) siada jak auto 2 + 2. Pojazd większy
- * od furgonu (jacht, aerozep) dostaje furgon — reszta miejsc jest pod pokładem,
- * nie na mapie.
+ * wystarcza; z koszem (Ulepszenie foteli) siada jak auto 2 + 2. Furgon ma
+ * własne rzędy za kabiną (6 albo 8). Pojazd większy od furgonu (jacht,
+ * aerozep) dostaje furgon — reszta miejsc jest pod pokładem, nie na mapie.
  */
 export function vehicleLayoutFor(body: VehicleBody, seats: number): VehicleLayoutId {
   if (body === 'bike' && seats <= 2) return 'bike-2';
-  const fits = (['car-2', 'car-4', 'car-6', 'van-8'] as const).find(
-    (id) => vehicleSeatCount(id) >= seats,
-  );
-  return fits ?? 'van-8';
+  const order =
+    body === 'van'
+      ? (['van-6', 'van-8'] as const)
+      : (['car-2', 'car-4', 'car-6', 'van-8'] as const);
+  return order.find((id) => vehicleSeatCount(id) >= seats) ?? 'van-8';
 }
 
-/** Bryła z liczby foteli: furgon od siedmiu, motocykl tylko z nazwy rodzaju. */
-export function vehicleBodyFor(bike: boolean, seats: number): VehicleBody {
+/**
+ * Bryła z liczby foteli: furgon od siedmiu, motocykl tylko z nazwy rodzaju.
+ * `van` — pojazd jest furgonem z wyglądu (model MG, 06.11) i dostaje bryłę
+ * furgonu także z sześcioma fotelami.
+ */
+export function vehicleBodyFor(bike: boolean, seats: number, van = false): VehicleBody {
   if (bike) return 'bike';
-  return seats > 6 ? 'van' : 'car';
+  return van || seats > 6 ? 'van' : 'car';
 }
 
 /** Pojazd tak, jak widzi go klient. `system` czyta moduł systemu (CP RED: `readCpredVehicle`). */
@@ -274,12 +293,14 @@ export const VEHICLE_ART_LEGACY: readonly { url: string; label: string }[] = [
 
 /**
  * Grafika pojazdu bez własnej (od 06.11 grafiki MG): „Żądło” dla motocykla,
- * „Graty” dla furgonu `van-8`, „Włóczęga” dla auta. `null` zostaje w typie
+ * „Graty” dla furgonu (`van-6`, `van-8`), „Włóczęga” dla auta. `null` zostaje w typie
  * na wypadek układu, któremu grafiki zabraknie — wtedy rysuje się bryła.
  */
 export function defaultVehicleArt(layout: VehicleLayoutId): string | null {
   if (layout === 'bike-2') return '/art/vehicles/zadlo.webp';
-  return layout === 'van-8' ? '/art/vehicles/graty.webp' : '/art/vehicles/wloczega.webp';
+  return layout === 'van-6' || layout === 'van-8'
+    ? '/art/vehicles/graty.webp'
+    : '/art/vehicles/wloczega.webp';
 }
 
 export function isVehicleArtUrl(value: unknown): value is string {

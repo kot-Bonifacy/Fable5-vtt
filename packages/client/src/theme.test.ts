@@ -76,6 +76,7 @@ describe('motyw (etap 27e)', () => {
      * a `--player` (60c) wybiera z motywu barwę autora karty po `data-author-color`.
      * `--device-glyph` (28.10) to adres sylwetki urządzenia z `DeviceGlyph`.
      * `--map-tools-bottom` (05.11) to dolna krawędź paska narzędzi z `MapTools`.
+     * `--vehicle-art-len` (06.11) to długość auta bokiem w danym rozmiarze `VehicleArt`.
      */
     const local = new Set([
       '--chat-kind-icon',
@@ -87,6 +88,7 @@ describe('motyw (etap 27e)', () => {
       '--player',
       '--rattle',
       '--top-bar-control',
+      '--vehicle-art-len',
       '--wound',
     ]);
     expect([...used].filter((t) => !defined.has(t) && !local.has(t))).toEqual([]);

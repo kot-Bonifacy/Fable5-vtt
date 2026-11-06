@@ -4032,12 +4032,14 @@ function GearTab({ character, data, saveData }: TabProps & { character: Characte
         <WalletSection character={character} data={data} saveData={saveData} />
       </div>
 
+      {/* Etap 65a: pojazdy karty — osobne wiersze bazy, nie lista na karcie.
+          Od 06.11 (MG) zaraz pod gotówką, a nie na samym dole za cyberdekiem:
+          kupione auto ma być widać, a nie trzeba go szukać. */}
+      <CharacterVehiclesSection characterId={character.id} />
+
       <LifestyleFields data={data} saveData={saveData} />
 
       <CyberdeckSection character={character} data={data} />
-
-      {/* Etap 65a: pojazdy karty — osobne wiersze bazy, nie lista na karcie. */}
-      <CharacterVehiclesSection characterId={character.id} />
     </div>
   );
 }

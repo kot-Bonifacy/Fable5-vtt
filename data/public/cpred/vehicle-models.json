@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "source": "Modele aut VTT (etap 67, tabela zatwierdzona przez MG 06.11.2026). Grafiki MG: tools/art/vehicle-models.py. Liczby (PUK, Ruch, rodzaj, Tabor) bierze klasa z katalogu: compact, sport, super albo bike (id klas w CPRED_VEHICLE_CLASS_IDS, vehicle-models.ts).",
+  "source": "Modele aut VTT (etap 67, tabela zatwierdzona przez MG 06.11.2026). Grafiki MG: tools/art/vehicle-models.py. Furgony (`van`) mają bryłę i trzy rzędy foteli furgonu (MG 06.11). Liczby (PUK, Ruch, rodzaj, Tabor) bierze klasa z katalogu: compact, sport, super albo bike (id klas w CPRED_VEHICLE_CLASS_IDS, vehicle-models.ts).",
   "models": [
     {
       "id": "vehicle.kagero",
@@ -88,22 +88,24 @@
       "name": "„Graty” (furgon)",
       "class": "compact",
       "art": "/art/vehicles/graty.webp",
-      "seats": 8,
+      "seats": 6,
+      "van": true,
       "price": 9000,
       "tier": 1,
       "forSale": true,
-      "description": "Czerwony, podrdzewiały furgon z włazem w dachu. Cztery rzędy miejsc albo jeden rząd i cała paka sprzętu."
+      "description": "Czerwony, podrdzewiały furgon z włazem w dachu. Trzy rzędy miejsc albo jeden rząd i cała paka sprzętu."
     },
     {
       "id": "vehicle.nomada",
       "name": "„Nomada” (kamper)",
       "class": "compact",
       "art": "/art/vehicles/nomada.webp",
-      "seats": 8,
+      "seats": 6,
+      "van": true,
       "price": 12000,
       "tier": 1,
       "forSale": true,
-      "description": "Niebieski kamper z białym pasem i orurowaniem dookoła. Dom na kołach dla całej ekipy — osiem miejsc."
+      "description": "Niebieski kamper z białym pasem i orurowaniem dookoła. Dom na kołach dla całej ekipy — sześć miejsc."
     },
     {
       "id": "vehicle.zadlo",
@@ -146,7 +148,8 @@
       "name": "Karetka",
       "class": "compact",
       "art": "/art/vehicles/karetka.webp",
-      "seats": 8,
+      "seats": 6,
+      "van": true,
       "forSale": false,
       "description": "Biało-czerwony ambulans z czerwonym krzyżem na dachu. Pojazd MG."
     },
@@ -155,7 +158,8 @@
       "name": "Militech — furgon",
       "class": "compact",
       "art": "/art/vehicles/militech-furgon.webp",
-      "seats": 8,
+      "seats": 6,
+      "van": true,
       "forSale": false,
       "description": "Opancerzony furgon konwojowy w barwach Militechu. Pojazd MG."
     }

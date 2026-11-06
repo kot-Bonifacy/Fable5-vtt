@@ -40,8 +40,8 @@ przezroczystości namalowana w pikselach.
 | 10      | „Włóczęga” (stare kombi)  | Kompaktowy    | 4      | 6 300 ed  | tak   |
 | 6       | Taksówka                  | Kompaktowy    | 4      | —         | MG    |
 | 8       | Radiowóz                  | Sportowy      | 4      | —         | MG    |
-| 7       | Karetka                   | Kompaktowy    | 8      | —         | MG    |
-| 3       | Militech — furgon         | Kompaktowy    | 8      | —         | MG    |
+| 7       | Karetka                   | Kompaktowy    | 6¹     | —         | MG    |
+| 3       | Militech — furgon         | Kompaktowy    | 6¹     | —         | MG    |
 
 ## Zakres ✅
 
@@ -94,14 +94,18 @@ Propozycje z pierwszej rozmowy (motocykl, cywilny furgon) MG dostarczył tego sa
 
 | Grafika   | Model              | Klasa      | Fotele | Cena      | Poziom |
 | --------- | ------------------ | ---------- | ------ | --------- | ------ |
-| furgon1   | „Graty” (furgon)   | Kompaktowy | 8      | 9 000 ed  | 1      |
-| furgon2   | „Nomada” (kamper)  | Kompaktowy | 8      | 12 000 ed | 1      |
+| furgon1   | „Graty” (furgon)   | Kompaktowy | 6¹     | 9 000 ed  | 1      |
+| furgon2   | „Nomada” (kamper)  | Kompaktowy | 6¹     | 12 000 ed | 1      |
 | motocykl1 | „Żądło” (motocykl) | Motocykl   | 2      | 6 000 ed  | 1      |
 | motocykl2 | „Osa” (motocykl)   | Motocykl   | 2      | 6 000 ed  | 1      |
 
 Klasa modelu `bike` (`CPRED_VEHICLE_CLASS_IDS`: Motocykl, w próbce skuter). Domyślne grafiki:
 motocykl bez własnej — „Żądło” (koniec bryły zastępczej na pościgu), furgon `van-8` — „Graty”
 (zamiast białego furgonu CC0). Oglądane w Firefoksie na scenie pościgu (Autostrada).
+
+¹ Do 06.11 (trzecia sesja) 8 foteli. MG: furgony mają 6 miejsc w trzech rzędach za kabiną —
+model z `"van": true` ma bryłę furgonu (`van-6`) także przy sześciu fotelach (umowa na górze
+`mapa`).
 
 ## Kryteria ukończenia
 
