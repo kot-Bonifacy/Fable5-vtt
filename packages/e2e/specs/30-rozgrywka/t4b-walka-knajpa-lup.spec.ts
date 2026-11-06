@@ -474,7 +474,11 @@ test.describe.serial('T4b: walka pierwsza w „Knajpie” — rany, granat, zwar
     await expect(page.getByRole('complementary', { name: 'Panel aktywnej postaci' })).toContainText(
       'W ręku: Bijatyka',
     );
-    scriptDice([8]);
+    // Druga kość to Unik Rzeźnika, który serwer rzuca sam zaraz po karcie ataku
+    // (ZW 5 + Unik 5 + 2 = 12 < 16). Bez niej Unik był losowy i raz na kilka
+    // przebiegów „unik udany” — to była przyczyna pudła z 31.10, nie ukryta
+    // Percepcja (karta z 06.11: „Unik Rzeźnik: 18 vs 16”).
+    scriptDice([8, 2]);
     const before = lastMessageId();
     await clickOnMap(page, tokenCentre(token('Rzeźnik'), cell));
     const punchId = await rollAndWait(ola, before, 'Bijatyka → Rzeźnik');
