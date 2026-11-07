@@ -4,6 +4,8 @@ import {
   ZONE_MESSAGES,
   isPointInZone,
   pickZoneAt,
+  rectSeenAlongPath,
+  rectSeenFrom,
   sanitizeZoneName,
   sanitizeZoneRect,
   zoneLabel,
@@ -93,6 +95,29 @@ describe('geometria strefy bronionej', () => {
     expect(zoneWithinReachOfPath(zone(), [{ x: 0, y: 150 }], 100)).toBe(true);
     expect(zoneWithinReachOfPath(zone(), [{ x: 0, y: 150 }], 99)).toBe(false);
     expect(zoneWithinReachOfPath(zone(), [], 1000)).toBe(false);
+  });
+
+  it('Percepcja w drodze nie widzi przez ścianę (66e pkt 2)', () => {
+    // Strefa 100–300 × 100–200; ściana wzdłuż x = 50 od y = 0 do y = 300.
+    const wall = [{ x1: 50, y1: 0, x2: 50, y2: 300 }];
+    expect(rectSeenFrom({ x: 0, y: 150 }, zone(), [])).toBe(true);
+    expect(rectSeenFrom({ x: 0, y: 150 }, zone(), wall)).toBe(false);
+    // Ściana wzdłuż dalszej krawędzi strefy nie zasłania podłogi, której jest brzegiem.
+    expect(rectSeenFrom({ x: 0, y: 150 }, zone(), [{ x1: 0, y1: 200, x2: 400, y2: 200 }])).toBe(
+      true,
+    );
+    // Droga za ścianą — nic; droga wychodząca za koniec ściany — widzi.
+    const behind = [
+      { x: 0, y: 0 },
+      { x: 0, y: 290 },
+    ];
+    expect(rectSeenAlongPath(zone(), behind, 100, wall)).toBe(false);
+    const round = [
+      { x: 0, y: 150 },
+      { x: 0, y: 380 },
+      { x: 120, y: 380 },
+    ];
+    expect(rectSeenAlongPath(zone(), round, 200, wall)).toBe(true);
   });
 
   it('klik trafia w strefę położoną najpóźniej — tak jak przy osłonach', () => {

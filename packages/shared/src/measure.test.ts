@@ -85,6 +85,23 @@ describe('reachMetresBetweenTokens', () => {
     expect(reachMetresBetweenTokens(me, { x: 400, y: 1800, size: 1 }, scene)).toBe(4);
     expect(reachMetresBetweenTokens(me, { x: 800, y: 2100, size: 1 }, scene)).toBe(4);
   });
+
+  it('a figure off the grid stands on every square it overlaps (66e pkt 15)', () => {
+    // Ciało Małego z wzorca na 17,3 / 6,8 pola — z wolnego pola obok (16 / 6)
+    // środek do środka to 1,3 pola, czyli 2,6 m → 3 m i „Za daleko”.
+    const body = { x: 1730, y: 680, size: 1 };
+    expect(reachMetresBetweenTokens({ x: 1600, y: 600, size: 1 }, body, scene)).toBe(2);
+    expect(reachMetresBetweenTokens({ x: 1900, y: 700, size: 1 }, body, scene)).toBe(2);
+    // Dwa pola dalej dalej jest za daleko.
+    expect(reachMetresBetweenTokens({ x: 2000, y: 700, size: 1 }, body, scene)).toBe(4);
+    // Bez siatki liczy się prosto od środka.
+    expect(
+      reachMetresBetweenTokens({ x: 1600, y: 600, size: 1 }, body, {
+        ...scene,
+        gridMode: 'gridless',
+      }),
+    ).toBe(2.6);
+  });
 });
 
 describe('polylineMetres', () => {

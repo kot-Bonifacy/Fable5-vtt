@@ -49,6 +49,7 @@ import {
   entryLines,
   findCampaignCharacter,
   postInventoryCard,
+  inventoryActorName,
   readEddies,
   readItemRefs,
   requireOwnCharacter,
@@ -519,12 +520,12 @@ async function executeTrade(
     toCharacterId: cardB.id,
     toName: sideB.name,
     toOwnerId: cardB.ownerId,
-    actorName: user.name,
+    actorName: inventoryActorName(user, cardA, cardB),
     lines: tradeLines(swap.result.fromA.map(cpredItemLine), sideA.eddies),
     returnLines: tradeLines(swap.result.fromB.map(cpredItemLine), sideB.eddies),
     ...(sideA.eddies > 0 ? { eddies: sideA.eddies } : {}),
     system: {},
-    resolution: { kind: 'accepted', byName: user.name },
+    resolution: { kind: 'accepted', byName: inventoryActorName(user, cardA, cardB) },
   };
   await postInventoryCard(
     deps,

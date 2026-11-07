@@ -1,5 +1,6 @@
 import { drivingMoveBudget } from './chase-budget.js';
 import { deferView } from './presentation.js';
+import { emitRunsOnRoundChange } from './netrun-io.js';
 import type {
   ChatMessageView,
   CombatAddPayload,
@@ -667,6 +668,7 @@ export async function applyTurnPointer(
       where: { combatId: combat.id, held: true },
       data: CLEARED_HOLD,
     });
+    await emitRunsOnRoundChange(deps, combat.sceneId);
   }
   if (!startTurn) return;
   await prisma.combatant.updateMany({

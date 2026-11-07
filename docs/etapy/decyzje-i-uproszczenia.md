@@ -14,7 +14,8 @@ przestanie się bronić, przenieś ją stąd do `POMYSLY.md` jako zadanie — ni
 - **Strefa broniona (podłoga, system środowiskowy) uruchamia się wyłącznie marszem figury
   gracza.** NPC-e (personel zna swoją podłogę) i przestawienie figury ręką MG nigdy jej nie
   odpalają — MG może poprawić ustawienie bez skutków, a ochrona „Pod Neonem” chodzi korytarzem
-  przed gabinetem. **Jeszcze niewdrożone** — zaległość z 07.11 (piąta sesja), punkt (4).
+  przed gabinetem. **Wdrożone 07.11 (siódma sesja):** odpala tylko marsz gracza jego
+  własną figurą; powtórka na koniec Tury (podłoga elektryczna) też tylko figurom graczy.
 
 ## Taran, skręt przed przeszkodą i spóźniona inicjatywa (06.11.2026, decyzje MG po „Zastawie”)
 

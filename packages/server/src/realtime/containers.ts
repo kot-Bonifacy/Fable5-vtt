@@ -52,6 +52,7 @@ import {
   metresBetweenPlaced,
   moveBetweenCards,
   postInventoryCard,
+  inventoryActorName,
   readEddies,
   readItemRefs,
   requireOwnCharacter,
@@ -458,11 +459,11 @@ export const containerPutEvent = defineEvent<ContainerPutPayload, { messageId: n
       toCharacterId: at.card.id,
       toName: name,
       toOwnerId: null,
-      actorName: user.name,
+      actorName: inventoryActorName(user, from),
       lines: entryLines(result.moved, result.eddies),
       ...(result.eddies > 0 ? { eddies: result.eddies } : {}),
       system: { items: refs } as unknown as Record<string, unknown>,
-      resolution: { kind: 'accepted', byName: user.name },
+      resolution: { kind: 'accepted', byName: inventoryActorName(user, from) },
     };
     const message = await postInventoryCard(
       deps,
@@ -574,11 +575,11 @@ export const inventoryDropEvent = defineEvent<InventoryDropPayload, InventoryDro
       toCharacterId: pile.card.id,
       toName: tokenTableName(pile.token, pile.token.name),
       toOwnerId: null,
-      actorName: user.name,
+      actorName: inventoryActorName(user, from),
       lines: entryLines(result.moved, result.eddies),
       ...(result.eddies > 0 ? { eddies: result.eddies } : {}),
       system: { items: refs } as unknown as Record<string, unknown>,
-      resolution: { kind: 'accepted', byName: user.name },
+      resolution: { kind: 'accepted', byName: inventoryActorName(user, from) },
     };
     const message = await postInventoryCard(
       deps,

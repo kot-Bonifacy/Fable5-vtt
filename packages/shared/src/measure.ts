@@ -107,12 +107,48 @@ export function metresBetweenTokens(
 export function reachMetresBetweenTokens(
   from: Pick<TokenView, 'x' | 'y' | 'size'>,
   to: Pick<TokenView, 'x' | 'y' | 'size'>,
-  scene: Pick<SceneView, 'grid' | 'metersPerSquare'>,
+  scene: Pick<SceneView, 'grid' | 'metersPerSquare'> & Partial<Pick<SceneView, 'gridMode'>>,
 ): number {
-  const a = tokenCentre(from, scene);
-  const b = tokenCentre(to, scene);
-  const px = Math.max(Math.abs(a.x - b.x), Math.abs(a.y - b.y));
-  return Math.round(px * metresPerPixel(scene) * 10) / 10;
+  const size = scene.grid.sizePx;
+  if (scene.gridMode === 'gridless' || !(size > 0)) {
+    const a = tokenCentre(from, scene);
+    const b = tokenCentre(to, scene);
+    const px = Math.max(Math.abs(a.x - b.x), Math.abs(a.y - b.y));
+    return Math.round(px * metresPerPixel(scene) * 10) / 10;
+  }
+  // A figure off the grid stands on every square it overlaps (66e pkt 15,
+  // 07.11): the body of a guard placed at 17,3 / 6,8 was 2,6 m from every
+  // free neighbouring square, rounded to 3 and „out of reach" of all of them.
+  // On-grid figures have one square per axis, so for them nothing changes.
+  const dx = axisGap(from.x, from.size, to.x, to.size, scene.grid.offsetX, size);
+  const dy = axisGap(from.y, from.size, to.y, to.size, scene.grid.offsetY, size);
+  return Math.round(Math.max(dx, dy) * size * metresPerPixel(scene) * 10) / 10;
+}
+
+/**
+ * Squares between two figures' centres along one axis, each figure put on the
+ * nearest square it overlaps.
+ */
+function axisGap(
+  a: number,
+  aSize: number,
+  b: number,
+  bSize: number,
+  offset: number,
+  size: number,
+): number {
+  const cells = (value: number): number[] => {
+    const at = (value - offset) / size;
+    const near = Math.round(at);
+    return Math.abs(at - near) < 1e-6 ? [near] : [Math.floor(at), Math.ceil(at)];
+  };
+  let best = Number.POSITIVE_INFINITY;
+  for (const left of cells(a)) {
+    for (const right of cells(b)) {
+      best = Math.min(best, Math.abs(left + aSize / 2 - (right + bSize / 2)));
+    }
+  }
+  return best;
 }
 
 /**

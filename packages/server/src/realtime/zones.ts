@@ -41,6 +41,8 @@ import {
   tokenCentre,
   tokenTableName,
   zoneStanding,
+  rectSeenAlongPath,
+  rectSeenFrom,
   zoneWithinReachOfPath,
 } from '@vtt/shared';
 import type { DefenseZone as ZoneRow, Scene, Token } from '../generated/prisma/client.js';
@@ -56,6 +58,7 @@ import { RealtimeError, defineEvent, type RealtimeDeps } from './registry.js';
 import { rememberDeletion, scalarRow } from './undo-buffer.js';
 import { emitCombatOfScene, loadCombat } from './combat.js';
 import { requireCampaignScene, toSceneView } from './scenes.js';
+import { fetchSightBlockers } from './walls-io.js';
 import { emitTokensById } from './tokens.js';
 import { createCheckCall, type CheckFrame } from './checks.js';
 import { campaignGmUser } from './campaign-gm.js';
@@ -664,6 +667,11 @@ export async function runZonesAfterMove(
   const spots = await spotHiddenZones(deps, { campaignId, user, scene, token, walked });
 
   // ── the systems themselves ──
+  // Decyzja MG z 07.11 (66e pkt 4): system odpala **wyłącznie** marsz gracza
+  // jego własną figurą. Ochrona zna swój budynek, a przestawienie figury ręką
+  // MG to poprawka planszy, nie krok w świecie — dotąd jedyne drzwi do kuchni
+  // „Pod Neonem” leżały w strefie i ochrona nie mogła tamtędy przejść.
+  if ((await controllerOf(deps, token)) !== user.id) return { spots };
   // Strzał i obrażenia idą kontem MG, nie gracza, który wszedł w strefę (#39).
   let hand: SessionUser | null = null;
   for (const { row, profile } of live) {
@@ -740,6 +748,8 @@ export async function runZonesAtTurnEnd(
   const { campaignId, user, scene, token } = input;
   const rows = await fetchSceneZones(deps.ctx.prisma, scene.id);
   if (rows.length === 0) return [];
+  // Tylko figury graczy (decyzja MG z 07.11, 66e pkt 4) — tak jak wejście.
+  if ((await controllerOf(deps, token)) === null) return [];
   const { entries } = await buildCompendiumSync(deps, campaignId);
   const half = tokenHalfPx(token, scene);
   const centre: ScenePoint = { x: token.x + half, y: token.y + half };
@@ -823,9 +833,13 @@ export async function spotHiddenZones(
   const { campaignId, user, scene, token } = input;
   const rows = await fetchSceneZones(deps.ctx.prisma, scene.id);
   const spotRangePx = zoneSpotRangePx(scene);
-  const near = rows.filter(
+  const reach = rows.filter(
     (row) => row.hidden && zoneWithinReachOfPath(row, input.walked, spotRangePx),
   );
+  if (reach.length === 0) return [];
+  // Four metres through a wall is not „in reach of Perception" (66e pkt 2).
+  const blockers = await fetchSightBlockers(deps.ctx.prisma, scene.id);
+  const near = reach.filter((row) => rectSeenAlongPath(row, input.walked, spotRangePx, blockers));
   if (near.length === 0) return [];
   const { entries } = await buildCompendiumSync(deps, campaignId);
   const spots: HiddenSpot[] = [];
@@ -930,7 +944,11 @@ export async function zonesNoticeDue(
   const half = tokenHalfPx(token, scene);
   const centre = { x: stand.x + half, y: stand.y + half };
   const rangePx = zoneSpotRangePx(scene);
-  const near = hidden.filter((row) => distanceToRect(centre, row) <= rangePx);
+  const reach = hidden.filter((row) => distanceToRect(centre, row) <= rangePx);
+  if (reach.length === 0) return false;
+  // Mirrors `spotHiddenZones`: a zone behind a wall owes no roll (66e pkt 2).
+  const blockers = await fetchSightBlockers(deps.ctx.prisma, scene.id);
+  const near = reach.filter((row) => rectSeenFrom(centre, row, blockers));
   if (near.length === 0) return false;
   const ownerId = await controllerOf(deps, token);
   if (!ownerId) return false;

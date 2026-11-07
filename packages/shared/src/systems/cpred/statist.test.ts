@@ -419,6 +419,36 @@ describe('applyStatistQuick — szybkie pole nie zjada reszty karty', () => {
     expect(after.weapons.map((row) => row.name)).toEqual(['Pistolet', 'Nóż']);
   });
 
+  it('odesłane bez zmian pola nie dopisują NPC-owi pancerza statysty ani bloku (66e pkt 1)', () => {
+    const sheet = ganger();
+    const npc = {
+      ...sheet,
+      statBlock: null,
+      armor: [
+        {
+          id: 'kevlar',
+          name: 'Kevlar',
+          notes: '',
+          location: 'body' as const,
+          sp: 7,
+          spCurrent: 7,
+        },
+      ],
+    };
+    const after = applyStatistQuick(npc, statistQuick(npc));
+    expect(after.armor).toEqual(npc.armor);
+    expect(after.statBlock).toBeNull();
+    expect(after.weapons).toEqual(npc.weapons);
+    expect(after.skills).toEqual(npc.skills);
+  });
+
+  it('zmiana jednej grupy pisze tylko ją', () => {
+    const npc = { ...ganger(), statBlock: null };
+    const after = applyStatistQuick(npc, { ...statistQuick(npc), armorSp: 11 });
+    expect(after.armor.find((row) => row.id === STATIST_ARMOR_ROW_IDS.body)?.sp).toBe(11);
+    expect(after.statBlock).toBeNull();
+  });
+
   it('podniesienie katalogowego OB nie cofa zużycia pancerza', () => {
     const sheet = createStatistSheet({ ...createDefaultStatistQuick(), armorSp: 11 });
     const worn = {

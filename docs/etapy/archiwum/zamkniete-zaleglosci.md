@@ -9,6 +9,40 @@ go czytać.
 albo gdy chcesz sprawdzić, czy pozycja, która wygląda na nową, nie jest wracającą starą.
 Treść wpisów jest niezmieniona — łącznie z datami i odsyłaczami do notatek sesji.
 
+## Zamknięte 2026-11-07, siódma sesja („zrób kilka zaległości”)
+
+Sześć punktów z rozegrania „Po zamknięciu” (66e), zamkniętych w kodzie i testach (`shared`,
+serwer). **Nie oglądane w przeglądarce** — sprawdzić przy wznowieniu przebiegu albo przy stole.
+Bez migracji; czekają na wdrożenie.
+
+- **(piąta, 1) 🔴 Zapis „Edycji tokenu” dopisywał NPC-owi pancerz statysty.** Diagnoza: okno
+  zawsze wysyła `token:stat` z polami `statistQuick(karta)`, a ten odczyt jest stratny — Kevlar
+  z wzorca wraca jako „Pancerz 7”, brak `statBlock` jako „Umiejętność 0”. `applyStatistQuick`
+  pisał wszystko ślepo: wiersze statysty OB 7 na głowę i korpus obok Kevlaru i `weaponSkill: 0`.
+  Naprawa: `applyStatistQuick` porównuje z `statistQuick(data)` i zostawia grupy, które wróciły
+  bez zmian (blok, Umiejętności, broń, pancerz); pełny zapis został tylko zakładaniu karty
+  (`writeStatistQuick`). Test: `statist.test.ts` („odesłane bez zmian pola…”).
+- **(piąta, 2) 🔴 Percepcja w drodze zauważała przez ściany.** Diagnoza: `zonesNoticeDue`,
+  `hiddenFiguresNoticeDue`, `spotHiddenZones` i `spotHiddenFigures` pytały tylko o 4 m.
+  Naprawa: `rectSeenFrom` / `rectSeenAlongPath` (`shared/zones.ts`) z `fetchSightBlockers`
+  (ściany i zamknięte drzwi) we wszystkich czterech miejscach. Test: `zones.test.ts` (shared).
+- **(piąta, 4) 🟠 Strefa odpalała na NPC-ach i przy ręce MG** — decyzja MG wdrożona:
+  `runZonesAfterMove` odpala systemy tylko, gdy ruszający jest kontrolerem figury;
+  `runZonesAtTurnEnd` pomija figury bez kontrolera. Cztery testy `zones.test.ts` (serwer)
+  wyzwalały system figurą NPC-a — chodzą teraz Kolcem (w teście windy MG stawia go przed
+  windą, zdejmuje „Powalony” po ślizgawce i leczy).
+- **(szósta, 15) 🔴 Ciało spoza siatki poza zasięgiem ręki.** Diagnoza: Mały na 17,3 / 6,8 pola,
+  zasięg od środka do środka 2,6 m → 3 m z każdego wolnego pola. Naprawa:
+  `reachMetresBetweenTokens` stawia figurę spoza siatki na najbliższym polu, na które zachodzi
+  (scena z siatką; figury na siatce bez zmian). Test: `measure.test.ts`.
+- **(szósta, 17) 🔴 „Węzeł użyty w tej Turze” nie gasł po zmianie rundy.** Diagnoza: `nodeUsed`
+  liczone przy wysyłce, a nowa runda niczego nie wysyłała. Naprawa: `emitRunsOnRoundChange`
+  z `applyTurnPointer` (zmiana rundy) i `combat:end`. Test: `netdevices.test.ts` (`netrun:sync`
+  po nowej rundzie bez `nodeUsed`).
+- **(szósta, 21) 🟠 Karta „Łup” pokazywała konto gracza.** Naprawa: `inventoryActorName`
+  w przekazaniu, łupie, odpowiedzi na propozycję, pojemnikach i handlu — postać gracza, MG
+  zostaje „MG”.
+
 ## Zamknięte 2026-11-07 („wykonaj zaległości”)
 
 Oględziny tymczasowymi specami E2E (`99-ogledziny`, skasowane): MG w Chromium, Ola i Marek

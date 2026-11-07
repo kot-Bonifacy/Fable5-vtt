@@ -1,5 +1,18 @@
 # Dziennik sesji — archiwum
 
+### Sesja 07.11, piąta — rozegranie „Po zamknięciu” w przeglądarce (przerwane, do wznowienia)
+
+**Zlecenie MG:** rozegrać scenę netrunnerem Rangi 6 z ciężkim pistoletem maszynowym (najpierw
+PM, zmiana w trakcie). **Decyzje MG z pytań:** Iskra z `po-T6` podniesiona do Rangi 6, skrypt
+kości, błędy notować i obchodzić, naprawa po rozegraniu, **strefa odpala tylko na figurach
+graczy** (do wdrożenia). **Zrobione:** przebieg do wejścia na korytarz — zamek tylnych drzwi,
+kamera zaplecza widzi Iskrę, Bury z latarką od zaplecza, walka 3 rundy (Bury martwy, Iskra
+24/40 po podłodze), Skaner, rozbrojenie podłogi. **Przerwane na prośbę MG** (reset kontekstu),
+stan w punkcie E2E `po-zamknieciu-przebieg1`; przebieg i 14 znalezisk w
+`etap-66e-po-zamknieciu.md` („Rozegranie w przeglądarce”), błędy w `zaleglosci.md` (07.11,
+piąta). **Bez zmian w kodzie i bez testów.** **Oglądane:** MG w Chromium, Iskra w **Firefoksie**
+(Playwright MCP).
+
 ### Sesja 07.11, czwarta — realizacja sceny „Po zamknięciu” (66e)
 
 **Zlecenie MG:** „wykonaj etap 66e”. Bez pytań do MG — rozstrzygnięcia w pliku etapu.

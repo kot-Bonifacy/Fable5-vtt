@@ -11,6 +11,8 @@ import {
   readTokenSightings,
   tokenTableName,
   writeTokenSightings,
+  rectSeenAlongPath,
+  rectSeenFrom,
   zoneWithinReachOfPath,
 } from '@vtt/shared';
 import type { Scene, Token } from '../generated/prisma/client.js';
@@ -20,6 +22,7 @@ import type { HiddenSpot } from './hidden-notice.js';
 import { rollSecretPerception } from './character-rolls.js';
 import type { RealtimeDeps } from './registry.js';
 import { toSceneView } from './scenes.js';
+import { fetchSightBlockers } from './walls-io.js';
 import { emitTokenUpsert } from './tokens.js';
 import { controllerOf, systemHand } from './zone-effects.js';
 import { logGmZoneLine } from './zones.js';
@@ -123,9 +126,13 @@ export async function hiddenFiguresNoticeDue(
   const half = halfOf(token, scene);
   const centre = { x: stand.x + half, y: stand.y + half };
   const rangePx = spotRangePx(scene);
-  const near = hiders.filter(
+  const reach = hiders.filter(
     (hider) => distanceToRect(centre, figureRect(hider, scene)) <= rangePx,
   );
+  if (reach.length === 0) return false;
+  // Mirrors `spotHiddenFigures`: nobody spots a camera through a wall (66e pkt 2).
+  const blockers = await fetchSightBlockers(deps.ctx.prisma, scene.id);
+  const near = reach.filter((hider) => rectSeenFrom(centre, figureRect(hider, scene), blockers));
   if (near.length === 0) return false;
   const ownerId = await controllerOf(deps, token);
   if (!ownerId) return false;
@@ -176,9 +183,12 @@ export async function spotHiddenFigures(
   const hiders = await hidersOnScene(deps, scene.id, token);
   if (hiders.length === 0) return [];
   const rangePx = spotRangePx(scene);
+  const blockers = await fetchSightBlockers(deps.ctx.prisma, scene.id);
   const spots: HiddenSpot[] = [];
   for (const hider of hiders) {
-    if (!zoneWithinReachOfPath(figureRect(hider, scene), input.walked, rangePx)) continue;
+    const rect = figureRect(hider, scene);
+    if (!zoneWithinReachOfPath(rect, input.walked, rangePx)) continue;
+    if (!rectSeenAlongPath(rect, input.walked, rangePx, blockers)) continue;
     const spot = await spotFigure(deps, campaignId, scene, hider, token, user);
     if (spot) spots.push(spot);
   }

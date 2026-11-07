@@ -509,6 +509,22 @@ export async function emitRuns(deps: RealtimeDeps, campaignId: string): Promise<
   await refreshNetCameraSight(deps, campaignId);
 }
 
+/**
+ * Nowa runda albo koniec walki (66e pkt 17, 07.11): „węzeł użyty w tej Turze”
+ * (`nodeUsed`) liczy się z rundy w chwili wysyłki, więc bez nowej wysyłki
+ * „Strzelaj” zostawał wyszarzony do F5, choć serwer już przepuszczał. Pusta
+ * kampania bez runu nie płaci za nic poza jednym zapytaniem.
+ */
+export async function emitRunsOnRoundChange(deps: RealtimeDeps, sceneId: string): Promise<void> {
+  const scene = await deps.ctx.prisma.scene.findUnique({
+    where: { id: sceneId },
+    select: { campaignId: true },
+  });
+  if (!scene) return;
+  const runs = await deps.ctx.prisma.netRun.count({ where: { campaignId: scene.campaignId } });
+  if (runs > 0) await emitRuns(deps, scene.campaignId);
+}
+
 /** Kampania → ostatni odcisk tego, kto przez którą kamerę patrzy. */
 const cameraSignatures = new Map<string, string>();
 

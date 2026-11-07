@@ -7,12 +7,10 @@ w `POMYSLY.md` („Do sprawdzenia przy stole”), decyzje MG — w `decyzje-i-up
 ## Otwarte
 
 **07.11.2026 (szósta) — dokończenie rozegrania „Po zamknięciu”: nowe błędy.** Opis i diagnozy:
-`etap-66e-po-zamknieciu.md` („Rozegranie — dokończenie”, pkt 15–29). (15) 🔴 ciało NPC-a spoza
-siatki (pozycja wzorca z ułamkiem) jest poza zasięgiem „Wymiany” z każdego wolnego pola;
+`etap-66e-po-zamknieciu.md` („Rozegranie — dokończenie”, pkt 15–29). **Pkt 15, 17 i 21
+zamknięte 07.11 (siódma sesja), czekają na wdrożenie** — `archiwum/zamkniete-zaleglosci.md`.
 (16) 🔴 planer gracza nie wyprowadza figury z biura ochrony przez otwarte drzwi x17–18/y10 (do
-środka działa); (17) 🔴 „węzeł użyty w tej turze” w oknie Sieci nie gaśnie po zmianie rundy
-(`nodeUsed` liczone przy wysyłce, widok nie jest wysyłany ponownie; F5 pomaga); (20) 🟠 wrak osłony dalej jest celem kliku z bronią w ręku; (21) 🟠 karta „Łup” pokazuje konto
-gracza zamiast postaci; (22) listy celów wieżyczki i „Dołącz do walki” bez filtra (pojemnik,
+środka działa); (20) 🟠 wrak osłony dalej jest celem kliku z bronią w ręku; (22) listy celów wieżyczki i „Dołącz do walki” bez filtra (pojemnik,
 martwi NPC-e); (23) podwójne wiersze akcji Sieci u netrunnera (jawny + „POUFNE”);
 (24) jasnoniebieskie podpisy w oknie Sieci nieczytelne na beżu; (25) potrójna odmowa „Wróg
 w zasięgu wzroku”; (26) rzut obrażeń w osłonę opisany „(Korpus)”; (27) podłoga rozbrojona ręcznie
@@ -37,12 +35,9 @@ działa z okna Sieci). Kandydat na osobny etap.
 
 **07.11.2026 (piąta) — błędy z rozegrania „Po zamknięciu” w przeglądarce (przebieg przerwany,
 do wznowienia).** Pełny opis i stan: `etap-66e-po-zamknieciu.md` („Rozegranie w przeglądarce”).
-(1) 🔴 zapis okna „Edycja tokenu” (sama latarka) dopisuje NPC-owi z kartą wiersze statysty
-„Pancerz” OB 7 (głowa, korpus) obok pancerza z karty i `weaponSkill: 0`; (2) 🔴 Percepcja
-w drodze (`zonesNoticeDue`, `hiddenFiguresNoticeDue`) zauważa przez ściany — liczy same 4 m;
-(3) 🔴 klik gracza w zauważoną strefę to marsz na nią bez pytania; (4) 🟠 **decyzja MG: strefa
-odpala tylko na figurach graczy i tylko ich marszu** (dziś też NPC-e i ręka MG — zamyka
-pytanie (2) z wpisu niżej); (5) 🟠 slot broni pisze „pojedynczy” przy zapamiętanym ogniu
+**Pkt 1, 2 i 4 zamknięte 07.11 (siódma sesja), czekają na wdrożenie** —
+`archiwum/zamkniete-zaleglosci.md`. (3) 🔴 klik gracza w zauważoną strefę to marsz na nią bez
+pytania; (5) 🟠 slot broni pisze „pojedynczy” przy zapamiętanym ogniu
 ciągłym; (6) 🟠 gniazdo znalezione Skanerem poza wzrokiem nie ma znacznika u gracza; (7) 🟠
 przycisk karty po najechaniu ma tekst w kolorze tła, „Postać nie ma pojazdu” czerwone na
 czerwonym; (8) „Dodaj za darmo” w Kompendium celuje w pierwszą postać, nie w otwartą kartę;
@@ -58,7 +53,7 @@ porównuje ręką albo daje zgodę na odczyt. (2) **Pytanie do MG:** marsz ręk�
 prostą przez korytarz) odpalił ukrytą podłogę elektryczną na figurze gracza (Iskra 24 obrażeń
 w specu oględzin). Czy przestawienie figury przez MG ma uruchamiać strefy, czy tylko marsz
 gracza? Dziś uruchamia (zachowanie sprzed 66e). **Odpowiedź MG z 07.11 (piąta sesja): tylko
-figury graczy** — wdrożenie w punkcie (4) wpisu wyżej. (3) Strzał przejętej wieżyczki z okna Sieci to
+figury graczy** — wdrożone 07.11 (siódma sesja). (3) Strzał przejętej wieżyczki z okna Sieci to
 pojedynczy strzał — seria z pistoletu maszynowego wymaga ręki MG na figurze wieżyczki.
 
 **07.11.2026 — oględziny netrunnera w „Fabryce dronów”: wdrożenie (bez migracji) i resztki.**

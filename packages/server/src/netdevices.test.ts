@@ -681,8 +681,21 @@ describe('węzły kontrolne na żywych gniazdach', () => {
     // „Dany węzeł kontrolny można aktywować tylko raz na Turę" (s. 199).
     expect(errorOf(await operate('dev-door', 'close'))).toBe('NET_NODE_USED');
 
-    // Nowa Runda otwiera węzeł z powrotem.
+    // Nowa Runda otwiera węzeł z powrotem — i mówi o tym oknu Sieci gracza
+    // (66e pkt 17: „węzeł użyty” gasł dopiero po F5).
+    const usedFlag = (sync: {
+      runs: {
+        runId: string;
+        run: { branches: { floors: { id: string; nodeUsed?: boolean }[] }[] };
+      }[];
+    }) =>
+      sync.runs
+        .find((entry) => entry.runId === runId)
+        ?.run.branches.flatMap((branch) => branch.floors)
+        .find((floor) => floor.id === 'f0')?.nodeUsed;
+    const refreshed = waitFor<Parameters<typeof usedFlag>[0]>(player, 'netrun:sync');
     await emitAck(gm, 'combat:next');
+    expect(usedFlag(await refreshed)).toBeUndefined();
     expect((await operate('dev-door', 'close')).ok).toBe(true);
     await emitAck(gm, 'combat:end');
   });

@@ -365,19 +365,19 @@ strzelbą za stołem), wieżyczka włączona; zamek gabinetu zamknięty; Sieci n
 
 ### Znalezione w przebiegu (do naprawy po rozegraniu)
 
-1. **🔴 Zapis okna „Edycja tokenu” zmienia kartę NPC-a** — MG zaznaczył tylko „Nosi światło”
+1. **✅ (naprawione 07.11, siódma sesja) 🔴 Zapis okna „Edycja tokenu” zmienia kartę NPC-a** — MG zaznaczył tylko „Nosi światło”
    u Burego, a karta dostała wiersze statysty „Pancerz” OB 7 na głowę i korpus (obok Kevlaru
    z wzorca) i `statBlock.weaponSkill: 0`. Skutek: podwójny pancerz korpusu (dwie pule
    ablacji, przebicie liczone od wyższej) i pancerz głowy, którego NPC nie miał. Mały
    (nieedytowany) ma tylko Kevlar.
-2. **🔴 Percepcja w drodze nie zna ścian** — `zonesNoticeDue` / `hiddenFiguresNoticeDue` liczą
+2. **✅ (naprawione 07.11, siódma sesja) 🔴 Percepcja w drodze nie zna ścian** — `zonesNoticeDue` / `hiddenFiguresNoticeDue` liczą
    same 4 m (`distanceToRect`). Iskra zauważyła podłogę z kuchni i kamerę gabinetu z korytarza,
    obie za ścianą i zamkniętymi drzwiami.
 3. **🔴 Klik gracza w zauważoną strefę = marsz na nią** — bez pytania, choć gracz ją widzi
    (Iskra −10 PW). Rozbrojenie jest tylko w menu prawego kliku na własnej figurze.
    Propozycja: klik w zauważoną strefę pyta „Wejść na …? / Rozbrój” albo planer omija znane
    strefy, a wejście wymaga drugiego kliku.
-4. **🟠 Strefa odpala na NPC-ach i przy przestawieniu ręką MG** — decyzja MG z 07.11: tylko
+4. **✅ (naprawione 07.11, siódma sesja) 🟠 Strefa odpala na NPC-ach i przy przestawieniu ręką MG** — decyzja MG z 07.11: tylko
    figury graczy, tylko ich marsz. Dziś jedyne wejście z wnętrza lokalu do kuchni (drzwi
    x 24–25 / y 12) leży w strefie, więc ochrona nie dojdzie do kuchni korytarzem.
 5. **🟠 Napis trybu ognia na slocie kłamie** — po wyborze „Ogień ciągły” slot dalej pisze
@@ -462,7 +462,7 @@ pamięć złamanego hasła po odłączeniu. Konsola Oli bez błędów aplikacji.
 Potwierdzone ponownie: **5** (slot „POJEDYNCZY” przy wybranym ogniu ciągłym, kubek ładuje serię)
 i **12** (marsz z biura w ciemny korytarz kończy się w x20/y9 pod ścianą, bez komunikatu).
 
-15. **🔴 Ciało NPC-a spoza siatki jest poza zasięgiem ręki z każdego wolnego pola.** Mały stoi
+15. **✅ (naprawione 07.11, siódma sesja) 🔴 Ciało NPC-a spoza siatki jest poza zasięgiem ręki z każdego wolnego pola.** Mały stoi
     we wzorcu na x17,3/y6,8; zasięg „Wymiany” to 2 m Czebyszewem od środków z zaokrągleniem
     (`reachMetresBetweenTokens` + `metresForRules`), a planer nie stawia Iskry na polu, które
     zachodzi na ciało (x17/y6, x18/y6). Najbliższe wolne pola dają 3 m → „Za daleko”. Poprawka:
@@ -471,7 +471,7 @@ i **12** (marsz z biura w ciemny korytarz kończy się w x20/y9 pod ścianą, be
     trasa (`token:walk`) kończy się na progu x17/y9, bez komunikatu; z korytarza do biura ta sama
     droga działa. Osłony, bariery (`blockers` puste) i figury wykluczone, pola za drzwiami są
     w polu widzenia. Do diagnozy (`planWalk`, obrys figury przy futrynie?).
-17. **🔴 „Węzeł użyty w tej turze” nie gaśnie po zmianie rundy.** Serwer (`netNodeIsFree`) już
+17. **✅ (naprawione 07.11, siódma sesja) 🔴 „Węzeł użyty w tej turze” nie gaśnie po zmianie rundy.** Serwer (`netNodeIsFree`) już
     przepuszcza, ale widok Sieci liczy `nodeUsed` w chwili wysyłki i nie jest wysyłany ponownie
     przy nowej rundzie — „Strzelaj” wyszarzone, pomaga F5. Przez to MG oddał turę Iskry w R2.
 18. **🟠 Okno Sieci zasłania kubek i lewy pas HUD** (MG 07.11: nie do zaległości) — u gracza kubek z obrażeniami wieżyczki
@@ -481,7 +481,7 @@ i **12** (marsz z biura w ciemny korytarz kończy się w x20/y9 pod ścianą, be
     w eksploracji; MG oczekuje, że walka włączy się sama. Bez rund „raz na rundę” też nie działa.
 20. **🟠 Wrak osłony dalej jest celem** — klik w podłogę na wraku biurka z bronią w ręku ładuje
     kubek „ogień ciągły → Biurko” (także poza walką), zamiast marszu.
-21. **🟠 Karta „Łup” na czacie pokazuje konto gracza** („Łup · Ola”, „ZABRANE — OLA”) — wbrew
+21. **✅ (naprawione 07.11, siódma sesja) 🟠 Karta „Łup” na czacie pokazuje konto gracza** („Łup · Ola”, „ZABRANE — OLA”) — wbrew
     zasadzie z 24.10 (gracz to postać).
 22. **🟡 Listy celów bez filtra** — „Cel strzału” wieżyczki w Sieci zawiera pojemnik („Szafka
     ochrony”) i martwego Małego; „Dołącz do walki” proponuje martwych Burego i Małego jako „WROGA”.

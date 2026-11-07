@@ -1,4 +1,4 @@
-import type { ScenePoint, WallView } from '@vtt/shared';
+import type { ScenePoint, Segment, WallView } from '@vtt/shared';
 import {
   barrierArmorAlong,
   isBarrier,
@@ -6,6 +6,7 @@ import {
   isSegmentClear,
   isWallKind,
   movementSegments,
+  wallBlocksSight,
 } from '@vtt/shared';
 import type { PrismaClient } from '../db.js';
 import type { Wall as WallRow } from '../generated/prisma/client.js';
@@ -66,6 +67,20 @@ export function toWallView(row: WallRow): WallView {
 export async function fetchSceneWalls(prisma: PrismaClient, sceneId: string): Promise<WallView[]> {
   const rows = await prisma.wall.findMany({ where: { sceneId }, orderBy: { id: 'asc' } });
   return rows.map(toWallView);
+}
+
+/**
+ * What stops an eye on this scene, whoever looks: walls and shut doors
+ * (`wallBlocksSight`). Perception on the move asks it (66e, 07.11) — a trap
+ * behind a wall is not „in reach of Perception" however close it is.
+ */
+export async function fetchSightBlockers(
+  prisma: PrismaClient,
+  sceneId: string,
+): Promise<Segment[]> {
+  return (await fetchSceneWalls(prisma, sceneId))
+    .filter(wallBlocksSight)
+    .map((wall) => ({ x1: wall.x1, y1: wall.y1, x2: wall.x2, y2: wall.y2 }));
 }
 
 /**

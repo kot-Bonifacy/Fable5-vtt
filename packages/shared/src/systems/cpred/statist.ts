@@ -326,7 +326,7 @@ export function createStatistSheet(quick: CpredStatistQuick): CpredCharacterData
     body: quick.body,
     emp: STATIST_DEFAULT_STAT,
   };
-  return applyStatistQuick(
+  return writeStatistQuick(
     {
       ...base,
       stats,
@@ -365,11 +365,48 @@ function quickArmorRows(data: CpredCharacterData, sp: number): CpredArmorRow[] {
  * przeżywa — bo od 38a ta sama figura bywa edytowana raz szybkim polem
  * w menu żetonu, a raz pełną kartą, i żadna z tych dróg nie ma prawa zjeść
  * drugiej.
+ *
+ * **Pisze tylko grupy, które MG zmienił** (07.11, 66e pkt 1). `statistQuick`
+ * jest stratne: NPC z Kevlarem z wzorca pokazuje w edytorze „Pancerz 7”,
+ * a ślepe odesłanie tej siódemki dopisywało mu wiersze statysty na głowę
+ * i korpus obok Kevlaru — zapis okna „Edycja tokenu”, w którym MG włączył
+ * tylko latarkę, dawał NPC-owi drugi pancerz i `weaponSkill: 0`. Grupa
+ * (blok statystyk, Umiejętności, broń, pancerz), której liczby wróciły takie,
+ * jakie edytor z tej karty odczytał, zostaje na karcie nietknięta.
  */
 export function applyStatistQuick(
   data: CpredCharacterData,
   quick: CpredStatistQuick,
 ): CpredCharacterData {
+  const before = statistQuick(data);
+  const written = writeStatistQuick(data, quick);
+  const same = <K extends keyof CpredStatistQuick>(...keys: K[]): boolean =>
+    keys.every((key) => sameQuickValue(before[key], quick[key]));
+  return {
+    ...written,
+    ...(same('skillLevel', 'combatValue', 'noBulletDodge', 'hpMax')
+      ? { statBlock: data.statBlock }
+      : {}),
+    ...(same('skills', 'evasion') ? { skills: data.skills } : {}),
+    ...(same('weaponId', 'weaponName', 'weaponDamage', 'ammoCurrent', 'ammoMax')
+      ? { weapons: data.weapons }
+      : {}),
+    ...(same('armorSp') ? { armor: data.armor } : {}),
+  };
+}
+
+function sameQuickValue(a: unknown, b: unknown): boolean {
+  if (typeof a !== 'object' || typeof b !== 'object' || a === null || b === null) {
+    return a === b;
+  }
+  const left = a as Record<string, unknown>;
+  const right = b as Record<string, unknown>;
+  const keys = new Set([...Object.keys(left), ...Object.keys(right)]);
+  return [...keys].every((key) => left[key] === right[key]);
+}
+
+/** Pełny zapis sześciu pól — dla karty, która dopiero powstaje z edytora. */
+function writeStatistQuick(data: CpredCharacterData, quick: CpredStatistQuick): CpredCharacterData {
   const others = data.weapons.filter((row) => row.id !== STATIST_WEAPON_ROW_ID);
   return {
     ...data,

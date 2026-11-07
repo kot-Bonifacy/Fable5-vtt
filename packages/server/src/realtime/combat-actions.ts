@@ -75,6 +75,7 @@ import { requireCampaignScene } from './scenes.js';
 import { releaseSceneTargets } from './target.js';
 import { calmFoe, calmVisibleFoes } from './foe-sighting.js';
 import { endSneak } from './sneak.js';
+import { emitRunsOnRoundChange } from './netrun-io.js';
 
 /**
  * The action economy (stage 14b).
@@ -779,6 +780,8 @@ export const combatEndEvent = defineEvent({
       data: { momentum: null },
     });
     await emitCombatOfScene(deps, campaignId, scene);
+    // Bez walki nie ma rundy, więc „węzeł użyty” gaśnie (66e pkt 17).
+    await emitRunsOnRoundChange(deps, scene.id);
     // Trwałe cele (etap 50c) kończą się z walką — decyzja MG z 10.10.
     releaseSceneTargets(deps, scene.id);
   },

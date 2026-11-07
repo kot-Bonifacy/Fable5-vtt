@@ -774,14 +774,17 @@ describe('defended zones on a scene', () => {
     );
     // Stanowisko bez żetonu to nadal wpis w katalogu, a nie karabin.
     expect(post.tokenId).toBeUndefined();
-    // Ochroniarz staje obok strefy, a potem na nią wchodzi — dwa osobne ruchy,
-    // żeby wyzwalacz „wejście" miał skąd wejść.
-    await walk(gm, guardTokenId, 4 * PX_PER_M, 1600);
+    // Kolec staje obok strefy, a potem na nią wchodzi — osobne ruchy, żeby
+    // wyzwalacz „wejście" miał skąd wejść. Od 07.11 system odpala wyłącznie
+    // marsz gracza (decyzja MG, 66e pkt 4), więc nie Ochroniarz ręką MG.
+    await walk(player, runnerTokenId, 0, 1600);
+    await walk(player, runnerTokenId, 4 * PX_PER_M, 1600);
     const line = waitFor<ChatMessageBroadcast>(gm, 'chat:message');
-    await walk(gm, guardTokenId, 6 * PX_PER_M, 1200);
+    await walk(player, runnerTokenId, 6 * PX_PER_M, 1200);
     const note = (await line).message.action?.note ?? '';
     expect(note).toContain('nie ma żetonu na scenie');
     await emitAck(gm, 'zone:delete', { zoneId: post.id });
+    await walk(player, runnerTokenId, 0, 0);
   });
 
   it('the electric floor bills again at the end of every Turn spent standing on it', async () => {
@@ -844,6 +847,13 @@ describe('defended zones on a scene', () => {
       }),
       'zone:create (winda)',
     );
+    // MG stawia Kolca trzy metry przed windą — ręka MG niczego nie budzi,
+    // a w Turze gracz przejdzie tylko tyle, ile ma RUCHU.
+    data(await walk(gm, runnerTokenId, 27 * PX_PER_M, 0), 'token:move (przed windę)');
+    // Ślizgawka wyżej go powaliła, a powalony w walce najpierw wstaje; podłoga
+    // z testu wyżej potrafi go zbić do zera PW, a wtedy gracz nie chodzi wcale.
+    await emitAck(gm, 'token:update', { tokenId: runnerTokenId, patch: { statuses: [] } });
+    await healUp();
 
     data(
       await emitAck<CombatView>(gm, 'combat:start', {
@@ -853,12 +863,17 @@ describe('defended zones on a scene', () => {
       'combat:start',
     );
     await emitAck(gm, 'combat:roll-all');
-    const rolled = data(await emitAck<CombatView>(gm, 'combat:next'), 'combat:next');
+    let rolled = data(await emitAck<CombatView>(gm, 'combat:next'), 'combat:next');
     const highest = rolled.combatants.reduce((best, row) => Math.max(best, row.initiative ?? 0), 0);
 
-    // Krok robi MG figurą NPC: w trwającej walce ruch gracza poza jego Turą
-    // jest odrzucany, więc pułapka nigdy by się nie obudziła z tego kroku.
-    data(await walk(gm, guardTokenId, 31 * PX_PER_M, 0), 'token:move (winda)');
+    // Krok robi gracz w Turze Kolca: od 07.11 pułapkę budzi wyłącznie marsz
+    // gracza (decyzja MG, 66e pkt 4), a poza swoją Turą gracz nie chodzi.
+    const runnerRow = rolled.combatants.find((row) => row.tokenId === runnerTokenId);
+    if (rolled.activeCombatantId !== runnerRow?.id) {
+      rolled = data(await emitAck<CombatView>(gm, 'combat:next'), 'combat:next (Kolec)');
+    }
+    expect(rolled.activeCombatantId).toBe(runnerRow?.id);
+    data(await walk(player, runnerTokenId, 31 * PX_PER_M, 0), 'token:move (winda)');
 
     const withTrap = await roundTrip(gm);
     const trapRow = withTrap.combat?.combatants.find((row) => row.name === 'Winda z gazem');
@@ -868,9 +883,8 @@ describe('defended zones on a scene', () => {
     // Wiersz bez figury — pułapka nie stoi nigdzie na mapie, tak jak Czarny LOD.
     expect(trapRow!.tokenId).toBeNull();
 
-    // Drugie wejście nie dokłada drugiego wiersza.
-    await walk(gm, guardTokenId, 25 * PX_PER_M, 0);
-    await walk(gm, guardTokenId, 31 * PX_PER_M, 0);
+    // Drugi krok po windzie nie dokłada drugiego wiersza.
+    await walk(player, runnerTokenId, 32 * PX_PER_M, 0);
     const again = await roundTrip(gm);
     expect(again.combat?.combatants.filter((row) => row.name === 'Winda z gazem')).toHaveLength(1);
 
@@ -880,6 +894,7 @@ describe('defended zones on a scene', () => {
     expect(disarmed.combat?.combatants.some((row) => row.name === 'Winda z gazem')).toBe(false);
 
     await emitAck(gm, 'combat:end', { sceneId });
+    await walk(player, runnerTokenId, 0, 0);
   });
 
   it('an area system catches everybody on the area, not only whoever set it off', async () => {

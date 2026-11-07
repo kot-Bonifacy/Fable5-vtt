@@ -28,6 +28,7 @@ import {
   segmentDistanceToRect,
   type Rect,
 } from './rects.js';
+import { isSegmentClear, type Segment } from './vision.js';
 
 /** One stored zone as it goes over the wire, already cut for one pair of eyes. */
 export interface DefenseZoneView {
@@ -304,6 +305,66 @@ export function zoneWithinReachOfPath(
   if (path.length === 1) return distanceToRect(path[0]!, zone) <= rangePx;
   for (let i = 1; i < path.length; i++) {
     if (segmentDistanceToRect(zone, path[i - 1]!, path[i]!) <= rangePx) return true;
+  }
+  return false;
+}
+
+/**
+ * Can an eye at `from` make out anything of this rectangle past `blockers`
+ * (66e, 07.11)? Perception on the move counted only the four metres, so a
+ * figure in the kitchen spotted a trapped floor behind a wall and a shut door.
+ *
+ * Asked of a handful of points rather than of the whole area: the nearest
+ * point, the middle and the four corners, each pulled a pixel inside so a wall
+ * running exactly along the edge does not hide the floor it borders. One clear
+ * line is enough — a trap half round a corner is still half in view.
+ */
+export function rectSeenFrom(from: ScenePoint, rect: Rect, blockers: readonly Segment[]): boolean {
+  const inset = Math.min(1, rect.width / 2, rect.height / 2);
+  const left = rect.x + inset;
+  const right = rect.x + rect.width - inset;
+  const top = rect.y + inset;
+  const bottom = rect.y + rect.height - inset;
+  const nearest = {
+    x: Math.min(right, Math.max(left, from.x)),
+    y: Math.min(bottom, Math.max(top, from.y)),
+  };
+  const points: ScenePoint[] = [
+    nearest,
+    { x: rect.x + rect.width / 2, y: rect.y + rect.height / 2 },
+    { x: left, y: top },
+    { x: right, y: top },
+    { x: left, y: bottom },
+    { x: right, y: bottom },
+  ];
+  return points.some((point) => isSegmentClear(from, point, blockers));
+}
+
+/**
+ * `zoneWithinReachOfPath` with eyes: was there a moment on this walk when the
+ * figure stood within `rangePx` of the rectangle **and** could see it? Long
+ * stretches are sampled every quarter of the range, so a march planned as one
+ * straight line still looks round the doorway it passes.
+ */
+export function rectSeenAlongPath(
+  rect: Rect,
+  path: readonly ScenePoint[],
+  rangePx: number,
+  blockers: readonly Segment[],
+): boolean {
+  if (path.length === 0) return false;
+  const step = Math.max(1, rangePx / 4);
+  const looks = (point: ScenePoint): boolean =>
+    distanceToRect(point, rect) <= rangePx && rectSeenFrom(point, rect, blockers);
+  if (looks(path[0]!)) return true;
+  for (let i = 1; i < path.length; i++) {
+    const a = path[i - 1]!;
+    const b = path[i]!;
+    const parts = Math.max(1, Math.ceil(Math.hypot(b.x - a.x, b.y - a.y) / step));
+    for (let k = 1; k <= parts; k++) {
+      const t = k / parts;
+      if (looks({ x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t })) return true;
+    }
   }
   return false;
 }

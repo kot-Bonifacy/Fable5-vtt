@@ -83,6 +83,18 @@ import {
  * Wspólne pytania
  * ------------------------------------------------------------------ */
 
+/**
+ * Kto zrobił ruch na karcie czatu (66e pkt 21, 07.11): gracz to jego postać,
+ * nie konto (zasada z 24.10), MG zostaje sobą. Postać to pierwsza z podanych
+ * kart, której ten gracz jest właścicielem — bez takiej pierwsza z listy.
+ */
+export function inventoryActorName(
+  user: SessionUser,
+  ...cards: { name: string; ownerId: string | null }[]
+): string {
+  if (user.role === ROLE_GM) return user.name;
+  return (cards.find((card) => card.ownerId === user.id) ?? cards[0])?.name ?? user.name;
+}
 export async function findCampaignCharacter(
   prisma: PrismaClient,
   campaignId: string,
@@ -476,12 +488,14 @@ export const inventoryGiveEvent = defineEvent<InventoryGivePayload, InventoryGiv
       toCharacterId: to.id,
       toName: to.name,
       toOwnerId: to.ownerId,
-      actorName: user.name,
+      actorName: inventoryActorName(user, from, to),
       lines: entryLines(preview.result.moved, eddies),
       ...(eddies > 0 ? { eddies } : {}),
       ...(note ? { note } : {}),
       system: { items: refs } as unknown as Record<string, unknown>,
-      ...(direct ? { resolution: { kind: 'accepted' as const, byName: user.name } } : {}),
+      ...(direct
+        ? { resolution: { kind: 'accepted' as const, byName: inventoryActorName(user, from, to) } }
+        : {}),
     };
 
     if (direct) {
@@ -551,11 +565,11 @@ export const inventoryTakeEvent = defineEvent<InventoryTakePayload, { messageId:
       toCharacterId: to.id,
       toName: to.name,
       toOwnerId: to.ownerId,
-      actorName: user.name,
+      actorName: inventoryActorName(user, to),
       lines: entryLines(result.moved, result.eddies),
       ...(result.eddies > 0 ? { eddies: result.eddies } : {}),
       system: { items: refs } as unknown as Record<string, unknown>,
-      resolution: { kind: 'accepted', byName: user.name },
+      resolution: { kind: 'accepted', byName: inventoryActorName(user, to) },
     };
     const message = await postInventoryCard(
       deps,
@@ -612,9 +626,10 @@ export const inventoryRespondEvent = defineEvent<InventoryRespondPayload, void>(
     if (!accept) {
       // Odrzucone przez odbiorcę, wycofane przez wysyłającego — ta sama
       // ścieżka, dwa różne zdania, bo przy stole to dwie różne rzeczy.
+      const declined = mayAnswer && entry.toOwnerId === user.id;
       entry.resolution = {
-        kind: mayAnswer && entry.toOwnerId === user.id ? 'declined' : 'cancelled',
-        byName: user.name,
+        kind: declined ? 'declined' : 'cancelled',
+        byName: declined ? inventoryActorName(user, to) : inventoryActorName(user, from, to),
       };
       await emitInventoryUpdate(deps, campaignId, messageId, entry, audience);
       return;
@@ -631,7 +646,7 @@ export const inventoryRespondEvent = defineEvent<InventoryRespondPayload, void>(
       user.id,
     );
     entry.lines = entryLines(result.moved, result.eddies);
-    entry.resolution = { kind: 'accepted', byName: user.name };
+    entry.resolution = { kind: 'accepted', byName: inventoryActorName(user, to, from) };
     await emitInventoryUpdate(deps, campaignId, messageId, entry, audience);
     await sweepEmptyPile(deps, campaignId, from.id);
   },
