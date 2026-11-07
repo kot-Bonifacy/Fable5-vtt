@@ -207,6 +207,8 @@ describe('węzły kontrolne na żywych gniazdach', () => {
   let tokenId: string;
   let turretTokenId: string;
   let targetTokenId: string;
+  /** Dron z pełną kartą NPC-a, jak w „Fabryce dronów” (66b) — broń spoza statysty. */
+  let droneTokenId: string;
   let doorWallId: number;
   let pointId: number;
   let runId: string;
@@ -246,6 +248,7 @@ describe('węzły kontrolne na żywych gniazdach', () => {
                 { id: 'dev-cam', name: 'Kamera nad bramą', deviceKind: 'camera' },
                 { id: 'dev-turret', name: 'Grzechot', deviceKind: 'turret', tokenId: '' },
                 { id: 'dev-door', name: 'Brama towarowa', deviceKind: 'door', wallId: 0 },
+                { id: 'dev-drone', name: 'Szerszeń', deviceKind: 'drone', tokenId: '' },
               ],
             },
             { id: 'f1', kind: 'empty', label: 'Serwerownia' },
@@ -349,6 +352,44 @@ describe('węzły kontrolne na żywych gniazdach', () => {
       'token:create',
     ).id;
 
+    // Karta drona jak z wzorca sceny: broń z kompendium pod zwykłym id wiersza,
+    // bez wiersza statysty (07.11 — taki dron odmawiał strzału `UNKNOWN_WEAPON`).
+    const droneCard = data(
+      await emitAck<CharacterView>(gm, 'character:create', { name: 'Szerszeń' }),
+      'character:create drona',
+    );
+    await emitAck(gm, 'character:update', {
+      characterId: droneCard.id,
+      patch: {
+        data: {
+          weapons: [
+            {
+              id: 'drone-gun',
+              // Zwykła jakość: Zardzewiak (słaba) zacina się przy naturalnej 1.
+              name: 'Zgrzyt 9',
+              notes: '',
+              compendiumId: 'weapon.zgrzyt-9',
+              damage: '2k6',
+              ammoCurrent: 12,
+              ammoMax: 12,
+              ammoType: '',
+              rof: '1',
+            },
+          ],
+        },
+      },
+    });
+    droneTokenId = data(
+      await emitAck<TokenView>(gm, 'token:create', {
+        sceneId,
+        name: 'Szerszeń',
+        x: 8 * PX_PER_M,
+        y: 6 * PX_PER_M,
+        characterId: droneCard.id,
+      }),
+      'token:create drona',
+    ).id;
+
     const walls = data(
       await emitAck<WallView[]>(gm, 'wall:create', {
         sceneId,
@@ -368,6 +409,7 @@ describe('węzły kontrolne na żywych gniazdach', () => {
     const devices = shaft.branches[0]!.floors[0]!.devices!;
     devices[1]!.tokenId = turretTokenId;
     devices[2]!.wallId = doorWallId;
+    devices[3]!.tokenId = droneTokenId;
     architectureId = data(
       await emitAck<NetArchitectureView>(gm, 'net:save', { architecture: shaft }),
       'net:save',
@@ -400,7 +442,7 @@ describe('węzły kontrolne na żywych gniazdach', () => {
     // Nie „ukryte" — po prostu nieobecne w payloadzie.
     expect(node?.devices).toBeUndefined();
     // MG widzi je zawsze: to jego własna budowla.
-    expect(nodeOf((await runOf(gm))!)?.devices).toHaveLength(3);
+    expect(nodeOf((await runOf(gm))!)?.devices).toHaveLength(4);
   });
 
   /** Jeden Test Kontroli węzła przez gracza. */
@@ -435,6 +477,7 @@ describe('węzły kontrolne na żywych gniazdach', () => {
       'Kamera nad bramą',
       'Grzechot',
       'Brama towarowa',
+      'Szerszeń',
     ]);
     // Wpis kompendium jest opcjonalny — bez niego urządzenie nadal działa.
     expect(node?.devices?.[0]?.operations).toContain('turn');
@@ -597,6 +640,24 @@ describe('węzły kontrolne na żywych gniazdach', () => {
     expect((await damage(player, gmShot.messageId!)).ok).toBe(false);
   });
 
+  it('strzela dronem z pełną kartą NPC-a — bronią, którą dron trzyma (07.11)', async () => {
+    const message = waitFor<ChatMessageBroadcast>(gm, 'chat:message');
+    const shot = data(
+      await operate('dev-drone', 'fire', { targetTokenId }),
+      'netrun:device — strzał drona',
+    );
+    expect(shot.summary).toContain('Szerszeń');
+    const roll = (await message).message.roll;
+    expect(roll?.actor).toBe('Szerszeń');
+    // Umiejętności netrunnera, jak przy wieżyczce.
+    expect(roll?.breakdown?.find((row) => row.kind === 'stat')?.value).toBe(8);
+    const state = await roundTrip(gm);
+    const drone = state.tokens.find((entry) => entry.id === droneTokenId);
+    const card = state.characters.find((entry) => entry.id === drone?.characterId)?.data as
+      CpredCharacterData | undefined;
+    expect(card?.weapons.find((row) => row.id === 'drone-gun')?.ammoCurrent).toBe(11);
+  });
+
   it('wyłączonego urządzenia nie da się obsłużyć, dopóki nie wróci', async () => {
     data(await operate('dev-cam', 'off'), 'netrun:device');
     expect(errorOf(await operate('dev-cam', 'turn'))).toBe('NET_DEVICE_OFF');
@@ -623,6 +684,34 @@ describe('węzły kontrolne na żywych gniazdach', () => {
     // Nowa Runda otwiera węzeł z powrotem.
     await emitAck(gm, 'combat:next');
     expect((await operate('dev-door', 'close')).ok).toBe(true);
+    await emitAck(gm, 'combat:end');
+  });
+
+  it('odmowa strzału przed rzutem zwraca Akcję Sieciową (07.11)', async () => {
+    const combat = data(
+      await emitAck<CombatView>(gm, 'combat:start', { sceneId, tokenIds: [tokenId] }),
+      'combat:start',
+    );
+    await emitAck(gm, 'combat:set-initiative', {
+      combatantId: combat.combatants[0]!.id,
+      initiative: 12,
+    });
+    await emitAck(gm, 'combat:next');
+    const turnState = async () =>
+      JSON.stringify(
+        (await roundTrip(gm)).combat?.combatants.find((entry) => entry.tokenId === tokenId)?.turn ??
+          null,
+      );
+    const before = await turnState();
+
+    // Dron w siebie samego — ścieżka ataku odmawia, zanim cokolwiek rzuci.
+    expect(errorOf(await operate('dev-drone', 'fire', { targetTokenId: droneTokenId }))).toBe(
+      'BAD_REQUEST',
+    );
+    expect(await turnState()).toEqual(before);
+    // Węzeł dalej wolny: strzał, który poszedł, kosztuje jak zawsze.
+    expect((await operate('dev-drone', 'fire', { targetTokenId })).ok).toBe(true);
+    expect(await turnState()).not.toEqual(before);
     await emitAck(gm, 'combat:end');
   });
 

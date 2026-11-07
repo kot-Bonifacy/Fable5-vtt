@@ -1,4 +1,4 @@
-import { COVER_HP_MAX, type WallKind } from '@vtt/shared';
+import { COVER_HP_MAX, WALL_REACH_M, type WallKind } from '@vtt/shared';
 
 /**
  * Odmowy warstw mapy po polsku (wydzielone w etapie 27l).
@@ -106,19 +106,23 @@ export function openingPickErrorText(code: string | undefined, kind: WallKind | 
   }
 }
 
-/** The same four refusals, worded for the thing that was reached for. */
+/**
+ * The same four refusals, worded for the thing that was reached for. The reach
+ * is said in metres, not squares (07.11): on a 2 m grid („Fabryka dronów”) the
+ * square next to a door is already out of reach.
+ */
 const OPENING_REFUSALS = {
   door: {
     FORBIDDEN: 'Tych drzwi nie otworzysz — MG ich nie udostępnił.',
     WALL_NOT_FOUND: 'Nie widzisz tych drzwi.',
-    OPENING_OUT_OF_REACH: 'Za daleko — podejdź do drzwi (na jedną kratkę).',
+    OPENING_OUT_OF_REACH: `Za daleko — stań tuż przy drzwiach: ręka sięga ${WALL_REACH_M} m od środka postaci.`,
     OPENING_LOCKED: 'Zamknięte na klucz — same drzwi nie ustąpią.',
     failed: 'Nie udało się poruszyć drzwiami',
   },
   window: {
     FORBIDDEN: 'Tego okna nie ruszysz — MG go nie udostępnił.',
     WALL_NOT_FOUND: 'Nie widzisz tego okna.',
-    OPENING_OUT_OF_REACH: 'Za daleko — podejdź do okna (na jedną kratkę).',
+    OPENING_OUT_OF_REACH: `Za daleko — stań tuż przy oknie: ręka sięga ${WALL_REACH_M} m od środka postaci.`,
     OPENING_LOCKED: 'Okno zamknięte na skobel — nie ustąpi.',
     failed: 'Nie udało się poruszyć oknem',
   },
@@ -126,7 +130,7 @@ const OPENING_REFUSALS = {
   gate: {
     FORBIDDEN: 'Tej bramy nie otworzysz — MG jej nie udostępnił.',
     WALL_NOT_FOUND: 'Nie widzisz tej bramy.',
-    OPENING_OUT_OF_REACH: 'Za daleko — podejdź do bramy (na jedną kratkę).',
+    OPENING_OUT_OF_REACH: `Za daleko — stań tuż przy bramie: ręka sięga ${WALL_REACH_M} m od środka postaci.`,
     OPENING_LOCKED: 'Brama zamknięta na kłódkę — nie ustąpi.',
     failed: 'Nie udało się poruszyć bramą',
   },

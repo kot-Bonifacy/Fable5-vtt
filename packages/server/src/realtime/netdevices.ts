@@ -10,6 +10,7 @@ import type {
 } from '@vtt/shared';
 import {
   NET_DEVICE_KIND_LABELS,
+  cpredDrawnWeapons,
   isNetDeviceOperation,
   netApplyDeviceState,
   netCameraFacingAfterTurn,
@@ -42,7 +43,8 @@ import {
   saveRuntime,
 } from './netrun-io.js';
 import { roundOfScene, spendNetAction } from './netcombat.js';
-import { performAttackRoll } from './attacks.js';
+import { emitCombatOfScene, loadCombat } from './combat.js';
+import { outsideHandsOf, performAttackRoll } from './attacks.js';
 import { afterWallChange } from './walls.js';
 import type { FullRunState } from './netice.js';
 
@@ -161,6 +163,13 @@ export const netDeviceEvent = defineEvent<NetRunDevicePayload, NetRunAbilityResu
     }
 
     const actorName = tokenTableName(row.token, row.token.character?.name ?? row.token.name);
+    // Stan Tury sprzed wydatku — zwracany, gdy strzał odmówi, zanim padnie rzut.
+    const turnBefore =
+      operation === 'fire'
+        ? ((await loadCombat(deps.ctx.prisma, scene.id))?.combatants.find(
+            (entry) => entry.tokenId === token.id,
+          ) ?? null)
+        : null;
     let next: FullRunState = await spendNetAction(deps, {
       campaignId,
       scene,
@@ -180,16 +189,32 @@ export const netDeviceEvent = defineEvent<NetRunDevicePayload, NetRunAbilityResu
         where: { id: row.characterId },
       });
       if (!character) throw new RealtimeError('CHARACTER_NOT_FOUND');
-      const shot = await fireDevice(deps, {
-        campaignId,
-        user,
-        device,
-        hands: { operator: parseCharacterData(character.data, deps.ctx.cpred) },
-        summary: `${device.name} — strzał Umiejętnością netrunnera.`,
-        ...(payload?.targetTokenId ? { targetTokenId: payload.targetTokenId } : {}),
-        ...(payload?.request ? { request: payload.request } : {}),
-        ...(payload?.gesture ? { gesture: payload.gesture } : {}),
-      });
+      let shot: Awaited<ReturnType<typeof fireDevice>>;
+      try {
+        shot = await fireDevice(deps, {
+          campaignId,
+          user,
+          device,
+          hands: { operator: parseCharacterData(character.data, deps.ctx.cpred) },
+          summary: `${device.name} — strzał Umiejętnością netrunnera.`,
+          ...(payload?.targetTokenId ? { targetTokenId: payload.targetTokenId } : {}),
+          ...(payload?.request ? { request: payload.request } : {}),
+          ...(payload?.gesture ? { gesture: payload.gesture } : {}),
+        });
+      } catch (error) {
+        // Odmowa ścieżki ataku przed rzutem (brak linii strzału, poza zasięgiem,
+        // pusty magazynek) nie kosztuje Akcji Sieciowej — strzelec przy mapie
+        // też za nią nie płaci, a netrunner nie ma podglądu geometrii (07.11).
+        // Osłona na linii (`blocked`) to co innego: jest płatnym pytaniem.
+        if (error instanceof RealtimeError && turnBefore) {
+          await deps.ctx.prisma.combatant.update({
+            where: { id: turnBefore.id },
+            data: { turnState: turnBefore.turnState },
+          });
+          await emitCombatOfScene(deps, campaignId, scene);
+        }
+        throw error;
+      }
       // „Ostrzelaj osłonę czy strzelaj mimo niej" (16c) wraca ze ścieżki ataku
       // jako pytanie, a nie karta. Netrunner odpowiada na nie tak samo jak
       // strzelec — strzelając jeszcze raz z `ignoreCover` — ale Akcja Sieciowa
@@ -297,17 +322,17 @@ export async function fireDevice(
     blockerName: string;
   };
 }> {
+  const weaponRowId = await deviceWeaponRowId(deps, input.campaignId, input.device.tokenId!);
   const result = await performAttackRoll(deps, {
     campaignId: input.campaignId,
     user: input.user,
     payload: {
       attackerTokenId: input.device.tokenId!,
       ...(input.targetTokenId ? { targetTokenId: input.targetTokenId } : {}),
-      // A turret has exactly one barrel, and it is the one row a statist sheet
-      // carries — so nobody ever has to name it. Anything else the request asks
-      // for (celowany, seria) passes straight through.
+      // Nobody ever names the barrel (`deviceWeaponRowId`). Anything else the
+      // request asks for (celowany, seria) passes straight through.
       request: {
-        weaponRowId: SHEET_STATIST_WEAPON_ROW_ID,
+        weaponRowId,
         ...(input.request ?? {}),
       } as CpredAttackRequest,
       ...(input.gesture ? { gesture: input.gesture } : {}),
@@ -328,6 +353,32 @@ export async function fireDevice(
     };
   }
   return { messageId: result.messageId ?? 0, summary: input.summary };
+}
+
+/**
+ * The barrel a device fires with. A turret statted from the token menu carries
+ * exactly one row, the statist's, and that stays the answer. A figure with a
+ * full NPC card — every drone of a scene template (66b) — has its weapons under
+ * ordinary row ids, so it fires the one it holds, by the same rule a shooter at
+ * the map follows (`cpredDrawnWeapons`, 29.10). Before 07.11 such a drone
+ * refused every shot with `UNKNOWN_WEAPON`.
+ */
+async function deviceWeaponRowId(
+  deps: RealtimeDeps,
+  campaignId: string,
+  tokenId: string,
+): Promise<string> {
+  const token = await deps.ctx.prisma.token.findUnique({
+    where: { id: tokenId },
+    include: { character: true },
+  });
+  if (!token?.character) return SHEET_STATIST_WEAPON_ROW_ID;
+  const data = parseCharacterData(token.character.data, deps.ctx.cpred);
+  if (data.weapons.some((row) => row.id === SHEET_STATIST_WEAPON_ROW_ID)) {
+    return SHEET_STATIST_WEAPON_ROW_ID;
+  }
+  const held = cpredDrawnWeapons(data, await outsideHandsOf(deps, campaignId, data))[0];
+  return held?.id ?? SHEET_STATIST_WEAPON_ROW_ID;
 }
 
 /** Zdanie o strzale, który nie poszedł — z nazwą urządzenia, jaką zna czytelnik (#37). */

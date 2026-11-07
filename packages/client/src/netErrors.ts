@@ -1,4 +1,5 @@
 import {
+  CPRED_ATTACK_PROBLEM_MESSAGES,
   NET_COMBAT_MESSAGES,
   NET_DEMON_MESSAGES,
   NET_DEVICE_MESSAGES,
@@ -24,7 +25,10 @@ export function netErrorText(code: string | undefined): string {
     NET_COMBAT_MESSAGES[code as keyof typeof NET_COMBAT_MESSAGES] ??
     NET_DEVICE_MESSAGES[code as keyof typeof NET_DEVICE_MESSAGES] ??
     NET_DEMON_MESSAGES[code as keyof typeof NET_DEMON_MESSAGES] ??
-    ZONE_MESSAGES[code as keyof typeof ZONE_MESSAGES];
+    ZONE_MESSAGES[code as keyof typeof ZONE_MESSAGES] ??
+    // Strzał z urządzenia idzie ścieżką ataku z mapy (26d), więc odmawia jej
+    // kodami („Cel za przeszkodą…”) — do 07.11 okno Sieci pokazywało je gołe.
+    CPRED_ATTACK_PROBLEM_MESSAGES[code as keyof typeof CPRED_ATTACK_PROBLEM_MESSAGES];
   if (known) return known;
   switch (code) {
     case 'FORBIDDEN':

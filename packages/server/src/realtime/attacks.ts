@@ -983,8 +983,15 @@ async function buildFigureSource(
 ): Promise<AttackSource> {
   const { character, data } = await requireFigureSheet(deps, campaignId, registry, token);
 
-  // Pass one: a sheet good enough to look the weapon up with.
-  const weapon = await resolveWeaponRow(deps, campaignId, data, SHEET_STATIST_WEAPON_ROW_ID);
+  // Pass one: a sheet good enough to look the weapon up with. A statist carries
+  // one row and that is the barrel; a full NPC card (a scene template's drone,
+  // 66b) names its own row in the request (`deviceWeaponRowId`, 07.11).
+  const asked = request?.weaponRowId;
+  const rowId =
+    typeof asked === 'string' && data.weapons.some((row) => row.id === asked)
+      ? asked
+      : SHEET_STATIST_WEAPON_ROW_ID;
+  const weapon = await resolveWeaponRow(deps, campaignId, data, rowId);
   const skillId = attackSkillId(weapon, request);
 
   // Pass two: the same sheet with that one skill filled in — from the figure's
