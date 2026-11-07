@@ -2101,7 +2101,14 @@ export async function performTokenMove(
     if (!isGm && scene.playerMove === 'stop') throw new RealtimeError('MOVE_LOCKED');
     // Etap 65b: figura w fotelu jedzie z autem — przesiada się `vehicle:seat`,
     // a z auta wyciąga ją tylko ręka MG (wysiadka na jezdnię, decyzja MG 4).
-    if (token.sceneVehicleId !== null && !(isGm && options.hand === true && !judged)) {
+    // 07.11.2026: lądowanie marszu MG też jest „ręką” (`hand`), ale bez
+    // `dragged` — klik w jezdnię wyprowadzał NPC-a z fotela mimo poprawki
+    // z 04.11 w `token:walk`, o który marsz MG nie pyta.
+    const gmDrop = isGm && options.hand === true && !judged;
+    if (
+      token.sceneVehicleId !== null &&
+      (!gmDrop || (payload?.final === true && payload.dragged !== true))
+    ) {
       throw new RealtimeError('IN_VEHICLE');
     }
     // 02.11.2026 (MG): podłączona figura stoi — każda klatka, nie tylko

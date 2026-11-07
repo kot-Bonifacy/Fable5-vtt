@@ -253,5 +253,19 @@ test.describe.serial('@szybkie T65e pościg: przeszkody i kolczatka', () => {
       .poll(async () => (await vehicle(ola, emptyCar.id))?.hp, { timeout: 30_000 })
       .toBe(emptyCar.hp - 24);
     expect((await vehicle(ola, gangCar.id))?.hp).toBe(gangCar.hp);
+    // Kolczatka rani jedno auto i znika (decyzja MG z 04.11) — beton zostaje.
+    await expect
+      .poll(async () => (await obstacles(ola)).map((row) => row.kind))
+      .toEqual(['barricade']);
+  });
+
+  test('Ola prawym klikiem w swoje auto otwiera menu auta (Firefox)', async () => {
+    await closeNotices(ola.page);
+    const car = await vehicle(ola, olaCar.id);
+    await clickWorld(ola.page, { x: car!.x, y: car!.y }, 'right');
+    const menu = ola.page.getByRole('menu', { name: /^Auto: / });
+    await expect(menu).toBeVisible();
+    await ola.page.keyboard.press('Escape');
+    await expect(menu).toBeHidden();
   });
 });

@@ -5843,8 +5843,10 @@ export class MapRenderer {
     // Legenda śladów uczy się z marszu, który ruszył z narysowanej trasy.
     const previewed = this.walkPreviewFor === node.tokenId;
     // Etap 52: gracz idzie dopiero, gdy serwer zatwierdzi całą trasę — klatek
-    // marszu bez niej nie przyjmie. MG nie pyta: jego ruchu nic nie pilnuje.
-    const approve = this.viewerIsGm ? null : this.onWalkApprove;
+    // marszu bez niej nie przyjmie. MG nie pyta: jego ruchu nic nie pilnuje —
+    // poza figurą w fotelu auta (07.11.2026), której marsz serwer odmawia
+    // (`IN_VEHICLE`, „przeciągnij ją na jezdnię”) zamiast wyprowadzić ją z auta.
+    const approve = this.viewerIsGm && !node.token.vehicleSeat ? null : this.onWalkApprove;
     if (!approve) {
       this.beginMarch(node, start, route, clipped, budget, extra, previewed);
       return;

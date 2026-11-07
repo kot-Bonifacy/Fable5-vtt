@@ -489,6 +489,7 @@ describe('etap 65b: scena pościgu, auta i fotele', () => {
           x: corner.x,
           y: corner.y,
           final: true,
+          dragged: true,
         })
       ).ok,
     ).toBe(true);
@@ -497,8 +498,21 @@ describe('etap 65b: scena pościgu, auta i fotele', () => {
       vehicleSeat: 1,
     });
 
+    // 07.11.2026: lądowanie marszu MG (bez `dragged`) z auta nie wyprowadza.
     expect(
-      (await emitAck(gm, 'token:move', { tokenId: heroToken.id, x: 100, y: 100, final: true })).ok,
+      await emitAck(gm, 'token:move', { tokenId: heroToken.id, x: 100, y: 100, final: true }),
+    ).toMatchObject({ ok: false, error: 'IN_VEHICLE' });
+    expect(await tokenRow(heroToken.id)).toMatchObject({ sceneVehicleId: npcCar.id });
+    expect(
+      (
+        await emitAck(gm, 'token:move', {
+          tokenId: heroToken.id,
+          x: 100,
+          y: 100,
+          final: true,
+          dragged: true,
+        })
+      ).ok,
     ).toBe(true);
     expect(await tokenRow(heroToken.id)).toMatchObject({ sceneVehicleId: null, vehicleSeat: null });
   });
