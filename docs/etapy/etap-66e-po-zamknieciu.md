@@ -380,7 +380,7 @@ strzelbą za stołem), wieżyczka włączona; zamek gabinetu zamknięty; Sieci n
 4. **✅ (naprawione 07.11, siódma sesja) 🟠 Strefa odpala na NPC-ach i przy przestawieniu ręką MG** — decyzja MG z 07.11: tylko
    figury graczy, tylko ich marsz. Dziś jedyne wejście z wnętrza lokalu do kuchni (drzwi
    x 24–25 / y 12) leży w strefie, więc ochrona nie dojdzie do kuchni korytarzem.
-5. **🟠 Napis trybu ognia na slocie kłamie** — po wyborze „Ogień ciągły” slot dalej pisze
+5. **✅ (naprawione 07.11, ósma sesja) 🟠 Napis trybu ognia na slocie kłamie** — po wyborze „Ogień ciągły” slot dalej pisze
    „pojedynczy”, a w następnej turze klik w cel ładuje kubek serią (tryb zapamiętany). Gracz
    strzela inaczej, niż widzi.
 6. **🟠 Znalezione Skanerem gniazdo nie ma znacznika na mapie gracza**, gdy leży poza wzrokiem
@@ -467,7 +467,7 @@ i **12** (marsz z biura w ciemny korytarz kończy się w x20/y9 pod ścianą, be
     (`reachMetresBetweenTokens` + `metresForRules`), a planer nie stawia Iskry na polu, które
     zachodzi na ciało (x17/y6, x18/y6). Najbliższe wolne pola dają 3 m → „Za daleko”. Poprawka:
     figury wzorca na siatkę przy zakładaniu sceny albo zasięg od krawędzi / ciało nie blokuje.
-16. **🔴 Planer gracza nie wyprowadza figury z biura ochrony przez otwarte drzwi** (x17–18/y10):
+16. **✅ (naprawione 07.11, ósma sesja) 🔴 Planer gracza nie wyprowadza figury z biura ochrony przez otwarte drzwi** (x17–18/y10):
     trasa (`token:walk`) kończy się na progu x17/y9, bez komunikatu; z korytarza do biura ta sama
     droga działa. Osłony, bariery (`blockers` puste) i figury wykluczone, pola za drzwiami są
     w polu widzenia. Do diagnozy (`planWalk`, obrys figury przy futrynie?).
@@ -479,20 +479,20 @@ i **12** (marsz z biura w ciemny korytarz kończy się w x20/y9 pod ścianą, be
     stronę (Iskra zaznaczona po prawej), a mój klik w figurę trafił w „Wyłącz” kamery gabinetu.
 19. **🟠 Atak poza walką nie włącza trybu turowego** (MG 07.11: nie do zaległości) — strzał wieżyczki z Sieci w Kucharza poszedł
     w eksploracji; MG oczekuje, że walka włączy się sama. Bez rund „raz na rundę” też nie działa.
-20. **🟠 Wrak osłony dalej jest celem** — klik w podłogę na wraku biurka z bronią w ręku ładuje
+20. **✅ (naprawione 07.11, ósma sesja) 🟠 Wrak osłony dalej jest celem** — klik w podłogę na wraku biurka z bronią w ręku ładuje
     kubek „ogień ciągły → Biurko” (także poza walką), zamiast marszu.
 21. **✅ (naprawione 07.11, siódma sesja) 🟠 Karta „Łup” na czacie pokazuje konto gracza** („Łup · Ola”, „ZABRANE — OLA”) — wbrew
     zasadzie z 24.10 (gracz to postać).
-22. **🟡 Listy celów bez filtra** — „Cel strzału” wieżyczki w Sieci zawiera pojemnik („Szafka
+22. **✅ (naprawione 07.11, ósma sesja) 🟡 Listy celów bez filtra** — „Cel strzału” wieżyczki w Sieci zawiera pojemnik („Szafka
     ochrony”) i martwego Małego; „Dołącz do walki” proponuje martwych Burego i Małego jako „WROGA”.
 23. **🟡 Każda akcja Sieci daje netrunnerowi dwa wiersze** (jawny i „POUFNE”) o tym samym.
 24. **🟡 Kontrast w oknie Sieci** — jasnoniebieskie podpisy na beżu (imię w nagłówku, typy
     programów „Obrońca”/„Atakujący…”, „PT 8” piętra) prawie nieczytelne.
 25. **🟡 Ta sama odmowa „Wróg w zasięgu wzroku” trzy razy naraz** (żółty pasek, czerwona odmowa,
     odmowa w panelu).
-26. **🟡 Rzut obrażeń w osłonę opisany „(Korpus)”.**
-27. **🟡 „Podłoga elektryczna” w Sieci oferuje „Wyłącz”, choć rozbrojona ręcznie** (dwa stany).
-28. **🟡 Figury-urządzenia na liście „Postacie” MG z plakietką „EMP 1 · DYSOCJACJA”.**
+26. **✅ (naprawione 07.11, ósma sesja) 🟡 Rzut obrażeń w osłonę opisany „(Korpus)”.**
+27. **✅ (naprawione 07.11, ósma sesja) 🟡 „Podłoga elektryczna” w Sieci oferuje „Wyłącz”, choć rozbrojona ręcznie** (dwa stany).
+28. **✅ (naprawione 07.11, ósma sesja) 🟡 Figury-urządzenia na liście „Postacie” MG z plakietką „EMP 1 · DYSOCJACJA”.**
 29. **ℹ️** Etykiety w biurze i gabinecie nachodzą na siebie („Szafka ochrony”, „Bogdan
     »Kucharz« Rataj”, „Stół”); po śmierci Kucharza licznik rund skoczył z 7 na 9.
 
@@ -510,6 +510,36 @@ i **12** (marsz z biura w ciemny korytarz kończy się w x20/y9 pod ścianą, be
   chwilowo do „Postaci” netrunnera i ten steruje nią jak własną figurą (zaznaczenie na mapie,
   slot broni z trybem ognia, celownik, kubek), płacąc Akcją Sieciową za użycie. Zapisane
   w `zaleglosci.md` jako projekt do decyzji MG.
+
+## Naprawy 07.11 (ósma sesja) — pkt 5, 16, 20, 22, 26, 27, 28
+
+- **16 — diagnoza:** planer gracza nie zna ścian i bierze brzeg wielokąta widoku za ścianę
+  (etap 16e). Dla **sumy** kilku wielokątów (przejęte kamery, wspólny widok drużyny) to
+  nieprawda: pole w biurze widzi Iskra, pole za ścianą korytarza widzi kamera, a krok między
+  nimi idzie przez mur — serwer odmawiał („Coś stoi na drodze”), figura stawała w biurze. Na
+  punkcie `po-zamknieciu-przebieg2` po odłączeniu klient miał 6 wielokątów (Iskra + 5 kamer)
+  i trasę (18,8) → (19,9) → (19,10) przez ścianę y = 10. **Dwie poprawki:** krok planera
+  i wyprostowany odcinek muszą leżeć w jednym wielokącie (`sightStepTest`, `walk-sight.ts`);
+  `refreshNetCameraSight` po restarcie serwera nie bierze pustej pamięci odcisku za „bez kamer”
+  (oczy kamer zostawały u gracza po odłączeniu do F5 — tak było na odtworzonym punkcie).
+- **5:** szuflada trybów zapisywała tryb pod `weaponRowId`, a kafel i klawisze czytają pod
+  `group.id`.
+- **20:** `shootCoverAt` pomija wrak (0 PW) — klik idzie do planera.
+- **22:** cel wieżyczki w Sieci bez pojemników, martwych i figur-urządzeń; „Dołącz do walki”
+  bez martwych.
+- **26:** tytuł rzutu obrażeń mówi „(osłona)”, „(pojazd)” albo „(szyba)” zamiast „(Korpus)”.
+- **27:** urządzenie Sieci ze strefą `armed = false` przychodzi jako `on: false`,
+  `disarmed: true`, bez obsługi — okno pisze „rozbrojona na miejscu”.
+- **28:** plakietka cyberpsychozy na liście „Postacie” tylko przy utracie Człowieczeństwa
+  (`humanityCurrent` < EMP × 10); karta postaci bez zmian.
+
+**Oglądane** na instancji E2E z `po-zamknieciu-przebieg2`: Iskra (Ola) w **Firefoksie** —
+lista celów wieżyczki („Iskra” jako jedyna), „Podłoga elektryczna — rozbrojona na miejscu”,
+slot „seria” po wyborze ognia ciągłego, klik we wrak biurka z bronią w ręku = marsz, wyjście
+z biura na (20,11) przy podstawionym drugim wielokącie nad korytarzem (przed poprawką ten
+układ dawał odmowę); MG w Chromium — lista „Postacie” bez plakietek przy kamerach i wieżyczce.
+Poprawki odcisku kamer po restarcie na żywo nie oglądano (test: odłączenie po zwykłym
+podłączeniu zdejmuje oczy 6 → 1). Pkt 26 — tylko test `shared`.
 
 ## Kryteria ukończenia
 

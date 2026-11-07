@@ -8,14 +8,11 @@ w `POMYSLY.md` („Do sprawdzenia przy stole”), decyzje MG — w `decyzje-i-up
 
 **07.11.2026 (szósta) — dokończenie rozegrania „Po zamknięciu”: nowe błędy.** Opis i diagnozy:
 `etap-66e-po-zamknieciu.md` („Rozegranie — dokończenie”, pkt 15–29). **Pkt 15, 17 i 21
-zamknięte 07.11 (siódma sesja), czekają na wdrożenie** — `archiwum/zamkniete-zaleglosci.md`.
-(16) 🔴 planer gracza nie wyprowadza figury z biura ochrony przez otwarte drzwi x17–18/y10 (do
-środka działa); (20) 🟠 wrak osłony dalej jest celem kliku z bronią w ręku; (22) listy celów wieżyczki i „Dołącz do walki” bez filtra (pojemnik,
-martwi NPC-e); (23) podwójne wiersze akcji Sieci u netrunnera (jawny + „POUFNE”);
+zamknięte 07.11 (siódma sesja), 16, 20, 22, 26, 27 i 28 — 07.11 (ósma); czekają na
+wdrożenie** — `archiwum/zamkniete-zaleglosci.md`.
+(23) podwójne wiersze akcji Sieci u netrunnera (jawny + „POUFNE”);
 (24) jasnoniebieskie podpisy w oknie Sieci nieczytelne na beżu; (25) potrójna odmowa „Wróg
-w zasięgu wzroku”; (26) rzut obrażeń w osłonę opisany „(Korpus)”; (27) podłoga rozbrojona ręcznie
-dalej „Wyłącz” w Sieci; (28) urządzenia z plakietką „EMP 1 · DYSOCJACJA” w „Postaciach” MG;
-(29) etykiety w biurze i gabinecie nachodzą na siebie, a po śmierci Kucharza licznik rund
+w zasięgu wzroku”; (29) etykiety w biurze i gabinecie nachodzą na siebie, a po śmierci Kucharza licznik rund
 skoczył z 7 na 9. Punkty 18 (okno Sieci zasłania kubek) i 19 (atak poza walką bez trybu
 turowego) **nie są zaległościami — decyzja MG z 07.11**.
 **Balans wzorca:** przejęta wieżyczka (pojedynczo 2k6) przebija OB 11 Kucharza tylko przy 6+6
@@ -35,10 +32,9 @@ działa z okna Sieci). Kandydat na osobny etap.
 
 **07.11.2026 (piąta) — błędy z rozegrania „Po zamknięciu” w przeglądarce (przebieg przerwany,
 do wznowienia).** Pełny opis i stan: `etap-66e-po-zamknieciu.md` („Rozegranie w przeglądarce”).
-**Pkt 1, 2 i 4 zamknięte 07.11 (siódma sesja), czekają na wdrożenie** —
+**Pkt 1, 2 i 4 zamknięte 07.11 (siódma sesja), 5 — 07.11 (ósma); czekają na wdrożenie** —
 `archiwum/zamkniete-zaleglosci.md`. (3) 🔴 klik gracza w zauważoną strefę to marsz na nią bez
-pytania; (5) 🟠 slot broni pisze „pojedynczy” przy zapamiętanym ogniu
-ciągłym; (6) 🟠 gniazdo znalezione Skanerem poza wzrokiem nie ma znacznika u gracza; (7) 🟠
+pytania; (6) 🟠 gniazdo znalezione Skanerem poza wzrokiem nie ma znacznika u gracza; (7) 🟠
 przycisk karty po najechaniu ma tekst w kolorze tła, „Postać nie ma pojazdu” czerwone na
 czerwonym; (8) „Dodaj za darmo” w Kompendium celuje w pierwszą postać, nie w otwartą kartę;
 (9) brak zamiany Roli głównej z poprzednią na karcie; (10) kubek zasłania ostatnie akcje

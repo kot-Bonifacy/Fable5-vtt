@@ -1258,10 +1258,20 @@ function planDamageRoll(
     request.targetVehicleId === undefined &&
     !request.areaTargets?.length;
   const what = standalone ? 'sam rzut obrażeń, bez ataku' : 'obrażenia';
+  // Osłona i auto nie mają Korpusu (66e, pkt 26): „Biurko — obrażenia
+  // (Korpus)” czytało się jak trafienie w figurę.
+  const where =
+    request.targetCoverId !== undefined
+      ? 'osłona'
+      : request.targetVehicleId !== undefined && !request.targetTokenId
+        ? request.targetWindow
+          ? 'szyba'
+          : 'pojazd'
+        : CPRED_HIT_LOCATION_LABELS[location];
   return {
     ok: true,
     plan: {
-      title: `${weapon.name} — ${what} (${CPRED_HIT_LOCATION_LABELS[location]})${suffix}`,
+      title: `${weapon.name} — ${what} (${where})${suffix}`,
       formula: { terms },
       breakdown,
       modifierTotal: modifier + weakSpot,

@@ -9,6 +9,32 @@ go czytać.
 albo gdy chcesz sprawdzić, czy pozycja, która wygląda na nową, nie jest wracającą starą.
 Treść wpisów jest niezmieniona — łącznie z datami i odsyłaczami do notatek sesji.
 
+## Zamknięte 2026-11-07, ósma sesja („zrób kilka zaległości”)
+
+Siedem punktów z dokończenia rozegrania „Po zamknięciu” (66e). Oglądane na instancji E2E
+z `po-zamknieciu-przebieg2` (Iskra w Firefoksie, MG w Chromium) — szczegóły w
+`etap-66e-po-zamknieciu.md` („Naprawy 07.11 (ósma sesja)”). Bez migracji; czekają na wdrożenie.
+
+- **(szósta, 16) 🔴 Planer nie wyprowadzał figury z biura.** Diagnoza: planer gracza bierze brzeg
+  wielokąta widoku za ścianę, a przy kilku wielokątach (kamery, wspólny widok) suma nie ma ścian
+  na brzegu — krok z pola widzianego przez Iskrę na pole widziane przez kamerę szedł przez mur,
+  serwer odmawiał. Na odtworzonym punkcie po odłączeniu klient miał 6 wielokątów, bo
+  `refreshNetCameraSight` po restarcie serwera brał brak odcisku w pamięci za „bez kamer”.
+  Naprawa: `sightStepTest` (`client/map/walk-sight.ts`) — krok i wyprostowany odcinek w jednym
+  wielokącie; odcisk kamer bez wpisu zawsze przelicza widok. Test: `walk-sight.test.ts`.
+- **(piąta, 5) 🟠 Slot pisał „pojedynczy” przy ogniu ciągłym.** Szuflada zapisywała tryb pod
+  `weaponRowId`, kafel czytał pod `group.id` (`CombatHud.tsx`).
+- **(szósta, 20) 🟠 Wrak osłony był celem kliku z bronią.** `shootCoverAt` pomija osłonę bez PW.
+- **(szósta, 22) 🟡 Listy celów bez filtra.** Cel wieżyczki w Sieci bez pojemników, martwych
+  i figur-urządzeń z przejętych węzłów; „Dołącz do walki” bez martwych.
+- **(szósta, 26) 🟡 „(Korpus)” przy rzucie w osłonę.** `planDamageRoll` pisze „osłona”,
+  „pojazd” albo „szyba”. Test: `rolls.test.ts`.
+- **(szósta, 27) 🟡 „Wyłącz” przy podłodze rozbrojonej ręcznie.** `deviceViewsOf` dostaje
+  urządzenia stref z `armed = false` (`disarmedZoneDevicesOf`) i wysyła je wyłączone, bez
+  obsługi, z `disarmed: true`. Test: `netdevices.test.ts`.
+- **(szósta, 28) 🟡 „EMP 1 · Dysocjacja” przy kamerach.** Plakietka na liście „Postacie” tylko
+  przy utracie Człowieczeństwa (`humanityCurrent` < `humanityMax(stats)`).
+
 ## Zamknięte 2026-11-07, siódma sesja („zrób kilka zaległości”)
 
 Sześć punktów z rozegrania „Po zamknięciu” (66e), zamkniętych w kodzie i testach (`shared`,

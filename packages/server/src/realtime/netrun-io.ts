@@ -314,7 +314,9 @@ export async function runPayloadFor(
   // is doing. Looked up once for the whole shaft rather than per floor — a
   // catalogue read inside `netRunView` would be a database call inside a pure
   // function, and the same camera appears in two viewers' payloads.
-  const devices = await deviceViewsOf(deps, campaignId, architecture, runtime, gm);
+  const devices = await deviceViewsOf(deps, campaignId, architecture, runtime, gm, {
+    disarmed: await disarmedZoneDevicesOf(prisma, row.architecture.id),
+  });
   const combatRow = await prisma.combat.findUnique({
     where: { sceneId: row.token.sceneId },
     select: { round: true },
@@ -359,6 +361,7 @@ async function deviceViewsOf(
   architecture: CpredNetArchitecture,
   runtime: CpredNetRuntime,
   gm: boolean,
+  options: { disarmed?: ReadonlySet<string> } = {},
 ): Promise<Map<string, NetDeviceView[]>> {
   const byFloor = new Map<string, NetDeviceView[]>();
   const placed = await devicePlacesOf(deps.ctx.prisma, campaignId, architecture);
@@ -372,18 +375,39 @@ async function deviceViewsOf(
           : undefined;
         const detail = entry && isNetDefenseEntry(entry) ? describeNetDefense(entry) : '';
         const place = device.tokenId ? placed.get(device.tokenId) : undefined;
+        const view = netDeviceView(device, netDeviceStateOf(runtime.devices, device.id), {
+          gm,
+          ...(detail ? { detail } : {}),
+          ...(place ? { at: place.at, facing: place.facing } : {}),
+        });
+        // Strefa rozbrojona na miejscu (Test albo przełącznik MG) nie strzeli,
+        // co by węzeł nie mówił — „Wyłącz” przy niej kłamał (66e, pkt 27).
+        // Z Sieci się jej nie uzbroi z powrotem: to decyzja MG.
         views.push(
-          netDeviceView(device, netDeviceStateOf(runtime.devices, device.id), {
-            gm,
-            ...(detail ? { detail } : {}),
-            ...(place ? { at: place.at, facing: place.facing } : {}),
-          }),
+          options.disarmed?.has(device.id)
+            ? { ...view, on: false, operations: [], disarmed: true }
+            : view,
         );
       }
       byFloor.set(floor.id, views);
     }
   }
   return byFloor;
+}
+
+/**
+ * Urządzenia węzła, za którymi stoi strefa obronna rozbrojona na mapie
+ * (`armed = false`) — ręką gracza albo przełącznikiem MG (66e, pkt 27).
+ */
+async function disarmedZoneDevicesOf(
+  prisma: PrismaClient,
+  architectureId: string,
+): Promise<Set<string>> {
+  const rows = await prisma.defenseZone.findMany({
+    where: { architectureId, armed: false, deviceId: { not: null } },
+    select: { deviceId: true },
+  });
+  return new Set(rows.flatMap((row) => (row.deviceId ? [row.deviceId] : [])));
 }
 
 /**
@@ -541,7 +565,12 @@ export async function refreshNetCameraSight(
   options: { force?: boolean } = {},
 ): Promise<void> {
   const signature = netCameraSignature(await loadNetCameraGrants(deps.ctx.prisma, campaignId));
-  if (!options.force && signature === (cameraSignatures.get(campaignId) ?? '')) return;
+  // Brak wpisu (świeży proces po restarcie) to „nie wiem”, a nie „bez kamer”:
+  // odłączenie po restarcie dawało pusty odcisk równy domyślnemu i gracz
+  // zostawał z oczami kamer do F5 — a planer chodził po nich przez ściany
+  // (66e, pkt 16).
+  const known = cameraSignatures.get(campaignId);
+  if (!options.force && known !== undefined && signature === known) return;
   cameraSignatures.set(campaignId, signature);
   const scenes = await deps.ctx.prisma.scene.findMany({ where: { campaignId, active: true } });
   for (const scene of scenes) {

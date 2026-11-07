@@ -346,6 +346,11 @@ export interface NetDeviceView {
   operations: NetDeviceOperation[];
   on: boolean;
   turned?: boolean;
+  /**
+   * Strefa obronna za tym urządzeniem jest rozbrojona na mapie (66e, pkt 27):
+   * `on` jest wtedy fałszem, a lista obsługi pusta.
+   */
+  disarmed?: true;
   /** Set when the device has a figure on the map to shoot from. */
   tokenId?: string;
   /**

@@ -886,7 +886,11 @@ export function CombatHud() {
                           group={group}
                           current={slot.mode}
                           onPick={(picked: CpredHotbarWeaponSlot) => {
-                            setFireMode(token.id, group.weaponRowId, picked.mode);
+                            // Pod tym samym kluczem, pod którym kafel i klawisze
+                            // czytają tryb (`group.id`) — zapis pod `weaponRowId`
+                            // zostawiał na kaflu „pojedynczy” przy serii w kubku
+                            // (66e, pkt 5).
+                            setFireMode(token.id, group.id, picked.mode);
                             setOpenDrawer(null);
                             // Picking a mode also takes the weapon in hand: at
                             // the table „przełączam na serię" and „strzelam

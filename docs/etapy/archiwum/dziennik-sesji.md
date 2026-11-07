@@ -1,5 +1,18 @@
 # Dziennik sesji — archiwum
 
+### Sesja 07.11, szósta — dokończenie rozegrania „Po zamknięciu” (66e)
+
+**Zlecenie MG:** „kontynuuj etap 66e”; w trakcie: odnowić Iskrze PW (24 → 40), gracz figury nie
+przeciąga, „pokonaj wroga, obsługując automatyczną wieżyczkę” przez konsolę, walka ma sama
+włączać tryb turowy, ocenić przejęcie wieżyczki i zapisać propozycję. **Zrobione:** przebieg od
+`po-zamknieciu-przebieg1` do końca — Mały (osłona zniszczona, seria ze Szczęściem), łup klucza
+i szafka, Sieć (Backdoor, dwa węzły, zamek gabinetu), Kucharz zabity wieżyczką z Sieci w 7
+rundach krytykami ze skryptu; stan w punkcie E2E `po-zamknieciu-przebieg2`. 15 nowych znalezisk
+(pkt 15–29) i ocena wieżyczki w `etap-66e-po-zamknieciu.md`, wpisy w `zaleglosci.md` (błędy
+i projekt „przejęte urządzenie jako figura netrunnera”), pułapka na górze `ogledziny`.
+**Bez zmian w kodzie i bez testów.** **Oglądane:** MG w Chromium, Iskra w **Firefoksie**
+(Playwright MCP).
+
 ### Sesja 07.11, piąta — rozegranie „Po zamknięciu” w przeglądarce (przerwane, do wznowienia)
 
 **Zlecenie MG:** rozegrać scenę netrunnerem Rangi 6 z ciężkim pistoletem maszynowym (najpierw

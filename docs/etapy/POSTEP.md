@@ -21,7 +21,7 @@ w plikach obok — czytaj je **na żądanie, nigdy rutynowo**:
 
 | stan         | etapy                                                                                          |
 | ------------ | ---------------------------------------------------------------------------------------------- |
-| ⬜ otwarty   | **68** Warsztat: ulepszenia auta za ed i naprawa (🟨 zrobione 06.11, czeka na wdrożenie i oględziny MG przy stole); **67** Zakup pojazdu (🟨 zrobione 06.11, czeka na wdrożenie i oględziny MG przy stole); **66e** Scena przykładowa „Po zamknięciu” (🟨 zrobione 07.11, obejrzane w Firefoksie; rozegrana w przeglądarce do końca 07.11 — znaleziska w `zaleglosci.md` (27; pkt 18 i 19 nie, decyzja MG; 6 naprawionych 07.11); czeka na naprawę reszty, stół MG i wdrożenie); **66d** Scena przykładowa „Zastaw” (🟨 wzorzec zrobiony i rozegrany w przeglądarce 06.11; od 06.11 jeden taran na turę (decyzja MG); czeka na stół MG i wdrożenie); **66** Sceny przykładowe (🟨 zrobione 31.10, czeka na oględziny MG przy stole i wdrożenie; **66b** „Fabryka dronów” 🟨 zrobione 31.10, tak samo (netrunner obejrzany w przeglądarce 07.11, poprawki czekają na wdrożenie); **66c** „Ostatni zjazd” 🟨 wzorzec zrobiony, rozegrany w przeglądarce 04.11 i ponownie 05.11 po rebalansie (porażka o włos, balans zatwierdzony przez MG) — zaległości z przebiegów zamknięte 05.11, Esc na kubku MG 07.11 — czeka na stół MG i wdrożenie); **65** Scena pościgu i walka pojazdów (🟨 65a–65e ✅ 30–31.10, czeka na oględziny MG przy stole); **62** Sieć ze sceny (🟨 zrobione, czeka na oględziny MG na VPS po wdrożeniu); **61** Skradanie się (🟨 zrobione, czeka na słowo MG o rozstrzygnięciach); **28** Wdrożenie na VPS (🟨 działa na `https://vtt.tatanga.eu` z botami od 18.10; zostały off-site, utwardzenie, monitoring); **43b**, **43c** (UI walki); **60** Czytelny czat (zlecenie MG z 24.10; 🟨 60a–60c ✅, czeka na oględziny MG z pierwszego kryterium); T10; refaktoryzacja odłożona (MG 18.10) |
+| ⬜ otwarty   | **68** Warsztat: ulepszenia auta za ed i naprawa (🟨 zrobione 06.11, czeka na wdrożenie i oględziny MG przy stole); **67** Zakup pojazdu (🟨 zrobione 06.11, czeka na wdrożenie i oględziny MG przy stole); **66e** Scena przykładowa „Po zamknięciu” (🟨 zrobione 07.11, obejrzane w Firefoksie; rozegrana w przeglądarce do końca 07.11 — znaleziska w `zaleglosci.md` (27; pkt 18 i 19 nie, decyzja MG; 13 naprawionych 07.11); czeka na naprawę reszty, stół MG i wdrożenie); **66d** Scena przykładowa „Zastaw” (🟨 wzorzec zrobiony i rozegrany w przeglądarce 06.11; od 06.11 jeden taran na turę (decyzja MG); czeka na stół MG i wdrożenie); **66** Sceny przykładowe (🟨 zrobione 31.10, czeka na oględziny MG przy stole i wdrożenie; **66b** „Fabryka dronów” 🟨 zrobione 31.10, tak samo (netrunner obejrzany w przeglądarce 07.11, poprawki czekają na wdrożenie); **66c** „Ostatni zjazd” 🟨 wzorzec zrobiony, rozegrany w przeglądarce 04.11 i ponownie 05.11 po rebalansie (porażka o włos, balans zatwierdzony przez MG) — zaległości z przebiegów zamknięte 05.11, Esc na kubku MG 07.11 — czeka na stół MG i wdrożenie); **65** Scena pościgu i walka pojazdów (🟨 65a–65e ✅ 30–31.10, czeka na oględziny MG przy stole); **62** Sieć ze sceny (🟨 zrobione, czeka na oględziny MG na VPS po wdrożeniu); **61** Skradanie się (🟨 zrobione, czeka na słowo MG o rozstrzygnięciach); **28** Wdrożenie na VPS (🟨 działa na `https://vtt.tatanga.eu` z botami od 18.10; zostały off-site, utwardzenie, monitoring); **43b**, **43c** (UI walki); **60** Czytelny czat (zlecenie MG z 24.10; 🟨 60a–60c ✅, czeka na oględziny MG z pierwszego kryterium); T10; refaktoryzacja odłożona (MG 18.10) |
 | ✅ ukończone | 01–11, 13–20b, 23a–27f, 27h–27l, 29a–30d, 31–35, 37–42c, 43a, 44a–44d, 45, 46a1, 46a2, 46c1, 46c2, 46b1, 46b2, 47a, 47b, 48a, 48b, 48c, 49a, 49b, 50a, 50b, 50c, 51, 52, 53, 54, 55, 56, 57 (57a–57c), 58 (58a–58d), 59 (59a–59c), 63 (63a–63b; 63c wycofane 29.10), 64 (64a–64c) (ostatni zamknięty: 64, 2026-10-30) |
 | ⛔ wycofane  | 12, 21, 22 (głos), 27g (wydajność), 36 (makra); 27, 29, 30, 38 rozdzielone na etapy literowane |
 
@@ -32,14 +32,15 @@ Pełna tabela z nazwami i datami: `archiwum/tabela-etapow.md`.
 **Rozegranie „Po zamknięciu” w przeglądarce (zlecenie MG z 07.11) — skończone; teraz naprawa
 znalezisk.** Iskra (Netrunner 6) zabiła Małego serią zza zniszczonego biurka, otworzyła szafkę
 kluczem z łupu i wykończyła Kucharza przejętą wieżyczką z konsoli monitoringu (stan końcowy:
-punkt E2E `po-zamknieciu-przebieg2`). **Zamknięte 07.11 (siódma sesja, czekają na wdrożenie,
-nie oglądane w przeglądarce):** pkt 1, 2, 4, 15, 17 i 21 — „Edycja tokenu” bez pancerza
-statysty, Percepcja w drodze przez linię wzroku, strefa tylko z marszu gracza, zasięg ręki
-do figury spoza siatki, odświeżenie „węzeł użyty” z rundą, postać zamiast konta na kartach
-przekazania. **Zostało** w `zaleglosci.md` (07.11, piąta i szósta; bez pkt 18 i 19 — decyzja
-MG) — najpierw 🔴: klik w zauważoną strefę (pkt 3, wymaga projektu okienka) i planer, który
-nie wychodzi z biura ochrony (pkt 16, do diagnozy). Projekt do decyzji MG: przejęta wieżyczka
-jako figura netrunnera w „Postaciach” (`zaleglosci.md`).
+punkt E2E `po-zamknieciu-przebieg2`). **Zamknięte 07.11 (czekają na wdrożenie):** siódma sesja —
+pkt 1, 2, 4, 15, 17 i 21 (nie oglądane w przeglądarce); ósma — pkt 5, 16, 20, 22, 26, 27 i 28
+(oglądane w Firefoksie i Chromium): planer gracza przy kilku oczach (kamery, wspólny widok)
+chodzi tylko krokami w jednym wielokącie, odcisk kamer po restarcie serwera przelicza widok,
+slot broni pokazuje wybrany tryb, wrak osłony nie jest celem, czyste listy celów, „(osłona)”
+zamiast „(Korpus)”, rozbrojona strefa bez „Wyłącz” w Sieci, bez „Dysocjacji” przy kamerach.
+**Zostało** w `zaleglosci.md` (bez pkt 18 i 19 — decyzja MG) — najpierw 🔴: klik w zauważoną
+strefę (pkt 3, wymaga projektu okienka). Projekt do decyzji MG: przejęta wieżyczka jako figura
+netrunnera w „Postaciach” (`zaleglosci.md`).
 
 **Scena przykładowa „Po zamknięciu” (etap 66e, zlecenie MG z 07.11) — czeka na stół MG
 i wdrożenie (bez migracji; na VPS dojdzie `data/public/scenes/po-zamknieciu/` i nowy wpis próbki).**
@@ -748,14 +749,14 @@ a nie do tego pliku.
 | `serwer`    | Prisma i migracje, zdarzenia gniazda, zapisy karty, uploady    | 26   | 21      |
 | `ui`        | okna pływające, `z-index`, motyw, skróty, dostępność, wejście, panel decyzji MG, rezerwa panelu przy liczniku Szczęścia | 39   | 15      |
 | `kosci`     | kubek, `rollFormula`, wezwania i prośby o Test, tabele losowe, PT od MG | 24   | 2       |
-| `tura`      | budżet Akcji i metrów, kolejka, trasa, ruch przez ściany, skok, walka z zauważenia, pytanie MG o przekroczenie, Percepcja w drodze (z linią wzroku), ukryte figury, skradanie, kropki ataków, kierowca bez Biegu, Test jazdy w Akcji Ruchu, darmowa ręka MG, napis wiersza Akcji, taran raz na turę, spóźniona inicjatywa rundy 1 | 40   | 7       |
+| `tura`      | budżet Akcji i metrów, kolejka, trasa, ruch przez ściany, skok, walka z zauważenia, pytanie MG o przekroczenie, Percepcja w drodze (z linią wzroku), ukryte figury, skradanie, kropki ataków, kierowca bez Biegu, Test jazdy w Akcji Ruchu, darmowa ręka MG, napis wiersza Akcji, taran raz na turę, spóźniona inicjatywa rundy 1, krok planera w jednym oku | 41   | 7       |
 | `atak`      | broń i dodatki, amunicja, obrażenia, pancerz, rany krytyczne, trucizna na ostrzu, auto-unik, strach z Konfrontacji, auto jako cel, broń pokładowa, wybór celu ze stosu, skutki amunicji po karcie ataku, ikona gołych rąk, broń dwuręczna w rękach przy tarczy | 57   | 8       |
 | `statysta`  | figura z kartą, `statBlock`, Wartość bojowa, `token:stat` (tylko zmienione grupy), wzorce | 18   | 3       |
 | `karta`     | strony i zakładki, panele, `sheet.css`, walidacja list, usuwanie przedmiotu, „Używane” i „Plecak” | 12   | 12      |
 | `postac`    | kreator, PD i awanse, koszyk i cofanie awansów, Role i Zdolności, cyborgizacje, chrom zmieniający liczby, ekonomia, Test montażu gracza, pojazdy i Tabor | 58   | 3       |
 | `ekwipunek` | wiersze wyposażenia, przekazanie, łup (także ciała graczy), handel, sklepy, asortyment handlarza z kompendium, zasięg, amunicja bez dna, egzoszkielet, latarka z ekwipunku, narkotyki i fiolki, siatka okna „Wymiana”, zgoda z góry, odświeżanie po naklejkach, znaczek „w użyciu”, zakup auta z modelu, warsztat (ulepszenia i naprawa auta), auto bokiem i „w garażu”, postać na karcie przekazania, zasięg ręki do figury spoza siatki | 49   | 3       |
 | `czas`      | zegar świata, kalendarz, `statEffects`, leczenie po dobie, dawki i uzależnienia (`chems`) | 19   | 2       |
-| `siec`      | Programy, LOD, demony, piętra architektury, dek jako towar, strefy bronione, kamery (także w ciemności), rozbrajanie, Sieć ze sceny, jedna próba i pamięć sukcesów, strzał z urządzenia, strefa tylko z marszu gracza, widok runu z rundą | 17   | 5       |
+| `siec`      | Programy, LOD, demony, piętra architektury, dek jako towar, strefy bronione, kamery (także w ciemności), rozbrajanie, Sieć ze sceny, jedna próba i pamięć sukcesów, strzał z urządzenia, strefa tylko z marszu gracza, widok runu z rundą, strefa rozbrojona w Sieci | 18   | 6       |
 | `boty`      | llama-server, RAG, reindeks, dziennik i baza wiedzy, brama AI  | 10   | 10      |
 | `dane`      | `parse-manual.py`, kompendium poza repo, tabele z podręcznika  | 9    | 12      |
 | `kopie`     | `snapshot`, `archive`, paczki ZIP, wczytanie kampanii, „czeka na gracza”, kopie kampanii i cofnięcie, sklep i bot w paczce, zgłoszenie karty gracza, pojazdy w paczce, auta na scenie pościgu, przeszkody poza paczką | 22   | 6       |
@@ -766,6 +767,25 @@ a nie do tego pliku.
 ## Notatki z dwóch ostatnich sesji
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
+
+### Sesja 07.11, ósma — siedem zaległości z „Po zamknięciu” (66e)
+
+**Zlecenie MG:** „zrób kilka zaległości”. Wybrane bez pytań do MG: 🔴 16, 🟠 5 i 20, 🟡 22, 26,
+27 i 28. **Zrobione (bez migracji, czekają na wdrożenie):** (16) diagnoza na punkcie
+`po-zamknieciu-przebieg2` — planer gracza chodził przez ścianę między polem widzianym przez
+Iskrę a polem widzianym przez kamerę (suma wielokątów nie ma ścian na brzegu); krok planera
+musi leżeć w jednym wielokącie (`sightStepTest`), a `refreshNetCameraSight` po restarcie
+serwera nie bierze pustej pamięci za „bez kamer” (oczy kamer zostawały po odłączeniu do F5);
+(5) szuflada trybów zapisywała pod złym kluczem; (20) wrak osłony nie jest celem; (22) cele
+wieżyczki bez pojemników, martwych i urządzeń, „Dołącz do walki” bez martwych; (26) „(osłona)”,
+„(pojazd)”, „(szyba)” w tytule obrażeń; (27) strefa `armed = false` wyłącza urządzenie w Sieci
+(„rozbrojona na miejscu”, bez obsługi); (28) plakietka cyberpsychozy na liście tylko przy
+utracie Człowieczeństwa. Umowy na górze `tura` i `siec`, pułapka na górze `siec`, wpis
+w `archiwum/zamkniete-zaleglosci.md`, szczegóły w `etap-66e-po-zamknieciu.md` („Naprawy 07.11
+(ósma sesja)”). **Testy:** `shared` 2992/2992, serwer 1762/1762, klient 474/474; ESLint,
+Prettier i `tsc --noEmit` czyste. **Oglądane:** Iskra w **Firefoksie**, MG w Chromium
+(Playwright MCP, instancja E2E); odcisk kamer po restarcie — tylko kodem i przebiegiem
+podłącz/odłącz (6 → 1), pkt 26 — tylko test.
 
 ### Sesja 07.11, siódma — sześć zaległości z „Po zamknięciu” (66e)
 
@@ -782,16 +802,3 @@ jako wdrożona. **Testy:** `shared` 2991/2991, serwer 1761/1761 (pierwszy przebi
 teardownu `SceneExploration` z `foe-sighting`, drugi czysty); cztery testy
 `zones.test.ts` przestawione z NPC-a na figurę gracza. **Nie oglądane w przeglądarce**
 (zmiany serwera i `shared`; do sprawdzenia przy wznowieniu przebiegu albo przy stole).
-
-### Sesja 07.11, szósta — dokończenie rozegrania „Po zamknięciu” (66e)
-
-**Zlecenie MG:** „kontynuuj etap 66e”; w trakcie: odnowić Iskrze PW (24 → 40), gracz figury nie
-przeciąga, „pokonaj wroga, obsługując automatyczną wieżyczkę” przez konsolę, walka ma sama
-włączać tryb turowy, ocenić przejęcie wieżyczki i zapisać propozycję. **Zrobione:** przebieg od
-`po-zamknieciu-przebieg1` do końca — Mały (osłona zniszczona, seria ze Szczęściem), łup klucza
-i szafka, Sieć (Backdoor, dwa węzły, zamek gabinetu), Kucharz zabity wieżyczką z Sieci w 7
-rundach krytykami ze skryptu; stan w punkcie E2E `po-zamknieciu-przebieg2`. 15 nowych znalezisk
-(pkt 15–29) i ocena wieżyczki w `etap-66e-po-zamknieciu.md`, wpisy w `zaleglosci.md` (błędy
-i projekt „przejęte urządzenie jako figura netrunnera”), pułapka na górze `ogledziny`.
-**Bez zmian w kodzie i bez testów.** **Oglądane:** MG w Chromium, Iskra w **Firefoksie**
-(Playwright MCP).

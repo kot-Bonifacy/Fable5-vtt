@@ -273,6 +273,32 @@ describe('planCpredRoll — damage (stage 15)', () => {
     expect(result.plan.title).toBe('Zgrzyt-9 — obrażenia (Korpus)');
   });
 
+  it('names a cover or a car instead of the body (66e, pkt 26)', () => {
+    const data = sheet({ weapons: [weapon] });
+    const cover = planCpredRoll(data, registry, {
+      kind: 'damage',
+      weaponRowId: 'w1',
+      attackMessageId: 41,
+      targetCoverId: 3,
+    });
+    const car = planCpredRoll(data, registry, {
+      kind: 'damage',
+      weaponRowId: 'w1',
+      attackMessageId: 42,
+      targetVehicleId: 'v1',
+    });
+    const pane = planCpredRoll(data, registry, {
+      kind: 'damage',
+      weaponRowId: 'w1',
+      attackMessageId: 43,
+      targetVehicleId: 'v1',
+      targetWindow: 'front',
+    });
+    expect(cover.ok && cover.plan.title).toBe('Zgrzyt-9 — obrażenia (osłona)');
+    expect(car.ok && car.plan.title).toBe('Zgrzyt-9 — obrażenia (pojazd)');
+    expect(pane.ok && pane.plan.title).toBe('Zgrzyt-9 — obrażenia (szyba)');
+  });
+
   it('carries the aimed location and the GM’s flat modifier', () => {
     const data = sheet({ weapons: [weapon] });
     const result = planCpredRoll(data, registry, {

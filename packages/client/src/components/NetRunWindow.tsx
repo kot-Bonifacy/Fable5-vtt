@@ -22,9 +22,11 @@ import {
   NET_PROGRAM_CLASS_LABELS,
   NET_PROGRAM_TARGET_LABELS,
   ROLE_GM,
+  conditionRegistry,
   netAbility,
   netCameraDirectionLabel,
   normalizeFacing,
+  tokenCondition,
 } from '@vtt/shared';
 import {
   attackInNet,
@@ -157,7 +159,11 @@ function NodeDevices({
                 patrzy na {netCameraDirectionLabel(device.facing)}
               </span>
             )}
-            {!device.on && <span className="net-run-floor-flag">wyłączone</span>}
+            {device.disarmed ? (
+              <span className="net-run-floor-flag">rozbrojona na miejscu</span>
+            ) : (
+              !device.on && <span className="net-run-floor-flag">wyłączone</span>
+            )}
             {device.turned && <span className="net-run-floor-flag">obrócona</span>}
             {device.detail && <span className="net-deck-effect">{device.detail}</span>}
             {device.notes && <p className="net-run-floor-notes">{device.notes}</p>}
@@ -829,6 +835,7 @@ function NetRunWindowBody() {
   const openRun = useNetRunStore((s) => s.openRun);
   const isGm = useAuthStore((s) => s.user?.role === ROLE_GM);
   const tokens = useTokenStore((s) => s.tokens);
+  const statusRows = useTokenStore((s) => s.statuses);
   // Liczone raz, przy otwarciu: miejsce pierwszego otwarcia i zarazem granica
   // wysokości okna (niżej), żeby klamra nie wypychała go z powrotem na pas.
   const [fit] = useState(() => netRunFallback(isGm));
@@ -972,7 +979,19 @@ function NetRunWindowBody() {
    * z 18a, u MG wszystko. Serwer i tak sprawdza mgłę i ukrycie celu, więc to
    * jest wygoda, nie uprawnienie.
    */
+  // Bez pojemników, martwych i figur-urządzeń (66e, pkt 22): „Szafka ochrony”
+  // i ciało Małego w liście celów wieżyczki tylko zasłaniały żywych.
+  const conditions = conditionRegistry(statusRows);
+  const deviceTokens = new Set(
+    floors.flatMap((floor) => (floor.devices ?? []).map((device) => device.tokenId)),
+  );
   const targets = Object.values(tokens)
+    .filter(
+      (token) =>
+        token.container === undefined &&
+        !deviceTokens.has(token.id) &&
+        tokenCondition(token, conditions) !== 'dead',
+    )
     .map((token) => ({ id: token.id, name: token.name }))
     .sort((a, b) => a.name.localeCompare(b.name, 'pl'));
   const virusPending = run.run.virus;

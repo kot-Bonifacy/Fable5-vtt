@@ -557,8 +557,12 @@ export function CombatPanel() {
   const outsiders = useMemo(() => {
     if (!combat) return [];
     const inFight = new Set(combat.combatants.map((c) => c.tokenId));
-    return tokens.filter((token) => !inFight.has(token.id));
-  }, [combat, tokens]);
+    // Martwi nie dołączają (66e, pkt 22): ciało Burego jako „WRÓG” w posiłkach
+    // to szum, a dodane i tak nie miałoby tury.
+    return tokens.filter(
+      (token) => !inFight.has(token.id) && tokenCondition(token, conditions) !== 'dead',
+    );
+  }, [combat, tokens, conditions]);
 
   if (!combat) {
     return isGm ? (

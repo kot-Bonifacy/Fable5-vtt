@@ -48,7 +48,7 @@ import {
 } from '../map/MapRenderer.js';
 import { exposeMapToE2E } from '../e2e-hook.js';
 import { partyStart } from '../map/camera.js';
-import { walkFloorFor } from '../map/walk-sight.js';
+import { sightStepTest, walkFloorFor } from '../map/walk-sight.js';
 import { isTokenDrag, readTokenDrag } from '../map/token-drag.js';
 import { setMapDropTarget } from '../map/map-drop.js';
 import { CreateCampaignForm } from './CreateCampaignForm.js';
@@ -1789,7 +1789,14 @@ export function MapArea() {
     const floor = walkFloorFor(current.visibility, wallState.hasVision);
     if (floor === 'sight') {
       const polygons = wallState.polygons;
-      renderer.setWalkPassable((point) => isPointVisible(point, polygons), canStep);
+      // Kilka oczu naraz (przejęta kamera, wspólny widok drużyny): krok musi
+      // zmieścić się w jednym z nich, inaczej trasa szła przez ścianę (66e, pkt 16).
+      const inOneEye = sightStepTest(polygons, current.grid.sizePx / 2);
+      const sightStep =
+        inOneEye && canStep
+          ? (from: ScenePoint, to: ScenePoint) => canStep(from, to) && inOneEye(from, to)
+          : (inOneEye ?? canStep);
+      renderer.setWalkPassable((point) => isPointVisible(point, polygons), sightStep);
       return;
     }
     // A mask that has not arrived yet, or still describes the previous map,

@@ -21,6 +21,7 @@ import {
   CPRED_ACTION_COMBAT_AWARENESS,
   ROLE_GM,
   attachmentProfilesOf,
+  coverStanding,
   cpredHotbarGroups,
   cpredHotbarInHand,
   cpredRoleAbilityRank,
@@ -964,7 +965,7 @@ export function throwAtPoint(worldX: number, worldY: number): boolean {
  * Fires the bar's active weapon at the cover under the pointer (stage 16c) —
  * „ostrzelaj samochód" without going through the refusal card first.
  *
- * Returns false when there is no cover there or nothing armed, so the click
+ * Returns false when there is no standing cover there or nothing armed, so the click
  * falls through to the walk planner: with empty hands a car is scenery, and
  * scenery must not swallow the click that would have started a walk.
  */
@@ -973,7 +974,9 @@ export function shootCoverAt(worldX: number, worldY: number): boolean {
   const selected = useSelectionStore.getState().tokenId;
   if (!weapon || weapon.pointTarget || !selected || weapon.tokenId !== selected) return false;
   const cover = coverAt({ x: worldX, y: worldY });
-  if (!cover) return false;
+  // Wrak (0 PW) nie zatrzymuje już ani kul, ani nóg — klik w niego to marsz
+  // po podłodze, nie kubek „→ Biurko” (66e, pkt 20).
+  if (!cover || !coverStanding(cover)) return false;
   const token = useTokenStore.getState().tokens[weapon.tokenId];
   if (!token) return false;
   loadAttackFor(

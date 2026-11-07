@@ -7,6 +7,7 @@ import {
   ROLE_GM,
   cyberpsychosisFor,
   formatEddies,
+  humanityMax,
   isContainerCard,
 } from '@vtt/shared';
 import { confirmDestructive } from '../confirm.js';
@@ -696,6 +697,11 @@ function NewCharacterButton({ resume }: { resume: string | null }) {
 function CyberpsychosisChip({ data }: { data: CpredCharacterData }) {
   const state = cyberpsychosisFor(data.humanityCurrent);
   if (state.level === 'none') return null;
+  // Lista mówi o tych, którzy **zsuwają się** po drabinie (s. 229: EMP spada,
+  // gdy ubywa Człowieczeństwa). Kamera i wieżyczka z wzorca mają EMP 1 z natury
+  // i pełne Człowieczeństwo — „EMP 1 · Dysocjacja” przy nich był szumem (66e,
+  // pkt 28). Karta postaci dalej pokazuje stopień zawsze.
+  if (data.humanityCurrent >= humanityMax(data.stats)) return null;
   return (
     <span className={`character-psychosis character-psychosis--${state.level}`} title={state.note}>
       EMP {state.emp} · {state.label}

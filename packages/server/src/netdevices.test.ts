@@ -10,7 +10,9 @@ import type {
   ChatMessageBroadcast,
   CharacterView,
   CombatView,
+  CompendiumEntry,
   CpredCharacterData,
+  DefenseZoneView,
   NetAccessPointView,
   NetArchitectureView,
   NetRunAbilityResult,
@@ -500,6 +502,50 @@ describe('węzły kontrolne na żywych gniazdach', () => {
     // Zasada domowa MG z 02.11: przejęty węzeł też wraca z postacią na tej
     // scenie („Tracisz kontrolę…" z s. 199 świadomie nie obowiązuje).
     expect(nodeOf((await runOf(player))!)?.controlledDv).toBeGreaterThan(0);
+  });
+
+  it('strefa rozbrojona na mapie nie ma w Sieci „Wyłącz” (66e, pkt 27)', async () => {
+    const entry = data(
+      await emitAck<CompendiumEntry>(gm, 'compendium:upsert', {
+        entry: {
+          category: 'netDefense',
+          name: 'Podłoga elektryczna',
+          cost: 1000,
+          defenseKind: 'environment',
+          disableDv: 13,
+          spotDv: 17,
+          trigger: 'Cel wchodzi na zelektryfikowany obszar.',
+          effects: { damage: '6k6', noAblation: true, repeats: true },
+        },
+      }),
+      'compendium:upsert',
+    );
+    const zone = data(
+      await emitAck<DefenseZoneView>(gm, 'zone:create', {
+        sceneId,
+        entryId: entry.id,
+        x: 900,
+        y: 900,
+        width: 100,
+        height: 100,
+      }),
+      'zone:create',
+    );
+    await emitAck(gm, 'zone:update', {
+      zoneId: zone.id,
+      patch: { architectureId, floorId: 'f0', deviceId: 'dev-cam' },
+    });
+    const armed = nodeOf((await runOf(player))!)?.devices?.find((d) => d.id === 'dev-cam');
+    expect(armed?.on).toBe(true);
+    expect(armed?.disarmed).toBeUndefined();
+
+    await emitAck(gm, 'zone:update', { zoneId: zone.id, patch: { armed: false } });
+    const disarmed = nodeOf((await runOf(player))!)?.devices?.find((d) => d.id === 'dev-cam');
+    expect(disarmed).toMatchObject({ on: false, disarmed: true, operations: [] });
+
+    await emitAck(gm, 'zone:delete', { zoneId: zone.id });
+    const back = nodeOf((await runOf(player))!)?.devices?.find((d) => d.id === 'dev-cam');
+    expect(back?.on).toBe(true);
   });
 
   it('odmawia obsługi, której to urządzenie nie zna, i strzału bez figury', async () => {
