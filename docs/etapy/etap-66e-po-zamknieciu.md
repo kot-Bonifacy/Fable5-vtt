@@ -474,10 +474,10 @@ i **12** (marsz z biura w ciemny korytarz kończy się w x20/y9 pod ścianą, be
 17. **🔴 „Węzeł użyty w tej turze” nie gaśnie po zmianie rundy.** Serwer (`netNodeIsFree`) już
     przepuszcza, ale widok Sieci liczy `nodeUsed` w chwili wysyłki i nie jest wysyłany ponownie
     przy nowej rundzie — „Strzelaj” wyszarzone, pomaga F5. Przez to MG oddał turę Iskry w R2.
-18. **🟠 Okno Sieci zasłania kubek i lewy pas HUD** — u gracza kubek z obrażeniami wieżyczki
+18. **🟠 Okno Sieci zasłania kubek i lewy pas HUD** (MG 07.11: nie do zaległości) — u gracza kubek z obrażeniami wieżyczki
     (klik w kubek niemożliwy), u MG „Następna tura”. Okno samo przeskoczyło z prawej na lewą
     stronę (Iskra zaznaczona po prawej), a mój klik w figurę trafił w „Wyłącz” kamery gabinetu.
-19. **🟠 Atak poza walką nie włącza trybu turowego** — strzał wieżyczki z Sieci w Kucharza poszedł
+19. **🟠 Atak poza walką nie włącza trybu turowego** (MG 07.11: nie do zaległości) — strzał wieżyczki z Sieci w Kucharza poszedł
     w eksploracji; MG oczekuje, że walka włączy się sama. Bez rund „raz na rundę” też nie działa.
 20. **🟠 Wrak osłony dalej jest celem** — klik w podłogę na wraku biurka z bronią w ręku ładuje
     kubek „ogień ciągły → Biurko” (także poza walką), zamiast marszu.
@@ -505,8 +505,7 @@ i **12** (marsz z biura w ciemny korytarz kończy się w x20/y9 pod ścianą, be
 - **Kucharz w gabinecie nic nie robi przeciw przejętej wieżyczce** (MG trzymał go za stołem).
   Przy stole MG może kazać mu zestrzelić wieżyczkę (PW 25, OB 10) — warto dopisać do notatki.
 - **Sterowanie wieżyczką dziś nie wygląda sensownie:** tylko z okna Sieci (lista celów bez mapy,
-  bez podglądu linii strzału, zasięgu i osłony, bez trybu ognia), kubek pod oknem (pkt 18),
-  nieaktualne „węzeł użyty” (pkt 17), wieżyczka zostaje w inicjatywie jako wróg, a po
+  bez podglądu linii strzału, zasięgu i osłony, bez trybu ognia), nieaktualne „węzeł użyty” (pkt 17), wieżyczka zostaje w inicjatywie jako wróg, a po
   odłączeniu wraca do obrony bez znaku na mapie. **Propozycja MG:** przejęta wieżyczka trafia
   chwilowo do „Postaci” netrunnera i ten steruje nią jak własną figurą (zaznaczenie na mapie,
   slot broni z trybem ognia, celownik, kubek), płacąc Akcją Sieciową za użycie. Zapisane
