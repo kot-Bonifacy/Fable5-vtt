@@ -1,5 +1,24 @@
 # Dziennik sesji — archiwum
 
+### Sesja 07.11, druga — zaległości
+
+**Zlecenie MG:** „wykonaj zaległości”. Bez pytań do MG — wzięte to, co da się zamknąć bez stołu,
+gatewaya i wdrożenia (wdrożenie robi MG, decyzja z 06.11). **Znalezione i poprawione:** klik MG
+w jezdnię przy NPC-u w fotelu wyprowadzał go z auta przy stojącej kamerze (marsz MG nie pyta
+`token:walk`, a lądowanie ręki MG bez `dragged` wysadzało) — `performTokenMove` wymaga `dragged`,
+`startWalk` pyta serwer o trasę figury w fotelu także u MG; okienko „Prośba o Test” w kolejce
+decyzji MG zaczynało się kontem gracza — zostało podsumowanie od postaci, konto w podpowiedzi.
+**Zamknięte bez zmian w kodzie:** Esc na kubku MG (zamierzona drabinka — pierwsze Esc zamyka okno
+Celowania; nie odtwarzane ponownie), ostrzeżenie „Brak broni w katalogu” (cztery bronie
+pokładowe są w `weapons-base.json` lokalnie i na VPS). **Otwarte:** gniazdo w „Fabryce dronów”
+i dymek „Cel za przeszkodą” (07.11), wrak przed zderzakiem tylko w testach, „Zamiana broni”
+i broń przy tarczy, Rana z taranowania i reszta 65d2, uzależnienia (59b/59c), rozjazd T7b,
+paczka AI. **Testy:** **1760** serwer, **471** klient (`shared` bez zmian — 2979 z 07.11);
+`tsc` klienta i serwera, ESLint, Prettier czyste w zmienionych plikach; E2E
+`48-poscig/t65-przeszkody` 4/4 (dwa nowe kroki). **Oglądane:** tymczasowe specy E2E (skasowane) —
+pościg: MG w Chromium, Ola w **Firefoksie** (6/6); prośba o Test i poczekalnia: MG w Chromium,
+Marek w **Firefoksie** (2/2); obie poprawki klienta ponownie z MG w **Firefoksie** (3/3).
+
 ### Sesja 07.11 — oględziny netrunnera w „Fabryce dronów” (66b)
 
 **Zlecenie MG:** testy przeglądarkowe netrunnera w „Fabryce dronów”: podłączenie przez konsolę

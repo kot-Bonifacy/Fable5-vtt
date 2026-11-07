@@ -641,3 +641,105 @@ describe('etap 66b: wzorzec zwykłej mapy — „Fabryka dronów”', () => {
     expect(runtime.devices.filter((device) => !device.on)).toHaveLength(11);
   });
 });
+
+describe('etap 66e: „Po zamknięciu” — światła, zamki, strefa w Sieci, pojemnik z kluczem', () => {
+  it('staje na próbce bez braków, a gracz nie dostaje ukrytych kamer, strefy ani notatek', async () => {
+    const gm = await connect(gmCookie);
+    const result = data(
+      await emitAck<SceneTemplateCreateResult>(gm, 'scene:from-template', {
+        templateId: 'po-zamknieciu',
+      }),
+      'from-template',
+    );
+    // Próbka ma alternatywy: strzelbę, pistolety, PM, kurtkę i wymyśloną podłogę.
+    expect(result.missing).toEqual([]);
+    const sceneId = result.sceneId;
+    const scene = await built.prisma.scene.findUniqueOrThrow({ where: { id: sceneId } });
+    expect(scene).toMatchObject({ dark: true, darkSightM: 4, playerMove: 'explore' });
+
+    // Ściany 1:1 ze sceny MG: 32 ściany, 11 drzwi, okno, 2 bramy; cztery zamki.
+    const walls = await built.prisma.wall.findMany({ where: { sceneId } });
+    expect(walls).toHaveLength(46);
+    const locked = walls.filter((wall) => wall.locked);
+    expect(locked).toHaveLength(4);
+    expect(locked.map((wall) => (JSON.parse(wall.lockRule!) as { dv: number }).dv).sort()).toEqual([
+      13, 13, 15, 17,
+    ]);
+    expect(await built.prisma.mapLight.count({ where: { sceneId } })).toBe(5);
+    expect(await built.prisma.cover.count({ where: { sceneId } })).toBe(6);
+
+    const tokens = await built.prisma.token.findMany({
+      where: { sceneId },
+      include: { character: true },
+    });
+    expect(tokens).toHaveLength(10);
+    const cameras = tokens.filter((token) => token.glyph === 'camera');
+    expect(cameras).toHaveLength(5);
+    expect(cameras.every((token) => token.hidden)).toBe(true);
+    const sheetOf = (name: string) =>
+      JSON.parse(
+        tokens.find((token) => token.name === name)!.character!.data,
+      ) as CpredCharacterData;
+    expect(sheetOf('Bogdan „Kucharz” Rataj').eddies).toBe(300);
+
+    // Szafka: zamknięta na zamek PT 13, klucz w plecaku Małego, PM i 200 ed w środku.
+    const szafka = sheetOf('Szafka ochrony');
+    expect(szafka.container).toMatchObject({ lock: 'locked', dv: 13 });
+    expect(szafka.container!.keyId).toBeTruthy();
+    expect(szafka.weapons.map((row) => row.name)).toEqual(['Zardzewiak']);
+    expect(szafka.eddies).toBe(200);
+    const key = sheetOf('Ochroniarz „Mały”').gear.find((row) => row.key);
+    expect(key).toMatchObject({ name: 'Klucz: Szafka ochrony', key: szafka.container!.keyId });
+
+    // Sieć: węzeł zabezpieczeń trzyma wieżyczkę, podłogę i drzwi gabinetu.
+    const points = await built.prisma.netAccessPoint.findMany({ where: { sceneId } });
+    expect(points).toHaveLength(2);
+    const architecture = await built.prisma.netArchitecture.findUniqueOrThrow({
+      where: { id: points[0]!.architectureId! },
+    });
+    const floors = (
+      JSON.parse(architecture.data) as {
+        branches: {
+          floors: {
+            id: string;
+            devices?: { id: string; deviceKind: string; tokenId?: string; wallId?: number }[];
+          }[];
+        }[];
+      }
+    ).branches[0]!.floors;
+    expect(floors).toHaveLength(4);
+    expect(floors[1]!.devices).toHaveLength(5);
+    const security = floors[2]!.devices!;
+    expect(security.map((device) => device.deviceKind)).toEqual(['turret', 'environment', 'door']);
+    const office = walls.find((wall) => wall.id === security[2]!.wallId)!;
+    expect(office).toMatchObject({ kind: 'door', locked: true });
+    expect((JSON.parse(office.lockRule!) as { dv: number }).dv).toBe(17);
+
+    const [zone] = await built.prisma.defenseZone.findMany({ where: { sceneId } });
+    expect(zone).toMatchObject({
+      entryId: 'defense.iskrownik',
+      name: 'Podłoga elektryczna',
+      hidden: true,
+      armed: true,
+      hpMax: 20,
+      architectureId: architecture.id,
+      floorId: floors[2]!.id,
+      deviceId: security[1]!.id,
+    });
+    expect(zone!.width).toBeCloseTo(4 * scene.gridSizePx, 3);
+
+    // Kanarek: gracz na aktywnej scenie nie dostaje ukrytych kamer, strefy,
+    // zamków ani notatek MG.
+    const player = await connect(playerCookie);
+    const activated = waitForMatch(player, 'scene:activate', () => true);
+    await emitAck(gm, 'scene:activate', { sceneId });
+    await activated;
+    const { sync } = await connectWithSync(playerCookie);
+    expect(sync.scene?.id).toBe(sceneId);
+    const seen = JSON.stringify(sync);
+    for (const secret of ['Kamera — gabinet', 'Podłoga elektryczna', 'PO ZAMKNIĘCIU', 'lockRule']) {
+      expect(seen.includes(secret), secret).toBe(false);
+    }
+    expect(sync.notes).toEqual([]);
+  });
+});

@@ -5,29 +5,42 @@ import type {
   SceneTemplateSummary,
 } from '@vtt/shared';
 import {
+  CONTAINER_PRESET_LOOKS,
   NET_SCENE_CONTROL_DV,
   ROLE_GM,
   clampChaseVehicle,
+  cpredKeyRow,
+  cpredTemplateContainerSheet,
+  cpredTemplateLockRule,
   cpredTemplateNetArchitecture,
   cpredTemplateNetProgramIds,
   cpredTemplateNpcEntryIds,
   cpredTemplateNpcFinish,
   cpredTemplateNpcInput,
   cpredTemplateVehicleStats,
+  isNetDefenseEntry,
   isVehicleEntry,
   mergeCharacterData,
   netDifficultyDv,
   netrunningDataOf,
+  purchasedSheetRow,
+  readCpredTemplateContainer,
   readCpredTemplateNets,
   readCpredTemplateNpc,
   readCpredTemplateNpcExtras,
   readCpredTemplateVehicle,
+  readCpredTemplateZone,
+  resolveWeapon,
   sceneTemplatePoint,
   sceneTemplateSummary,
   seatedTokenPosition,
   vehicleSeatCentre,
+  type CompendiumEntry,
+  type CpredCharacterData,
   type CpredTemplatePlacedFigure,
+  type PurchasedRow,
 } from '@vtt/shared';
+import { randomBytes } from 'node:crypto';
 import type { Character, Scene, Vehicle } from '../generated/prisma/client.js';
 import { loadSceneTemplate, loadSceneTemplates, sceneTemplatesRoot } from '../scene-templates.js';
 import { vehicleBodyColumns, vehicleCatalog } from '../vehicles.js';
@@ -44,8 +57,9 @@ import { emitVehicleUpsert } from './vehicles.js';
 /**
  * Sceny przykładowe (etap 66): lista wzorców z repo i założenie kopii
  * w kampanii MG. Kopia jest zwykłą sceną kampanii — z jej autami (pojazdy MG
- * bez właściciela), kartami NPC-ów, notatkami warstwy MG, a od 66b także
- * ścianami, osłonami, gniazdami Sieci i Architekturami — więc dalej żyje jak
+ * bez właściciela), kartami NPC-ów, notatkami warstwy MG, od 66b także
+ * ścianami, osłonami, gniazdami Sieci i Architekturami, a od 66e światłami,
+ * zamkami otworów, strefami bronionymi i pojemnikami — więc dalej żyje jak
  * każda inna: edycja, paczka, kopia zapasowa, usunięcie.
  */
 
@@ -158,6 +172,66 @@ export async function instantiateSceneTemplate(
     if (await campaignEntry(deps, campaignId, id)) knownPrograms.add(id);
   }
   const netData = netrunningDataOf(deps.ctx.cpred);
+
+  // Strefy bronione (66e): pierwszy znany wpis „Obrony Sieci” z alternatyw.
+  // Strefa bez wpisu nie powstaje (prostokąt bez liczb nic by nie robił),
+  // a urządzenie węzła, które ją wskazuje, wypada do `missing` jak figura.
+  const zoneEntries = new Map<string, CompendiumEntry>();
+  const zoneSpecs = [] as { zone: (typeof template.zones)[number]; entry: CompendiumEntry }[];
+  for (const zone of template.zones) {
+    const { entryIds } = readCpredTemplateZone(zone.system);
+    let entry: CompendiumEntry | undefined;
+    for (const id of entryIds) {
+      const found = zoneEntries.get(id) ?? (await campaignEntry(deps, campaignId, id));
+      if (found && isNetDefenseEntry(found)) {
+        zoneEntries.set(id, found);
+        entry = found;
+        break;
+      }
+    }
+    if (entry) zoneSpecs.push({ zone, entry });
+    else missing.add(entryIds[0] ?? `zone:${zone.key ?? zone.name ?? '?'}`);
+  }
+
+  // Pojemniki (66e): zawartość z kompendium jak zakup, klucz u figury wzorca
+  // (wiersz plecaka jak z „Wydaj klucz”), wszystko przed transakcją.
+  const figureIndex = new Map(
+    template.figures.flatMap((figure, index) => (figure.key ? [[figure.key, index]] : [])),
+  );
+  const containerSheets: CpredCharacterData[] = [];
+  for (const container of template.containers) {
+    const spec = readCpredTemplateContainer(container.system);
+    const rows: { row: PurchasedRow; qty: number }[] = [];
+    for (const item of spec.items) {
+      let entry: CompendiumEntry | undefined;
+      for (const id of item.ids) {
+        entry = await campaignEntry(deps, campaignId, id);
+        if (entry) break;
+      }
+      const resolved =
+        entry?.category === 'weapon'
+          ? resolveWeapon(entry, { weaponTypeById: deps.ctx.compendium.weaponTypeById })
+          : null;
+      const row = entry ? purchasedSheetRow(entry, resolved, nextRowId()) : null;
+      if (row) rows.push({ row, qty: item.qty });
+      else missing.add(item.ids[0]!);
+    }
+    let keyId: string | null = null;
+    if (spec.keyHolder !== null) {
+      const holder = figureIndex.get(spec.keyHolder);
+      if (holder === undefined) {
+        missing.add(`figure:${spec.keyHolder}`);
+      } else {
+        keyId = randomBytes(12).toString('base64url');
+        const sheet = sheets[holder]!;
+        sheets[holder] = {
+          ...sheet,
+          gear: [...sheet.gear, cpredKeyRow(nextRowId(), keyId, container.name)],
+        };
+      }
+    }
+    containerSheets.push(cpredTemplateContainerSheet(spec, rows, keyId));
+  }
 
   // Stany figur (66c) z listy systemu, jak `token:update` — nieznany id do `missing`.
   const figureStatuses = template.figures.map((figure) =>
@@ -302,8 +376,10 @@ export async function instantiateSceneTemplate(
       }
     }
 
-    // Ściany: łańcuch wzorca → odcinki, jak gest edytora.
-    const wallRows = template.walls.flatMap((wall) =>
+    // Ściany: łańcuch wzorca → odcinki, jak gest edytora. Zamek (66e) to zapis
+    // CP RED w `lockRule`, jak po „Zamek…” MG; otwór z kluczem powstaje sam,
+    // bo jego id wskaże urządzenie „drzwi” w Architekturze.
+    const wallRows = template.walls.map((wall) =>
       wall.points.slice(1).map((end, at) => {
         const from = point(wall.points[at]!);
         const to = point(end);
@@ -315,6 +391,8 @@ export async function instantiateSceneTemplate(
           locked: wall.locked,
           armor: wall.armor,
           hidesFigures: wall.hidesFigures,
+          lockRule:
+            wall.lockRule === null ? null : JSON.stringify(cpredTemplateLockRule(wall.lockRule)),
           x1: from.x,
           y1: from.y,
           x2: to.x,
@@ -322,7 +400,56 @@ export async function instantiateSceneTemplate(
         };
       }),
     );
-    if (wallRows.length > 0) await tx.wall.createMany({ data: wallRows });
+    const keyedWalls = new Map<string, { wallId: number }>();
+    for (const [index, wall] of template.walls.entries()) {
+      if (!wall.key) continue;
+      const row = await tx.wall.create({ data: wallRows[index]![0]! });
+      keyedWalls.set(wall.key, { wallId: row.id });
+    }
+    const plainWalls = template.walls.flatMap((wall, index) => (wall.key ? [] : wallRows[index]!));
+    if (plainWalls.length > 0) await tx.wall.createMany({ data: plainWalls });
+
+    if (template.lights.length > 0) {
+      await tx.mapLight.createMany({
+        data: template.lights.map((light) => ({
+          sceneId: scene.id,
+          ...point(light),
+          brightM: light.brightM,
+          dimM: light.dimM,
+          color: light.color,
+          flicker: light.flicker,
+          enabled: light.enabled,
+        })),
+      });
+    }
+
+    // Pojemniki (66e): karta z polem `container` i figura z grafiką rodzaju,
+    // jak „📦” w pasku mapy — tylko od razu z zamkiem i zawartością.
+    for (const [index, container] of template.containers.entries()) {
+      const card = await tx.character.create({
+        data: {
+          campaignId,
+          name: container.name,
+          ownerId: null,
+          data: JSON.stringify(mergeCharacterData(containerSheets[index]!, {})),
+        },
+      });
+      characters.push(card);
+      const at = point(container);
+      await tx.token.create({
+        data: {
+          sceneId: scene.id,
+          name: container.name,
+          imageUrl: CONTAINER_PRESET_LOOKS[container.preset].imageUrl,
+          x: at.x - scene.gridSizePx / 2,
+          y: at.y - scene.gridSizePx / 2,
+          size: 1,
+          hidden: container.hidden,
+          ownerId: null,
+          characterId: card.id,
+        },
+      });
+    }
 
     for (const cover of template.covers) {
       const corner = point(cover);
@@ -342,11 +469,25 @@ export async function instantiateSceneTemplate(
       });
     }
 
-    // Architektury po figurach — urządzenie to id figury na tej scenie.
+    // Architektury po figurach i otworach — urządzenie to id figury albo
+    // `Wall` na tej scenie; strefy (66e) dostają wiązanie z węzłem po Architekturze.
+    const zonesByKey = new Map(
+      zoneSpecs.flatMap((spec) =>
+        spec.zone.key
+          ? [[spec.zone.key, { name: spec.zone.name ?? spec.entry.name.slice(0, 40) }]]
+          : [],
+      ),
+    );
+    const zoneLinks = new Map<
+      string,
+      { architectureId: string; floorId: string; deviceId: string }
+    >();
     const architectureIds = new Map<string, string>();
     for (const net of nets) {
       const built = cpredTemplateNetArchitecture(net, {
         figure: (key) => placedFigures.get(key),
+        zone: (key) => zonesByKey.get(key),
+        wall: (key) => keyedWalls.get(key),
         defaultDv: netDifficultyDv(net.difficulty, netData) || NET_SCENE_CONTROL_DV,
         knownProgram: (id) => knownPrograms.has(id),
       });
@@ -363,6 +504,37 @@ export async function instantiateSceneTemplate(
         },
       });
       architectureIds.set(net.key, row.id);
+      for (const link of built.zones) {
+        zoneLinks.set(link.zone, {
+          architectureId: row.id,
+          floorId: link.floorId,
+          deviceId: link.deviceId,
+        });
+      }
+    }
+
+    for (const { zone, entry } of zoneSpecs) {
+      const corner = point(zone);
+      const hp = isNetDefenseEntry(entry) ? (entry.hp ?? 0) : 0;
+      await tx.defenseZone.create({
+        data: {
+          sceneId: scene.id,
+          entryId: entry.id,
+          name: zone.name ?? entry.name.slice(0, 40),
+          x: corner.x,
+          y: corner.y,
+          width: zone.width * scene.gridSizePx,
+          height: zone.height * scene.gridSizePx,
+          armed: zone.armed,
+          hidden: zone.hidden,
+          hpMax: hp,
+          hpCurrent: hp,
+          spotDv: zone.spotDv,
+          disarmDv: zone.disarmDv,
+          notes: zone.notes,
+          ...(zone.key ? (zoneLinks.get(zone.key) ?? {}) : {}),
+        },
+      });
     }
     for (const access of template.accessPoints) {
       await tx.netAccessPoint.create({

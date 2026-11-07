@@ -2,8 +2,8 @@
 
 **Faza:** przed betą (zlecenie MG z 07.11 spoza planu) · **Wymaga etapów:** 66/66b (wzorce
 scen, ściany, urządzenia, gniazda, Sieć), 26f (strefy obronne), 46b (pojemniki), 58b–58d
-(rozbrajanie, zamki, ukryte figury), 18b (światła) · **Stan:** ⬜ projekt zatwierdzony
-pytaniami 07.11, realizacja w osobnej sesji
+(rozbrajanie, zamki, ukryte figury), 18b (światła) · **Stan:** 🟨 zrobione 07.11 (format,
+wzorzec, testy, oględziny w Firefoksie); czeka na stół MG i wdrożenie (bez migracji)
 
 ## Skąd ten etap
 
@@ -276,12 +276,68 @@ jak fabryka). Ściany przeliczyć z `dev.db` na kratki skryptem w scratchpadzie 
 - Jeśli któreś rozszerzenie formatu okaże się duże (np. strefa jako urządzenie węzła),
   zaproponować MG podział na 66e1 (format) i 66e2 (wzorzec).
 
+## Realizacja (07.11, sesja czwarta) — rozstrzygnięcia bez pytań MG
+
+1. **Format wzorca (umowa na górze `mapa`):** `lights`, `walls[].key` i `walls[].lockRule`,
+   `zones` (wpis z alternatywami w `system.entryIds`), `containers` (zamek, `keyHolder`, rzeczy
+   z alternatywami, gotówka), urządzenie węzła `zone` / `wall` obok `figure`, gotówka NPC-a
+   `system.eddies`. Stare wzorce czytają się bez zmian (puste listy). Bez migracji bazy.
+2. **`figures[].spotDv` nie powstało.** Każda figura wzorca ma kartę NPC-a, a ukryta figura
+   z kartą rzuca Skradanie zamiast PT od MG (58d; pole „PT Percepcji, gdy ukryta” MG ma tylko
+   przy figurze bez karty). Kamery mają więc ZW 2 i Skradanie 8 (wejście, sala, korytarz —
+   średnio PT 15,5), 6 (zaplecze — 13,5) i 10 (gabinet — 17,5). Percepcja 6 zostaje do alarmu.
+3. **Sieć steruje drzwiami** — urządzenie „Drzwi lub winda” (26d) otwiera otwór mimo zamka
+   (s. 199). Zamek gabinetu jest trzecim urządzeniem węzła zabezpieczeń (`wall: drzwi-gabinetu`).
+4. **Podłoga elektryczna:** `defense.podloga-elektryczna`, a na samej próbce wymyślony
+   `defense.iskrownik` (dopisany do `sample.json`: System środowiskowy, 4k6 bez ablacji,
+   powtarza się, PT zauważenia 15, rozbrojenia 13, 20 PW). Próbka nie miała żadnej podłogi
+   z obrażeniami (`grzechot` strzela z figury, `komar` to dron, `oko-korytarza` nic nie robi).
+5. **Klucz do szafki jest powiązany** (odstępstwo od projektu, który zakładał „Wydaj klucz”
+   MG): `keyHolder: maly` daje Małemu wiersz „Klucz: Szafka ochrony” z uchwytem zamka —
+   to istniejący klucz z 46b, bez nowej mechaniki. Łup z ciała Małego otwiera szafkę bez Testu.
+6. **W szafce nie ma magazynków** — amunicja bez dna (zasada domowa z 23.10); zostały pistolet
+   maszynowy i 200 ed. Waluta we wzorcu i notatkach to „ed”, nie „eb”.
+7. **Utarg Kucharza (300 ed) to gotówka jego karty**, karta-klucz do auta — wiersz plecaka.
+8. **Położenia z nakładki na grafikę:** Kucharz na krześle w lewym górnym rogu stołu
+   (x21,5 / y6,9), kamera gabinetu w lewym dolnym rogu pokoju (x21,5 / y9,5, patrzy na NE),
+   lampa nad stołem (x22,3 / y8,1), szafka na niebieskiej szafce (x20,5 / y7,0), konsola
+   monitoringu na biurku (x18,8 / y7,8), Mały na krześle przy biurku (x17,8 / y7,3). Stół
+   (x21,1–23,7 / y7,5–8,8) leży na linii drzwi–Kucharz, ale nie wieżyczka–Kucharz. Lada baru to
+   dwa prostokąty (pion i poziom), razem 6 osłon.
+9. **Źródło geometrii to lokalna `dev.db`** (stan z 07.11 10:33). Odczyt bazy na VPS
+   automat odmówił w tej sesji („Production Reads”) — **porównanie z VPS do zrobienia ręką MG**,
+   jeśli scena „Pierwsza scena” istnieje też tam.
+
+## Oględziny (07.11)
+
+Tymczasowy spec `99-ogledziny/t99-po-zamknieciu` (nie w repo), instancja E2E od `po-T6`, kości
+ze skryptu: **MG w Chromium, Iskra (Ola) w Firefoksie, 7/7**. Iskra w `po-T6` ma Interfejs 4
+(nie 6), co tu nie przeszkadzało.
+
+1. MG rozwija „Przykładowe” i „Dodaj do kampanii” — scena bez listy braków: 46 ścian, 5 świateł,
+   1 strefa, osłony, figury, notatki (zrzut MG: wszystko na miejscu na grafice).
+2. Iskra na zapleczu: ciemno, światło lampy nad tylnymi drzwiami, kanarki (nazwy ukrytych kamer,
+   notatki MG, notatka strefy, nazwa Architektury, etykieta węzła) nie dochodzą do gracza.
+3. Tylne drzwi: klik w drzwi → „Spróbujesz otworzyć zamek?” → Elektronika i zabezpieczenia →
+   kubek → zamek puszcza.
+4. Skaner w sali znajduje ukryty „Terminal recepcji”.
+5. Podłączenie (piętra „Hasło: konto kierownika sali”, „?”, „?”, „?”), Backdoor, Kontrola węzła
+   monitoringu: pięć kamer z obrotem i „Wyłącz”, Iskra widzi Kucharza kamerą z gabinetu.
+   Lista „Urządzenia w tej Sieci” pokazuje ukryte kamery tylko jako „Kamera”, strefę jako
+   „System środowiskowy”, zamek jako „Drzwi lub winda”.
+6. Kontrola węzła zabezpieczeń: podłoga „wyłączone” (stan urządzenia w `runtime`), „Otwórz”
+   zamek gabinetu otwiera drzwi mimo zamka PT 17, wieżyczka „Strzelaj” w Kucharza trafia
+   (20 vs PT 13, obrażenia 2k6 na kubku).
+
+Przy okazji: przestawienie Iskry ręką MG prostą przez korytarz odpaliło podłogę (24 obrażeń) —
+pułapka specu (`ogledziny`) i pytanie do MG w `zaleglosci.md`.
+
 ## Kryteria ukończenia
 
-- [ ] Rozszerzenia formatu 1–6 z testami w `shared` i serwerze.
-- [ ] Wzorzec `data/public/scenes/po-zamknieciu/` (`scene.json` + `map.webp`), ściany 1:1 ze
+- [x] Rozszerzenia formatu 1–6 z testami w `shared` i serwerze (3 z rozstrzygnięciem pkt 2).
+- [x] Wzorzec `data/public/scenes/po-zamknieciu/` (`scene.json` + `map.webp`), ściany 1:1 ze
       sceny MG, czytelny w teście „każdy wzorzec z repo”.
-- [ ] Dodanie z „Przykładowych” bez braków na kompendium z `data/private` i z listą braków na
-      samej próbce.
-- [ ] Oględziny netrunnera w Firefoksie (punkt 8).
-- [ ] `POSTEP.md`, `archiwum/tabela-etapow.md`, umowy w sekcji `mapa` / `siec`.
+- [x] Dodanie z „Przykładowych” bez braków na kompendium z `data/private` i na samej próbce
+      (próbka ma od 66e alternatywę dla podłogi, więc braków nie ma i tu).
+- [x] Oględziny netrunnera w Firefoksie (punkt 8) — wyniki niżej.
+- [x] `POSTEP.md`, `archiwum/tabela-etapow.md`, umowa w sekcji `mapa`.

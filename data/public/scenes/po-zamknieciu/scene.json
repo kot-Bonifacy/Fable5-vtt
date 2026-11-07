@@ -1,0 +1,1215 @@
+{
+  "schemaVersion": 1,
+  "name": "Po zamknięciu",
+  "category": "examples",
+  "description": "Likwidacja na jednego netrunnera: knajpa „Pod Neonem” nocą, właściciel liczy utarg w gabinecie. Dwóch tanich ochroniarzy, ukryte kamery, wieżyczka w gabinecie i podłoga elektryczna przed jego drzwiami — wszystko na jednej krótkiej Sieci z dwoma ukrytymi gniazdami. Kto najpierw przejmie Sieć, przejdzie korytarzem suchą stopą i obróci wieżyczkę przeciw szefowi.",
+  "scene": {
+    "kind": "map",
+    "backgroundUrl": "/public/scenes/po-zamknieciu/map.webp",
+    "backgroundWidth": 1470,
+    "backgroundHeight": 1070,
+    "width": 1470,
+    "height": 1070,
+    "gridSizePx": 44.545455,
+    "gridOffsetX": 0,
+    "gridOffsetY": 0,
+    "gridVisible": true,
+    "gridPlayers": false,
+    "metersPerSquare": 2,
+    "visibility": "dynamic",
+    "dark": true,
+    "darkSightM": 4,
+    "explore": true,
+    "partySight": false,
+    "playerMove": "explore",
+    "ambience": "none",
+    "spawn": {
+      "x": 21.5,
+      "y": 21
+    }
+  },
+  "figures": [
+    {
+      "key": "szef",
+      "name": "Bogdan „Kucharz” Rataj",
+      "x": 21.5,
+      "y": 6.9,
+      "facing": 135,
+      "disposition": "hostile",
+      "system": {
+        "stats": {
+          "int": 6,
+          "ref": 7,
+          "dex": 6,
+          "tech": 5,
+          "cool": 7,
+          "will": 7,
+          "luck": 4,
+          "move": 5,
+          "body": 8,
+          "emp": 4
+        },
+        "hpMax": 40,
+        "skills": {
+          "shoulder-arms": 6,
+          "handgun": 5,
+          "evasion": 4,
+          "perception": 6,
+          "brawling": 5,
+          "athletics": 4,
+          "interrogation": 5,
+          "business": 5
+        },
+        "weapons": [
+          [
+            "weapon.shotgun",
+            "weapon.huk-12"
+          ],
+          [
+            "weapon.heavy-pistol",
+            "weapon.zgrzyt-9"
+          ]
+        ],
+        "armorBody": [
+          "armor.light-armorjack",
+          "armor.kurtka-warsztatowa"
+        ],
+        "eddies": 300,
+        "gear": [
+          {
+            "name": "Karta-klucz do auta na parkingu",
+            "notes": "Hak na kolejną sesję: czarny sedan pod neonem. Co jest w bagażniku, ustala MG."
+          }
+        ]
+      }
+    },
+    {
+      "key": "bury",
+      "name": "Ochroniarz „Bury”",
+      "x": 13.5,
+      "y": 7.5,
+      "facing": 90,
+      "disposition": "hostile",
+      "system": {
+        "stats": {
+          "int": 5,
+          "ref": 6,
+          "dex": 5,
+          "tech": 4,
+          "cool": 5,
+          "will": 5,
+          "luck": 2,
+          "move": 5,
+          "body": 6,
+          "emp": 3
+        },
+        "hpMax": 30,
+        "skills": {
+          "handgun": 4,
+          "evasion": 3,
+          "perception": 4,
+          "brawling": 4,
+          "athletics": 3
+        },
+        "weapons": [
+          [
+            "weapon.heavy-pistol",
+            "weapon.zgrzyt-9"
+          ]
+        ],
+        "armorBody": [
+          "armor.kevlar",
+          "armor.kurtka-warsztatowa"
+        ]
+      }
+    },
+    {
+      "key": "maly",
+      "name": "Ochroniarz „Mały”",
+      "x": 17.8,
+      "y": 7.3,
+      "facing": 135,
+      "disposition": "hostile",
+      "system": {
+        "stats": {
+          "int": 5,
+          "ref": 6,
+          "dex": 5,
+          "tech": 4,
+          "cool": 5,
+          "will": 5,
+          "luck": 2,
+          "move": 5,
+          "body": 5,
+          "emp": 3
+        },
+        "hpMax": 25,
+        "skills": {
+          "handgun": 4,
+          "evasion": 3,
+          "perception": 5,
+          "brawling": 3
+        },
+        "weapons": [
+          [
+            "weapon.heavy-pistol",
+            "weapon.zgrzyt-9"
+          ]
+        ],
+        "armorBody": [
+          "armor.kevlar",
+          "armor.kurtka-warsztatowa"
+        ]
+      }
+    },
+    {
+      "key": "wiezyczka",
+      "name": "Automatyczna wieżyczka",
+      "x": 27.4,
+      "y": 6.6,
+      "glyph": "turret",
+      "facing": 220,
+      "disposition": "hostile",
+      "system": {
+        "stats": {
+          "int": 3,
+          "ref": 6,
+          "dex": 6,
+          "tech": 3,
+          "cool": 6,
+          "will": 4,
+          "luck": 0,
+          "move": 1,
+          "body": 5,
+          "emp": 1
+        },
+        "hpMax": 25,
+        "skills": {
+          "perception": 5
+        },
+        "statBlock": {
+          "combatValue": 12
+        },
+        "weapons": [
+          [
+            "weapon.submachine-gun",
+            "weapon.zardzewiak"
+          ]
+        ],
+        "armorBody": [
+          "armor.light-armorjack",
+          "armor.kurtka-warsztatowa"
+        ]
+      }
+    },
+    {
+      "key": "kam-wejscie",
+      "name": "Kamera — wejście",
+      "x": 27.4,
+      "y": 1.6,
+      "glyph": "camera",
+      "facing": 225,
+      "visionRange": 20,
+      "disposition": "neutral",
+      "hidden": true,
+      "system": {
+        "stats": {
+          "int": 3,
+          "ref": 1,
+          "dex": 2,
+          "tech": 1,
+          "cool": 1,
+          "will": 1,
+          "luck": 0,
+          "move": 1,
+          "body": 1,
+          "emp": 1
+        },
+        "hpMax": 5,
+        "skills": {
+          "perception": 6,
+          "stealth": 8
+        }
+      }
+    },
+    {
+      "key": "kam-sala",
+      "name": "Kamera — sala",
+      "x": 6.5,
+      "y": 1.5,
+      "glyph": "camera",
+      "facing": 150,
+      "visionRange": 24,
+      "disposition": "neutral",
+      "hidden": true,
+      "system": {
+        "stats": {
+          "int": 3,
+          "ref": 1,
+          "dex": 2,
+          "tech": 1,
+          "cool": 1,
+          "will": 1,
+          "luck": 0,
+          "move": 1,
+          "body": 1,
+          "emp": 1
+        },
+        "hpMax": 5,
+        "skills": {
+          "perception": 6,
+          "stealth": 8
+        }
+      }
+    },
+    {
+      "key": "kam-zaplecze",
+      "name": "Kamera — zaplecze",
+      "x": 25.5,
+      "y": 18.5,
+      "glyph": "camera",
+      "facing": 200,
+      "visionRange": 16,
+      "disposition": "neutral",
+      "hidden": true,
+      "system": {
+        "stats": {
+          "int": 3,
+          "ref": 1,
+          "dex": 2,
+          "tech": 1,
+          "cool": 1,
+          "will": 1,
+          "luck": 0,
+          "move": 1,
+          "body": 1,
+          "emp": 1
+        },
+        "hpMax": 5,
+        "skills": {
+          "perception": 6,
+          "stealth": 6
+        }
+      }
+    },
+    {
+      "key": "kam-korytarz",
+      "name": "Kamera — korytarz",
+      "x": 15.5,
+      "y": 10.5,
+      "glyph": "camera",
+      "facing": 90,
+      "visionRange": 20,
+      "disposition": "neutral",
+      "hidden": true,
+      "system": {
+        "stats": {
+          "int": 3,
+          "ref": 1,
+          "dex": 2,
+          "tech": 1,
+          "cool": 1,
+          "will": 1,
+          "luck": 0,
+          "move": 1,
+          "body": 1,
+          "emp": 1
+        },
+        "hpMax": 5,
+        "skills": {
+          "perception": 6,
+          "stealth": 8
+        }
+      }
+    },
+    {
+      "key": "kam-gabinet",
+      "name": "Kamera — gabinet szefa",
+      "x": 21.5,
+      "y": 9.5,
+      "glyph": "camera",
+      "facing": 45,
+      "visionRange": 12,
+      "disposition": "neutral",
+      "hidden": true,
+      "system": {
+        "stats": {
+          "int": 3,
+          "ref": 1,
+          "dex": 2,
+          "tech": 1,
+          "cool": 1,
+          "will": 1,
+          "luck": 0,
+          "move": 1,
+          "body": 1,
+          "emp": 1
+        },
+        "hpMax": 5,
+        "skills": {
+          "perception": 6,
+          "stealth": 10
+        }
+      }
+    }
+  ],
+  "walls": [
+    {
+      "points": [
+        [
+          26,
+          18
+        ],
+        [
+          6,
+          18
+        ]
+      ]
+    },
+    {
+      "points": [
+        [
+          2,
+          18
+        ],
+        [
+          1,
+          18
+        ]
+      ]
+    },
+    {
+      "points": [
+        [
+          1,
+          18
+        ],
+        [
+          1,
+          1
+        ]
+      ]
+    },
+    {
+      "points": [
+        [
+          1,
+          1
+        ],
+        [
+          28,
+          1
+        ]
+      ]
+    },
+    {
+      "points": [
+        [
+          28,
+          1
+        ],
+        [
+          28,
+          3
+        ]
+      ]
+    },
+    {
+      "points": [
+        [
+          28,
+          4
+        ],
+        [
+          28,
+          6
+        ]
+      ]
+    },
+    {
+      "points": [
+        [
+          28,
+          6
+        ],
+        [
+          15,
+          6
+        ]
+      ]
+    },
+    {
+      "points": [
+        [
+          15,
+          6
+        ],
+        [
+          15,
+          11
+        ]
+      ]
+    },
+    {
+      "points": [
+        [
+          17,
+          10
+        ],
+        [
+          15,
+          10
+        ]
+      ]
+    },
+    {
+      "points": [
+        [
+          18,
+          10
+        ],
+        [
+          24,
+          10
+        ]
+      ]
+    },
+    {
+      "points": [
+        [
+          25,
+          10
+        ],
+        [
+          28,
+          10
+        ]
+      ]
+    },
+    {
+      "points": [
+        [
+          28,
+          10
+        ],
+        [
+          28,
+          6
+        ]
+      ]
+    },
+    {
+      "points": [
+        [
+          21,
+          6
+        ],
+        [
+          21,
+          10
+        ]
+      ]
+    },
+    {
+      "points": [
+        [
+          28,
+          10
+        ],
+        [
+          32,
+          10
+        ]
+      ]
+    },
+    {
+      "points": [
+        [
+          32,
+          10
+        ],
+        [
+          32,
+          18
+        ]
+      ]
+    },
+    {
+      "points": [
+        [
+          32,
+          18
+        ],
+        [
+          27,
+          18
+        ]
+      ]
+    },
+    {
+      "points": [
+        [
+          27,
+          18
+        ],
+        [
+          28,
+          18
+        ]
+      ]
+    },
+    {
+      "points": [
+        [
+          28,
+          18
+        ],
+        [
+          28,
+          16
+        ]
+      ]
+    },
+    {
+      "points": [
+        [
+          28,
+          15
+        ],
+        [
+          28,
+          14
+        ]
+      ]
+    },
+    {
+      "points": [
+        [
+          28,
+          14
+        ],
+        [
+          32,
+          14
+        ]
+      ]
+    },
+    {
+      "points": [
+        [
+          32,
+          14
+        ],
+        [
+          28,
+          14
+        ]
+      ]
+    },
+    {
+      "points": [
+        [
+          28,
+          14
+        ],
+        [
+          28,
+          13
+        ]
+      ]
+    },
+    {
+      "points": [
+        [
+          28,
+          13
+        ],
+        [
+          26,
+          13
+        ]
+      ]
+    },
+    {
+      "points": [
+        [
+          26,
+          13
+        ],
+        [
+          26,
+          11
+        ]
+      ]
+    },
+    {
+      "points": [
+        [
+          26,
+          11
+        ],
+        [
+          26,
+          12
+        ]
+      ]
+    },
+    {
+      "points": [
+        [
+          26,
+          12
+        ],
+        [
+          25,
+          12
+        ]
+      ]
+    },
+    {
+      "points": [
+        [
+          28,
+          12
+        ],
+        [
+          32,
+          12
+        ]
+      ]
+    },
+    {
+      "points": [
+        [
+          28,
+          11
+        ],
+        [
+          28,
+          10
+        ]
+      ]
+    },
+    {
+      "points": [
+        [
+          24,
+          12
+        ],
+        [
+          14,
+          12
+        ]
+      ]
+    },
+    {
+      "points": [
+        [
+          14,
+          12
+        ],
+        [
+          14,
+          15
+        ]
+      ]
+    },
+    {
+      "points": [
+        [
+          14,
+          15
+        ],
+        [
+          15,
+          15
+        ]
+      ]
+    },
+    {
+      "points": [
+        [
+          15,
+          15
+        ],
+        [
+          15,
+          18
+        ]
+      ]
+    },
+    {
+      "kind": "window",
+      "points": [
+        [
+          2,
+          18
+        ],
+        [
+          4,
+          18
+        ]
+      ]
+    },
+    {
+      "kind": "door",
+      "points": [
+        [
+          6,
+          18
+        ],
+        [
+          4,
+          18
+        ]
+      ],
+      "playerToggle": true,
+      "locked": true,
+      "lockRule": {
+        "dv": 13,
+        "skills": [
+          "pick-lock",
+          "electronics-security"
+        ]
+      }
+    },
+    {
+      "kind": "door",
+      "points": [
+        [
+          17,
+          10
+        ],
+        [
+          18,
+          10
+        ]
+      ],
+      "playerToggle": true
+    },
+    {
+      "kind": "door",
+      "key": "drzwi-gabinetu",
+      "points": [
+        [
+          24,
+          10
+        ],
+        [
+          25,
+          10
+        ]
+      ],
+      "playerToggle": true,
+      "locked": true,
+      "lockRule": {
+        "dv": 17,
+        "skills": [
+          "pick-lock",
+          "electronics-security"
+        ]
+      }
+    },
+    {
+      "kind": "door",
+      "points": [
+        [
+          28,
+          11
+        ],
+        [
+          28,
+          12
+        ]
+      ],
+      "playerToggle": true
+    },
+    {
+      "kind": "door",
+      "points": [
+        [
+          28,
+          12
+        ],
+        [
+          28,
+          13
+        ]
+      ],
+      "playerToggle": true
+    },
+    {
+      "kind": "door",
+      "points": [
+        [
+          28,
+          15
+        ],
+        [
+          28,
+          16
+        ]
+      ],
+      "playerToggle": true
+    },
+    {
+      "kind": "door",
+      "points": [
+        [
+          27,
+          18
+        ],
+        [
+          26,
+          18
+        ]
+      ],
+      "playerToggle": true,
+      "locked": true,
+      "lockRule": {
+        "dv": 13,
+        "skills": [
+          "pick-lock",
+          "electronics-security"
+        ]
+      }
+    },
+    {
+      "kind": "door",
+      "points": [
+        [
+          28,
+          4
+        ],
+        [
+          28,
+          3
+        ]
+      ],
+      "playerToggle": true,
+      "locked": true,
+      "lockRule": {
+        "dv": 15,
+        "skills": [
+          "pick-lock",
+          "electronics-security"
+        ]
+      }
+    },
+    {
+      "kind": "door",
+      "points": [
+        [
+          25,
+          12
+        ],
+        [
+          24,
+          12
+        ]
+      ],
+      "playerToggle": true
+    },
+    {
+      "kind": "gate",
+      "points": [
+        [
+          12,
+          16
+        ],
+        [
+          12,
+          9
+        ]
+      ],
+      "playerToggle": true
+    },
+    {
+      "kind": "gate",
+      "points": [
+        [
+          12,
+          9
+        ],
+        [
+          15,
+          9
+        ]
+      ],
+      "playerToggle": true
+    },
+    {
+      "kind": "door",
+      "points": [
+        [
+          15,
+          11
+        ],
+        [
+          15,
+          12
+        ]
+      ],
+      "playerToggle": true
+    },
+    {
+      "kind": "door",
+      "points": [
+        [
+          26,
+          11
+        ],
+        [
+          26,
+          10
+        ]
+      ],
+      "playerToggle": true
+    }
+  ],
+  "covers": [
+    {
+      "name": "Stół",
+      "x": 21.1,
+      "y": 7.5,
+      "width": 2.6,
+      "height": 1.3,
+      "hp": 20
+    },
+    {
+      "name": "Lada baru",
+      "x": 11.55,
+      "y": 8.3,
+      "width": 0.8,
+      "height": 8.1,
+      "hp": 30
+    },
+    {
+      "name": "Lada baru",
+      "x": 12.35,
+      "y": 8.3,
+      "width": 2.6,
+      "height": 0.8,
+      "hp": 30
+    },
+    {
+      "name": "Wyspa kuchenna",
+      "x": 17.9,
+      "y": 14.5,
+      "width": 5.2,
+      "height": 1.0,
+      "hp": 30
+    },
+    {
+      "name": "Biurko",
+      "x": 17.0,
+      "y": 7.5,
+      "width": 2.4,
+      "height": 1.0,
+      "hp": 20
+    },
+    {
+      "name": "Kontenery",
+      "x": 20.0,
+      "y": 18.3,
+      "width": 2.7,
+      "height": 1.2,
+      "hp": 40
+    }
+  ],
+  "lights": [
+    {
+      "x": 28.5,
+      "y": 6.5,
+      "brightM": 1,
+      "dimM": 4,
+      "color": "#ff4d9d",
+      "flicker": true
+    },
+    {
+      "x": 26.5,
+      "y": 18.6,
+      "brightM": 2,
+      "dimM": 5,
+      "color": "#ffd9a0"
+    },
+    {
+      "x": 13.6,
+      "y": 9.8,
+      "brightM": 1,
+      "dimM": 3,
+      "color": "#ffd9a0"
+    },
+    {
+      "x": 18.8,
+      "y": 7.8,
+      "brightM": 1,
+      "dimM": 3,
+      "color": "#9fd8ff"
+    },
+    {
+      "x": 22.3,
+      "y": 8.1,
+      "brightM": 3,
+      "dimM": 6,
+      "color": "#ffd9a0"
+    }
+  ],
+  "zones": [
+    {
+      "key": "podloga",
+      "name": "Podłoga elektryczna",
+      "x": 22,
+      "y": 10,
+      "width": 4,
+      "height": 2,
+      "notes": "Cały korytarz przed gabinetem: kto idzie do drzwi Kucharza z sali, z kuchni albo z przedsionka, staje na płytach. Gaśnie z węzła zabezpieczeń.",
+      "system": {
+        "entryIds": [
+          "defense.podloga-elektryczna",
+          "defense.iskrownik"
+        ]
+      }
+    }
+  ],
+  "containers": [
+    {
+      "key": "szafka",
+      "name": "Szafka ochrony",
+      "x": 20.5,
+      "y": 7.0,
+      "preset": "stash",
+      "system": {
+        "lock": "locked",
+        "dv": 13,
+        "skills": [
+          "pick-lock",
+          "electronics-security"
+        ],
+        "keyHolder": "maly",
+        "items": [
+          {
+            "ids": [
+              "weapon.submachine-gun",
+              "weapon.zardzewiak"
+            ]
+          }
+        ],
+        "eddies": 200
+      }
+    }
+  ],
+  "accessPoints": [
+    {
+      "name": "Terminal recepcji",
+      "x": 22.5,
+      "y": 2.2,
+      "net": "pod-neonem",
+      "notes": "Stanowisko przy wejściu wschodnim. Blisko z zewnątrz, ale w polu kamery nad wejściem i na trasie Burego."
+    },
+    {
+      "name": "Konsola monitoringu",
+      "x": 18.8,
+      "y": 7.8,
+      "net": "pod-neonem",
+      "notes": "Biurko w biurze ochrony, tuż przy Małym. Trzeba go uciszyć albo przeczekać, ale za to cicho i blisko gabinetu."
+    }
+  ],
+  "notes": [
+    {
+      "x": 20,
+      "y": 21.5,
+      "icon": "📌",
+      "text": "PO ZAMKNIĘCIU — zlecenie\n\nBogdan „Kucharz” Rataj prowadzi knajpę „Pod Neonem”, przykrywkę lichwy i haraczy. Po zamknięciu siedzi w gabinecie (pokój z aneksem na prawo od biura ochrony) i liczy utarg. Fixer (dopasuj do kampanii) płaci 2000–3000 ed za jego głowę.\n\nCo gracz wie od zleceniodawcy: dwóch ochroniarzy, kamery, „Kucharz ma w gabinecie coś, co strzela samo”.\nWygrana: Kucharz martwy. Porażka: netrunner pada albo ucieka.\n\nWejścia:\n• zaplecze — tylne drzwi kuchni, zamek PT 13, kamera nad drzwiami (start),\n• drzwi wschodnie od parkingu — zamek PT 15, terminal recepcji tuż obok,\n• taras — zamek PT 13, najdalej od gabinetu, przez całą salę.\nZamki: Otwieranie zamków albo Elektronika i zabezpieczenia, jedna próba na postać."
+    },
+    {
+      "x": 23,
+      "y": 21.5,
+      "icon": "❓",
+      "text": "ZANIM ZACZNIECIE\n\n• Scena dla jednego gracza: netrunner Ranga 6 z bronią automatyczną. Wzorzec nie zakłada karty gracza — przeciągnij jego figurę z „Postaci” na start (zaplecze przy kontenerach).\n• Noc i półmrok: scena jest ciemna, wzrok bez światła 4 m. Świecą neon przy wejściu, lampa nad tylnymi drzwiami, lampka nad barem, ekrany monitoringu i lampa w gabinecie. Latarka z ekwipunku działa.\n• Kamery i oba gniazda Sieci są ukryte. Gniazda znajduje Skaner, kamery — Percepcja z bliska (PT to rzut Skradania kamery) albo podgląd w Sieci.\n• Sieć „Pod Neonem”: PT 8, cztery piętra, bez LOD-u. Węzeł monitoringu (5 kamer), węzeł zabezpieczeń (wieżyczka, podłoga elektryczna, zamek gabinetu), plik.\n• Ruch graczy: Eksploracja."
+    },
+    {
+      "x": 13.5,
+      "y": 11,
+      "icon": "⚠️",
+      "text": "ALARM I OCHRONA\n\nBury chodzi ręką MG: lada baru → drzwi wschodnie → toalety gości i z powrotem (2–3 rundy na odcinek). Mały siedzi przy monitorach i nie wychodzi z biura, dopóki kamery działają; gdy zgasną (Wyłącz w Sieci), wychodzi sprawdzić korytarz.\n\nKamery są Neutralne: zauważenie skradającej się postaci daje MG pasek, nie walkę. Co wtedy:\n1. Mały mówi przez radio, co widział.\n2. Bury idzie sprawdzić to miejsce, dochodzi w 2 rundy.\n3. Kucharz odkłada pieniądze i bierze strzelbę (patrz „Gabinet”).\nKamera wyłączona w Sieci nie daje alarmu. Wieżyczka działa zawsze, dopóki ktoś jej nie wyłączy.\n\nSzafka ochrony w biurze: zamek PT 13, klucz nosi Mały (łup z ciała otwiera ją bez Testu). W środku pistolet maszynowy i 200 ed."
+    },
+    {
+      "x": 24.5,
+      "y": 9.2,
+      "icon": "💀",
+      "text": "GABINET\n\nKucharz broni się do końca i nie wychodzi z gabinetu. Przed alarmem liczy pieniądze przy stole; po alarmie stoi za stołem ze strzelbą wycelowaną w drzwi.\n\nDrzwi: zamek PT 17 albo „Otwórz” z węzła zabezpieczeń. Przed nimi podłoga elektryczna na cały korytarz (ukryta, zauważenie i rozbrojenie z wpisu kompendium; rozbrojenie — jedna próba, porażka o 5+ odpala na rozbrajającego).\n\nWieżyczka w prawym górnym rogu strzela w każdego, kto stanie w drzwiach. Przejęta „Strzelaj” celuje w Kucharza: stół zasłania go od drzwi, ale nie od strony wieżyczki.\nKamera w lewym dolnym rogu (ukryta) pokazuje netrunnerowi cały pokój: gdzie stoi Kucharz i gdzie wieżyczka."
+    },
+    {
+      "x": 30.5,
+      "y": 20,
+      "icon": "💰",
+      "text": "ZAKOŃCZENIA I ŁUP\n\nKucharz martwy — zlecenie wykonane. Łup z ciała: strzelba, ciężki pistolet, utarg 300 ed, karta-klucz do auta na parkingu (hak). Szafka ochrony: pistolet maszynowy, 200 ed. Plik z Sieci: zeszyt dłużników i 500 ed na koncie knajpy (MG decyduje, czy da się je wypłacić).\n\nPorażka: netrunner pada albo ucieka. Kucharz zmienia lokal i wie, kto po niego przyszedł — hak na kolejną sesję."
+    },
+    {
+      "x": 30.5,
+      "y": 22.5,
+      "icon": "📌",
+      "text": "SKALOWANIE\n\nGracz bez netrunnera: wieżyczka startuje wyłączona (MG wyłącza ją w Sieci) albo z PW 15, podłoga elektryczna widoczna (PT zauważenia 13).\nDwóch graczy: trzeci ochroniarz w kuchni (kucharz z nożem i ciężkim pistoletem — „Nowa postać” MG), Kucharz PW 50.\nZa trudno w gabinecie: wieżyczka bez serii albo stół z większą osłoną.\nZa łatwo: Bury zaczyna przy tylnych drzwiach, kamera na zapleczu nie jest ukryta.\n\nDo oceny przy stole: PW i atak Kucharza, wieżyczka, PT zamków, czy pięć kamer to nie za dużo na jednego gracza."
+    }
+  ],
+  "system": {
+    "net": [
+      {
+        "key": "pod-neonem",
+        "name": "Sieć „Pod Neonem”",
+        "difficulty": "standard",
+        "notes": "Krótka Sieć knajpy: monitoring, zabezpieczenia gabinetu i zeszyt Kucharza. Bez Czarnego LOD-u — ma być narzędziem, nie osobnym wyzwaniem.",
+        "floors": [
+          {
+            "kind": "password",
+            "label": "Hasło: konto kierownika sali"
+          },
+          {
+            "kind": "controlNode",
+            "label": "Węzeł monitoringu",
+            "devices": [
+              {
+                "figure": "kam-wejscie"
+              },
+              {
+                "figure": "kam-sala"
+              },
+              {
+                "figure": "kam-zaplecze"
+              },
+              {
+                "figure": "kam-korytarz"
+              },
+              {
+                "figure": "kam-gabinet"
+              }
+            ]
+          },
+          {
+            "kind": "controlNode",
+            "label": "Węzeł zabezpieczeń",
+            "devices": [
+              {
+                "figure": "wiezyczka"
+              },
+              {
+                "zone": "podloga",
+                "name": "Podłoga elektryczna"
+              },
+              {
+                "wall": "drzwi-gabinetu",
+                "name": "Zamek gabinetu"
+              }
+            ]
+          },
+          {
+            "kind": "file",
+            "label": "Plik: zeszyt Kucharza",
+            "notes": "Lista dłużników i haraczy z kwotami (hak fabularny) i dostęp do konta knajpy: 500 ed. MG decyduje, czy da się je wypłacić."
+          }
+        ]
+      }
+    ]
+  }
+}

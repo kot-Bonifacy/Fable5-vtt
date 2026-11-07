@@ -6,6 +6,15 @@ w `POMYSLY.md` („Do sprawdzenia przy stole”), decyzje MG — w `decyzje-i-up
 
 ## Otwarte
 
+**07.11.2026 — „Po zamknięciu” (66e): wdrożenie (bez migracji), porównanie z VPS i pytanie do
+MG.** (1) Geometria wzorca pochodzi z lokalnej `dev.db`; automat odmówił odczytu bazy VPS
+(„Production Reads”), więc nie sprawdzono, czy „Pierwsza scena” na VPS ma te same ściany — MG
+porównuje ręką albo daje zgodę na odczyt. (2) **Pytanie do MG:** marsz ręką MG (`token:move`
+prostą przez korytarz) odpalił ukrytą podłogę elektryczną na figurze gracza (Iskra 24 obrażeń
+w specu oględzin). Czy przestawienie figury przez MG ma uruchamiać strefy, czy tylko marsz
+gracza? Dziś uruchamia (zachowanie sprzed 66e). (3) Strzał przejętej wieżyczki z okna Sieci to
+pojedynczy strzał — seria z pistoletu maszynowego wymaga ręki MG na figurze wieżyczki.
+
 **07.11.2026 — oględziny netrunnera w „Fabryce dronów”: wdrożenie (bez migracji) i resztki.**
 Poprawki (broń drona przy strzale z Sieci, zwrot Akcji Sieciowej, kamera widzi w ciemności, polskie
 odmowy w oknie Sieci i przy drzwiach, notatka wzorca) czekają na wdrożenie. **Otwarte:** (1) klik

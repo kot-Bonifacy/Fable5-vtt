@@ -789,6 +789,25 @@
       "costCategory": "luxury"
     },
     {
+      "id": "defense.iskrownik",
+      "category": "netDefense",
+      "defenseKind": "environment",
+      "name": "Iskrownik",
+      "description": "Wymyślona podłoga elektryczna: blaszane płyty pod linoleum i prąd przy każdym kroku.",
+      "disableDv": 13,
+      "disableMinutes": 1,
+      "hp": 20,
+      "spotDv": 15,
+      "trigger": "Cel wchodzi na zelektryfikowany obszar.",
+      "effects": {
+        "damage": "4k6",
+        "noAblation": true,
+        "repeats": true
+      },
+      "cost": 1000,
+      "costCategory": "veryExpensive"
+    },
+    {
       "id": "attachment.sample-bayonet",
       "category": "attachment",
       "name": "Kolec podlufowy",

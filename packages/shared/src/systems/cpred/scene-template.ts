@@ -20,7 +20,12 @@ import {
   type CpredVehicleUpgradeId,
 } from './vehicles.js';
 import type { VehicleEntry } from './compendium.js';
+import { CHECK_CALL_DV_MAX, CHECK_CALL_DV_MIN } from '../../checks.js';
+import { isContainerLock, type ContainerLock } from '../../containers.js';
 import type { SceneTemplate } from '../../scene-templates.js';
+import { createContainerSheet } from './containercard.js';
+import { isCpredLockSkill, readCpredLock, type CpredLock, type CpredLockSkill } from './lock.js';
+import type { PurchasedRow } from './shopping.js';
 import type { TokenGlyph } from '../../tokens.js';
 import type { CpredCharacterData } from './character.js';
 import type { CpredNetDeviceState } from './netdevices.js';
@@ -188,6 +193,8 @@ export interface CpredTemplateGear {
 export interface CpredTemplateNpcExtras {
   gear: CpredTemplateGear[];
   statBlock: { combatValue: number | null; weaponSkill: number | null; noBulletDodge: boolean };
+  /** Gotówka przy NPC-u (66e: utarg Kucharza) — do łupu jak z każdej karty; 0 — bez. */
+  eddies: number;
 }
 
 const GEAR_NAME_MAX = 80;
@@ -216,6 +223,10 @@ export function readCpredTemplateNpcExtras(raw: unknown): CpredTemplateNpcExtras
       weaponSkill: number(block.weaponSkill),
       noBulletDodge: block.noBulletDodge === true,
     },
+    eddies:
+      typeof input.eddies === 'number' && Number.isInteger(input.eddies) && input.eddies > 0
+        ? Math.min(input.eddies, CONTAINER_EDDIES_MAX)
+        : 0,
   };
 }
 
@@ -245,15 +256,28 @@ export function cpredTemplateNpcFinish(
         ...(noBulletDodge ? { noBulletDodge } : {}),
       })
     : sheet.statBlock;
-  return { ...sheet, gear: [...sheet.gear, ...gear], statBlock };
+  return {
+    ...sheet,
+    gear: [...sheet.gear, ...gear],
+    statBlock,
+    ...(extras.eddies > 0 ? { eddies: extras.eddies } : {}),
+  };
 }
 
 /* ───────────────────────── Sieć (etap 66b) ───────────────────────── */
 
-/** Urządzenie węzła kontrolnego — figura wzorca wskazana kluczem. */
+/**
+ * Urządzenie węzła kontrolnego — rzecz wzorca wskazana kluczem: figura
+ * (kamera, wieżyczka, dron), a od 66e także strefa broniona (`zone`, rodzaj
+ * „System środowiskowy”) albo otwór (`wall`, rodzaj „Drzwi lub winda”).
+ * Dokładnie jedno z trzech.
+ */
 export interface CpredTemplateNetDevice {
+  /** Klucz figury; pusty napis, gdy urządzenie to strefa albo otwór. */
   figure: string;
-  /** Nazwa w Architekturze; `null` — nazwa figury. */
+  zone: string | null;
+  wall: string | null;
+  /** Nazwa w Architekturze; `null` — nazwa figury albo strefy, przy otworze „Drzwi”. */
   name: string | null;
   /** `false` — urządzenie startuje wyłączone (uśpiony dron). */
   on: boolean;
@@ -288,9 +312,17 @@ function textOrNull(raw: unknown, max: number): string | null {
 }
 
 function readNetDevice(raw: unknown): CpredTemplateNetDevice | null {
-  if (!isObj(raw) || typeof raw.figure !== 'string' || !raw.figure) return null;
+  if (!isObj(raw)) return null;
+  const key = (value: unknown): string | null =>
+    typeof value === 'string' && value ? value : null;
+  const figure = key(raw.figure);
+  const zone = key(raw.zone);
+  const wall = key(raw.wall);
+  if ([figure, zone, wall].filter((value) => value !== null).length !== 1) return null;
   return {
-    figure: raw.figure,
+    figure: figure ?? '',
+    zone,
+    wall,
     name: textOrNull(raw.name, NET_DEVICE_NAME_MAX),
     on: raw.on !== false,
     notes: textOrNull(raw.notes, NET_NOTES_MAX),
@@ -364,24 +396,56 @@ export interface CpredTemplatePlacedFigure {
   glyph: TokenGlyph | null;
 }
 
+/** Strefa wzorca założona na scenie — tyle, ile urządzenie węzła musi o niej wiedzieć. */
+export interface CpredTemplatePlacedZone {
+  name: string;
+}
+
+/** Otwór wzorca założony na scenie — id `Wall`, który urządzenie otwiera. */
+export interface CpredTemplatePlacedWall {
+  wallId: number;
+}
+
+/**
+ * Strefa podpięta pod węzeł (66e): `DefenseZone.architectureId/floorId/deviceId`
+ * pisze serwer, gdy Architektura ma już id.
+ */
+export interface CpredTemplateZoneLink {
+  zone: string;
+  floorId: string;
+  deviceId: string;
+}
+
 /**
  * Architektura ze wzorca i stan jej urządzeń (wyłączone na starcie).
- * Urządzenie bierze rodzaj z ikony figury (`NET_DEVICE_KIND_BY_GLYPH`), id to
- * `tpl-<klucz figury>`. Slot Programu bez znanej alternatywy wypada (pierwsze
- * id do `missing`), tak samo urządzenie, którego figury nie ma. Wynik przechodzi
- * przez `validateNetArchitecture` — ten sam odczyt co „Zapisz” w edytorze MG.
+ * Urządzenie-figura bierze rodzaj z ikony figury (`NET_DEVICE_KIND_BY_GLYPH`),
+ * id to `tpl-<klucz figury>`; strefa (66e) to „System środowiskowy”
+ * `tpl-zone-<klucz>` (wiązanie wraca w `zones`), otwór — „Drzwi lub winda”
+ * `tpl-wall-<klucz>` z `wallId`. Slot Programu bez znanej alternatywy wypada
+ * (pierwsze id do `missing`), tak samo urządzenie, którego rzeczy nie ma. Wynik
+ * przechodzi przez `validateNetArchitecture` — ten sam odczyt co „Zapisz”
+ * w edytorze MG.
  */
 export function cpredTemplateNetArchitecture(
   net: CpredTemplateNet,
   ctx: {
     figure: (key: string) => CpredTemplatePlacedFigure | undefined;
+    zone?: (key: string) => CpredTemplatePlacedZone | undefined;
+    wall?: (key: string) => CpredTemplatePlacedWall | undefined;
     defaultDv: number;
     knownProgram: (id: string) => boolean;
   },
-): { architecture: CpredNetArchitecture; devices: CpredNetDeviceState[]; missing: string[] } {
+): {
+  architecture: CpredNetArchitecture;
+  devices: CpredNetDeviceState[];
+  zones: CpredTemplateZoneLink[];
+  missing: string[];
+} {
   const missing: string[] = [];
   const states: CpredNetDeviceState[] = [];
+  const zoneLinks: CpredTemplateZoneLink[] = [];
   const floors = net.floors.map((floor, index) => {
+    const floorId = `tpl-floor-${index + 1}`;
     const programIds = floor.programs
       .map((slot) => {
         const found = slot.find(ctx.knownProgram) ?? null;
@@ -391,25 +455,57 @@ export function cpredTemplateNetArchitecture(
       .filter((id): id is string => id !== null);
     const devices: CpredNetDevice[] = [];
     for (const device of floor.devices) {
-      const figure = ctx.figure(device.figure);
-      const kind = figure?.glyph ? NET_DEVICE_KIND_BY_GLYPH[figure.glyph] : undefined;
-      if (!figure || !kind) {
-        missing.push(`figure:${device.figure}`);
-        continue;
+      const notes = device.notes ? { notes: device.notes } : {};
+      let id: string;
+      if (device.zone !== null) {
+        const zone = ctx.zone?.(device.zone);
+        if (!zone) {
+          missing.push(`zone:${device.zone}`);
+          continue;
+        }
+        id = `tpl-zone-${device.zone}`.slice(0, 40);
+        devices.push({
+          id,
+          name: (device.name ?? zone.name).slice(0, NET_DEVICE_NAME_MAX),
+          deviceKind: 'environment',
+          ...notes,
+        });
+        zoneLinks.push({ zone: device.zone, floorId, deviceId: id });
+      } else if (device.wall !== null) {
+        const wall = ctx.wall?.(device.wall);
+        if (!wall) {
+          missing.push(`wall:${device.wall}`);
+          continue;
+        }
+        id = `tpl-wall-${device.wall}`.slice(0, 40);
+        devices.push({
+          id,
+          name: (device.name ?? 'Drzwi').slice(0, NET_DEVICE_NAME_MAX),
+          deviceKind: 'door',
+          wallId: wall.wallId,
+          ...notes,
+        });
+      } else {
+        const figure = ctx.figure(device.figure);
+        const kind = figure?.glyph ? NET_DEVICE_KIND_BY_GLYPH[figure.glyph] : undefined;
+        if (!figure || !kind) {
+          missing.push(`figure:${device.figure}`);
+          continue;
+        }
+        id = `tpl-${device.figure}`.slice(0, 40);
+        devices.push({
+          id,
+          name: (device.name ?? figure.name).slice(0, NET_DEVICE_NAME_MAX),
+          deviceKind: kind,
+          tokenId: figure.tokenId,
+          ...notes,
+        });
       }
-      const id = `tpl-${device.figure}`.slice(0, 40);
-      devices.push({
-        id,
-        name: (device.name ?? figure.name).slice(0, NET_DEVICE_NAME_MAX),
-        deviceKind: kind,
-        tokenId: figure.tokenId,
-        ...(device.notes ? { notes: device.notes } : {}),
-      });
       if (!device.on) states.push({ deviceId: id, on: false });
     }
     const withDv = NET_FLOOR_KINDS_WITH_DV.includes(floor.kind);
     return {
-      id: `tpl-floor-${index + 1}`,
+      id: floorId,
       kind: floor.kind,
       label: floor.label,
       ...(withDv ? { dv: floor.dv ?? ctx.defaultDv } : {}),
@@ -427,7 +523,99 @@ export function cpredTemplateNetArchitecture(
   if (!checked.ok) {
     throw new Error(`Template net ${net.key}: ${checked.issues[0]?.message ?? 'invalid'}`);
   }
-  return { architecture: checked.architecture, devices: states, missing };
+  return { architecture: checked.architecture, devices: states, zones: zoneLinks, missing };
+}
+
+/* ─────────────── strefy, zamki i pojemniki (etap 66e) ─────────────── */
+
+/** Pole `system` strefy: wpis „Obrony Sieci” z alternatywami (jak broń NPC-a). */
+export interface CpredTemplateZone {
+  entryIds: string[];
+}
+
+export function readCpredTemplateZone(raw: unknown): CpredTemplateZone {
+  const input = isObj(raw) ? raw : {};
+  return { entryIds: alternatives(input.entryIds) };
+}
+
+/**
+ * Zamek otworu ze wzorca (`walls[].lockRule`) — ten sam zapis co `Wall.lockRule`
+ * z 58c, czytany wyrozumiale (`readCpredLock`); ścisłości pilnuje
+ * {@link cpredTemplateProblems}. Lista prób zawsze pusta — wzorzec to nowe drzwi.
+ */
+export function cpredTemplateLockRule(raw: unknown): CpredLock {
+  return { ...readCpredLock(raw), tried: [] };
+}
+
+/** Rzecz w pojemniku: wpis kompendium z alternatywami i ilość (plecak). */
+export interface CpredTemplateContainerItem {
+  ids: string[];
+  qty: number;
+}
+
+/** Pole `system` pojemnika: zamek, klucz u figury, zawartość i gotówka. */
+export interface CpredTemplateContainer {
+  lock: ContainerLock;
+  dv: number;
+  skills: CpredLockSkill[];
+  /** Klucz figury, która nosi klucz do pojemnika (wiersz plecaka); `null` — nikt. */
+  keyHolder: string | null;
+  items: CpredTemplateContainerItem[];
+  eddies: number;
+}
+
+const CONTAINER_ITEMS_MAX = 20;
+const CONTAINER_EDDIES_MAX = 1_000_000;
+
+export function readCpredTemplateContainer(raw: unknown): CpredTemplateContainer {
+  const input = isObj(raw) ? raw : {};
+  const lock = readCpredLock(input);
+  const items: CpredTemplateContainerItem[] = [];
+  for (const row of Array.isArray(input.items) ? input.items.slice(0, CONTAINER_ITEMS_MAX) : []) {
+    const ids = isObj(row) ? alternatives(row.ids) : alternatives(row);
+    if (ids.length === 0) continue;
+    const qty =
+      isObj(row) && typeof row.qty === 'number' && Number.isInteger(row.qty) && row.qty > 0
+        ? row.qty
+        : 1;
+    items.push({ ids, qty });
+  }
+  const eddies =
+    typeof input.eddies === 'number' && Number.isInteger(input.eddies) && input.eddies > 0
+      ? Math.min(input.eddies, CONTAINER_EDDIES_MAX)
+      : 0;
+  return {
+    lock: isContainerLock(input.lock) ? input.lock : 'closed',
+    dv: lock.dv,
+    skills: lock.skills,
+    keyHolder: typeof input.keyHolder === 'string' && input.keyHolder ? input.keyHolder : null,
+    items,
+    eddies,
+  };
+}
+
+/**
+ * Karta pojemnika ze wzorca: pusta karta z polem `container` i rzeczami, które
+ * serwer zbudował z kompendium (`purchasedSheetRow`), oraz gotówką. Rzecz
+ * plecaka bierze ilość ze wzorca. `keyId` — uchwyt klucza, gdy ktoś go nosi.
+ */
+export function cpredTemplateContainerSheet(
+  spec: CpredTemplateContainer,
+  rows: readonly { row: PurchasedRow; qty: number }[],
+  keyId: string | null,
+): CpredCharacterData {
+  const sheet = createContainerSheet({
+    lock: spec.lock,
+    dv: spec.dv,
+    skills: spec.skills,
+    keyId,
+  });
+  for (const { row, qty } of rows) {
+    if (row.list === 'weapons') sheet.weapons.push(row.row);
+    else if (row.list === 'armor') sheet.armor.push(row.row);
+    else sheet.gear.push({ ...row.row, qty });
+  }
+  return { ...sheet, eddies: spec.eddies };
 }
 
 /**
@@ -446,6 +634,12 @@ export function cpredTemplateProblems(template: SceneTemplate): string[] {
       .filter((figure) => figure.key !== null)
       .map((figure) => [figure.key as string, figure]),
   );
+  const zoneKeys = new Set(
+    template.zones.map((zone) => zone.key).filter((key): key is string => key !== null),
+  );
+  const wallKeys = new Set(
+    template.walls.map((wall) => wall.key).filter((key): key is string => key !== null),
+  );
   const netKeys = new Set<string>();
   const wired = new Set<string>();
   for (const [index, net] of nets.entries()) {
@@ -454,6 +648,13 @@ export function cpredTemplateProblems(template: SceneTemplate): string[] {
     const rawNet = rawNets[index];
     const rawFloors = isObj(rawNet) && Array.isArray(rawNet.floors) ? rawNet.floors : [];
     if (rawFloors.length !== net.floors.length) problems.push(`net ${net.key}: nieczytelne piętro`);
+    for (const [at, floor] of net.floors.entries()) {
+      const rawFloor = rawFloors[at];
+      const rawDevices = isObj(rawFloor) && Array.isArray(rawFloor.devices) ? rawFloor.devices : [];
+      if (rawDevices.length !== floor.devices.length) {
+        problems.push(`net ${net.key}: nieczytelne urządzenie w węźle ${floor.label}`);
+      }
+    }
     if (net.floors.length === 0 || net.floors.length > NET_FLOORS_MAX) {
       problems.push(`net ${net.key}: liczba pięter`);
     }
@@ -471,13 +672,26 @@ export function cpredTemplateProblems(template: SceneTemplate): string[] {
         problems.push(`net ${net.key}: PT poza skalą (${floor.label})`);
       }
       for (const device of floor.devices) {
-        const figure = figures.get(device.figure);
-        if (!figure) problems.push(`net ${net.key}: brak figury ${device.figure}`);
-        else if (!figure.glyph || !NET_DEVICE_KIND_BY_GLYPH[figure.glyph]) {
-          problems.push(`net ${net.key}: figura ${device.figure} bez ikony urządzenia Sieci`);
+        let label: string;
+        if (device.zone !== null) {
+          label = `strefa ${device.zone}`;
+          if (!zoneKeys.has(device.zone)) {
+            problems.push(`net ${net.key}: brak strefy ${device.zone}`);
+          }
+        } else if (device.wall !== null) {
+          label = `otwór ${device.wall}`;
+          if (!wallKeys.has(device.wall))
+            problems.push(`net ${net.key}: brak otworu ${device.wall}`);
+        } else {
+          label = `figura ${device.figure}`;
+          const figure = figures.get(device.figure);
+          if (!figure) problems.push(`net ${net.key}: brak figury ${device.figure}`);
+          else if (!figure.glyph || !NET_DEVICE_KIND_BY_GLYPH[figure.glyph]) {
+            problems.push(`net ${net.key}: figura ${device.figure} bez ikony urządzenia Sieci`);
+          }
         }
-        if (wired.has(device.figure)) problems.push(`figura ${device.figure} podpięta dwa razy`);
-        wired.add(device.figure);
+        if (wired.has(label)) problems.push(`${label} podpięta dwa razy`);
+        wired.add(label);
       }
     }
   }
@@ -486,5 +700,46 @@ export function cpredTemplateProblems(template: SceneTemplate): string[] {
       problems.push(`gniazdo ${point.name}: brak Architektury ${point.net}`);
     }
   }
+  // 66e: zamki otworów — ten sam zapis co `Wall.lockRule`, ale tu bez pobłażania.
+  for (const wall of template.walls) {
+    if (wall.lockRule === null) continue;
+    const where = wall.key ?? `${wall.kind} ${JSON.stringify(wall.points[0])}`;
+    lockProblems(wall.lockRule, `zamek ${where}`, problems);
+  }
+  for (const zone of template.zones) {
+    if (readCpredTemplateZone(zone.system).entryIds.length === 0) {
+      problems.push(`strefa ${zone.key ?? zone.name ?? '?'}: brak wpisu kompendium`);
+    }
+  }
+  for (const container of template.containers) {
+    const where = `pojemnik ${container.name}`;
+    const raw = isObj(container.system) ? container.system : {};
+    if (raw.lock !== undefined && !isContainerLock(raw.lock)) problems.push(`${where}: zły stan`);
+    lockProblems(raw, where, problems);
+    const spec = readCpredTemplateContainer(raw);
+    if (spec.keyHolder !== null && !figures.has(spec.keyHolder)) {
+      problems.push(`${where}: brak figury ${spec.keyHolder} z kluczem`);
+    }
+    const rawItems = Array.isArray(raw.items) ? raw.items : [];
+    if (rawItems.length !== spec.items.length) problems.push(`${where}: nieczytelna rzecz`);
+  }
   return problems;
+}
+
+/** Zamek bez pobłażania: PT ze skali Testu, znane Umiejętności (puste — domyślne). */
+function lockProblems(raw: unknown, where: string, problems: string[]): void {
+  const input = isObj(raw) ? raw : {};
+  if (
+    input.dv !== undefined &&
+    (!Number.isInteger(input.dv) ||
+      (input.dv as number) < CHECK_CALL_DV_MIN ||
+      (input.dv as number) > CHECK_CALL_DV_MAX)
+  ) {
+    problems.push(`${where}: PT poza skalą`);
+  }
+  if (input.skills !== undefined) {
+    if (!Array.isArray(input.skills) || !input.skills.every(isCpredLockSkill)) {
+      problems.push(`${where}: nieznana Umiejętność`);
+    }
+  }
 }

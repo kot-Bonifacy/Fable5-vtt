@@ -4,10 +4,13 @@ import { describe, expect, it } from 'vitest';
 import { readSceneTemplate } from './scene-templates.js';
 import { createDefaultCharacterData } from './systems/cpred/character.js';
 import {
+  cpredTemplateContainerSheet,
+  cpredTemplateLockRule,
   cpredTemplateNetArchitecture,
   cpredTemplateNetProgramIds,
   cpredTemplateNpcFinish,
   cpredTemplateProblems,
+  readCpredTemplateContainer,
   readCpredTemplateNets,
   readCpredTemplateNpcExtras,
   type CpredTemplatePlacedFigure,
@@ -296,6 +299,8 @@ describe('wzorce map w data/public/scenes (etap 66b)', () => {
       const template = readSceneTemplate(raw, id)!;
       expect(cpredTemplateProblems(template), id).toEqual([]);
       const byKey = new Map(template.figures.map((figure) => [figure.key, figure]));
+      const zones = new Map(template.zones.map((zone) => [zone.key, zone]));
+      const walls = new Map(template.walls.map((wall, index) => [wall.key, index]));
       for (const net of readCpredTemplateNets(template.system)) {
         const built = cpredTemplateNetArchitecture(net, {
           figure: (key) => {
@@ -304,6 +309,8 @@ describe('wzorce map w data/public/scenes (etap 66b)', () => {
               ? { tokenId: `t-${key}`, name: figure.name, glyph: figure.glyph }
               : undefined;
           },
+          zone: (key) => (zones.has(key) ? { name: zones.get(key)!.name ?? key } : undefined),
+          wall: (key) => (walls.has(key) ? { wallId: walls.get(key)! + 1 } : undefined),
           defaultDv: 8,
           knownProgram: () => true,
         });
@@ -324,5 +331,360 @@ describe('wzorce map w data/public/scenes (etap 66b)', () => {
     const prototype = template.figures.find((figure) => figure.key === 'prototyp')!;
     expect(readCpredTemplateNpcExtras(prototype.system).gear[0]!.name).toMatch(/Drzazga/);
     expect(template.accessPoints.every((point) => point.net === 'fabryka')).toBe(true);
+  });
+
+  it('po zamknięciu: 46 odcinków 1:1, zamki, ukryte kamery, strefa i szafka w Sieci', () => {
+    const raw: unknown = JSON.parse(
+      readFileSync(join(root, 'po-zamknieciu', 'scene.json'), 'utf8'),
+    );
+    const template = readSceneTemplate(raw, 'po-zamknieciu')!;
+    expect(template).not.toBeNull();
+    expect(template.scene).toMatchObject({ dark: true, darkSightM: 4, playerMove: 'explore' });
+    expect(template.walls).toHaveLength(46);
+    const count = (kind: string) => template.walls.filter((wall) => wall.kind === kind).length;
+    expect([count('wall'), count('door'), count('window'), count('gate')]).toEqual([32, 11, 1, 2]);
+    const locked = template.walls.filter((wall) => wall.locked);
+    expect(locked.map((wall) => cpredTemplateLockRule(wall.lockRule).dv).sort()).toEqual([
+      13, 13, 15, 17,
+    ]);
+    expect(template.walls.find((wall) => wall.key === 'drzwi-gabinetu')).toMatchObject({
+      kind: 'door',
+      locked: true,
+    });
+    const cameras = template.figures.filter((figure) => figure.glyph === 'camera');
+    expect(cameras).toHaveLength(5);
+    expect(cameras.every((figure) => figure.hidden && figure.disposition === 'neutral')).toBe(true);
+    expect(template.lights).toHaveLength(5);
+    expect(template.zones).toEqual([
+      expect.objectContaining({ key: 'podloga', hidden: true, armed: true, x: 22, y: 10 }),
+    ]);
+    const szafka = readCpredTemplateContainer(template.containers[0]!.system);
+    expect(szafka).toMatchObject({ lock: 'locked', dv: 13, keyHolder: 'maly', eddies: 200 });
+    const [net] = readCpredTemplateNets(template.system);
+    expect(net!.floors.map((floor) => floor.kind)).toEqual([
+      'password',
+      'controlNode',
+      'controlNode',
+      'file',
+    ]);
+    expect(
+      net!.floors[2]!.devices.map((device) => device.zone ?? device.wall ?? device.figure),
+    ).toEqual(['wiezyczka', 'podloga', 'drzwi-gabinetu']);
+  });
+});
+
+describe('format wzorca: światła, zamki, strefy i pojemniki (etap 66e)', () => {
+  const extended = () => ({
+    ...mapTemplate(),
+    walls: [
+      ...mapTemplate().walls,
+      {
+        kind: 'door',
+        key: 'drzwi',
+        points: [
+          [6, 6],
+          [7, 6],
+        ],
+        locked: true,
+        lockRule: { dv: 15, skills: ['electronics-security'] },
+      },
+    ],
+    lights: [{ x: 2, y: 2, brightM: 6, dimM: 3, color: '#FF4D9D', flicker: true }],
+    zones: [
+      {
+        key: 'podloga',
+        x: 1,
+        y: 4,
+        width: 3,
+        height: 1,
+        notes: 'Korytarz',
+        spotDv: 15,
+        system: { entryIds: ['defense.nie-ma', 'defense.iskrownik'] },
+      },
+    ],
+    containers: [
+      {
+        key: 'szafka',
+        name: 'Szafka',
+        x: 8.5,
+        y: 1.5,
+        preset: 'stash',
+        system: {
+          lock: 'locked',
+          dv: 13,
+          keyHolder: 'kam',
+          items: [{ ids: ['weapon.a', 'weapon.b'] }, 'gear.c', { ids: ['gear.d'], qty: 3 }],
+          eddies: 200,
+        },
+      },
+    ],
+    system: {
+      net: [
+        {
+          key: 'siec',
+          name: 'Sieć hali',
+          floors: [
+            { kind: 'password' },
+            {
+              kind: 'controlNode',
+              label: 'Zabezpieczenia',
+              devices: [
+                { figure: 'kam' },
+                { zone: 'podloga', on: false },
+                { wall: 'drzwi', name: 'Zamek' },
+              ],
+            },
+          ],
+        },
+      ],
+    },
+  });
+
+  it('czyta nowe pola, a światło dostaje promienie w kolejności i barwę małymi literami', () => {
+    const template = readSceneTemplate(extended(), 'hala')!;
+    expect(template).not.toBeNull();
+    expect(template.lights).toEqual([
+      { x: 2, y: 2, brightM: 6, dimM: 6, color: '#ff4d9d', flicker: true, enabled: true },
+    ]);
+    expect(template.walls.at(-1)).toMatchObject({
+      key: 'drzwi',
+      lockRule: { dv: 15, skills: ['electronics-security'] },
+    });
+    expect(template.walls[0]).toMatchObject({ key: null, lockRule: null });
+    expect(template.zones[0]).toMatchObject({
+      key: 'podloga',
+      name: null,
+      hidden: true,
+      armed: true,
+      spotDv: 15,
+      disarmDv: null,
+    });
+    expect(template.containers[0]).toMatchObject({ preset: 'stash', hidden: false });
+    expect(cpredTemplateProblems(template)).toEqual([]);
+  });
+
+  it('stary wzorzec bez nowych pól czyta się z pustymi listami', () => {
+    const template = readSceneTemplate(mapTemplate(), 'hala')!;
+    expect(template.lights).toEqual([]);
+    expect(template.zones).toEqual([]);
+    expect(template.containers).toEqual([]);
+  });
+
+  it('odmawia w całości zepsutych świateł, kluczy, zamków, stref i pojemników', () => {
+    type Raw = ReturnType<typeof extended>;
+    const door = (extra: Record<string, unknown>) => ({
+      kind: 'door',
+      points: [
+        [0, 6],
+        [1, 6],
+      ],
+      ...extra,
+    });
+    const cases: [string, (raw: Raw) => unknown][] = [
+      ['światło bez promienia', (raw) => ({ ...raw, lights: [{ x: 1, y: 1, brightM: 2 }] })],
+      [
+        'światło z barwą słowem',
+        (raw) => ({ ...raw, lights: [{ x: 1, y: 1, brightM: 2, dimM: 4, color: 'red' }] }),
+      ],
+      [
+        'klucz zwykłej ściany',
+        (raw) => ({
+          ...raw,
+          walls: [
+            {
+              key: 'x',
+              points: [
+                [0, 0],
+                [1, 0],
+              ],
+            },
+          ],
+        }),
+      ],
+      [
+        'klucz łańcucha z trzech punktów',
+        (raw) => ({
+          ...raw,
+          walls: [
+            door({
+              key: 'x',
+              points: [
+                [0, 0],
+                [1, 0],
+                [1, 1],
+              ],
+            }),
+          ],
+        }),
+      ],
+      [
+        'klucz otworu powtórzony',
+        (raw) => ({ ...raw, walls: [door({ key: 'x' }), door({ key: 'x' })] }),
+      ],
+      ['zamek nie-obiekt', (raw) => ({ ...raw, walls: [door({ lockRule: 13 })] })],
+      [
+        'zamek zwykłej ściany',
+        (raw) => ({
+          ...raw,
+          walls: [
+            {
+              points: [
+                [0, 0],
+                [1, 0],
+              ],
+              lockRule: { dv: 13 },
+            },
+          ],
+        }),
+      ],
+      ['strefa bez rozmiaru', (raw) => ({ ...raw, zones: [{ ...raw.zones[0], width: 0 }] })],
+      ['strefa z PT poza skalą', (raw) => ({ ...raw, zones: [{ ...raw.zones[0], spotDv: 99 }] })],
+      ['powtórzony klucz strefy', (raw) => ({ ...raw, zones: [raw.zones[0], raw.zones[0]] })],
+      [
+        'pojemnik-stos',
+        (raw) => ({ ...raw, containers: [{ ...raw.containers[0], preset: 'pile' }] }),
+      ],
+      [
+        'pojemnik bez nazwy',
+        (raw) => ({ ...raw, containers: [{ ...raw.containers[0], name: ' ' }] }),
+      ],
+      [
+        'światła na pościgu',
+        (raw) => ({
+          ...raw,
+          walls: [],
+          covers: [],
+          accessPoints: [],
+          zones: [],
+          containers: [],
+          scene: { ...raw.scene, kind: 'chase', chase: { direction: 'left', tempo: 40 } },
+        }),
+      ],
+    ];
+    for (const [label, broken] of cases) {
+      expect(readSceneTemplate(broken(extended()), 'hala'), label).toBeNull();
+    }
+  });
+
+  it('Architektura: strefa to System środowiskowy z wiązaniem, otwór to drzwi z id ściany', () => {
+    const template = readSceneTemplate(extended(), 'hala')!;
+    const [net] = readCpredTemplateNets(template.system);
+    const built = cpredTemplateNetArchitecture(net!, {
+      figure: (key) =>
+        key === 'kam' ? { tokenId: 't-kam', name: 'Kamera', glyph: 'camera' } : undefined,
+      zone: (key) => (key === 'podloga' ? { name: 'Iskrownik' } : undefined),
+      wall: (key) => (key === 'drzwi' ? { wallId: 41 } : undefined),
+      defaultDv: 8,
+      knownProgram: () => true,
+    });
+    expect(built.missing).toEqual([]);
+    expect(built.architecture.branches[0]!.floors[1]!.devices).toEqual([
+      { id: 'tpl-kam', name: 'Kamera', deviceKind: 'camera', tokenId: 't-kam' },
+      { id: 'tpl-zone-podloga', name: 'Iskrownik', deviceKind: 'environment' },
+      { id: 'tpl-wall-drzwi', name: 'Zamek', deviceKind: 'door', wallId: 41 },
+    ]);
+    expect(built.zones).toEqual([
+      { zone: 'podloga', floorId: 'tpl-floor-2', deviceId: 'tpl-zone-podloga' },
+    ]);
+    expect(built.devices).toEqual([{ deviceId: 'tpl-zone-podloga', on: false }]);
+
+    const lonely = cpredTemplateNetArchitecture(net!, {
+      figure: () => undefined,
+      defaultDv: 8,
+      knownProgram: () => true,
+    });
+    expect(lonely.missing).toEqual(['figure:kam', 'zone:podloga', 'wall:drzwi']);
+    expect(lonely.zones).toEqual([]);
+  });
+
+  it('cpredTemplateProblems łapie brak strefy i otworu, zły zamek, klucz bez figury i podwójne wpięcie', () => {
+    const raw = extended();
+    raw.walls[raw.walls.length - 1] = {
+      ...raw.walls.at(-1)!,
+      lockRule: { dv: 0, skills: ['lockpick'] },
+    } as never;
+    raw.zones[0] = { ...raw.zones[0]!, key: 'inna', system: { entryIds: [] } } as never;
+    raw.containers[0]!.system = {
+      ...raw.containers[0]!.system,
+      lock: 'sejf',
+      keyHolder: 'nikt',
+      items: [{ ids: [] }],
+    } as never;
+    const devices = raw.system.net[0]!.floors[1]!.devices as Record<string, unknown>[];
+    devices.push({ wall: 'nie-ma' }, { figure: 'kam' }, { figure: 'kam', zone: 'inna' });
+    const problems = cpredTemplateProblems(readSceneTemplate(raw, 'hala')!);
+    expect(problems).toEqual(
+      expect.arrayContaining([
+        'net siec: brak strefy podloga',
+        'net siec: brak otworu nie-ma',
+        'net siec: nieczytelne urządzenie w węźle Zabezpieczenia',
+        'figura kam podpięta dwa razy',
+        'zamek drzwi: PT poza skalą',
+        'zamek drzwi: nieznana Umiejętność',
+        'strefa inna: brak wpisu kompendium',
+        'pojemnik Szafka: zły stan',
+        'pojemnik Szafka: brak figury nikt z kluczem',
+        'pojemnik Szafka: nieczytelna rzecz',
+      ]),
+    );
+  });
+
+  it('pojemnik: zamek, rzeczy z ilością i gotówka na karcie z polem container', () => {
+    const spec = readCpredTemplateContainer({
+      lock: 'locked',
+      dv: 15,
+      skills: ['pick-lock', 'hacking'],
+      items: [{ ids: ['gear.a'], qty: 3 }, 'weapon.b', { ids: [] }],
+      eddies: 200,
+    });
+    expect(spec).toMatchObject({ lock: 'locked', dv: 15, skills: ['pick-lock'], eddies: 200 });
+    expect(spec.items).toEqual([
+      { ids: ['gear.a'], qty: 3 },
+      { ids: ['weapon.b'], qty: 1 },
+    ]);
+    const sheet = cpredTemplateContainerSheet(
+      spec,
+      [
+        { row: { list: 'gear', row: { id: 'r1', name: 'Latarka', notes: '', qty: 1 } }, qty: 3 },
+        {
+          row: {
+            list: 'weapons',
+            row: {
+              id: 'r2',
+              name: 'PM',
+              notes: '',
+              damage: '2k6',
+              ammoCurrent: 30,
+              ammoMax: 30,
+              ammoType: '',
+              rof: '1',
+            },
+          },
+          qty: 1,
+        },
+      ],
+      'klucz-1',
+    );
+    expect(sheet.container).toMatchObject({ lock: 'locked', dv: 15, keyId: 'klucz-1', tried: [] });
+    expect(sheet.gear).toEqual([{ id: 'r1', name: 'Latarka', notes: '', qty: 3 }]);
+    expect(sheet.weapons.map((row) => row.name)).toEqual(['PM']);
+    expect(sheet.eddies).toBe(200);
+    // Domyślnie zamknięty na klamkę, bez gotówki i bez klucza.
+    expect(readCpredTemplateContainer(undefined)).toMatchObject({
+      lock: 'closed',
+      keyHolder: null,
+      items: [],
+      eddies: 0,
+    });
+  });
+
+  it('zamek otworu: wyrozumiały odczyt, bez listy prób; gotówka NPC-a na karcie', () => {
+    expect(
+      cpredTemplateLockRule({ dv: 17, skills: ['electronics-security'], tried: ['c1'] }),
+    ).toEqual({ dv: 17, skills: ['electronics-security'], keyId: null, tried: [] });
+    const extras = readCpredTemplateNpcExtras({ eddies: 300 });
+    const sheet = cpredTemplateNpcFinish(createDefaultCharacterData(), extras, () => 'x');
+    expect(sheet.eddies).toBe(300);
+    expect(readCpredTemplateNpcExtras({ eddies: -5 }).eddies).toBe(0);
   });
 });

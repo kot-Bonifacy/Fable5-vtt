@@ -175,6 +175,7 @@ a w `POSTEP.md` popraw tylko wiersz stanu.
 | 66b    | Wzorzec zwykłej mapy: ciemność, ściany, osłony, urządzenia, gniazda i Sieć; „Fabryka dronów” | 🟨     | 2026-10-31          |
 | 66c    | Scena przykładowa „Ostatni zjazd”: pościg na 2–3 graczy na wbudowanej estakadzie (drużyna goni furgon z porwaną); załoga auta poza pościgiem ukryta przed graczem | 🟨     | 2026-11-04          |
 | 66d    | Scena przykładowa „Zastaw”: pościg na 2 graczy na Neonowej ulicy — kompakt drużyny goni furgon Militechu z synem właściciela dziupli, radiowóz NCPD w rezerwie, bez zegara | 🟨     | 2026-11-06          |
+| 66e    | Scena przykładowa „Po zamknięciu”: likwidacja na 1 netrunnera w knajpie nocą (mapa MG 1:1) — ukryte kamery, wieżyczka, podłoga elektryczna i zamek gabinetu na jednej Sieci; format wzorca dostał światła, zamki, strefy i pojemniki | 🟨     | 2026-11-07          |
 | 66e    | Scena przykładowa „Po zamknięciu”: likwidacja szefa knajpy na 1 netrunnera (mapa „Pierwszej sceny” MG), kamery i wieżyczka w Sieci, podłoga elektryczna, szafka z pistoletem maszynowym; rozszerzenia formatu wzorca | ⬜     | 2026-11-07 (projekt) |
 | 67     | Zakup pojazdu przez gracza: modele aut z grafikami MG, „Kup” w Kompendium i salon u handlarza (`vehicle:buy`) | 🟨     | 2026-11-06          |
 | 68     | Warsztat: ulepszenia kupionego auta za ed (Kompendium i handlarz, montaż od razu) i naprawa auta 50 ed/PUK (`vehicle:upgrade-buy`, `vehicle:repair`) | 🟨     | 2026-11-06          |
