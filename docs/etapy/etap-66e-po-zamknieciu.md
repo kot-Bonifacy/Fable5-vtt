@@ -3,7 +3,8 @@
 **Faza:** przed betą (zlecenie MG z 07.11 spoza planu) · **Wymaga etapów:** 66/66b (wzorce
 scen, ściany, urządzenia, gniazda, Sieć), 26f (strefy obronne), 46b (pojemniki), 58b–58d
 (rozbrajanie, zamki, ukryte figury), 18b (światła) · **Stan:** 🟨 zrobione 07.11 (format,
-wzorzec, testy, oględziny w Firefoksie); czeka na stół MG i wdrożenie (bez migracji)
+wzorzec, testy, oględziny w Firefoksie), rozegrane w przeglądarce do końca 07.11 (szósta
+sesja); czeka na naprawę znalezisk, stół MG i wdrożenie (bez migracji)
 
 ## Skąd ten etap
 
@@ -412,7 +413,7 @@ korytarzem bez podłogi (przy pkt 4 przestaje to grać rolę); notatka „Gabine
 zauważenia/rozbrojenia „z wpisu” — na kompendium z `data/private` podłoga ma PT zauważenia 17,
 rozbrojenia 13 i 6k6 (projekt zakładał alternatywę z próbki: 15 / 13 / 4k6).
 
-### Jak wznowić
+### Jak wznowić (punkt z przerwy; stan końcowy — `po-zamknieciu-przebieg2`, niżej)
 
 1. `node instance/cli.ts restore po-zamknieciu-przebieg1` (z `packages/e2e`), potem
    `E2E_GM_PASSWORD=<nowe losowe> node instance/hold.ts` w tle (budowa ok. 1–2 min).
@@ -426,6 +427,90 @@ rozbrojenia 13 i 6k6 (projekt zakładał alternatywę z próbki: 15 / 13 / 4k6).
    „Konsola monitoringu” → Sieć (hasło, węzeł monitoringu: podgląd kamery gabinetu, węzeł
    zabezpieczeń: wieżyczka „Strzelaj” w Kucharza, „Otwórz” zamek gabinetu, plik), szafka
    z kluczem Małego, gabinet i finał z Kucharzem. Po rozegraniu naprawa znalezisk 1–14.
+
+## Rozegranie — dokończenie (07.11, szósta sesja)
+
+**Stół jak wyżej** (instancja E2E z `po-zamknieciu-przebieg1`, MG w Chromium, Ola w
+**Firefoksie**, Playwright MCP, skrypt kości). **Polecenia MG w trakcie:** odnowić Iskrze PW przed
+następnym starciem (MG w karcie: 24 → 40, pancerz korpusu został 9/11); gracz figury nie
+przeciąga — zaznacza ją i klika cel (przeciąga tylko MG); „pokonaj wroga, obsługując automatyczną
+wieżyczkę” przez konsolę jako netrunner; MG chwilowo wyłączył tryb turowy — **walka powinna go
+włączać sama**; ocenić przejęcie wieżyczki i zapisać propozycję (niżej).
+
+| krok          | co się stało                                                                                                                                                                                                                                                                                                                                                                        |
+| ------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| korytarz      | Marsz w ciemności na zachód działa. Percepcja w drodze zauważa kamerę korytarza (19 vs 13). Kamera Iskry w ciemności nie widzi.                                                                                                                                                                                                                                                      |
+| biuro ochrony | Otwarcie drzwi → „Przed walką” z Małym. Iskra 14, Mały 10. Seria w Małego → „Cel za osłoną: Biurko 20/20” → „Ostrzelaj osłonę”: PT 20 (0–6 m, seria), Szczęście 3 → 23, 8 × 3 = 24 — biurko zniszczone, nadwyżka przepada. Mały trafia 16 (8 obr., OB 9 trzyma), drugi strzał pudło. R2: seria ze Szczęściem 3 → 33 obr. − OB 7 = Mały śmiertelnie ranny, rzut przeciw śmierci 9 > BC 5 — martwy. |
+| łup i szafka  | Ciała Małego (x17,3/y6,8) nie da się przeszukać z żadnego wolnego pola (pkt 15) — MG przesuwa ciało na siatkę. „Wymiana” z ciałem → „Klucz: Szafka ochrony”. Szafka: „Otwórz kluczem” → pistolet maszynowy + 200 ed („Zabierz wszystko”, portfel 1500 ed).                                                                                                                                 |
+| Sieć          | Karta gniazda „Iskra — 3,0 m” → Podłącz. Backdoor 11 vs 8, Kontrola monitoringu 12 (5 kamer: obrót, wyłącz; podgląd gabinetu pokazuje Kucharza), Kontrola zabezpieczeń 11. Wieżyczka „Strzelaj” w Kucharza: 20 vs PT 13, 2k6 = 9 vs OB 11 — nic. „Otwórz” zamek gabinetu działa. Ruch podłączonej postaci: czytelna odmowa „najpierw odłącz się”.                                       |
+| gabinet       | Odłączenie („obrona Architektury wraca do stanu wyjściowego”). Iskra nie wychodzi z biura przez otwarte drzwi (pkt 16) — MG stawia ją na korytarzu. Pod drzwiami gabinetu „Przed walką” z Kucharzem; MG dokłada wieżyczkę (po odłączeniu znów wroga). Na polecenie MG Iskra wraca do konsoli (Bieg) i MG wyłącza tryb turowy.                                                       |
+| wieżyczka     | Ponowne podłączenie bez Backdooru (hasło pamięta złamanie, węzły dalej „przejęte”). Strzał poza walką: krytyk 6+6 → 1 + 5 premii, „Odcięta noga”, ale **walka się nie włącza** (pkt 19). MG zakłada starcie Kucharz–Iskra. Rundy 1–7: wieżyczka raz na rundę, każdy strzał krytykiem ze skryptu (−7, −8, −9, −10; rany: naderwany mięsień, strzaskane palce, uraz kręgosłupa, ciało obce), Kucharz śmiertelnie ranny w R5, rzut przeciw śmierci: naturalna 10 → martwy w R7. |
+
+**Stan w punkcie `po-zamknieciu-przebieg2`:** Kucharz, Mały i Bury martwi, Iskra 40/40 przy
+„Konsoli monitoringu” (x18/y8), podłączona do Sieci na piętrze 3 (węzły 2 i 3 przejęte, piętro 4
+z plikiem nieruszane), walka zakończona, zamek gabinetu otwarty, szafka pusta. Łupu z Kucharza
+ani pliku z Sieci nie brano.
+
+**Działało dobrze:** wejście w walkę z otwarcia drzwi, pytanie o osłonę i ostrzał osłony,
+Szczęście w kubku, przebicie i ablacja (kurtka Kucharza 11 → 6), krytyki z dwóch szóstek z tabelą
+ran, rzut przeciw śmierci (w tym naturalna 10), „Wymiana” z ciałem i otwarcie pojemnika kluczem
+z łupu, Backdoor/Kontrola, kamery z podglądem, zamek z Sieci, blokada ruchu podłączonej postaci,
+pamięć złamanego hasła po odłączeniu. Konsola Oli bez błędów aplikacji.
+
+### Znalezione w dokończeniu (dalej numeracja)
+
+Potwierdzone ponownie: **5** (slot „POJEDYNCZY” przy wybranym ogniu ciągłym, kubek ładuje serię)
+i **12** (marsz z biura w ciemny korytarz kończy się w x20/y9 pod ścianą, bez komunikatu).
+
+15. **🔴 Ciało NPC-a spoza siatki jest poza zasięgiem ręki z każdego wolnego pola.** Mały stoi
+    we wzorcu na x17,3/y6,8; zasięg „Wymiany” to 2 m Czebyszewem od środków z zaokrągleniem
+    (`reachMetresBetweenTokens` + `metresForRules`), a planer nie stawia Iskry na polu, które
+    zachodzi na ciało (x17/y6, x18/y6). Najbliższe wolne pola dają 3 m → „Za daleko”. Poprawka:
+    figury wzorca na siatkę przy zakładaniu sceny albo zasięg od krawędzi / ciało nie blokuje.
+16. **🔴 Planer gracza nie wyprowadza figury z biura ochrony przez otwarte drzwi** (x17–18/y10):
+    trasa (`token:walk`) kończy się na progu x17/y9, bez komunikatu; z korytarza do biura ta sama
+    droga działa. Osłony, bariery (`blockers` puste) i figury wykluczone, pola za drzwiami są
+    w polu widzenia. Do diagnozy (`planWalk`, obrys figury przy futrynie?).
+17. **🔴 „Węzeł użyty w tej turze” nie gaśnie po zmianie rundy.** Serwer (`netNodeIsFree`) już
+    przepuszcza, ale widok Sieci liczy `nodeUsed` w chwili wysyłki i nie jest wysyłany ponownie
+    przy nowej rundzie — „Strzelaj” wyszarzone, pomaga F5. Przez to MG oddał turę Iskry w R2.
+18. **🟠 Okno Sieci zasłania kubek i lewy pas HUD** — u gracza kubek z obrażeniami wieżyczki
+    (klik w kubek niemożliwy), u MG „Następna tura”. Okno samo przeskoczyło z prawej na lewą
+    stronę (Iskra zaznaczona po prawej), a mój klik w figurę trafił w „Wyłącz” kamery gabinetu.
+19. **🟠 Atak poza walką nie włącza trybu turowego** — strzał wieżyczki z Sieci w Kucharza poszedł
+    w eksploracji; MG oczekuje, że walka włączy się sama. Bez rund „raz na rundę” też nie działa.
+20. **🟠 Wrak osłony dalej jest celem** — klik w podłogę na wraku biurka z bronią w ręku ładuje
+    kubek „ogień ciągły → Biurko” (także poza walką), zamiast marszu.
+21. **🟠 Karta „Łup” na czacie pokazuje konto gracza** („Łup · Ola”, „ZABRANE — OLA”) — wbrew
+    zasadzie z 24.10 (gracz to postać).
+22. **🟡 Listy celów bez filtra** — „Cel strzału” wieżyczki w Sieci zawiera pojemnik („Szafka
+    ochrony”) i martwego Małego; „Dołącz do walki” proponuje martwych Burego i Małego jako „WROGA”.
+23. **🟡 Każda akcja Sieci daje netrunnerowi dwa wiersze** (jawny i „POUFNE”) o tym samym.
+24. **🟡 Kontrast w oknie Sieci** — jasnoniebieskie podpisy na beżu (imię w nagłówku, typy
+    programów „Obrońca”/„Atakujący…”, „PT 8” piętra) prawie nieczytelne.
+25. **🟡 Ta sama odmowa „Wróg w zasięgu wzroku” trzy razy naraz** (żółty pasek, czerwona odmowa,
+    odmowa w panelu).
+26. **🟡 Rzut obrażeń w osłonę opisany „(Korpus)”.**
+27. **🟡 „Podłoga elektryczna” w Sieci oferuje „Wyłącz”, choć rozbrojona ręcznie** (dwa stany).
+28. **🟡 Figury-urządzenia na liście „Postacie” MG z plakietką „EMP 1 · DYSOCJACJA”.**
+29. **ℹ️** Etykiety w biurze i gabinecie nachodzą na siebie („Szafka ochrony”, „Bogdan
+    »Kucharz« Rataj”, „Stół”); po śmierci Kucharza licznik rund skoczył z 7 na 9.
+
+### Balans i przejęcie wieżyczki (ocena)
+
+- **Przejęta wieżyczka na Kucharza jest bezużyteczna bez szczęścia:** pojedynczy strzał 2k6
+  przebija OB 11 tylko przy 6+6 (1/36). Kucharz padł wyłącznie dlatego, że skrypt dawał krytyki
+  — 6 rund. Seria z Sieci (zaległość z 66e) albo słabszy pancerz Kucharza / mocniejsza broń
+  wieżyczki; inaczej notatka „Gabinet” obiecuje coś, czego scena nie daje.
+- **Kucharz w gabinecie nic nie robi przeciw przejętej wieżyczce** (MG trzymał go za stołem).
+  Przy stole MG może kazać mu zestrzelić wieżyczkę (PW 25, OB 10) — warto dopisać do notatki.
+- **Sterowanie wieżyczką dziś nie wygląda sensownie:** tylko z okna Sieci (lista celów bez mapy,
+  bez podglądu linii strzału, zasięgu i osłony, bez trybu ognia), kubek pod oknem (pkt 18),
+  nieaktualne „węzeł użyty” (pkt 17), wieżyczka zostaje w inicjatywie jako wróg, a po
+  odłączeniu wraca do obrony bez znaku na mapie. **Propozycja MG:** przejęta wieżyczka trafia
+  chwilowo do „Postaci” netrunnera i ten steruje nią jak własną figurą (zaznaczenie na mapie,
+  slot broni z trybem ognia, celownik, kubek), płacąc Akcją Sieciową za użycie. Zapisane
+  w `zaleglosci.md` jako projekt do decyzji MG.
 
 ## Kryteria ukończenia
 

@@ -6,6 +6,36 @@ w `POMYSLY.md` („Do sprawdzenia przy stole”), decyzje MG — w `decyzje-i-up
 
 ## Otwarte
 
+**07.11.2026 (szósta) — dokończenie rozegrania „Po zamknięciu”: nowe błędy.** Opis i diagnozy:
+`etap-66e-po-zamknieciu.md` („Rozegranie — dokończenie”, pkt 15–29). (15) 🔴 ciało NPC-a spoza
+siatki (pozycja wzorca z ułamkiem) jest poza zasięgiem „Wymiany” z każdego wolnego pola;
+(16) 🔴 planer gracza nie wyprowadza figury z biura ochrony przez otwarte drzwi x17–18/y10 (do
+środka działa); (17) 🔴 „węzeł użyty w tej turze” w oknie Sieci nie gaśnie po zmianie rundy
+(`nodeUsed` liczone przy wysyłce, widok nie jest wysyłany ponownie; F5 pomaga); (18) 🟠 okno
+Sieci zasłania kubek i lewy pas HUD (gracz i MG), samo przeskakuje na lewą stronę; (19) 🟠 **atak
+poza walką nie włącza trybu turowego — MG oczekuje automatu** (strzał wieżyczki z Sieci);
+(20) 🟠 wrak osłony dalej jest celem kliku z bronią w ręku; (21) 🟠 karta „Łup” pokazuje konto
+gracza zamiast postaci; (22) listy celów wieżyczki i „Dołącz do walki” bez filtra (pojemnik,
+martwi NPC-e); (23) podwójne wiersze akcji Sieci u netrunnera (jawny + „POUFNE”);
+(24) jasnoniebieskie podpisy w oknie Sieci nieczytelne na beżu; (25) potrójna odmowa „Wróg
+w zasięgu wzroku”; (26) rzut obrażeń w osłonę opisany „(Korpus)”; (27) podłoga rozbrojona ręcznie
+dalej „Wyłącz” w Sieci; (28) urządzenia z plakietką „EMP 1 · DYSOCJACJA” w „Postaciach” MG.
+**Balans wzorca:** przejęta wieżyczka (pojedynczo 2k6) przebija OB 11 Kucharza tylko przy 6+6
+— poprawić razem z serią z Sieci (punkt 3 wpisu o 66e niżej) albo pancerzem Kucharza; notatka
+„Gabinet”: Kucharz może zestrzelić wieżyczkę.
+
+**07.11.2026 (szósta) — projekt do decyzji MG: przejęte urządzenie jako figura netrunnera.**
+Ocena z rozegrania: sterowanie przejętą wieżyczką wyłącznie z okna Sieci nie wygląda sensownie —
+cel z listy (bez mapy, linii strzału, zasięgu i pytania o osłonę), bez trybu ognia, kubek pod
+oknem, wieżyczka dalej w inicjatywie jako wróg, po odłączeniu wraca do obrony bez znaku na mapie.
+**Pomysł MG:** po Kontroli węzła wieżyczka trafia chwilowo do zakładki „Postacie” netrunnera
+(jak druga figura gracza) i gracz steruje nią na mapie zwykłą ścieżką: zaznaczenie, slot broni
+z trybem ognia (seria!), celownik z zasięgiem i osłoną, kubek; każde użycie kosztuje Akcję
+Sieciową (s. 199), kontrola i figura znikają przy odłączeniu albo odebraniu węzła, a w walce
+przejęta wieżyczka nie ma własnej tury wroga. Do rozstrzygnięcia: strzał Umiejętnością netrunnera
+(dziś) czy wieżyczki, czy obrót/ruch też, czy to samo dla dronów z 66b (tam broń w rękach już
+działa z okna Sieci). Kandydat na osobny etap.
+
 **07.11.2026 (piąta) — błędy z rozegrania „Po zamknięciu” w przeglądarce (przebieg przerwany,
 do wznowienia).** Pełny opis i stan: `etap-66e-po-zamknieciu.md` („Rozegranie w przeglądarce”).
 (1) 🔴 zapis okna „Edycja tokenu” (sama latarka) dopisuje NPC-owi z kartą wiersze statysty

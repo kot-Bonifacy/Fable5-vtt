@@ -1,5 +1,20 @@
 # Dziennik sesji — archiwum
 
+### Sesja 07.11, czwarta — realizacja sceny „Po zamknięciu” (66e)
+
+**Zlecenie MG:** „wykonaj etap 66e”. Bez pytań do MG — rozstrzygnięcia w pliku etapu.
+**Zrobione:** format wzorca: `lights`, `walls[].key`/`lockRule`, `zones` (wpis z alternatywami),
+`containers` (zamek, klucz u figury `keyHolder`, rzeczy, gotówka), urządzenie węzła `zone`/`wall`,
+gotówka NPC-a; `cpredTemplateProblems` pilnuje nowych kluczy i zamków. Wzorzec
+`data/public/scenes/po-zamknieciu/` (mapa `webp` z uploadu MG, 46 odcinków 1:1 z `dev.db`,
+położenia z nakładki na grafikę). Próbka kompendium dostała wymyśloną podłogę
+`defense.iskrownik`. `figures[].spotDv` nie powstało — ukryta kamera z kartą rzuca Skradanie.
+**Otwarte:** porównanie geometrii z VPS (odczyt bazy VPS automat odmówił), pytanie o strefy
+odpalane ręką MG, seria wieżyczki z Sieci (`zaleglosci.md`). **Testy:** **2987** `shared`
+(+8), **1761** serwer (+1); `tsc` czterech pakietów, ESLint i Prettier czyste w zmienionych
+plikach. **Oglądane:** tymczasowy spec E2E (skasowany) — MG w Chromium, Iskra w **Firefoksie**,
+7/7.
+
 ### Sesja 07.11, trzecia — projekt sceny „Po zamknięciu” (66e)
 
 **Zlecenie MG:** zaprojektować scenę przykładową na mapie „Pierwszej sceny” (kampania „ulice
