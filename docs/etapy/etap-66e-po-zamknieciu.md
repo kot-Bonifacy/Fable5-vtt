@@ -332,6 +332,101 @@ ze skryptu: **MG w Chromium, Iskra (Ola) w Firefoksie, 7/7**. Iskra w `po-T6` ma
 Przy okazji: przestawienie Iskry ręką MG prostą przez korytarz odpaliło podłogę (24 obrażeń) —
 pułapka specu (`ogledziny`) i pytanie do MG w `zaleglosci.md`.
 
+## Rozegranie w przeglądarce (07.11, piąta sesja) — przerwane, do wznowienia
+
+**Zlecenie MG:** „rozegraj w przeglądarce scenę po-zamknięciu netrunnerem na 6 poziomie
+z pistoletem maszynowym; cel — dopracować scenę i platformę”. W trakcie MG: „niech ma ciężki
+pistolet maszynowy”. **Decyzje MG z pytań:** Iskra z `po-T6` podniesiona do Rangi 6, **skrypt
+kości** (wyniki dobierane tak, żeby pokryć mechaniki — przebieg nie mówi nic o balansie),
+błędy notować i obchodzić ręką MG, naprawa po rozegraniu, **strefa broniona odpala tylko na
+figurach graczy** (NPC-e i przestawienie ręką MG nigdy — do wdrożenia, zaległość niżej).
+
+**Stół:** instancja E2E od `po-T6` (kampania „Nocna zmiana”), MG w Chromium, Ola (Iskra)
+w **Firefoksie**, oba przez Playwright MCP, kości z `.e2e/dice-script.txt`. Iskra przerobiona
+ręką MG w UI: Interfejs 6 (wiersz Roli poprzedniej — główną Rolą został Medyk 1, patrz pkt 1),
+ciężki pistolet maszynowy w rękach, lekka kurtka kuloodporna na głowie i korpusie (OB 11),
+Broń krótka 6, Ogień ciągły 4, PW 40/40. Ola zna tylko zlecenie (notatka 1, „Co gracz wie”).
+
+| krok        | co się stało                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| start       | Scena z „Przykładowych” bez braków; figura Iskry przeciągnięta z „Postaci” na start; MG wysyła zlecenie na czat.                                                                                                                                                                                                                                                                                                               |
+| skradanie   | Prośba o skradanie → zgoda MG ±0 → 16. Marsz pod drzwi: Percepcja w drodze zauważa ukrytą kamerę zaplecza (15 vs 11).                                                                                                                                                                                                                                                                                                          |
+| tylne drzwi | Kamera zaplecza widzi Iskrę w świetle lampy (17 vs 16) — MG dostaje tylko poufny wiersz czatu. Zamek PT 13: Elektronika 18 — otwarte.                                                                                                                                                                                                                                                                                          |
+| kuchnia     | Skaner 12 m — nic (konsola ok. 22 m dalej). Alarm wg notatki: Bury z latarką idzie od zaplecza (MG omija korytarz, bo podłoga odpaliłaby na NPC-u).                                                                                                                                                                                                                                                                            |
+| walka R1–R3 | Silnik sam zatrzymał drużynę („Wróg w zasięgu wzroku”). Inicjatywa Iskra 15, Bury 10. Seria ×2 (−11), Bury trafia (−1 przez OB 11), seria ×3 (−14), Bury trafia (−5), pojedynczy strzał — Bury śmiertelnie ranny, rzut przeciw śmierci 9 > BC 6 — martwy. Iskra 34/40. MG kończy walkę.                                                                                                                                        |
+| korytarz    | Skaner 15 m znajduje „Konsolę monitoringu”. Percepcja w drodze zauważa podłogę elektryczną (19 vs 17) **przez ścianę kuchni**. Otwarcie drzwi kuchnia–korytarz; klik Oli w zauważoną podłogę wprowadza Iskrę na płyty: 6k6 = 19 − OB 9 → 24/40. Rozbrojenie z menu prawego kliku: 20 vs PT 13 — podłoga wyłączona, Iskra przechodzi po niej bez obrażeń. Percepcja w drodze zauważa kamerę gabinetu **przez ścianę gabinetu**. |
+
+**Stan w punkcie `po-zamknieciu-przebieg1`:** Iskra 24/40, pancerz korpusu 9/11, ciężki PM
+40/40, Szczęście 6, stoi w korytarzu na rozbrojonej podłodze (x 22, y 11); drzwi
+kuchnia–korytarz i tylne otwarte; Bury martwy przy tylnych drzwiach (z latarką i podwójnym
+pancerzem z pkt 2); Mały przy monitorach, Kucharz w gabinecie (wg notatki po strzałach już ze
+strzelbą za stołem), wieżyczka włączona; zamek gabinetu zamknięty; Sieci nie ruszano.
+
+### Znalezione w przebiegu (do naprawy po rozegraniu)
+
+1. **🔴 Zapis okna „Edycja tokenu” zmienia kartę NPC-a** — MG zaznaczył tylko „Nosi światło”
+   u Burego, a karta dostała wiersze statysty „Pancerz” OB 7 na głowę i korpus (obok Kevlaru
+   z wzorca) i `statBlock.weaponSkill: 0`. Skutek: podwójny pancerz korpusu (dwie pule
+   ablacji, przebicie liczone od wyższej) i pancerz głowy, którego NPC nie miał. Mały
+   (nieedytowany) ma tylko Kevlar.
+2. **🔴 Percepcja w drodze nie zna ścian** — `zonesNoticeDue` / `hiddenFiguresNoticeDue` liczą
+   same 4 m (`distanceToRect`). Iskra zauważyła podłogę z kuchni i kamerę gabinetu z korytarza,
+   obie za ścianą i zamkniętymi drzwiami.
+3. **🔴 Klik gracza w zauważoną strefę = marsz na nią** — bez pytania, choć gracz ją widzi
+   (Iskra −10 PW). Rozbrojenie jest tylko w menu prawego kliku na własnej figurze.
+   Propozycja: klik w zauważoną strefę pyta „Wejść na …? / Rozbrój” albo planer omija znane
+   strefy, a wejście wymaga drugiego kliku.
+4. **🟠 Strefa odpala na NPC-ach i przy przestawieniu ręką MG** — decyzja MG z 07.11: tylko
+   figury graczy, tylko ich marsz. Dziś jedyne wejście z wnętrza lokalu do kuchni (drzwi
+   x 24–25 / y 12) leży w strefie, więc ochrona nie dojdzie do kuchni korytarzem.
+5. **🟠 Napis trybu ognia na slocie kłamie** — po wyborze „Ogień ciągły” slot dalej pisze
+   „pojedynczy”, a w następnej turze klik w cel ładuje kubek serią (tryb zapamiętany). Gracz
+   strzela inaczej, niż widzi.
+6. **🟠 Znalezione Skanerem gniazdo nie ma znacznika na mapie gracza**, gdy leży poza wzrokiem
+   (karta mówi „znalezione: Konsola monitoringu”, mapa nic). Gracz zna nazwę, nie miejsce.
+7. **🟠 Przyciski w karcie po najechaniu: tekst w kolorze tła** („Dobądź (Akcja)”, „+ Broń
+   z katalogu” — `color` = `background` = `rgb(204, 35, 22)`). Podobnie nieczytelne „Postać nie
+   ma pojazdu” w sekcji „Pojazdy” (czerwone na czerwonym).
+8. **🟡 „Dodaj za darmo” w Kompendium domyślnie celuje w pierwszą postać drużyny** (Kowal),
+   choć MG ma otwartą kartę Iskry — pancerz poszedł nie tam.
+9. **🟡 Zmiana Roli na kartę na Rolę poprzednią odmawia** („Ta Rola już jest na karcie”), bez
+   drogi „zamień główną z poprzednią”; powrót przez PD wymaga Rangi 4 bieżącej Roli.
+10. **🟡 Kubek zasłania ostatnie akcje panelu** („Skaner”, „Skradanie” — widać „…aner”,
+    „…adanie”) w obu przeglądarkach przy 1600 × 900.
+11. **🟡 Kamera zauważająca skradającą się postać daje MG tylko poufny wiersz czatu** —
+    notatka obiecuje „pasek MG”; przy kilku kamerach łatwo przeoczyć alarm.
+12. **🟡 Planer gracza chodzi tylko po tym, co figura widzi w tej chwili** — w ciemności (4 m)
+    cel za otwartymi drzwiami pod kątem kończy marsz pod ścianą, bez komunikatu.
+13. **🟡 Okno „Edycja tokenu” NPC-a z kartą pokazuje „Umiejętność 0” i „Pancerz OB 7”** —
+    pola statysty, które przy pełnej karcie mylą (i zapisują się — pkt 1).
+14. **ℹ️ Dwa paski naraz po ✕ walki** („Przeciwnicy pokonani” i „Koniec walki”) — drobiazg.
+
+**Działało dobrze:** dodanie sceny bez braków, ciemność i światła, skradanie z prośbą do MG,
+zamek z Testem, wejście w walkę z wykrycia, inicjatywa, seria z mnożnikiem, ablacja pancerza
+gracza, PT broni z tabeli PM, rzut przeciw śmierci NPC-a, Skaner z zasięgiem z rzutu,
+rozbrojenie strefy (Iskra przeszła potem po płytach), przeładowanie poza budżetem tury
+(z oznaczeniem). Konsola: 0 błędów aplikacji u Oli.
+
+**Notatki wzorca do poprawy po przebiegu:** „Alarm i ochrona” — Bury nie dojdzie do kuchni
+korytarzem bez podłogi (przy pkt 4 przestaje to grać rolę); notatka „Gabinet” podaje PT
+zauważenia/rozbrojenia „z wpisu” — na kompendium z `data/private` podłoga ma PT zauważenia 17,
+rozbrojenia 13 i 6k6 (projekt zakładał alternatywę z próbki: 15 / 13 / 4k6).
+
+### Jak wznowić
+
+1. `node instance/cli.ts restore po-zamknieciu-przebieg1` (z `packages/e2e`), potem
+   `E2E_GM_PASSWORD=<nowe losowe> node instance/hold.ts` w tle (budowa ok. 1–2 min).
+2. MG: Chromium MCP, `localhost:4173`, login `MG` i to samo hasło. Ola: Firefox MCP, link
+   odnowienia `POST /api/campaigns/<id>/players/<id Oli>/renewal` z karty MG, potem
+   `/join/<token>` → „Wejdź do gry”.
+3. Kości: plik `.e2e/dice-script.txt` (ścianki po spacji). Kolejność w Percepcji w drodze:
+   najpierw Skradanie ukrytej figury, potem Percepcja gracza. Pusty plik = los serwera.
+4. **Dalszy plan gry:** Iskra idzie korytarzem pod biuro ochrony (drzwi x 17–18 / y 10),
+   kamera korytarza (x 15 / y 10), Mały przy monitorach → walka albo uciszenie, gniazdo
+   „Konsola monitoringu” → Sieć (hasło, węzeł monitoringu: podgląd kamery gabinetu, węzeł
+   zabezpieczeń: wieżyczka „Strzelaj” w Kucharza, „Otwórz” zamek gabinetu, plik), szafka
+   z kluczem Małego, gabinet i finał z Kucharzem. Po rozegraniu naprawa znalezisk 1–14.
+
 ## Kryteria ukończenia
 
 - [x] Rozszerzenia formatu 1–6 z testami w `shared` i serwerze (3 z rozstrzygnięciem pkt 2).

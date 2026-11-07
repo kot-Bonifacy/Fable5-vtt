@@ -1,5 +1,20 @@
 # Dziennik sesji — archiwum
 
+### Sesja 07.11, trzecia — projekt sceny „Po zamknięciu” (66e)
+
+**Zlecenie MG:** zaprojektować scenę przykładową na mapie „Pierwszej sceny” (kampania „ulice
+Lublina”, konto `mg_primo`) — ściany, drzwi, okna i mapa 1:1, reszta (ukryte kamery, w tym
+w gabinecie szefa, pułapka elektryczna przed gabinetem, skrzynka z pistoletem maszynowym,
+wieżyczka, dwóch słabych ochroniarzy, gniazdo dla netrunnera) do doboru; realizacja w innej
+sesji. **Decyzje MG (dwie rundy pytań):** mapa publiczna, gabinet = pokój z aneksem (x21–28 /
+y6–10), gracz to netrunner Ranga 6 z bronią automatyczną, cel — likwidacja szefa, noc i półmrok,
+szef broni się do końca, kamery i wieżyczka jako figury w Sieci, Sieć 4 piętra bez LOD-u.
+**Zrobione:** projekt `etap-66e-po-zamknieciu.md` (geometria z `dev.db`, figury, strefa, pojemnik,
+gniazda, Sieć, notatki MG, balans, lista rozszerzeń formatu wzorca: `lights`, `lockRule`,
+`spotDv`, `zones`, `containers`, strefa jako urządzenie węzła). Bez zmian w kodzie i bez testów.
+**Od czego zacząć realizację:** sekcja „Co trzeba dołożyć do formatu wzorca” w pliku etapu;
+najpierw sprawdzić, czy scena na VPS nie różni się od `dev.db`.
+
 ### Sesja 07.11, druga — zaległości
 
 **Zlecenie MG:** „wykonaj zaległości”. Bez pytań do MG — wzięte to, co da się zamknąć bez stołu,

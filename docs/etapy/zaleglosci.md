@@ -6,13 +6,30 @@ w `POMYSLY.md` („Do sprawdzenia przy stole”), decyzje MG — w `decyzje-i-up
 
 ## Otwarte
 
+**07.11.2026 (piąta) — błędy z rozegrania „Po zamknięciu” w przeglądarce (przebieg przerwany,
+do wznowienia).** Pełny opis i stan: `etap-66e-po-zamknieciu.md` („Rozegranie w przeglądarce”).
+(1) 🔴 zapis okna „Edycja tokenu” (sama latarka) dopisuje NPC-owi z kartą wiersze statysty
+„Pancerz” OB 7 (głowa, korpus) obok pancerza z karty i `weaponSkill: 0`; (2) 🔴 Percepcja
+w drodze (`zonesNoticeDue`, `hiddenFiguresNoticeDue`) zauważa przez ściany — liczy same 4 m;
+(3) 🔴 klik gracza w zauważoną strefę to marsz na nią bez pytania; (4) 🟠 **decyzja MG: strefa
+odpala tylko na figurach graczy i tylko ich marszu** (dziś też NPC-e i ręka MG — zamyka
+pytanie (2) z wpisu niżej); (5) 🟠 slot broni pisze „pojedynczy” przy zapamiętanym ogniu
+ciągłym; (6) 🟠 gniazdo znalezione Skanerem poza wzrokiem nie ma znacznika u gracza; (7) 🟠
+przycisk karty po najechaniu ma tekst w kolorze tła, „Postać nie ma pojazdu” czerwone na
+czerwonym; (8) „Dodaj za darmo” w Kompendium celuje w pierwszą postać, nie w otwartą kartę;
+(9) brak zamiany Roli głównej z poprzednią na karcie; (10) kubek zasłania ostatnie akcje
+panelu; (11) zauważenie przez kamerę daje MG tylko poufny wiersz czatu; (12) planer gracza
+w ciemności kończy marsz pod ścianą bez komunikatu; (13) okno tokenu pokazuje pola statysty
+przy pełnej karcie; (14) dwa paski naraz po ✕ walki.
+
 **07.11.2026 — „Po zamknięciu” (66e): wdrożenie (bez migracji), porównanie z VPS i pytanie do
 MG.** (1) Geometria wzorca pochodzi z lokalnej `dev.db`; automat odmówił odczytu bazy VPS
 („Production Reads”), więc nie sprawdzono, czy „Pierwsza scena” na VPS ma te same ściany — MG
 porównuje ręką albo daje zgodę na odczyt. (2) **Pytanie do MG:** marsz ręką MG (`token:move`
 prostą przez korytarz) odpalił ukrytą podłogę elektryczną na figurze gracza (Iskra 24 obrażeń
 w specu oględzin). Czy przestawienie figury przez MG ma uruchamiać strefy, czy tylko marsz
-gracza? Dziś uruchamia (zachowanie sprzed 66e). (3) Strzał przejętej wieżyczki z okna Sieci to
+gracza? Dziś uruchamia (zachowanie sprzed 66e). **Odpowiedź MG z 07.11 (piąta sesja): tylko
+figury graczy** — wdrożenie w punkcie (4) wpisu wyżej. (3) Strzał przejętej wieżyczki z okna Sieci to
 pojedynczy strzał — seria z pistoletu maszynowego wymaga ręki MG na figurze wieżyczki.
 
 **07.11.2026 — oględziny netrunnera w „Fabryce dronów”: wdrożenie (bez migracji) i resztki.**

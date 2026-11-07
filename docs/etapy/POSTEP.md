@@ -21,13 +21,21 @@ w plikach obok — czytaj je **na żądanie, nigdy rutynowo**:
 
 | stan         | etapy                                                                                          |
 | ------------ | ---------------------------------------------------------------------------------------------- |
-| ⬜ otwarty   | **68** Warsztat: ulepszenia auta za ed i naprawa (🟨 zrobione 06.11, czeka na wdrożenie i oględziny MG przy stole); **67** Zakup pojazdu (🟨 zrobione 06.11, czeka na wdrożenie i oględziny MG przy stole); **66e** Scena przykładowa „Po zamknięciu” (🟨 zrobione 07.11, obejrzane w Firefoksie; czeka na stół MG i wdrożenie); **66d** Scena przykładowa „Zastaw” (🟨 wzorzec zrobiony i rozegrany w przeglądarce 06.11; od 06.11 jeden taran na turę (decyzja MG); czeka na stół MG i wdrożenie); **66** Sceny przykładowe (🟨 zrobione 31.10, czeka na oględziny MG przy stole i wdrożenie; **66b** „Fabryka dronów” 🟨 zrobione 31.10, tak samo (netrunner obejrzany w przeglądarce 07.11, poprawki czekają na wdrożenie); **66c** „Ostatni zjazd” 🟨 wzorzec zrobiony, rozegrany w przeglądarce 04.11 i ponownie 05.11 po rebalansie (porażka o włos, balans zatwierdzony przez MG) — zaległości z przebiegów zamknięte 05.11, Esc na kubku MG 07.11 — czeka na stół MG i wdrożenie); **65** Scena pościgu i walka pojazdów (🟨 65a–65e ✅ 30–31.10, czeka na oględziny MG przy stole); **62** Sieć ze sceny (🟨 zrobione, czeka na oględziny MG na VPS po wdrożeniu); **61** Skradanie się (🟨 zrobione, czeka na słowo MG o rozstrzygnięciach); **28** Wdrożenie na VPS (🟨 działa na `https://vtt.tatanga.eu` z botami od 18.10; zostały off-site, utwardzenie, monitoring); **43b**, **43c** (UI walki); **60** Czytelny czat (zlecenie MG z 24.10; 🟨 60a–60c ✅, czeka na oględziny MG z pierwszego kryterium); T10; refaktoryzacja odłożona (MG 18.10) |
+| ⬜ otwarty   | **68** Warsztat: ulepszenia auta za ed i naprawa (🟨 zrobione 06.11, czeka na wdrożenie i oględziny MG przy stole); **67** Zakup pojazdu (🟨 zrobione 06.11, czeka na wdrożenie i oględziny MG przy stole); **66e** Scena przykładowa „Po zamknięciu” (🟨 zrobione 07.11, obejrzane w Firefoksie; rozegranie w przeglądarce przerwane w połowie 07.11 — do wznowienia z `po-zamknieciu-przebieg1`; czeka na stół MG i wdrożenie); **66d** Scena przykładowa „Zastaw” (🟨 wzorzec zrobiony i rozegrany w przeglądarce 06.11; od 06.11 jeden taran na turę (decyzja MG); czeka na stół MG i wdrożenie); **66** Sceny przykładowe (🟨 zrobione 31.10, czeka na oględziny MG przy stole i wdrożenie; **66b** „Fabryka dronów” 🟨 zrobione 31.10, tak samo (netrunner obejrzany w przeglądarce 07.11, poprawki czekają na wdrożenie); **66c** „Ostatni zjazd” 🟨 wzorzec zrobiony, rozegrany w przeglądarce 04.11 i ponownie 05.11 po rebalansie (porażka o włos, balans zatwierdzony przez MG) — zaległości z przebiegów zamknięte 05.11, Esc na kubku MG 07.11 — czeka na stół MG i wdrożenie); **65** Scena pościgu i walka pojazdów (🟨 65a–65e ✅ 30–31.10, czeka na oględziny MG przy stole); **62** Sieć ze sceny (🟨 zrobione, czeka na oględziny MG na VPS po wdrożeniu); **61** Skradanie się (🟨 zrobione, czeka na słowo MG o rozstrzygnięciach); **28** Wdrożenie na VPS (🟨 działa na `https://vtt.tatanga.eu` z botami od 18.10; zostały off-site, utwardzenie, monitoring); **43b**, **43c** (UI walki); **60** Czytelny czat (zlecenie MG z 24.10; 🟨 60a–60c ✅, czeka na oględziny MG z pierwszego kryterium); T10; refaktoryzacja odłożona (MG 18.10) |
 | ✅ ukończone | 01–11, 13–20b, 23a–27f, 27h–27l, 29a–30d, 31–35, 37–42c, 43a, 44a–44d, 45, 46a1, 46a2, 46c1, 46c2, 46b1, 46b2, 47a, 47b, 48a, 48b, 48c, 49a, 49b, 50a, 50b, 50c, 51, 52, 53, 54, 55, 56, 57 (57a–57c), 58 (58a–58d), 59 (59a–59c), 63 (63a–63b; 63c wycofane 29.10), 64 (64a–64c) (ostatni zamknięty: 64, 2026-10-30) |
 | ⛔ wycofane  | 12, 21, 22 (głos), 27g (wydajność), 36 (makra); 27, 29, 30, 38 rozdzielone na etapy literowane |
 
 Pełna tabela z nazwami i datami: `archiwum/tabela-etapow.md`.
 
 ## Od czego zacząć
+
+**Rozegranie „Po zamknięciu” w przeglądarce (zlecenie MG z 07.11) — przerwane w połowie,
+do wznowienia.** Iskra (Netrunner 6, ciężki PM) stoi w korytarzu przy rozbrojonej podłodze,
+Bury nie żyje, Mały, Kucharz i wieżyczka nietknięci, Sieci jeszcze nie ruszano. Wznowienie
+z punktu E2E `po-zamknieciu-przebieg1` — procedura i plan dalszej gry w
+`etap-66e-po-zamknieciu.md` („Rozegranie w przeglądarce” → „Jak wznowić”). Po rozegraniu:
+naprawa znalezisk z `zaleglosci.md` (07.11, piąta), najpierw zapis okna „Edycja tokenu”
+dopisujący NPC-owi pancerz statysty i strefy tylko na figurach graczy (decyzja MG).
 
 **Scena przykładowa „Po zamknięciu” (etap 66e, zlecenie MG z 07.11) — czeka na stół MG
 i wdrożenie (bez migracji; na VPS dojdzie `data/public/scenes/po-zamknieciu/` i nowy wpis próbki).**
@@ -755,6 +763,19 @@ a nie do tego pliku.
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
 
+### Sesja 07.11, piąta — rozegranie „Po zamknięciu” w przeglądarce (przerwane, do wznowienia)
+
+**Zlecenie MG:** rozegrać scenę netrunnerem Rangi 6 z ciężkim pistoletem maszynowym (najpierw
+PM, zmiana w trakcie). **Decyzje MG z pytań:** Iskra z `po-T6` podniesiona do Rangi 6, skrypt
+kości, błędy notować i obchodzić, naprawa po rozegraniu, **strefa odpala tylko na figurach
+graczy** (do wdrożenia). **Zrobione:** przebieg do wejścia na korytarz — zamek tylnych drzwi,
+kamera zaplecza widzi Iskrę, Bury z latarką od zaplecza, walka 3 rundy (Bury martwy, Iskra
+24/40 po podłodze), Skaner, rozbrojenie podłogi. **Przerwane na prośbę MG** (reset kontekstu),
+stan w punkcie E2E `po-zamknieciu-przebieg1`; przebieg i 14 znalezisk w
+`etap-66e-po-zamknieciu.md` („Rozegranie w przeglądarce”), błędy w `zaleglosci.md` (07.11,
+piąta). **Bez zmian w kodzie i bez testów.** **Oglądane:** MG w Chromium, Iskra w **Firefoksie**
+(Playwright MCP).
+
 ### Sesja 07.11, czwarta — realizacja sceny „Po zamknięciu” (66e)
 
 **Zlecenie MG:** „wykonaj etap 66e”. Bez pytań do MG — rozstrzygnięcia w pliku etapu.
@@ -769,18 +790,3 @@ odpalane ręką MG, seria wieżyczki z Sieci (`zaleglosci.md`). **Testy:** **298
 (+8), **1761** serwer (+1); `tsc` czterech pakietów, ESLint i Prettier czyste w zmienionych
 plikach. **Oglądane:** tymczasowy spec E2E (skasowany) — MG w Chromium, Iskra w **Firefoksie**,
 7/7.
-
-### Sesja 07.11, trzecia — projekt sceny „Po zamknięciu” (66e)
-
-**Zlecenie MG:** zaprojektować scenę przykładową na mapie „Pierwszej sceny” (kampania „ulice
-Lublina”, konto `mg_primo`) — ściany, drzwi, okna i mapa 1:1, reszta (ukryte kamery, w tym
-w gabinecie szefa, pułapka elektryczna przed gabinetem, skrzynka z pistoletem maszynowym,
-wieżyczka, dwóch słabych ochroniarzy, gniazdo dla netrunnera) do doboru; realizacja w innej
-sesji. **Decyzje MG (dwie rundy pytań):** mapa publiczna, gabinet = pokój z aneksem (x21–28 /
-y6–10), gracz to netrunner Ranga 6 z bronią automatyczną, cel — likwidacja szefa, noc i półmrok,
-szef broni się do końca, kamery i wieżyczka jako figury w Sieci, Sieć 4 piętra bez LOD-u.
-**Zrobione:** projekt `etap-66e-po-zamknieciu.md` (geometria z `dev.db`, figury, strefa, pojemnik,
-gniazda, Sieć, notatki MG, balans, lista rozszerzeń formatu wzorca: `lights`, `lockRule`,
-`spotDv`, `zones`, `containers`, strefa jako urządzenie węzła). Bez zmian w kodzie i bez testów.
-**Od czego zacząć realizację:** sekcja „Co trzeba dołożyć do formatu wzorca” w pliku etapu;
-najpierw sprawdzić, czy scena na VPS nie różni się od `dev.db`.

@@ -9,6 +9,13 @@ czytany na starcie każdej sesji został listą zadań, a nie archiwum ustaleń.
 inaczej, niż mówi podręcznik, albo gdy dotykasz wymienionego tu kodu. Jeśli któraś z tych decyzji
 przestanie się bronić, przenieś ją stąd do `POMYSLY.md` jako zadanie — nie odwrotnie.
 
+## Strefa broniona odpala tylko na figurach graczy (07.11.2026, decyzja MG przy „Po zamknięciu”)
+
+- **Strefa broniona (podłoga, system środowiskowy) uruchamia się wyłącznie marszem figury
+  gracza.** NPC-e (personel zna swoją podłogę) i przestawienie figury ręką MG nigdy jej nie
+  odpalają — MG może poprawić ustawienie bez skutków, a ochrona „Pod Neonem” chodzi korytarzem
+  przed gabinetem. **Jeszcze niewdrożone** — zaległość z 07.11 (piąta sesja), punkt (4).
+
 ## Taran, skręt przed przeszkodą i spóźniona inicjatywa (06.11.2026, decyzje MG po „Zastawie”)
 
 - **Jeden taran na turę kierowcy** (zasada domowa, w każdym pościgu). Podręcznik limitu nie
