@@ -40,27 +40,31 @@ dublami (np. ściana 28→32 / y14 zapisana dwa razy). Poprawki tylko za zgodą 
 sprawdzenia przy realizacji:** czy kopia na VPS nie różni się od `dev.db` (jeśli tak, źródłem
 jest VPS).
 
+**Dodane po realizacji (07.11, prośba MG):** 47. odcinek — drzwi z kuchni na salę x15 / y15–17
+(na lewo od wyspy kuchennej, futryna jest na grafice; dotąd pełna ściana 15→18). Bez zamka. Dają
+drugą drogę z kuchni w głąb lokalu, z ominięciem korytarza z podłogą elektryczną.
+
 Wszystkie drzwi w scenie MG mają `playerToggle`; we wzorcu część dostaje zamek (tabela niżej).
 Okno x2–4 / y18 zostaje oknem. Zachodnia ściana sali na grafice wygląda na przeszkloną, ale
 w scenie MG to zwykła ściana i tak zostaje.
 
 ### Plan lokalu (kratki, x / y)
 
-| pomieszczenie                | obszar          | wejścia                                                                        |
-| ---------------------------- | --------------- | ------------------------------------------------------------------------------ |
-| Sala restauracyjna           | x1–15 / y1–18   | drzwi wsch. na parking x28 / y3–4 (przez salę górą), drzwi na taras x4–6 / y18 |
-| Bar (lada = 2 bramy)         | x12–15 / y9–16  | bramy x12 / y9–16 i y9 / x12–15                                                |
-| Toalety gości                | x1–5 / y1–3     | otwarte na salę                                                                |
-| **Biuro ochrony** (monitory) | x15–21 / y6–10  | drzwi x17–18 / y10 (z korytarza)                                               |
-| **Gabinet szefa** (aneks)    | x21–28 / y6–10  | drzwi x24–25 / y10 (z korytarza) — jedyne                                      |
-| Korytarz służbowy            | x15–26 / y10–12 | drzwi z sali x15 / y11–12, do kuchni x24–25 / y12, do przedsionka x26 / y10–11 |
-| Przedsionek                  | x26–28 / y10–13 | drzwi do toalet x28 / y11–12 i y12–13                                          |
-| Kuchnia                      | x14–28 / y12–18 | tylne drzwi x26–27 / y18 (na zaplecze), do spiżarni x28 / y15–16               |
-| Toalety personelu            | x28–32 / y10–14 | z przedsionka                                                                  |
-| Spiżarnia                    | x28–32 / y14–18 | z kuchni                                                                       |
-| Taras (zewn.)                | x1–17 / y18–23  | —                                                                              |
-| Zaplecze z kontenerami       | x17–28 / y18–24 | —                                                                              |
-| Parking (auto szefa)         | x28–33 / y10–24 | —                                                                              |
+| pomieszczenie                | obszar          | wejścia                                                                                |
+| ---------------------------- | --------------- | -------------------------------------------------------------------------------------- |
+| Sala restauracyjna           | x1–15 / y1–18   | drzwi wsch. na parking x28 / y3–4 (przez salę górą), drzwi na taras x4–6 / y18         |
+| Bar (lada = 2 bramy)         | x12–15 / y9–16  | bramy x12 / y9–16 i y9 / x12–15                                                        |
+| Toalety gości                | x1–5 / y1–3     | otwarte na salę                                                                        |
+| **Biuro ochrony** (monitory) | x15–21 / y6–10  | drzwi x17–18 / y10 (z korytarza)                                                       |
+| **Gabinet szefa** (aneks)    | x21–28 / y6–10  | drzwi x24–25 / y10 (z korytarza) — jedyne                                              |
+| Korytarz służbowy            | x15–26 / y10–12 | drzwi z sali x15 / y11–12, do kuchni x24–25 / y12, do przedsionka x26 / y10–11         |
+| Przedsionek                  | x26–28 / y10–13 | drzwi do toalet x28 / y11–12 i y12–13                                                  |
+| Kuchnia                      | x14–28 / y12–18 | tylne drzwi x26–27 / y18 (na zaplecze), do spiżarni x28 / y15–16, na salę x15 / y15–17 |
+| Toalety personelu            | x28–32 / y10–14 | z przedsionka                                                                          |
+| Spiżarnia                    | x28–32 / y14–18 | z kuchni                                                                               |
+| Taras (zewn.)                | x1–17 / y18–23  | —                                                                                      |
+| Zaplecze z kontenerami       | x17–28 / y18–24 | —                                                                                      |
+| Parking (auto szefa)         | x28–33 / y10–24 | —                                                                                      |
 
 ## Pomysł w jednym akapicie
 
@@ -437,13 +441,13 @@ przeciąga — zaznacza ją i klika cel (przeciąga tylko MG); „pokonaj wroga,
 wieżyczkę” przez konsolę jako netrunner; MG chwilowo wyłączył tryb turowy — **walka powinna go
 włączać sama**; ocenić przejęcie wieżyczki i zapisać propozycję (niżej).
 
-| krok          | co się stało                                                                                                                                                                                                                                                                                                                                                                        |
-| ------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| korytarz      | Marsz w ciemności na zachód działa. Percepcja w drodze zauważa kamerę korytarza (19 vs 13). Kamera Iskry w ciemności nie widzi.                                                                                                                                                                                                                                                      |
-| biuro ochrony | Otwarcie drzwi → „Przed walką” z Małym. Iskra 14, Mały 10. Seria w Małego → „Cel za osłoną: Biurko 20/20” → „Ostrzelaj osłonę”: PT 20 (0–6 m, seria), Szczęście 3 → 23, 8 × 3 = 24 — biurko zniszczone, nadwyżka przepada. Mały trafia 16 (8 obr., OB 9 trzyma), drugi strzał pudło. R2: seria ze Szczęściem 3 → 33 obr. − OB 7 = Mały śmiertelnie ranny, rzut przeciw śmierci 9 > BC 5 — martwy. |
-| łup i szafka  | Ciała Małego (x17,3/y6,8) nie da się przeszukać z żadnego wolnego pola (pkt 15) — MG przesuwa ciało na siatkę. „Wymiana” z ciałem → „Klucz: Szafka ochrony”. Szafka: „Otwórz kluczem” → pistolet maszynowy + 200 ed („Zabierz wszystko”, portfel 1500 ed).                                                                                                                                 |
-| Sieć          | Karta gniazda „Iskra — 3,0 m” → Podłącz. Backdoor 11 vs 8, Kontrola monitoringu 12 (5 kamer: obrót, wyłącz; podgląd gabinetu pokazuje Kucharza), Kontrola zabezpieczeń 11. Wieżyczka „Strzelaj” w Kucharza: 20 vs PT 13, 2k6 = 9 vs OB 11 — nic. „Otwórz” zamek gabinetu działa. Ruch podłączonej postaci: czytelna odmowa „najpierw odłącz się”.                                       |
-| gabinet       | Odłączenie („obrona Architektury wraca do stanu wyjściowego”). Iskra nie wychodzi z biura przez otwarte drzwi (pkt 16) — MG stawia ją na korytarzu. Pod drzwiami gabinetu „Przed walką” z Kucharzem; MG dokłada wieżyczkę (po odłączeniu znów wroga). Na polecenie MG Iskra wraca do konsoli (Bieg) i MG wyłącza tryb turowy.                                                       |
+| krok          | co się stało                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| ------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| korytarz      | Marsz w ciemności na zachód działa. Percepcja w drodze zauważa kamerę korytarza (19 vs 13). Kamera Iskry w ciemności nie widzi.                                                                                                                                                                                                                                                                                                                                              |
+| biuro ochrony | Otwarcie drzwi → „Przed walką” z Małym. Iskra 14, Mały 10. Seria w Małego → „Cel za osłoną: Biurko 20/20” → „Ostrzelaj osłonę”: PT 20 (0–6 m, seria), Szczęście 3 → 23, 8 × 3 = 24 — biurko zniszczone, nadwyżka przepada. Mały trafia 16 (8 obr., OB 9 trzyma), drugi strzał pudło. R2: seria ze Szczęściem 3 → 33 obr. − OB 7 = Mały śmiertelnie ranny, rzut przeciw śmierci 9 > BC 5 — martwy.                                                                            |
+| łup i szafka  | Ciała Małego (x17,3/y6,8) nie da się przeszukać z żadnego wolnego pola (pkt 15) — MG przesuwa ciało na siatkę. „Wymiana” z ciałem → „Klucz: Szafka ochrony”. Szafka: „Otwórz kluczem” → pistolet maszynowy + 200 ed („Zabierz wszystko”, portfel 1500 ed).                                                                                                                                                                                                                   |
+| Sieć          | Karta gniazda „Iskra — 3,0 m” → Podłącz. Backdoor 11 vs 8, Kontrola monitoringu 12 (5 kamer: obrót, wyłącz; podgląd gabinetu pokazuje Kucharza), Kontrola zabezpieczeń 11. Wieżyczka „Strzelaj” w Kucharza: 20 vs PT 13, 2k6 = 9 vs OB 11 — nic. „Otwórz” zamek gabinetu działa. Ruch podłączonej postaci: czytelna odmowa „najpierw odłącz się”.                                                                                                                            |
+| gabinet       | Odłączenie („obrona Architektury wraca do stanu wyjściowego”). Iskra nie wychodzi z biura przez otwarte drzwi (pkt 16) — MG stawia ją na korytarzu. Pod drzwiami gabinetu „Przed walką” z Kucharzem; MG dokłada wieżyczkę (po odłączeniu znów wroga). Na polecenie MG Iskra wraca do konsoli (Bieg) i MG wyłącza tryb turowy.                                                                                                                                                |
 | wieżyczka     | Ponowne podłączenie bez Backdooru (hasło pamięta złamanie, węzły dalej „przejęte”). Strzał poza walką: krytyk 6+6 → 1 + 5 premii, „Odcięta noga”, ale **walka się nie włącza** (pkt 19). MG zakłada starcie Kucharz–Iskra. Rundy 1–7: wieżyczka raz na rundę, każdy strzał krytykiem ze skryptu (−7, −8, −9, −10; rany: naderwany mięsień, strzaskane palce, uraz kręgosłupa, ciało obce), Kucharz śmiertelnie ranny w R5, rzut przeciw śmierci: naturalna 10 → martwy w R7. |
 
 **Stan w punkcie `po-zamknieciu-przebieg2`:** Kucharz, Mały i Bury martwi, Iskra 40/40 przy

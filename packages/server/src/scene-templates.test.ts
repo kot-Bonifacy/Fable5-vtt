@@ -657,9 +657,9 @@ describe('etap 66e: „Po zamknięciu” — światła, zamki, strefa w Sieci, p
     const scene = await built.prisma.scene.findUniqueOrThrow({ where: { id: sceneId } });
     expect(scene).toMatchObject({ dark: true, darkSightM: 4, playerMove: 'explore' });
 
-    // Ściany 1:1 ze sceny MG: 32 ściany, 11 drzwi, okno, 2 bramy; cztery zamki.
+    // Ściany ze sceny MG (32 ściany, 11 drzwi, okno, 2 bramy) + drzwi z kuchni na salę; cztery zamki.
     const walls = await built.prisma.wall.findMany({ where: { sceneId } });
-    expect(walls).toHaveLength(46);
+    expect(walls).toHaveLength(47);
     const locked = walls.filter((wall) => wall.locked);
     expect(locked).toHaveLength(4);
     expect(locked.map((wall) => (JSON.parse(wall.lockRule!) as { dv: number }).dv).sort()).toEqual([

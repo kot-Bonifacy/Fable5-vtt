@@ -730,7 +730,7 @@
       "points": [
         [
           15,
-          15
+          17
         ],
         [
           15,
@@ -962,6 +962,20 @@
         [
           26,
           10
+        ]
+      ],
+      "playerToggle": true
+    },
+    {
+      "kind": "door",
+      "points": [
+        [
+          15,
+          15
+        ],
+        [
+          15,
+          17
         ]
       ],
       "playerToggle": true

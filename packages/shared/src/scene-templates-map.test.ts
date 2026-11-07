@@ -333,16 +333,16 @@ describe('wzorce map w data/public/scenes (etap 66b)', () => {
     expect(template.accessPoints.every((point) => point.net === 'fabryka')).toBe(true);
   });
 
-  it('po zamknięciu: 46 odcinków 1:1, zamki, ukryte kamery, strefa i szafka w Sieci', () => {
+  it('po zamknięciu: 47 odcinków (46 ze sceny MG + drzwi z kuchni na salę), zamki, ukryte kamery, strefa i szafka w Sieci', () => {
     const raw: unknown = JSON.parse(
       readFileSync(join(root, 'po-zamknieciu', 'scene.json'), 'utf8'),
     );
     const template = readSceneTemplate(raw, 'po-zamknieciu')!;
     expect(template).not.toBeNull();
     expect(template.scene).toMatchObject({ dark: true, darkSightM: 4, playerMove: 'explore' });
-    expect(template.walls).toHaveLength(46);
+    expect(template.walls).toHaveLength(47);
     const count = (kind: string) => template.walls.filter((wall) => wall.kind === kind).length;
-    expect([count('wall'), count('door'), count('window'), count('gate')]).toEqual([32, 11, 1, 2]);
+    expect([count('wall'), count('door'), count('window'), count('gate')]).toEqual([32, 12, 1, 2]);
     const locked = template.walls.filter((wall) => wall.locked);
     expect(locked.map((wall) => cpredTemplateLockRule(wall.lockRule).dv).sort()).toEqual([
       13, 13, 15, 17,
