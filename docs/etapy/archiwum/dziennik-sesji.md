@@ -1,5 +1,25 @@
 # Dziennik sesji — archiwum
 
+### Sesja 06.11, szósta — zaległości (decyzje MG)
+
+**Zlecenie MG:** „wykonaj zaległości”. **Decyzje MG (jedna runda pytań):** jeden taran na turę
+(zasada ogólna w kodzie), kadr gracza w pościgu bez zmian, spóźniony rzut inicjatywy w rundzie 1
+gra zaraz po bieżącej turze, wdrożenie robi MG. **Zrobione:** `CpredTurnState.rammed`
++ `TurnBudgetView.onceUsed` (`RAM_USED`, pasek „Zderzenie” bez „Taranuj”), `lateRoundOneTurn`
+w `stepTurn` (pierwsza wersja dała Demonowi drugą turę — tylko figury), **bez pytania** udany
+Gwałtowny skręt z menu omija przeszkodę przed zderzakiem (`passObstacleAhead`; notatka R2
+„Zastawu”). Migotania to błędy testów: `surgery.test.ts` (kolektor czytany przed kartą z innego
+gniazda), `chase-combat.test.ts` (Krytyczna Porażka przy −8), T4b 4.8 (nieskryptowany
+automatyczny Unik Rzeźnika — nie ukryta Percepcja, jak sądzono 03.11). Nowy stały E2E
+`48-poscig/t65-kreator`, `t65-przeszkody` dostosowany do decyzji z 04–05.11. **Otwarte:** Esc na
+kubku MG (najpewniej okno Celowania), auto cywilne w R2 „Zastawu” do oceny przy stole.
+**Testy:** **2976** `shared`, **1757** serwer, **471** klient; `tsc`, ESLint, Prettier czyste
+w zmienionych plikach; E2E `48-poscig` 8/8, T4b od `po-T4a` 3 × 20/20 (wcześniej 2 × 20/20
+i pudło 4.8). **Oglądane w Firefoksie** (gracz, tymczasowy spec E2E, skasowany): Iskra ze
+spóźnionym 15 gra w rundzie 1 zaraz po Gangerze, pasek po taranie z jednym przyciskiem; kreator
+pościgu w Firefoksie u MG (stały spec). Aktualizacja walki dochodzi po animacji kości taranu
+(`deferView`) — przeciągnięcie w tym czasie dostaje odmowę serwera zamiast okrojonego paska.
+
 ### Sesja 06.11, piąta — etap 66d: „Zastaw” rozegrany w przeglądarce
 
 **Zlecenie MG:** „rozegraj w przeglądarce `etap-66d-zastaw.md`”. Prowadzone jak 66c: błędy

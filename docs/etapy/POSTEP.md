@@ -21,13 +21,21 @@ w plikach obok — czytaj je **na żądanie, nigdy rutynowo**:
 
 | stan         | etapy                                                                                          |
 | ------------ | ---------------------------------------------------------------------------------------------- |
-| ⬜ otwarty   | **68** Warsztat: ulepszenia auta za ed i naprawa (🟨 zrobione 06.11, czeka na wdrożenie i oględziny MG przy stole); **67** Zakup pojazdu (🟨 zrobione 06.11, czeka na wdrożenie i oględziny MG przy stole); **66d** Scena przykładowa „Zastaw” (🟨 wzorzec zrobiony i rozegrany w przeglądarce 06.11; od 06.11 jeden taran na turę (decyzja MG); czeka na stół MG i wdrożenie); **66** Sceny przykładowe (🟨 zrobione 31.10, czeka na oględziny MG przy stole i wdrożenie; **66b** „Fabryka dronów” 🟨 zrobione 31.10, tak samo (netrunner obejrzany w przeglądarce 07.11, poprawki czekają na wdrożenie); **66c** „Ostatni zjazd” 🟨 wzorzec zrobiony, rozegrany w przeglądarce 04.11 i ponownie 05.11 po rebalansie (porażka o włos, balans zatwierdzony przez MG) — zaległości z przebiegów zamknięte 05.11 poza Esc na kubku MG — czeka na stół MG i wdrożenie); **65** Scena pościgu i walka pojazdów (🟨 65a–65e ✅ 30–31.10, czeka na oględziny MG przy stole); **62** Sieć ze sceny (🟨 zrobione, czeka na oględziny MG na VPS po wdrożeniu); **61** Skradanie się (🟨 zrobione, czeka na słowo MG o rozstrzygnięciach); **28** Wdrożenie na VPS (🟨 działa na `https://vtt.tatanga.eu` z botami od 18.10; zostały off-site, utwardzenie, monitoring); **43b**, **43c** (UI walki); **60** Czytelny czat (zlecenie MG z 24.10; 🟨 60a–60c ✅, czeka na oględziny MG z pierwszego kryterium); T10; refaktoryzacja odłożona (MG 18.10) |
+| ⬜ otwarty   | **68** Warsztat: ulepszenia auta za ed i naprawa (🟨 zrobione 06.11, czeka na wdrożenie i oględziny MG przy stole); **67** Zakup pojazdu (🟨 zrobione 06.11, czeka na wdrożenie i oględziny MG przy stole); **66d** Scena przykładowa „Zastaw” (🟨 wzorzec zrobiony i rozegrany w przeglądarce 06.11; od 06.11 jeden taran na turę (decyzja MG); czeka na stół MG i wdrożenie); **66** Sceny przykładowe (🟨 zrobione 31.10, czeka na oględziny MG przy stole i wdrożenie; **66b** „Fabryka dronów” 🟨 zrobione 31.10, tak samo (netrunner obejrzany w przeglądarce 07.11, poprawki czekają na wdrożenie); **66c** „Ostatni zjazd” 🟨 wzorzec zrobiony, rozegrany w przeglądarce 04.11 i ponownie 05.11 po rebalansie (porażka o włos, balans zatwierdzony przez MG) — zaległości z przebiegów zamknięte 05.11, Esc na kubku MG 07.11 — czeka na stół MG i wdrożenie); **65** Scena pościgu i walka pojazdów (🟨 65a–65e ✅ 30–31.10, czeka na oględziny MG przy stole); **62** Sieć ze sceny (🟨 zrobione, czeka na oględziny MG na VPS po wdrożeniu); **61** Skradanie się (🟨 zrobione, czeka na słowo MG o rozstrzygnięciach); **28** Wdrożenie na VPS (🟨 działa na `https://vtt.tatanga.eu` z botami od 18.10; zostały off-site, utwardzenie, monitoring); **43b**, **43c** (UI walki); **60** Czytelny czat (zlecenie MG z 24.10; 🟨 60a–60c ✅, czeka na oględziny MG z pierwszego kryterium); T10; refaktoryzacja odłożona (MG 18.10) |
 | ✅ ukończone | 01–11, 13–20b, 23a–27f, 27h–27l, 29a–30d, 31–35, 37–42c, 43a, 44a–44d, 45, 46a1, 46a2, 46c1, 46c2, 46b1, 46b2, 47a, 47b, 48a, 48b, 48c, 49a, 49b, 50a, 50b, 50c, 51, 52, 53, 54, 55, 56, 57 (57a–57c), 58 (58a–58d), 59 (59a–59c), 63 (63a–63b; 63c wycofane 29.10), 64 (64a–64c) (ostatni zamknięty: 64, 2026-10-30) |
 | ⛔ wycofane  | 12, 21, 22 (głos), 27g (wydajność), 36 (makra); 27, 29, 30, 38 rozdzielone na etapy literowane |
 
 Pełna tabela z nazwami i datami: `archiwum/tabela-etapow.md`.
 
 ## Od czego zacząć
+
+**Zaległości 07.11 („wykonaj zaległości”) — czekają na wdrożenie (bez migracji).** Klik MG
+w jezdnię przy NPC-u w fotelu wyprowadzał go z auta (poprawka z 04.11 działała tylko u gracza):
+od 07.11 z fotela wysadza wyłącznie przeciągnięcie (`dragged`), a marsz MG figurą w fotelu
+dostaje odmowę „przeciągnij ją na jezdnię”. Okienko „Prośba o Test” w kolejce decyzji MG nie
+pokazuje już konta gracza. Oględziny pościgu (stojące auto NPC-a, słaby kierowca z Nitro, okno
+ulepszeń, kolczatka, prawy klik gracza) i poczekalni zamknięte w Firefoksie; umowa na górze
+`mapa`, pułapki na górze `ogledziny`, wpis w `archiwum/zamkniete-zaleglosci.md`.
 
 **Oględziny netrunnera w „Fabryce dronów” (zlecenie MG z 07.11) — czekają na wdrożenie (bez
 migracji).** Przejęta kamera widzi w ciemności na swój zasięg, tylko dla netrunnera (decyzja MG);
@@ -91,8 +99,8 @@ gracz zmienia mu nazwę, nie wygląd. Sprzedaży nie ma (MG). Motocykl bez włas
 (bez migracji) i oględziny przy stole.** Ręka MG jest darmowa (przeciągnięcie, także wysiadka,
 nie zjada metrów; marsz klikiem płaci), MG ma „Ucieka” w menu auta, auta mijają się o włos na
 sąsiednich pasach, wrak za autem nie ląduje na aucie z tyłu, czat pisze „Zamiana broni”,
-strzelba przy tarczy zostaje na pasku HUD wygaszona. Decyzje w `decyzje-i-uproszczenia.md`,
-otwarta resztka (Esc na kubku MG) w `zaleglosci.md`.
+strzelba przy tarczy zostaje na pasku HUD wygaszona. Decyzje w `decyzje-i-uproszczenia.md`;
+Esc na kubku MG zamknięte 07.11 (drabinka Esc: pierwsze zamyka okno Celowania).
 
 **„Neonowa ulica” — piąta wbudowana droga i nowe tło „Ostatniego zjazdu” (zlecenie MG z 05.11) —
 czeka na wdrożenie i oględziny przy stole.** Trzy mapy ulic MG sklejone w jedną pętlę ok. 238 kratek
@@ -713,7 +721,7 @@ a nie do tego pliku.
 
 | obszar      | co obejmuje                                                    | umów | pułapek |
 | ----------- | -------------------------------------------------------------- | ---- | ------- |
-| `mapa`      | figury, zaznaczanie, narzędzia, obiekty sceny, ściany, efekty, zamek drzwi, ukryta figura zauważona, ikony urządzeń, wspólny widok drużyny, scena pościgu, jazda kierowcy i dryf, Manewr i taranowanie, przeszkody pościgu, sceny przykładowe, wzorzec zwykłej mapy, ulepszenia pojazdu, stojące auto na drodze, kreator pościgu i wbudowane drogi, załoga auta poza pościgiem, rama pościgu i pęd auta bez kierowcy, długa pętla drogi, ucieczka auta ręką MG, otarcie brył, wrak za autem, podpis w fotelu, furgon z wyglądu (`van-6`), przesadzanie foteli przy starcie, skręt z menu przed przeszkodą | 92   | 27      |
+| `mapa`      | figury, zaznaczanie, narzędzia, obiekty sceny, ściany, efekty, zamek drzwi, ukryta figura zauważona, ikony urządzeń, wspólny widok drużyny, scena pościgu, jazda kierowcy i dryf, Manewr i taranowanie, przeszkody pościgu, sceny przykładowe, wzorzec zwykłej mapy, ulepszenia pojazdu, stojące auto na drodze, kreator pościgu i wbudowane drogi, załoga auta poza pościgiem, rama pościgu i pęd auta bez kierowcy, długa pętla drogi, ucieczka auta ręką MG, otarcie brył, wrak za autem, podpis w fotelu, furgon z wyglądu (`van-6`), przesadzanie foteli przy starcie, skręt z menu przed przeszkodą, wysiadka tylko przeciągnięciem | 93   | 27      |
 | `czat`      | rodzaje wierszy, `visibleTo`, filtr, `seq`, `gmrecovery`, „to dotyczy mnie”, grupy kart, kolor gracza, czyszczenie, gęsta karta rzutu, przebieg ataku, `/jako` za NPC-a, karta rzutu bez konta | 17   | 3       |
 | `serwer`    | Prisma i migracje, zdarzenia gniazda, zapisy karty, uploady    | 26   | 21      |
 | `ui`        | okna pływające, `z-index`, motyw, skróty, dostępność, wejście, panel decyzji MG, rezerwa panelu przy liczniku Szczęścia | 39   | 15      |
@@ -729,13 +737,32 @@ a nie do tego pliku.
 | `boty`      | llama-server, RAG, reindeks, dziennik i baza wiedzy, brama AI  | 10   | 10      |
 | `dane`      | `parse-manual.py`, kompendium poza repo, tabele z podręcznika  | 9    | 12      |
 | `kopie`     | `snapshot`, `archive`, paczki ZIP, wczytanie kampanii, „czeka na gracza”, kopie kampanii i cofnięcie, sklep i bot w paczce, zgłoszenie karty gracza, pojazdy w paczce, auta na scenie pościgu, przeszkody poza paczką | 22   | 6       |
-| `ogledziny` | CDP i Playwright MCP, zrzuty, dwie sesje, `window.confirm`    | 0    | 119     |
+| `ogledziny` | CDP i Playwright MCP, zrzuty, dwie sesje, `window.confirm`    | 0    | 121     |
 | `testy`     | vitest, migotanie, `tsc --noEmit`, środowisko dev              | 0    | 160     |
 
 
 ## Notatki z dwóch ostatnich sesji
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
+
+### Sesja 07.11, druga — zaległości
+
+**Zlecenie MG:** „wykonaj zaległości”. Bez pytań do MG — wzięte to, co da się zamknąć bez stołu,
+gatewaya i wdrożenia (wdrożenie robi MG, decyzja z 06.11). **Znalezione i poprawione:** klik MG
+w jezdnię przy NPC-u w fotelu wyprowadzał go z auta przy stojącej kamerze (marsz MG nie pyta
+`token:walk`, a lądowanie ręki MG bez `dragged` wysadzało) — `performTokenMove` wymaga `dragged`,
+`startWalk` pyta serwer o trasę figury w fotelu także u MG; okienko „Prośba o Test” w kolejce
+decyzji MG zaczynało się kontem gracza — zostało podsumowanie od postaci, konto w podpowiedzi.
+**Zamknięte bez zmian w kodzie:** Esc na kubku MG (zamierzona drabinka — pierwsze Esc zamyka okno
+Celowania; nie odtwarzane ponownie), ostrzeżenie „Brak broni w katalogu” (cztery bronie
+pokładowe są w `weapons-base.json` lokalnie i na VPS). **Otwarte:** gniazdo w „Fabryce dronów”
+i dymek „Cel za przeszkodą” (07.11), wrak przed zderzakiem tylko w testach, „Zamiana broni”
+i broń przy tarczy, Rana z taranowania i reszta 65d2, uzależnienia (59b/59c), rozjazd T7b,
+paczka AI. **Testy:** **1760** serwer, **471** klient (`shared` bez zmian — 2979 z 07.11);
+`tsc` klienta i serwera, ESLint, Prettier czyste w zmienionych plikach; E2E
+`48-poscig/t65-przeszkody` 4/4 (dwa nowe kroki). **Oglądane:** tymczasowe specy E2E (skasowane) —
+pościg: MG w Chromium, Ola w **Firefoksie** (6/6); prośba o Test i poczekalnia: MG w Chromium,
+Marek w **Firefoksie** (2/2); obie poprawki klienta ponownie z MG w **Firefoksie** (3/3).
 
 ### Sesja 07.11 — oględziny netrunnera w „Fabryce dronów” (66b)
 
@@ -759,23 +786,3 @@ MG w Chromium (spec `99-ogledziny/t99-fabryka-netrunner`, 13/13, nie w repo): ma
 klamka, Skaner, podłączenie, Backdoor, kamery (14 figur przez stożki po zmianie), Kruk zniszczony
 Szablozębem, Wyłącz Pająka 2, strzał Szerszenia patrolowego w G3 (15 → 4 PW, obrażenia z kubka
 Oli), Sowa wyłączona, G1 obudzony; kanarki czyste.
-
-### Sesja 06.11, szósta — zaległości (decyzje MG)
-
-**Zlecenie MG:** „wykonaj zaległości”. **Decyzje MG (jedna runda pytań):** jeden taran na turę
-(zasada ogólna w kodzie), kadr gracza w pościgu bez zmian, spóźniony rzut inicjatywy w rundzie 1
-gra zaraz po bieżącej turze, wdrożenie robi MG. **Zrobione:** `CpredTurnState.rammed`
-+ `TurnBudgetView.onceUsed` (`RAM_USED`, pasek „Zderzenie” bez „Taranuj”), `lateRoundOneTurn`
-w `stepTurn` (pierwsza wersja dała Demonowi drugą turę — tylko figury), **bez pytania** udany
-Gwałtowny skręt z menu omija przeszkodę przed zderzakiem (`passObstacleAhead`; notatka R2
-„Zastawu”). Migotania to błędy testów: `surgery.test.ts` (kolektor czytany przed kartą z innego
-gniazda), `chase-combat.test.ts` (Krytyczna Porażka przy −8), T4b 4.8 (nieskryptowany
-automatyczny Unik Rzeźnika — nie ukryta Percepcja, jak sądzono 03.11). Nowy stały E2E
-`48-poscig/t65-kreator`, `t65-przeszkody` dostosowany do decyzji z 04–05.11. **Otwarte:** Esc na
-kubku MG (najpewniej okno Celowania), auto cywilne w R2 „Zastawu” do oceny przy stole.
-**Testy:** **2976** `shared`, **1757** serwer, **471** klient; `tsc`, ESLint, Prettier czyste
-w zmienionych plikach; E2E `48-poscig` 8/8, T4b od `po-T4a` 3 × 20/20 (wcześniej 2 × 20/20
-i pudło 4.8). **Oglądane w Firefoksie** (gracz, tymczasowy spec E2E, skasowany): Iskra ze
-spóźnionym 15 gra w rundzie 1 zaraz po Gangerze, pasek po taranie z jednym przyciskiem; kreator
-pościgu w Firefoksie u MG (stały spec). Aktualizacja walki dochodzi po animacji kości taranu
-(`deferView`) — przeciągnięcie w tym czasie dostaje odmowę serwera zamiast okrojonego paska.

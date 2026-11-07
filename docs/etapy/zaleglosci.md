@@ -34,31 +34,6 @@ tarczy na pasku HUD (tylko testy), darmowa ręka MG w turze figury (test serwera
 o włos i wrak za autem z autem z tyłu (testy `shared`). Przy stole: wysiadka NPC-a ręką MG w jego
 turze nie zjada metrów, a marsz klikiem dalej płaci.
 
-**04.11.2026 (piąta sesja) — oględziny w przeglądarce zmian pościgu i czatu.** Zmiany
-sprawdzone tylko testami (serwer, klient) i buildem, bez przeglądarki. Przy stole (Firefox):
-pieszy z bronią w ręku klikiem w wolny fotel Wozu wsiada, a klikiem w kadłub strzela; prawy
-klik w auto (MG i gracz) otwiera menu auta; klik MG w jezdnię przy NPC-u w fotelu daje odmowę
-„przeciągnij ją na jezdnię”; kolczatka i przeszkoda znikają po pierwszym aucie; Barykada —
-podpowiedź „beton” w palecie, menu i pasku kierowcy, taran = wrak; prośba o Test u MG podaje
-postać (konto w podpowiedzi). Lista obecności gracza w poczekalni odświeża się na żywo.
-**05.11 (ponowny przebieg 66c, Firefox):** potwierdzone — pieszy z bronią w ręku wsiada klikiem w
-wolny fotel (Rdza z pistoletem, Kosa z karabinem), prawy klik MG w auto otwiera menu, podpowiedzi
-palety (Barykada „beton… wrak… zostaje na drodze”, kolczatka „potem znika”), auto bez kontroli
-w barykadzie = wrak, a barykada zostaje. **Zostało:** kolczatka po pierwszym aucie (nikt na nią
-nie wjechał), prawy klik gracza, prośba o Test, lista obecności w poczekalni, odmowa marszu MG
-z fotela (Szron wysiadł z eskorty po kliku w trakcie ruchu kamery — pewnie przeciągnięcie, nie
-marsz; do powtórki przy stojącej kamerze).
-
-**04.11.2026 — drobiazgi z przebiegu 66c (UI pościgu i czatu).** Zamknięte 05.11 (czwarta
-sesja) i 06.11 (szósta — kamera gracza, decyzja MG: zostaje), `archiwum/zamkniete-zaleglosci.md`,
-poza jednym:
-
-- Esc z fokusem na kubku MG raz odłożył atak, dwa razy nie (Playwright). W kodzie przyczyny nie
-  widać — wszystkie Esc kubka słuchają na `window` (`DiceCup.tsx`); do odtworzenia w przeglądarce.
-  06.11 (szósta sesja): najpewniej okno Celowania — `AimMenu` łapie `keydown` w fazie capture
-  i robi `stopPropagation`, więc pierwsze Esc zamyka tylko Celowanie (pułapka z 24.10 w `testy`).
-  Próba w Firefoksie nie załadowała ataku (klik w auto z fotela kierowcy otwiera menu auta).
-
 **06.11.2026 — „Zastaw” (66d): stół MG i wdrożenie.** Rozegrany 06.11 (piąta sesja): pościg
 skończył się w rundzie 3 przez trzy tarany w jednej turze — od 06.11 (szósta sesja, decyzja MG)
 jeden taran na turę, wpis w archiwum. Zostaje do oceny przy stole propozycja 2 z „Wniosków
@@ -83,21 +58,15 @@ własną mapę”, przeciągnięcie obu krawędzi pasa w kroku „Droga”, „N
 (nie lądują na sobie), „Pełna edycja sceny…” otwiera zakładkę „Pościg”. Na VPS pliki
 `/art/roads/*.webp` jadą w obrazie klienta (bez migracji).
 
-**03.11.2026 — przegląd mechanik pościgu: oględziny w przeglądarce i wdrożenie (migracja
-`20261103210000_chase_vehicle_blocking`).** Z kontenera nie oglądane (brak punktu `po-T6`, mapy
-wiaduktu z `C:\AI\materialy` i Firefoksa; Playwright MCP niepodłączony); E2E
-`48-poscig/t65-przeszkody` zielony od 06.11 (szósta sesja). Przy stole (Firefox): zgaś silnik
-auta NPC-a przed autem gracza w tym samym pasie — w następnej rundzie gracz dostaje pasek „Na
-drodze: … (stoi na drodze)” z „Gwałtowny skręt / Taranuj”, a po wyborze auto NPC-a stoi za
-tylnym zderzakiem; to samo z wrakiem (PUK 0) i menu MG „Za kierowcę: …” na stojącym aucie. Słaby kierowca (REF + Prowadzenie ≤ 9): Nitro, potem jazda — karta „Zwykła jazda”
-raz, auto jedzie podwójny budżet.
+**03.11.2026 — przegląd mechanik pościgu: wdrożenie (migracja
+`20261103210000_chase_vehicle_blocking`) i resztka oględzin.** Stojące auto NPC-a przed autem
+gracza, „Za kierowcę” w menu MG i słaby kierowca z Nitro obejrzane 07.11 (Ola w Firefoksie,
+wpis w archiwum). **Nie widziane w przeglądarce:** wrak (PUK 0) dryfujący przed zderzak — sprawdza
+go `chase-review.test.ts`.
 
-**03.11.2026 — przegląd ulepszeń pojazdów: oględziny w przeglądarce i wdrożenie.** Z kontenera
-nie oglądane (brak punktu `po-T6`, Playwright MCP niepodłączony). Przy stole (Firefox):
-w oknie pojazdu „Zamontuj” Wzmocnioną konstrukcję — „PUK teraz” rośnie o 20; Ulepszenie foteli
-— po zapisie auto na scenie pościgu ma 6 foteli; menu auta MG po zrzucie kolczatki albo Nitro
-pokazuje „Uzupełnij Nitro i kolczatki”; czy przy którejś broni pokładowej stoi ostrzeżenie
-„Brak broni w katalogu” (jeśli tak — id wpisu do poprawy w `CPRED_VEHICLE_MOUNTS`). Bez migracji.
+**03.11.2026 — przegląd ulepszeń pojazdów: wdrożenie (bez migracji).** Oględziny zamknięte 07.11
+(okno pojazdu MG, „Uzupełnij Nitro i kolczatki”, broń pokładowa w katalogu lokalnie i na VPS —
+wpis w archiwum).
 
 **31.10.2026 — etap 65e „Przeszkody i ruch uliczny”: oględziny MG i wdrożenie.** Oglądane na
 instancji E2E (spec `99-ogledziny/t99-przeszkody`, skasowany): MG w Chromium, Ola w **Firefoksie**
