@@ -260,6 +260,18 @@ przestanie się bronić, przenieś ją stąd do `POMYSLY.md` jako zadanie — ni
 
 ## Sieć i walka — czytanie RAW
 
+- **Przejęta kamera widzi w ciemności (07.11.2026, decyzja MG po oględzinach „Fabryki dronów”).**
+  Podręcznik o widoczności przez kamery milczy. W ciemnej hali stożek kamery pokazywał czerń:
+  pożyczony wzrok widział tylko miejsca oświetlone, więc podgląd nic nie dawał, a przejęte drony
+  nie miały w co strzelać (cel wybiera się spośród figur, które widzi gracz). Teraz stożek
+  przejętej kamery widzi na jej zasięg (`visionRange`) także w ciemności, tylko dla netrunnera,
+  który trzyma węzeł. Kamera dalej nie świeci nikomu innemu, nie otwiera drzwi, nie planuje
+  marszu, nie zasila pamięci mapy i nie zakłada walki z zauważenia.
+- **Strzał z urządzenia, któremu odmówi ścieżka ataku, nie kosztuje Akcji Sieciowej (07.11.2026,
+  bez pytania).** Brak linii strzału, cel poza zasięgiem, pusty magazynek: strzelec przy mapie
+  dostaje taką odmowę za darmo, a netrunner nie ma podglądu geometrii. Wyjątek bez zmian: osłona
+  na linii strzału (`NET_SHOT_COVERED`) jest płatnym pytaniem, jak od 26d.
+
 - **Podłączona figura stoi (02.11.2026, zasada domowa MG).** Podręcznik pozwala chodzić
   w promieniu 6 m od punktu dostępu, a wyjście dalej odłącza awaryjnie (s. 198). Gracz zgłosił,
   że „hakowanie się wyłączyło przy włączeniu trybu turowego” — najpewniej przypadkiem ruszył

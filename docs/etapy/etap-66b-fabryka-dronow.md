@@ -99,3 +99,42 @@ etap 66b (rozszerzenie formatu + wzorzec).
   mocno.
 - Położenie ścian kontenerów i drzwi sterowni na żywej mapie (nakładka zgadza się z grafiką
   z dokładnością do kilku pikseli).
+
+## Oględziny netrunnera (07.11, zlecenie MG)
+
+MG: „przeprowadź testy przeglądarkowe dla postaci netrunnera — podłączenie do sieci fabryki przez
+konsolę sterowni, podgląd z kamer i przejęcie kontroli nad dronami; sprawdź scenę i mechaniki”.
+**Decyzje MG z pytań:** instancja E2E od `po-T6`, Iskra z mocniejszym dekiem (Interfejs 6, dek
+doskonałej jakości, Szabloząb; w `po-T6` jest Medtechem, na czas testu wróciła na Netrunnera),
+całość na skrypcie kości, MG + Iskra z walką przy strzałach, „przejęcie” = Włącz / Wyłącz /
+Strzelaj. Spec `99-ogledziny/t99-fabryka-netrunner` (nie w repo): MG w Chromium, Ola w **Firefoksie**,
+13/13 kroków.
+
+**Scena:** dodaje się z „Przykładowych” bez braków (82 ściany, 10 osłon, 19 figur, 4 notatki,
+5 ukrytych gniazd przy Architekturze, 11 uśpionych, drzazga u Sowy). Gniazdo konsoli leży na
+grafice konsoli, drzwi sterowni z klamką gracza, Skaner (14 m) znajduje konsolę ze środka
+sterowni, kanarki (nazwa Architektury, etykiety pięter, notatki MG) nie dochodzą do gracza.
+**Mechanika:** Backdoor, Kontrola trzech węzłów, Czarny LOD (wykrycie MG, Szabloząb niszczy
+Kruka), Wyłącz/Włącz drona, obrót kamery, kadr na kamerę, Plik, drugie hasło, Sowa wyłączona,
+G1 obudzony — działa.
+
+**Znalezione i poprawione 07.11:**
+
+1. **Kamery w ciemnej hali były ślepe** — pożyczony wzrok widział tylko światło, a hala nie ma
+   lamp. Decyzja MG: przejęta kamera widzi w ciemności na swój zasięg (umowa `siec`, decyzja
+   w `decyzje-i-uproszczenia.md`). Po zmianie Iskra widzi przez kamery 14 figur.
+2. **Strzał przejętym dronem kończył się `UNKNOWN_WEAPON`** — strzelało się tylko wierszem
+   statysty, a drony wzorca mają pełne karty NPC-ów. Teraz bronią w rękach karty.
+3. **Odmowa strzału (brak linii strzału) zjadała Akcję Sieciową** — teraz zwrot (bez pytania).
+4. **Okno Sieci pokazywało surowe kody ataku** („Nie udało się: NO_LINE_OF_FIRE.”) — teraz
+   zdania z `CPRED_ATTACK_PROBLEM_MESSAGES`.
+5. **Odmowa przy drzwiach mówiła „na jedną kratkę”**, a na siatce 2 m pole obok drzwi jest już za
+   daleko — teraz „ręka sięga 2 m od środka postaci”.
+6. **Notatka „Zanim zaczniecie” obiecywała, że figury graczy staną przy bramie** — aktywacja
+   stawia tylko figurę świeżo utworzonej postaci; notatka mówi teraz o przeciągnięciu z „Postaci”
+   i o latarce z ekwipunku.
+
+**Do oceny MG przy stole (bez zmian):** lista „Urządzenia w tej Sieci” pokazuje od podłączenia
+nazwy wszystkich 19 urządzeń, także Sowy i uśpionych dronów (reguła etapu 62); lampa w hali jest
+widoczna z bramy wzdłuż środkowej alejki (taśmociąg nie zasłania) i zakłada walkę z zauważenia;
+wyłączony dron nie ma znacznika na mapie. Otwarte resztki — `zaleglosci.md` (07.11).

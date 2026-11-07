@@ -21,13 +21,20 @@ w plikach obok — czytaj je **na żądanie, nigdy rutynowo**:
 
 | stan         | etapy                                                                                          |
 | ------------ | ---------------------------------------------------------------------------------------------- |
-| ⬜ otwarty   | **68** Warsztat: ulepszenia auta za ed i naprawa (🟨 zrobione 06.11, czeka na wdrożenie i oględziny MG przy stole); **67** Zakup pojazdu (🟨 zrobione 06.11, czeka na wdrożenie i oględziny MG przy stole); **66d** Scena przykładowa „Zastaw” (🟨 wzorzec zrobiony i rozegrany w przeglądarce 06.11; od 06.11 jeden taran na turę (decyzja MG); czeka na stół MG i wdrożenie); **66** Sceny przykładowe (🟨 zrobione 31.10, czeka na oględziny MG przy stole i wdrożenie; **66b** „Fabryka dronów” 🟨 zrobione 31.10, tak samo; **66c** „Ostatni zjazd” 🟨 wzorzec zrobiony, rozegrany w przeglądarce 04.11 i ponownie 05.11 po rebalansie (porażka o włos, balans zatwierdzony przez MG) — zaległości z przebiegów zamknięte 05.11 poza Esc na kubku MG — czeka na stół MG i wdrożenie); **65** Scena pościgu i walka pojazdów (🟨 65a–65e ✅ 30–31.10, czeka na oględziny MG przy stole); **62** Sieć ze sceny (🟨 zrobione, czeka na oględziny MG na VPS po wdrożeniu); **61** Skradanie się (🟨 zrobione, czeka na słowo MG o rozstrzygnięciach); **28** Wdrożenie na VPS (🟨 działa na `https://vtt.tatanga.eu` z botami od 18.10; zostały off-site, utwardzenie, monitoring); **43b**, **43c** (UI walki); **60** Czytelny czat (zlecenie MG z 24.10; 🟨 60a–60c ✅, czeka na oględziny MG z pierwszego kryterium); T10; refaktoryzacja odłożona (MG 18.10) |
+| ⬜ otwarty   | **68** Warsztat: ulepszenia auta za ed i naprawa (🟨 zrobione 06.11, czeka na wdrożenie i oględziny MG przy stole); **67** Zakup pojazdu (🟨 zrobione 06.11, czeka na wdrożenie i oględziny MG przy stole); **66d** Scena przykładowa „Zastaw” (🟨 wzorzec zrobiony i rozegrany w przeglądarce 06.11; od 06.11 jeden taran na turę (decyzja MG); czeka na stół MG i wdrożenie); **66** Sceny przykładowe (🟨 zrobione 31.10, czeka na oględziny MG przy stole i wdrożenie; **66b** „Fabryka dronów” 🟨 zrobione 31.10, tak samo (netrunner obejrzany w przeglądarce 07.11, poprawki czekają na wdrożenie); **66c** „Ostatni zjazd” 🟨 wzorzec zrobiony, rozegrany w przeglądarce 04.11 i ponownie 05.11 po rebalansie (porażka o włos, balans zatwierdzony przez MG) — zaległości z przebiegów zamknięte 05.11 poza Esc na kubku MG — czeka na stół MG i wdrożenie); **65** Scena pościgu i walka pojazdów (🟨 65a–65e ✅ 30–31.10, czeka na oględziny MG przy stole); **62** Sieć ze sceny (🟨 zrobione, czeka na oględziny MG na VPS po wdrożeniu); **61** Skradanie się (🟨 zrobione, czeka na słowo MG o rozstrzygnięciach); **28** Wdrożenie na VPS (🟨 działa na `https://vtt.tatanga.eu` z botami od 18.10; zostały off-site, utwardzenie, monitoring); **43b**, **43c** (UI walki); **60** Czytelny czat (zlecenie MG z 24.10; 🟨 60a–60c ✅, czeka na oględziny MG z pierwszego kryterium); T10; refaktoryzacja odłożona (MG 18.10) |
 | ✅ ukończone | 01–11, 13–20b, 23a–27f, 27h–27l, 29a–30d, 31–35, 37–42c, 43a, 44a–44d, 45, 46a1, 46a2, 46c1, 46c2, 46b1, 46b2, 47a, 47b, 48a, 48b, 48c, 49a, 49b, 50a, 50b, 50c, 51, 52, 53, 54, 55, 56, 57 (57a–57c), 58 (58a–58d), 59 (59a–59c), 63 (63a–63b; 63c wycofane 29.10), 64 (64a–64c) (ostatni zamknięty: 64, 2026-10-30) |
 | ⛔ wycofane  | 12, 21, 22 (głos), 27g (wydajność), 36 (makra); 27, 29, 30, 38 rozdzielone na etapy literowane |
 
 Pełna tabela z nazwami i datami: `archiwum/tabela-etapow.md`.
 
 ## Od czego zacząć
+
+**Oględziny netrunnera w „Fabryce dronów” (zlecenie MG z 07.11) — czekają na wdrożenie (bez
+migracji).** Przejęta kamera widzi w ciemności na swój zasięg, tylko dla netrunnera (decyzja MG);
+przejęty dron z pełną kartą NPC-a strzela bronią w rękach (wcześniej `UNKNOWN_WEAPON`); odmowa
+strzału z urządzenia zwraca Akcję Sieciową; okno Sieci i drzwi odmawiają po polsku; notatka
+wzorca mówi o przeciąganiu figur graczy. Umowa na górze `siec`, decyzje w
+`decyzje-i-uproszczenia.md`, resztki w `zaleglosci.md`, wyniki w `etap-66b-fabryka-dronow.md`.
 
 **Zaległości 06.11 (szósta sesja, decyzje MG) — czekają na wdrożenie (bez migracji) i stół.**
 **Jeden taran na turę kierowcy** w każdym pościgu (`RAM_USED`; pasek „Zderzenie” po taranie ma
@@ -718,17 +725,40 @@ a nie do tego pliku.
 | `postac`    | kreator, PD i awanse, koszyk i cofanie awansów, Role i Zdolności, cyborgizacje, chrom zmieniający liczby, ekonomia, Test montażu gracza, pojazdy i Tabor | 58   | 3       |
 | `ekwipunek` | wiersze wyposażenia, przekazanie, łup (także ciała graczy), handel, sklepy, asortyment handlarza z kompendium, zasięg, amunicja bez dna, egzoszkielet, latarka z ekwipunku, narkotyki i fiolki, siatka okna „Wymiana”, zgoda z góry, odświeżanie po naklejkach, znaczek „w użyciu”, zakup auta z modelu, warsztat (ulepszenia i naprawa auta), auto bokiem i „w garażu” | 47   | 3       |
 | `czas`      | zegar świata, kalendarz, `statEffects`, leczenie po dobie, dawki i uzależnienia (`chems`) | 19   | 2       |
-| `siec`      | Programy, LOD, demony, piętra architektury, dek jako towar, strefy bronione, kamery, rozbrajanie, Sieć ze sceny, jedna próba i pamięć sukcesów | 14   | 5       |
+| `siec`      | Programy, LOD, demony, piętra architektury, dek jako towar, strefy bronione, kamery (także w ciemności), rozbrajanie, Sieć ze sceny, jedna próba i pamięć sukcesów, strzał z urządzenia | 15   | 5       |
 | `boty`      | llama-server, RAG, reindeks, dziennik i baza wiedzy, brama AI  | 10   | 10      |
 | `dane`      | `parse-manual.py`, kompendium poza repo, tabele z podręcznika  | 9    | 12      |
 | `kopie`     | `snapshot`, `archive`, paczki ZIP, wczytanie kampanii, „czeka na gracza”, kopie kampanii i cofnięcie, sklep i bot w paczce, zgłoszenie karty gracza, pojazdy w paczce, auta na scenie pościgu, przeszkody poza paczką | 22   | 6       |
-| `ogledziny` | CDP i Playwright MCP, zrzuty, dwie sesje, `window.confirm`    | 0    | 118     |
-| `testy`     | vitest, migotanie, `tsc --noEmit`, środowisko dev              | 0    | 158     |
+| `ogledziny` | CDP i Playwright MCP, zrzuty, dwie sesje, `window.confirm`    | 0    | 119     |
+| `testy`     | vitest, migotanie, `tsc --noEmit`, środowisko dev              | 0    | 160     |
 
 
 ## Notatki z dwóch ostatnich sesji
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
+
+### Sesja 07.11 — oględziny netrunnera w „Fabryce dronów” (66b)
+
+**Zlecenie MG:** testy przeglądarkowe netrunnera w „Fabryce dronów”: podłączenie przez konsolę
+sterowni, podgląd kamer, przejęcie dronów — ocena sceny i mechaniki. **Decyzje MG (dwie rundy
+pytań):** instancja E2E od `po-T6`, Iskra z mocniejszym dekiem (Interfejs 6, dek doskonałej
+jakości, Szabloząb; w `po-T6` jest Medtechem — na test wróciła na Netrunnera), kości ze skryptu,
+MG + Iskra z walką przy strzałach, przejęcie = Włącz / Wyłącz / Strzelaj; po oględzinach —
+**przejęta kamera widzi w ciemności**, commit na bieżącej gałęzi. **Znalezione i poprawione:**
+kamery w ciemnej hali były ślepe (`LightSource.cone`, `borrowedDarkSightSources`,
+`ViewerSight.ownLighting` dla drzwi, planera i pamięci), strzał przejętym dronem dawał
+`UNKNOWN_WEAPON` (`deviceWeaponRowId`, `buildFigureSource` bierze wiersz z żądania), odmowa
+strzału zjadała Akcję Sieciową (zwrot `turnState`), okno Sieci pokazywało surowe kody ataku,
+odmowa przy drzwiach mówiła „na jedną kratkę” (na siatce 2 m pole obok jest za daleko), notatka
+wzorca obiecywała figury graczy przy bramie. **Otwarte:** klik w środek ikony gniazda dwa razy
+bez karty (6 px wyżej działa, przyczyna nieustalona), dymek „Cel za przeszkodą” niezłapany
+w przeglądarce — `zaleglosci.md` (07.11). Wyniki w `etap-66b-fabryka-dronow.md` („Oględziny
+netrunnera”). **Testy:** **2979** `shared`, **1760** serwer, **471** klient; `tsc` klienta
+i serwera, ESLint, Prettier czyste w zmienionych plikach. **Oglądane:** Ola/Iskra w **Firefoksie**,
+MG w Chromium (spec `99-ogledziny/t99-fabryka-netrunner`, 13/13, nie w repo): marsz po ciemku,
+klamka, Skaner, podłączenie, Backdoor, kamery (14 figur przez stożki po zmianie), Kruk zniszczony
+Szablozębem, Wyłącz Pająka 2, strzał Szerszenia patrolowego w G3 (15 → 4 PW, obrażenia z kubka
+Oli), Sowa wyłączona, G1 obudzony; kanarki czyste.
 
 ### Sesja 06.11, szósta — zaległości (decyzje MG)
 
@@ -749,22 +779,3 @@ i pudło 4.8). **Oglądane w Firefoksie** (gracz, tymczasowy spec E2E, skasowany
 spóźnionym 15 gra w rundzie 1 zaraz po Gangerze, pasek po taranie z jednym przyciskiem; kreator
 pościgu w Firefoksie u MG (stały spec). Aktualizacja walki dochodzi po animacji kości taranu
 (`deferView`) — przeciągnięcie w tym czasie dostaje odmowę serwera zamiast okrojonego paska.
-
-### Sesja 06.11, piąta — etap 66d: „Zastaw” rozegrany w przeglądarce
-
-**Zlecenie MG:** „rozegraj w przeglądarce `etap-66d-zastaw.md`”. Prowadzone jak 66c: błędy
-obchodzone ręką MG, gracze grają rozsądnie, notatki wzorca poprawiane od razu. **Stół:** `dev.db`
-(kopia `dev.db.bak-20261106-66d`), „Oględziny 12.09”, Rdza (kierowca) i Kosa z 66c wyleczone ręką
-MG. **Wynik:** sukces z kosztem — pościg 3 rundy, zatrzymanie 2. Nitro (10 m) i brak limitu
-taranów na turę dały trzy tarany Pługiem w jednej turze (furgon 45 → wrak); Śrubka dostał Ranę
-ze skryptowego auta cywilnego (oblany skręt Brzozy w R3). Hak trafił Rdzę 3/3 (45 → 19).
-**Do decyzji MG:** jeden taran na turę albo Wzmocniona konstrukcja furgonu, auto cywilne w R2 na
-pasie kombi. **Poprawione:** notatka ⚠️ (R2: przeszkodę rozstrzyga pasek po dryfie, nie skręt
-z menu; przesiadka Haka to darmowa ręka MG). **W trakcie, zgłoszenie MG („kierowca siedzi na
-masce”, „stare grafiki aut”):** stara scena 66c miała Wolta na starym fotelu `van-8` — położenie
-figury w fotelu zapisane w bazie przeliczał tylko ruch auta, a wrak stał. `reseatChasePassengers`
-przy starcie serwera (umowa na górze `mapa`, test w `chase.test.ts`); stare grafiki to stara
-scena — wzorzec nie zmienia scen już dodanych. Zaległości: start walki przed rzutami graczy,
-skręt z menu przy przeszkodzie. **Testy:** `chase.test.ts` 10/10, `scene-templates.test.ts` 8/8.
-**Oglądane:** MG w Chromium, Rdza i Kosa w **Firefoksie** (Playwright MCP), konsola 0 błędów.
-Pnpm dev MG stał bez serwera API (`tsx watch` nie słuchał na 3001) — serwer uruchomiony osobno.

@@ -1,5 +1,24 @@
 # Dziennik sesji — archiwum
 
+### Sesja 06.11, piąta — etap 66d: „Zastaw” rozegrany w przeglądarce
+
+**Zlecenie MG:** „rozegraj w przeglądarce `etap-66d-zastaw.md`”. Prowadzone jak 66c: błędy
+obchodzone ręką MG, gracze grają rozsądnie, notatki wzorca poprawiane od razu. **Stół:** `dev.db`
+(kopia `dev.db.bak-20261106-66d`), „Oględziny 12.09”, Rdza (kierowca) i Kosa z 66c wyleczone ręką
+MG. **Wynik:** sukces z kosztem — pościg 3 rundy, zatrzymanie 2. Nitro (10 m) i brak limitu
+taranów na turę dały trzy tarany Pługiem w jednej turze (furgon 45 → wrak); Śrubka dostał Ranę
+ze skryptowego auta cywilnego (oblany skręt Brzozy w R3). Hak trafił Rdzę 3/3 (45 → 19).
+**Do decyzji MG:** jeden taran na turę albo Wzmocniona konstrukcja furgonu, auto cywilne w R2 na
+pasie kombi. **Poprawione:** notatka ⚠️ (R2: przeszkodę rozstrzyga pasek po dryfie, nie skręt
+z menu; przesiadka Haka to darmowa ręka MG). **W trakcie, zgłoszenie MG („kierowca siedzi na
+masce”, „stare grafiki aut”):** stara scena 66c miała Wolta na starym fotelu `van-8` — położenie
+figury w fotelu zapisane w bazie przeliczał tylko ruch auta, a wrak stał. `reseatChasePassengers`
+przy starcie serwera (umowa na górze `mapa`, test w `chase.test.ts`); stare grafiki to stara
+scena — wzorzec nie zmienia scen już dodanych. Zaległości: start walki przed rzutami graczy,
+skręt z menu przy przeszkodzie. **Testy:** `chase.test.ts` 10/10, `scene-templates.test.ts` 8/8.
+**Oglądane:** MG w Chromium, Rdza i Kosa w **Firefoksie** (Playwright MCP), konsola 0 błędów.
+Pnpm dev MG stał bez serwera API (`tsx watch` nie słuchał na 3001) — serwer uruchomiony osobno.
+
 ### Sesja 06.11, czwarta — etap 66d: scena przykładowa „Zastaw”
 
 **Zlecenie MG:** nowa przykładowa scena pościgu — dwóch graczy własnym kompaktem goni furgon

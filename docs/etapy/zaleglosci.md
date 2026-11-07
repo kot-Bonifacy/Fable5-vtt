@@ -6,6 +6,17 @@ w `POMYSLY.md` („Do sprawdzenia przy stole”), decyzje MG — w `decyzje-i-up
 
 ## Otwarte
 
+**07.11.2026 — oględziny netrunnera w „Fabryce dronów”: wdrożenie (bez migracji) i resztki.**
+Poprawki (broń drona przy strzale z Sieci, zwrot Akcji Sieciowej, kamera widzi w ciemności, polskie
+odmowy w oknie Sieci i przy drzwiach, notatka wzorca) czekają na wdrożenie. **Otwarte:** (1) klik
+w środek ikony gniazda „Konsola sterowni zachodniej” dwa razy nie otworzył karty (Firefox, Iskra
+na sąsiednim polu, grot jej kierunku przy ikonie; figura raz zaznaczona, raz odznaczona), klik
+6 px wyżej — tak. Przyczyny nie ustalono (grot ma `eventMode = 'none'`, obszar trafienia figury
+to jej kwadrat) — obejrzeć ręką przy stole. (2) W przeglądarce nie złapano dymka odmowy „Cel za
+przeszkodą…” w oknie Sieci (zwrot Akcji Sieciowej widać w bazie, tekst wynika z mapy kodów).
+(3) Wyłączony w Sieci dron (Pająk 2, Sowa) nie ma znacznika na mapie — MG pamięta sam i nakłada
+„Unieruchomiony” Sowie (notatka wzorca; automat w `POMYSLY.md`).
+
 **05.11.2026 — rama pościgu i auto bez kierowcy: wdrożenie (migracja
 `20261105180000_chase_vehicle_momentum`) i oględziny przy stole.** Oglądane w Firefoksie i Chromium
 na `dev.db`: bez kierowcy Wozu droga stoi u MG i graczy, rusza po siadaniu za kierownicę, menu
