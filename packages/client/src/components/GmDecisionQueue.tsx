@@ -90,8 +90,11 @@ function CheckRequestBody({ item }: { item: GmAttentionItem }) {
   if (!entry || !isCheckRequestOpen(entry) || item.messageId === undefined) return null;
   return (
     <>
-      <p className="gm-decision-who">{entry.askedByName}</p>
-      <CheckRequestSummary entry={entry} />
+      {/* Gracz jest postacią, także u MG (04.11.2026): podsumowanie zaczyna się od
+          postaci, a konto zostaje w podpowiedzi, jak na karcie czatu. */}
+      <div className="gm-decision-request" title={`Prosi: ${entry.askedByName}`}>
+        <CheckRequestSummary entry={entry} />
+      </div>
       <CheckRequestDecision messageId={item.messageId} entry={entry} />
     </>
   );

@@ -887,10 +887,8 @@
   opacity: 0.85;
 }
 
-.gm-decision-who {
-  margin: 0.3rem 0 0;
-  font-size: 0.72rem;
-  opacity: 0.8;
+.gm-decision-request {
+  margin-top: 0.3rem;
 }
 
 /* Wiersz, do którego prowadzi „Przejdź”, błyska raz obwódką ostrzeżenia. */
