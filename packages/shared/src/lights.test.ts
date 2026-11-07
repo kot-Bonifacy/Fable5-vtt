@@ -10,6 +10,7 @@ import {
   fitLightToRoom,
   encodeLevelRuns,
   isPointLit,
+  isWithinLightCone,
   lightLevelAt,
   lightMaskCellPx,
   orderLightRadii,
@@ -36,6 +37,45 @@ const BORDER = sceneBoundsSegments(BOUNDS);
 function lamp(x: number, y: number, brightPx: number, dimPx: number): LightSource {
   return { origin: { x, y }, brightPx, dimPx, color: '#ffffff', flicker: false };
 }
+
+describe('light in a cone (07.11, a taken camera sees in the dark)', () => {
+  // Kamera w (500, 500) patrzy na wschód (90°), stożek 90°, zasięg 300 px.
+  const camera: LightSource = {
+    ...lamp(500, 500, 0, 300),
+    cone: { facingDeg: 90, spreadDeg: 90 },
+  };
+
+  it('reaches what lies inside the cone and nothing behind or beside it', () => {
+    expect(isWithinLightCone(camera, { x: 700, y: 500 })).toBe(true);
+    expect(isWithinLightCone(camera, { x: 700, y: 650 })).toBe(true);
+    expect(isWithinLightCone(camera, { x: 300, y: 500 })).toBe(false);
+    expect(isWithinLightCone(camera, { x: 500, y: 700 })).toBe(false);
+    expect(lightLevelAt({ x: 700, y: 500 }, [camera], BORDER)).toBe(LIGHT_DIM);
+    expect(lightLevelAt({ x: 300, y: 500 }, [camera], BORDER)).toBe(LIGHT_DARK);
+  });
+
+  it('a lamp without a cone still lights all round', () => {
+    expect(isWithinLightCone(lamp(500, 500, 0, 300), { x: 300, y: 500 })).toBe(true);
+  });
+
+  it('the mask lights only the cone', () => {
+    const polygons = [computeVisionPolygon({ x: 500, y: 500 }, BORDER, null)];
+    const mask = buildLightMask({
+      bounds: { x: 0, y: 0, width: 1000, height: 1000 },
+      cellPx: 50,
+      sources: [camera],
+      segments: BORDER,
+      polygons,
+    });
+    const levels = decodeLevelRuns(mask.runs, mask.cols * mask.rows);
+    const at = (x: number, y: number) =>
+      levels[
+        Math.floor((y - mask.y) / mask.cell) * mask.cols + Math.floor((x - mask.x) / mask.cell)
+      ];
+    expect(at(725, 525)).toBe(LIGHT_DIM);
+    expect(at(275, 525)).toBe(LIGHT_DARK);
+  });
+});
 
 describe('lightLevelAt', () => {
   it('is bright inside the bright radius, dim outside it, dark beyond the reach', () => {

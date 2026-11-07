@@ -379,7 +379,7 @@ export async function requirePlayerOpening(
   // has to be lit to be worked, and the guard must agree with the list the
   // player was sent — or the handle they can see would refuse them.
   const sight = await viewerSightFor(deps.ctx.prisma, row.scene, user.id, context);
-  const visible = visibleOpeningsFor(context, sight.sources, sight.lighting).some(
+  const visible = visibleOpeningsFor(context, sight.sources, sight.ownLighting).some(
     (opening) => opening.id === wall.id,
   );
   if (!visible) throw new RealtimeError('WALL_NOT_FOUND');

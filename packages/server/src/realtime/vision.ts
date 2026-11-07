@@ -484,6 +484,13 @@ export interface ViewerSight {
   /** How many polygons at the end of `polygons` are borrowed eyes. */
   borrowedCount: number;
   lighting: ViewerLighting | null;
+  /**
+   * `lighting` without what the borrowed eyes add (a taken camera sees in the
+   * dark, 07.11) — for everything the viewer's *own* figures do: doors, the
+   * walk planner, the party's memory of the map. Same object when nothing was
+   * borrowed.
+   */
+  ownLighting: ViewerLighting | null;
   /** The sight sources themselves — the door test and the glow list need them. */
   sources: SightSource[];
 }
@@ -531,7 +538,7 @@ export async function viewerSightFor(
       ),
     ),
   ];
-  const lighting: ViewerLighting | null = context.dark
+  const ownLighting: ViewerLighting | null = context.dark
     ? {
         sources: [
           ...lightSourcesOf(scene, context, userId, liveOverride),
@@ -541,8 +548,38 @@ export async function viewerSightFor(
         windows: context.windows,
       }
     : null;
+  const eyesInTheDark = borrowedDarkSightSources(borrowed);
+  const lighting: ViewerLighting | null =
+    ownLighting && eyesInTheDark.length > 0
+      ? { ...ownLighting, sources: [...ownLighting.sources, ...eyesInTheDark] }
+      : ownLighting;
   const figurePolygons = figurePolygonsOf(scene, context, sources, borrowed);
-  return { polygons, borrowedCount: borrowed.length, lighting, sources, figurePolygons };
+  return {
+    polygons,
+    borrowedCount: borrowed.length,
+    lighting,
+    ownLighting,
+    sources,
+    figurePolygons,
+  };
+}
+
+/**
+ * A taken camera sees in the dark (decision of the GM, 07.11 — in „Fabryka
+ * dronów” every camera stared into black): a dim light of its own range, shaped
+ * like its cone and given to this viewer alone, like `darkSightSources`. Nobody
+ * else hears of it, so the camera does not light the hall for anyone, and it
+ * stays out of `ownLighting`, so it opens no door and draws no memory.
+ */
+function borrowedDarkSightSources(borrowed: readonly BorrowedEye[]): LightSource[] {
+  return borrowed.map((eye) => ({
+    origin: eye.source.origin,
+    brightPx: 0,
+    dimPx: eye.source.radiusPx ?? Number.POSITIVE_INFINITY,
+    color: '#ffffff',
+    flicker: false,
+    cone: { facingDeg: eye.facing, spreadDeg: eye.coneDeg },
+  }));
 }
 
 /** A borrowed eye placed for the raycast: where from, which way, how wide. */
@@ -654,6 +691,7 @@ export function tokenSightFor(
     polygons,
     borrowedCount: 0,
     lighting,
+    ownLighting: lighting,
     sources: [source],
     figurePolygons: figurePolygonsOf(scene, context, [source]),
   };
@@ -816,7 +854,7 @@ export function visibleWalkBlockersFor(
     for (const wall of candidates) {
       if (seen.has(wall.id)) continue;
       const inSight = wallSamplePoints(wall, spacing).some((point) =>
-        isPointObservable(point, [polygon], sight.lighting, context.overrides),
+        isPointObservable(point, [polygon], sight.ownLighting, context.overrides),
       );
       if (!inSight) continue;
       seen.add(wall.id);
@@ -1040,7 +1078,7 @@ export async function computeViewerVision(
   return {
     figurePolygons: sight.figurePolygons,
     polygons: dynamic ? sight.polygons : [],
-    openings: dynamic ? visibleOpeningsFor(ctx, sight.sources, sight.lighting) : [],
+    openings: dynamic ? visibleOpeningsFor(ctx, sight.sources, sight.ownLighting) : [],
     blockers: dynamic ? visibleWalkBlockersFor(ctx, sight) : [],
     light,
     glows: sight.lighting ? viewerGlows(scene, ctx, user.id, sight) : [],
@@ -1064,7 +1102,7 @@ function memoryOf(
   const own = ownPolygonsOf(sight);
   return {
     polygons: own,
-    mask: sight.lighting ? lightMaskFor(context, own, sight.lighting) : null,
+    mask: sight.ownLighting ? lightMaskFor(context, own, sight.ownLighting) : null,
   };
 }
 

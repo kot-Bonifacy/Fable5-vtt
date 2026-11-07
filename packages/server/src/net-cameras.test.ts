@@ -381,6 +381,18 @@ describe('kamera przejęta w Sieci (20.10)', () => {
     expect(seen).not.toContain('Strażnik');
   });
 
+  it('w ciemnej scenie kamera widzi w swoim stożku — tylko dla netrunnera (07.11)', async () => {
+    // „Fabryka dronów”: hala bez świateł, a kamery pokazywały czerń (decyzja MG:
+    // przejęta kamera widzi w ciemności na swój zasięg).
+    data(await emitAck(gm, 'scene:lighting', { sceneId, dark: true, darkSightM: 2 }), 'ciemno');
+    const seen = await namesSeenBy(player);
+    expect(seen).toContain('Kot');
+    // Strażnik stoi na wschód, poza stożkiem patrzącej na południe kamery.
+    expect(seen).not.toContain('Strażnik');
+    expect(await namesSeenBy(bystander)).not.toContain('Kot');
+    data(await emitAck(gm, 'scene:lighting', { sceneId, dark: false }), 'jasno');
+  });
+
   it('wyłączona kamera gaśnie, a widok netrunnera wraca do jego oczu', async () => {
     const pushed = waitFor<{ sceneId: string }>(player, 'vision:sync');
     expect(

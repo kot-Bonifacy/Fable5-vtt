@@ -214,6 +214,26 @@ export interface LightSource {
   dimPx: number;
   color: string;
   flicker: boolean;
+  /**
+   * Light that only reaches inside a cone — a taken camera seeing in the dark
+   * (07.11, decision of the GM): facing 0 is up, like `Token.facing`, and the
+   * cone spans `spreadDeg` around it. Absent on every real lamp.
+   */
+  cone?: { facingDeg: number; spreadDeg: number };
+}
+
+/** Is `point` inside the cone of this light? A light without a cone reaches all round. */
+export function isWithinLightCone(source: LightSource, point: ScenePoint): boolean {
+  if (!source.cone || !(source.cone.spreadDeg < 360)) return true;
+  const dx = point.x - source.origin.x;
+  const dy = point.y - source.origin.y;
+  if (dx === 0 && dy === 0) return true;
+  // Facing 0 is up; `atan2` measures from the +x axis with y pointing down.
+  const centre = (source.cone.facingDeg * Math.PI) / 180 - Math.PI / 2;
+  let delta = Math.atan2(dy, dx) - centre;
+  while (delta <= -Math.PI) delta += Math.PI * 2;
+  while (delta > Math.PI) delta -= Math.PI * 2;
+  return Math.abs(delta) <= (source.cone.spreadDeg * Math.PI) / 360 + 1e-9;
 }
 
 /**
@@ -510,6 +530,7 @@ export function lightLevelAt(
     if (reach <= 0) continue;
     const straight = Math.hypot(point.x - source.origin.x, point.y - source.origin.y);
     if (straight > reach) continue;
+    if (!isWithinLightCone(source, point)) continue;
     if (!isSegmentClear(source.origin, point, segments)) continue;
     const distance = apparentLightDistance(source.origin, point, windows);
     if (distance > reach) continue;
@@ -664,6 +685,7 @@ export function buildLightMask(input: LightMaskInput): LightMask {
         const px = originX + col * cell + cell / 2;
         const straight = Math.hypot(px - source.origin.x, py - source.origin.y);
         if (straight > reach) continue;
+        if (!isWithinLightCone(source, { x: px, y: py })) continue;
         if (!isSegmentClear(source.origin, { x: px, y: py }, near)) continue;
         const distance = apparentLightDistance(source.origin, { x: px, y: py }, panes);
         if (distance > reach) continue;
