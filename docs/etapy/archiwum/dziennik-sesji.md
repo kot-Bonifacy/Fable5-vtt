@@ -1,5 +1,28 @@
 # Dziennik sesji — archiwum
 
+### Sesja 07.11 — oględziny netrunnera w „Fabryce dronów” (66b)
+
+**Zlecenie MG:** testy przeglądarkowe netrunnera w „Fabryce dronów”: podłączenie przez konsolę
+sterowni, podgląd kamer, przejęcie dronów — ocena sceny i mechaniki. **Decyzje MG (dwie rundy
+pytań):** instancja E2E od `po-T6`, Iskra z mocniejszym dekiem (Interfejs 6, dek doskonałej
+jakości, Szabloząb; w `po-T6` jest Medtechem — na test wróciła na Netrunnera), kości ze skryptu,
+MG + Iskra z walką przy strzałach, przejęcie = Włącz / Wyłącz / Strzelaj; po oględzinach —
+**przejęta kamera widzi w ciemności**, commit na bieżącej gałęzi. **Znalezione i poprawione:**
+kamery w ciemnej hali były ślepe (`LightSource.cone`, `borrowedDarkSightSources`,
+`ViewerSight.ownLighting` dla drzwi, planera i pamięci), strzał przejętym dronem dawał
+`UNKNOWN_WEAPON` (`deviceWeaponRowId`, `buildFigureSource` bierze wiersz z żądania), odmowa
+strzału zjadała Akcję Sieciową (zwrot `turnState`), okno Sieci pokazywało surowe kody ataku,
+odmowa przy drzwiach mówiła „na jedną kratkę” (na siatce 2 m pole obok jest za daleko), notatka
+wzorca obiecywała figury graczy przy bramie. **Otwarte:** klik w środek ikony gniazda dwa razy
+bez karty (6 px wyżej działa, przyczyna nieustalona), dymek „Cel za przeszkodą” niezłapany
+w przeglądarce — `zaleglosci.md` (07.11). Wyniki w `etap-66b-fabryka-dronow.md` („Oględziny
+netrunnera”). **Testy:** **2979** `shared`, **1760** serwer, **471** klient; `tsc` klienta
+i serwera, ESLint, Prettier czyste w zmienionych plikach. **Oglądane:** Ola/Iskra w **Firefoksie**,
+MG w Chromium (spec `99-ogledziny/t99-fabryka-netrunner`, 13/13, nie w repo): marsz po ciemku,
+klamka, Skaner, podłączenie, Backdoor, kamery (14 figur przez stożki po zmianie), Kruk zniszczony
+Szablozębem, Wyłącz Pająka 2, strzał Szerszenia patrolowego w G3 (15 → 4 PW, obrażenia z kubka
+Oli), Sowa wyłączona, G1 obudzony; kanarki czyste.
+
 ### Sesja 06.11, szósta — zaległości (decyzje MG)
 
 **Zlecenie MG:** „wykonaj zaległości”. **Decyzje MG (jedna runda pytań):** jeden taran na turę

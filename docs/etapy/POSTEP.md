@@ -21,7 +21,7 @@ w plikach obok — czytaj je **na żądanie, nigdy rutynowo**:
 
 | stan         | etapy                                                                                          |
 | ------------ | ---------------------------------------------------------------------------------------------- |
-| ⬜ otwarty   | **68** Warsztat: ulepszenia auta za ed i naprawa (🟨 zrobione 06.11, czeka na wdrożenie i oględziny MG przy stole); **67** Zakup pojazdu (🟨 zrobione 06.11, czeka na wdrożenie i oględziny MG przy stole); **66d** Scena przykładowa „Zastaw” (🟨 wzorzec zrobiony i rozegrany w przeglądarce 06.11; od 06.11 jeden taran na turę (decyzja MG); czeka na stół MG i wdrożenie); **66** Sceny przykładowe (🟨 zrobione 31.10, czeka na oględziny MG przy stole i wdrożenie; **66b** „Fabryka dronów” 🟨 zrobione 31.10, tak samo (netrunner obejrzany w przeglądarce 07.11, poprawki czekają na wdrożenie); **66c** „Ostatni zjazd” 🟨 wzorzec zrobiony, rozegrany w przeglądarce 04.11 i ponownie 05.11 po rebalansie (porażka o włos, balans zatwierdzony przez MG) — zaległości z przebiegów zamknięte 05.11, Esc na kubku MG 07.11 — czeka na stół MG i wdrożenie); **65** Scena pościgu i walka pojazdów (🟨 65a–65e ✅ 30–31.10, czeka na oględziny MG przy stole); **62** Sieć ze sceny (🟨 zrobione, czeka na oględziny MG na VPS po wdrożeniu); **61** Skradanie się (🟨 zrobione, czeka na słowo MG o rozstrzygnięciach); **28** Wdrożenie na VPS (🟨 działa na `https://vtt.tatanga.eu` z botami od 18.10; zostały off-site, utwardzenie, monitoring); **43b**, **43c** (UI walki); **60** Czytelny czat (zlecenie MG z 24.10; 🟨 60a–60c ✅, czeka na oględziny MG z pierwszego kryterium); T10; refaktoryzacja odłożona (MG 18.10) |
+| ⬜ otwarty   | **68** Warsztat: ulepszenia auta za ed i naprawa (🟨 zrobione 06.11, czeka na wdrożenie i oględziny MG przy stole); **67** Zakup pojazdu (🟨 zrobione 06.11, czeka na wdrożenie i oględziny MG przy stole); **66e** Scena przykładowa „Po zamknięciu” (⬜ projekt 07.11, realizacja w osobnej sesji); **66d** Scena przykładowa „Zastaw” (🟨 wzorzec zrobiony i rozegrany w przeglądarce 06.11; od 06.11 jeden taran na turę (decyzja MG); czeka na stół MG i wdrożenie); **66** Sceny przykładowe (🟨 zrobione 31.10, czeka na oględziny MG przy stole i wdrożenie; **66b** „Fabryka dronów” 🟨 zrobione 31.10, tak samo (netrunner obejrzany w przeglądarce 07.11, poprawki czekają na wdrożenie); **66c** „Ostatni zjazd” 🟨 wzorzec zrobiony, rozegrany w przeglądarce 04.11 i ponownie 05.11 po rebalansie (porażka o włos, balans zatwierdzony przez MG) — zaległości z przebiegów zamknięte 05.11, Esc na kubku MG 07.11 — czeka na stół MG i wdrożenie); **65** Scena pościgu i walka pojazdów (🟨 65a–65e ✅ 30–31.10, czeka na oględziny MG przy stole); **62** Sieć ze sceny (🟨 zrobione, czeka na oględziny MG na VPS po wdrożeniu); **61** Skradanie się (🟨 zrobione, czeka na słowo MG o rozstrzygnięciach); **28** Wdrożenie na VPS (🟨 działa na `https://vtt.tatanga.eu` z botami od 18.10; zostały off-site, utwardzenie, monitoring); **43b**, **43c** (UI walki); **60** Czytelny czat (zlecenie MG z 24.10; 🟨 60a–60c ✅, czeka na oględziny MG z pierwszego kryterium); T10; refaktoryzacja odłożona (MG 18.10) |
 | ✅ ukończone | 01–11, 13–20b, 23a–27f, 27h–27l, 29a–30d, 31–35, 37–42c, 43a, 44a–44d, 45, 46a1, 46a2, 46c1, 46c2, 46b1, 46b2, 47a, 47b, 48a, 48b, 48c, 49a, 49b, 50a, 50b, 50c, 51, 52, 53, 54, 55, 56, 57 (57a–57c), 58 (58a–58d), 59 (59a–59c), 63 (63a–63b; 63c wycofane 29.10), 64 (64a–64c) (ostatni zamknięty: 64, 2026-10-30) |
 | ⛔ wycofane  | 12, 21, 22 (głos), 27g (wydajność), 36 (makra); 27, 29, 30, 38 rozdzielone na etapy literowane |
 
@@ -745,6 +745,21 @@ a nie do tego pliku.
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
 
+### Sesja 07.11, trzecia — projekt sceny „Po zamknięciu” (66e)
+
+**Zlecenie MG:** zaprojektować scenę przykładową na mapie „Pierwszej sceny” (kampania „ulice
+Lublina”, konto `mg_primo`) — ściany, drzwi, okna i mapa 1:1, reszta (ukryte kamery, w tym
+w gabinecie szefa, pułapka elektryczna przed gabinetem, skrzynka z pistoletem maszynowym,
+wieżyczka, dwóch słabych ochroniarzy, gniazdo dla netrunnera) do doboru; realizacja w innej
+sesji. **Decyzje MG (dwie rundy pytań):** mapa publiczna, gabinet = pokój z aneksem (x21–28 /
+y6–10), gracz to netrunner Ranga 6 z bronią automatyczną, cel — likwidacja szefa, noc i półmrok,
+szef broni się do końca, kamery i wieżyczka jako figury w Sieci, Sieć 4 piętra bez LOD-u.
+**Zrobione:** projekt `etap-66e-po-zamknieciu.md` (geometria z `dev.db`, figury, strefa, pojemnik,
+gniazda, Sieć, notatki MG, balans, lista rozszerzeń formatu wzorca: `lights`, `lockRule`,
+`spotDv`, `zones`, `containers`, strefa jako urządzenie węzła). Bez zmian w kodzie i bez testów.
+**Od czego zacząć realizację:** sekcja „Co trzeba dołożyć do formatu wzorca” w pliku etapu;
+najpierw sprawdzić, czy scena na VPS nie różni się od `dev.db`.
+
 ### Sesja 07.11, druga — zaległości
 
 **Zlecenie MG:** „wykonaj zaległości”. Bez pytań do MG — wzięte to, co da się zamknąć bez stołu,
@@ -763,26 +778,3 @@ paczka AI. **Testy:** **1760** serwer, **471** klient (`shared` bez zmian — 29
 `48-poscig/t65-przeszkody` 4/4 (dwa nowe kroki). **Oglądane:** tymczasowe specy E2E (skasowane) —
 pościg: MG w Chromium, Ola w **Firefoksie** (6/6); prośba o Test i poczekalnia: MG w Chromium,
 Marek w **Firefoksie** (2/2); obie poprawki klienta ponownie z MG w **Firefoksie** (3/3).
-
-### Sesja 07.11 — oględziny netrunnera w „Fabryce dronów” (66b)
-
-**Zlecenie MG:** testy przeglądarkowe netrunnera w „Fabryce dronów”: podłączenie przez konsolę
-sterowni, podgląd kamer, przejęcie dronów — ocena sceny i mechaniki. **Decyzje MG (dwie rundy
-pytań):** instancja E2E od `po-T6`, Iskra z mocniejszym dekiem (Interfejs 6, dek doskonałej
-jakości, Szabloząb; w `po-T6` jest Medtechem — na test wróciła na Netrunnera), kości ze skryptu,
-MG + Iskra z walką przy strzałach, przejęcie = Włącz / Wyłącz / Strzelaj; po oględzinach —
-**przejęta kamera widzi w ciemności**, commit na bieżącej gałęzi. **Znalezione i poprawione:**
-kamery w ciemnej hali były ślepe (`LightSource.cone`, `borrowedDarkSightSources`,
-`ViewerSight.ownLighting` dla drzwi, planera i pamięci), strzał przejętym dronem dawał
-`UNKNOWN_WEAPON` (`deviceWeaponRowId`, `buildFigureSource` bierze wiersz z żądania), odmowa
-strzału zjadała Akcję Sieciową (zwrot `turnState`), okno Sieci pokazywało surowe kody ataku,
-odmowa przy drzwiach mówiła „na jedną kratkę” (na siatce 2 m pole obok jest za daleko), notatka
-wzorca obiecywała figury graczy przy bramie. **Otwarte:** klik w środek ikony gniazda dwa razy
-bez karty (6 px wyżej działa, przyczyna nieustalona), dymek „Cel za przeszkodą” niezłapany
-w przeglądarce — `zaleglosci.md` (07.11). Wyniki w `etap-66b-fabryka-dronow.md` („Oględziny
-netrunnera”). **Testy:** **2979** `shared`, **1760** serwer, **471** klient; `tsc` klienta
-i serwera, ESLint, Prettier czyste w zmienionych plikach. **Oglądane:** Ola/Iskra w **Firefoksie**,
-MG w Chromium (spec `99-ogledziny/t99-fabryka-netrunner`, 13/13, nie w repo): marsz po ciemku,
-klamka, Skaner, podłączenie, Backdoor, kamery (14 figur przez stożki po zmianie), Kruk zniszczony
-Szablozębem, Wyłącz Pająka 2, strzał Szerszenia patrolowego w G3 (15 → 4 PW, obrażenia z kubka
-Oli), Sowa wyłączona, G1 obudzony; kanarki czyste.
