@@ -12,7 +12,9 @@ import {
   ROLE_GM,
   cpredVehicleFromCatalog,
   cpredVehicleIsModel,
+  cpredVehicleModelByArt,
   cpredVehiclePatch,
+  cpredVehicleToModel,
   isVehicleArtUrl,
   isVehicleEntry,
   isVehicleLayoutId,
@@ -23,7 +25,13 @@ import {
 import { requireOwnUploadUrl } from '../campaign-uploads.js';
 import type { PrismaClient } from '../db.js';
 import type { Vehicle } from '../generated/prisma/client.js';
-import { createVehicle, toVehicleView, vehicleSeatColumns } from '../vehicles.js';
+import {
+  createVehicle,
+  toVehicleView,
+  vehicleBodyColumns,
+  vehicleCatalog,
+  vehicleSeatColumns,
+} from '../vehicles.js';
 import { refreshChaseScenes, refreshVehiclePlacement } from './chase.js';
 import { campaignEntry } from './compendium.js';
 import { RealtimeError, defineEvent, type RealtimeDeps } from './registry.js';
@@ -263,6 +271,8 @@ export const vehicleDeleteEvent = defineEvent<VehicleIdPayload, void>({
 /**
  * Gracz nazywa swój pojazd i wybiera mu grafikę — tylko wbudowaną
  * (`isVehicleArtUrl`): wgrywa wyłącznie MG, a jego biblioteki gracz nie dostaje.
+ * MG wybiera tu grafikę modelu, a auto staje się tym modelem (10.11); okno
+ * pojazdu (`vehicle:update`) zostaje ręczną zmianą każdego pola z osobna.
  */
 export const vehicleRenameEvent = defineEvent<VehicleRenamePayload, VehicleView>({
   name: 'vehicle:rename',
@@ -283,14 +293,47 @@ export const vehicleRenameEvent = defineEvent<VehicleRenamePayload, VehicleView>
       if (payload.imageUrl !== null && !isVehicleArtUrl(payload.imageUrl)) {
         throw new RealtimeError('FORBIDDEN');
       }
-      // Etap 67 (MG 06.11): „wygląd = model” — kupione auto ma wygląd modelu
-      // i gracz go nie zmienia; MG tak (okno pojazdu, `vehicle:update`).
+      const imageUrl = payload.imageUrl ?? null;
+      const stats = readCpredVehicle(current.system);
+      const catalog = await vehicleCatalog(deps.ctx.prisma, deps.ctx.compendium, campaignId);
+      const ownEntry = stats.catalogId
+        ? catalog.find((entry) => entry.id === stats.catalogId)
+        : undefined;
+      const model = cpredVehicleModelByArt(catalog, imageUrl);
+      // Ten sam wóz w innym lakierze: model tej samej klasy, z tymi samymi
+      // fotelami — liczby się nie zmieniają, więc wolno to i graczowi.
+      const sameNumbers =
+        model !== null &&
+        (model.classId ?? model.id) === (ownEntry?.classId ?? stats.catalogId) &&
+        model.seats === stats.seats &&
+        (model.van === true) === stats.van;
       if (user.role !== ROLE_GM) {
-        const catalogId = readCpredVehicle(current.system).catalogId;
-        const entry = catalogId ? await campaignEntry(deps, campaignId, catalogId) : undefined;
-        if (cpredVehicleIsModel(entry)) throw new RealtimeError('VEHICLE_LOOK_LOCKED');
+        // Etap 67 (MG 06.11): „wygląd = model” — kupione auto ma wygląd modelu
+        // i gracz go nie zmienia. Auto od MG z klasy podręcznika dostaje tylko
+        // wygląd modelu swojej klasy (10.11) — inaczej kompakt z grafiką
+        // supersamochodu kłamałby o liczbach.
+        if (cpredVehicleIsModel(ownEntry)) throw new RealtimeError('VEHICLE_LOOK_LOCKED');
+        if (imageUrl !== null && !sameNumbers) throw new RealtimeError('VEHICLE_LOOK_LOCKED');
+      } else if (stats.fleetRowId) {
+        // Tabor Rodziny zmienia karta Nomady, nie grafika: inny lakier tak,
+        // inny model nie.
+        if (model && !sameNumbers) throw new RealtimeError('VEHICLE_IN_FLEET');
+      } else if (model && model.id !== stats.catalogId) {
+        // Zlecenie MG z 10.11: „grafika = model” — MG wybiera na karcie
+        // grafikę modelu i auto staje się tym modelem (rodzaj, PUK, Ruch,
+        // fotele, bryła).
+        const next = cpredVehicleToModel(stats, model).stats;
+        data.system = JSON.stringify(next);
+        // Bryła idzie za modelem, gdy zmienia się rodzaj albo fotele — ten sam
+        // wóz w innym lakierze zostawia rozmiar, który MG mu nadał.
+        if (!sameNumbers) Object.assign(data, vehicleBodyColumns(next));
+        // Auto nazwane jak stary wpis („Aerozep”) bierze nazwę modelu; własna
+        // nazwa nadana przez gracza albo MG zostaje.
+        if (!('name' in payload) && ownEntry && current.name === ownEntry.name) {
+          data.name = model.name;
+        }
       }
-      data.imageUrl = payload.imageUrl ?? null;
+      data.imageUrl = imageUrl;
     }
     if (Object.keys(data).length === 0) return toVehicleView(current);
     const row = await deps.ctx.prisma.vehicle.update({ where: { id: current.id }, data });

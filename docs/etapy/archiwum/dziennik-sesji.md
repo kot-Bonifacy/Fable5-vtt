@@ -1,5 +1,24 @@
 # Dziennik sesji — archiwum
 
+### Sesja 07.11, ósma — siedem zaległości z „Po zamknięciu” (66e)
+
+**Zlecenie MG:** „zrób kilka zaległości”. Wybrane bez pytań do MG: 🔴 16, 🟠 5 i 20, 🟡 22, 26,
+27 i 28. **Zrobione (bez migracji, czekają na wdrożenie):** (16) diagnoza na punkcie
+`po-zamknieciu-przebieg2` — planer gracza chodził przez ścianę między polem widzianym przez
+Iskrę a polem widzianym przez kamerę (suma wielokątów nie ma ścian na brzegu); krok planera
+musi leżeć w jednym wielokącie (`sightStepTest`), a `refreshNetCameraSight` po restarcie
+serwera nie bierze pustej pamięci za „bez kamer” (oczy kamer zostawały po odłączeniu do F5);
+(5) szuflada trybów zapisywała pod złym kluczem; (20) wrak osłony nie jest celem; (22) cele
+wieżyczki bez pojemników, martwych i urządzeń, „Dołącz do walki” bez martwych; (26) „(osłona)”,
+„(pojazd)”, „(szyba)” w tytule obrażeń; (27) strefa `armed = false` wyłącza urządzenie w Sieci
+(„rozbrojona na miejscu”, bez obsługi); (28) plakietka cyberpsychozy na liście tylko przy
+utracie Człowieczeństwa. Umowy na górze `tura` i `siec`, pułapka na górze `siec`, wpis
+w `archiwum/zamkniete-zaleglosci.md`, szczegóły w `etap-66e-po-zamknieciu.md` („Naprawy 07.11
+(ósma sesja)”). **Testy:** `shared` 2992/2992, serwer 1762/1762, klient 474/474; ESLint,
+Prettier i `tsc --noEmit` czyste. **Oglądane:** Iskra w **Firefoksie**, MG w Chromium
+(Playwright MCP, instancja E2E); odcisk kamer po restarcie — tylko kodem i przebiegiem
+podłącz/odłącz (6 → 1), pkt 26 — tylko test.
+
 ### Sesja 07.11, siódma — sześć zaległości z „Po zamknięciu” (66e)
 
 **Zlecenie MG:** „zrób kilka zaległości”. Wybrane czerwone i dwa pomarańczowe z rozegrania

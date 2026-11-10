@@ -243,18 +243,28 @@ describe('etap 65a: pojazd jako własność postaci', () => {
     expect(
       await emitAck(player, 'vehicle:rename', { vehicleId: carId, imageUrl: '/uploads/x.png' }),
     ).toMatchObject({ ok: false, error: 'FORBIDDEN' });
+    // 10.11: gracz dostaje tylko wygląd modelu swojej klasy z tymi samymi
+    // fotelami — supersamochód na kompakcie kłamałby o liczbach.
+    for (const imageUrl of ['/art/vehicles/kagero.webp', '/art/vehicles/car-red.webp']) {
+      expect(await emitAck(player, 'vehicle:rename', { vehicleId: carId, imageUrl })).toEqual({
+        ok: false,
+        error: 'VEHICLE_LOOK_LOCKED',
+      });
+    }
     const renamed = data(
       await emitAck<VehicleView>(player, 'vehicle:rename', {
         vehicleId: carId,
         name: 'Rdzawa Zetka',
-        imageUrl: '/art/vehicles/compact-red.webp',
+        imageUrl: '/art/vehicles/ranczer.webp',
       }),
       'vehicle:rename',
     );
     expect(renamed).toMatchObject({
       name: 'Rdzawa Zetka',
-      imageUrl: '/art/vehicles/compact-red.webp',
+      imageUrl: '/art/vehicles/ranczer.webp',
     });
+    // Lakier, nie model: liczby i wpis katalogu zostają.
+    expect(statsOf(renamed)).toMatchObject({ catalogId: 'vehicle.sample-kompakt', hp: 45 });
     expect(
       await emitAck(player, 'vehicle:update', { vehicleId: carId, patch: { name: 'X' } }),
     ).toMatchObject({ ok: false, error: 'FORBIDDEN' });
@@ -811,6 +821,83 @@ describe('etap 67: zakup auta z modelu', () => {
     const van = data(await buy(player, { entryId: 'vehicle.graty', expectPrice: 9_000 }), 'van');
     expect(van.vehicle).toMatchObject({ layout: 'van-6', widthSq: 3, lengthSq: 7 });
     expect(statsOf(van.vehicle)).toMatchObject({ seats: 6, van: true });
+  });
+});
+
+describe('10.11: grafika = model — MG wybiera grafikę modelu na karcie pojazdu', () => {
+  let gm: ClientSocket;
+  let player: ClientSocket;
+
+  it('auto staje się modelem: rodzaj, PUK, fotele, bryła i nazwa; ulepszenia spoza rodzaju wypadają', async () => {
+    gm = await connect(gmCookie);
+    player = await connect(playerCookie);
+    const ownerId = data(
+      await emitAck<CharacterView>(gm, 'character:create', { name: 'Morte', ownerId: playerId }),
+      'character:create',
+    ).id;
+    const car = data(
+      await emitAck<VehicleView>(gm, 'vehicle:create', {
+        catalogId: 'vehicle.sample-kompakt',
+        ownerCharacterId: ownerId,
+      }),
+      'vehicle:create',
+    );
+    data(
+      await emitAck<VehicleView>(gm, 'vehicle:update', {
+        vehicleId: car.id,
+        patch: {
+          system: {
+            hp: 40,
+            upgrades: [
+              { id: 'g', upgradeId: 'bulletproofGlass' },
+              { id: 'r', upgradeId: 'reinforced' },
+            ],
+          },
+        },
+      }),
+      'vehicle:update',
+    );
+
+    const bike = data(
+      await emitAck<VehicleView>(gm, 'vehicle:rename', {
+        vehicleId: car.id,
+        imageUrl: '/art/vehicles/osa.webp',
+      }),
+      'vehicle:rename',
+    );
+    // Próbka z repo: motocykl „Osa” stoi na wymyślonym skuterze (PUK 30).
+    expect(bike).toMatchObject({
+      name: '„Osa” (motocykl)',
+      imageUrl: '/art/vehicles/osa.webp',
+      layout: 'bike-2',
+      widthSq: 2,
+      lengthSq: 3,
+    });
+    const stats = statsOf(bike);
+    expect(stats).toMatchObject({ kind: 'motorcycle', catalogId: 'vehicle.osa', hpMax: 30 });
+    expect(stats.upgrades.map((row) => row.upgradeId)).toEqual(['bulletproofGlass']);
+    // Kompakt miał 65 PUK z 45+20 i stracił 25 — motocykl też jest bez 25.
+    expect(stats.hp).toBe(5);
+
+    // Własna nazwa zostaje przy kolejnej zmianie modelu.
+    await emitAck(gm, 'vehicle:rename', { vehicleId: car.id, name: 'Szerszeń' });
+    const back = data(
+      await emitAck<VehicleView>(gm, 'vehicle:rename', {
+        vehicleId: car.id,
+        imageUrl: '/art/vehicles/wloczega.webp',
+      }),
+      'vehicle:rename',
+    );
+    expect(back).toMatchObject({ name: 'Szerszeń', layout: 'car-4', widthSq: 3, lengthSq: 5 });
+    expect(statsOf(back)).toMatchObject({ kind: 'car', catalogId: 'vehicle.wloczega' });
+
+    // Gracz nie przestawia modelu: auto z modelu ma zamknięty wygląd.
+    expect(
+      await emitAck(player, 'vehicle:rename', {
+        vehicleId: car.id,
+        imageUrl: '/art/vehicles/osa.webp',
+      }),
+    ).toEqual({ ok: false, error: 'VEHICLE_LOOK_LOCKED' });
   });
 });
 

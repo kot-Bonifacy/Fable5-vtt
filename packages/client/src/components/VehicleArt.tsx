@@ -1,4 +1,10 @@
-import { readCpredVehicle, type VehicleView } from '@vtt/shared';
+import type { CSSProperties } from 'react';
+import {
+  readCpredVehicle,
+  vehicleArtScale,
+  type VehicleLayoutId,
+  type VehicleView,
+} from '@vtt/shared';
 import { useCharacterStore } from '../stores/characterStore.js';
 import { useVehicleStore } from '../stores/vehicleStore.js';
 
@@ -8,19 +14,28 @@ import { useVehicleStore } from '../stores/vehicleStore.js';
  * góry dla pościgu, więc tu obraca je CSS. Trzy rozmiary: wiersz listy
  * Kompendium, karta pojazdu (oferta, „Pojazdy” na karcie postaci) i duży
  * podgląd wpisu Kompendium. Bez grafiki (motocykl z bryły) — ikona.
+ *
+ * **Skala (MG 10.11):** auto zajmuje ramkę proporcjonalnie do swojej długości
+ * (`vehicleArtScale`) — najdłuższy pojazd galerii wypełnia ją całą, motocykl
+ * ma jedną trzecią. Ramka ma stały rozmiar, żeby karty stały w równym rzędzie.
+ * `layout` — dla grafiki spoza galerii (wgranej przez MG) długość z bryły.
  */
 export function VehicleArt({
   url,
   size,
   wrecked = false,
+  layout,
 }: {
   url: string | null;
-  size: 'row' | 'card' | 'hero';
+  size: 'row' | 'tile' | 'card' | 'hero';
   wrecked?: boolean;
+  layout?: VehicleLayoutId;
 }) {
+  const style = { '--vehicle-art-scale': vehicleArtScale(url, layout) } as CSSProperties;
   return (
     <span
       className={`vehicle-art vehicle-art--${size}${wrecked ? ' vehicle-art--wrecked' : ''}`}
+      style={style}
       aria-hidden="true"
     >
       {url ? <img src={url} alt="" draggable={false} /> : <span>🏍</span>}

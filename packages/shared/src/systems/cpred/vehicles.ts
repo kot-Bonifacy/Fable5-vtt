@@ -624,6 +624,61 @@ export function cpredVehicleFromCatalog(
 }
 
 /**
+ * Pojazd przestawiony na inny wpis katalogu (zlecenie MG z 10.11: „grafika =
+ * model” — MG wybiera na karcie grafikę modelu i auto staje się tym modelem).
+ * Rodzaj, PUK, fotele, Ruch i furgon idą z wpisu; ulepszenia zostają, o ile
+ * nowy rodzaj je przyjmuje (`dropped` — te, które wypadły, np. Wzmocniona
+ * konstrukcja w motocyklu). **Odniesione uszkodzenia zostają**: auto bez 10 PUK
+ * jest bez 10 PUK także po zmianie, a wrak zostaje wrakiem. Szyby
+ * i magazynki broni pokładowych przycina `readCpredVehicle`.
+ */
+export function cpredVehicleToModel(
+  current: CpredVehicleStats,
+  entry: Pick<VehicleEntry, 'id' | 'vehicleKind' | 'hp' | 'seats' | 'move' | 'van'>,
+): { stats: CpredVehicleStats; dropped: CpredVehicleUpgradeId[] } {
+  const kind = entry.vehicleKind;
+  // Wzmocniona konstrukcja najpierw — od niej zależą ciężkie ulepszenia,
+  // a kolejność wierszy przy stole nic nie znaczy (`cpredVehicleUpgradesProblem`).
+  const ordered = [
+    ...current.upgrades.filter((row) => row.upgradeId === 'reinforced'),
+    ...current.upgrades.filter((row) => row.upgradeId !== 'reinforced'),
+  ];
+  const kept: CpredVehicleUpgradeRow[] = [];
+  const dropped: CpredVehicleUpgradeId[] = [];
+  for (const row of ordered) {
+    if (cpredVehicleUpgradeProblem(kind, kept, row.upgradeId)) dropped.push(row.upgradeId);
+    else kept.push(row);
+  }
+  const upgrades = current.upgrades.filter((row) => kept.includes(row));
+  const damage = Math.max(0, cpredVehicleDerived(current).hpMax - current.hp);
+  const hpMax = cpredVehicleDerived({ hpMax: entry.hp, seats: entry.seats, upgrades }).hpMax;
+  const stats = readCpredVehicle({
+    ...current,
+    kind,
+    catalogId: entry.id,
+    hpMax: entry.hp,
+    seats: entry.seats,
+    move: entry.move,
+    van: entry.van === true,
+    upgrades,
+    hp: current.hp <= 0 ? 0 : Math.max(1, hpMax - damage),
+  });
+  return { stats, dropped };
+}
+
+/** Model z wyglądem o tej grafice (`VehicleEntry.art`); brak — grafika nie jest modelem. */
+export function cpredVehicleModelByArt<T extends { category: string; art?: string }>(
+  entries: Iterable<T>,
+  url: string | null,
+): (T & VehicleEntry) | null {
+  if (!url) return null;
+  for (const entry of entries) {
+    if (entry.category === 'vehicle' && entry.art === url) return entry as T & VehicleEntry;
+  }
+  return null;
+}
+
+/**
  * Łata MG na liczby pojazdu (`vehicle:update`). Zwraca pełny nowy stan albo
  * kod odmowy — ulepszenia sprawdza ta sama funkcja, co Tabor Rodziny.
  * Wiersze ulepszeń z Taboru (`fleetRowId`) zostają takie, jakie są: zmienia je

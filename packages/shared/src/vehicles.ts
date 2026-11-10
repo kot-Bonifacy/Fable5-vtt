@@ -253,6 +253,19 @@ export interface VehicleDeleteBroadcast {
 export const VEHICLE_ART_PREFIX = '/art/vehicles/';
 
 /**
+ * Wbudowana grafika pojazdu. `lengthM` — długość pojazdu z obrazka w metrach
+ * (zlecenie MG z 10.11: „oddaj na zdjęciach skalę”): miniatury rysują auto
+ * proporcjonalnie do niej, więc motocykl nie jest tak długi jak furgon.
+ * To szacunek z wyglądu (pickup dłuższy od kombi), nie liczba z podręcznika.
+ */
+export interface VehicleArtEntry {
+  url: string;
+  label: string;
+  lengthM: number;
+  gmOnly?: true;
+}
+
+/**
  * Wbudowane grafiki aut, rysowane przodem do góry. Od etapu 67 (MG 06.11.2026)
  * to grafiki MG (`tools/art/vehicle-models.py`) — po jednej na model auta
  * z `vehicle-models.json`; `gmOnly` — służby, których gracz nie dostaje
@@ -260,35 +273,40 @@ export const VEHICLE_ART_PREFIX = '/art/vehicles/';
  * w `/art/vehicles/` dla przeszkód pościgu i scen zapisanych przed 67.
  * Furgony i motocykle — druga dostawa MG z 06.11.
  */
-export const VEHICLE_ART: readonly { url: string; label: string; gmOnly?: true }[] = [
-  { url: '/art/vehicles/kagero.webp', label: 'Arasaka „Kagerō”' },
-  { url: '/art/vehicles/widmo.webp', label: '„Widmo”' },
-  { url: '/art/vehicles/rajdowka-77.webp', label: '„Rajdówka 77”' },
-  { url: '/art/vehicles/nocny-neon.webp', label: '„Nocny Neon”' },
-  { url: '/art/vehicles/bastion.webp', label: '„Bastion” (SUV)' },
-  { url: '/art/vehicles/ranczer.webp', label: '„Ranczer” (pickup)' },
-  { url: '/art/vehicles/rdzawiec.webp', label: '„Rdzawiec” (stary pickup)' },
-  { url: '/art/vehicles/wloczega.webp', label: '„Włóczęga” (stare kombi)' },
-  { url: '/art/vehicles/graty.webp', label: '„Graty” (furgon)' },
-  { url: '/art/vehicles/nomada.webp', label: '„Nomada” (kamper)' },
-  { url: '/art/vehicles/zadlo.webp', label: '„Żądło” (motocykl)' },
-  { url: '/art/vehicles/osa.webp', label: '„Osa” (motocykl)' },
-  { url: '/art/vehicles/taksowka.webp', label: 'Taksówka', gmOnly: true },
-  { url: '/art/vehicles/radiowoz.webp', label: 'Radiowóz', gmOnly: true },
-  { url: '/art/vehicles/karetka.webp', label: 'Karetka', gmOnly: true },
-  { url: '/art/vehicles/militech-furgon.webp', label: 'Militech — furgon', gmOnly: true },
+export const VEHICLE_ART: readonly VehicleArtEntry[] = [
+  { url: '/art/vehicles/kagero.webp', label: 'Arasaka „Kagerō”', lengthM: 4.6 },
+  { url: '/art/vehicles/widmo.webp', label: '„Widmo”', lengthM: 4.7 },
+  { url: '/art/vehicles/rajdowka-77.webp', label: '„Rajdówka 77”', lengthM: 4.4 },
+  { url: '/art/vehicles/nocny-neon.webp', label: '„Nocny Neon”', lengthM: 4.5 },
+  { url: '/art/vehicles/bastion.webp', label: '„Bastion” (SUV)', lengthM: 5.2 },
+  { url: '/art/vehicles/ranczer.webp', label: '„Ranczer” (pickup)', lengthM: 5.6 },
+  { url: '/art/vehicles/rdzawiec.webp', label: '„Rdzawiec” (stary pickup)', lengthM: 5.4 },
+  { url: '/art/vehicles/wloczega.webp', label: '„Włóczęga” (stare kombi)', lengthM: 4.9 },
+  { url: '/art/vehicles/graty.webp', label: '„Graty” (furgon)', lengthM: 5.9 },
+  { url: '/art/vehicles/nomada.webp', label: '„Nomada” (kamper)', lengthM: 6.4 },
+  { url: '/art/vehicles/zadlo.webp', label: '„Żądło” (motocykl)', lengthM: 2.2 },
+  { url: '/art/vehicles/osa.webp', label: '„Osa” (motocykl)', lengthM: 2.1 },
+  { url: '/art/vehicles/taksowka.webp', label: 'Taksówka', lengthM: 4.8, gmOnly: true },
+  { url: '/art/vehicles/radiowoz.webp', label: 'Radiowóz', lengthM: 5.0, gmOnly: true },
+  { url: '/art/vehicles/karetka.webp', label: 'Karetka', lengthM: 6.2, gmOnly: true },
+  {
+    url: '/art/vehicles/militech-furgon.webp',
+    label: 'Militech — furgon',
+    lengthM: 6.0,
+    gmOnly: true,
+  },
 ];
 
 /** Grafiki z paczki CC0 sprzed etapu 67 — przeszkody pościgu i stare sceny. */
-export const VEHICLE_ART_LEGACY: readonly { url: string; label: string }[] = [
-  { url: '/art/vehicles/car-red.webp', label: 'Czerwone sportowe' },
-  { url: '/art/vehicles/car-black-viper.webp', label: 'Czarne w pasy' },
-  { url: '/art/vehicles/car-orange.webp', label: 'Pomarańczowy muscle car' },
-  { url: '/art/vehicles/car-taxi.webp', label: 'Taksówka (stara)' },
-  { url: '/art/vehicles/car-police.webp', label: 'Radiowóz (stary)' },
-  { url: '/art/vehicles/pickup-blue.webp', label: 'Pickup' },
-  { url: '/art/vehicles/van-ambulance.webp', label: 'Karetka (stara)' },
-  { url: '/art/vehicles/van-white.webp', label: 'Furgon' },
+export const VEHICLE_ART_LEGACY: readonly VehicleArtEntry[] = [
+  { url: '/art/vehicles/car-red.webp', label: 'Czerwone sportowe', lengthM: 4.5 },
+  { url: '/art/vehicles/car-black-viper.webp', label: 'Czarne w pasy', lengthM: 4.6 },
+  { url: '/art/vehicles/car-orange.webp', label: 'Pomarańczowy muscle car', lengthM: 4.8 },
+  { url: '/art/vehicles/car-taxi.webp', label: 'Taksówka (stara)', lengthM: 4.8 },
+  { url: '/art/vehicles/car-police.webp', label: 'Radiowóz (stary)', lengthM: 5.0 },
+  { url: '/art/vehicles/pickup-blue.webp', label: 'Pickup', lengthM: 5.5 },
+  { url: '/art/vehicles/van-ambulance.webp', label: 'Karetka (stara)', lengthM: 6.2 },
+  { url: '/art/vehicles/van-white.webp', label: 'Furgon', lengthM: 6.0 },
 ];
 
 /**
@@ -301,6 +319,36 @@ export function defaultVehicleArt(layout: VehicleLayoutId): string | null {
   return layout === 'van-6' || layout === 'van-8'
     ? '/art/vehicles/graty.webp'
     : '/art/vehicles/wloczega.webp';
+}
+
+/** Długość bryły bez znanej grafiki (własny obrazek MG) — wg układu foteli. */
+const BODY_LENGTH_M: Record<VehicleBody, number> = { bike: 2.2, car: 4.7, van: 6.0 };
+
+/** Najdłuższy pojazd galerii wypełnia ramkę miniatury; reszta jest krótsza. */
+export const VEHICLE_ART_FRAME_M = Math.max(
+  ...[...VEHICLE_ART, ...VEHICLE_ART_LEGACY].map((art) => art.lengthM),
+);
+
+/**
+ * Długość pojazdu w metrach dla miniatury: z grafiki wbudowanej, a dla obcej
+ * (wgranej przez MG) — z bryły układu foteli.
+ */
+export function vehicleArtLengthM(url: string | null, layout?: VehicleLayoutId): number {
+  const art = url
+    ? [...VEHICLE_ART, ...VEHICLE_ART_LEGACY].find((entry) => entry.url === url)
+    : undefined;
+  if (art) return art.lengthM;
+  const body: VehicleBody = layout?.startsWith('bike')
+    ? 'bike'
+    : layout?.startsWith('van')
+      ? 'van'
+      : 'car';
+  return BODY_LENGTH_M[body];
+}
+
+/** Ułamek ramki miniatury, który zajmuje ten pojazd (1 — najdłuższy z galerii). */
+export function vehicleArtScale(url: string | null, layout?: VehicleLayoutId): number {
+  return Math.min(1, vehicleArtLengthM(url, layout) / VEHICLE_ART_FRAME_M);
 }
 
 export function isVehicleArtUrl(value: unknown): value is string {

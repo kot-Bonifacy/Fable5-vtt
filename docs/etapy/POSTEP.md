@@ -29,6 +29,12 @@ Pełna tabela z nazwami i datami: `archiwum/tabela-etapow.md`.
 
 ## Od czego zacząć
 
+**Grafika auta to model, miniatury w skali (zgłoszenie MG z 10.11) — czeka na wdrożenie (bez
+migracji) i oględziny MG przy stole.** MG wybiera na karcie pojazdu grafikę modelu i auto staje
+się tym modelem; „＋ Dodaj pojazd” to galeria modeli bez wyboru z góry; obrazki aut mają
+długość proporcjonalną do prawdziwej. Auto Morte w `dev.db` jest już „Osą”. Umowa na górze
+`ekwipunek`.
+
 **Kubek do przestawiania i jego menu (zlecenie MG z 10.11) — czeka na wdrożenie (bez migracji)
 i oględziny MG przy stole.** Prawy przycisk na kubku otwiera małe menu: Szczęście do
 załadowanego rzutu (plakietka +N na kubku zamiast licznika nad nim), „Unik i Odskok
@@ -760,7 +766,7 @@ a nie do tego pliku.
 | `statysta`  | figura z kartą, `statBlock`, Wartość bojowa, `token:stat` (tylko zmienione grupy), wzorce | 18   | 3       |
 | `karta`     | strony i zakładki, panele, `sheet.css`, walidacja list, usuwanie przedmiotu, „Używane” i „Plecak” | 12   | 12      |
 | `postac`    | kreator, PD i awanse, koszyk i cofanie awansów, Role i Zdolności, cyborgizacje, chrom zmieniający liczby, ekonomia, Test montażu gracza, pojazdy i Tabor | 58   | 3       |
-| `ekwipunek` | wiersze wyposażenia, przekazanie, łup (także ciała graczy), handel, sklepy, asortyment handlarza z kompendium, zasięg, amunicja bez dna, egzoszkielet, latarka z ekwipunku, narkotyki i fiolki, siatka okna „Wymiana”, zgoda z góry, odświeżanie po naklejkach, znaczek „w użyciu”, zakup auta z modelu, warsztat (ulepszenia i naprawa auta), auto bokiem i „w garażu”, postać na karcie przekazania, zasięg ręki do figury spoza siatki | 49   | 3       |
+| `ekwipunek` | wiersze wyposażenia, przekazanie, łup (także ciała graczy), handel, sklepy, asortyment handlarza z kompendium, zasięg, amunicja bez dna, egzoszkielet, latarka z ekwipunku, narkotyki i fiolki, siatka okna „Wymiana”, zgoda z góry, odświeżanie po naklejkach, znaczek „w użyciu”, zakup auta z modelu, warsztat (ulepszenia i naprawa auta), auto bokiem i „w garażu”, grafika auta to model i skala miniatur, postać na karcie przekazania, zasięg ręki do figury spoza siatki | 50   | 3       |
 | `czas`      | zegar świata, kalendarz, `statEffects`, leczenie po dobie, dawki i uzależnienia (`chems`) | 19   | 2       |
 | `siec`      | Programy, LOD, demony, piętra architektury, dek jako towar, strefy bronione, kamery (także w ciemności), rozbrajanie, Sieć ze sceny, jedna próba i pamięć sukcesów, strzał z urządzenia, strefa tylko z marszu gracza, widok runu z rundą, strefa rozbrojona w Sieci | 18   | 6       |
 | `boty`      | llama-server, RAG, reindeks, dziennik i baza wiedzy, brama AI  | 10   | 10      |
@@ -773,6 +779,29 @@ a nie do tego pliku.
 ## Notatki z dwóch ostatnich sesji
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
+
+### Sesja 10.11, druga — grafika auta to model, skala na miniaturach
+
+**Zgłoszenie MG:** „statystyki chyba wszystkich pojazdów są takie same — Statek powietrzny,
+Ruch 20, fotele 2, szyby 15 PW — a to nie są statki powietrzne; oddaj lepiej na zdjęciach skalę
+pojazdów”. **Przyczyna:** auto Morte (i bezpański wóz z 31.10) w „ulice Lublina” to był
+**Aerozep** z katalogu — lista „＋ Dodaj pojazd” była alfabetyczna i miała go wybranego z góry,
+a wybór grafiki zmieniał tylko obrazek. **Decyzje MG:** grafika = model (MG), galeria modeli
+przy dodawaniu, Morte → „Osa”, drugi Aerozep usunąć, miniatury proporcjonalne do realnej
+długości (mapa bez zmian). **Zrobione (bez migracji, czeka na wdrożenie):** `cpredVehicleToModel`
+i `cpredVehicleModelByArt` (`shared`), `vehicle:rename` przestawia model u MG i pilnuje klasy
+u gracza, galeria w `AddFromCatalog`, `lengthM` w `VEHICLE_ART` i `vehicleArtScale` →
+`--vehicle-art-scale`. Umowa na górze `ekwipunek`. **Dane:** w `dev.db` (kopia
+`dev.db.bak-20261110-aerozep`) auto Morte jest „Osą” (PUK 35/35, Szyby kuloodporne i Nitro;
+Wzmocniona konstrukcja wypadła, bo motocykl jej nie przyjmuje), bezpański Aerozep usunięty —
+skryptem, bo „ulice Lublina” ma innego MG, a sesja trwała; widok odświeży F5.
+**Rozstrzygnięcia bez pytań:** gracz dostaje tylko lakier swojej klasy (bez tego kompakt
+z grafiką supersamochodu znów kłamałby o liczbach), okno „Edytuj…” zostaje ręczne, długości
+grafik to szacunek z wyglądu. **Testy:** `shared` 2996/2996, serwer 1763/1763, klient 489/489,
+ESLint i `tsc --noEmit` czyste. **Oglądane w Chromium** (Playwright MCP, „Oględziny 12.09”):
+galeria, wybór „Osy”, dodanie, przestawienie na „Nomadę”; Firefox MCP nie wstał (pułapka
+`ogledziny`). Wóz testowy „Nomada” został w „Oględzinach 12.09” — usunięcia nie przepuścił
+klasyfikator, MG usuwa go ręką. MG i Chrome nieoglądane.
 
 ### Sesja 10.11 — kubek do przestawiania, menu pod prawym przyciskiem
 
@@ -792,22 +821,3 @@ Esc, Szczęście 2 z rzutem i spadkiem puli, kubek nad kartą, F5, małe okno, p
 gniazdo w Firefoksie; osobno 7/7). Atak ze Szczęściem z menu (zlecenie MG, ten sam dzień, spec tymczasowy): Kowal do figury
 z 4 m, PT 13, modyfikator 11, kość 2 — bez Szczęścia 13 i pudło, z +2 suma 15 i trafienie, pula
 7 → 5. MG i Chrome nieoglądane. Zrzut wyłapał warstwę menu pod kubkiem (pułapka na górze `ui`).
-
-### Sesja 07.11, ósma — siedem zaległości z „Po zamknięciu” (66e)
-
-**Zlecenie MG:** „zrób kilka zaległości”. Wybrane bez pytań do MG: 🔴 16, 🟠 5 i 20, 🟡 22, 26,
-27 i 28. **Zrobione (bez migracji, czekają na wdrożenie):** (16) diagnoza na punkcie
-`po-zamknieciu-przebieg2` — planer gracza chodził przez ścianę między polem widzianym przez
-Iskrę a polem widzianym przez kamerę (suma wielokątów nie ma ścian na brzegu); krok planera
-musi leżeć w jednym wielokącie (`sightStepTest`), a `refreshNetCameraSight` po restarcie
-serwera nie bierze pustej pamięci za „bez kamer” (oczy kamer zostawały po odłączeniu do F5);
-(5) szuflada trybów zapisywała pod złym kluczem; (20) wrak osłony nie jest celem; (22) cele
-wieżyczki bez pojemników, martwych i urządzeń, „Dołącz do walki” bez martwych; (26) „(osłona)”,
-„(pojazd)”, „(szyba)” w tytule obrażeń; (27) strefa `armed = false` wyłącza urządzenie w Sieci
-(„rozbrojona na miejscu”, bez obsługi); (28) plakietka cyberpsychozy na liście tylko przy
-utracie Człowieczeństwa. Umowy na górze `tura` i `siec`, pułapka na górze `siec`, wpis
-w `archiwum/zamkniete-zaleglosci.md`, szczegóły w `etap-66e-po-zamknieciu.md` („Naprawy 07.11
-(ósma sesja)”). **Testy:** `shared` 2992/2992, serwer 1762/1762, klient 474/474; ESLint,
-Prettier i `tsc --noEmit` czyste. **Oglądane:** Iskra w **Firefoksie**, MG w Chromium
-(Playwright MCP, instancja E2E); odcisk kamer po restarcie — tylko kodem i przebiegiem
-podłącz/odłącz (6 → 1), pkt 26 — tylko test.

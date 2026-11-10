@@ -13,9 +13,12 @@
 /* Grafika auta bokiem (06.11, MG: widoczność kupowanych i posiadanych aut).
    Pliki są rysowane przodem do góry (pościg) — tu leżą przodem w lewo na
    ciemnym asfalcie, niezależnie od motywu: jasny papier gubił kontury aut.
-   `--vehicle-art-len` to długość auta po obrocie, a ramka ma ok. połowę tego na wysokość. */
+   `--vehicle-art-len` to długość ramki, a ramka ma ok. połowę tego na wysokość.
+   `--vehicle-art-scale` (MG 10.11, skala pojazdów) — ułamek ramki, który zajmuje
+   to auto: najdłuższe z galerii 1, motocykl ok. 1/3 (`vehicleArtScale`). */
 .vehicle-art {
   --vehicle-art-len: 9rem;
+  --vehicle-art-scale: 1;
   position: relative;
   display: inline-block;
   flex: none;
@@ -36,7 +39,7 @@
   position: absolute;
   top: 50%;
   left: 50%;
-  height: var(--vehicle-art-len);
+  height: calc(var(--vehicle-art-len) * var(--vehicle-art-scale));
   width: auto;
   transform: translate(-50%, -50%) rotate(-90deg);
   filter: drop-shadow(0 0 0.25rem var(--vehicle-art-shadow));
@@ -48,6 +51,11 @@
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+.vehicle-art--tile {
+  --vehicle-art-len: 5rem;
+  display: block;
 }
 
 .vehicle-art--row {
@@ -203,15 +211,94 @@ input.vehicle-card-name {
   color: var(--text-dim);
 }
 
+/* „＋ Dodaj pojazd” MG (10.11): galeria modeli w skali, grupami, a pod nią
+   zwinięte „Inne z podręcznika”. Nic nie jest wybrane z góry. */
 .vehicle-add {
   display: flex;
+  flex-direction: column;
   gap: 0.35rem;
-  align-items: center;
   margin-top: 0.3rem;
 }
 
-.vehicle-add select {
-  flex: 1;
+.vehicle-add-group-label {
+  display: block;
+  margin-bottom: 0.15rem;
+  font-size: 0.72rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+.vehicle-add-gallery {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(5.6rem, 1fr));
+  gap: 0.3rem;
+}
+
+.vehicle-add-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.15rem;
+  padding: 0.2rem;
+  min-width: 0;
+  font-size: 0.72rem;
+  line-height: 1.15;
+  text-align: center;
+}
+
+.vehicle-add-tile > .vehicle-art {
+  width: 100%;
+}
+
+.vehicle-add-tile > span:last-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.vehicle-add-tile[aria-pressed='true'],
+.vehicle-add-others button[aria-pressed='true'] {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent) inset;
+}
+
+.vehicle-add-others summary {
+  cursor: pointer;
+  font-size: 0.8rem;
+  color: var(--text-dim);
+}
+
+.vehicle-add-others ul {
+  list-style: none;
+  margin: 0.25rem 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.vehicle-add-others button {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.1rem 0.5rem;
+  width: 100%;
+  text-align: left;
+  font-size: 0.78rem;
+}
+
+.vehicle-add-others button span {
+  color: var(--text-dim);
+}
+
+.vehicle-add-bar {
+  display: flex;
+  gap: 0.35rem;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.vehicle-add-bar .vehicle-hint {
   min-width: 0;
 }
 

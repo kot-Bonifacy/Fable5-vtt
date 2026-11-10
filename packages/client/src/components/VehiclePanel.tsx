@@ -14,6 +14,8 @@ import {
   cpredVehicleDerived,
   cpredVehicleHpAfterUpgrades,
   cpredVehicleIsModel,
+  cpredVehicleModelDetail,
+  cpredVehicleToModel,
   defaultVehicleArt,
   cpredVehicleUpgrade,
   cpredVehicleUpgradeProblem,
@@ -31,7 +33,7 @@ import {
   type VehicleView,
 } from '@vtt/shared';
 import { apiGet } from '../api.js';
-import { noteAck } from '../notices.js';
+import { noteAck, notifyInfo } from '../notices.js';
 import {
   createVehicle,
   deleteVehicle,
@@ -206,6 +208,7 @@ export function VehicleCard({
       <VehicleArt
         url={vehicle.imageUrl ?? defaultVehicleArt(vehicle.layout)}
         size="card"
+        layout={vehicle.layout}
         wrecked={stats.hp === 0}
       />
       <div className="vehicle-card-body">
@@ -282,25 +285,64 @@ export function VehicleCard({
 }
 
 /**
- * Wbudowana grafika pojazdu (etap 65b) — właściciel wybiera ją sam, bez MG
- * (`vehicle:rename` przyjmuje tylko `/art/vehicles/`). Grafika z biblioteki MG
- * stoi na liście jako „własna MG”, żeby wybór jej nie gubił po cichu.
+ * Wbudowana grafika pojazdu (etap 65b). **Grafika to model** (zlecenie MG
+ * z 10.11): MG wybiera grafikę modelu, a auto staje się tym modelem — rodzaj,
+ * PUK, Ruch, fotele i bryła idą za nią (`vehicle:rename`). Gracz dostaje tylko
+ * modele swojej klasy z tymi samymi fotelami — ten sam wóz w innym lakierze.
+ * Grafika z biblioteki MG stoi na liście jako „własna MG”, żeby wybór jej nie
+ * gubił po cichu.
  */
 function VehicleArtPicker({ vehicle, isGm }: { vehicle: VehicleView; isGm: boolean }) {
+  const entries = useCompendiumStore((s) => s.entries);
+  const stats = readCpredVehicle(vehicle.system);
+  const own = stats.catalogId ? entries[stats.catalogId] : undefined;
+  const ownClass = (own && isVehicleEntry(own) ? own.classId : undefined) ?? stats.catalogId;
+  const models = Object.values(entries).filter(
+    (entry): entry is VehicleEntry & { art: string } =>
+      entry !== undefined && isVehicleEntry(entry) && typeof entry.art === 'string',
+  );
+  const modelOf = (url: string) => models.find((entry) => entry.art === url);
   // Służby (taksówka, radiowóz, karetka, Militech) daje MG — gracz ich nie wybiera.
-  const gallery = VEHICLE_ART.filter((art) => isGm || !art.gmOnly);
+  const gallery = VEHICLE_ART.filter((art) => {
+    if (isGm) return true;
+    const model = modelOf(art.url);
+    return (
+      !art.gmOnly &&
+      model !== undefined &&
+      (model.classId ?? model.id) === ownClass &&
+      model.seats === stats.seats &&
+      (model.van === true) === stats.van
+    );
+  });
+  if (!isGm && gallery.length === 0) return null;
   const builtIn = gallery.some((art) => art.url === vehicle.imageUrl);
   const legacy = VEHICLE_ART_LEGACY.some((art) => art.url === vehicle.imageUrl);
+
   async function pick(value: string) {
+    const model = value ? modelOf(value) : undefined;
+    const switching =
+      isGm && model !== undefined && model.id !== stats.catalogId && !stats.fleetRowId;
+    const dropped = switching && model ? cpredVehicleToModel(stats, model).dropped : [];
     const ack = await renameVehicle({
       vehicleId: vehicle.id,
       imageUrl: value === '' ? null : value,
     });
-    noteAck('character', ack, vehicleErrorText);
+    if (!noteAck('character', ack, vehicleErrorText) || !model || dropped.length === 0) return;
+    const names = [...new Set(dropped.map((id) => cpredVehicleUpgrade(id)?.name ?? id))];
+    notifyInfo(
+      `${CPRED_VEHICLE_KIND_LABELS[model.vehicleKind]} nie przyjmuje: ${names.join(', ')} — zdjęte z „${vehicle.name}”.`,
+    );
   }
   return (
-    <label className="vehicle-card-art" title="Jak auto wygląda na scenie pościgu">
-      <span>Grafika</span>
+    <label
+      className="vehicle-card-art"
+      title={
+        isGm
+          ? 'Grafika to model: auto bierze jego rodzaj, PUK, Ruch i fotele. Ulepszenia zostają, jeśli pasują.'
+          : 'Ten sam wóz w innym lakierze — modele twojej klasy'
+      }
+    >
+      <span>{isGm ? 'Model' : 'Grafika'}</span>
       <select value={vehicle.imageUrl ?? ''} onChange={(event) => void pick(event.target.value)}>
         <option value="">domyślna</option>
         {vehicle.imageUrl && !builtIn ? (
@@ -322,12 +364,31 @@ function VehicleArtPicker({ vehicle, isGm }: { vehicle: VehicleView; isGm: boole
   );
 }
 
-/** MG: „＋ z katalogu” — wybór wpisu i zgoda jednym przyciskiem. */
+/** Grupy galerii modeli „＋ Dodaj pojazd” — w tej kolejności. */
+const MODEL_GROUPS: readonly { label: string; test: (entry: VehicleEntry) => boolean }[] = [
+  {
+    label: 'Motocykle',
+    test: (entry) => entry.forSale === true && entry.vehicleKind === 'motorcycle',
+  },
+  {
+    label: 'Auta',
+    test: (entry) => entry.forSale === true && entry.vehicleKind !== 'motorcycle' && !entry.van,
+  },
+  { label: 'Furgony', test: (entry) => entry.forSale === true && entry.van === true },
+  { label: 'Służby', test: (entry) => entry.forSale !== true },
+];
+
+/**
+ * MG: „＋ Dodaj pojazd” (zlecenie MG z 10.11) — galeria modeli w skali,
+ * pogrupowana, a pod nią zwinięte „Inne z podręcznika” (klasy, łodzie,
+ * aerodyny, wpisy MG bez grafiki). **Nic nie jest wybrane z góry** — dawna
+ * lista alfabetyczna podsuwała Aerozep i MG dawał postaciom sterowce.
+ */
 export function AddFromCatalog({ ownerCharacterId }: { ownerCharacterId: string | null }) {
   const catalog = useVehicleCatalog();
-  const [catalogId, setCatalogId] = useState('');
+  const entries = useCompendiumStore((s) => s.entries);
+  const [chosen, setChosen] = useState('');
   const [busy, setBusy] = useState(false);
-  const chosen = catalogId || catalog[0]?.id || '';
   if (catalog.length === 0) {
     return (
       <p className="vehicle-hint">
@@ -335,31 +396,89 @@ export function AddFromCatalog({ ownerCharacterId }: { ownerCharacterId: string 
       </p>
     );
   }
+  const models = catalog.filter((entry) => typeof entry.art === 'string');
+  const others = catalog
+    .filter((entry) => typeof entry.art !== 'string')
+    .sort(
+      (a, b) =>
+        CPRED_VEHICLE_KINDS.indexOf(a.vehicleKind) - CPRED_VEHICLE_KINDS.indexOf(b.vehicleKind) ||
+        a.name.localeCompare(b.name, 'pl'),
+    );
+  const picked = catalog.find((entry) => entry.id === chosen);
+  const detail = (entry: VehicleEntry) => {
+    const base = entry.classId ? entries[entry.classId] : undefined;
+    return cpredVehicleModelDetail(
+      entry,
+      base?.name ?? CPRED_VEHICLE_KIND_LABELS[entry.vehicleKind],
+    );
+  };
+  const toggle = (id: string) => setChosen(id === chosen ? '' : id);
   return (
     <div className="vehicle-add">
-      <select
-        value={chosen}
-        aria-label="Pojazd z katalogu"
-        onChange={(event) => setCatalogId(event.target.value)}
-      >
-        {catalog.map((entry) => (
-          <option key={entry.id} value={entry.id}>
-            {entry.name} — PUK {entry.hp}, Ruch {entry.move}, {formatCost(entry)}
-          </option>
-        ))}
-      </select>
-      <button
-        type="button"
-        disabled={busy || !chosen}
-        onClick={() => {
-          setBusy(true);
-          void createVehicle({ catalogId: chosen, ownerCharacterId })
-            .then((ack) => noteAck('character', ack, vehicleErrorText))
-            .finally(() => setBusy(false));
-        }}
-      >
-        ＋ Dodaj pojazd
-      </button>
+      {MODEL_GROUPS.map((group) => {
+        const rows = models.filter(group.test);
+        if (rows.length === 0) return null;
+        return (
+          <div key={group.label} className="vehicle-add-group">
+            <span className="vehicle-add-group-label">{group.label}</span>
+            <div className="vehicle-add-gallery">
+              {rows.map((entry) => (
+                <button
+                  key={entry.id}
+                  type="button"
+                  className="vehicle-add-tile"
+                  aria-pressed={entry.id === chosen}
+                  title={`${entry.name} — ${detail(entry)}`}
+                  onClick={() => toggle(entry.id)}
+                >
+                  <VehicleArt url={entry.art ?? null} size="tile" />
+                  <span>{entry.name}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        );
+      })}
+      {others.length > 0 ? (
+        <details className="vehicle-add-others">
+          <summary>Inne z podręcznika ({others.length})</summary>
+          <ul>
+            {others.map((entry) => (
+              <li key={entry.id}>
+                <button
+                  type="button"
+                  aria-pressed={entry.id === chosen}
+                  onClick={() => toggle(entry.id)}
+                >
+                  <b>{entry.name}</b>
+                  <span>
+                    {CPRED_VEHICLE_KIND_LABELS[entry.vehicleKind]} · PUK {entry.hp} · Ruch{' '}
+                    {entry.move} · {formatCost(entry)}
+                  </span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </details>
+      ) : null}
+      <div className="vehicle-add-bar">
+        <span className="vehicle-hint">{picked ? detail(picked) : 'Wybierz model pojazdu.'}</span>
+        <button
+          type="button"
+          disabled={busy || !picked}
+          onClick={() => {
+            if (!picked) return;
+            setBusy(true);
+            void createVehicle({ catalogId: picked.id, ownerCharacterId })
+              .then((ack) => {
+                if (noteAck('character', ack, vehicleErrorText)) setChosen('');
+              })
+              .finally(() => setBusy(false));
+          }}
+        >
+          ＋ Dodaj {picked ? picked.name : 'pojazd'}
+        </button>
+      </div>
     </div>
   );
 }

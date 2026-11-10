@@ -14,6 +14,8 @@ import {
   cpredVehicleFromCatalog,
   cpredVehicleLayout,
   cpredVehicleHpAfterUpgrades,
+  cpredVehicleModelByArt,
+  cpredVehicleToModel,
   cpredVehiclePatch,
   cpredVehicleSize,
   cpredVehicleSkillId,
@@ -26,7 +28,13 @@ import {
   cpredVehicleWindows,
   cpredVehicleWrecked,
 } from './vehicles.js';
-import { VEHICLE_LAYOUTS, vehicleLayoutFor } from '../../vehicles.js';
+import {
+  VEHICLE_ART,
+  VEHICLE_LAYOUTS,
+  vehicleArtLengthM,
+  vehicleArtScale,
+  vehicleLayoutFor,
+} from '../../vehicles.js';
 
 const entry = (over: Partial<VehicleEntry>): VehicleEntry => ({
   id: 'vehicle.test',
@@ -510,6 +518,89 @@ describe('walka pojazdów (etap 65d1, s. 191)', () => {
     expect(cpredInterfaceLinkDodges(bike, { ref: 9, cyberware: [] })).toBe(false);
     expect(cpredInterfaceLinkDodges({ ...bike, upgrades: [] }, { ref: 9, cyberware: plugs })).toBe(
       false,
+    );
+  });
+});
+
+describe('grafika = model (MG 10.11)', () => {
+  const aerozep = entry({
+    id: 'vehicle.aerozep',
+    vehicleKind: 'aircraft',
+    hp: 100,
+    seats: 2,
+    move: 20,
+  });
+  const osa = entry({
+    id: 'vehicle.osa',
+    vehicleKind: 'motorcycle',
+    hp: 35,
+    seats: 2,
+    move: 20,
+    art: '/art/vehicles/osa.webp',
+  });
+  const upgrades = [
+    { id: 'a', upgradeId: 'bulletproofGlass', notes: '' },
+    { id: 'b', upgradeId: 'nitro', notes: '' },
+    { id: 'c', upgradeId: 'reinforced', notes: '' },
+  ] as const;
+
+  it('Aerozep z ulepszeniami staje się motocyklem: liczby z modelu, niepasujące ulepszenia wypadają', () => {
+    const before = readCpredVehicle({
+      ...cpredVehicleFromCatalog(aerozep),
+      upgrades,
+      hp: 110,
+    });
+    expect(cpredVehicleDerived(before).hpMax).toBe(120);
+    const { stats, dropped } = cpredVehicleToModel(before, osa);
+    expect(dropped).toEqual(['reinforced']);
+    expect(stats).toMatchObject({
+      kind: 'motorcycle',
+      catalogId: 'vehicle.osa',
+      hpMax: 35,
+      seats: 2,
+      move: 20,
+      van: false,
+    });
+    expect(stats.upgrades.map((row) => row.upgradeId)).toEqual(['bulletproofGlass', 'nitro']);
+    // 10 PUK uszkodzeń zostaje po zmianie modelu.
+    expect(stats.hp).toBe(25);
+    expect(cpredVehicleLayout(stats)).toBe('bike-2');
+  });
+
+  it('wrak zostaje wrakiem, a ciężkie ulepszenie zostaje razem ze Wzmocnioną konstrukcją', () => {
+    const wreck = readCpredVehicle({ ...cpredVehicleFromCatalog(osa), hp: 0 });
+    expect(cpredVehicleToModel(wreck, aerozep).stats.hp).toBe(0);
+    const van = readCpredVehicle({
+      ...cpredVehicleFromCatalog(entry({ id: 'vehicle.van', seats: 6, van: true })),
+      upgrades: [
+        { id: 'r', upgradeId: 'rocketPod', notes: '' },
+        { id: 'w', upgradeId: 'reinforced', notes: '' },
+      ],
+    });
+    const car = cpredVehicleToModel(van, entry({ id: 'vehicle.car' }));
+    expect(car.dropped).toEqual([]);
+    expect(car.stats.upgrades.map((row) => row.id)).toEqual(['r', 'w']);
+    expect(car.stats.van).toBe(false);
+  });
+
+  it('model po grafice: tylko wpis pojazdu z tym `art`', () => {
+    const list = [aerozep, osa, { category: 'gear', art: '/art/vehicles/osa.webp' }];
+    expect(cpredVehicleModelByArt(list, '/art/vehicles/osa.webp')?.id).toBe('vehicle.osa');
+    expect(cpredVehicleModelByArt(list, '/art/vehicles/zadlo.webp')).toBeNull();
+    expect(cpredVehicleModelByArt(list, null)).toBeNull();
+  });
+
+  it('skala miniatur: motocykl krótszy od auta, auto od furgonu, najdłuższy wypełnia ramkę', () => {
+    expect(VEHICLE_ART.every((art) => art.lengthM > 1 && art.lengthM < 10)).toBe(true);
+    const osaScale = vehicleArtScale('/art/vehicles/osa.webp');
+    const kombi = vehicleArtScale('/art/vehicles/wloczega.webp');
+    const nomada = vehicleArtScale('/art/vehicles/nomada.webp');
+    expect(osaScale).toBeLessThan(0.4);
+    expect(kombi).toBeGreaterThan(osaScale);
+    expect(nomada).toBe(1);
+    // Grafika spoza galerii: długość z bryły.
+    expect(vehicleArtLengthM('/uploads/c/x.png', 'bike-2')).toBeLessThan(
+      vehicleArtLengthM('/uploads/c/x.png', 'van-6'),
     );
   });
 });
