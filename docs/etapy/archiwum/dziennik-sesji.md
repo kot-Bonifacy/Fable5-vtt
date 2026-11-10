@@ -1,5 +1,24 @@
 # Dziennik sesji — archiwum
 
+### Sesja 10.11 — kubek do przestawiania, menu pod prawym przyciskiem
+
+**Zlecenie MG:** kubek ma się odblokowywać prawym przyciskiem, stawać gdziekolwiek i znów
+blokować, a małe menu ma też dawać Szczęście przed rzutem; w trakcie doszedł automatyczny Unik
+z lewego panelu. **Decyzje MG:** licznik Szczęścia tylko w menu (plakietka +N na kubku), tylko
+przy załadowanym rzucie, odblokowany kubek tylko się przesuwa, kubek nad pływającymi oknami.
+**Rozstrzygnięcia bez pytań:** pozycja w `localStorage` na użytkownika, blokada niezapisywana
+(po F5 kubek rzuca), „Wróć do rogu ekranu” tylko przy kubku poza rogiem, Szczęście z okna rzutu
+można w menu poprawić (pole `luckDeclared` zniknęło), w prawej połowie ekranu etykieta rośnie
+w lewo, Unik w menu dotyczy figury z lewego panelu. **Testy:** klient 489/489 (w tym nowe
+`cup-placement.test.ts`), ESLint, Prettier i `tsc --noEmit` czyste; `shared` i serwer bez zmian
+w kodzie (tylko komentarz w `character.ts`), niepuszczane. **Oglądane w Firefoksie**
+(tymczasowy spec na instancji E2E z `po-T6`, Marek/Kowal): menu, Unik na karcie, przenoszenie,
+Esc, Szczęście 2 z rzutem i spadkiem puli, kubek nad kartą, F5, małe okno, powrót do rogu.
+`--grep @szybkie`: 75 zaliczonych, 1 pominięty, 1 niezaliczony (T9a „konsola bez nowych błędów”, zerwane
+gniazdo w Firefoksie; osobno 7/7). Atak ze Szczęściem z menu (zlecenie MG, ten sam dzień, spec tymczasowy): Kowal do figury
+z 4 m, PT 13, modyfikator 11, kość 2 — bez Szczęścia 13 i pudło, z +2 suma 15 i trafienie, pula
+7 → 5. MG i Chrome nieoglądane. Zrzut wyłapał warstwę menu pod kubkiem (pułapka na górze `ui`).
+
 ### Sesja 07.11, ósma — siedem zaległości z „Po zamknięciu” (66e)
 
 **Zlecenie MG:** „zrób kilka zaległości”. Wybrane bez pytań do MG: 🔴 16, 🟠 5 i 20, 🟡 22, 26,

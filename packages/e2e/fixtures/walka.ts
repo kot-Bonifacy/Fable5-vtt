@@ -149,15 +149,14 @@ const activePanel = (page: Page) =>
   page.getByRole('complementary', { name: 'Panel aktywnej postaci' });
 
 /**
- * Pierwsza broń paska do ręki — klawiszem slotu (`1…9`, z podpowiedzi slotu),
- * jak przy stole. Klawisz, nie klik: okno „Sieć” MG leży w T5b nad lewym panelem.
+ * Pierwsza broń paska do ręki — kliknięciem jej kafla. Klawisze `1…9` zniknęły
+ * 11.11.2026, a okno „Sieć” MG leży w T5b nad lewym panelem, więc zdarzenie
+ * idzie wprost do kafla (`dispatchEvent`), nie przez wskaźnik.
  */
 export async function armFirstWeapon(page: Page) {
   const panel = activePanel(page);
   const slot = panel.locator('.hud-slot').first();
-  const key = /\((\d)\)$/.exec((await slot.getAttribute('title')) ?? '')?.[1];
-  if (key) await page.keyboard.press(key);
-  else await slot.click();
+  await slot.dispatchEvent('click');
   await expect(panel.getByText(/^W ręku:/)).toBeVisible();
 }
 

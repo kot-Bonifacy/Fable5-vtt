@@ -468,7 +468,8 @@ body:has(.creator-window) .dice-overlay {
   display: flex;
   align-items: center;
   gap: 0.4rem;
-  padding: 0.55rem;
+  /* 39 px ikony + 2 × 11 px + 2 × 2 px ramki = 65 px (`CUP_SIZE_PX`, etap 69). */
+  padding: 11px;
   border-radius: 50%;
   background: var(--bg-panel);
   border: 2px solid var(--border);

@@ -4,7 +4,7 @@
  * The action bar of the combat HUD is generated, never configured: it lists
  * what the selected token *is able to do* right now — its weapons with the fire
  * modes they actually offer, a reload when there is a magazine, and the handful
- * of catalogue actions worth a key. Nothing here is new rules. Every slot points
+ * of catalogue actions worth a button. Nothing here is new rules. Every slot points
  * at machinery that already exists (`planCpredAttack`, `spendCpredTurn`,
  * `weapon:reload`), and the refusals it carries are the ones the server would
  * give anyway — said *before* the click instead of after it.
@@ -44,6 +44,7 @@ import {
   fittedAttachmentsFor,
   resolveAttachmentWeapon,
   type CompendiumRegistry,
+  type RangeDvTable,
   type ResolvedWeapon,
 } from './compendium.js';
 import type { CpredWeaponIcon } from './weaponicons.js';
@@ -51,13 +52,15 @@ import type { CpredAttachmentProfile } from './attachments.js';
 import {
   CPRED_ATTACK_MODE_LABELS,
   CPRED_ATTACK_MODE_SHORT,
+  CPRED_AUTOFIRE_DAMAGE,
   CPRED_BURST_AMMO_COST,
   CPRED_HOLSTERED_REFUSAL,
   CPRED_JAM_REFUSAL,
   CPRED_NOT_DRAWN_REFUSAL,
+  cpredUnarmedWeaponType,
   type CpredAttackMode,
 } from './attacks.js';
-import { cpredBareHandsIcon } from './barehands.js';
+import { cpredBareHandsIcon, unarmedDamage } from './barehands.js';
 import { cpredActionBlock, cpredMovementBlock } from './statuses.js';
 import type { TurnBudgetView } from '../../combat.js';
 import { JUMP_COST_M } from '../../jump.js';
@@ -74,6 +77,7 @@ import {
   CPRED_ACTION_STABILIZE,
   CPRED_ACTION_STAND_UP,
   cpredAction,
+  type CpredActionCost,
 } from './turn.js';
 
 /** One thing a token can attack with, whatever the numbers come from. */
@@ -89,6 +93,11 @@ export interface CpredWeaponOption {
   attachmentId: string | null;
   name: string;
   resolved: ResolvedWeapon | null;
+  /**
+   * Obrażenia z wiersza karty (albo z broni przykręconej) — to, co kafel paska
+   * pokazuje obok nazwy (etap 69). Brak = wołający nie zna wiersza.
+   */
+  damage?: string;
   /** Rounds left / magazine size; null for a weapon that counts none. */
   ammo: { current: number; max: number } | null;
   /** The round loaded, when it is anything but ordinary (stage 16g). */
@@ -257,6 +266,7 @@ function weaponOptionsOf(
         attachmentId: null,
         name: row.name,
         resolved,
+        damage: row.damage,
         ammo: row.ammoMax > 0 ? { current: row.ammoCurrent, max: row.ammoMax } : null,
         ammoProfile: loadedAmmoFor(row, resolved, lookup),
         ...(row.jammed === true ? { jammed: true } : {}),
@@ -305,6 +315,7 @@ function secondaryOptionsOf(
       attachmentId: attachment.id,
       name: attachment.name,
       resolved: weapon,
+      damage: weapon.damage,
       ammo:
         magazine > 0
           ? { current: row.attachmentAmmo?.[attachment.id] ?? magazine, max: magazine }
@@ -448,7 +459,7 @@ const ACTION_ICONS: Readonly<Record<string, CpredSlotIcon>> = {
   [CPRED_ACTION_SNEAK]: 'sneak',
 };
 
-/** Catalogue actions worth a key, in the order they appear on the bar. */
+/** Catalogue actions every figure gets, in the order they appear on the bar. */
 export const CPRED_HOTBAR_ACTION_IDS: readonly string[] = [
   CPRED_ACTION_STABILIZE,
   CPRED_ACTION_GRAPPLE,
@@ -502,8 +513,13 @@ export const CPRED_SNEAK_STOP_HINT =
 export const CPRED_SNEAK_GM_REFUSAL =
   'Skradanie zaczyna gracz ze swojego paska — prośbą, na którą odpowiadasz modyfikatorem.';
 
-/** Slots that get a `1`–`9` key; the rest of the bar is mouse-only. */
-export const CPRED_HOTBAR_KEYED_SLOTS = 9;
+/**
+ * Czym płaci się za slot (etap 69, zlecenie MG z 10.11.2026: „koszt na
+ * przycisku”). Pasek rysuje z tego znak przy przycisku — ten sam, który stoi
+ * w budżecie tury — więc „co zgaśnie, gdy wydam Akcję” widać przed kliknięciem.
+ * `free` to wyjście ze skradania: nie kosztuje nic, także w cudzej turze.
+ */
+export type CpredSlotCost = CpredActionCost;
 
 /** A weapon in one of its fire modes — clicking a target loads the cup. */
 export interface CpredHotbarWeaponSlot {
@@ -572,8 +588,20 @@ export interface CpredHotbarWeaponSlot {
    * bo seria i ogień zaporowy zabierają całą Akcję. Null poza walką.
    */
   attacks: { left: number; max: number } | null;
-  /** `'1'`–`'9'`, or null past the ninth slot. */
-  key: string | null;
+  /**
+   * Obrażenia jednego trafienia w tym trybie (etap 69): wiersz karty, przy
+   * gołych rękach tabela BC, przy śrucie nabój, przy serii `2k6` (mnożone przez
+   * przebicie). Null — ogień zaporowy (nie rani) albo nikt nie podał wiersza.
+   */
+  damage: string | null;
+  /** SS broni — ile pojedynczych ataków mieści jedna Akcja. */
+  rof: number;
+  /**
+   * Tabela PT od dystansu dla tego trybu (etap 69) — pasek liczy z niej PT do
+   * trwałego celu. Null przy broni białej, śrucie (stałe PT) i ogniu zaporowym.
+   */
+  rangeDv: RangeDvTable | null;
+  cost: CpredSlotCost;
 }
 
 /**
@@ -593,7 +621,7 @@ export interface CpredHotbarClearJamSlot {
   hint: string;
   weaponRowId: string;
   disabled: string | null;
-  key: string | null;
+  cost: CpredSlotCost;
 }
 
 /** Refilling a magazine — its own event, and it books its own Action. */
@@ -615,7 +643,7 @@ export interface CpredHotbarReloadSlot {
    */
   ammoId?: string | null;
   disabled: string | null;
-  key: string | null;
+  cost: CpredSlotCost;
 }
 
 /** A catalogue action (14b). Some spend, some open a form — the UI decides. */
@@ -629,7 +657,9 @@ export interface CpredHotbarActionSlot {
   /** The action needs a target or a declaration before it can be booked. */
   needsForm: boolean;
   disabled: string | null;
-  key: string | null;
+  cost: CpredSlotCost;
+  /** Metry ruchu, które zabiera slot z `cost: 'move'` (Skok); inaczej null. */
+  moveCostM: number | null;
 }
 
 export type CpredHotbarSlot =
@@ -647,6 +677,11 @@ export interface CpredHotbarInput {
   stockGear?: readonly CpredGearRow[] | null;
   /** Ammunition lookup (stage 16g); without it every gun reads as ordinary. */
   resolveAmmo?: CpredAmmoResolver;
+  /**
+   * BC „jak teraz” i cyberręka (etap 69) — obrażenia gołych rąk idą z tabeli
+   * BC (s. 176), nie z wiersza. Brak = kafel pokazuje wiersz karty.
+   */
+  unarmed?: { body: number; cyberarm: boolean } | null;
   /**
    * Attachment catalogue and weapon types (stage 31). Without it the bar shows
    * weapons only — which is what the underbarrel launcher and the bayonet were
@@ -788,6 +823,27 @@ function weaponAttacksLeft(
 }
 
 /**
+ * Obrażenia na kaflu broni (etap 69) — to samo, co policzy `planAttack`:
+ * seria zawsze `2k6`, śrut bierze obrażenia naboju, gołe ręce tabelę BC,
+ * reszta wiersz karty. Ogień zaporowy nie rani, więc nie ma czego pokazać.
+ */
+function slotDamage(
+  option: CpredWeaponOption,
+  mode: CpredAttackMode,
+  unarmed: { body: number; cyberarm: boolean } | null,
+): string | null {
+  if (mode === 'suppressive') return null;
+  if (mode === 'autofire') return CPRED_AUTOFIRE_DAMAGE;
+  const spread = option.ammoProfile?.spread;
+  if (spread) return spread.damage;
+  if (unarmed && cpredUnarmedWeaponType(option.resolved?.typeId)) {
+    return unarmedDamage(unarmed.body, unarmed.cyberarm);
+  }
+  const damage = option.damage?.trim();
+  return damage ? damage : null;
+}
+
+/**
  * The sentence a spent budget leaves on a slot — the only one of the three that
  * is about *spending*, which is why it comes last in the order of truth.
  */
@@ -798,8 +854,9 @@ const ACTION_SPENT_REFUSAL = 'Akcja w tej turze już wykorzystana.';
  *
  * The order is the order of a turn as it is actually played: what I shoot with,
  * how I reload it, then the handful of things I might do instead of shooting.
- * Weapons first is not a preference — the keys `1`–`9` are worth most to the
- * thing pressed every round.
+ * Weapons first is not a preference — the first slot is the one a freshly
+ * selected figure takes in hand. (Klawisze `1`–`9` zniknęły 11.11.2026, decyzja
+ * MG: nikt ich nie używał.)
  */
 export function hotbarSlotsFor(input: CpredHotbarInput): CpredHotbarSlot[] {
   const options = cpredWeaponOptions(
@@ -835,6 +892,7 @@ export function hotbarSlotsFor(input: CpredHotbarInput): CpredHotbarSlot[] {
     const spread = option.ammoProfile?.spread;
     for (const mode of cpredFireModes(option.resolved)) {
       const attacksMax = mode === 'single' && (option.resolved?.rof ?? 1) >= 2 ? 2 : 1;
+      const melee = option.resolved?.melee ?? false;
       slots.push({
         kind: 'weapon',
         // Gołe ręce bez wpisu w kompendium — pięść, nie pistol z ostatniego szczebla.
@@ -868,7 +926,15 @@ export function hotbarSlotsFor(input: CpredHotbarInput): CpredHotbarSlot[] {
           secondAttackFits && (option.resolved?.rof ?? 1) >= 2 ? null : actionRefusal,
         ),
         attacks: weaponAttacksLeft(input, attacksMax, statusActionBlock),
-        key: null,
+        damage: slotDamage(option, mode, input.unarmed ?? null),
+        rof: option.resolved?.rof ?? 1,
+        rangeDv:
+          mode === 'suppressive' || melee || (spread && mode === 'single')
+            ? null
+            : mode === 'autofire'
+              ? (option.resolved?.autofire?.rangeDv ?? null)
+              : (option.resolved?.rangeDv ?? null),
+        cost: 'action',
       });
     }
   }
@@ -886,7 +952,7 @@ export function hotbarSlotsFor(input: CpredHotbarInput): CpredHotbarSlot[] {
       hint: 'Broń niskiej jakości zacięła się. Usunięcie usterki kosztuje Akcję i nie wymaga Testu.',
       weaponRowId: option.rowId,
       disabled: actionRefusal,
-      key: null,
+      cost: 'action',
     });
   }
 
@@ -920,7 +986,7 @@ export function hotbarSlotsFor(input: CpredHotbarInput): CpredHotbarSlot[] {
           : option.stock === 0 && !swap
             ? CPRED_NO_AMMO_REFUSAL
             : actionRefusal,
-      key: null,
+      cost: 'action',
     });
   }
 
@@ -950,7 +1016,8 @@ export function hotbarSlotsFor(input: CpredHotbarInput): CpredHotbarSlot[] {
           : input.isGm
             ? CPRED_SNEAK_GM_REFUSAL
             : actionSlotRefusal(actionId, input, actionRefusal, moveRefusal),
-        key: null,
+        cost: input.sneak.active ? 'free' : definition.cost,
+        moveCostM: null,
       });
       continue;
     }
@@ -980,14 +1047,12 @@ export function hotbarSlotsFor(input: CpredHotbarInput): CpredHotbarSlot[] {
         actionId === CPRED_ACTION_JUMP
           ? jumpRefusal(input, moveRefusal)
           : actionSlotRefusal(actionId, input, actionRefusal, moveRefusal),
-      key: null,
+      cost: definition.cost,
+      moveCostM: actionId === CPRED_ACTION_JUMP ? JUMP_COST_M : null,
     });
   }
 
-  return slots.map((slot, index) => ({
-    ...slot,
-    key: index < CPRED_HOTBAR_KEYED_SLOTS ? String(index + 1) : null,
-  }));
+  return slots;
 }
 
 /**
@@ -1135,7 +1200,7 @@ function actionSlotRefusal(
  * one choice, and splitting weapon from mode there would mean asking a language
  * model two questions where one will do. What changed is the *panel*: three
  * boxes for one gun made a character with a single weapon look like a character
- * with three, and burned three of the nine number keys on it.
+ * with three.
  */
 export interface CpredHotbarWeaponGroup {
   kind: 'weapon';
@@ -1148,7 +1213,6 @@ export interface CpredHotbarWeaponGroup {
   attachmentId: string | null;
   /** The weapon's modes, in the order `cpredFireModes` gives them. Never empty. */
   modes: CpredHotbarWeaponSlot[];
-  key: string | null;
 }
 
 /** A reload, a jam or a catalogue action — one thing, one box, nothing to fold. */
@@ -1158,7 +1222,6 @@ export interface CpredHotbarSingleGroup {
   label: string;
   icon: CpredSlotIcon;
   slot: CpredHotbarSlot;
-  key: string | null;
 }
 
 export type CpredHotbarGroup = CpredHotbarWeaponGroup | CpredHotbarSingleGroup;
@@ -1166,13 +1229,8 @@ export type CpredHotbarGroup = CpredHotbarWeaponGroup | CpredHotbarSingleGroup;
 /**
  * Folds the flat bar into what the panel draws.
  *
- * The number keys move here with it, and that is the point: they now count
- * *weapons*, so a character with one gun presses `1` whatever it is loaded
- * with, and `2` is the next real thing rather than the same gun again.
- *
  * Order is preserved — weapons in sheet order, then the reloads, then the
- * catalogue — because that is the order a turn is played in and the one the
- * keys were worth having in stage 16f.
+ * catalogue — because that is the order a turn is played in.
  */
 export function cpredHotbarGroups(slots: readonly CpredHotbarSlot[]): CpredHotbarGroup[] {
   const groups: CpredHotbarGroup[] = [];
@@ -1194,7 +1252,6 @@ export function cpredHotbarGroups(slots: readonly CpredHotbarSlot[]): CpredHotba
         weaponRowId: slot.weaponRowId,
         attachmentId: slot.attachmentId,
         modes: [slot],
-        key: null,
       };
       weaponIndex.set(key, group);
       groups.push(group);
@@ -1206,14 +1263,10 @@ export function cpredHotbarGroups(slots: readonly CpredHotbarSlot[]): CpredHotba
       label: slot.label,
       icon: slot.icon,
       slot,
-      key: null,
     });
   }
 
-  return groups.map((group, index) => ({
-    ...group,
-    key: index < CPRED_HOTBAR_KEYED_SLOTS ? String(index + 1) : null,
-  }));
+  return groups;
 }
 
 /**
@@ -1224,7 +1277,7 @@ export function cpredHotbarGroups(slots: readonly CpredHotbarSlot[]): CpredHotba
  * przeładowaniem i usuwaniem usterki — dobywa się ją na karcie postaci.
  * Granat i broń statysty nie mają pojęcia „w ręku” (`outOfHand` zawsze false),
  * więc zostają. Filtr działa na płaskiej liście *przed* `cpredHotbarGroups`,
- * żeby klawisze 1–9 liczyły to, co widać. `hotbarSlotsFor` zostaje pełne:
+ * żeby grupy powstawały z tego, co widać. `hotbarSlotsFor` zostaje pełne:
  * bot i serwer czytają z niego odmowy po id.
  */
 export function cpredHotbarInHand(slots: readonly CpredHotbarSlot[]): {
@@ -1275,13 +1328,4 @@ export function cpredWeaponModeSlot(
 ): CpredHotbarWeaponSlot {
   const wanted = remembered ? group.modes.find((slot) => slot.mode === remembered) : undefined;
   return wanted ?? group.modes[0]!;
-}
-
-/** The next mode in the ring, for the „cycle this weapon's fire mode" key. */
-export function cpredNextWeaponMode(
-  group: CpredHotbarWeaponGroup,
-  current: CpredAttackMode,
-): CpredAttackMode {
-  const index = group.modes.findIndex((slot) => slot.mode === current);
-  return group.modes[(index + 1) % group.modes.length]!.mode;
 }

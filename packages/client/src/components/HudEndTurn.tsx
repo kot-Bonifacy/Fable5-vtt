@@ -8,6 +8,7 @@ import { useChatStore } from '../stores/chatStore.js';
 import { activeCombatantOf, myActiveCombatant, useCombatStore } from '../stores/combatStore.js';
 import { useRollStore } from '../stores/rollStore.js';
 import { useTokenStore } from '../stores/tokenStore.js';
+import { useHudTip } from './HudTip.js';
 
 /**
  * The end of the turn, at the bottom of the left rail (owner's call, 16.10).
@@ -80,6 +81,16 @@ function useTurnDone(turn: Parameters<typeof cpredTurnExhausted>[0]): boolean {
 
 export function HudEndTurn() {
   const { shown, isGm, done, name, pending, end } = useEndTurn();
+  // Etap 69: opis w dymku belki zamiast systemowego `title`.
+  const tip = useHudTip({
+    title: isGm ? 'Następna tura' : 'Kończę turę',
+    body: isGm
+      ? 'Zamyka bieżącą turę i oddaje ją następnemu w kolejce.'
+      : done
+        ? 'Akcja wykorzystana — zostało najwyżej przejście. Oddaj turę następnemu w kolejce.'
+        : 'Oddaje turę następnemu w kolejce. Niewydana Akcja i metry ruchu przepadają.',
+    keyLabel: 'E',
+  });
   if (!shown) return null;
   return (
     <section
@@ -94,14 +105,8 @@ export function HudEndTurn() {
         type="button"
         className="hud-end-turn-button"
         disabled={pending}
-        title={
-          isGm
-            ? 'Zamyka bieżącą turę i oddaje ją następnemu w kolejce (klawisz E na mapie)'
-            : done
-              ? 'Akcja wykorzystana — zostało najwyżej przejście. Oddaj turę (klawisz E na mapie)'
-              : 'Oddaj turę następnemu w kolejce (klawisz E na mapie)'
-        }
         onClick={end}
+        {...tip}
       >
         {isGm ? 'Następna tura' : 'Kończę turę'}
         <kbd className="hud-end-turn-key" aria-hidden="true">

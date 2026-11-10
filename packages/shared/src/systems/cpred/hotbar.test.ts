@@ -1,10 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
-  CPRED_HOTBAR_KEYED_SLOTS,
   cpredFireModes,
   cpredHotbarGroups,
   cpredHotbarInHand,
-  cpredNextWeaponMode,
   cpredWeaponIcon,
   cpredWeaponModeSlot,
   cpredWeaponOptions,
@@ -219,12 +217,11 @@ describe('cpredHotbarInHand — na pasku tylko broń w rękach (02.11.2026)', ()
     expect(slots.some((slot) => slot.kind === 'action')).toBe(true);
   });
 
-  it('klawisz 1 trafia w broń w ręku, a nie w schowaną', () => {
+  it('pierwsza na pasku jest broń w ręku, a nie schowana', () => {
     const groups = cpredHotbarGroups(cpredHotbarInHand(twoGuns(['row-2'])).slots);
     const first = groups[0]!;
     expect(first.kind).toBe('weapon');
     expect(first.kind === 'weapon' && first.weaponRowId).toBe('row-2');
-    expect(first.key).toBe('1');
   });
 
   it('przy pustych rękach nie zostaje żadna broń, ale zostaje lista schowanych', () => {
@@ -618,27 +615,7 @@ describe('hotbarSlotsFor — grappling turns one slot into its opposite', () => 
   });
 });
 
-describe('hotbarSlotsFor — keys', () => {
-  it('numbers the first nine slots and leaves the rest mouse-only', () => {
-    const weapons = Array.from({ length: 6 }, (_, index) =>
-      weaponRow({ id: `row-${index}`, name: `Broń ${index}` }),
-    );
-    const slots = hotbarSlotsFor(input({ sheet: { weapons }, resolve: () => smg }));
-    expect(slots.length).toBeGreaterThan(CPRED_HOTBAR_KEYED_SLOTS);
-    expect(slots.slice(0, CPRED_HOTBAR_KEYED_SLOTS).map((slot) => slot.key)).toEqual([
-      '1',
-      '2',
-      '3',
-      '4',
-      '5',
-      '6',
-      '7',
-      '8',
-      '9',
-    ]);
-    expect(slots[CPRED_HOTBAR_KEYED_SLOTS]!.key).toBeNull();
-  });
-
+describe('hotbarSlotsFor — figura bez karty', () => {
   it('gives an unstatted token only the catalogue actions', () => {
     const slots = hotbarSlotsFor(input({ sheet: null }));
     expect(slots.every((slot) => slot.kind === 'action')).toBe(true);
@@ -711,12 +688,11 @@ describe('cpredHotbarGroups', () => {
     ]);
   });
 
-  it('numbers weapons rather than modes, so one gun is one key', () => {
+  it('folds the modes of one gun into one group, the reload right after it', () => {
     const groups = cpredHotbarGroups(hotbarSlotsFor(input({ resolve: () => smg })));
-    expect(groups[0]!.key).toBe('1');
-    // Before grouping the same bar spent keys 1–3 on that single weapon.
+    expect(groups[0]!.kind).toBe('weapon');
+    // Before grouping the same bar spent three boxes on that single weapon.
     expect(groups[1]!.kind).toBe('reload');
-    expect(groups[1]!.key).toBe('2');
   });
 
   it('keeps a reload and an Action as rows of their own', () => {
@@ -738,20 +714,6 @@ describe('cpredHotbarGroups', () => {
     const plain = cpredHotbarGroups(hotbarSlotsFor(input({ resolve: () => pistol })))[0]!;
     if (plain.kind !== 'weapon') throw new Error('pierwsza grupa nie jest bronią');
     expect(cpredWeaponModeSlot(plain, 'autofire').mode).toBe('single');
-  });
-
-  it('cycles the modes in a ring', () => {
-    const groups = cpredHotbarGroups(hotbarSlotsFor(input({ resolve: () => smg })));
-    const weapon = groups[0]!;
-    if (weapon.kind !== 'weapon') throw new Error('pierwsza grupa nie jest bronią');
-    expect(cpredNextWeaponMode(weapon, 'single')).toBe('autofire');
-    expect(cpredNextWeaponMode(weapon, 'autofire')).toBe('suppressive');
-    expect(cpredNextWeaponMode(weapon, 'suppressive')).toBe('single');
-
-    const plain = cpredHotbarGroups(hotbarSlotsFor(input({ resolve: () => pistol })))[0]!;
-    if (plain.kind !== 'weapon') throw new Error('pierwsza grupa nie jest bronią');
-    // A weapon with one mode cycles to itself rather than off the end.
-    expect(cpredNextWeaponMode(plain, 'single')).toBe('single');
   });
 
   it('leaves the flat list — the one a bot reads — untouched', () => {
@@ -972,8 +934,6 @@ describe('hotbarSlotsFor — broń przykręcona do wiersza (31)', () => {
       'weapon:row-1',
       'weapon:row-1@attachment.bayonet',
     ]);
-    // Osobne klawisze — o to w tej zaległości chodziło.
-    expect(weapons.map((group) => group.key)).toEqual(['1', '2']);
   });
 });
 

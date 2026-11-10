@@ -404,8 +404,9 @@ test.describe.serial('T46c zapas amunicji', () => {
     await closeSheet(ola.page);
     await ola.page.keyboard.press('Escape');
     await clickOnMap(ola.page, tokenCentre(token('Iskra'), cell));
-    // Slot granatu i jego „Przeładuj” — pistolet nie ma liczby zapasu wcale.
-    await expect(ola.page.locator('.hud-stock')).toHaveText(['zapas 2', 'zapas 2']);
+    // Kafel granatu (etap 69: „Przeładuj” to przycisk na nim, zapas stoi raz)
+    // — pistolet nie ma liczby zapasu wcale.
+    await expect(ola.page.locator('.hud-stock')).toHaveText(['zapas 2']);
     await shot(ola, '7b-pasek');
   });
 

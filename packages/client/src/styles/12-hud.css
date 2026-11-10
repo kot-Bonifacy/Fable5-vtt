@@ -16,36 +16,69 @@
    slot, the magazine gauge, the armour and MOVE chips — is a thing the eye
    lands on instead of a line it reads, and all of them need width to be worth
    more than the words they replaced. */
+/* Belka bez ramek (etap 69, zlecenie MG z 10.11.2026): „tusz i odstępy”.
+   Nic tu nie ma własnego tła ani obwódki — sekcje dzieli pociągnięcie pędzla
+   (`--hud-stroke`), przycisk to ikona i napis, a to, że da się go kliknąć,
+   mówi podświetlenie pod kursorem (`--hud-hover`). Trzy rozmiary przycisków:
+   broń, akcje brane co turę, rzadkie akcje z samą ikoną. */
 .hud-rail {
   width: 17rem;
   flex: none;
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: 0.7rem;
   min-height: 0;
-  /* Miejsce u dołu jest zajęte: kubek do kości stoi domyślnie w lewym dolnym
-     rogu okna (`.dice-cup`, `position: fixed`), czyli **na** tym panelu. Bez
-     rezerwacji siada dokładnie na stopce ze skrótami — 51 px kubka plus jego
-     1 rem odstępu od krawędzi, i jeszcze trochę na cień. */
-  padding: 0.55rem 0.55rem 4.6rem;
+  /* Dół należy do stopki (`.hud-foot`): to ona trzyma miejsce na kubek. */
+  padding: 0.6rem 0.85rem 0;
+  overflow-x: hidden;
   overflow-y: auto;
   background: var(--bg-panel);
   border-right: 1px solid var(--border);
   user-select: none;
-}
-
-/* Kubek przestawiony poza róg (10.11) oddaje panelowi zarezerwowane miejsce. */
-body:has(.dice-cup--moved) .hud-rail {
-  padding-bottom: 0.55rem;
+  --hud-hover: color-mix(in srgb, var(--text) 11%, transparent);
+  --hud-press: color-mix(in srgb, var(--text) 19%, transparent);
+  --hud-track: color-mix(in srgb, var(--text) 16%, transparent);
+  /* Średnica kubka (`CUP_SIZE_PX`) i jego 1 rem odstępu od rogu okna. */
+  --hud-cup: 65px;
+  /* Kreska pędzlem: maska, więc bierze kolor elementu, na którym leży. */
+  --hud-stroke: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 244 6' preserveAspectRatio='none'%3E%3Cpath d='M0 2.6C18 1.4 41 2.9 66 2.1S118 1 149 2.3 203 1.2 244 2.4L243 3.6C214 4.5 188 3.4 159 4.2S101 5 71 4 24 5.1 1 4.3Z'/%3E%3C/svg%3E");
+  /* Poszarpany brzeg belek PW i metrów — ten sam kształt w obu. */
+  --hud-rag: polygon(
+    0 30%,
+    2% 8%,
+    9% 14%,
+    19% 2%,
+    33% 10%,
+    48% 0,
+    63% 9%,
+    79% 3%,
+    92% 12%,
+    100% 6%,
+    99% 48%,
+    100% 86%,
+    94% 100%,
+    81% 90%,
+    66% 98%,
+    50% 89%,
+    34% 100%,
+    20% 91%,
+    8% 99%,
+    1% 84%
+  );
 }
 
 /* Collapsed keeps the portrait and a sliver of health: „give me back the map"
    must not also mean „forget how hurt I am". */
 .hud-rail--collapsed {
   width: 2.6rem;
-  padding: 0.35rem 0.25rem 4.6rem;
+  /* Kubek stoi w rogu także nad zwiniętą belką. */
+  padding: 0.35rem 0.25rem calc(var(--hud-cup) + 1.6rem);
   gap: 0.4rem;
   align-items: center;
+}
+
+body:has(.dice-cup--moved) .hud-rail--collapsed {
+  padding-bottom: 0.55rem;
 }
 
 .hud-collapsed-figure {
@@ -64,13 +97,14 @@ body:has(.dice-cup--moved) .hud-rail {
   width: 1.5rem;
   height: 1.5rem;
   font-size: 0.75rem;
+  border-radius: 46% 54% 52% 48% / 50% 46% 54% 50%;
 }
 
 .hud-collapsed-hp {
   width: 0.3rem;
   height: 2.1rem;
   border-radius: 999px;
-  background: var(--bg-inset);
+  background: var(--hud-track);
   overflow: hidden;
   display: flex;
   align-items: flex-end;
@@ -82,17 +116,19 @@ body:has(.dice-cup--moved) .hud-rail {
 }
 
 .hud-head {
+  flex: none;
   display: flex;
   align-items: center;
   gap: 0.35rem;
+  min-height: 1.5rem;
 }
 
 .hud-head-title {
   flex: 1;
-  font-size: 0.62rem;
+  font-size: 0.64rem;
   font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.12em;
+  letter-spacing: 0.18em;
   color: var(--text-dim);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -101,20 +137,29 @@ body:has(.dice-cup--moved) .hud-rail {
 
 .hud-collapse {
   flex: none;
-  width: 1.3rem;
-  height: 1.3rem;
+  width: 1.75rem;
+  height: 1.5rem;
   display: grid;
   place-items: center;
   padding: 0;
   background: transparent;
-  border: 1px solid var(--border);
-  border-radius: 4px;
+  border: none;
+  border-radius: 0.5rem;
   color: var(--text-dim);
   cursor: pointer;
+  transition:
+    background-color 120ms ease-out,
+    color 120ms ease-out;
 }
 
 .hud-collapse:hover {
   color: var(--text);
+  background: var(--hud-hover);
+}
+
+.hud-collapse:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
 }
 
 /* One silhouette, four colours: the file is a mask, so the picture takes the
@@ -138,38 +183,49 @@ body:has(.dice-cup--moved) .hud-rail {
 
 .hud-empty {
   display: flex;
-  gap: 0.4rem;
+  gap: 0.5rem;
   align-items: flex-start;
   margin: 0;
-  padding: 0.4rem 0.45rem;
-  font-size: 0.72rem;
-  line-height: 1.35;
+  font-size: 0.78rem;
+  line-height: 1.4;
   color: var(--text-dim);
-  background: var(--veil-faint);
-  border: 1px dashed var(--border);
-  border-radius: 5px;
 }
 
 .hud-empty-icon {
-  width: 1.4rem;
-  height: 1.4rem;
+  width: 1.5rem;
+  height: 1.5rem;
   opacity: 0.5;
 }
 
-/* „Twoja tura" — the one fact from the queue that belongs beside the figure.
-   The clipped corner is the whole of the cyberpunk in this panel: enough to
-   say the interface is diegetic, cheap enough to survive the day theme. */
+/* „Tura tej figury" u MG — czerwony dopisek z kreską, jak nagłówek sekcji:
+   jedyny fakt z kolejki, który należy do figury, bez czerwonej belki. */
 .hud-turn-banner {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
   margin: 0;
-  padding: 0.22rem 0.55rem;
-  font-size: 0.64rem;
+  font-size: 0.66rem;
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.16em;
-  color: var(--text-on-accent);
-  background: var(--accent);
-  clip-path: polygon(0 0, 100% 0, 100% 100%, 0.6rem 100%, 0 calc(100% - 0.6rem));
+  letter-spacing: 0.18em;
+  color: var(--accent-ink);
   animation: hud-banner-in 220ms ease-out;
+}
+
+.hud-turn-banner::after,
+.hud-group-title::after,
+.hud-end-turn::after {
+  content: '';
+  height: 6px;
+  background: currentColor;
+  -webkit-mask: var(--hud-stroke) center / 100% 100% no-repeat;
+  mask: var(--hud-stroke) center / 100% 100% no-repeat;
+}
+
+.hud-turn-banner::after,
+.hud-group-title::after {
+  flex: 1;
+  min-width: 0;
 }
 
 @keyframes hud-banner-in {
@@ -179,35 +235,60 @@ body:has(.dice-cup--moved) .hud-rail {
   }
 }
 
-/* Koniec tury (16.10) — „Kończę turę” gracza i „Następna tura” MG, ostatnie
-   w panelu. Czarny pas z nazwą figury nad czerwonym guzikiem z karty: jedyny
-   przycisk walki, którego nigdy nie wolno szukać. `margin-top: auto` dosuwa
-   go do dołu, a przy długim panelu `sticky` trzyma go w widoku — tuż nad
-   dolną rezerwą na kubek, bo przyklejenie liczy się od krawędzi treści. */
-.hud-end-turn {
+/* Stopka belki (etap 69). Kubek stoi domyślnie w lewym dolnym rogu okna
+   (`.dice-cup`, `position: fixed`), czyli **na** tym panelu: stopka trzyma dla
+   niego lewą część, a w prawej stoi koniec tury — do 10.11 leżał nad kubkiem,
+   na całą szerokość, i zabierał belce wiersz. `margin-top: auto` dosuwa ją do
+   dołu, `sticky` trzyma w widoku przy długiej belce; tło gaśnie w papier, żeby
+   przewijane przyciski nie stawały pod kubkiem ostrą krawędzią. */
+.hud-foot {
   flex: none;
   position: sticky;
   bottom: 0;
   z-index: 2;
-  margin-top: auto;
+  display: flex;
+  align-items: center;
+  min-height: calc(var(--hud-cup) + 2rem);
+  margin: auto -0.85rem 0;
+  padding: 0.6rem 0.85rem 0.6rem calc(var(--hud-cup) + 1.7rem);
+  background: linear-gradient(to bottom, transparent, var(--paper-main) 1.1rem);
+}
+
+/* Kubek przestawiony poza róg (10.11) oddaje stopce zarezerwowane miejsce. */
+body:has(.dice-cup--moved) .hud-foot {
+  min-height: 0;
+  padding-left: 0.85rem;
+}
+
+.hud-foot:empty {
+  padding-top: 0;
+  padding-bottom: 0;
+  background: none;
+}
+
+/* Koniec tury (16.10) — „Kończę turę” gracza i „Następna tura” MG. Napis
+   tuszem z czerwoną kreską pod spodem: jedyny przycisk walki, którego nigdy
+   nie wolno szukać, więc stoi zawsze w tym samym rogu, obok kubka. */
+.hud-end-turn {
+  flex: 1;
+  min-width: 0;
   display: flex;
   flex-direction: column;
-  background: var(--cp-bar);
-  clip-path: polygon(0 0, 100% 0, 100% calc(100% - 0.7rem), calc(100% - 0.7rem) 100%, 0 100%);
+  gap: 0.1rem;
+  color: var(--accent);
   animation: hud-banner-in 220ms ease-out;
 }
 
 .hud-end-turn-label {
   display: flex;
   align-items: baseline;
-  gap: 0.45rem;
+  gap: 0.4rem;
   min-width: 0;
-  padding: 0.3rem 0.6rem;
-  font-family: var(--font-ui-head);
-  font-size: 0.72rem;
-  letter-spacing: 0.14em;
+  font-size: 0.62rem;
+  font-weight: 600;
+  letter-spacing: 0.16em;
   text-transform: uppercase;
-  color: var(--cp-bar-ink);
+  color: var(--accent-ink);
 }
 
 .hud-end-turn-name {
@@ -215,42 +296,49 @@ body:has(.dice-cup--moved) .hud-rail {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-family: var(--font-ui);
-  font-size: 0.8rem;
+  font-size: 0.74rem;
+  font-weight: 400;
   letter-spacing: 0;
   text-transform: none;
-  opacity: 0.75;
+  color: var(--text-dim);
 }
 
 .hud-end-turn-button {
   display: flex;
   align-items: center;
-  justify-content: center;
-  gap: 0.6rem;
-  margin: 0 0.3rem 0.3rem;
-  padding: 0.6rem 0.8rem;
+  justify-content: space-between;
+  gap: 0.4rem;
+  width: 100%;
+  padding: 0.2rem 0.25rem 0.2rem 0.1rem;
   border: none;
-  border-radius: 0;
-  background-color: var(--cp-red);
-  background-image: var(--cp-cracks);
-  background-size: var(--cp-cracks-size);
-  color: var(--cp-on-red);
+  border-radius: 0.6rem;
+  background: transparent;
+  color: var(--text);
   font-family: var(--font-ui-head);
   font-size: 1.05rem;
   font-weight: 600;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
+  line-height: 1.3;
+  white-space: nowrap;
   cursor: pointer;
-  clip-path: polygon(0 0, 100% 0, 100% calc(100% - 0.55rem), calc(100% - 0.55rem) 100%, 0 100%);
+  transition:
+    background-color 120ms ease-out,
+    color 120ms ease-out;
 }
 
 .hud-end-turn-button:hover:not(:disabled) {
-  background-color: var(--cp-red-deep);
+  color: var(--accent-ink);
+  background: var(--hud-hover);
+}
+
+.hud-end-turn-button:active:not(:disabled) {
+  background: var(--hud-press);
 }
 
 .hud-end-turn-button:focus-visible {
-  outline: 2px solid var(--cp-on-red);
-  outline-offset: -4px;
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
 }
 
 .hud-end-turn-button:disabled {
@@ -260,16 +348,23 @@ body:has(.dice-cup--moved) .hud-rail {
 
 /* The shortcut, said on the button rather than in a manual. */
 .hud-end-turn-key {
-  padding: 0 0.3rem;
-  border: 1px solid var(--cp-on-red-faint);
+  flex: none;
+  display: grid;
+  place-items: center;
+  min-width: 1.2rem;
+  height: 1.2rem;
+  padding: 0 0.2rem;
+  border: 1px solid var(--border-strong);
+  border-radius: 0.3rem;
   font-family: var(--font-ui);
-  font-size: 0.7rem;
-  line-height: 1.3;
+  font-size: 0.68rem;
+  font-weight: 500;
+  line-height: 1;
   letter-spacing: 0;
-  color: var(--cp-on-red-dim);
+  color: var(--text-dim);
 }
 
-/* Collapsed rail: the same button, a square at the bottom of the strip. */
+/* Collapsed rail: the same button, a red dab at the bottom of the strip. */
 .hud-end-turn-compact {
   flex: none;
   margin-top: auto;
@@ -277,29 +372,27 @@ body:has(.dice-cup--moved) .hud-rail {
   height: 1.9rem;
   padding: 0;
   border: none;
-  border-radius: 0;
+  border-radius: 52% 48% 46% 54% / 48% 54% 46% 52%;
   background: var(--cp-red);
   color: var(--cp-on-red);
   font-size: 1rem;
   font-weight: 700;
   cursor: pointer;
-  clip-path: polygon(0 0, 100% 0, 100% calc(100% - 0.4rem), calc(100% - 0.4rem) 100%, 0 100%);
 }
 
-/* Etap 63a: z tury zostało najwyżej przejście — przycisk pulsuje jasnością,
-   bo clip-path ścina każdą poświatę z box-shadow. */
+/* Etap 63a: z tury zostało najwyżej przejście — napis czerwienieje i pulsuje. */
+.hud-end-turn--done .hud-end-turn-button {
+  color: var(--accent-ink);
+}
+
 .hud-end-turn--done .hud-end-turn-button,
 .hud-end-turn-compact.hud-end-turn--done {
   animation: hud-end-turn-done 1.3s ease-in-out infinite;
 }
 
 @keyframes hud-end-turn-done {
-  0%,
-  100% {
-    filter: brightness(1);
-  }
   50% {
-    filter: brightness(1.45) saturate(1.2);
+    opacity: 0.45;
   }
 }
 
@@ -307,7 +400,6 @@ body:has(.dice-cup--moved) .hud-rail {
   .hud-end-turn--done .hud-end-turn-button,
   .hud-end-turn-compact.hud-end-turn--done {
     animation: none;
-    filter: brightness(1.3);
   }
 }
 
@@ -320,40 +412,116 @@ body:has(.dice-cup--moved) .hud-rail {
   cursor: progress;
 }
 
+/* Opis przycisku (`HudTip`, etap 69): wychodzi po chwili trzymania kursora,
+   obok belki — nad mapą, więc jako jedyny element belki ma własną kartkę.
+   Nad pływającymi oknami i kubkiem (345), pod dialogami (400). */
+.hud-tip {
+  position: fixed;
+  z-index: 350;
+  width: max-content;
+  max-width: 17rem;
+  padding: 0.55rem 0.7rem 0.6rem;
+  font-size: 0.8rem;
+  line-height: 1.4;
+  color: var(--text);
+  background: var(--bg-float);
+  border: 1px solid var(--border-strong);
+  border-radius: 0.35rem;
+  box-shadow: var(--shadow-md);
+  pointer-events: none;
+  animation: hud-tip-in 120ms ease-out;
+}
+
+@keyframes hud-tip-in {
+  from {
+    opacity: 0;
+    transform: translateX(-0.25rem);
+  }
+}
+
+.hud-tip-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.hud-tip-title {
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.hud-tip-key {
+  flex: none;
+  padding: 0 0.3rem;
+  border: 1px solid var(--border-strong);
+  border-radius: 0.25rem;
+  font-family: var(--font-ui);
+  font-size: 0.68rem;
+  color: var(--text-dim);
+}
+
+.hud-tip-cost {
+  margin-top: 0.1rem;
+  font-size: 0.62rem;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--warn);
+}
+
+.hud-tip-body,
+.hud-tip-refusal {
+  margin: 0.35rem 0 0;
+}
+
+.hud-tip-refusal {
+  color: var(--err-ink);
+}
+
 /* ---- Karta tożsamości ---- */
 
 .hud-card {
+  flex: none;
   display: flex;
   flex-direction: column;
-  gap: 0.35rem;
-  padding: 0.3rem;
-  background: var(--bg-inset-2);
-  border: 1px solid var(--border);
-  border-radius: 6px;
+  gap: 0.55rem;
 }
 
-/* The frame is a square with one corner cut, not a circle: the map already
-   draws this figure as a disc, and a panel that repeats the token is a panel
-   that says nothing new. */
-/* Baner na całą szerokość karty (zlecenie MG, 25.09) — zastąpił 6-remowy
-   kwadrat obok imienia z 12.09. Twarz jest ~2,5 raza większa, a karta rośnie
-   w dół tylko o tyle, ile zajmował dawny tekst obok, bo imię, Rola i PW leżą
-   **na** obrazie (`.hud-portrait-caption`). Kadr 4:3 z portretu kwadratowego:
-   `object-position` trzyma górną część, tam gdzie siedzi twarz. */
+/* Portret bez ramki (etap 69): brzeg jest naddarty, a dół obrazu gaśnie
+   w papier — imię stoi na tym przejściu (`.hud-portrait-caption`). Kadr 16:15,
+   o ćwierć wyższy niż baner 4:3 z 25.09 (zlecenie MG z 10.11); proporcja musi
+   zgadzać się z `PORTRAIT_BANNER_ASPECT` w `shared`, bo z niej liczy się kadr. */
 .hud-portrait-frame {
   position: relative;
   display: block;
   width: 100%;
-  aspect-ratio: 4 / 3;
+  aspect-ratio: 16 / 15;
   overflow: hidden;
-  background: var(--bg-inset);
   clip-path: polygon(
-    0 0,
-    100% 0,
-    100% calc(100% - var(--notch)),
-    calc(100% - var(--notch)) 100%,
-    0 100%
+    2% 3%,
+    9% 1%,
+    21% 2.5%,
+    34% 0,
+    47% 1.5%,
+    61% 0,
+    74% 2.5%,
+    88% 1%,
+    98% 3%,
+    100% 14%,
+    98% 27%,
+    100% 41%,
+    98% 55%,
+    100% 100%,
+    0 100%,
+    1% 70%,
+    0 54%,
+    2% 39%,
+    0 24%,
+    1% 11%
   );
+  -webkit-mask-image: linear-gradient(to bottom, #000 56%, transparent 95%);
+  mask-image: linear-gradient(to bottom, #000 56%, transparent 95%);
 }
 
 .hud-portrait {
@@ -361,16 +529,14 @@ body:has(.dice-cup--moved) .hud-rail {
   height: 100%;
   display: block;
   object-fit: cover;
-  clip-path: polygon(0 0, 100% 0, 100% 78%, 78% 100%, 0 100%);
 }
 
 .hud-portrait-frame .hud-portrait {
   position: absolute;
   inset: 0;
   /* Góra grafiki (poprawka MG z 25.09): 22 % ucinało czubek głowy na
-     portretach w pionie, a dół banera i tak przykrywa podpis. */
+     portretach w pionie, a dół kadru i tak gaśnie pod imieniem. */
   object-position: 50% 0%;
-  clip-path: none;
 }
 
 /* Portret wykadrowany pod żeton (25.09): rozmiar i położenie liczy
@@ -382,74 +548,77 @@ body:has(.dice-cup--moved) .hud-rail {
   object-fit: fill;
 }
 
-/* Bez portretu baner nie udaje zdjęcia: niski pasek z inicjałem nad podpisem,
-   zamiast pustego kadru 4:3, który zepchnąłby bronie o pół ekranu. */
+/* Bez portretu nie ma kadru wcale: imię jest i tak największym napisem belki,
+   a inicjał nad nim powtarzałby jego pierwszą literę. */
 .hud-card--no-portrait .hud-portrait-frame {
-  aspect-ratio: auto;
-  height: 5.6rem;
+  display: none;
 }
 
-/* Inicjał rośnie razem z ramką (12.09) — 1,4 rem w kadrze 6 rem wyglądało jak
-   literka zgubiona w pustym polu, a to jest zastępstwo za twarz. */
+/* Inicjał zostaje w zwiniętej belce — tam zastępuje twarz. */
 .hud-portrait--empty {
   display: grid;
   place-items: center;
-  background: var(--bg-inset);
-  font-size: 2.4rem;
   font-weight: 700;
   color: var(--text-dim);
+  background: var(--hud-track);
 }
 
-.hud-card--no-portrait .hud-portrait--empty {
-  place-items: start center;
-  padding-top: 0.2rem;
-  line-height: 1;
-}
-
-/* Podpis na obrazie. Czarne przejście niesie nocne tokeny z bloku „Belka”
-   (`theme.css`), więc biel imienia, czerwień Roli i barwy paska PW czytają się
-   tak samo w obu skórach. */
+/* Imię, Rola i PW — na dole kadru, tam gdzie obraz już zgasł. Poświata
+   w kolorze papieru trzyma litery czytelne nad resztką ciemnego portretu. */
 .hud-portrait-caption {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
+  position: relative;
   display: flex;
   flex-direction: column;
-  gap: 0.28rem;
-  padding: 1.6rem 0.55rem 0.5rem;
-  background: linear-gradient(to top, var(--cp-bar) 35%, transparent);
-  color: var(--text);
+  gap: 0.45rem;
+  margin-top: -2.9rem;
+}
+
+.hud-card--no-portrait .hud-portrait-caption {
+  margin-top: 0;
 }
 
 .hud-card-title {
   display: flex;
+  flex-wrap: wrap;
   align-items: baseline;
-  gap: 0.5rem;
+  gap: 0 0.55rem;
   min-width: 0;
 }
 
 .hud-card-name {
-  flex: 1;
-  min-width: 0;
-  font-family: var(--font-ui-head);
-  font-size: 1.05rem;
-  font-weight: 500;
-  letter-spacing: 0.05em;
+  flex: 0 0 auto;
+  max-width: 100%;
+  font-family: 'Anton', var(--font-ui-head);
+  font-size: 2.3rem;
+  font-weight: 400;
+  letter-spacing: 0.02em;
   text-transform: uppercase;
-  line-height: 1.1;
+  line-height: 1.05;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  text-shadow:
+    0 0 0.4rem var(--paper-main),
+    0 0 0.15rem var(--paper-main);
+}
+
+.hud-card-name--long {
+  font-size: 1.6rem;
+}
+
+.hud-card-name--longer {
+  font-size: 1.2rem;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 
 .hud-card-role {
   flex: none;
-  font-size: 0.6rem;
+  font-size: 0.62rem;
   font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.1em;
-  color: var(--accent);
+  letter-spacing: 0.16em;
+  color: var(--accent-ink);
 }
 
 /* ---- Punkty Wytrzymałości ---- */
@@ -462,18 +631,19 @@ body:has(.dice-cup--moved) .hud-rail {
   position: relative;
   display: flex;
   align-items: center;
-  gap: 0.4rem;
-  font-size: 0.8rem;
+  gap: 0.5rem;
   --hud-hp-color: var(--ok);
 }
 
-/* Skrót przed paskiem (17.10, MG): bez niego na banerze leżała goła belka
-   i liczba, a „33/35 czego” to pytanie, którego w walce nikt nie zadaje dwa razy. */
-.hud-hp-label {
+/* Skrót przed belką (17.10, MG): „33/35 czego” to pytanie, którego w walce
+   nikt nie zadaje dwa razy. */
+.hud-hp-label,
+.hud-vital-label {
   flex: none;
   font-size: 0.62rem;
-  font-weight: 700;
-  letter-spacing: 0.12em;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
   color: var(--text-dim);
 }
 
@@ -489,19 +659,13 @@ body:has(.dice-cup--moved) .hud-rail {
   --hud-hp-color: var(--err);
 }
 
-/* Dwa razy wyższy od 17.10 (MG) i z liczbą w środku — 0,6 rem z liczbą obok
-   ginęło na portrecie, a to najważniejsza belka panelu. */
+/* Pociągnięcie pędzla zamiast ramki; liczba stoi za nim, na papierze. */
 .hud-hp-track {
   position: relative;
   flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  height: 1.15rem;
-  border-radius: 2px;
-  background: var(--bg-inset);
-  border: 1px solid var(--border-strong);
-  overflow: hidden;
+  height: 0.9rem;
+  background: var(--hud-track);
+  clip-path: var(--hud-rag);
 }
 
 .hud-hp-fill {
@@ -509,8 +673,7 @@ body:has(.dice-cup--moved) .hud-rail {
   left: 0;
   top: 0;
   bottom: 0;
-  /* Połysk u góry: pełna belka czyta się jak świecąca, nie jak plama farby. */
-  background: linear-gradient(to bottom, var(--veil), transparent 55%), var(--hud-hp-color);
+  background: var(--hud-hp-color);
   /* Damage is a jump, healing is a jump — but a *visible* one: without this the
      bar has already moved by the time anybody looks up from the dice. */
   transition: width 260ms ease-out;
@@ -523,39 +686,34 @@ body:has(.dice-cup--moved) .hud-rail {
   top: 0;
   bottom: 0;
   width: 2px;
-  background: var(--scrim);
+  background: var(--paper-main);
 }
 
-/* Liczba leży na wypełnieniu każdej barwy (zieleń, żółć, pomarańcz, czerwień)
-   — czarny obrys z belki trzyma biel czytelną na wszystkich czterech. */
 .hud-hp-value {
-  position: relative;
-  padding: 0 0.4rem;
-  font-variant-numeric: tabular-nums;
-  font-weight: 700;
+  flex: none;
+  font-family: var(--font-ui-head);
+  font-size: 1.05rem;
+  font-weight: 600;
   line-height: 1;
+  font-variant-numeric: tabular-nums;
   color: var(--text);
-  text-shadow:
-    0 0 2px var(--cp-bar),
-    0 0 2px var(--cp-bar),
-    0 1px 1px var(--cp-bar);
 }
 
 .hud-hp-max {
-  font-size: 0.7rem;
+  font-size: 0.75rem;
   font-weight: 500;
+  color: var(--text-dim);
 }
 
 /* The number that flies off the bar: a hit has to be visible in the panel at
-   the moment it lands, not only in the chat log two seconds later. */
-/* Startuje z lewego końca paska (17.10): liczba PW stoi teraz po prawej w pasku,
-   a nad nim jest wiersz imienia z Rolą — tu nie przykrywa żadnej z nich.
-   Czarna plakietka, bo leży na wypełnieniu: czerwień rany na czerwonej
-   belce (i zieleń leczenia na zielonej) bez niej znikała. */
+   the moment it lands, not only in the chat log two seconds later. Czarna
+   plakietka, bo leży na wypełnieniu: czerwień rany na czerwonej belce
+   (i zieleń leczenia na zielonej) bez niej znikała. Nocne barwy daje jej
+   lista „Belka” w `theme.css` — na czerni dzienna czerwień byłaby za ciemna. */
 .hud-hp-delta {
   position: absolute;
   left: 2.1rem;
-  top: 0;
+  top: -0.25rem;
   padding: 0 0.3rem;
   font-size: 0.85rem;
   font-weight: 700;
@@ -592,59 +750,40 @@ body:has(.dice-cup--moved) .hud-rail {
 }
 
 .hud-hp-none {
-  font-size: 0.7rem;
+  font-size: 0.74rem;
   color: var(--text-dim);
 }
 
 /* ---- SP · RUCH · EMP ---- */
 
 /* Three numbers that decide a fight and used to live only on the sheet: what
-   stops a bullet, how far one Move Action goes, and what is left of EMP. */
+   stops a bullet, how far one Move Action goes, and what is left of EMP.
+   Liczba i słowo, bez ikony i bez ramki (etap 69). */
 .hud-vitals {
   display: flex;
-  flex-wrap: wrap;
-  gap: 0.3rem;
+  justify-content: space-between;
+  gap: 0.5rem;
 }
 
-/* Pod banerem trzy chipy dzielą szerokość karty po równo — jeden rząd, który
-   oko czyta jak tabliczkę pod zdjęciem, a nie jak zawinięty tekst. */
-.hud-card .hud-vital {
-  flex: 1;
-  justify-content: center;
-  padding: 0.3rem 0.35rem;
-}
-
-/* Większe od 17.10 (MG): ikona i liczba bez napisów, ale w ramce i na tle
-   wnęki, żeby trzy liczby pod portretem nie zlewały się z papierem karty. */
 .hud-vital {
   display: flex;
-  align-items: center;
-  gap: 0.35rem;
-  padding: 0.15rem 0.35rem;
-  font-size: 0.85rem;
-  color: var(--text-dim);
-  background: var(--bg-inset);
-  border: 1px solid var(--border);
-  border-bottom-width: 2px;
-  border-radius: 2px;
-}
-
-.hud-vital .hud-icon {
-  width: 1.1rem;
-  height: 1.1rem;
-  opacity: 0.85;
+  align-items: baseline;
+  gap: 0.32rem;
 }
 
 .hud-vital-value {
+  font-family: var(--font-ui-head);
+  font-size: 1.25rem;
+  font-weight: 600;
+  line-height: 1;
   font-variant-numeric: tabular-nums;
-  font-weight: 700;
   color: var(--text);
 }
 
 /* „This number is not the printed one" — the tooltip says which penalty did
    it (Pancerz −2, Złamana noga −4), the same wording the tracker uses. */
 .hud-vital-flag {
-  font-size: 0.7rem;
+  font-size: 0.8rem;
   font-weight: 700;
   color: var(--warn);
 }
@@ -740,26 +879,17 @@ body:has(.dice-cup--moved) .hud-rail {
 }
 
 /* „This is a view, not a grip" — quieter than a refusal, which is a rule
-   speaking; this one is only telling the user where the map's attention is. */
-/* Jedna linia z okiem (25.09): dawny dwuwierszowy akapit ważył tyle, co slot,
-   a to tylko uwaga na marginesie. Pełne zdanie siedzi w podpowiedzi. */
-/* Plakietka od 17.10 (MG): szara linijka ginęła między kartą a budżetem,
-   a „nie sterujesz” tłumaczy figurę, która nie reaguje na klik w podłoże.
-   Przerywana ramka mówi „tymczasowe”, niebieska krawędź — że to informacja,
-   nie odmowa (ta jest czerwona). */
+   speaking; this one is only telling the user where the map's attention is.
+   Jedna linia z okiem w kolorze informacji (nie odmowy — ta jest czerwona);
+   pełne zdanie siedzi w podpowiedzi. */
 .hud-preview {
   display: flex;
   align-items: center;
-  gap: 0.4rem;
+  gap: 0.45rem;
   margin: 0;
-  padding: 0.3rem 0.5rem;
-  font-size: 0.72rem;
+  font-size: 0.8rem;
   line-height: 1.3;
   color: var(--text-dim);
-  background: var(--veil-soft);
-  border: 1px dashed var(--border-strong);
-  border-left: 3px solid var(--info);
-  border-radius: 2px;
 }
 
 .hud-preview svg {
@@ -769,11 +899,11 @@ body:has(.dice-cup--moved) .hud-rail {
 
 .hud-preview-tag {
   flex: none;
-  font-size: 0.66rem;
+  font-size: 0.62rem;
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.14em;
-  color: var(--text);
+  letter-spacing: 0.16em;
+  color: var(--info);
 }
 
 .hud-preview span {
@@ -786,138 +916,172 @@ body:has(.dice-cup--moved) .hud-rail {
 /* ---- Sloty ---- */
 
 .hud-group {
+  flex: none;
   display: flex;
   flex-direction: column;
-  gap: 0.28rem;
+  gap: 0.4rem;
 }
 
-/* A weapon, a reload and an Action stopped being the same rectangle in 27h;
-   the heading is what makes the row of them scannable rather than merely
-   different. */
-/* Czarna belka ze ściętym prawym dolnym rogiem — jak belka kategorii karty
-   postaci (25.09). Dawna kreska po napisie (`::after`) była pomysłem sprzed
-   czarnego tła i na czerni wyglądała jak przekreślenie. */
+/* Nagłówek sekcji: słowo i kreska pędzlem do końca wiersza (`::after` wyżej).
+   Do 10.11 czarna belka ze ściętym rogiem. */
 .hud-group-title {
   display: flex;
   align-items: center;
-  gap: 0.4rem;
+  gap: 0.6rem;
   margin: 0.2rem 0 0;
-  font-size: 0.66rem;
+  font-size: 0.68rem;
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.14em;
-  color: var(--text-dim);
-  clip-path: polygon(
-    0 0,
-    100% 0,
-    100% calc(100% - var(--notch-sm)),
-    calc(100% - var(--notch-sm)) 100%,
-    0 100%
-  );
+  letter-spacing: 0.2em;
+  color: var(--text);
 }
 
 .hud-slots {
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
+  gap: 0.1rem;
 }
 
-/* Kafel i jego szuflada trybów stoją jeden pod drugim i dzielą numer klawisza. */
+/* Kafel, „W ręku” i szuflada trybów stoją jeden pod drugim. */
 .hud-slot-stack {
   display: flex;
   flex-direction: column;
 }
 
-/* One row per weapon rather than per fire mode (decyzja MG z 20.08): trzy boxy
-   na jeden pistolet maszynowy kazały czytać tę samą nazwę trzy razy i zjadały
-   trzy z dziewięciu klawiszy. Ramka i tło siedzą na wierszu, nie na przycisku,
-   bo wiersz bywa dwoma przyciskami — akcją i strzałką od trybów — a wyglądać
-   ma jak jeden kafel. */
-.hud-slot-row {
+/* Każdy przycisk belki: bez tła i obwódki, dopóki nie stanie na nim kursor.
+   Podświetlenie to jedyny sygnał „to się klika”, więc ma je każdy rozmiar,
+   także narzędzia na kaflu broni i strzałka trybów. */
+.hud-slot,
+.hud-slot-drawer {
   position: relative;
-  display: flex;
-  align-items: stretch;
-  width: 100%;
-  font-size: 0.74rem;
-  color: var(--text);
-  background: var(--bg-inset-2);
-  border: 1px solid var(--border);
-  border-radius: 2px;
-  border-left: 3px solid var(--border-strong);
-}
-
-/* The icon keeps the left edge and the number key the right, so the eye finds
-   the picture first and the hand finds the key without reading anything. */
-.hud-slot {
-  position: relative;
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  align-items: center;
-  gap: 0.45rem;
-  padding: 0.32rem 0.4rem;
-  text-align: left;
+  margin: 0;
+  padding: 0;
   font: inherit;
   color: inherit;
+  text-align: left;
   background: transparent;
   border: none;
-  border-radius: 3px;
   cursor: pointer;
+  transition: background-color 120ms ease-out;
 }
 
-/* Strzałka jest osobnym przyciskiem, bo przycisk w przycisku to nie HTML.
-   Kreska po lewej mówi, że to inna czynność niż strzał. */
-.hud-slot-drawer {
-  flex: none;
-  width: 1.5rem;
-  padding: 0;
-  font-size: 0.7rem;
-  color: var(--text-dim);
-  background: transparent;
-  border: none;
-  border-left: 1px solid var(--border);
-  border-radius: 0 3px 3px 0;
-  cursor: pointer;
-  transition: transform 150ms ease-out;
-}
-
+.hud-slot:hover,
 .hud-slot-drawer:hover {
+  background: var(--hud-hover);
+}
+
+.hud-slot:active,
+.hud-slot-drawer:active {
+  background: var(--hud-press);
+}
+
+.hud-slot:focus-visible,
+.hud-slot-drawer:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.hud-slot .hud-slot-icon {
+  transition: transform 120ms ease-out;
+}
+
+.hud-slot:hover:not(.hud-slot--refused) .hud-slot-icon {
+  transform: scale(1.08);
+}
+
+/* Refused, not removed: a greyed slot with a reason in its tooltip is how the
+   player learns the rule; a slot that vanished would just look like a bug. */
+.hud-slot--refused {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* Znaczek kosztu (etap 69): kropka to Akcja, skośna kreska to metry ruchu —
+   te same kształty ma budżet tury (`.combat-budget--rail`). */
+.hud-cost {
+  display: inline-block;
+  flex: none;
+}
+
+.hud-cost--action {
+  width: 0.55rem;
+  height: 0.55rem;
+  border-radius: 50%;
+  background: var(--warn);
+}
+
+.hud-cost--move {
+  width: 0.38rem;
+  height: 0.62rem;
+  border-radius: 1.5px;
+  background: var(--text);
+  transform: skewX(-16deg);
+}
+
+/* --- Duży kafel: broń --- */
+
+/* One row per weapon rather than per fire mode (decyzja MG z 20.08). Wiersz
+   jest siatką, bo narzędzia broni (przeładowanie, usterka, tryby) leżą **na**
+   kaflu, w jego prawym dolnym rogu, a nie mogą być w nim: przycisk
+   w przycisku to nie HTML. */
+.hud-slot-row {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
   color: var(--text);
 }
 
-.hud-slot-drawer--open {
-  transform: rotate(180deg);
-  color: var(--text);
+.hud-slot--large {
+  grid-column: 1 / -1;
+  grid-row: 1;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.7rem;
+  padding: 0.4rem 0.3rem 0.4rem 0.15rem;
+  border-radius: 1rem 1.3rem 1.1rem 1.4rem / 1.2rem 1rem 1.3rem 1.1rem;
 }
 
-/* The left edge carries the kind: a gun, a magazine, a jam, a manoeuvre. Four
-   colours the eye sorts without a legend — and the jam is the warning one,
-   because it is the box that has to be pressed before the gun works again. */
-.hud-slot-row.hud-slot--weapon {
-  border-left-color: var(--accent);
+/* Sylwetka broni i plama pod nią. Plama jest tu zawsze — zgaszona — żeby
+   wzięcie broni do ręki było rozlaniem tuszu, a nie przeskokiem układu. */
+.hud-slot-art {
+  position: relative;
+  flex: none;
+  width: 3.1rem;
+  height: 3.1rem;
+  display: grid;
+  place-items: center;
 }
 
-.hud-slot-row.hud-slot--reload {
-  border-left-color: var(--info);
+.hud-slot-art::before {
+  content: '';
+  position: absolute;
+  inset: -0.25rem -0.35rem;
+  background: var(--accent);
+  border-radius: 58% 42% 47% 53% / 46% 56% 44% 54%;
+  opacity: 0;
+  transform: rotate(-8deg) scale(0.6);
+  transition:
+    opacity 160ms ease-out,
+    transform 160ms ease-out;
 }
 
-.hud-slot-row.hud-slot--clear-jam {
-  border-left-color: var(--warn);
+.hud-slot--large .hud-slot-icon {
+  position: relative;
+  width: 2.8rem;
+  height: 2.8rem;
 }
 
-.hud-slot-row.hud-slot--action {
-  border-left-color: var(--border-strong);
+/* Armed reads as the crosshair's own colour, because that is what it does to
+   the pointer — the two marks are one state seen in two places. Od 27h dotyczy
+   **broni**, nie trybu: kafel jest jeden, więc przełączenie na serię nie może
+   zgasić plamy pod bronią trzymaną w ręku. */
+.hud-slot--armed .hud-slot-art::before {
+  opacity: 0.17;
+  transform: rotate(-8deg) scale(1);
 }
 
-.hud-slot-row:hover {
-  border-color: var(--border-strong);
-  background: var(--bg-inset);
-}
-
-.hud-slot-icon {
-  width: 1.35rem;
-  height: 1.35rem;
-  opacity: 0.85;
+.hud-slot--armed .hud-slot-art {
+  color: var(--accent-ink);
 }
 
 .hud-slot-body {
@@ -925,47 +1089,172 @@ body:has(.dice-cup--moved) .hud-rail {
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 0.15rem;
+  gap: 0.2rem;
+}
+
+.hud-slot--large .hud-slot-body {
+  padding-top: 0.1rem;
 }
 
 .hud-slot-line {
   display: flex;
   align-items: center;
-  gap: 0.25rem;
+  gap: 0.35rem;
   min-width: 0;
 }
 
-/* Druga linia kafla: magazynek i — tylko przy broni, która ma wybór — tryb,
-   w którym stoi. */
-.hud-slot-line--sub {
-  gap: 0.4rem;
+.hud-slot-label {
+  min-width: 0;
+  font-size: 0.95rem;
+  font-weight: 500;
+  line-height: 1.15;
+  overflow-wrap: anywhere;
+}
+
+.hud-slot--large .hud-slot-line:first-child {
+  flex-wrap: wrap;
+  gap: 0.15rem 0.35rem;
+}
+
+/* Liczby broni (etap 69): obrażenia, SS, tryb i kropki ataków. Zawijają się
+   przed narzędziami w rogu (`--hud-tools` podaje ich szerokość). */
+.hud-slot-line--stats,
+.hud-slot-line--mag {
+  flex-wrap: wrap;
+  gap: 0.15rem 0.45rem;
+  padding-right: var(--hud-tools, 0);
+}
+
+.hud-slot-line--stats {
+  font-family: var(--font-ui-head);
+  font-size: 0.82rem;
+  line-height: 1.2;
+  color: var(--text-dim);
+}
+
+.hud-slot-damage {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text);
 }
 
 .hud-slot-mode {
+  font-family: var(--font-ui);
   font-size: 0.6rem;
+  font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.1em;
   color: var(--warn);
 }
 
-.hud-slot-label {
-  flex: 1;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+.hud-slot-tools {
+  grid-column: 2;
+  grid-row: 1;
+  align-self: end;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  margin: 0 0.05rem 0.2rem 0;
 }
 
-.hud-slot-key {
+/* Strzałka szuflady trybów. */
+.hud-slot-drawer {
   flex: none;
-  min-width: 1.05rem;
-  padding: 0.05rem 0;
-  text-align: center;
-  font-size: 0.6rem;
-  font-variant-numeric: tabular-nums;
+  display: grid;
+  place-items: center;
+  width: 1.6rem;
+  height: 2.6rem;
+  border-radius: 0.8rem;
+  font-size: 0.8rem;
   color: var(--text-dim);
-  background: var(--veil-soft);
-  border: 1px solid var(--border);
-  border-radius: 3px;
+}
+
+.hud-slot-drawer--open {
+  color: var(--text);
+}
+
+/* --- Średni kafel: akcje brane co turę --- */
+
+.hud-slots--medium {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.15rem 0.5rem;
+}
+
+.hud-slot--medium {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 2.9rem;
+  padding: 0.3rem 0.35rem;
+  border-radius: 0.9rem 1.1rem 0.95rem 1.2rem / 1rem 0.9rem 1.1rem 0.95rem;
+}
+
+.hud-slot--medium .hud-slot-icon {
+  width: 1.65rem;
+  height: 1.65rem;
+}
+
+.hud-slot--medium .hud-slot-body {
+  gap: 0.12rem;
+}
+
+.hud-slot--medium .hud-slot-label {
+  font-size: 0.9rem;
+  line-height: 1.1;
+}
+
+.hud-slot-cost {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  white-space: nowrap;
+  font-size: 0.6rem;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+/* --- Mały przycisk: sama ikona --- */
+
+.hud-slots--small {
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 0.1rem 0.5rem;
+}
+
+.hud-slot--icon {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 2.6rem;
+  height: 2.6rem;
+  border-radius: 52% 48% 46% 54% / 48% 54% 46% 52%;
+}
+
+.hud-slot--icon .hud-slot-icon {
+  width: 1.5rem;
+  height: 1.5rem;
+}
+
+/* Koszt w rogu ikony. */
+.hud-slot--icon .hud-cost {
+  position: absolute;
+  right: 0.3rem;
+  bottom: 0.3rem;
+}
+
+.hud-slot--icon .hud-cost--action {
+  width: 0.42rem;
+  height: 0.42rem;
+}
+
+/* Skok wzięty z paska i trwające skradanie: przycisk trybu zostaje zalany. */
+.hud-slot--medium.hud-slot--armed,
+.hud-slot--icon.hud-slot--armed {
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+  color: var(--accent-ink);
 }
 
 /* The fire mode is a chip, not part of the name: it is the only difference
@@ -980,14 +1269,8 @@ body:has(.dice-cup--moved) .hud-rail {
   border-radius: 3px;
 }
 
-.hud-chip--mode {
-  color: var(--warn);
-  border: 1px solid var(--warn);
-}
-
-/* The round in the magazine (stage 16g) — the same chip as the fire mode,
-   in a colder colour: both change what the shot does, and neither is the
-   weapon's name. */
+/* The round in the magazine (stage 16g) — a chip beside the name: it changes
+   what the shot does, and it is not the weapon's name. */
 .hud-chip--ammo {
   color: var(--whisper);
   border: 1px solid var(--whisper);
@@ -1000,14 +1283,13 @@ body:has(.dice-cup--moved) .hud-rail {
 /* ---- Magazynek ---- */
 
 /* „30/30" stays, because a number is what a player says out loud; the gauge is
-   what stops „I am about to run dry" from needing to be read at all. */
+   what stops „I am about to run dry" from needing to be read at all. Naboje to
+   łuski tuszem: pełna jest w magazynku, sam kontur — wystrzelona. */
 .hud-mag {
   display: flex;
-  align-items: center;
-  gap: 0.3rem;
-  font-size: 0.62rem;
-  color: var(--text-dim);
-  --hud-mag-color: var(--border-strong);
+  align-items: flex-end;
+  gap: 0.4rem;
+  --hud-mag-color: var(--text);
 }
 
 .hud-mag--low {
@@ -1020,27 +1302,28 @@ body:has(.dice-cup--moved) .hud-rail {
 
 .hud-mag-pips {
   display: flex;
-  gap: 1px;
+  gap: 2px;
 }
 
 .hud-mag-pip {
-  width: 3px;
-  height: 0.5rem;
-  border-radius: 1px;
-  background: var(--veil);
+  width: 4px;
+  height: 0.7rem;
+  border-radius: 2px 2px 1px 1px;
+  box-shadow: inset 0 0 0 1px var(--border-strong);
 }
 
 .hud-mag-pip--live {
   background: var(--hud-mag-color);
+  box-shadow: none;
 }
 
 .hud-mag-bar {
   flex: none;
-  width: 3rem;
-  height: 0.22rem;
-  border-radius: 1px;
-  background: var(--veil);
-  overflow: hidden;
+  width: 4rem;
+  height: 0.5rem;
+  margin-bottom: 0.1rem;
+  background: var(--hud-track);
+  clip-path: var(--hud-rag);
 }
 
 .hud-mag-bar-fill {
@@ -1051,6 +1334,10 @@ body:has(.dice-cup--moved) .hud-rail {
 }
 
 .hud-mag-count {
+  font-family: var(--font-ui-head);
+  font-size: 0.82rem;
+  font-weight: 500;
+  line-height: 1;
   font-variant-numeric: tabular-nums;
   color: var(--text-dim);
 }
@@ -1067,33 +1354,31 @@ body:has(.dice-cup--moved) .hud-rail {
   color: var(--text-dim);
 }
 
-/* Etap 46c: zapas w ekwipunku obok licznika magazynka — „12/30 · zapas 40”.
-   Pusty dostaje kolor pustego magazynka: to ta sama odmowa, tylko o krok dalej. */
-/* Etap 63a: ataki tej broni, które jeszcze mieszczą się w Akcji — zapalona
-   kropka to atak do wydania (jak pipsy budżetu tury od 17.10). */
+/* Etap 63a: ataki tej broni, które jeszcze mieszczą się w Akcji — pełna
+   kropka to atak do wydania, w kolorze Akcji, z której się go płaci. */
 .hud-attacks {
   display: inline-flex;
-  gap: 0.18rem;
-  margin-right: 0.4rem;
-  vertical-align: middle;
+  align-items: center;
+  gap: 0.2rem;
 }
 
 .hud-attacks-pip {
   width: 0.45rem;
   height: 0.45rem;
-  border: 1px solid var(--accent);
-  background: var(--accent);
-  transform: rotate(45deg);
+  border-radius: 50%;
+  background: var(--warn);
 }
 
 .hud-attacks-pip--spent {
   background: transparent;
-  border-color: var(--text-dim);
-  opacity: 0.6;
+  box-shadow: inset 0 0 0 1.5px var(--border-strong);
 }
 
+/* Etap 46c: zapas w ekwipunku obok licznika magazynka — „2/4 · zapas 6”.
+   Pusty dostaje kolor pustego magazynka: to ta sama odmowa, tylko o krok dalej. */
 .hud-stock {
-  margin-left: 0.35rem;
+  font-size: 0.7rem;
+  line-height: 1;
   font-variant-numeric: tabular-nums;
   color: var(--text-dim);
   white-space: nowrap;
@@ -1110,33 +1395,6 @@ body:has(.dice-cup--moved) .hud-rail {
   margin-top: 0.15rem;
   font-size: 0.7rem;
 }
-
-/* Armed reads as the crosshair's own colour, because that is what it does to
-   the pointer — the two marks are one state seen in two places. Od 27h dotyczy
-   **broni**, nie trybu: kafel jest jeden, więc przełączenie na serię nie może
-   zgasić podświetlenia trzymanej w ręku broni. */
-.hud-slot-row.hud-slot--armed {
-  border-color: var(--accent);
-  border-left-color: var(--accent);
-  background: rgb(var(--accent-rgb) / 16%);
-  box-shadow: inset 0 0 0 1px rgb(var(--accent-rgb) / 25%);
-}
-
-.hud-slot--armed .hud-slot-icon {
-  opacity: 1;
-}
-
-/* Refused, not removed: a greyed slot with a reason in its tooltip is how the
-   player learns the rule; a slot that vanished would just look like a bug. */
-.hud-slot-row.hud-slot--refused {
-  opacity: 0.4;
-  border-left-color: var(--border);
-}
-
-.hud-slot--refused .hud-slot {
-  cursor: not-allowed;
-}
-
 /* ---- Szuflada trybów ognia ---- */
 
 /* Wzór z Argona: warianty jednej pozycji rozwijają się **pod** nią, zamiast
@@ -1245,13 +1503,34 @@ body:has(.dice-cup--moved) .hud-rail {
   border-color: var(--accent);
 }
 
+/* „W ręku” pod kaflem broni (etap 69): czerwony dopisek i to, co figura wie
+   o strzale — cel, dystans, PT — albo gdzie kliknąć. Wcięte pod nazwę broni. */
 .hud-armed {
   display: flex;
-  align-items: flex-start;
-  gap: 0.35rem;
-  margin: 0;
-  font-size: 0.7rem;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 0 0.45rem;
+  margin: 0 0 0.35rem 3.95rem;
+  font-size: 0.78rem;
   line-height: 1.3;
+  color: var(--text);
+}
+
+.hud-armed-tag {
+  flex: none;
+  font-size: 0.62rem;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--accent-ink);
+}
+
+/* Zdanie o trybie (skradanie, skok) stoi pod akcjami, z pulsującą kropką. */
+.hud-armed--note {
+  flex-wrap: nowrap;
+  align-items: flex-start;
+  gap: 0.4rem;
+  margin: 0;
   color: var(--text-dim);
 }
 
@@ -1281,8 +1560,8 @@ body:has(.dice-cup--moved) .hud-rail {
   padding-top: 0.25rem;
   border-top: 1px solid var(--border);
   /* #60: przewinięty w widok formularz staje nad kubkiem (`.dice-cup`), a nie
-     pod nim — ta sama rezerwa, co dolny `padding` panelu. */
-  scroll-margin-bottom: 4.6rem;
+     pod nim — nad stopką belki (`.hud-foot`). */
+  scroll-margin-bottom: calc(var(--hud-cup) + 2.4rem);
 }
 
 /* Zmysł Walki (etap 30a). Jeden arkusz na dwa domy — pasek akcji i karta

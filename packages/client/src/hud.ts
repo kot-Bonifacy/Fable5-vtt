@@ -12,6 +12,10 @@ import type {
 } from '@vtt/shared';
 import {
   cpredDrug,
+  cpredEffectiveStats,
+  hasCyberarm,
+  metresBetweenTokens,
+  metresForRules,
   CPRED_ACTION_GRAPPLE,
   CPRED_ACTION_HOLD,
   CPRED_ACTION_JUMP,
@@ -31,7 +35,6 @@ import {
   PACE_FALLBACK_CAP_M,
   cpredInterfaceRank,
   cpredMoveBudgetFromSheet,
-  cpredNextWeaponMode,
   cpredWeaponModeSlot,
   effectiveArmorSp,
   empFromHumanity,
@@ -193,6 +196,12 @@ export interface HudContext {
    * (etap 39, „Poza zakresem").
    */
   statEffects: CpredStatEffect[];
+  /**
+   * Trwały cel prowadzonej figury (etap 69): nazwa i dystans w metrach zasad —
+   * kafel broni w ręku liczy z niego PT, zanim gracz kliknie. Null, gdy figura
+   * nie jest prowadzona, nie ma celu albo cel zniknął z widoku.
+   */
+  target: { tokenId: string; name: string; metres: number } | null;
 }
 
 /**
@@ -304,6 +313,7 @@ export function hudContextFor(tokenId: string | null): HudContext {
       injuries: [],
       figureSkills: [],
       statEffects: [],
+      target: null,
     };
   }
 
@@ -318,6 +328,13 @@ export function hudContextFor(tokenId: string | null): HudContext {
     sheet: character ? withTokenMounts(character.data, token) : null,
     // Etap 46c: granaty i rakiety przychodzą z ekwipunku — pasek liczy zapas.
     ...(character ? { stockGear: character.data.gear } : {}),
+    // Etap 69: obrażenia gołych rąk na kaflu idą z BC „jak teraz” (s. 176).
+    unarmed: character
+      ? {
+          body: cpredEffectiveStats(character.data).body,
+          cyberarm: hasCyberarm(character.data.cyberware),
+        }
+      : null,
     resolve: (compendiumId) => {
       const entry = compendiumId ? compendium.entries[compendiumId] : undefined;
       return entry && isWeaponEntry(entry) ? resolveWeapon(entry, { weaponTypeById }) : null;
@@ -382,6 +399,20 @@ export function hudContextFor(tokenId: string | null): HudContext {
     injuries: token.characterId ? [] : sanitizeCriticalInjuryRows(token.injuries),
     figureSkills: character ? [] : figureSkillsOf(token),
     statEffects: character ? hudStatEffects(character.data) : [],
+    target: steering ? standingTargetOf(token) : null,
+  };
+}
+
+/** Trwały cel figury z nazwą i dystansem — to, co kafel broni mówi przed strzałem. */
+function standingTargetOf(token: TokenView): HudContext['target'] {
+  const targetId = targetOf(token.id);
+  const target = targetId ? useTokenStore.getState().tokens[targetId] : undefined;
+  const scene = useSceneStore.getState().effectiveScene;
+  if (!target || !scene) return null;
+  return {
+    tokenId: target.id,
+    name: target.name,
+    metres: metresForRules(metresBetweenTokens(token, target, scene)),
   };
 }
 
@@ -555,6 +586,9 @@ export function hudSignature(context: HudContext): string {
     context.refusal,
     context.steering,
     context.sheetNotMine,
+    // Etap 69: dystans do celu stoi na kaflu — w metrach zasad, więc marsz
+    // odświeża panel co kratkę, nie co klatkę.
+    context.target,
     context.combatant?.id ?? null,
     context.combatant?.grapple?.role ?? null,
     // Co ze slotu **widać**. Nabój wpadł tu w sesji naprawczej 22.08 (błąd #5):
@@ -576,7 +610,6 @@ export function hudSignature(context: HudContext): string {
       slot.id,
       slot.label,
       slot.disabled,
-      slot.key,
       slot.kind === 'weapon' ? slot.ammoLabel : null,
       slot.kind === 'weapon' || slot.kind === 'reload' ? (slot.ammo ?? null) : null,
       // Etap 46c: zapas w ekwipunku stoi przy liczniku magazynka.
@@ -584,6 +617,8 @@ export function hudSignature(context: HudContext): string {
       slot.kind === 'weapon' ? slot.coneRangeM : null,
       // Etap 63a: kropki ataków w Akcji — ta sama lekcja „co widać”.
       slot.kind === 'weapon' ? slot.attacks : null,
+      // Etap 69: obrażenia na kaflu (gołe ręce zmieniają się z BC).
+      slot.kind === 'weapon' ? slot.damage : null,
       // Schowanie broni przy wydanej Akcji nie zmienia zdania odmowy, a zmienia
       // to, co kursor ma trzymać (25.09).
       slot.kind === 'weapon' ? slot.outOfHand : null,
@@ -876,29 +911,6 @@ export function hudWeaponSlot(group: CpredHotbarWeaponGroup, tokenId: string) {
 export function activateGroup(group: CpredHotbarGroup, tokenId: string): void {
   const slot = group.kind === 'weapon' ? hudWeaponSlot(group, tokenId) : group.slot;
   activateSlot(slot, tokenId);
-}
-
-/**
- * Moves a weapon to its next fire mode (Shift + the weapon's number key).
- *
- * Switching *while holding the gun* re-arms it, so the crosshair and the panel
- * never disagree about what the next click will fire. Switching a weapon that
- * is not in hand only remembers the choice — pressing Shift+2 to line up a
- * burst must not quietly take the pistol out of somebody's hands.
- */
-export function cycleGroupMode(group: CpredHotbarGroup, tokenId: string): void {
-  if (group.kind !== 'weapon' || group.modes.length < 2) return;
-  const current = hudWeaponSlot(group, tokenId);
-  const next = cpredNextWeaponMode(group, current.mode);
-  useHudStore.getState().setFireMode(tokenId, group.id, next);
-  const armed = useHudStore.getState().activeWeapon;
-  if (
-    armed?.tokenId === tokenId &&
-    armed.weaponRowId === group.weaponRowId &&
-    armed.attachmentId === group.attachmentId
-  ) {
-    activateSlot(cpredWeaponModeSlot(group, next), tokenId);
-  }
 }
 
 /**

@@ -22,8 +22,11 @@ export interface CupViewport {
   height: number;
 }
 
-/** Średnica kubka: ikona 30 px, `padding` 0,55 rem i ramka 2 px z każdej strony. */
-export const CUP_SIZE_PX = 52;
+/**
+ * Średnica kubka: ikona 39 px, `padding` 11 px i ramka 2 px z każdej strony.
+ * Do 10.11.2026 52 px — MG kazał powiększyć średnicę o ćwierć (etap 69).
+ */
+export const CUP_SIZE_PX = 65;
 const CUP_EDGE_MARGIN_PX = 4;
 /** Odstęp domyślnego kubka od rogu (1 rem w `.dice-cup`). */
 const CUP_CORNER_OFFSET_PX = 16;

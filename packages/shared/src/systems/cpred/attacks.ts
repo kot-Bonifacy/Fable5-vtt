@@ -627,6 +627,11 @@ function isInteger(value: unknown): value is number {
 /** Weapon types whose damage comes from the attacker's body, not the weapon. */
 const UNARMED_TYPE_IDS = new Set(['weapon-type.brawling', 'weapon-type.martial-arts']);
 
+/** Gołe ręce i Sztuki walki — obrażenia czyta się z BC, nie z wiersza broni. */
+export function cpredUnarmedWeaponType(weaponTypeId: string | null | undefined): boolean {
+  return typeof weaponTypeId === 'string' && UNARMED_TYPE_IDS.has(weaponTypeId);
+}
+
 /**
  * Damage notation for one hit: the row's own damage, except for bare hands,
  * whose damage the rules read off the attacker's BODY — and, for the weakest

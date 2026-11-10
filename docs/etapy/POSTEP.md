@@ -21,13 +21,21 @@ w plikach obok — czytaj je **na żądanie, nigdy rutynowo**:
 
 | stan         | etapy                                                                                          |
 | ------------ | ---------------------------------------------------------------------------------------------- |
-| ⬜ otwarty   | **68** Warsztat: ulepszenia auta za ed i naprawa (🟨 zrobione 06.11, czeka na wdrożenie i oględziny MG przy stole); **67** Zakup pojazdu (🟨 zrobione 06.11, czeka na wdrożenie i oględziny MG przy stole); **66e** Scena przykładowa „Po zamknięciu” (🟨 zrobione 07.11, obejrzane w Firefoksie; rozegrana w przeglądarce do końca 07.11 — znaleziska w `zaleglosci.md` (27; pkt 18 i 19 nie, decyzja MG; 13 naprawionych 07.11); czeka na naprawę reszty, stół MG i wdrożenie); **66d** Scena przykładowa „Zastaw” (🟨 wzorzec zrobiony i rozegrany w przeglądarce 06.11; od 06.11 jeden taran na turę (decyzja MG); czeka na stół MG i wdrożenie); **66** Sceny przykładowe (🟨 zrobione 31.10, czeka na oględziny MG przy stole i wdrożenie; **66b** „Fabryka dronów” 🟨 zrobione 31.10, tak samo (netrunner obejrzany w przeglądarce 07.11, poprawki czekają na wdrożenie); **66c** „Ostatni zjazd” 🟨 wzorzec zrobiony, rozegrany w przeglądarce 04.11 i ponownie 05.11 po rebalansie (porażka o włos, balans zatwierdzony przez MG) — zaległości z przebiegów zamknięte 05.11, Esc na kubku MG 07.11 — czeka na stół MG i wdrożenie); **65** Scena pościgu i walka pojazdów (🟨 65a–65e ✅ 30–31.10, czeka na oględziny MG przy stole); **62** Sieć ze sceny (🟨 zrobione, czeka na oględziny MG na VPS po wdrożeniu); **61** Skradanie się (🟨 zrobione, czeka na słowo MG o rozstrzygnięciach); **28** Wdrożenie na VPS (🟨 działa na `https://vtt.tatanga.eu` z botami od 18.10; zostały off-site, utwardzenie, monitoring); **43b**, **43c** (UI walki); **60** Czytelny czat (zlecenie MG z 24.10; 🟨 60a–60c ✅, czeka na oględziny MG z pierwszego kryterium); T10; refaktoryzacja odłożona (MG 18.10) |
+| ⬜ otwarty   | **69** Lewa belka bez ramek (🟨 zrobione 11.11, czeka na wdrożenie i oględziny MG przy stole); **68** Warsztat: ulepszenia auta za ed i naprawa (🟨 zrobione 06.11, czeka na wdrożenie i oględziny MG przy stole); **67** Zakup pojazdu (🟨 zrobione 06.11, czeka na wdrożenie i oględziny MG przy stole); **66e** Scena przykładowa „Po zamknięciu” (🟨 zrobione 07.11, obejrzane w Firefoksie; rozegrana w przeglądarce do końca 07.11 — znaleziska w `zaleglosci.md` (27; pkt 18 i 19 nie, decyzja MG; 13 naprawionych 07.11); czeka na naprawę reszty, stół MG i wdrożenie); **66d** Scena przykładowa „Zastaw” (🟨 wzorzec zrobiony i rozegrany w przeglądarce 06.11; od 06.11 jeden taran na turę (decyzja MG); czeka na stół MG i wdrożenie); **66** Sceny przykładowe (🟨 zrobione 31.10, czeka na oględziny MG przy stole i wdrożenie; **66b** „Fabryka dronów” 🟨 zrobione 31.10, tak samo (netrunner obejrzany w przeglądarce 07.11, poprawki czekają na wdrożenie); **66c** „Ostatni zjazd” 🟨 wzorzec zrobiony, rozegrany w przeglądarce 04.11 i ponownie 05.11 po rebalansie (porażka o włos, balans zatwierdzony przez MG) — zaległości z przebiegów zamknięte 05.11, Esc na kubku MG 07.11 — czeka na stół MG i wdrożenie); **65** Scena pościgu i walka pojazdów (🟨 65a–65e ✅ 30–31.10, czeka na oględziny MG przy stole); **62** Sieć ze sceny (🟨 zrobione, czeka na oględziny MG na VPS po wdrożeniu); **61** Skradanie się (🟨 zrobione, czeka na słowo MG o rozstrzygnięciach); **28** Wdrożenie na VPS (🟨 działa na `https://vtt.tatanga.eu` z botami od 18.10; zostały off-site, utwardzenie, monitoring); **43b**, **43c** (UI walki); **60** Czytelny czat (zlecenie MG z 24.10; 🟨 60a–60c ✅, czeka na oględziny MG z pierwszego kryterium); T10; refaktoryzacja odłożona (MG 18.10) |
 | ✅ ukończone | 01–11, 13–20b, 23a–27f, 27h–27l, 29a–30d, 31–35, 37–42c, 43a, 44a–44d, 45, 46a1, 46a2, 46c1, 46c2, 46b1, 46b2, 47a, 47b, 48a, 48b, 48c, 49a, 49b, 50a, 50b, 50c, 51, 52, 53, 54, 55, 56, 57 (57a–57c), 58 (58a–58d), 59 (59a–59c), 63 (63a–63b; 63c wycofane 29.10), 64 (64a–64c) (ostatni zamknięty: 64, 2026-10-30) |
 | ⛔ wycofane  | 12, 21, 22 (głos), 27g (wydajność), 36 (makra); 27, 29, 30, 38 rozdzielone na etapy literowane |
 
 Pełna tabela z nazwami i datami: `archiwum/tabela-etapow.md`.
 
 ## Od czego zacząć
+
+**Lewa belka bez ramek (etap 69, zlecenie MG z 10.11) — czeka na wdrożenie (bez migracji)
+i oględziny MG przy stole.** Wariant A z makiety: portret 16:15 gasnący w papier, PW jako
+pociągnięcie pędzla, broń na dużych kaflach z obrażeniami, SS i przeładowaniem w rogu kafla,
+Bieg / Skok / Skradanie na średnich, reszta akcji jako ikony; kropka na przycisku to Akcja,
+skośna kreska to metry ruchu. Opis przycisku wychodzi w dymku po chwili (`HudTip`), koniec tury
+stoi obok kubka (65 px). **Skrótów 1–9 nie ma** (MG 11.11). Plik etapu `etap-69-lewa-belka.md`,
+umowa na górze `ui`.
 
 **Grafika auta to model, miniatury w skali (zgłoszenie MG z 10.11) — czeka na wdrożenie (bez
 migracji) i oględziny MG przy stole.** MG wybiera na karcie pojazdu grafikę modelu i auto staje
@@ -760,7 +768,7 @@ a nie do tego pliku.
 | `mapa`      | figury, zaznaczanie, narzędzia, obiekty sceny, ściany, efekty, zamek drzwi, ukryta figura zauważona, ikony urządzeń, wspólny widok drużyny, scena pościgu, jazda kierowcy i dryf, Manewr i taranowanie, przeszkody pościgu, sceny przykładowe, wzorzec zwykłej mapy, ulepszenia pojazdu, stojące auto na drodze, kreator pościgu i wbudowane drogi, załoga auta poza pościgiem, rama pościgu i pęd auta bez kierowcy, długa pętla drogi, ucieczka auta ręką MG, otarcie brył, wrak za autem, podpis w fotelu, furgon z wyglądu (`van-6`), przesadzanie foteli przy starcie, skręt z menu przed przeszkodą, wysiadka tylko przeciągnięciem, światła, zamki, strefy i pojemniki we wzorcu | 94   | 27      |
 | `czat`      | rodzaje wierszy, `visibleTo`, filtr, `seq`, `gmrecovery`, „to dotyczy mnie”, grupy kart, kolor gracza, czyszczenie, gęsta karta rzutu, przebieg ataku, `/jako` za NPC-a, karta rzutu bez konta | 17   | 3       |
 | `serwer`    | Prisma i migracje, zdarzenia gniazda, zapisy karty, uploady    | 26   | 21      |
-| `ui`        | okna pływające, `z-index`, motyw, skróty, dostępność, wejście, panel decyzji MG, kubek przestawiany i jego menu | 39   | 16      |
+| `ui`        | okna pływające, `z-index`, motyw, skróty, dostępność, wejście, panel decyzji MG, kubek przestawiany i jego menu, lewa belka bez ramek i dymek `HudTip` | 40   | 16      |
 | `kosci`     | kubek, `rollFormula`, wezwania i prośby o Test, tabele losowe, PT od MG | 24   | 2       |
 | `tura`      | budżet Akcji i metrów, kolejka, trasa, ruch przez ściany, skok, walka z zauważenia, pytanie MG o przekroczenie, Percepcja w drodze (z linią wzroku), ukryte figury, skradanie, kropki ataków, kierowca bez Biegu, Test jazdy w Akcji Ruchu, darmowa ręka MG, napis wiersza Akcji, taran raz na turę, spóźniona inicjatywa rundy 1, krok planera w jednym oku | 41   | 7       |
 | `atak`      | broń i dodatki, amunicja, obrażenia, pancerz, rany krytyczne, trucizna na ostrzu, auto-unik, strach z Konfrontacji, auto jako cel, broń pokładowa, wybór celu ze stosu, skutki amunicji po karcie ataku, ikona gołych rąk, broń dwuręczna w rękach przy tarczy | 57   | 8       |
@@ -773,13 +781,35 @@ a nie do tego pliku.
 | `boty`      | llama-server, RAG, reindeks, dziennik i baza wiedzy, brama AI  | 10   | 10      |
 | `dane`      | `parse-manual.py`, kompendium poza repo, tabele z podręcznika  | 9    | 12      |
 | `kopie`     | `snapshot`, `archive`, paczki ZIP, wczytanie kampanii, „czeka na gracza”, kopie kampanii i cofnięcie, sklep i bot w paczce, zgłoszenie karty gracza, pojazdy w paczce, auta na scenie pościgu, przeszkody poza paczką | 22   | 6       |
-| `ogledziny` | CDP i Playwright MCP, zrzuty, dwie sesje, `window.confirm`    | 0    | 123     |
+| `ogledziny` | CDP i Playwright MCP, zrzuty, dwie sesje, `window.confirm`    | 0    | 124     |
 | `testy`     | vitest, migotanie, `tsc --noEmit`, środowisko dev              | 0    | 160     |
 
 
 ## Notatki z dwóch ostatnich sesji
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
+
+### Sesja 10–11.11 — lewa belka bez ramek (etap 69)
+
+**Zlecenie MG:** nowy wygląd lewej belki — „mniej generycznych prostokątów”, przyciski różnej
+wielkości i kształtu, bardziej funkcjonalne. **Decyzje MG** (pytania na starcie, potem makieta
+z trzema wariantami): kierunek „bez ramek, tusz i odstępy”, trzy rozmiary przycisków,
+przeładowanie przy broni, koszt na przycisku, liczby broni na kaflu; wariant A, portret
+o ćwierć wyższy, podświetlenie pod kursorem, opis po chwili, kubek o ćwierć większy; w trakcie
+oględzin: **skróty 1–9 do usunięcia**, linijka z nazwą pod ikonami też. **Zrobione (bez
+migracji):** `CombatHud.tsx` przepisany na `WeaponTile` / `MediumSlot` / `IconSlot`, dymek
+`HudTip.tsx`, sloty w `shared` z `cost`, `damage`, `rof`, `rangeDv` (bez `key`),
+`HudContext.target` (cel, dystans, PT pod bronią w ręku), kadr portretu 16:15, budżet tury
+tuszem, stopka z końcem tury obok kubka 65 px. **Rozstrzygnięcia bez pytań** — w pliku etapu.
+**Testy:** `shared` 2995/2995, klient 489/489, ESLint, Prettier i `tsc --noEmit` (shared,
+klient, serwer, e2e) czyste; serwer niepuszczany (bez zmian w kodzie serwera). E2E: `t46c-amunicja`
+9 zaliczonych, `t4a-walka-knajpa` z `po-T3` 13 zaliczonych (po 2 pominięte `@llm`); pełne
+`@szybkie` niepuszczane. Trzy testy-strażnicy złapały pierwszą wersję (kolor wprost, zmienne
+belki poza motywem, strzałka trybów bez `title`). **Oglądane w Firefoksie** (Playwright MCP,
+MG na „Oględzinach 12.09”, dzień i noc): figura bez portretu i z portretem, broń w ręku z celem,
+dymek, podświetlenie; budżet tury i koniec tury na stanie walki podstawionym lokalnie
+(`setState` w przeglądarce, bez serwera). Gracz, zwinięta belka, szuflada trybów i Chrome
+nieoglądane. Pułapka na górze `ogledziny`, umowa na górze `ui`.
 
 ### Sesja 10.11, druga — grafika auta to model, skala na miniaturach
 
@@ -811,22 +841,3 @@ motorówki i łodzi kabinowej, a pozostałe sześć pojazdów z zamówienia kaza
 klasy modeli z wymyślonymi zastępstwami w próbce, `CPRED_VEHICLE_RETIRED_IDS`, grupa „Łodzie”,
 stała ramka skali 6,4 m. Szczegóły w `etap-67-zakup-pojazdu.md` („Trzecia dostawa”), wpis
 w `decyzje-i-uproszczenia.md`. **Testy:** `shared` 2997/2997, serwer 1765/1765 (pierwszy przebieg z dwoma znanymi odrzutami `SceneExploration` po teardownie — pułapka `testy`, powtórka czysta), klient 489/489; ESLint i `tsc --noEmit` czyste. **Oglądane w Chromium** (galeria MG).
-
-### Sesja 10.11 — kubek do przestawiania, menu pod prawym przyciskiem
-
-**Zlecenie MG:** kubek ma się odblokowywać prawym przyciskiem, stawać gdziekolwiek i znów
-blokować, a małe menu ma też dawać Szczęście przed rzutem; w trakcie doszedł automatyczny Unik
-z lewego panelu. **Decyzje MG:** licznik Szczęścia tylko w menu (plakietka +N na kubku), tylko
-przy załadowanym rzucie, odblokowany kubek tylko się przesuwa, kubek nad pływającymi oknami.
-**Rozstrzygnięcia bez pytań:** pozycja w `localStorage` na użytkownika, blokada niezapisywana
-(po F5 kubek rzuca), „Wróć do rogu ekranu” tylko przy kubku poza rogiem, Szczęście z okna rzutu
-można w menu poprawić (pole `luckDeclared` zniknęło), w prawej połowie ekranu etykieta rośnie
-w lewo, Unik w menu dotyczy figury z lewego panelu. **Testy:** klient 489/489 (w tym nowe
-`cup-placement.test.ts`), ESLint, Prettier i `tsc --noEmit` czyste; `shared` i serwer bez zmian
-w kodzie (tylko komentarz w `character.ts`), niepuszczane. **Oglądane w Firefoksie**
-(tymczasowy spec na instancji E2E z `po-T6`, Marek/Kowal): menu, Unik na karcie, przenoszenie,
-Esc, Szczęście 2 z rzutem i spadkiem puli, kubek nad kartą, F5, małe okno, powrót do rogu.
-`--grep @szybkie`: 75 zaliczonych, 1 pominięty, 1 niezaliczony (T9a „konsola bez nowych błędów”, zerwane
-gniazdo w Firefoksie; osobno 7/7). Atak ze Szczęściem z menu (zlecenie MG, ten sam dzień, spec tymczasowy): Kowal do figury
-z 4 m, PT 13, modyfikator 11, kość 2 — bez Szczęścia 13 i pudło, z +2 suma 15 i trafienie, pula
-7 → 5. MG i Chrome nieoglądane. Zrzut wyłapał warstwę menu pod kubkiem (pułapka na górze `ui`).

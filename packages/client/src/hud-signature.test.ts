@@ -35,7 +35,10 @@ function slot(patch: Partial<CpredHotbarWeaponSlot> = {}): CpredHotbarWeaponSlot
     outOfHand: false,
     disabled: null,
     attacks: null,
-    key: '1',
+    damage: null,
+    rof: 1,
+    rangeDv: null,
+    cost: 'action',
     ...patch,
   };
 }
@@ -57,6 +60,7 @@ function context(slots: CpredHotbarWeaponSlot[]): HudContext {
     figureSkills: [],
     statEffects: [],
     steering: false,
+    target: null,
   };
 }
 

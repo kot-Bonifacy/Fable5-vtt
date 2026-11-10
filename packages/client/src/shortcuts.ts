@@ -82,11 +82,6 @@ export const SHORTCUT_GROUPS: readonly ShortcutGroup[] = [
     note: 'Skróty działają poza polami edycji. Wybierz figurę, aby używać jej paska akcji.',
     items: [
       {
-        keys: '1…9',
-        what: 'Wybierz broń lub akcję oznaczoną tą cyfrą na pasku (górny rząd klawiatury)',
-      },
-      { keys: 'Shift + 1…9', what: 'Przełącz tryb broni pod tą cyfrą, jeśli ma kilka trybów' },
-      {
         keys: 'klik w cel',
         what: 'Przy wybranej broni przygotuj atak. Dla strzału pojedynczego wybierz korpus, głowę, przedmiot lub nogę; celowanie poza korpus: −8 i cała Akcja',
       },

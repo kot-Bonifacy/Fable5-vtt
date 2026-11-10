@@ -2,9 +2,11 @@ import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import type {
   CpredStatEffect,
   CpredAttackMode,
+  CpredHotbarSingleGroup,
   CpredHotbarSlot,
   CpredHotbarWeaponGroup,
   CpredHotbarWeaponSlot,
+  CpredSlotCost,
   TokenContainerView,
 } from '@vtt/shared';
 import {
@@ -14,6 +16,7 @@ import {
   CONTAINER_LOCK_LABELS,
   CPRED_ATTACK_MODE_LABELS,
   CPRED_ACTION_JUMP,
+  CPRED_ACTION_RUN,
   CPRED_ACTION_SNEAK,
   CPRED_BURST_AMMO_COST,
   CPRED_WOUND_LABELS,
@@ -21,6 +24,8 @@ import {
   ROLE_GM,
   cpredStatusSeverity,
   cpredWeaponModeSlot,
+  dvForRange,
+  formatMetres,
   tokenHpShareOf,
   woundStateFromHp,
 } from '@vtt/shared';
@@ -43,6 +48,7 @@ import { useCompendiumStore } from '../stores/compendiumStore.js';
 import { activeWeaponOf, fireModeKey, useHudStore } from '../stores/hudStore.js';
 import { useRollStore } from '../stores/rollStore.js';
 import { useSelectionStore } from '../stores/selectionStore.js';
+import { useTargetStore } from '../stores/targetStore.js';
 import { useTokenStore } from '../stores/tokenStore.js';
 import { useGameTimeStore } from '../stores/gameTimeStore.js';
 import { usePortraitFrameStyle } from '../portrait-banner.js';
@@ -57,6 +63,7 @@ import {
   StabilizePicker,
 } from './CombatForms.js';
 import { HudIcon, StatusIcon } from './HudIcon.js';
+import { HudTipLayer, useHudTip, type HudTipContent } from './HudTip.js';
 import { TurnBudget } from './TurnBudget.js';
 import { HudEndTurn, HudEndTurnCompact } from './HudEndTurn.js';
 
@@ -152,6 +159,9 @@ function StatEffectChips({ effects }: { effects: readonly CpredStatEffect[] }) {
  * is all a token carries; crossing it is the moment every check turns −2.
  * The number that flies off is the change itself: at the table the bar moving
  * by four pixels is not something anybody notices in the middle of a turn.
+ *
+ * Od etapu 69 belka jest pociągnięciem pędzla pod imieniem, a liczba stoi za
+ * nią — na papierze, bez czarnego obrysu, którego wymagało wypełnienie.
  */
 function HealthBar({ hp }: { hp: { current: number; max: number } }) {
   const state = woundStateFromHp(hp.current, hp.max);
@@ -183,16 +193,14 @@ function HealthBar({ hp }: { hp: { current: number; max: number } }) {
       title={`Punkty Wytrzymałości: ${hp.current}/${hp.max} · ${CPRED_WOUND_LABELS[state]}`}
     >
       <span className="hud-hp-label">PW</span>
-      {/* The number sits inside the bar since 17.10 (MG): one shape to look
-          at, and the bar gets the whole width of the banner. */}
       <span className="hud-hp-track">
         <span className="hud-hp-fill" style={{ width: `${ratio * 100}%` }} />
         {/* The rung stage 15 judges on, drawn where it actually falls. */}
         <span className="hud-hp-notch" style={{ left: `${threshold * 100}%` }} />
-        <span className="hud-hp-value">
-          {hp.current}
-          <span className="hud-hp-max">/{hp.max}</span>
-        </span>
+      </span>
+      <span className="hud-hp-value">
+        {hp.current}
+        <span className="hud-hp-max">/{hp.max}</span>
       </span>
       {delta && (
         <span
@@ -242,101 +250,46 @@ function Magazine({ ammo }: { ammo: { current: number; max: number } }) {
 }
 
 /**
- * One box on the bar — a weapon in the mode it is set to, a reload, or an
- * Action. Its whole state (armed, refused, keyed) is in props.
- *
- * A weapon that offers more than a plain shot grows a second button: the arrow
- * opens the drawer of its fire modes. Two buttons rather than one, because a
- * button inside a button is not HTML — the shared frame is drawn by the row
- * around them, so it still reads as a single tile.
+ * Akcje, po które sięga się co turę (etap 69, decyzja MG z 10.11): dostają
+ * średni kafel z nazwą. Reszta katalogu to małe przyciski z samą ikoną —
+ * nazwa i koszt wychodzą po najechaniu. Podział jest sprawą wyglądu, więc
+ * mieszka tu, nie w `shared`.
  */
-function HotbarSlot({
-  slot,
-  keyLabel,
-  armed,
-  modeCount,
-  drawerOpen,
-  onActivate,
-  onToggleDrawer,
-}: {
-  slot: CpredHotbarSlot;
-  keyLabel: string | null;
-  armed: boolean;
-  modeCount: number;
-  drawerOpen: boolean;
-  onActivate: () => void;
-  onToggleDrawer?: () => void;
-}) {
-  const ammo = slot.kind === 'weapon' || slot.kind === 'reload' ? slot.ammo : null;
-  // Etap 46c: zapas w ekwipunku — null u karty „bez dna” (NPC, statysta).
-  const stock = slot.kind === 'weapon' || slot.kind === 'reload' ? slot.stock : null;
-  const hasDrawer = modeCount > 1 && onToggleDrawer !== undefined;
-  return (
-    <div
-      className={`hud-slot-row hud-slot--${slot.kind}${armed ? ' hud-slot--armed' : ''}${
-        slot.disabled ? ' hud-slot--refused' : ''
-      }`}
-    >
-      <button
-        type="button"
-        className="hud-slot"
-        // The refusal is the tooltip when there is one: „why is this grey" has
-        // to be answerable without asking the GM.
-        title={
-          slot.disabled
-            ? `${slot.label} — ${slot.disabled}`
-            : `${slot.hint}${keyLabel ? ` (${keyLabel})` : ''}`
-        }
-        onClick={onActivate}
-      >
-        <HudIcon name={slot.icon} className="hud-slot-icon" />
-        <span className="hud-slot-body">
-          <span className="hud-slot-line">
-            <span className="hud-slot-label">{slot.label}</span>
-            {/* What is loaded (stage 16g): „Strzelba · Śrut" is a different
-                attack from „Strzelba · Zapalająca", and the slot has to say
-                which. The *mode* moved down to the magazine line in 27h — it
-                changes several times a fight, the round almost never does. */}
-            {slot.kind === 'weapon' && slot.ammoLabel && (
-              <span className="hud-chip hud-chip--ammo">{slot.ammoLabel}</span>
-            )}
-          </span>
-          <span className="hud-slot-line hud-slot-line--sub">
-            {slot.kind === 'weapon' && slot.attacks && <AttackPips attacks={slot.attacks} />}
-            {ammo && <Magazine ammo={ammo} />}
-            {stock !== null && (
-              <span
-                className={`hud-stock${stock === 0 ? ' hud-stock--empty' : ''}`}
-                title={`Zapas w ekwipunku: ${stock}`}
-              >
-                zapas {stock}
-              </span>
-            )}
-            {/* Only a weapon with a choice says which choice is live: on a
-                pistol „pojedynczy" is not information, it is noise. */}
-            {hasDrawer && (
-              <span className="hud-slot-mode">
-                {slot.kind === 'weapon' ? (slot.modeLabel ?? 'pojedynczy') : ''}
-              </span>
-            )}
-          </span>
-        </span>
-        {keyLabel && <span className="hud-slot-key">{keyLabel}</span>}
-      </button>
-      {hasDrawer && (
-        <button
-          type="button"
-          className={`hud-slot-drawer${drawerOpen ? ' hud-slot-drawer--open' : ''}`}
-          title={`Tryb ognia${keyLabel ? ` (Shift+${keyLabel})` : ''}`}
-          aria-label="Tryb ognia"
-          aria-expanded={drawerOpen}
-          onClick={onToggleDrawer}
-        >
-          ▾
-        </button>
-      )}
-    </div>
-  );
+const MEDIUM_ACTION_IDS: ReadonlySet<string> = new Set([
+  CPRED_ACTION_RUN,
+  CPRED_ACTION_JUMP,
+  CPRED_ACTION_SNEAK,
+]);
+
+function isMediumAction(slot: CpredHotbarSlot): boolean {
+  return slot.kind === 'action' && MEDIUM_ACTION_IDS.has(slot.actionId);
+}
+
+/** Czym się płaci, słowami — to samo, co znaczek na przycisku mówi kształtem. */
+function costText(slot: CpredHotbarSlot): string {
+  if (slot.cost === 'action') return 'Akcja';
+  if (slot.cost === 'free') return 'za darmo';
+  return slot.kind === 'action' && slot.moveCostM !== null
+    ? `${formatMetres(slot.moveCostM)} ruchu`
+    : 'Akcja Ruchu';
+}
+
+/**
+ * Znaczek kosztu: kropka to Akcja, skośna kreska to metry ruchu — te same
+ * kształty, którymi budżet tury nad bronią pokazuje, co jeszcze zostało.
+ */
+function CostMark({ cost }: { cost: CpredSlotCost }) {
+  if (cost === 'free') return null;
+  return <span className={`hud-cost hud-cost--${cost}`} aria-hidden />;
+}
+
+function slotTip(slot: CpredHotbarSlot): HudTipContent {
+  return {
+    title: slot.label,
+    cost: costText(slot),
+    body: slot.hint,
+    refusal: slot.disabled,
+  };
 }
 
 /**
@@ -358,6 +311,222 @@ function AttackPips({ attacks }: { attacks: { left: number; max: number } }) {
       ))}
     </span>
   );
+}
+
+/**
+ * Przycisk z samą ikoną: rzadka akcja w rządku pod średnimi kaflami albo
+ * przeładowanie i usuwanie usterki na kaflu swojej broni (`tool`).
+ *
+ * Nazwa zostaje w drzewie dla czytników i testów (`.hud-slot-label`); na
+ * ekranie mówi ją dymek, razem z kosztem i opisem. Linijka z nazwą pod
+ * rządkiem ikon i cyfry klawiszy zniknęły 11.11.2026 (MG: nadmiarowe).
+ */
+function IconSlot({
+  slot,
+  armed,
+  tool,
+  onActivate,
+}: {
+  slot: CpredHotbarSlot;
+  armed: boolean;
+  tool?: boolean;
+  onActivate: () => void;
+}) {
+  const tip = useHudTip(slotTip(slot));
+  return (
+    <button
+      type="button"
+      className={`hud-slot hud-slot--icon hud-slot--${slot.kind}${tool ? ' hud-slot--tool' : ''}${
+        armed ? ' hud-slot--armed' : ''
+      }${slot.disabled ? ' hud-slot--refused' : ''}`}
+      onClick={onActivate}
+      {...tip}
+    >
+      <HudIcon name={slot.icon} className="hud-slot-icon" />
+      <span className="visually-hidden">
+        <span className="hud-slot-label">{slot.label}</span> — {costText(slot)}
+      </span>
+      <CostMark cost={slot.cost} />
+    </button>
+  );
+}
+
+/** Średni kafel: ikona, nazwa i koszt słowami — akcje brane co turę. */
+function MediumSlot({
+  slot,
+  armed,
+  onActivate,
+}: {
+  slot: CpredHotbarSlot;
+  armed: boolean;
+  onActivate: () => void;
+}) {
+  const tip = useHudTip(slotTip(slot));
+  return (
+    <button
+      type="button"
+      className={`hud-slot hud-slot--medium hud-slot--${slot.kind}${armed ? ' hud-slot--armed' : ''}${
+        slot.disabled ? ' hud-slot--refused' : ''
+      }`}
+      onClick={onActivate}
+      {...tip}
+    >
+      <HudIcon name={slot.icon} className="hud-slot-icon" />
+      <span className="hud-slot-body">
+        <span className="hud-slot-label">{slot.label}</span>
+        <span className="hud-slot-cost">
+          <CostMark cost={slot.cost} />
+          {/* Na kaflu krótko („8 m”) — pełne „8 m ruchu” mówi dymek. */}
+          <span>
+            {slot.kind === 'action' && slot.moveCostM !== null
+              ? formatMetres(slot.moveCostM)
+              : costText(slot)}
+          </span>
+        </span>
+      </span>
+    </button>
+  );
+}
+
+/**
+ * Strzałka szuflady trybów ognia — osobny przycisk, bo przycisk w przycisku
+ * to nie HTML. Zwykły `title`: co robi, mówi w trzech słowach.
+ */
+function DrawerToggle({ open, onToggle }: { open: boolean; onToggle: () => void }) {
+  return (
+    <button
+      type="button"
+      className={`hud-slot-drawer${open ? ' hud-slot-drawer--open' : ''}`}
+      title="Tryb ognia"
+      aria-label="Tryb ognia"
+      aria-expanded={open}
+      onClick={onToggle}
+    >
+      ▾
+    </button>
+  );
+}
+
+/**
+ * Duży kafel broni w trybie, w którym stoi (etap 69).
+ *
+ * Bez ramki: broń rozpoznaje się po sylwetce, a tę w ręku — po czerwonej
+ * plamie pod nią. Na kaflu stoją liczby, po które dotąd otwierało się kartę
+ * (obrażenia, SS), a w prawym dolnym rogu to, co robi się **z tą bronią**:
+ * przeładowanie, usunięcie usterki i szuflada trybów. Odmowa gasi sam kafel,
+ * nie narzędzia — pusty magazynek ma zostawić „Przeładuj” zapalone.
+ */
+function WeaponTile({
+  slot,
+  armed,
+  modeCount,
+  drawerOpen,
+  tools,
+  onActivate,
+  onToggleDrawer,
+  onTool,
+}: {
+  slot: CpredHotbarWeaponSlot;
+  armed: boolean;
+  modeCount: number;
+  drawerOpen: boolean;
+  tools: readonly CpredHotbarSingleGroup[];
+  onActivate: () => void;
+  onToggleDrawer: () => void;
+  onTool: (group: CpredHotbarSingleGroup) => void;
+}) {
+  const tip = useHudTip(slotTip(slot));
+  const hasDrawer = modeCount > 1;
+  // Miejsce, które narzędzia zajmują w prawym dolnym rogu — linie statystyk
+  // i magazynka zawijają się przed nim zamiast pod nie wjeżdżać.
+  const toolsStyle = {
+    '--hud-tools': `${tools.length * 2.6 + (hasDrawer ? 1.6 : 0)}rem`,
+  } as CSSProperties;
+  return (
+    <div
+      className={`hud-slot-row hud-slot--weapon${armed ? ' hud-slot--armed' : ''}`}
+      style={toolsStyle}
+    >
+      <button
+        type="button"
+        className={`hud-slot hud-slot--large${slot.disabled ? ' hud-slot--refused' : ''}`}
+        onClick={onActivate}
+        {...tip}
+      >
+        <span className="hud-slot-art">
+          <HudIcon name={slot.icon} className="hud-slot-icon" />
+        </span>
+        <span className="hud-slot-body">
+          <span className="hud-slot-line">
+            <span className="hud-slot-label">{slot.label}</span>
+            {/* What is loaded (stage 16g): „Strzelba · Śrut" is a different
+                attack from „Strzelba · Zapalająca", and the slot has to say
+                which. */}
+            {slot.ammoLabel && <span className="hud-chip hud-chip--ammo">{slot.ammoLabel}</span>}
+          </span>
+          <span className="hud-slot-line hud-slot-line--stats">
+            {slot.damage && (
+              <span className="hud-slot-stat" title="Obrażenia jednego trafienia">
+                <strong className="hud-slot-damage">{slot.damage}</strong> obr.
+              </span>
+            )}
+            {slot.mode === 'single' && (
+              <span className="hud-slot-stat" title="Szybkostrzelność: ataki w jednej Akcji">
+                SS {slot.rof}
+              </span>
+            )}
+            {/* Only a weapon with a choice says which choice is live: on a
+                pistol „pojedynczy" is not information, it is noise. */}
+            {hasDrawer && <span className="hud-slot-mode">{slot.modeLabel ?? 'pojedynczy'}</span>}
+            {slot.attacks && <AttackPips attacks={slot.attacks} />}
+          </span>
+          {(slot.ammo || slot.stock !== null) && (
+            <span className="hud-slot-line hud-slot-line--mag">
+              {slot.ammo && <Magazine ammo={slot.ammo} />}
+              {/* Etap 46c: zapas w ekwipunku — null u karty „bez dna”. */}
+              {slot.stock !== null && (
+                <span
+                  className={`hud-stock${slot.stock === 0 ? ' hud-stock--empty' : ''}`}
+                  title={`Zapas w ekwipunku: ${slot.stock}`}
+                >
+                  zapas {slot.stock}
+                </span>
+              )}
+            </span>
+          )}
+        </span>
+      </button>
+      {(tools.length > 0 || hasDrawer) && (
+        <span className="hud-slot-tools">
+          {tools.map((group) => (
+            <IconSlot
+              key={group.id}
+              slot={group.slot}
+              armed={false}
+              tool
+              onActivate={() => onTool(group)}
+            />
+          ))}
+          {hasDrawer && <DrawerToggle open={drawerOpen} onToggle={onToggleDrawer} />}
+        </span>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Co kafel broni w ręku mówi o strzale, zanim padnie (etap 69): figura ma
+ * trwały cel — jego nazwa, dystans i PT z tabeli zasięgu; inaczej, gdzie
+ * kliknąć. PT nie liczy osłon ani Celowania — te dokłada okno przy celu.
+ */
+function aimText(slot: CpredHotbarWeaponSlot, target: HudContext['target']): string {
+  if (!target) return slot.pointTarget ? 'kliknij pole na mapie' : 'kliknij cel na mapie';
+  const parts = [target.name, formatMetres(target.metres)];
+  if (slot.rangeDv) {
+    const dv = dvForRange(slot.rangeDv, target.metres);
+    parts.push(dv === null ? 'poza zasięgiem' : `PT ${dv}`);
+  }
+  return parts.join(' · ');
 }
 
 /**
@@ -403,6 +572,51 @@ function ModeDrawer({
 }
 
 /**
+ * Akcje z katalogu w dwóch rozmiarach (etap 69): średnie kafle po dwa
+ * w rzędzie, pod nimi rządek ikon — ich nazwę, koszt i opis mówi dymek.
+ */
+function ActionSlots({
+  medium,
+  small,
+  isArmed,
+  onActivate,
+}: {
+  medium: readonly CpredHotbarSingleGroup[];
+  small: readonly CpredHotbarSingleGroup[];
+  isArmed: (slot: CpredHotbarSlot) => boolean;
+  onActivate: (group: CpredHotbarSingleGroup) => void;
+}) {
+  return (
+    <>
+      {medium.length > 0 && (
+        <div className="hud-slots hud-slots--medium">
+          {medium.map((group) => (
+            <MediumSlot
+              key={group.id}
+              slot={group.slot}
+              armed={isArmed(group.slot)}
+              onActivate={() => onActivate(group)}
+            />
+          ))}
+        </div>
+      )}
+      {small.length > 0 && (
+        <div className="hud-slots hud-slots--small">
+          {small.map((group) => (
+            <IconSlot
+              key={group.id}
+              slot={group.slot}
+              armed={isArmed(group.slot)}
+              onActivate={() => onActivate(group)}
+            />
+          ))}
+        </div>
+      )}
+    </>
+  );
+}
+
+/**
  * Kadr portretu w banerze (zlecenie MG, 25.09): własny kadr banera, jeśli
  * właściciel go ustawił, inaczej kadr żetonu przeniesiony na baner, a portret
  * bez żadnego kadru — od góry grafiki (`portraitBannerFor`). Portret spoza puli
@@ -427,10 +641,15 @@ function IdentityCard({
   /** Pojemnik (46b2) nie ma PW — pod nazwą stoi stan zamka. */
   container?: TokenContainerView | undefined;
 }) {
-  // Baner, nie miniatura (zlecenie MG, 25.09): portret na całą szerokość
-  // karty, a imię, Rola i PW leżą na nim, na czarnym przejściu u dołu kadru.
-  // Chipy SP/RUCH/EMP schodzą pod obraz — na twarzy byłyby szumem.
+  // Etap 69: portret bez ramki — dół obrazu rozpływa się w papier, a imię
+  // stoi na tym przejściu. Podpis jest **obok** ramki, nie w niej: maska,
+  // która gasi obraz, zgasiłaby też litery.
   const banner = useBannerCrop(imageUrl);
+  // Imię jest największym napisem belki; długie schodzi o stopień, zamiast
+  // kończyć się wielokropkiem po ośmiu literach.
+  const length = name.trim().length;
+  const nameSize =
+    length > 16 ? ' hud-card-name--longer' : length > 8 ? ' hud-card-name--long' : '';
   return (
     <div className={`hud-card${imageUrl ? '' : ' hud-card--no-portrait'}`}>
       <span className="hud-portrait-frame">
@@ -446,31 +665,35 @@ function IdentityCard({
             {name.trim().charAt(0).toUpperCase() || '?'}
           </span>
         )}
-        <span className="hud-portrait-caption">
-          <span className="hud-card-title">
-            <span className="hud-card-name" title={name}>
-              {name}
-            </span>
-            {vitals?.roleName && <span className="hud-card-role">{vitals.roleName}</span>}
+      </span>
+      <span className="hud-portrait-caption">
+        <span className="hud-card-title">
+          <span className={`hud-card-name${nameSize}`} title={name}>
+            {name}
           </span>
-          {/* HP is redacted by the server (stage 05): a token whose points this
-              viewer may not see arrives without them, so „no bar" is the honest
-              rendering rather than a hidden one. */}
-          {hp ? (
-            <HealthBar hp={hp} />
-          ) : (
-            <span className="hud-hp-none">
-              {container ? CONTAINER_LOCK_LABELS[container.lock] : 'PW ukryte'}
-            </span>
-          )}
+          {vitals?.roleName && <span className="hud-card-role">{vitals.roleName}</span>}
         </span>
+        {/* HP is redacted by the server (stage 05): a token whose points this
+            viewer may not see arrives without them, so „no bar" is the honest
+            rendering rather than a hidden one. */}
+        {hp ? (
+          <HealthBar hp={hp} />
+        ) : (
+          <span className="hud-hp-none">
+            {container ? CONTAINER_LOCK_LABELS[container.lock] : 'PW ukryte'}
+          </span>
+        )}
       </span>
       {vitals && <Vitals vitals={vitals} />}
     </div>
   );
 }
 
-/** SP · RUCH · EMP — the numbers that decide a fight and never used to show. */
+/**
+ * SP · RUCH · EMP — the numbers that decide a fight and never used to show.
+ * Od etapu 69 liczba ze słowem zamiast ikony w ramce: trzy sylwetki obok
+ * siebie trzeba było znać, a „4 RUCH” się czyta.
+ */
 function Vitals({ vitals }: { vitals: HudVitals }) {
   const armor = vitals.armor;
   return (
@@ -480,10 +703,10 @@ function Vitals({ vitals }: { vitals: HudVitals }) {
           className="hud-vital"
           title={`Pancerz: korpus ${armor.body} SP, głowa ${armor.head} SP`}
         >
-          <HudIcon name="armor" />
           <span className="hud-vital-value">
             {armor.body === armor.head ? armor.body : `${armor.body}/${armor.head}`}
           </span>
+          <span className="hud-vital-label">Pancerz</span>
         </span>
       )}
       {vitals.move && (
@@ -495,9 +718,9 @@ function Vitals({ vitals }: { vitals: HudVitals }) {
               : `RUCH ${vitals.move.points} — ${vitals.move.metres} m na Akcję Ruchu`
           }
         >
-          <HudIcon name="move" />
           <span className="hud-vital-value">{vitals.move.points}</span>
           {vitals.move.note && <span className="hud-vital-flag">!</span>}
+          <span className="hud-vital-label">Ruch</span>
         </span>
       )}
       {vitals.emp && (
@@ -505,8 +728,8 @@ function Vitals({ vitals }: { vitals: HudVitals }) {
           className="hud-vital"
           title={`EMP z bieżącego Człowieczeństwa: ${vitals.emp.current} (maksimum ${vitals.emp.max})`}
         >
-          <HudIcon name="emp" />
           <span className="hud-vital-value">{vitals.emp.current}</span>
+          <span className="hud-vital-label">Emp</span>
         </span>
       )}
     </div>
@@ -541,6 +764,8 @@ function useHudContext(): HudContext {
       useAuthStore.subscribe(refresh),
       // Etap 65d2: magazynek broni pokładowej jedzie z widokiem auta.
       useChaseStore.subscribe(refresh),
+      // Etap 69: trwały cel figury stoi na kaflu broni w ręku.
+      useTargetStore.subscribe(refresh),
     ];
     return () => {
       for (const unsub of unsubs) unsub();
@@ -580,11 +805,15 @@ export function CombatHud() {
   // Which weapon has its fire modes open; one at a time, and never across a
   // change of figure.
   const [openDrawer, setOpenDrawer] = useState<string | null>(null);
-  const weapons = context.groups.filter((group) => group.kind === 'weapon');
+  const weapons = context.groups.filter(
+    (group): group is CpredHotbarWeaponGroup => group.kind === 'weapon',
+  );
   // A reload is not a weapon: it is an Action that happens to name one, and
   // leaving it among the guns is what made a character with a single pistol
   // look like a character with an arsenal.
-  const actions = context.groups.filter((group) => group.kind !== 'weapon');
+  const actions = context.groups.filter(
+    (group): group is CpredHotbarSingleGroup => group.kind !== 'weapon',
+  );
 
   /**
    * A freshly selected figure comes with its first weapon in hand.
@@ -704,312 +933,342 @@ export function CombatHud() {
     );
   }
 
+  // Etap 69: przeładowanie i usuwanie usterki stoją na kaflu swojej broni,
+  // a nie w „Akcjach”. Klucz jest ten sam, którym `shared` skleja ich id
+  // (`reload:<klucz>`, `weapon:<klucz>`); narzędzie bez kafla (nie powinno
+  // się zdarzyć — filtr rąk zdejmuje je razem z bronią) zostaje małą akcją.
+  const weaponKeys = new Set(weapons.map((group) => group.id.slice('weapon:'.length)));
+  const toolsByWeapon = new Map<string, CpredHotbarSingleGroup[]>();
+  const loose: CpredHotbarSingleGroup[] = [];
+  for (const group of actions) {
+    const owner = group.kind === 'action' ? null : group.id.slice(group.id.indexOf(':') + 1);
+    if (owner !== null && weaponKeys.has(owner)) {
+      toolsByWeapon.set(owner, [...(toolsByWeapon.get(owner) ?? []), group]);
+    } else loose.push(group);
+  }
+  const medium = loose.filter((group) => isMediumAction(group.slot));
+  const small = loose.filter((group) => !isMediumAction(group.slot));
+  const isArmedGroup = (group: CpredHotbarWeaponGroup) =>
+    armed !== null &&
+    armed.weaponRowId === group.weaponRowId &&
+    armed.attachmentId === group.attachmentId;
+  // Broń w ręku, której kafla nie ma na belce, mówi o sobie zdaniem u dołu.
+  const armedOffRail = armed !== null && !weapons.some(isArmedGroup);
+  const gmAimHint =
+    isGm && !gmSteerLocked(isGm, combat) ? 'Alt+klik celuje we własny token.' : undefined;
+
   return (
-    <aside ref={railRef} className="hud-rail" aria-label="Panel aktywnej postaci">
-      <div className="hud-head">
-        <span className="hud-head-title">Postać</span>
-        <button
-          type="button"
-          className="hud-collapse"
-          title="Zwiń panel"
-          aria-label="Zwiń panel"
-          onClick={() => setCollapsed(true)}
-        >
-          ◂
-        </button>
-      </div>
+    <HudTipLayer>
+      <aside ref={railRef} className="hud-rail" aria-label="Panel aktywnej postaci">
+        <div className="hud-head">
+          <span className="hud-head-title">Postać</span>
+          <button
+            type="button"
+            className="hud-collapse"
+            title="Zwiń panel"
+            aria-label="Zwiń panel"
+            onClick={() => setCollapsed(true)}
+          >
+            ◂
+          </button>
+        </div>
 
-      {!token && (
-        <p className="hud-empty">
-          <HudIcon name="stand-up" className="hud-empty-icon" />
-          <span>
-            {/* #58: nowy gracz bez postaci dostawał radę o tokenie, którego nie ma. */}
-            {noCharacter
-              ? 'Nie masz jeszcze postaci — poproś o nią MG w zakładce „Postacie” po prawej.'
-              : 'Kliknij token, którym chcesz sterować. Potem klik w podłoże prowadzi go tam (w walce cel poza zielonymi śladami kliknij drugi raz), a klik w przeciwnika celuje.'}
-          </span>
-        </p>
-      )}
+        {!token && (
+          <p className="hud-empty">
+            <HudIcon name="stand-up" className="hud-empty-icon" />
+            <span>
+              {/* #58: nowy gracz bez postaci dostawał radę o tokenie, którego nie ma. */}
+              {noCharacter
+                ? 'Nie masz jeszcze postaci — poproś o nią MG w zakładce „Postacie” po prawej.'
+                : 'Kliknij token, którym chcesz sterować. Potem klik w podłoże prowadzi go tam (w walce cel poza zielonymi śladami kliknij drugi raz), a klik w przeciwnika celuje.'}
+            </span>
+          </p>
+        )}
 
-      {token && (
-        <>
-          {/* Whose turn it is, said where the hand already is — for the GM. The
-              end-turn block at the bottom of the rail (16.10) says whose turn
-              the queue is on, whatever the rail describes. */}
-          {context.acting && context.isGm && <p className="hud-turn-banner">Tura tej figury</p>}
+        {token && (
+          <>
+            {/* Whose turn it is, said where the hand already is — for the GM. The
+                end-turn block at the bottom of the rail (16.10) says whose turn
+                the queue is on, whatever the rail describes. */}
+            {context.acting && context.isGm && <p className="hud-turn-banner">Tura tej figury</p>}
 
-          {/* Klucz figury (17.10): bez niego pasek PW pamiętał poprzednią
-              figurę i przełączenie panelu pokazywało jej różnicę („+5”)
-              jak leczenie. */}
-          <IdentityCard
-            key={token.id}
-            name={token.name}
-            imageUrl={token.imageUrl}
-            hp={token.hp}
-            vitals={context.vitals}
-            container={token.container}
-          />
-
-          <StatusChips statuses={token.statuses} />
-          <StatEffectChips effects={context.statEffects} />
-
-          {/* Showing is not steering: the rail fills itself in with this
-              figure, but the map still belongs to nobody until the user says
-              so. Without this line an unmoving token after a click on the floor
-              reads as a broken map rather than as „you have not picked me up". */}
-          {/* Etap 50b: MG w trwającej walce nie bierze figury klikiem na mapie. */}
-          {!context.steering && (
-            <p
-              className="hud-preview"
-              title={
-                gmSteerLocked(isGm, combat)
-                  ? 'Panel pokazuje figurę, ale nią nie sterujesz — w walce weź ją z portretu na pasie inicjatywy, z menu figury albo naciśnij slot.'
-                  : 'Panel pokazuje figurę, ale nią nie sterujesz — kliknij ją na mapie albo naciśnij slot.'
-              }
-            >
-              {/* Plakietka zamiast zdania (17.10, MG): „jak przejąć” mówi
-                  podpowiedź wyżej, na pasku wystarczy, że to nie twoja ręka. */}
-              <IconEye size={15} />
-              <strong className="hud-preview-tag">Podgląd</strong>
-              <span>nie sterujesz</span>
-            </p>
-          )}
-
-          {context.turn && <TurnBudget budget={context.turn} variant="rail" />}
-          {context.refusal && <p className="hud-refusal">{context.refusal}</p>}
-
-          {/* Karta jest, ale nie twoja (28.08) — i to **nie** jest przypadek
-              pustego paska niżej. Akcje z katalogu (Ustabilizowanie, Bieg…)
-              nie potrzebują karty, więc `slots` nigdy nie jest puste i wygląda
-              to jak figura, która po prostu nie ma broni. Przy oględzinach
-              wyszło, że pierwsza wersja tej poprawki wisiała pod
-              `slots.length === 0` i z tego powodu nie pokazywała się nigdy. */}
-          {context.sheetNotMine && (
-            <p className="hud-refusal">
-              Ta figura ma kartę postaci, ale nie jest przypisana do ciebie — dlatego pasek nie zna
-              jej broni. Poproś MG, żeby ustawił cię właścicielem karty.
-            </p>
-          )}
-
-          {/* Etap 31.08: rany i Testy figury bez karty. Stoją **nad** bronią,
-              bo obie odpowiadają na pytanie „w jakim ona jest stanie", a nie
-              „co może zrobić" — i bo rana zabierająca Akcję tłumaczy wyszarzone
-              pudełka niżej. Przy figurze z kartą nie ma ich wcale: tam jedno
-              i drugie mieszka na karcie. */}
-          {context.injuries.length > 0 || (context.isGm && !token.characterId) ? (
-            <FigureInjuries tokenId={token.id} injuries={context.injuries} />
-          ) : null}
-          {context.figureSkills.length > 0 && (
-            <FigureSkills
-              tokenId={token.id}
+            {/* Klucz figury (17.10): bez niego pasek PW pamiętał poprzednią
+                figurę i przełączenie panelu pokazywało jej różnicę („+5”)
+                jak leczenie. */}
+            <IdentityCard
+              key={token.id}
               name={token.name}
-              skills={context.figureSkills}
-              disabled={context.refusal}
+              imageUrl={token.imageUrl}
+              hp={token.hp}
+              vitals={context.vitals}
+              container={token.container}
             />
-          )}
 
-          {context.slots.length === 0 && (
-            <p className="hud-empty">
-              <HudIcon name="pistol" className="hud-empty-icon" />
-              <span>
-                Ten token nie ma broni ani profilu bojowego — podłącz kartę postaci albo uzupełnij
-                profil w „Edytuj…”.
-              </span>
-            </p>
-          )}
+            <StatusChips statuses={token.statuses} />
+            <StatEffectChips effects={context.statEffects} />
 
-          {weapons.length > 0 && (
-            <section className="hud-group">
-              <h3 className="hud-group-title">Broń</h3>
-              <div className="hud-slots">
-                {weapons.map((group) => {
-                  if (group.kind !== 'weapon') return null;
-                  const slot = cpredWeaponModeSlot(
-                    group,
-                    fireModes[fireModeKey(token.id, group.id)],
-                  );
-                  return (
-                    <div key={group.id} className="hud-slot-stack">
-                      <HotbarSlot
-                        slot={slot}
-                        keyLabel={group.key}
-                        // Armed is about the *weapon*: the tile is one box now,
-                        // so highlighting it per mode would leave the gun in
-                        // hand looking unarmed after a switch to burst.
-                        armed={armed?.weaponRowId === group.weaponRowId}
-                        modeCount={group.modes.length}
-                        drawerOpen={openDrawer === group.id}
-                        onActivate={() => {
-                          setOpenDrawer(null);
-                          activateGroup(group, token.id);
-                        }}
-                        onToggleDrawer={() =>
-                          setOpenDrawer((current) => (current === group.id ? null : group.id))
-                        }
-                      />
-                      {openDrawer === group.id && (
-                        <ModeDrawer
-                          group={group}
-                          current={slot.mode}
-                          onPick={(picked: CpredHotbarWeaponSlot) => {
-                            // Pod tym samym kluczem, pod którym kafel i klawisze
-                            // czytają tryb (`group.id`) — zapis pod `weaponRowId`
-                            // zostawiał na kaflu „pojedynczy” przy serii w kubku
-                            // (66e, pkt 5).
-                            setFireMode(token.id, group.id, picked.mode);
-                            setOpenDrawer(null);
-                            // Picking a mode also takes the weapon in hand: at
-                            // the table „przełączam na serię" and „strzelam
-                            // serią" are one sentence.
-                            activateSlot(picked, token.id);
-                          }}
-                        />
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            </section>
-          )}
-
-          {/* 03.11.2026 (MG): schowanej broni pasek nie wymienia wcale — co jest
-              w rękach, a co w plecaku, mówi „Ekwipunek” karty (sekcje „Używane”
-              i „Plecak”). */}
-
-          {actions.length > 0 && (
-            <section className="hud-group">
-              <h3 className="hud-group-title">Akcje</h3>
-              <div className="hud-slots">
-                {actions.map((group) => (
-                  <HotbarSlot
-                    key={group.id}
-                    slot={group.slot}
-                    keyLabel={group.key}
-                    armed={
-                      group.slot.kind === 'action' &&
-                      ((jumping && group.slot.actionId === CPRED_ACTION_JUMP) ||
-                        // Etap 61: slot trybu świeci, póki figura się skrada.
-                        (token.sneaking === true && group.slot.actionId === CPRED_ACTION_SNEAK))
-                    }
-                    modeCount={1}
-                    drawerOpen={false}
-                    onActivate={() => activateGroup(group, token.id)}
-                  />
-                ))}
-              </div>
-            </section>
-          )}
-
-          {token.sneaking && (
-            <p className="hud-armed" data-testid="hud-sneaking">
-              <span className="hud-armed-mark" aria-hidden />
-              <span>
-                <strong>Skradasz się</strong>
-                {typeof token.sneakDv === 'number' ? ` — wynik ${token.sneakDv}.` : '.'}
-                <span className="hud-armed-hint"> Atak i Bieg kończą tryb.</span>
-              </span>
-            </p>
-          )}
-          {jumping ? (
-            <p className="hud-armed">
-              <span className="hud-armed-mark" aria-hidden />
-              <span>
-                <strong>Skok</strong> — kliknij podświetlone pole ({JUMP_COST_M} m ruchu).
-                <span className="hud-armed-hint"> Esc albo klik obok odkłada skok.</span>
-              </span>
-            </p>
-          ) : (
-            armed && (
-              <p className="hud-armed">
-                <span className="hud-armed-mark" aria-hidden />
-                <span>
-                  {/* Przy odmowie tury bez zachęty do celowania (#63, T8b): „kliknij cel”
-                    pod „to nie jest tura tej postaci” to dwie sprzeczne rady. */}
-                  W ręku: <strong>{armed.name}</strong>
-                  {context.refusal ? '.' : ' — kliknij cel na mapie.'}
-                  {/* W walce MG celuje zwykłym klikiem w każdą inną figurę (etap 50b). */}
-                  {isGm && !gmSteerLocked(isGm, combat) && (
-                    <span className="hud-armed-hint"> Alt+klik celuje we własny token.</span>
-                  )}
-                </span>
-              </p>
-            )
-          )}
-
-          {/* Etap 30a: jedyny formularz paska, który działa też poza walką —
-              „poza walką, gdy rozpoczyna się walka albo w trakcie walki"
-              (s. 146). Dlatego stoi przed blokiem, który wymaga kolejki. */}
-          {form === 'awareness' && token.characterId && (
-            <div className="hud-form">
-              <CombatAwarenessPanel
-                characterId={token.characterId}
-                tokenId={token.id}
-                onDone={() => setForm(null)}
-              />
-            </div>
-          )}
-          {/* Etap 30c: to samo dotyczy radia — „będąc w niebezpieczeństwie"
-              obejmuje też chwilę przed pierwszą inicjatywą. */}
-          {form === 'backup' && token.characterId && (
-            <div className="hud-form">
-              <BackupPanel
-                characterId={token.characterId}
-                tokenId={token.id}
-                onDone={() => setForm(null)}
-              />
-            </div>
-          )}
-
-          {/* #42 (01.10): Ustabilizowanie nie czeka na walkę — ranny po starciu
-              bez niego nie zaczyna naturalnego leczenia. Poza walką pacjentem
-              jest każda figura na wyciągnięcie ręki, a Akcji nikt nie liczy. */}
-          {form === 'stabilize' && !combat && (
-            <div className="hud-form">
-              <StabilizeNearbyPicker tokenId={token.id} onDone={() => setForm(null)} />
-            </div>
-          )}
-          {form && form !== 'awareness' && form !== 'backup' && combat && context.combatant && (
-            <div className="hud-form">
-              {form === 'hold' && (
-                <HoldActionForm combatant={context.combatant} onDone={() => setForm(null)} />
-              )}
-              {form === 'stabilize' && (
-                <StabilizePicker
-                  combat={combat}
-                  combatant={context.combatant}
-                  onDone={() => setForm(null)}
-                />
-              )}
-              {form === 'grapple' && (
-                <GrapplePanel
-                  combat={combat}
-                  combatant={context.combatant}
-                  cupBusy={cupBusy}
-                  startOpen
-                  onDone={() => setForm(null)}
-                />
-              )}
-            </div>
-          )}
-          {form &&
-            form !== 'awareness' &&
-            form !== 'backup' &&
-            !(form === 'stabilize' && !combat) &&
-            !context.combatant && (
-              <p className="hud-refusal">
-                Ta akcja wymaga trwającej walki — dodaj token do kolejki inicjatywy.
+            {/* Showing is not steering: the rail fills itself in with this
+                figure, but the map still belongs to nobody until the user says
+                so. Without this line an unmoving token after a click on the floor
+                reads as a broken map rather than as „you have not picked me up". */}
+            {/* Etap 50b: MG w trwającej walce nie bierze figury klikiem na mapie. */}
+            {!context.steering && (
+              <p
+                className="hud-preview"
+                title={
+                  gmSteerLocked(isGm, combat)
+                    ? 'Panel pokazuje figurę, ale nią nie sterujesz — w walce weź ją z portretu na pasie inicjatywy, z menu figury albo naciśnij slot.'
+                    : 'Panel pokazuje figurę, ale nią nie sterujesz — kliknij ją na mapie albo naciśnij slot.'
+                }
+              >
+                {/* Plakietka zamiast zdania (17.10, MG): „jak przejąć” mówi
+                    podpowiedź wyżej, na pasku wystarczy, że to nie twoja ręka. */}
+                <IconEye size={15} />
+                <strong className="hud-preview-tag">Podgląd</strong>
+                <span>nie sterujesz</span>
               </p>
             )}
 
-          {/* Ściągawka ze skrótami zniknęła w 27f: pełną listę — z tymi
-              czterema i całą resztą — otwiera `?` w górnym pasku. Pasek boczny
-              wraca do tego, czym jest, czyli do stanu figury. */}
-        </>
-      )}
+            {context.turn && <TurnBudget budget={context.turn} variant="rail" />}
+            {context.refusal && <p className="hud-refusal">{context.refusal}</p>}
 
-      {/* Last in the rail and pinned to its bottom (16.10): ending the turn is
-          one place for the GM and the players, and works with nothing selected. */}
-      <HudEndTurn />
-    </aside>
+            {/* Karta jest, ale nie twoja (28.08) — i to **nie** jest przypadek
+                pustego paska niżej. Akcje z katalogu (Ustabilizowanie, Bieg…)
+                nie potrzebują karty, więc `slots` nigdy nie jest puste i wygląda
+                to jak figura, która po prostu nie ma broni. Przy oględzinach
+                wyszło, że pierwsza wersja tej poprawki wisiała pod
+                `slots.length === 0` i z tego powodu nie pokazywała się nigdy. */}
+            {context.sheetNotMine && (
+              <p className="hud-refusal">
+                Ta figura ma kartę postaci, ale nie jest przypisana do ciebie — dlatego pasek nie
+                zna jej broni. Poproś MG, żeby ustawił cię właścicielem karty.
+              </p>
+            )}
+
+            {/* Etap 31.08: rany i Testy figury bez karty. Stoją **nad** bronią,
+                bo obie odpowiadają na pytanie „w jakim ona jest stanie", a nie
+                „co może zrobić" — i bo rana zabierająca Akcję tłumaczy wyszarzone
+                przyciski niżej. Przy figurze z kartą nie ma ich wcale: tam jedno
+                i drugie mieszka na karcie. */}
+            {context.injuries.length > 0 || (context.isGm && !token.characterId) ? (
+              <FigureInjuries tokenId={token.id} injuries={context.injuries} />
+            ) : null}
+            {context.figureSkills.length > 0 && (
+              <FigureSkills
+                tokenId={token.id}
+                name={token.name}
+                skills={context.figureSkills}
+                disabled={context.refusal}
+              />
+            )}
+
+            {context.slots.length === 0 && (
+              <p className="hud-empty">
+                <HudIcon name="pistol" className="hud-empty-icon" />
+                <span>
+                  Ten token nie ma broni ani profilu bojowego — podłącz kartę postaci albo uzupełnij
+                  profil w „Edytuj…”.
+                </span>
+              </p>
+            )}
+
+            {weapons.length > 0 && (
+              <section className="hud-group">
+                <h3 className="hud-group-title">Broń</h3>
+                <div className="hud-slots">
+                  {weapons.map((group) => {
+                    const slot = cpredWeaponModeSlot(
+                      group,
+                      fireModes[fireModeKey(token.id, group.id)],
+                    );
+                    // Armed is about the *weapon*: the tile is one box, so
+                    // highlighting it per mode would leave the gun in hand
+                    // looking unarmed after a switch to burst.
+                    const inHand = isArmedGroup(group);
+                    return (
+                      <div key={group.id} className="hud-slot-stack">
+                        <WeaponTile
+                          slot={slot}
+                          armed={inHand}
+                          modeCount={group.modes.length}
+                          drawerOpen={openDrawer === group.id}
+                          tools={toolsByWeapon.get(group.id.slice('weapon:'.length)) ?? []}
+                          onActivate={() => {
+                            setOpenDrawer(null);
+                            activateGroup(group, token.id);
+                          }}
+                          onToggleDrawer={() =>
+                            setOpenDrawer((current) => (current === group.id ? null : group.id))
+                          }
+                          onTool={(tool) => activateGroup(tool, token.id)}
+                        />
+                        {openDrawer === group.id && (
+                          <ModeDrawer
+                            group={group}
+                            current={slot.mode}
+                            onPick={(picked: CpredHotbarWeaponSlot) => {
+                              // Pod tym samym kluczem, pod którym kafel i klawisze
+                              // czytają tryb (`group.id`) — zapis pod `weaponRowId`
+                              // zostawiał na kaflu „pojedynczy” przy serii w kubku
+                              // (66e, pkt 5).
+                              setFireMode(token.id, group.id, picked.mode);
+                              setOpenDrawer(null);
+                              // Picking a mode also takes the weapon in hand: at
+                              // the table „przełączam na serię" and „strzelam
+                              // serią" are one sentence.
+                              activateSlot(picked, token.id);
+                            }}
+                          />
+                        )}
+                        {/* „W ręku” stoi pod bronią, której dotyczy (etap 69) —
+                            z celem, dystansem i PT, gdy figura ma trwały cel.
+                            Przy odmowie tury bez zachęty do celowania (#63). */}
+                        {inHand && armed && !jumping && (
+                          <p className="hud-armed" title={gmAimHint}>
+                            <span className="hud-armed-tag">
+                              W ręku<span className="visually-hidden">: {armed.name}</span>
+                            </span>
+                            {!context.refusal && (
+                              <span className="hud-armed-aim">{aimText(slot, context.target)}</span>
+                            )}
+                          </p>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </section>
+            )}
+
+            {/* 03.11.2026 (MG): schowanej broni pasek nie wymienia wcale — co jest
+                w rękach, a co w plecaku, mówi „Ekwipunek” karty (sekcje „Używane”
+                i „Plecak”). */}
+
+            {loose.length > 0 && (
+              <section className="hud-group">
+                <h3 className="hud-group-title">Akcje</h3>
+                <ActionSlots
+                  medium={medium}
+                  small={small}
+                  isArmed={(slot) =>
+                    slot.kind === 'action' &&
+                    ((jumping && slot.actionId === CPRED_ACTION_JUMP) ||
+                      // Etap 61: slot trybu świeci, póki figura się skrada.
+                      (token.sneaking === true && slot.actionId === CPRED_ACTION_SNEAK))
+                  }
+                  onActivate={(group) => activateGroup(group, token.id)}
+                />
+              </section>
+            )}
+
+            {token.sneaking && (
+              <p className="hud-armed hud-armed--note" data-testid="hud-sneaking">
+                <span className="hud-armed-mark" aria-hidden />
+                <span>
+                  <strong>Skradasz się</strong>
+                  {typeof token.sneakDv === 'number' ? ` — wynik ${token.sneakDv}.` : '.'}
+                  <span className="hud-armed-hint"> Atak i Bieg kończą tryb.</span>
+                </span>
+              </p>
+            )}
+            {jumping && (
+              <p className="hud-armed hud-armed--note">
+                <span className="hud-armed-mark" aria-hidden />
+                <span>
+                  <strong>Skok</strong> — kliknij podświetlone pole ({JUMP_COST_M} m ruchu).
+                  <span className="hud-armed-hint"> Esc albo klik obok odkłada skok.</span>
+                </span>
+              </p>
+            )}
+            {!jumping && armedOffRail && armed && (
+              <p className="hud-armed hud-armed--note" title={gmAimHint}>
+                <span className="hud-armed-mark" aria-hidden />
+                <span>
+                  W ręku: <strong>{armed.name}</strong>
+                  {context.refusal ? '.' : ' — kliknij cel na mapie.'}
+                </span>
+              </p>
+            )}
+
+            {/* Etap 30a: jedyny formularz paska, który działa też poza walką —
+                „poza walką, gdy rozpoczyna się walka albo w trakcie walki"
+                (s. 146). Dlatego stoi przed blokiem, który wymaga kolejki. */}
+            {form === 'awareness' && token.characterId && (
+              <div className="hud-form">
+                <CombatAwarenessPanel
+                  characterId={token.characterId}
+                  tokenId={token.id}
+                  onDone={() => setForm(null)}
+                />
+              </div>
+            )}
+            {/* Etap 30c: to samo dotyczy radia — „będąc w niebezpieczeństwie"
+                obejmuje też chwilę przed pierwszą inicjatywą. */}
+            {form === 'backup' && token.characterId && (
+              <div className="hud-form">
+                <BackupPanel
+                  characterId={token.characterId}
+                  tokenId={token.id}
+                  onDone={() => setForm(null)}
+                />
+              </div>
+            )}
+
+            {/* #42 (01.10): Ustabilizowanie nie czeka na walkę — ranny po starciu
+                bez niego nie zaczyna naturalnego leczenia. Poza walką pacjentem
+                jest każda figura na wyciągnięcie ręki, a Akcji nikt nie liczy. */}
+            {form === 'stabilize' && !combat && (
+              <div className="hud-form">
+                <StabilizeNearbyPicker tokenId={token.id} onDone={() => setForm(null)} />
+              </div>
+            )}
+            {form && form !== 'awareness' && form !== 'backup' && combat && context.combatant && (
+              <div className="hud-form">
+                {form === 'hold' && (
+                  <HoldActionForm combatant={context.combatant} onDone={() => setForm(null)} />
+                )}
+                {form === 'stabilize' && (
+                  <StabilizePicker
+                    combat={combat}
+                    combatant={context.combatant}
+                    onDone={() => setForm(null)}
+                  />
+                )}
+                {form === 'grapple' && (
+                  <GrapplePanel
+                    combat={combat}
+                    combatant={context.combatant}
+                    cupBusy={cupBusy}
+                    startOpen
+                    onDone={() => setForm(null)}
+                  />
+                )}
+              </div>
+            )}
+            {form &&
+              form !== 'awareness' &&
+              form !== 'backup' &&
+              !(form === 'stabilize' && !combat) &&
+              !context.combatant && (
+                <p className="hud-refusal">
+                  Ta akcja wymaga trwającej walki — dodaj token do kolejki inicjatywy.
+                </p>
+              )}
+
+            {/* Ściągawka ze skrótami zniknęła w 27f: pełną listę — z tymi
+                czterema i całą resztą — otwiera `?` w górnym pasku. Pasek boczny
+                wraca do tego, czym jest, czyli do stanu figury. */}
+          </>
+        )}
+
+        {/* Stopka belki (etap 69): lewą część trzyma kubek stojący w rogu okna,
+            prawą — koniec tury (16.10: jedno miejsce dla MG i graczy, działa
+            bez zaznaczenia). Przyklejona do dołu, więc długa belka przewija
+            się pod nią. */}
+        <div className="hud-foot">
+          <HudEndTurn />
+        </div>
+      </aside>
+    </HudTipLayer>
   );
 }

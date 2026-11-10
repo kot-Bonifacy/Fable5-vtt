@@ -878,7 +878,7 @@ export function DiceCup() {
         aria-label={title}
       >
         <span className="dice-cup-icon">
-          <svg viewBox="0 0 24 24" width="30" height="30" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="39" height="39" aria-hidden="true">
             {/* dice cup: tapered tumbler with two pips */}
             <path
               d="M5 3h14l-2 13.5a2.5 2.5 0 0 1-2.5 2.5h-5A2.5 2.5 0 0 1 7 16.5L5 3Z"

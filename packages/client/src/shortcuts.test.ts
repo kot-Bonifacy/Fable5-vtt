@@ -122,10 +122,11 @@ describe('katalog skrótów (etap 27f)', () => {
    */
   it('MapArea przełącza narzędzia wyłącznie z tabeli', () => {
     const source = readFileSync(join(import.meta.dirname, 'components', 'MapArea.tsx'), 'utf8');
-    // Wycinek od obsługi cyfr do drabiny `Escape` — czyli dokładnie ta gałąź,
-    // w której siedzą przełączniki narzędzi. `Escape` szukane **od** tego
-    // miejsca: wcześniej w pliku jest drugi, od trybu stawiania tokenu.
-    const start = source.indexOf('const digit = ');
+    // Wycinek od klawiszy walki (`Tab`; cyfry paska zniknęły 11.11.2026) do
+    // drabiny `Escape` — czyli dokładnie ta gałąź, w której siedzą przełączniki
+    // narzędzi. `Escape` szukane **od** tego miejsca: wcześniej w pliku jest
+    // drugi, od trybu stawiania tokenu.
+    const start = source.indexOf("if (event.key === 'Tab')");
     expect(start, 'nie znalazłem obsługi klawiatury w MapArea').toBeGreaterThan(0);
     const handler = source.slice(start, source.indexOf("if (event.key === 'Escape')", start));
     expect(handler.length, 'pusty wycinek — zmienił się kształt obsługi').toBeGreaterThan(0);

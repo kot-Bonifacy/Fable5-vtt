@@ -87,7 +87,6 @@ body {
 .context-menu,
 .panel-card,
 .scene-card,
-.hud-card,
 .chat-roll-body {
   background-image: var(--paper-tile);
   background-size: var(--paper-size);
@@ -252,16 +251,15 @@ textarea {
 /* ===== Drobiazgi ===== */
 
 .chat-roll-body,
-.hud-card,
 .panel-card {
   border-radius: 2px;
 }
 
-/* Czerwony baner „Tura tej figury" i belka HUD-u — pęknięcia tuszu. Z pasków
+/* Czerwone komunikaty — pęknięcia tuszu („Tura tej figury” w lewym panelu
+   jest od etapu 69 dopiskiem bez tła). Z pasków
    kanału komunikatów (etap 55) tylko czerwona odmowa: na czerni jasne rysy
    czytały się jak kurz, a nocne ciemne rysy brudziły bursztyn. Od 55b także
    czerwone komunikaty na miejscu (błąd pola, odmowa pod slotem HUD). */
-.hud-turn-banner,
 .notice--danger,
 .auth-error,
 .creator-error,
@@ -289,8 +287,6 @@ textarea {
 .chat-filter-bar,
 .panel-section-title,
 .settings-group-title,
-.hud-group-title,
-.hud-head,
 .context-menu-title,
 .context-menu-section,
 .panel-card-header {
@@ -300,7 +296,6 @@ textarea {
 
 .panel-section-title,
 .settings-group-title,
-.hud-group-title,
 .context-menu-title,
 .context-menu-section,
 .panel-card-header {
@@ -309,8 +304,6 @@ textarea {
 
 .side-tab,
 .side-tabs-label,
-.hud-head-title,
-.hud-head button,
 .panel-card-header h2 {
   color: var(--cp-bar-ink);
 }

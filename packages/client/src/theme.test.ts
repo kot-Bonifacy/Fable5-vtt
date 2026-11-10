@@ -78,13 +78,24 @@ describe('motyw (etap 27e)', () => {
      * `--map-tools-bottom` (05.11) to dolna krawędź paska narzędzi z `MapTools`.
      * `--vehicle-art-len` (06.11) to długość auta bokiem w danym rozmiarze `VehicleArt`,
      * a `--vehicle-art-scale` (10.11) — ułamek tej długości z realnej długości pojazdu.
+     * Lewy panel (etap 69) ustawia swoje na `.hud-rail`: `--hud-hover`, `--hud-press`
+     * i `--hud-track` to domieszki `--text` (same idą za skórą), `--hud-stroke`
+     * i `--hud-rag` to kształty pędzla, `--hud-cup` — średnica kubka, a `--hud-tools`
+     * podaje `WeaponTile` (szerokość narzędzi na kaflu broni).
      */
     const local = new Set([
       '--chat-kind-icon',
       '--device-glyph',
+      '--hud-cup',
+      '--hud-hover',
       '--hud-hp-color',
       '--hud-icon',
       '--hud-mag-color',
+      '--hud-press',
+      '--hud-rag',
+      '--hud-stroke',
+      '--hud-tools',
+      '--hud-track',
       '--map-tools-bottom',
       '--player',
       '--rattle',

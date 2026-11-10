@@ -116,10 +116,7 @@ import { COMBAT_PENDING_NOTE, bindWalkHalt } from '../walk-halt.js';
 import { bindMapAim } from '../map-aim.js';
 import { preloadFxSounds } from '../sfx.js';
 import {
-  activateGroup,
   attackWithActiveWeapon,
-  currentHudContext,
-  cycleGroupMode,
   hudFocusTokenId,
   hudTurnRefusal,
   nextSteerableToken,
@@ -2598,8 +2595,8 @@ export function MapArea() {
 
   // Keyboard: M ruler, R draw, G eraser, F fog, N note; Space drops a waypoint
   // mid-measurement, Esc puts the armed tool and the attack crosshair away.
-  // Stage 16f added the combat keys — 1–9 for the action bar, Tab for the next
-  // figure, E for the end of a turn — to *this* listener rather than to one of
+  // Stage 16f added the combat keys — Tab for the next figure, E for the end
+  // of a turn — to *this* listener rather than to one of
   // its own, so the order in which two keys claim the same press stays written
   // down in a single place.
   useEffect(() => {
@@ -2628,23 +2625,9 @@ export function MapArea() {
         card.noteDraft !== null ||
         card.open?.kind === 'note';
       if (typing && event.key !== 'Escape') return;
-      // Combat keys first: they are the ones pressed every round, and none of
-      // them collides with a map tool (`1`–`9`, Tab and E were all free).
-      //
-      // Read off `code` rather than `key` since stage 27h: Shift+1 arrives as
-      // „!" (and as something else again on another layout), so the digit has
-      // to be identified by the *place* on the keyboard. Shift cycles that
-      // weapon's fire mode, a bare digit uses it.
-      const digit = /^Digit([1-9])$/.exec(event.code)?.[1];
-      if (digit) {
-        const context = currentHudContext();
-        const group = context.groups.find((entry) => entry.key === digit);
-        if (group && context.token) {
-          if (event.shiftKey) cycleGroupMode(group, context.token.id);
-          else activateGroup(group, context.token.id);
-        }
-        return;
-      }
+      // Combat keys first: Tab and E are pressed every round, and neither
+      // collides with a map tool. Cyfry `1`–`9` paska akcji zniknęły 11.11.2026
+      // (decyzja MG: nikt ich nie używał) — broń i akcje bierze się klikiem.
       if (event.key === 'Tab') {
         // The browser's own focus ring would otherwise walk the side panel.
         event.preventDefault();

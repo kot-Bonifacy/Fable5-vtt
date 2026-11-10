@@ -189,16 +189,17 @@ describe('portraitBannerPlacement — kadr w banerze lewego panelu (25.09)', () 
 
 describe('własny kadr banera (25.09)', () => {
   it('zoom 1 pokrywa baner, a punkt kadru siada na środku ramki', () => {
-    const place = portraitBannerCropPlacement({ x: 0.5, y: 0.3, zoom: 1 }, TALL);
+    const place = portraitBannerCropPlacement({ x: 0.5, y: 0.4, zoom: 1 }, TALL);
     expect(place.width).toBeCloseTo(1);
-    expect(place.height).toBeCloseTo(2);
+    // Baner 16:15 (etap 69): 1200 / 800 / (15 / 16).
+    expect(place.height).toBeCloseTo(1.6);
     expect(place.left).toBeCloseTo(0);
-    expect(place.top + 0.3 * place.height).toBeCloseTo(0.5);
+    expect(place.top + 0.4 * place.height).toBeCloseTo(0.5);
   });
 
   it('nie wypuszcza ramki poza obraz — punkt kadru dosuwa się do krawędzi', () => {
     const safe = clampPortraitBannerCrop({ x: 0, y: 0, zoom: 1 }, TALL);
-    expect(safe).toEqual({ x: 0.5, y: 0.25, zoom: 1 });
+    expect(safe).toEqual({ x: 0.5, y: 0.3125, zoom: 1 });
     const place = portraitBannerCropPlacement({ x: 0, y: 0, zoom: 1 }, TALL);
     expect(place.top).toBeCloseTo(0);
     expect(clampPortraitBannerCrop({ x: 0.5, y: 0.5, zoom: 0.2 }, TALL).zoom).toBe(1);

@@ -201,8 +201,13 @@ export function portraitBannerPlacement(
   };
 }
 
-/** Baner portretu w lewym panelu jest 4:3 — wysokość przez szerokość. */
-export const PORTRAIT_BANNER_ASPECT = 3 / 4;
+/**
+ * Baner portretu w lewym panelu — wysokość przez szerokość. Do 10.11.2026 4:3;
+ * od etapu 69 (zlecenie MG) o ćwierć wyższy, bo dół obrazu rozpływa się
+ * w papier pod imieniem. Własny kadr banera trzyma punkt i przybliżenie, więc
+ * stare kadry zostają na twarzy — ramka tylko sięga niżej.
+ */
+export const PORTRAIT_BANNER_ASPECT = 15 / 16;
 
 /** Sufit przybliżenia własnego kadru banera — ten sam powód, co przy żetonie. */
 export const PORTRAIT_BANNER_ZOOM_MAX = 4;
