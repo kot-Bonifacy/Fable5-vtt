@@ -789,7 +789,9 @@ w kodzie (tylko komentarz w `character.ts`), niepuszczane. **Oglądane w Firefok
 (tymczasowy spec na instancji E2E z `po-T6`, Marek/Kowal): menu, Unik na karcie, przenoszenie,
 Esc, Szczęście 2 z rzutem i spadkiem puli, kubek nad kartą, F5, małe okno, powrót do rogu.
 `--grep @szybkie`: 75 zaliczonych, 1 pominięty, 1 niezaliczony (T9a „konsola bez nowych błędów”, zerwane
-gniazdo w Firefoksie; osobno 7/7). MG i Chrome nieoglądane. Zrzut wyłapał warstwę menu pod kubkiem (pułapka na górze `ui`).
+gniazdo w Firefoksie; osobno 7/7). Atak ze Szczęściem z menu (zlecenie MG, ten sam dzień, spec tymczasowy): Kowal do figury
+z 4 m, PT 13, modyfikator 11, kość 2 — bez Szczęścia 13 i pudło, z +2 suma 15 i trafienie, pula
+7 → 5. MG i Chrome nieoglądane. Zrzut wyłapał warstwę menu pod kubkiem (pułapka na górze `ui`).
 
 ### Sesja 07.11, ósma — siedem zaległości z „Po zamknięciu” (66e)
 
