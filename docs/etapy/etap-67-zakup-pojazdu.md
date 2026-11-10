@@ -107,6 +107,38 @@ motocykl bez własnej — „Żądło” (koniec bryły zastępczej na pościgu)
 model z `"van": true` ma bryłę furgonu (`van-6`) także przy sześciu fotelach (umowa na górze
 `mapa`).
 
+## Trzecia dostawa — zamówienie grafik (10.11)
+
+MG (10.11): „lista wraz z krótkim opisem i nazwą assetów aut, które mam dostarczyć, aby każde
+auto miało swój graficzny odpowiednik”. Grafiki mają już cztery klasy katalogu: Motocykl
+(„Osa”, „Żądło”), Samochód kompaktowy, Samochód sportowy i Supersamochód. **Bez grafiki zostało
+10 wpisów** — po jednej grafice na wpis:
+
+| #   | Plik                | Wpis katalogu                | Długość ~ | Jak ma wyglądać                                                                                                     |
+| --- | ------------------- | ---------------------------- | --------- | ------------------------------------------------------------------------------------------------------------------- |
+| 1   | `supermotocykl.png` | Supermotocykl                | 2,1 m     | Niski ścigacz z pełną owiewką, wyraźnie drapieżniejszy i droższy od „Osy” i „Żądła”.                                |
+| 2   | `skuter-wodny.png`  | Skuter wodny                 | 3,2 m     | Dwuosobowy skuter z siodełkiem i kierownicą, smuga piany za rufą.                                                   |
+| 3   | `motorowka.png`     | Motorówka                    | 7 m       | Otwarta szybka łódź, cztery fotele za niską szybą, silnik na rufie.                                                 |
+| 4   | `lodz-kabinowa.png` | Łódź kabinowa                | 10 m      | Luksusowa łódź z zadaszoną kabiną na środku i małym pokładem na dziobie i rufie.                                    |
+| 5   | `jacht.png`         | Jacht                        | 18 m      | Duży biały jacht motorowy z nadbudówką, lądowiskiem albo leżakami na rufie.                                         |
+| 6   | `zyrokopter.png`    | Żyrokopter                   | 4,5 m     | Malutki wiropłat na dwie osoby: otwarta kabina, śmigło pchające z tyłu, wirnik nad głową.                           |
+| 7   | `helikopter.png`    | Helikopter                   | 12 m      | Cywilny albo korporacyjny śmigłowiec na cztery osoby, kabina z przeszkleniem, belka ogonowa.                        |
+| 8   | `aerodyna-av4.png`  | Wielozadaniowa aerodyna AV-4 | 9 m       | Kanciasta, opancerzona aerodyna transportowa (sześć miejsc), cztery gondole silników w narożnikach.                 |
+| 9   | `aerodyna-av9.png`  | Superaerodyna AV-9           | 7 m       | Smukła, luksusowa aerodyna na dwie osoby, opływowa jak supersamochód, silniki wtopione w kadłub.                    |
+| 10  | `aerozep.png`       | Aerozep                      | 40 m      | Sterowiec transportowy: wydłużona powłoka, gondola pod spodem, silniki po bokach; reklama na powłoce mile widziana. |
+
+**Format jak w drugiej dostawie** (furgony, motocykle): PNG z prawdziwą przezroczystością (bez
+szachownicy w pikselach), widok prosto z góry, przodem w lewo, jeden pojazd na plik, bez tła
+i cienia, dłuższy bok co najmniej 700 px. Wirnik helikoptera i żyrokoptera najlepiej jako
+półprzezroczysta tarcza albo smuga — pełne łopaty zakryją kabinę i fotele. Pliki do
+`C:\AI\materialy\auta`, tak jak poprzednie.
+
+**Do rozstrzygnięcia przy dostawie (kod, nie grafiki):** modele stoją dziś tylko na czterech
+klasach (`CPRED_VEHICLE_CLASSES`), więc każdy z 10 wpisów dostanie własną klasę modelu; trzeba
+też zdecydować, które z nich gracz może kupić (dziś gracz kupuje tylko auta i motocykle) i jak
+skalować miniatury — przy jachcie (18 m) i Aerozepie (40 m) proporcja do najdłuższego zrobiłaby
+z aut kropki, więc ramka zostanie przy pojazdach drogowych, a duże jednostki wypełnią ją całą.
+
 ## Kryteria ukończenia
 
 - [x] Gracz kupuje auto z Kompendium (z bramkami poziomu i „tylko u handlarzy”) — test serwera.
