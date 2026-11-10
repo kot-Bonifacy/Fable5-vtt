@@ -9,6 +9,7 @@ import {
   parseVehicleModels,
   parseWeaponIcons,
   withVehicleModels,
+  withoutRetiredVehicles,
   withVehicleUpgradeEntries,
   withWeaponIcons,
   type CompendiumRegistry,
@@ -61,8 +62,9 @@ export async function loadCompendium(
   }
   // Etap 47a: katalog z plików mówi cenami podręcznika, a stół płaci cennikiem
   // domowym. Przelicza się tu, raz — wpisy MG z bazy są już w nowej walucie.
+  // 10.11 (MG): jacht, żyrokopter, helikopter, aerodyny i Aerozep wycięte z gry.
   const withIcons = withWeaponIcons(
-    cpredScaleCatalogPrices(buildCompendium(files)),
+    cpredScaleCatalogPrices(withoutRetiredVehicles(buildCompendium(files))),
     await loadWeaponIcons(dataPublicDir, dataPrivateDir, log),
   );
   // Etap 67: modele aut po przeliczeniu cen — ich ceny są już w cenniku domowym.

@@ -372,9 +372,14 @@ const MODEL_GROUPS: readonly { label: string; test: (entry: VehicleEntry) => boo
   },
   {
     label: 'Auta',
-    test: (entry) => entry.forSale === true && entry.vehicleKind !== 'motorcycle' && !entry.van,
+    test: (entry) => entry.forSale === true && entry.vehicleKind === 'car' && !entry.van,
   },
   { label: 'Furgony', test: (entry) => entry.forSale === true && entry.van === true },
+  {
+    label: 'Łodzie',
+    test: (entry) =>
+      entry.forSale === true && (entry.vehicleKind === 'jetski' || entry.vehicleKind === 'boat'),
+  },
   { label: 'Służby', test: (entry) => entry.forSale !== true },
 ];
 

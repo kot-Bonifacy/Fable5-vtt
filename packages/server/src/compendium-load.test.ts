@@ -75,6 +75,42 @@ describe('loadCompendium', () => {
     expect(registry.weaponTypes).toEqual([]);
   });
 
+  it('a fresh clone has all vehicle models, the boats included (10.11)', async () => {
+    const registry = await loadCompendium(PUBLIC_DIR, join(tmpdir(), 'vtt-no-such-dir'), silent);
+    for (const id of ['vehicle.szkarlat', 'vehicle.fala', 'vehicle.barakuda', 'vehicle.perla']) {
+      expect(registry.entryById.get(id), id).toMatchObject({ forSale: true });
+    }
+    expect(registry.entryById.get('vehicle.fala')).toMatchObject({ vehicleKind: 'jetski' });
+    expect(registry.entryById.get('vehicle.perla')).toMatchObject({
+      vehicleKind: 'boat',
+      seats: 2,
+    });
+  });
+
+  it('drops the retired vehicles from the files (MG 10.11)', async () => {
+    const source = sample();
+    const boat = source.entries.find((e) => e.id === 'vehicle.sample-lodz')!;
+    const privateDir = privateDirWith({
+      'vehicles.json': {
+        ...source,
+        weaponTypes: [],
+        entries: [
+          { ...boat, id: 'vehicle.motorowka' },
+          { ...boat, id: 'vehicle.jacht' },
+          { ...boat, id: 'vehicle.aerozep', vehicleKind: 'aircraft' },
+        ],
+      },
+    });
+    const registry = await loadCompendium(PUBLIC_DIR, privateDir, silent);
+    expect(registry.entryById.has('vehicle.motorowka')).toBe(true);
+    expect(registry.entryById.has('vehicle.jacht')).toBe(false);
+    expect(registry.entryById.has('vehicle.aerozep')).toBe(false);
+    // Motorówka „Barakuda” stoi na klasie z danych grupy.
+    expect(registry.entryById.get('vehicle.barakuda')).toMatchObject({
+      classId: 'vehicle.motorowka',
+    });
+  });
+
   it('falls back to the sample when the private directory holds nothing readable', async () => {
     const privateDir = privateDirWith({ 'broken.json': '{ nie json', 'import-report.json': {} });
     const registry = await loadCompendium(PUBLIC_DIR, privateDir, silent);

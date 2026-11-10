@@ -1,8 +1,8 @@
 """Car models the players can buy (etap 67, MG 06.11.2026) — the MG's own
 top-down car art turned into the built-in vehicle sprites.
 
-Sources (the MG's images, ~700 x 330 each, nose to the LEFT, not in the
-repo — pass their directory as the first argument, default
+Sources (the MG's images, ~700 x 330 each, nose to the LEFT — `NOSE_UP`
+lists the ones drawn nose up — not in the repo — pass their directory as the first argument, default
 `C:/AI/materialy/auta`). Seven of the twelve have the transparency
 checkerboard *painted into the pixels* (an export from a tool that flattened
 its preview), the other five carry a real alpha channel.
@@ -51,7 +51,15 @@ MODELS: dict[str, str] = {
     "furgon2": "nomada",
     "motocykl1": "zadlo",
     "motocykl2": "osa",
+    # 10.11, trzecia dostawa MG: supermotocykl i jednostki wodne.
+    "supermotocykl": "szkarlat",
+    "skuter-wodny": "fala",
+    "motorowka": "barakuda",
+    "lodz-kabinowa": "perla",
 }
+
+# Sources already drawn nose UP (the rest come nose left and get a quarter turn).
+NOSE_UP: set[str] = {"lodz-kabinowa"}
 
 LONG_SIDE = 384
 # A checker pixel: bright and without colour. The two greys of the painted
@@ -106,7 +114,7 @@ def soft_edge(background: np.ndarray) -> np.ndarray:
     return alpha
 
 
-def process(source: Path) -> Image.Image:
+def process(source: Path, nose_up: bool = False) -> Image.Image:
     image = Image.open(source).convert("RGBA")
     pixels = np.array(image)
     corner_alpha = [pixels[0, 0, 3], pixels[0, -1, 3], pixels[-1, 0, 3], pixels[-1, -1, 3]]
@@ -117,7 +125,8 @@ def process(source: Path) -> Image.Image:
         image = Image.fromarray(pixels, "RGBA")
 
     # Nose left -> nose up: a quarter turn clockwise.
-    image = image.transpose(Image.Transpose.ROTATE_270)
+    if not nose_up:
+        image = image.transpose(Image.Transpose.ROTATE_270)
     alpha = np.array(image)[:, :, 3]
     ys, xs = np.nonzero(alpha > 8)
     image = image.crop((xs.min(), ys.min(), xs.max() + 1, ys.max() + 1))
@@ -132,7 +141,7 @@ def main() -> None:
     out_dir.mkdir(parents=True, exist_ok=True)
     for prefix, slug in MODELS.items():
         source = source_for(source_dir, prefix)
-        result = process(source)
+        result = process(source, nose_up=prefix in NOSE_UP)
         target = out_dir / f"{slug}.webp"
         result.save(target, "WEBP", quality=88, method=6)
         print(f"{source.name} -> {target.name} {result.size} {target.stat().st_size // 1024} KB")

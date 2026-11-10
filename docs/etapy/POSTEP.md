@@ -32,8 +32,9 @@ Pełna tabela z nazwami i datami: `archiwum/tabela-etapow.md`.
 **Grafika auta to model, miniatury w skali (zgłoszenie MG z 10.11) — czeka na wdrożenie (bez
 migracji) i oględziny MG przy stole.** MG wybiera na karcie pojazdu grafikę modelu i auto staje
 się tym modelem; „＋ Dodaj pojazd” to galeria modeli bez wyboru z góry; obrazki aut mają
-długość proporcjonalną do prawdziwej. Auto Morte w `dev.db` jest już „Osą”. Umowa na górze
-`ekwipunek`.
+długość proporcjonalną do prawdziwej. Auto Morte w `dev.db` jest już „Osą”. Doszły modele
+„Szkarłat” (supermotocykl), „Fala”, „Barakuda” i „Perła” (łodzie), a jacht, żyrokopter,
+helikopter, aerodyny i Aerozep wypadły z gry. Umowa na górze `ekwipunek`.
 
 **Kubek do przestawiania i jego menu (zlecenie MG z 10.11) — czeka na wdrożenie (bez migracji)
 i oględziny MG przy stole.** Prawy przycisk na kubku otwiera małe menu: Szczęście do
@@ -802,6 +803,14 @@ ESLint i `tsc --noEmit` czyste. **Oglądane w Chromium** (Playwright MCP, „Ogl
 galeria, wybór „Osy”, dodanie, przestawienie na „Nomadę”; Firefox MCP nie wstał (pułapka
 `ogledziny`). Wóz testowy „Nomada” został w „Oględzinach 12.09” — usunięcia nie przepuścił
 klasyfikator, MG usuwa go ręką. MG i Chrome nieoglądane.
+
+**Druga część (ten sam dzień):** MG dostarczył grafiki supermotocykla, skutera wodnego,
+motorówki i łodzi kabinowej, a pozostałe sześć pojazdów z zamówienia kazał wyciąć z gry.
+**Decyzje MG:** modele „Szkarłat” 30 000 ed / poz. 4, „Fala” 6 000 / 1, „Barakuda” 9 000 / 2,
+„Perła” 12 000 / 4; 5–10 całkiem z gry (także z Taboru); piana zostaje. **Zrobione:** cztery
+klasy modeli z wymyślonymi zastępstwami w próbce, `CPRED_VEHICLE_RETIRED_IDS`, grupa „Łodzie”,
+stała ramka skali 6,4 m. Szczegóły w `etap-67-zakup-pojazdu.md` („Trzecia dostawa”), wpis
+w `decyzje-i-uproszczenia.md`. **Testy:** `shared` 2997/2997, serwer 1765/1765 (pierwszy przebieg z dwoma znanymi odrzutami `SceneExploration` po teardownie — pułapka `testy`, powtórka czysta), klient 489/489; ESLint i `tsc --noEmit` czyste. **Oglądane w Chromium** (galeria MG).
 
 ### Sesja 10.11 — kubek do przestawiania, menu pod prawym przyciskiem
 

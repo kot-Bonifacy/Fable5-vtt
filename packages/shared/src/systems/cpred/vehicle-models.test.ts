@@ -4,12 +4,14 @@ import { cpredAssortmentCovers, cpredAssortmentVehicles } from './assortment.js'
 import { cpredVehicleFromCatalog, cpredVehicleLayout, cpredVehicleSize } from './vehicles.js';
 import {
   CPRED_VEHICLE_CLASS_IDS,
+  CPRED_VEHICLE_RETIRED_IDS,
   cpredVehicleForSale,
   cpredVehicleIsModel,
   cpredVehicleModelDetail,
   cpredVehicleQuote,
   parseVehicleModels,
   withVehicleModels,
+  withoutRetiredVehicles,
 } from './vehicle-models.js';
 
 /** Wymyślona klasa jak w próbce z repo — liczby nie z podręcznika. */
@@ -131,6 +133,21 @@ describe('modele aut (etap 67)', () => {
       'Kompakt · 4 fotele · PUK 45 · Ruch 20',
     );
     expect(cpredVehicleModelDetail({ ...COMPACT, seats: 8 })).toBe('8 foteli · PUK 45 · Ruch 20');
+  });
+
+  it('jacht, żyrokopter, helikopter, aerodyny i Aerozep wypadają z katalogu (MG 10.11)', () => {
+    const retired = CPRED_VEHICLE_RETIRED_IDS.map((id): VehicleEntry => ({
+      ...COMPACT,
+      id,
+      name: id,
+      vehicleKind: 'aircraft',
+    }));
+    const registry = withoutRetiredVehicles(registryOf([COMPACT, ...retired]));
+    expect(registry.entries.map((entry) => entry.id)).toEqual([COMPACT.id]);
+    expect(registry.entryById.has('vehicle.aerozep')).toBe(false);
+    // Katalog bez nich zostaje ten sam obiekt.
+    const clean = registryOf([COMPACT]);
+    expect(withoutRetiredVehicles(clean)).toBe(clean);
   });
 
   it('klasy wskazują najpierw katalog z podręcznika, potem próbkę z repo', () => {

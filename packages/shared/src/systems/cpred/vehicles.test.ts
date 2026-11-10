@@ -591,7 +591,9 @@ describe('grafika = model (MG 10.11)', () => {
   });
 
   it('skala miniatur: motocykl krótszy od auta, auto od furgonu, najdłuższy wypełnia ramkę', () => {
-    expect(VEHICLE_ART.every((art) => art.lengthM > 1 && art.lengthM < 10)).toBe(true);
+    expect(VEHICLE_ART.every((art) => art.lengthM > 1 && art.lengthM <= 10)).toBe(true);
+    // Łódź kabinowa (10 m) nie zmniejsza aut — ramka mierzy się pojazdami drogowymi.
+    expect(vehicleArtScale('/art/vehicles/perla.webp')).toBe(1);
     const osaScale = vehicleArtScale('/art/vehicles/osa.webp');
     const kombi = vehicleArtScale('/art/vehicles/wloczega.webp');
     const nomada = vehicleArtScale('/art/vehicles/nomada.webp');

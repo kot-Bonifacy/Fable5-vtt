@@ -133,11 +133,25 @@ i cienia, dłuższy bok co najmniej 700 px. Wirnik helikoptera i żyrokoptera na
 półprzezroczysta tarcza albo smuga — pełne łopaty zakryją kabinę i fotele. Pliki do
 `C:\AI\materialy\auta`, tak jak poprzednie.
 
-**Do rozstrzygnięcia przy dostawie (kod, nie grafiki):** modele stoją dziś tylko na czterech
-klasach (`CPRED_VEHICLE_CLASSES`), więc każdy z 10 wpisów dostanie własną klasę modelu; trzeba
-też zdecydować, które z nich gracz może kupić (dziś gracz kupuje tylko auta i motocykle) i jak
-skalować miniatury — przy jachcie (18 m) i Aerozepie (40 m) proporcja do najdłuższego zrobiłaby
-z aut kropki, więc ramka zostanie przy pojazdach drogowych, a duże jednostki wypełnią ją całą.
+**Dostawa MG z 10.11 i decyzje:** MG dostarczył grafiki 1–4, a 5–10 (jacht, żyrokopter,
+helikopter, AV-4, AV-9, Aerozep) **wyciął z gry całkiem** — nie ma ich w Kompendium, w „＋ Dodaj
+pojazd” MG ani w Taborze Rodziny (`CPRED_VEHICLE_RETIRED_IDS`, `withoutRetiredVehicles`
+w `loadCompendium`). Piana za rufą skutera i motorówki zostaje (długość obrazka liczy się
+razem z nią). Nowe modele, wszystkie na sprzedaż:
+
+| Grafika             | Model                      | Klasa (`class`)             | Fotele | Cena      | Poziom |
+| ------------------- | -------------------------- | --------------------------- | ------ | --------- | ------ |
+| `supermotocykl.png` | „Szkarłat” (supermotocykl) | Supermotocykl (`superbike`) | 2      | 30 000 ed | 4      |
+| `skuter-wodny.png`  | „Fala” (skuter wodny)      | Skuter wodny (`jetski`)     | 2      | 6 000 ed  | 1      |
+| `motorowka.png`     | „Barakuda” (motorówka)     | Motorówka (`motorboat`)     | 4      | 9 000 ed  | 2      |
+| `lodz-kabinowa.png` | „Perła” (łódź kabinowa)    | Łódź kabinowa (`cabin`)     | 2      | 12 000 ed | 4      |
+
+Próbka z repo dostała dwie wymyślone jednostki wodne (`vehicle.sample-skuter-wodny`,
+`vehicle.sample-lodz`), więc świeży klon też ma łodzie w salonie. `lodz-kabinowa.png` jest
+narysowana dziobem do góry — skrypt grafik zna takie źródła (`NOSE_UP`). Ramka miniatury mierzy
+się pojazdem drogowym (`VEHICLE_ART_FRAME_M` = 6,4 m, kamper „Nomada”), łodzie dłuższe od niego
+wypełniają ją całą. W galerii MG łodzie mają własną grupę „Łodzie”. Oglądane w Chromium
+(Playwright MCP): galeria, grupa „Łodzie”, „Inne z podręcznika” bez sześciu wyciętych.
 
 ## Kryteria ukończenia
 

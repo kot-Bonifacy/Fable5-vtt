@@ -286,6 +286,12 @@ export const VEHICLE_ART: readonly VehicleArtEntry[] = [
   { url: '/art/vehicles/nomada.webp', label: '„Nomada” (kamper)', lengthM: 6.4 },
   { url: '/art/vehicles/zadlo.webp', label: '„Żądło” (motocykl)', lengthM: 2.2 },
   { url: '/art/vehicles/osa.webp', label: '„Osa” (motocykl)', lengthM: 2.1 },
+  // 10.11, trzecia dostawa MG. Skuter i motorówka mają na obrazku pianę za
+  // rufą — długość liczy obrazek razem z nią (kadłub ok. 3,2 m i 7 m).
+  { url: '/art/vehicles/szkarlat.webp', label: '„Szkarłat” (supermotocykl)', lengthM: 2.1 },
+  { url: '/art/vehicles/fala.webp', label: '„Fala” (skuter wodny)', lengthM: 4.4 },
+  { url: '/art/vehicles/barakuda.webp', label: '„Barakuda” (motorówka)', lengthM: 8.7 },
+  { url: '/art/vehicles/perla.webp', label: '„Perła” (łódź kabinowa)', lengthM: 10 },
   { url: '/art/vehicles/taksowka.webp', label: 'Taksówka', lengthM: 4.8, gmOnly: true },
   { url: '/art/vehicles/radiowoz.webp', label: 'Radiowóz', lengthM: 5.0, gmOnly: true },
   { url: '/art/vehicles/karetka.webp', label: 'Karetka', lengthM: 6.2, gmOnly: true },
@@ -324,10 +330,12 @@ export function defaultVehicleArt(layout: VehicleLayoutId): string | null {
 /** Długość bryły bez znanej grafiki (własny obrazek MG) — wg układu foteli. */
 const BODY_LENGTH_M: Record<VehicleBody, number> = { bike: 2.2, car: 4.7, van: 6.0 };
 
-/** Najdłuższy pojazd galerii wypełnia ramkę miniatury; reszta jest krótsza. */
-export const VEHICLE_ART_FRAME_M = Math.max(
-  ...[...VEHICLE_ART, ...VEHICLE_ART_LEGACY].map((art) => art.lengthM),
-);
+/**
+ * Długość ramki miniatury: najdłuższy pojazd **drogowy** (kamper „Nomada”).
+ * Łodzie dłuższe od niego wypełniają ramkę całą (MG 10.11) — skala do 10 m
+ * łodzi kabinowej zrobiłaby z aut kropki.
+ */
+export const VEHICLE_ART_FRAME_M = 6.4;
 
 /**
  * Długość pojazdu w metrach dla miniatury: z grafiki wbudowanej, a dla obcej
@@ -346,7 +354,7 @@ export function vehicleArtLengthM(url: string | null, layout?: VehicleLayoutId):
   return BODY_LENGTH_M[body];
 }
 
-/** Ułamek ramki miniatury, który zajmuje ten pojazd (1 — najdłuższy z galerii). */
+/** Ułamek ramki miniatury, który zajmuje ten pojazd (1 — kamper i wszystko dłuższe). */
 export function vehicleArtScale(url: string | null, layout?: VehicleLayoutId): number {
   return Math.min(1, vehicleArtLengthM(url, layout) / VEHICLE_ART_FRAME_M);
 }

@@ -2,6 +2,7 @@ import { execFileSync } from 'node:child_process';
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
+import { CPRED_VEHICLE_CLASSES } from '@vtt/shared';
 
 /**
  * Licence guard (stage 13).
@@ -111,7 +112,7 @@ describe('licence guard', () => {
       models?: Record<string, unknown>[];
     };
     for (const model of parsed.models ?? []) {
-      expect(['compact', 'sport', 'super', 'bike']).toContain(model.class);
+      expect(CPRED_VEHICLE_CLASSES).toContain(model.class);
       for (const field of ['classIds', 'classId', 'hp', 'move', 'speedKmh', 'vehicleKind']) {
         expect(model).not.toHaveProperty(field);
       }

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "source": "Modele aut VTT (etap 67, tabela zatwierdzona przez MG 06.11.2026). Grafiki MG: tools/art/vehicle-models.py. Furgony (`van`) mają bryłę i trzy rzędy foteli furgonu (MG 06.11). Liczby (PUK, Ruch, rodzaj, Tabor) bierze klasa z katalogu: compact, sport, super albo bike (id klas w CPRED_VEHICLE_CLASS_IDS, vehicle-models.ts).",
+  "source": "Modele aut VTT (etap 67, tabela zatwierdzona przez MG 06.11.2026). Grafiki MG: tools/art/vehicle-models.py. Furgony (`van`) mają bryłę i trzy rzędy foteli furgonu (MG 06.11). Liczby (PUK, Ruch, rodzaj, Tabor) bierze klasa z katalogu: compact, sport, super, bike, superbike, jetski, motorboat albo cabin (id klas w CPRED_VEHICLE_CLASS_IDS, vehicle-models.ts).",
   "models": [
     {
       "id": "vehicle.kagero",
@@ -126,6 +126,48 @@
       "tier": 1,
       "forSale": true,
       "description": "Żółto-czarny motocykl sportowy o owadzich owiewkach. Kierowca i pasażer, głośna i zwrotna."
+    },
+    {
+      "id": "vehicle.szkarlat",
+      "name": "„Szkarłat” (supermotocykl)",
+      "class": "superbike",
+      "art": "/art/vehicles/szkarlat.webp",
+      "price": 30000,
+      "tier": 4,
+      "forSale": true,
+      "description": "Czerwony ścigacz z pełną owiewką i kroplą kokpitu. Dwa miejsca i przyspieszenie, od którego bolą zęby."
+    },
+    {
+      "id": "vehicle.fala",
+      "name": "„Fala” (skuter wodny)",
+      "class": "jetski",
+      "art": "/art/vehicles/fala.webp",
+      "price": 6000,
+      "tier": 1,
+      "forSale": true,
+      "description": "Czarno-błękitny skuter wodny na dwie osoby. Po kanałach i zatoce szybciej niż taksówką."
+    },
+    {
+      "id": "vehicle.barakuda",
+      "name": "„Barakuda” (motorówka)",
+      "class": "motorboat",
+      "art": "/art/vehicles/barakuda.webp",
+      "seats": 4,
+      "price": 9000,
+      "tier": 2,
+      "forSale": true,
+      "description": "Biało-czerwona motorówka z otwartym pokładem: cztery fotele za szybą i silnik za rufą."
+    },
+    {
+      "id": "vehicle.perla",
+      "name": "„Perła” (łódź kabinowa)",
+      "class": "cabin",
+      "art": "/art/vehicles/perla.webp",
+      "seats": 2,
+      "price": 12000,
+      "tier": 4,
+      "forSale": true,
+      "description": "Luksusowa łódź z przyciemnioną kabiną i drewnianym pokładem. Dwa miejsca przy sterze, reszta to wygoda."
     },
     {
       "id": "vehicle.taksowka",

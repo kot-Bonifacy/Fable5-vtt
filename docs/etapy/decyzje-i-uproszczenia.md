@@ -241,6 +241,11 @@ przestanie się bronić, przenieś ją stąd do `POMYSLY.md` jako zadanie — ni
 
 ## Pojazdy i Tabor Rodziny (etap 65a, 30.10.2026)
 
+- **Jacht, żyrokopter, helikopter, AV-4, AV-9 i Aerozep wycięte z gry (decyzja MG z 10.11.2026)** —
+  znikają z Kompendium, z „＋ Dodaj pojazd” MG i z Taboru Rodziny (Nomada nie dostanie ich z Moto,
+  choć s. 162 na to pozwala). Wycina je `withoutRetiredVehicles` przy ładowaniu katalogu z plików;
+  własny wpis MG o tym samym id wraca. Łodzie (skuter wodny, motorówka, łódź kabinowa) zostają
+  i mają modele z grafikami.
 - **Wzmocniona konstrukcja dokłada 20 także do bieżących PUK (decyzja MG z 03.11).** Podręcznik
   mówi tylko „+20 PUK”; wcześniej rósł sam sufit i auto na pełnych PUK po montażu wyglądało na
   rozbite (45/65). Demontaż zabiera 20 (najniżej 1), wrak zostaje wrakiem, uszkodzenia sprzed

@@ -27,16 +27,56 @@ import { entryPrice } from './economy.js';
 import { cpredHaggledPrice } from './roleability.js';
 import { CPRED_VEHICLE_SEATS_MAX } from './vehicles.js';
 
-export const CPRED_VEHICLE_CLASSES = ['compact', 'sport', 'super', 'bike'] as const;
+export const CPRED_VEHICLE_CLASSES = [
+  'compact',
+  'sport',
+  'super',
+  'bike',
+  'superbike',
+  'jetski',
+  'motorboat',
+  'cabin',
+] as const;
 export type CpredVehicleClass = (typeof CPRED_VEHICLE_CLASSES)[number];
 
-/** Klasa → wpisy katalogu, z których model bierze liczby; pierwszy istniejący wygrywa. */
+/**
+ * Klasa → wpisy katalogu, z których model bierze liczby; pierwszy istniejący
+ * wygrywa. Supermotocykl, skuter wodny, motorówka i łódź kabinowa — trzecia
+ * dostawa grafik MG (10.11).
+ */
 export const CPRED_VEHICLE_CLASS_IDS: Record<CpredVehicleClass, readonly string[]> = {
   compact: ['vehicle.samochod-kompaktowy', 'vehicle.sample-kompakt'],
   sport: ['vehicle.samochod-sportowy', 'vehicle.sample-kompakt'],
   super: ['vehicle.supersamochod', 'vehicle.sample-strzala'],
   bike: ['vehicle.motocykl', 'vehicle.sample-skuter-miejski'],
+  superbike: ['vehicle.supermotocykl', 'vehicle.sample-skuter-miejski'],
+  jetski: ['vehicle.skuter-wodny', 'vehicle.sample-skuter-wodny'],
+  motorboat: ['vehicle.motorowka', 'vehicle.sample-lodz'],
+  cabin: ['vehicle.lodz-kabinowa', 'vehicle.sample-lodz'],
 };
+
+/**
+ * Pojazdy z podręcznika wycięte z gry (decyzja MG z 10.11): jacht, żyrokopter,
+ * helikopter, obie aerodyny i Aerozep. Nie ma ich w Kompendium, w „＋ Dodaj
+ * pojazd” MG ani w Taborze Rodziny. Własny wpis MG o tym samym id wraca —
+ * to już jego decyzja, nie katalog z plików.
+ */
+export const CPRED_VEHICLE_RETIRED_IDS: readonly string[] = [
+  'vehicle.jacht',
+  'vehicle.zyrokopter',
+  'vehicle.helikopter',
+  'vehicle.wielozadaniowa-aerodyna-av-4',
+  'vehicle.superaerodyna-av-9',
+  'vehicle.aerozep',
+];
+
+/** Katalog z plików bez pojazdów wyciętych z gry (`CPRED_VEHICLE_RETIRED_IDS`). */
+export function withoutRetiredVehicles(registry: CompendiumRegistry): CompendiumRegistry {
+  const retired = new Set(CPRED_VEHICLE_RETIRED_IDS);
+  if (!registry.entries.some((entry) => retired.has(entry.id))) return registry;
+  const entries = registry.entries.filter((entry) => !retired.has(entry.id));
+  return { ...registry, entries, entryById: new Map(entries.map((entry) => [entry.id, entry])) };
+}
 
 function isCpredVehicleClass(value: unknown): value is CpredVehicleClass {
   return typeof value === 'string' && (CPRED_VEHICLE_CLASSES as readonly string[]).includes(value);
@@ -93,7 +133,7 @@ export function parseVehicleModels(raw: unknown): {
     const art = typeof row.art === 'string' && ART_PATTERN.test(row.art) ? row.art : null;
     if (!id || !name || !vehicleClass || !art) {
       issues.push(
-        `${where}: potrzebne id „vehicle.…”, name, class (compact/sport/super/bike) i art z /art/vehicles/.`,
+        `${where}: potrzebne id „vehicle.…”, name, class (${CPRED_VEHICLE_CLASSES.join('/')}) i art z /art/vehicles/.`,
       );
       return;
     }

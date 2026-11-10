@@ -3,7 +3,7 @@
 ## Modele aut (etap 67, od 06.11.2026) — grafiki MG
 
 Grafiki własne MG projektu (źródła poza repo: `C:/AI/materialy/auta`), dostarczone 06.11.2026
-(auta, potem furgony i motocykle)
+(auta, potem furgony i motocykle), a 10.11 supermotocykl, skuter wodny, motorówka i łódź kabinowa
 do zakupu aut przez graczy. Przetwarza je `tools/art/vehicle-models.py`: wycina namalowaną
 szachownicę przezroczystości, obraca przodem do góry, przycina i zapisuje jako WebP (dłuższy bok
 384 px). Każda grafika to jeden model z `data/public/cpred/vehicle-models.json`.
@@ -26,6 +26,10 @@ szachownicę przezroczystości, obraca przodem do góry, przycina i zapisuje jak
 | `nomada.webp`          | `furgon2.png`              | „Nomada” (kamper)          |
 | `zadlo.webp`           | `motocykl1.png`            | „Żądło” (motocykl)         |
 | `osa.webp`             | `motocykl2.png`            | „Osa” (motocykl)           |
+| `szkarlat.webp`        | `supermotocykl.png`        | „Szkarłat” (supermotocykl) |
+| `fala.webp`            | `skuter-wodny.png`         | „Fala” (skuter wodny)      |
+| `barakuda.webp`        | `motorowka.png`            | „Barakuda” (motorówka)     |
+| `perla.webp`           | `lodz-kabinowa.png`        | „Perła” (łódź kabinowa)    |
 
 ## Paczka CC0 (etap 65b) — przeszkody pościgu i sceny sprzed etapu 67
 
