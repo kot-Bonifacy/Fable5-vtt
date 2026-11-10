@@ -201,31 +201,28 @@ describe('ruch po piętrach', () => {
 });
 
 describe('Zwiad', () => {
-  it('shows as many floors as the Check, both ways down at a junction', () => {
-    // A total of 9 beats the DV 8 password, so nothing blocks the view.
-    const revealed = netScoutReveal(ARCHITECTURE, runAt(TOP), 9);
-    expect(revealed).toEqual(['f1', 'f2', 'g0', 'f3', 'g1', 'f4']);
+  it('shows only the next floor, however high the Check', () => {
+    expect(netScoutReveal(ARCHITECTURE, runAt(TOP), 24)).toEqual(['f1']);
   });
 
-  it('stops at the first password whose DV the Check did not reach', () => {
-    const revealed = netScoutReveal(ARCHITECTURE, runAt(TOP), 5);
-    // The password itself is seen — it is what the netrunner is looking at.
-    expect(revealed).toEqual(['f1']);
+  it('shows every way down at a junction — the next trunk floor and the branch', () => {
+    const state = runAt({ branchId: 'trunk', floor: 1 }, { broken: ['f1'] });
+    expect(netScoutReveal(ARCHITECTURE, state, 3)).toEqual(['f2', 'g0']);
   });
 
-  it('sees past a password that has already been broken', () => {
-    const revealed = netScoutReveal(ARCHITECTURE, runAt(TOP, { broken: ['f1'] }), 3);
-    expect(revealed).toEqual(['f1', 'f2', 'g0']);
+  it('needs the DV of an unbroken password underfoot to see through it', () => {
+    const onPassword = runAt({ branchId: 'trunk', floor: 1 });
+    expect(netScoutReveal(ARCHITECTURE, onPassword, 7)).toEqual([]);
+    expect(netScoutReveal(ARCHITECTURE, onPassword, 8)).toEqual(['f2', 'g0']);
   });
 
-  it('counts floors it already knew towards the total', () => {
-    const state = runAt(TOP, { broken: ['f1'], scouted: ['f1', 'f2'] });
-    // Budget 3: f1 and f2 are already known but still count, so only g0 is news.
-    expect(netScoutReveal(ARCHITECTURE, state, 3)).toEqual(['g0']);
+  it('reports only what is news', () => {
+    const state = runAt({ branchId: 'trunk', floor: 1 }, { broken: ['f1'], scouted: ['f2'] });
+    expect(netScoutReveal(ARCHITECTURE, state, 10)).toEqual(['g0']);
   });
 
-  it('reveals nothing on a failed Check of zero', () => {
-    expect(netScoutReveal(ARCHITECTURE, runAt(TOP), 0)).toEqual([]);
+  it('has nothing to show from the bottom of a shaft', () => {
+    expect(netScoutReveal(ARCHITECTURE, runAt({ branchId: 'b1', floor: 1 }), 20)).toEqual([]);
   });
 });
 

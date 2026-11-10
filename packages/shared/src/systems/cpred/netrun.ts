@@ -138,7 +138,7 @@ export const NET_ABILITIES: readonly CpredNetAbility[] = [
     name: 'Zwiad',
     cost: 'net',
     dv: 'open',
-    hint: 'Odsłaniasz tyle pięter, ile wyniósł Test — do pierwszego hasła o wyższym PT.',
+    hint: 'Odsłaniasz piętra tuż pod tobą (także odnogi). Stojąc na haśle, musisz dorównać jego PT.',
   },
   {
     id: 'eyed',
@@ -878,49 +878,39 @@ export function netMove(
 // ───────────────────────────────────── Zwiad ─────────────────────────────────────
 
 /**
- * „Widzisz tyle pięter Architektury, ile wyniosła wartość Testu, ale pierwsza
- * przeszkoda z PT wyższym niż rzut na Zwiad blokuje pole widzenia" (s. 200).
+ * House rule (10.11.2026), replacing RAW „widzisz tyle pięter Architektury, ile
+ * wyniosła wartość Testu" (s. 200): a Check of 12+ used to light up the whole
+ * shaft, and the GM wants Zwiad to answer one question — what waits one floor
+ * down, and is it worth going there.
  *
- * Counted downwards from where the netrunner stands, breadth first, so a
- * branching point shows both ways down — the ability is a map, and a map that
- * only ever looked one way would hide the very branch the rulebook says a Virus
- * has to be carried to. Floors already known count towards the total: the Check
- * says how far you see, not how much of it is news.
+ * So it shows only the floors directly below the netrunner: the next trunk floor
+ * and the top of every branch hanging off this one — a junction shows all its
+ * doors. The kind and label travel, the DV does not (`netRunView`). What is left
+ * of RAW's „pierwsza przeszkoda z PT wyższym niż rzut na Zwiad blokuje pole
+ * widzenia" is the floor underfoot: standing on a password nobody has broken,
+ * the Check has to reach its DV to see through it.
  */
 export function netScoutReveal(
   architecture: CpredNetArchitecture,
   state: CpredNetRunState,
   total: number,
 ): string[] {
-  const budget = Math.max(0, total);
-  if (budget === 0) return [];
-  const broken = new Set(state.broken);
+  const here = netFloorAt(architecture, state.position);
+  if (
+    here?.kind === 'password' &&
+    !state.broken.includes(here.id) &&
+    here.dv !== undefined &&
+    here.dv > total
+  ) {
+    return [];
+  }
   const known = new Set([...state.entered, ...state.scouted]);
   const revealed: string[] = [];
-  let seen = 0;
-
-  let frontier = netChildren(architecture, state.position);
-  while (frontier.length > 0 && seen < budget) {
-    const next: CpredNetPosition[] = [];
-    for (const step of frontier) {
-      if (seen >= budget) break;
-      const floor = netFloorAt(architecture, step);
-      if (!floor) continue;
-      seen += 1;
-      if (!known.has(floor.id)) {
-        known.add(floor.id);
-        revealed.push(floor.id);
-      }
-      // A password nobody has broken hides everything past it — unless the
-      // Check already reached its DV, in which case it is no obstacle to see.
-      const blocks =
-        floor.kind === 'password' &&
-        !broken.has(floor.id) &&
-        floor.dv !== undefined &&
-        floor.dv > budget;
-      if (!blocks) next.push(...netChildren(architecture, step));
-    }
-    frontier = next;
+  for (const step of netChildren(architecture, state.position)) {
+    const floor = netFloorAt(architecture, step);
+    if (!floor || known.has(floor.id)) continue;
+    known.add(floor.id);
+    revealed.push(floor.id);
   }
   return revealed;
 }

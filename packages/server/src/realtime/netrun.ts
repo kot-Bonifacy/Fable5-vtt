@@ -828,9 +828,11 @@ async function applyAbility(
     });
     const summary =
       revealed.length === 0
-        ? 'Nic nowego — widok kończy się tam, gdzie się kończył.'
-        : `Odsłonięte piętra: ${revealed.length}.`;
-    return { summary, detail: `Zasięg widzenia ${total} pięter · ${summary}` };
+        ? 'Nic nowego poniżej — albo już to znasz, albo hasło pod stopami zasłania widok.'
+        : revealed.length === 1
+          ? 'Odsłonięte piętro poniżej.'
+          : `Odsłonięte piętra poniżej: ${revealed.length} (rozwidlenie).`;
+    return { summary, detail: summary };
   }
 
   if (abilityId === 'cloak') {

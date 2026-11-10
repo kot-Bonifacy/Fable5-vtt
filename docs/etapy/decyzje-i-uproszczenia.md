@@ -9,6 +9,16 @@ czytany na starcie każdej sesji został listą zadań, a nie archiwum ustaleń.
 inaczej, niż mówi podręcznik, albo gdy dotykasz wymienionego tu kodu. Jeśli któraś z tych decyzji
 przestanie się bronić, przenieś ją stąd do `POMYSLY.md` jako zadanie — nie odwrotnie.
 
+## Zwiad widzi tylko jedno piętro w dół (10.11.2026, decyzja MG)
+
+- **Zwiad odsłania wyłącznie piętra tuż pod netrunnerem** — kolejne piętro pnia i szczyt każdej
+  odnogi odchodzącej od tego miejsca — zamiast RAW „tyle pięter, ile wyniósł Test” (s. 200).
+  Przy wynikach 12+ RAW odsłaniało cały szyb, a Zwiad ma odpowiadać na jedno pytanie: co czeka
+  piętro niżej i czy tam wchodzić. PT dalej nie przychodzi (rodzaj, etykieta, programy tak).
+  Z RAW zostaje blokada hasłem: stojąc na **niezłamanym** haśle, Test musi dorównać jego PT,
+  żeby zobaczyć cokolwiek pod nim. Kod: `netScoutReveal` (`shared/systems/cpred/netrun.ts`).
+  Zastępuje punkt (2) „Zwiad liczy piętra wszerz” z etapu 26b niżej.
+
 ## Strefa broniona odpala tylko na figurach graczy (07.11.2026, decyzja MG przy „Po zamknięciu”)
 
 - **Strefa broniona (podłoga, system środowiskowy) uruchamia się wyłącznie marszem figury
@@ -532,9 +542,9 @@ przestanie się bronić, przenieś ją stąd do `POMYSLY.md` jako zadanie — ni
 - **Etap 26b — trzy rzeczy świadomie uproszczone, do rozważenia przy stole.** (1) **Promień
   Skanera to wynik Testu w metrach** — podręcznik mówi „MG określa dokładną liczbę znalezionych
   punktów dostępu" i nie daje żadnej liczby, więc to czytanie VTT, nie RAW; MG ma obok przycisk
-  „Odsłoń graczom" na karcie gniazda. (2) **Zwiad liczy piętra wszerz** (obie drogi w dół
+  „Odsłoń graczom" na karcie gniazda. (2) ~~**Zwiad liczy piętra wszerz** (obie drogi w dół
   z rozgałęzienia naraz), bo mapa, która patrzy tylko w trzon, ukrywałaby odgałęzienie, do
-  którego RAW każe zanieść Wirusa. ~~(3) Piętro z Czarnym LOD-em odkrywa się, ale nic się na nim
+  którego RAW każe zanieść Wirusa.~~ Zastąpione 10.11.2026: Zwiad widzi jedno piętro w dół (sekcja na górze pliku). ~~(3) Piętro z Czarnym LOD-em odkrywa się, ale nic się na nim
   nie dzieje~~ — **domknięte w 26c 15.08**: wejście na takie piętro stawia LOD-a w szybie,
   a `metIce` służy dziś do tego, do czego było pisane — do rachunku za awaryjne odłączenie.
 
