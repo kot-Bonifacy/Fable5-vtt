@@ -86,11 +86,6 @@ export interface PendingRoll extends Omit<RollTarget, 'characterId'> {
   modifierTotal: number;
   /** Wezwanie MG, na które ten rzut odpowiada (etap 32). */
   call?: RollCall;
-  /**
-   * Szczęście padło już w oknie rzutu (23.10, uwaga MG) — kubek nie pyta
-   * o nie drugi raz i rzuca tym, co gracz wybrał w oknie.
-   */
-  luckDeclared?: true;
 }
 
 /**
@@ -259,7 +254,7 @@ interface RollStoreState {
   /** Character-creator stat spread loaded into the cup (stage 25a). */
   creation: PendingCreation | null;
   /**
-   * Szczęście zadeklarowane na liczniku kubka (22.10.2026, decyzja MG) — jedno
+   * Szczęście zadeklarowane w menu kubka (22.10.2026, decyzja MG) — jedno
    * pole dla każdego rzutu, który je przyjmuje: Test z karty, atak, Unik,
    * Pochwycenie, Konfrontacja i ich odpowiedzi. Zeruje się z każdym nowym
    * ładunkiem; Test z okna rzutu wnosi tu to, co gracz wybrał w oknie.

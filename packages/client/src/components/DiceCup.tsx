@@ -42,7 +42,16 @@ import { openDamageCallFor } from '../attack-damage-call.js';
 import { evasionCallKey, openEvasionCallsFor, type EvasionCall } from '../attack-evasion-call.js';
 import { useCharacterStore } from '../stores/characterStore.js';
 import { useTokenStore } from '../stores/tokenStore.js';
-import { NumberStepper } from './NumberStepper.js';
+import {
+  clampCupPosition,
+  cupLabelOnLeft,
+  cupPlacedStyle,
+  defaultCupPosition,
+  readCupViewport,
+  useCupPlacement,
+  type CupPoint,
+} from '../cup-placement.js';
+import { DiceCupMenu } from './DiceCupMenu.js';
 
 interface ShakeSample {
   x: number;
@@ -61,6 +70,8 @@ const MAX_SAMPLES = 512;
 const TOSS_WINDOW_MS = 120;
 /** Below this travel the release has no readable direction — random throw. */
 const TOSS_MIN_TRAVEL_PX = 8;
+/** Krótszy ruch odblokowanego kubka to drgnięcie ręki, nie przestawienie. */
+const CUP_MOVE_MIN_TRAVEL_PX = 4;
 
 /** Shake speed (px/ms) → toss strength 0–3. */
 function strengthFromSpeed(speed: number): number {
@@ -212,9 +223,12 @@ function luckSheetOf(mode: CupMode): string | null {
   }
 }
 
-/** Test załadowany z okna rzutu — Szczęście padło w oknie, kubek o nie nie pyta. */
-function luckDeclaredIn(mode: CupMode): boolean {
-  return mode.kind === 'sheet' && mode.pending.luckDeclared === true;
+/** Czemu w menu kubka nie da się nastawić Szczęścia; null — można. */
+function luckOffReason(mode: CupMode, luckSheet: string | null, luckPool: number): string | null {
+  if (luckSheet) return luckPool > 0 ? null : 'Pula Szczęścia tej postaci jest pusta.';
+  if (mode.kind === 'fun') return 'Najpierw załaduj rzut.';
+  if (mode.kind === 'call') return 'Szczęście wybierzesz w oknie rzutu po chwyceniu kubka.';
+  return 'Ten rzut nie przyjmuje Szczęścia.';
 }
 
 /** Ile Szczęścia z licznika kubka naprawdę leci z tym rzutem — nie więcej niż pula. */
@@ -319,6 +333,14 @@ export function DiceCup() {
 
   const [shaking, setShaking] = useState(false);
   const [pos, setPos] = useState<{ x: number; y: number } | null>(null);
+  const placement = useCupPlacement();
+  const { place } = placement;
+  const [unlocked, setUnlocked] = useState(false);
+  const [menu, setMenu] = useState<{ x: number; y: number } | null>(null);
+  const [moving, setMoving] = useState(false);
+  const [dragPoint, setDragPoint] = useState<CupPoint | null>(null);
+  /** Chwyt odblokowanego kubka: odsunięcie ręki od rogu kubka i punkt startu. */
+  const gripRef = useRef({ dx: 0, dy: 0, startX: 0, startY: 0, moved: false });
   const cupRef = useRef<HTMLDivElement | null>(null);
   const samplesRef = useRef<ShakeSample[]>([]);
   /** Tail of the shake (uncapped, trimmed to the toss window) — throw direction. */
@@ -449,9 +471,54 @@ export function DiceCup() {
   // dokumencie), więc musi wiedzieć, że ręka jest zajęta — inaczej rysuje trasę
   // marszu ku kubkowi.
   useEffect(() => {
-    useRollStore.getState().setCupHeld(shaking);
+    useRollStore.getState().setCupHeld(shaking || moving);
     return () => useRollStore.getState().setCupHeld(false);
-  }, [shaking]);
+  }, [shaking, moving]);
+
+  // Sesja zamknięta przy otwartym menu nie może go wskrzesić przy następnej.
+  useEffect(() => {
+    if (!synced || !campaign || betweenSessions) setMenu(null);
+  }, [synced, campaign, betweenSessions]);
+
+  useEffect(() => {
+    if (!moving) return;
+    const stop = () => {
+      setMoving(false);
+      setDragPoint(null);
+    };
+    const pointAt = (e: PointerEvent): CupPoint =>
+      clampCupPosition(
+        { x: e.clientX - gripRef.current.dx, y: e.clientY - gripRef.current.dy },
+        readCupViewport(),
+      );
+    const onMove = (e: PointerEvent) => {
+      const grip = gripRef.current;
+      if (Math.hypot(e.clientX - grip.startX, e.clientY - grip.startY) >= CUP_MOVE_MIN_TRAVEL_PX) {
+        grip.moved = true;
+      }
+      if (grip.moved) setDragPoint(pointAt(e));
+    };
+    const onUp = (e: PointerEvent) => {
+      if (gripRef.current.moved) place(pointAt(e));
+      stop();
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return;
+      // Odłożyć ma się przestawianie, nie załadowany rzut ani narzędzie mapy.
+      e.stopPropagation();
+      stop();
+    };
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onUp);
+    window.addEventListener('pointercancel', stop);
+    window.addEventListener('keydown', onKey, true);
+    return () => {
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onUp);
+      window.removeEventListener('pointercancel', stop);
+      window.removeEventListener('keydown', onKey, true);
+    };
+  }, [moving, place]);
 
   useEffect(() => {
     if (!shaking) return;
@@ -687,8 +754,26 @@ export function DiceCup() {
   // odrzuci serwer, więc nie ma czego zapowiadać.
   if (betweenSessions && mode.kind !== 'creation') return null;
 
-  const startShake = (e: React.PointerEvent) => {
+  const placed = dragPoint ?? placement.position;
+
+  const startGrab = (e: React.PointerEvent) => {
+    // Prawy przycisk należy do menu kubka, środkowy do niczego.
+    if (e.button !== 0) return;
     e.preventDefault();
+    // Odblokowany kubek tylko się przesuwa (decyzja MG z 10.11): rzut, także
+    // wezwany, czeka na zablokowanie.
+    if (unlocked) {
+      const from = placed ?? defaultCupPosition(placement.viewport);
+      gripRef.current = {
+        dx: e.clientX - from.x,
+        dy: e.clientY - from.y,
+        startX: e.clientX,
+        startY: e.clientY,
+        moved: false,
+      };
+      setMoving(true);
+      return;
+    }
     // Kubek z wezwaniem nie potrząsa się od razu: najpierw okno rzutu, w którym
     // gracz widzi rozbicie i decyduje o Szczęściu. Dopiero „Weź kubek" ładuje
     // Test i drugi chwyt jest tym prawdziwym (ta sama droga, co rzut z karty).
@@ -730,7 +815,10 @@ export function DiceCup() {
                     : mode.kind === 'randtable'
                       ? ' dice-cup--gm'
                       : '';
-  const title =
+  const placeClass = `${placed ? ' dice-cup--moved' : ''}${
+    placed && !shaking && cupLabelOnLeft(placed, placement.viewport) ? ' dice-cup--label-left' : ''
+  }${unlocked ? ' dice-cup--unlocked' : ''}`;
+  const modeTitle =
     mode.kind === 'call'
       ? `Wezwanie od ${mode.entry.calledByName}: ${callLabel(mode.entry)} — kliknij, żeby wziąć kubek`
       : mode.kind === 'dodge'
@@ -758,33 +846,51 @@ export function DiceCup() {
                         : mode.kind === 'randtable'
                           ? `Potrząśnij i losuj z tabeli: ${mode.tableName}`
                           : 'Potrząśnij i rzuć na niby (wpisz /r <formuła>, by rzut się liczył)';
+  const title = unlocked
+    ? 'Kubek odblokowany: przeciągnij go lewym przyciskiem. Prawy przycisk: zablokuj, żeby znów rzucać.'
+    : `${modeTitle}${luck > 0 ? ` · Szczęście +${luck}` : ''} · prawy przycisk: Szczęście i przenoszenie`;
 
   return (
     <>
       <div
         ref={cupRef}
-        className={`dice-cup${modeClass}${shaking ? ' dice-cup--shaking' : ''}`}
+        className={`dice-cup${modeClass}${placeClass}${shaking ? ' dice-cup--shaking' : ''}`}
         style={
           shaking && pos
-            ? { left: pos.x, top: pos.y, bottom: 'auto', transform: 'translate(-50%, -50%)' }
-            : undefined
+            ? {
+                left: pos.x,
+                right: 'auto',
+                top: pos.y,
+                bottom: 'auto',
+                transform: 'translate(-50%, -50%)',
+              }
+            : placed
+              ? cupPlacedStyle(placed, placement.viewport)
+              : undefined
         }
         title={title}
-        onPointerDown={startShake}
+        onPointerDown={startGrab}
+        onContextMenu={(e) => {
+          e.preventDefault();
+          if (!shaking && !moving) setMenu({ x: e.clientX, y: e.clientY });
+        }}
         role="button"
         aria-label={title}
       >
-        <svg viewBox="0 0 24 24" width="30" height="30" aria-hidden="true">
-          {/* dice cup: tapered tumbler with two pips */}
-          <path
-            d="M5 3h14l-2 13.5a2.5 2.5 0 0 1-2.5 2.5h-5A2.5 2.5 0 0 1 7 16.5L5 3Z"
-            fill="currentColor"
-            opacity="0.9"
-          />
-          <ellipse cx="12" cy="3" rx="7" ry="1.6" fill="currentColor" />
-          <circle cx="10" cy="10" r="1.2" fill="var(--bg)" />
-          <circle cx="14" cy="13" r="1.2" fill="var(--bg)" />
-        </svg>
+        <span className="dice-cup-icon">
+          <svg viewBox="0 0 24 24" width="30" height="30" aria-hidden="true">
+            {/* dice cup: tapered tumbler with two pips */}
+            <path
+              d="M5 3h14l-2 13.5a2.5 2.5 0 0 1-2.5 2.5h-5A2.5 2.5 0 0 1 7 16.5L5 3Z"
+              fill="currentColor"
+              opacity="0.9"
+            />
+            <ellipse cx="12" cy="3" rx="7" ry="1.6" fill="currentColor" />
+            <circle cx="10" cy="10" r="1.2" fill="var(--bg)" />
+            <circle cx="14" cy="13" r="1.2" fill="var(--bg)" />
+          </svg>
+          {luck > 0 && <span className="dice-cup-luck-badge">+{luck}</span>}
+        </span>
         {mode.kind === 'call' && <span className="dice-cup-label">{callLabel(mode.entry)}</span>}
         {mode.kind === 'roll' && (
           <span className="dice-cup-label">{displayDiceNotation(mode.notation)}</span>
@@ -806,28 +912,20 @@ export function DiceCup() {
           <span className="dice-cup-label">{initiativeLabel(mode.pending)}</span>
         )}
       </div>
-      {/*
-      Szczęście deklaruje się przed rzutem (s. 74), więc licznik stoi obok
-      kubka, a nie w nim — chwyt kubka potrząsa, kliknięcie licznika nie.
-      Znika w ręce: w trakcie potrząsania nic już się nie deklaruje. Nie ma go
-      też przy Teście z okna rzutu — tam gracz już raz wybrał Szczęście.
-    */}
-      {luckSheet && luckPool > 0 && !shaking && !luckDeclaredIn(mode) && (
-        <div
-          className={`dice-cup-luck${luck > 0 ? ' dice-cup-luck--spent' : ''}`}
-          title="Punkty Szczęścia dodane do tego rzutu (+1 za punkt). Wydane przepadają, nawet gdy rzut się nie uda."
-        >
-          <span className="dice-cup-luck-label">Szczęście</span>
-          <NumberStepper
-            min={0}
-            max={luckPool}
-            value={luck}
-            onChange={(next) => useRollStore.getState().setCupLuck(next)}
-            label="Szczęście do tego rzutu"
-            format={(value) => (value > 0 ? `+${value}` : '0')}
-          />
-          <span className="dice-cup-luck-pool">z {luckPool}</span>
-        </div>
+      {menu && (
+        <DiceCupMenu
+          x={menu.x}
+          y={menu.y}
+          luck={luck}
+          luckPool={luckPool}
+          luckOff={luckOffReason(mode, luckSheet, luckPool)}
+          unlocked={unlocked}
+          moved={placement.position !== null}
+          onLuck={(next) => useRollStore.getState().setCupLuck(next)}
+          onToggleLock={() => setUnlocked((value) => !value)}
+          onResetPlace={() => place(null)}
+          onClose={() => setMenu(null)}
+        />
       )}
     </>
   );

@@ -357,6 +357,7 @@ Umiejętność" i model musi być tak dobrany, żeby nie musiał (stąd `statBlo
 
 ## ui — Okna, motyw, style, dostępność
 
+- **Warstwa własnego menu przegrywa z `.context-menu` z `05-tokens.css` (10.11, menu kubka)** — arkusze z niższym numerem stoją wcześniej w kaskadzie, więc `.dice-cup-menu { z-index }` z `02-chat-dice.css` nic nie zmieniało i kubek zasłaniał górę menu. Testy klików przechodziły, wyszło dopiero na zrzucie. Podbijaj dwiema klasami (`.context-menu.dice-cup-menu`).
 - **Rozgłoszenie wyprzedza odpowiedź na żądanie — stan lokalny okna musi to przeżyć w tym samym renderze (08.10, etap 46a2)** — po „Zapłać” `merchant:update` (półka bez kupionej kurtki) przychodzi przed ackiem, a koszyk jeszcze trzyma kurtkę: `rowByKey.get(key)!` dał `undefined` i cała strona gracza zgasła (czarny ekran w zrzucie). Sprzątanie w `useEffect` przychodzi o render za późno — linie liczone z mapy filtruj w miejscu (`flatMap`).
 - **`offsetLeft` liczy od najbliższego pozycjonowanego przodka, nie od rodzica** — pas kolejki (niepozycjonowany `<ol>`) dostawał od kafla 341 px lewego brzegu strony i przewijał się za daleko, ucinając aktywnego na pierwszym miejscu. Mierz `getBoundingClientRect()` kafla względem pojemnika + `scrollLeft`.
 - **Przeciąganie na zdarzeniach wskaźnika trzymaj w `ref`, nie w stanie Reacta** — szybki ruch daje jeden `pointermove` i od razu `pointerup`, zanim React przerysuje; `pointerup` sprawdzający stan widzi „nie przeciągam” i upuszczenie ginie jak kliknięcie (okno handlu 38c, 23.09).

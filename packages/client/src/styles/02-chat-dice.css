@@ -461,7 +461,10 @@ body:has(.creator-window) .dice-overlay {
   position: fixed;
   bottom: 1rem;
   left: 1rem;
-  z-index: 70;
+  /* Nad pływającymi oknami (do 340), pod oknami dialogowymi (400): kubek można
+     postawić wszędzie, a rzut załadowany z karty nie może schować się pod nią
+     (decyzja MG z 10.11). */
+  z-index: 345;
   display: flex;
   align-items: center;
   gap: 0.4rem;
@@ -525,8 +528,45 @@ body:has(.creator-window) .dice-overlay {
    `translate(-50%, -50%)` — chwycony Unik uciekał spod kursora (17.10). */
 .dice-cup.dice-cup--shaking {
   cursor: grabbing;
-  z-index: 80;
+  z-index: 346;
   animation: dice-cup-rattle 0.12s linear infinite;
+}
+
+/* Odblokowany kubek tylko się przesuwa. Obwódka zostaje w kolorze trybu, żeby
+   było widać, że czeka w nim rzut. */
+.dice-cup--unlocked {
+  cursor: move;
+  border-style: dashed;
+}
+
+/* W prawej połowie ekranu etykieta rośnie w lewo (`cupPlacedStyle`). */
+.dice-cup--label-left {
+  flex-direction: row-reverse;
+}
+
+.dice-cup--label-left .dice-cup-label {
+  padding-right: 0;
+  padding-left: 0.25rem;
+}
+
+.dice-cup-icon {
+  position: relative;
+  display: flex;
+}
+
+/* Nastawione Szczęście stoi na ikonie, bo etykiety nie ma każdy tryb kubka. */
+.dice-cup-luck-badge {
+  position: absolute;
+  top: -0.65rem;
+  right: -0.75rem;
+  padding: 0 0.3rem;
+  border-radius: 999px;
+  background: var(--bg-panel);
+  border: 1px solid var(--ok);
+  color: var(--ok);
+  font-size: 0.7rem;
+  font-weight: 700;
+  line-height: 1.2;
 }
 
 .dice-cup-label {
@@ -536,31 +576,57 @@ body:has(.creator-window) .dice-overlay {
   padding-right: 0.25rem;
 }
 
-/* Licznik Szczęścia nad kubkiem (22.10.2026). Osobny element, nie dziecko
-   kubka: chwyt kubka potrząsa, a strzałki licznika mają tylko liczyć. */
-.dice-cup-luck {
-  position: fixed;
-  bottom: calc(1rem + 3.6rem);
-  left: 1rem;
-  z-index: 70;
+/* Menu kubka pod prawym przyciskiem (10.11): nad kubkiem, pod oknami dialogowymi.
+   Dwie klasy, bo `.context-menu` z `05-tokens.css` stoi dalej w kaskadzie. */
+.context-menu-backdrop.dice-cup-menu-backdrop {
+  z-index: 347;
+}
+
+.context-menu.dice-cup-menu {
+  z-index: 348;
+}
+
+.dice-cup-menu-luck {
   display: flex;
   align-items: center;
   gap: 0.4rem;
-  padding: 0.2rem 0.55rem;
-  border-radius: 999px;
-  background: var(--bg-panel);
-  border: 1px solid var(--border);
-  color: var(--text-dim);
-  font-size: 0.78rem;
+  padding: 0.4rem 0.5rem;
+  font-size: 0.85rem;
 }
 
-.dice-cup-luck--spent {
+.dice-cup-menu-luck--spent {
   color: var(--ok);
-  border-color: var(--ok);
 }
 
-.dice-cup-luck-pool {
+.dice-cup-menu-luck--off {
+  justify-content: space-between;
+  opacity: 0.55;
+}
+
+.dice-cup-menu-luck-pool {
   opacity: 0.75;
+}
+
+.dice-cup-menu-check {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0;
+  padding: 0.4rem 0.5rem;
+  font-size: 0.85rem;
+  cursor: pointer;
+  user-select: none;
+}
+
+.dice-cup-menu-check:hover {
+  background: var(--veil);
+  border-radius: 4px;
+}
+
+.dice-cup-menu-check input {
+  margin: 0;
+  accent-color: var(--accent);
+  cursor: pointer;
 }
 
 @keyframes dice-cup-pulse {

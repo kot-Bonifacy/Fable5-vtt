@@ -29,6 +29,12 @@ Pełna tabela z nazwami i datami: `archiwum/tabela-etapow.md`.
 
 ## Od czego zacząć
 
+**Kubek do przestawiania i jego menu (zlecenie MG z 10.11) — czeka na wdrożenie (bez migracji)
+i oględziny MG przy stole.** Prawy przycisk na kubku otwiera małe menu: Szczęście do
+załadowanego rzutu (plakietka +N na kubku zamiast licznika nad nim), „Unik i Odskok
+automatycznie” (przeniesione z lewego panelu), odblokowanie i powrót do rogu. Odblokowany kubek
+tylko się przesuwa, stoi nad pływającymi oknami. Umowa na górze `ui`.
+
 **Rozegranie „Po zamknięciu” w przeglądarce (zlecenie MG z 07.11) — skończone; teraz naprawa
 znalezisk.** Iskra (Netrunner 6) zabiła Małego serią zza zniszczonego biurka, otworzyła szafkę
 kluczem z łupu i wykończyła Kucharza przejętą wieżyczką z konsoli monitoringu (stan końcowy:
@@ -275,8 +281,8 @@ Umowa w `serwer` (trasy AI właściciela). Do decyzji MG: flaga właściciela na
 **Etap 63 „Płynna walka gracza” (zlecenie MG z 28.10) zamknięty na 63a i 63b — 63c (karta
 ataku z krokami na czacie, pasek „Krok X/3” nad kubkiem) MG kazał cofnąć 29.10; dalej etap 28,
 potem T10.** Od 63b Unik i Odskok postaci gracza
-rzuca serwer sam zaraz po karcie ataku (bez Szczęścia, kości 3D lecą), póki pod banerem
-portretu zaznaczone jest „Unik i Odskok automatycznie” (domyślnie tak, `autoDodge` na karcie);
+rzuca serwer sam zaraz po karcie ataku (bez Szczęścia, kości 3D lecą), póki w menu kubka
+zaznaczone jest „Unik i Odskok automatycznie” (domyślnie tak, `autoDodge` na karcie);
 bot-towarzysz unika zawsze, NPC-e MG bez zmian. Karta niesie `autoEvasion`, więc nikt nie jest
 o taki Unik wołany. Slot broni ma kropki ataków w Akcji (●● przy SS 2),
 „Kończę turę” pulsuje, gdy z tury został najwyżej ruch, a pipsy „Ataki” gasną z Akcją. Sygnał
@@ -747,7 +753,7 @@ a nie do tego pliku.
 | `mapa`      | figury, zaznaczanie, narzędzia, obiekty sceny, ściany, efekty, zamek drzwi, ukryta figura zauważona, ikony urządzeń, wspólny widok drużyny, scena pościgu, jazda kierowcy i dryf, Manewr i taranowanie, przeszkody pościgu, sceny przykładowe, wzorzec zwykłej mapy, ulepszenia pojazdu, stojące auto na drodze, kreator pościgu i wbudowane drogi, załoga auta poza pościgiem, rama pościgu i pęd auta bez kierowcy, długa pętla drogi, ucieczka auta ręką MG, otarcie brył, wrak za autem, podpis w fotelu, furgon z wyglądu (`van-6`), przesadzanie foteli przy starcie, skręt z menu przed przeszkodą, wysiadka tylko przeciągnięciem, światła, zamki, strefy i pojemniki we wzorcu | 94   | 27      |
 | `czat`      | rodzaje wierszy, `visibleTo`, filtr, `seq`, `gmrecovery`, „to dotyczy mnie”, grupy kart, kolor gracza, czyszczenie, gęsta karta rzutu, przebieg ataku, `/jako` za NPC-a, karta rzutu bez konta | 17   | 3       |
 | `serwer`    | Prisma i migracje, zdarzenia gniazda, zapisy karty, uploady    | 26   | 21      |
-| `ui`        | okna pływające, `z-index`, motyw, skróty, dostępność, wejście, panel decyzji MG, rezerwa panelu przy liczniku Szczęścia | 39   | 15      |
+| `ui`        | okna pływające, `z-index`, motyw, skróty, dostępność, wejście, panel decyzji MG, kubek przestawiany i jego menu | 39   | 16      |
 | `kosci`     | kubek, `rollFormula`, wezwania i prośby o Test, tabele losowe, PT od MG | 24   | 2       |
 | `tura`      | budżet Akcji i metrów, kolejka, trasa, ruch przez ściany, skok, walka z zauważenia, pytanie MG o przekroczenie, Percepcja w drodze (z linią wzroku), ukryte figury, skradanie, kropki ataków, kierowca bez Biegu, Test jazdy w Akcji Ruchu, darmowa ręka MG, napis wiersza Akcji, taran raz na turę, spóźniona inicjatywa rundy 1, krok planera w jednym oku | 41   | 7       |
 | `atak`      | broń i dodatki, amunicja, obrażenia, pancerz, rany krytyczne, trucizna na ostrzu, auto-unik, strach z Konfrontacji, auto jako cel, broń pokładowa, wybór celu ze stosu, skutki amunicji po karcie ataku, ikona gołych rąk, broń dwuręczna w rękach przy tarczy | 57   | 8       |
@@ -768,6 +774,23 @@ a nie do tego pliku.
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
 
+### Sesja 10.11 — kubek do przestawiania, menu pod prawym przyciskiem
+
+**Zlecenie MG:** kubek ma się odblokowywać prawym przyciskiem, stawać gdziekolwiek i znów
+blokować, a małe menu ma też dawać Szczęście przed rzutem; w trakcie doszedł automatyczny Unik
+z lewego panelu. **Decyzje MG:** licznik Szczęścia tylko w menu (plakietka +N na kubku), tylko
+przy załadowanym rzucie, odblokowany kubek tylko się przesuwa, kubek nad pływającymi oknami.
+**Rozstrzygnięcia bez pytań:** pozycja w `localStorage` na użytkownika, blokada niezapisywana
+(po F5 kubek rzuca), „Wróć do rogu ekranu” tylko przy kubku poza rogiem, Szczęście z okna rzutu
+można w menu poprawić (pole `luckDeclared` zniknęło), w prawej połowie ekranu etykieta rośnie
+w lewo, Unik w menu dotyczy figury z lewego panelu. **Testy:** klient 489/489 (w tym nowe
+`cup-placement.test.ts`), ESLint, Prettier i `tsc --noEmit` czyste; `shared` i serwer bez zmian
+w kodzie (tylko komentarz w `character.ts`), niepuszczane. **Oglądane w Firefoksie**
+(tymczasowy spec na instancji E2E z `po-T6`, Marek/Kowal): menu, Unik na karcie, przenoszenie,
+Esc, Szczęście 2 z rzutem i spadkiem puli, kubek nad kartą, F5, małe okno, powrót do rogu.
+`--grep @szybkie`: 75 zaliczonych, 1 pominięty, 1 niezaliczony (T9a „konsola bez nowych błędów”, zerwane
+gniazdo w Firefoksie; osobno 7/7). MG i Chrome nieoglądane. Zrzut wyłapał warstwę menu pod kubkiem (pułapka na górze `ui`).
+
 ### Sesja 07.11, ósma — siedem zaległości z „Po zamknięciu” (66e)
 
 **Zlecenie MG:** „zrób kilka zaległości”. Wybrane bez pytań do MG: 🔴 16, 🟠 5 i 20, 🟡 22, 26,
@@ -786,19 +809,3 @@ w `archiwum/zamkniete-zaleglosci.md`, szczegóły w `etap-66e-po-zamknieciu.md` 
 Prettier i `tsc --noEmit` czyste. **Oglądane:** Iskra w **Firefoksie**, MG w Chromium
 (Playwright MCP, instancja E2E); odcisk kamer po restarcie — tylko kodem i przebiegiem
 podłącz/odłącz (6 → 1), pkt 26 — tylko test.
-
-### Sesja 07.11, siódma — sześć zaległości z „Po zamknięciu” (66e)
-
-**Zlecenie MG:** „zrób kilka zaległości”. Wybrane czerwone i dwa pomarańczowe z rozegrania
-66e, bez pytań do MG. **Zrobione (bez migracji, czekają na wdrożenie):** (1) zapis „Edycji
-tokenu” nie dopisuje już NPC-owi pancerza statysty ani `weaponSkill: 0` (`applyStatistQuick`
-pisze tylko zmienione grupy); (2) Percepcja w drodze patrzy przez linię wzroku (ściany,
-zamknięte drzwi); (4) strefa odpala tylko marsz gracza jego figurą (decyzja MG); (15) zasięg
-ręki do figury spoza siatki liczy się od pól, na które zachodzi; (17) okno Sieci dostaje nowy
-widok przy zmianie rundy i końcu walki („węzeł użyty” gaśnie bez F5); (21) karty przekazania,
-łupu, handlu i pojemników mówią postacią, nie kontem. Umowy na górze `statysta`, `tura`,
-`siec` i `ekwipunek`, wpis w `archiwum/zamkniete-zaleglosci.md`, decyzja o strefach oznaczona
-jako wdrożona. **Testy:** `shared` 2991/2991, serwer 1761/1761 (pierwszy przebieg złapał znaną migotkę
-teardownu `SceneExploration` z `foe-sighting`, drugi czysty); cztery testy
-`zones.test.ts` przestawione z NPC-a na figurę gracza. **Nie oglądane w przeglądarce**
-(zmiany serwera i `shared`; do sprawdzenia przy wznowieniu przebiegu albo przy stole).

@@ -1,5 +1,21 @@
 # Dziennik sesji — archiwum
 
+### Sesja 07.11, siódma — sześć zaległości z „Po zamknięciu” (66e)
+
+**Zlecenie MG:** „zrób kilka zaległości”. Wybrane czerwone i dwa pomarańczowe z rozegrania
+66e, bez pytań do MG. **Zrobione (bez migracji, czekają na wdrożenie):** (1) zapis „Edycji
+tokenu” nie dopisuje już NPC-owi pancerza statysty ani `weaponSkill: 0` (`applyStatistQuick`
+pisze tylko zmienione grupy); (2) Percepcja w drodze patrzy przez linię wzroku (ściany,
+zamknięte drzwi); (4) strefa odpala tylko marsz gracza jego figurą (decyzja MG); (15) zasięg
+ręki do figury spoza siatki liczy się od pól, na które zachodzi; (17) okno Sieci dostaje nowy
+widok przy zmianie rundy i końcu walki („węzeł użyty” gaśnie bez F5); (21) karty przekazania,
+łupu, handlu i pojemników mówią postacią, nie kontem. Umowy na górze `statysta`, `tura`,
+`siec` i `ekwipunek`, wpis w `archiwum/zamkniete-zaleglosci.md`, decyzja o strefach oznaczona
+jako wdrożona. **Testy:** `shared` 2991/2991, serwer 1761/1761 (pierwszy przebieg złapał znaną migotkę
+teardownu `SceneExploration` z `foe-sighting`, drugi czysty); cztery testy
+`zones.test.ts` przestawione z NPC-a na figurę gracza. **Nie oglądane w przeglądarce**
+(zmiany serwera i `shared`; do sprawdzenia przy wznowieniu przebiegu albo przy stole).
+
 ### Sesja 07.11, szósta — dokończenie rozegrania „Po zamknięciu” (66e)
 
 **Zlecenie MG:** „kontynuuj etap 66e”; w trakcie: odnowić Iskrze PW (24 → 40), gracz figury nie

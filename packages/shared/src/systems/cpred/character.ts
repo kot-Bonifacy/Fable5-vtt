@@ -1136,8 +1136,8 @@ export interface CpredCharacterData {
    */
   drawnWeaponRowIds?: string[];
   /**
-   * „Unik i Odskok automatycznie” (etap 63b, decyzja MG z 28.10) — checkbox pod
-   * banerem portretu. **Brak pola znaczy tak**: domyślnie zaznaczony, więc
+   * „Unik i Odskok automatycznie” (etap 63b, decyzja MG z 28.10) — checkbox
+   * w menu kubka. **Brak pola znaczy tak**: domyślnie zaznaczony, więc
    * karty sprzed etapu unikają same bez migracji. `false` — gracz rzuca Unik
    * kubkiem sam (np. żeby dorzucić Szczęście). Czytaj przez `cpredAutoDodge`.
    * Liczy się tylko na karcie gracza; bot-towarzysz unika zawsze, NPC MG nigdy.

@@ -149,22 +149,25 @@ export function useMenuEscape(open: boolean, close: () => void): void {
  * pokazało. `contextmenu` z gestu otwierającego nie ma tu poprzedzającego
  * `pointerdown`, więc tylko je połykamy.
  */
-function MenuBackdrop({
+export function MenuBackdrop({
   onClose,
   onRightDown,
+  className,
 }: {
   onClose: () => void;
-  onRightDown: (event: ReactPointerEvent) => void;
+  onRightDown?: (event: ReactPointerEvent) => void;
+  /** Własna warstwa — menu otwierane nad pływającymi oknami. */
+  className?: string;
 }) {
   const rightPressed = useRef(false);
   return (
     <div
-      className="context-menu-backdrop"
+      className={`context-menu-backdrop${className ? ` ${className}` : ''}`}
       onClick={onClose}
       onPointerDown={(e) => {
         if (e.button !== 2) return;
         rightPressed.current = true;
-        onRightDown(e);
+        onRightDown?.(e);
       }}
       onContextMenu={(e) => {
         e.preventDefault();

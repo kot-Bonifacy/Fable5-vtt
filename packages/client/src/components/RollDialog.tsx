@@ -102,7 +102,6 @@ function RollDialogBody({ target }: { target: RollTarget }) {
       visibility,
       title: planned.plan.title,
       modifierTotal: planned.plan.modifierTotal,
-      ...(isDamage ? {} : { luckDeclared: true as const }),
     };
     useRollStore.getState().loadCup(pending);
   }

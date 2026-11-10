@@ -236,6 +236,7 @@ export const SHORTCUT_GROUPS: readonly ShortcutGroup[] = [
   {
     title: 'Kubek i rzuty',
     items: [
+      { keys: 'prawy klik na kubku', what: 'Szczęście do rzutu i przenoszenie kubka' },
       { keys: 'Esc', what: 'Odkłada nabrany rzut z powrotem (dopóki kubek nie jest w ruchu)' },
       { keys: 'Esc', what: 'Zamyka okno rzutu przed jego potwierdzeniem' },
     ],
