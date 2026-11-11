@@ -28,7 +28,7 @@ z trybem ognia (seria!), celownik z zasięgiem i osłoną, kubek; każde użycie
 Sieciową (s. 199), kontrola i figura znikają przy odłączeniu albo odebraniu węzła, a w walce
 przejęta wieżyczka nie ma własnej tury wroga. Do rozstrzygnięcia: strzał Umiejętnością netrunnera
 (dziś) czy wieżyczki, czy obrót/ruch też, czy to samo dla dronów z 66b (tam broń w rękach już
-działa z okna Sieci). Kandydat na osobny etap.
+działa z okna Sieci). Kandydat na osobny etap. **Projekt: `etap-70-siec-przebudowa.md` (11.11, czeka na akceptację MG; realizacja 70b–70c).**
 
 **07.11.2026 (piąta) — błędy z rozegrania „Po zamknięciu” w przeglądarce (przebieg przerwany,
 do wznowienia).** Pełny opis i stan: `etap-66e-po-zamknieciu.md` („Rozegranie w przeglądarce”).

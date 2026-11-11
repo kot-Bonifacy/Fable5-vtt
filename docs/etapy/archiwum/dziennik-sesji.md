@@ -1,5 +1,36 @@
 # Dziennik sesji — archiwum
 
+### Sesja 10.11, druga — grafika auta to model, skala na miniaturach
+
+**Zgłoszenie MG:** „statystyki chyba wszystkich pojazdów są takie same — Statek powietrzny,
+Ruch 20, fotele 2, szyby 15 PW — a to nie są statki powietrzne; oddaj lepiej na zdjęciach skalę
+pojazdów”. **Przyczyna:** auto Morte (i bezpański wóz z 31.10) w „ulice Lublina” to był
+**Aerozep** z katalogu — lista „＋ Dodaj pojazd” była alfabetyczna i miała go wybranego z góry,
+a wybór grafiki zmieniał tylko obrazek. **Decyzje MG:** grafika = model (MG), galeria modeli
+przy dodawaniu, Morte → „Osa”, drugi Aerozep usunąć, miniatury proporcjonalne do realnej
+długości (mapa bez zmian). **Zrobione (bez migracji, czeka na wdrożenie):** `cpredVehicleToModel`
+i `cpredVehicleModelByArt` (`shared`), `vehicle:rename` przestawia model u MG i pilnuje klasy
+u gracza, galeria w `AddFromCatalog`, `lengthM` w `VEHICLE_ART` i `vehicleArtScale` →
+`--vehicle-art-scale`. Umowa na górze `ekwipunek`. **Dane:** w `dev.db` (kopia
+`dev.db.bak-20261110-aerozep`) auto Morte jest „Osą” (PUK 35/35, Szyby kuloodporne i Nitro;
+Wzmocniona konstrukcja wypadła, bo motocykl jej nie przyjmuje), bezpański Aerozep usunięty —
+skryptem, bo „ulice Lublina” ma innego MG, a sesja trwała; widok odświeży F5.
+**Rozstrzygnięcia bez pytań:** gracz dostaje tylko lakier swojej klasy (bez tego kompakt
+z grafiką supersamochodu znów kłamałby o liczbach), okno „Edytuj…” zostaje ręczne, długości
+grafik to szacunek z wyglądu. **Testy:** `shared` 2996/2996, serwer 1763/1763, klient 489/489,
+ESLint i `tsc --noEmit` czyste. **Oglądane w Chromium** (Playwright MCP, „Oględziny 12.09”):
+galeria, wybór „Osy”, dodanie, przestawienie na „Nomadę”; Firefox MCP nie wstał (pułapka
+`ogledziny`). Wóz testowy „Nomada” został w „Oględzinach 12.09” — usunięcia nie przepuścił
+klasyfikator, MG usuwa go ręką. MG i Chrome nieoglądane.
+
+**Druga część (ten sam dzień):** MG dostarczył grafiki supermotocykla, skutera wodnego,
+motorówki i łodzi kabinowej, a pozostałe sześć pojazdów z zamówienia kazał wyciąć z gry.
+**Decyzje MG:** modele „Szkarłat” 30 000 ed / poz. 4, „Fala” 6 000 / 1, „Barakuda” 9 000 / 2,
+„Perła” 12 000 / 4; 5–10 całkiem z gry (także z Taboru); piana zostaje. **Zrobione:** cztery
+klasy modeli z wymyślonymi zastępstwami w próbce, `CPRED_VEHICLE_RETIRED_IDS`, grupa „Łodzie”,
+stała ramka skali 6,4 m. Szczegóły w `etap-67-zakup-pojazdu.md` („Trzecia dostawa”), wpis
+w `decyzje-i-uproszczenia.md`. **Testy:** `shared` 2997/2997, serwer 1765/1765 (pierwszy przebieg z dwoma znanymi odrzutami `SceneExploration` po teardownie — pułapka `testy`, powtórka czysta), klient 489/489; ESLint i `tsc --noEmit` czyste. **Oglądane w Chromium** (galeria MG).
+
 ### Sesja 10.11 — kubek do przestawiania, menu pod prawym przyciskiem
 
 **Zlecenie MG:** kubek ma się odblokowywać prawym przyciskiem, stawać gdziekolwiek i znów

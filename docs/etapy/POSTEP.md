@@ -21,13 +21,21 @@ w plikach obok — czytaj je **na żądanie, nigdy rutynowo**:
 
 | stan         | etapy                                                                                          |
 | ------------ | ---------------------------------------------------------------------------------------------- |
-| ⬜ otwarty   | **69** Lewa belka bez ramek (🟨 zrobione 11.11, czeka na wdrożenie i oględziny MG przy stole); **68** Warsztat: ulepszenia auta za ed i naprawa (🟨 zrobione 06.11, czeka na wdrożenie i oględziny MG przy stole); **67** Zakup pojazdu (🟨 zrobione 06.11, czeka na wdrożenie i oględziny MG przy stole); **66e** Scena przykładowa „Po zamknięciu” (🟨 zrobione 07.11, obejrzane w Firefoksie; rozegrana w przeglądarce do końca 07.11 — znaleziska w `zaleglosci.md` (27; pkt 18 i 19 nie, decyzja MG; 13 naprawionych 07.11); czeka na naprawę reszty, stół MG i wdrożenie); **66d** Scena przykładowa „Zastaw” (🟨 wzorzec zrobiony i rozegrany w przeglądarce 06.11; od 06.11 jeden taran na turę (decyzja MG); czeka na stół MG i wdrożenie); **66** Sceny przykładowe (🟨 zrobione 31.10, czeka na oględziny MG przy stole i wdrożenie; **66b** „Fabryka dronów” 🟨 zrobione 31.10, tak samo (netrunner obejrzany w przeglądarce 07.11, poprawki czekają na wdrożenie); **66c** „Ostatni zjazd” 🟨 wzorzec zrobiony, rozegrany w przeglądarce 04.11 i ponownie 05.11 po rebalansie (porażka o włos, balans zatwierdzony przez MG) — zaległości z przebiegów zamknięte 05.11, Esc na kubku MG 07.11 — czeka na stół MG i wdrożenie); **65** Scena pościgu i walka pojazdów (🟨 65a–65e ✅ 30–31.10, czeka na oględziny MG przy stole); **62** Sieć ze sceny (🟨 zrobione, czeka na oględziny MG na VPS po wdrożeniu); **61** Skradanie się (🟨 zrobione, czeka na słowo MG o rozstrzygnięciach); **28** Wdrożenie na VPS (🟨 działa na `https://vtt.tatanga.eu` z botami od 18.10; zostały off-site, utwardzenie, monitoring); **43b**, **43c** (UI walki); **60** Czytelny czat (zlecenie MG z 24.10; 🟨 60a–60c ✅, czeka na oględziny MG z pierwszego kryterium); T10; refaktoryzacja odłożona (MG 18.10) |
+| ⬜ otwarty   | **70** Przebudowa netrunningu: okno jednego piętra i przejęte urządzenia na mapie (⬜ projekt z 11.11 w `etap-70-siec-przebudowa.md`, czeka na akceptację MG; realizacja 70a–70f); **69** Lewa belka bez ramek (🟨 zrobione 11.11, czeka na wdrożenie i oględziny MG przy stole); **68** Warsztat: ulepszenia auta za ed i naprawa (🟨 zrobione 06.11, czeka na wdrożenie i oględziny MG przy stole); **67** Zakup pojazdu (🟨 zrobione 06.11, czeka na wdrożenie i oględziny MG przy stole); **66e** Scena przykładowa „Po zamknięciu” (🟨 zrobione 07.11, obejrzane w Firefoksie; rozegrana w przeglądarce do końca 07.11 — znaleziska w `zaleglosci.md` (27; pkt 18 i 19 nie, decyzja MG; 13 naprawionych 07.11); czeka na naprawę reszty, stół MG i wdrożenie); **66d** Scena przykładowa „Zastaw” (🟨 wzorzec zrobiony i rozegrany w przeglądarce 06.11; od 06.11 jeden taran na turę (decyzja MG); czeka na stół MG i wdrożenie); **66** Sceny przykładowe (🟨 zrobione 31.10, czeka na oględziny MG przy stole i wdrożenie; **66b** „Fabryka dronów” 🟨 zrobione 31.10, tak samo (netrunner obejrzany w przeglądarce 07.11, poprawki czekają na wdrożenie); **66c** „Ostatni zjazd” 🟨 wzorzec zrobiony, rozegrany w przeglądarce 04.11 i ponownie 05.11 po rebalansie (porażka o włos, balans zatwierdzony przez MG) — zaległości z przebiegów zamknięte 05.11, Esc na kubku MG 07.11 — czeka na stół MG i wdrożenie); **65** Scena pościgu i walka pojazdów (🟨 65a–65e ✅ 30–31.10, czeka na oględziny MG przy stole); **62** Sieć ze sceny (🟨 zrobione, czeka na oględziny MG na VPS po wdrożeniu); **61** Skradanie się (🟨 zrobione, czeka na słowo MG o rozstrzygnięciach); **28** Wdrożenie na VPS (🟨 działa na `https://vtt.tatanga.eu` z botami od 18.10; zostały off-site, utwardzenie, monitoring); **43b**, **43c** (UI walki); **60** Czytelny czat (zlecenie MG z 24.10; 🟨 60a–60c ✅, czeka na oględziny MG z pierwszego kryterium); T10; refaktoryzacja odłożona (MG 18.10) |
 | ✅ ukończone | 01–11, 13–20b, 23a–27f, 27h–27l, 29a–30d, 31–35, 37–42c, 43a, 44a–44d, 45, 46a1, 46a2, 46c1, 46c2, 46b1, 46b2, 47a, 47b, 48a, 48b, 48c, 49a, 49b, 50a, 50b, 50c, 51, 52, 53, 54, 55, 56, 57 (57a–57c), 58 (58a–58d), 59 (59a–59c), 63 (63a–63b; 63c wycofane 29.10), 64 (64a–64c) (ostatni zamknięty: 64, 2026-10-30) |
 | ⛔ wycofane  | 12, 21, 22 (głos), 27g (wydajność), 36 (makra); 27, 29, 30, 38 rozdzielone na etapy literowane |
 
 Pełna tabela z nazwami i datami: `archiwum/tabela-etapow.md`.
 
 ## Od czego zacząć
+
+**Przebudowa netrunningu (etap 70, zlecenie MG z 11.11) — projekt czeka na akceptację MG, kodu
+jeszcze nie ma.** `etap-70-siec-przebudowa.md`: okno SIEĆ pokazuje jedno piętro (gracz nie
+dostaje reszty szybu), przejęte urządzenie to figura sterowana z mapy lewą belką (węzeł raz na
+Turę, 1 Akcja Sieciowa = ruch i czynność, strzał Wartością bojową urządzenia), pasek „oczu”,
+figura z obszarem straży w edycji mapy, Sieć ze sceny z węzłami wg rodzaju, automat LOD-u
+i Demona z hamulcem MG. Osiem decyzji MG i dziesięć rozstrzygnięć bez pytań stoi w pliku;
+pierwsza sesja realizacji to 70a (okno), po słowie MG o rozstrzygnięciach.
 
 **Lewa belka bez ramek (etap 69, zlecenie MG z 10.11) — czeka na wdrożenie (bez migracji)
 i oględziny MG przy stole.** Wariant A z makiety: portret 16:15 gasnący w papier, PW jako
@@ -789,6 +797,23 @@ a nie do tego pliku.
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
 
+### Sesja 11.11 — projekt przebudowy netrunningu (etap 70)
+
+**Zlecenie MG:** plik z projektem zmian netrunningu — okno SIEĆ przejrzyste, tylko bieżące
+piętro, bez zdradzania liczby pięter, mechaniki „bardziej przemyślane”, realne sterowanie
+elementami mapy (strefy, drony, podgląd z kamer), testy z E2E; propozycje niejednoznaczne —
+najpierw pytania. **Decyzje MG (dwie tury pytań):** węzeł raz na Turę, a 1 Akcja Sieciowa daje
+urządzeniu ruch i czynność; lista urządzeń dopiero na piętrze węzła (cofa 28.10); strefy
+środowiskowe tylko „Wyłącz / Włącz”; LOD i Demon automatem z hamulcem MG (cofa 15.08); Sieć ze
+sceny z węzłami wg rodzaju; podgląd mapą i paskiem „oczu”; strzał Wartością bojową urządzenia
+(wbrew s. 213); urządzenie to figura z obszarem straży. **Zrobione:**
+`etap-70-siec-przebudowa.md` — 11 punktów diagnozy z kodu i rozegrań 66b / 66e (m.in. `netRunView`
+wysyła graczowi cały szyb z `id` nieodkrytych pięter, a `netrun:move` jest wyrocznią głębokości),
+projekt A–G, podział 70a–70f z kryteriami, testy `shared`, serwera i pięć speców E2E
+(`47-siec/t70a`–`t70e`), dziesięć **rozstrzygnięć bez pytań** do słowa MG. Wiersz w tabeli
+etapów, wskaźnik przy zaległości z 07.11. **Kodu nie ruszano; testów nie puszczano, w przeglądarce
+nie oglądano** (sam dokument). **Dalej:** akceptacja MG, potem 70a.
+
 ### Sesja 10–11.11 — lewa belka bez ramek (etap 69)
 
 **Zlecenie MG:** nowy wygląd lewej belki — „mniej generycznych prostokątów”, przyciski różnej
@@ -810,34 +835,3 @@ MG na „Oględzinach 12.09”, dzień i noc): figura bez portretu i z portretem
 dymek, podświetlenie; budżet tury i koniec tury na stanie walki podstawionym lokalnie
 (`setState` w przeglądarce, bez serwera). Gracz, zwinięta belka, szuflada trybów i Chrome
 nieoglądane. Pułapka na górze `ogledziny`, umowa na górze `ui`.
-
-### Sesja 10.11, druga — grafika auta to model, skala na miniaturach
-
-**Zgłoszenie MG:** „statystyki chyba wszystkich pojazdów są takie same — Statek powietrzny,
-Ruch 20, fotele 2, szyby 15 PW — a to nie są statki powietrzne; oddaj lepiej na zdjęciach skalę
-pojazdów”. **Przyczyna:** auto Morte (i bezpański wóz z 31.10) w „ulice Lublina” to był
-**Aerozep** z katalogu — lista „＋ Dodaj pojazd” była alfabetyczna i miała go wybranego z góry,
-a wybór grafiki zmieniał tylko obrazek. **Decyzje MG:** grafika = model (MG), galeria modeli
-przy dodawaniu, Morte → „Osa”, drugi Aerozep usunąć, miniatury proporcjonalne do realnej
-długości (mapa bez zmian). **Zrobione (bez migracji, czeka na wdrożenie):** `cpredVehicleToModel`
-i `cpredVehicleModelByArt` (`shared`), `vehicle:rename` przestawia model u MG i pilnuje klasy
-u gracza, galeria w `AddFromCatalog`, `lengthM` w `VEHICLE_ART` i `vehicleArtScale` →
-`--vehicle-art-scale`. Umowa na górze `ekwipunek`. **Dane:** w `dev.db` (kopia
-`dev.db.bak-20261110-aerozep`) auto Morte jest „Osą” (PUK 35/35, Szyby kuloodporne i Nitro;
-Wzmocniona konstrukcja wypadła, bo motocykl jej nie przyjmuje), bezpański Aerozep usunięty —
-skryptem, bo „ulice Lublina” ma innego MG, a sesja trwała; widok odświeży F5.
-**Rozstrzygnięcia bez pytań:** gracz dostaje tylko lakier swojej klasy (bez tego kompakt
-z grafiką supersamochodu znów kłamałby o liczbach), okno „Edytuj…” zostaje ręczne, długości
-grafik to szacunek z wyglądu. **Testy:** `shared` 2996/2996, serwer 1763/1763, klient 489/489,
-ESLint i `tsc --noEmit` czyste. **Oglądane w Chromium** (Playwright MCP, „Oględziny 12.09”):
-galeria, wybór „Osy”, dodanie, przestawienie na „Nomadę”; Firefox MCP nie wstał (pułapka
-`ogledziny`). Wóz testowy „Nomada” został w „Oględzinach 12.09” — usunięcia nie przepuścił
-klasyfikator, MG usuwa go ręką. MG i Chrome nieoglądane.
-
-**Druga część (ten sam dzień):** MG dostarczył grafiki supermotocykla, skutera wodnego,
-motorówki i łodzi kabinowej, a pozostałe sześć pojazdów z zamówienia kazał wyciąć z gry.
-**Decyzje MG:** modele „Szkarłat” 30 000 ed / poz. 4, „Fala” 6 000 / 1, „Barakuda” 9 000 / 2,
-„Perła” 12 000 / 4; 5–10 całkiem z gry (także z Taboru); piana zostaje. **Zrobione:** cztery
-klasy modeli z wymyślonymi zastępstwami w próbce, `CPRED_VEHICLE_RETIRED_IDS`, grupa „Łodzie”,
-stała ramka skali 6,4 m. Szczegóły w `etap-67-zakup-pojazdu.md` („Trzecia dostawa”), wpis
-w `decyzje-i-uproszczenia.md`. **Testy:** `shared` 2997/2997, serwer 1765/1765 (pierwszy przebieg z dwoma znanymi odrzutami `SceneExploration` po teardownie — pułapka `testy`, powtórka czysta), klient 489/489; ESLint i `tsc --noEmit` czyste. **Oglądane w Chromium** (galeria MG).
