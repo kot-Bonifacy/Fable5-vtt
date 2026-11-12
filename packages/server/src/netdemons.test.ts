@@ -24,6 +24,7 @@ import type { CpredCharacterData } from '@vtt/shared';
 import type { ServerConfig } from './config.js';
 import { buildApp, type BuiltApp } from './app.js';
 import { joinUrl } from './test-join.js';
+import { runFloor } from './test-net.js';
 
 /**
  * Demony (etap 26e) na żywych gniazdach.
@@ -275,7 +276,7 @@ describe('Demony na żywych gniazdach', () => {
   }
 
   function nodeOf(run: NetRunPayload) {
-    return run.run.branches[0]!.floors.find((floor) => floor.id === 'f0');
+    return runFloor(run, 'f0');
   }
 
   it('stawia stół: netrunner z Mieczem, wieżyczka i dwa Demony', async () => {

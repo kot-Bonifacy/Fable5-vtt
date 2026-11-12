@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import type { ChatMessageView } from '@vtt/shared';
-import { CHAT_GROUP_WINDOW_MS, chatContinuations, chatHeaderKey } from './chat-grouping.js';
+import {
+  CHAT_GROUP_WINDOW_MS,
+  chatContinuations,
+  chatHeaderKey,
+  dropShadowedRows,
+} from './chat-grouping.js';
 import type { ChatItem } from './stores/chatStore.js';
 
 /** Etap 60b: kolejne karty tego samego mówiącego tracą powtórzony nagłówek. */
@@ -118,5 +123,40 @@ describe('chatHeaderKey', () => {
       const item = msg(1, { kind });
       expect(item.type === 'message' && chatHeaderKey(item.message), kind).toBe(null);
     }
+  });
+});
+
+describe('dropShadowedRows (etap 70a)', () => {
+  const action = (note: string, shadows?: number) => ({
+    combatantId: '',
+    actorName: 'Iskra',
+    actionId: 'net',
+    actionName: 'Kopia Pliku',
+    note,
+    ...(shadows !== undefined ? { shadows } : {}),
+  });
+  const rows = [
+    msg(1),
+    msg(2, { kind: 'action', action: action('') }),
+    msg(3, { kind: 'gmaction', action: action('Listy przewozowe', 2) }),
+    note,
+  ];
+
+  it('netrunner czyta pełny wiersz zamiast skrótu, nie oba', () => {
+    const kept = dropShadowedRows(rows, false);
+    expect(kept.map((item) => (item.type === 'message' ? item.message.id : item.id))).toEqual([
+      1,
+      3,
+      'n1',
+    ]);
+  });
+
+  it('MG zostaje przy obu wierszach', () => {
+    expect(dropShadowedRows(rows, true)).toBe(rows);
+  });
+
+  it('bez zastępcy nic nie znika — także skrót, którego pełny wiersz nie doszedł', () => {
+    const plain = [msg(1), msg(2, { kind: 'action', action: action('') })];
+    expect(dropShadowedRows(plain, false)).toBe(plain);
   });
 });

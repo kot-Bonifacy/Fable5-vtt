@@ -713,7 +713,7 @@ test.describe.serial('T5a: „Brama” — przygotowanie, wejście przez bramę,
     await ola.page.keyboard.press('Escape');
   });
 
-  test('5.3 podłączenie: winda w pływającym oknie, dalsze piętra jako „?”', async () => {
+  test('5.3 podłączenie: pływające okno z jedną kartą piętra i wyjściem „?”', async () => {
     const page = ola.page;
     await clickOnMap(page, BRAMA.accessPoint);
     const card = page.getByLabel(/^Karta obiektu: /);
@@ -722,11 +722,11 @@ test.describe.serial('T5a: „Brama” — przygotowanie, wejście przez bramę,
     const window = runWindow(ola);
     await expect(window).toBeVisible();
     await expect(window.locator('.net-run-title')).toContainText('SIEĆ');
-    const labels = window.locator('.net-run-floor-label');
-    await expect(labels).toHaveText(['Hasło: szlaban', '?', '?', '?', '?']);
-    await expect(window.locator('.net-run-status')).toContainText(
-      'Punkt dostępu: Skrzynka sterowania bramy',
-    );
+    // 70a: jedno piętro w oknie; ile jest pod spodem, tego ładunek gracza nie niesie.
+    await expect(window.locator('.net-floor-card')).toHaveCount(1);
+    await expect(window.locator('.net-floor-card-title')).toHaveText('Hasło: szlaban');
+    await expect(window.locator('.net-exit--down')).toHaveText('▼ Niżej: ?');
+    await expect(window.locator('.net-plan, .net-run-floor')).toHaveCount(0);
     expect(runOf('Iskra')?.state.position.floor).toBe(0);
     // Marek nie ma cudzego runu; MG widzi go z nazwą architektury.
     const runsOf = async (actor: Actor) =>
@@ -754,23 +754,22 @@ test.describe.serial('T5a: „Brama” — przygotowanie, wejście przez bramę,
 
   test('#31 niezłamane hasło na piętrze wejścia blokuje zjazd niżej', async () => {
     const window = runWindow(ola);
-    const floors = window.locator('.net-run-floor');
     try {
-      await floors.nth(1).locator('.net-run-floor-body').click();
-      await ola.page.waitForTimeout(1_500);
+      // 70a: wyjście jest wyszarzone z powodem, a serwer odmawia też surowemu gniazdu.
+      const down = window.locator('.net-exit--down');
+      await expect(down).toBeDisabled();
+      await expect(down).toHaveAttribute('title', /Hasło pod stopami blokuje zjazd/);
+      const run = runOf('Iskra')!;
+      const ack = await emitAck(await ola.socket(), 'netrun:move', {
+        runId: run.id,
+        to: { ...run.state.position, floor: 1 },
+      });
       test.info().annotations.push({
         type: 'zjazd przez niezłamane hasło',
-        description: `piętro ${(runOf('Iskra')?.state.position.floor ?? -1) + 1}; komunikat: ${JSON.stringify(
-          await ola.page.locator('.notice[data-notice-topic="net"]').allTextContents(),
-        )}`,
+        description: JSON.stringify(ack),
       });
+      expect(ack).toMatchObject({ ok: false });
       expect(runOf('Iskra')?.state.position.floor).toBe(0);
-      await expect(ola.page.locator('.notice[data-notice-topic="net"]')).toContainText(
-        'blokuje drogę',
-        {
-          timeout: 2_000,
-        },
-      );
     } finally {
       // Gdyby #31 wrócił, Ola stałaby już na Pliku — wraca na hasło (w górę
       // wolno zawsze), żeby dalszy przebieg był ten sam.
@@ -784,33 +783,28 @@ test.describe.serial('T5a: „Brama” — przygotowanie, wejście przez bramę,
           }),
         ).toMatchObject({ ok: true });
         await expect.poll(() => runOf('Iskra')?.state.position.floor).toBe(0);
-        await expect(floors.nth(0)).toHaveClass(/net-run-floor--here/);
+        await expect(window.locator('.net-floor-card-title')).toHaveText('Hasło: szlaban');
       }
     }
   });
 
   test('5.3 Backdoor łamie hasło, zjazd na Plik, Ajdi go rozpoznaje', async () => {
     const window = runWindow(ola);
-    const floors = window.locator('.net-run-floor');
+    const card = window.locator('.net-floor-card');
     const password = architecture(architectureName).shaft.branches[0]!.floors[0]!.id;
     const file = architecture(architectureName).shaft.branches[0]!.floors[1]!.id;
     scriptDice([6]);
     await window.locator('.net-abilities').getByRole('button', { name: 'Backdoor' }).click();
     await expect.poll(() => runOf('Iskra')?.state.broken).toContain(password);
     expect(pendingDice()).toBe('');
-    await expect(floors.nth(0)).toContainText('złamane');
+    await expect(card).toContainText('złamane');
     // Reszta stołu widzi skrót, nie zawartość Architektury (26b).
     await expect(marek.page.locator('.chat-message', { hasText: 'Backdoor' }).last()).toBeVisible();
 
-    await floors.nth(1).locator('.net-run-floor-body').click();
+    await window.locator('.net-exit--down').click();
     await expect.poll(() => runOf('Iskra')?.state.position.floor).toBe(1);
-    await expect(window.locator('.net-run-floor-label')).toHaveText([
-      'Hasło: szlaban',
-      'Plik: grafik zmian',
-      '?',
-      '?',
-      '?',
-    ]);
+    await expect(window.locator('.net-floor-card-title')).toHaveText('Plik: grafik zmian');
+    await expect(window.locator('.net-trail-step')).toHaveCount(2);
 
     const since = lastMessageId();
     scriptDice([5]);
@@ -818,10 +812,8 @@ test.describe.serial('T5a: „Brama” — przygotowanie, wejście przez bramę,
     await expect.poll(() => runOf('Iskra')?.state.identified).toContain(file);
     expect(pendingDice()).toBe('');
     // Ajdi wypłaca notatkę MG z Pliku — Oli, nie Markowi.
-    await expect(floors.nth(1)).toContainText('rozpoznany');
-    await expect(floors.nth(1).locator('.net-run-floor-notes')).toContainText(
-      'Zmiana warty o 3:00',
-    );
+    await expect(card).toContainText('rozpoznany');
+    await expect(card.locator('.net-run-floor-notes')).toContainText('Zmiana warty o 3:00');
     fromPlayers.reveal(fileNote);
     fromMarek.track(fileNote);
     expect(messageAfter(since, 'Ajdi', 'gmroll') ?? messageAfter(since, 'Ajdi')).toBeTruthy();

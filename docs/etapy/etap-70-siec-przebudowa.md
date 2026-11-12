@@ -304,19 +304,38 @@ Każdy podetap to jedna sesja, kończy się zielonymi testami i oględzinami w F
 
 ### 70a — Okno SIEĆ: jedno piętro
 
-- [ ] `shared`: `netRunView` w dwóch krojach (gracz: `here` / `exits` / `trail` / `nodeDevices`;
+- [x] `shared`: `netRunView` w dwóch krojach (gracz: `here` / `exits` / `trail` / `nodeDevices`;
       MG: dodatkowo `shaft`), `virusAllowed`, `netMoveAllowedFor` (ślad albo wyjście)
-- [ ] Serwer: odmowa ruchu, kopii i obsługi poza znanymi piętrami jednym kodem; `sightedDevicesOf`
+- [x] Serwer: odmowa ruchu, kopii i obsługi poza znanymi piętrami jednym kodem; `sightedDevicesOf`
       tylko dla bieżącego węzła; jeden wiersz czatu dla netrunnera
-- [ ] Klient: `NetRunWindow.tsx` pocięty na `NetFloorCard`, `NetExits`, `NetTrail`, `NetThreats`,
+- [x] Klient: `NetRunWindow.tsx` pocięty na `NetFloorCard`, `NetExits`, `NetTrail`, `NetThreats`,
       `NetDeckSection`, `NetGmShaft`; `17-net.css` na zmiennych motywu; pierwsze położenie
-- [ ] Testy: `netrun.test.ts` (shared), `netrun.test.ts` (serwer), E2E `t70a-okno-pietro`;
-      poprawione T5a (5.3), `t62-siec-sceny`, `t8c-zdolnosci`
+- [x] Testy: `netrun.test.ts` (shared), `netrun.test.ts` (serwer), E2E `t70a-okno-pietro`;
+      poprawione T5a (5.3), T5b, `t62-siec-sceny` (`t8c-zdolnosci` nie dotyka okna Sieci — bez zmian)
 
 **Kryteria ukończenia:** ładunek gracza po podłączeniu do Architektury 8 pięter z odnogą nie
 zawiera `id`, etykiety ani liczby żadnego piętra poza bieżącym i jego wyjściami (test serwera
 i podsłuch E2E); okno gracza mieści się w 360 px i nie zasłania kubka przy 1920 × 1080; każda
 zdolność z 26b–26e da się wykonać z nowego okna; MG widzi cały szyb.
+
+**Zrobione 11–12.11.2026. Odstępstwa od projektu:**
+
+- **`exits.up` to pozycja rodzica, nie `boolean`** — przycisk „Wyżej” musi wiedzieć, dokąd jedzie,
+  a klient nie ma szybu, żeby to policzyć (z pierwszego piętra odnogi „wyżej” to piętro trzonu).
+- **Ślad niesie `devices` przejętych węzłów** i okno ma sekcję „Przejęte węzły” (obsługa bez
+  wracania na piętro). To pomost do 70c — zniknie razem z listą, gdy urządzenia przejdą na mapę
+  i pasek „oczu”. Strzał z listy z pytaniem o osłonę po odmowie zostaje do 70b.
+- **Test wycieku w `shared` chodzi po własnych losowych szybach z ziarnem**, nie po
+  `generateNetArchitecture` — generator bierze Programy z kompendium, którego test nie ma.
+- **E2E `t70a`: odnoga jest bez LOD-u** (Architektura 8 pięter: 6 trzonu + odnoga z dwóch).
+  Programy wymagają prywatnego kompendium, a automat LOD-u ma własny spec w 70e. Odnoga musi być
+  płytsza albo głębsza od trzonu — przy remisie głębokości Architektura nie ma dna (pułapka
+  w `siec`). Test serwera sprawdza wyciek na szybie 4 pięter bez odnogi; odnogi pokrywa test
+  `shared` (200 losowych szybów) i podsłuch E2E.
+- **Hasło pod stopami:** wyjście w dół jest wyszarzone z powodem w dymku; komunikatu po kliku już
+  nie ma, bo nie ma kliku (T5a #31 sprawdza przycisk i odmowę surowego gniazda).
+- **Belka stanu** pokazuje kropki Akcji Sieciowych także poza walką (wszystkie pełne, dymek mówi,
+  że nikt ich wtedy nie liczy).
 
 ### 70b — Przejęta wieżyczka i kamera na mapie
 

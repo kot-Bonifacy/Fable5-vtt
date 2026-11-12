@@ -322,9 +322,8 @@ test.describe.serial('T5b: „Brama” — walka druga, Sieć, wieżyczka, pad A
     fromPlayers.track(token('Strażnik').id);
     fromPlayers.track(token('Wieżyczka').id);
     // Okno runu wraca u Oli i u MG po zalogowaniu — ten sam stan szybu.
-    await expect(runWindow(ola).locator('.net-run-floor').nth(1)).toHaveClass(
-      /net-run-floor--here/,
-    );
+    await expect(runWindow(ola).locator('.net-floor-card-title')).toHaveText('Plik: grafik zmian');
+    expect(runOf('Iskra')?.state.position.floor).toBe(1);
     await expect(runWindow(mg)).toBeVisible();
     olaWindowDefault = await runWindow(ola).boundingBox();
     mgWindowDefault = await runWindow(mg).boundingBox();
@@ -661,9 +660,10 @@ test.describe.serial('T5b: „Brama” — walka druga, Sieć, wieżyczka, pad A
     expect(activeLabel()).toBe('Iskra');
     await clientsSeeTurn(ola);
     const window = runWindow(ola);
-    const floors = window.locator('.net-run-floor');
+    // 70a: zjazd wyjściem „Niżej” z karty piętra — listy pięter gracz nie ma.
+    const down = window.locator('.net-exit--down');
     const since = lastMessageId();
-    await floors.nth(2).locator('.net-run-floor-body').click();
+    await down.first().click();
     await expect.poll(() => runOf('Iskra')?.state.position.floor).toBe(2);
     olaEntered('pietro-LOD');
     // Kruk czyha na swoim piętrze obok ścigającego już Diablika.
@@ -705,7 +705,7 @@ test.describe.serial('T5b: „Brama” — walka druga, Sieć, wieżyczka, pad A
 
     // „Miecz trafia…” (etap 55b) stoi w kanale nad listą pięter.
     await closeNotices(ola.page);
-    await floors.nth(3).locator('.net-run-floor-body').click();
+    await down.first().click();
     await expect.poll(() => runOf('Iskra')?.state.position.floor).toBe(3);
     olaEntered('pietro-wezla');
 
@@ -724,7 +724,7 @@ test.describe.serial('T5b: „Brama” — walka druga, Sieć, wieżyczka, pad A
         { type: 'Kontrola', description: JSON.stringify(chatSince(beforeControl)) },
         { type: 'tura Iskry', description: combatantOf('Iskra').turnState ?? '' },
       );
-    await expect(floors.nth(3)).toContainText('przejęty', { timeout: 30_000 });
+    await expect(window.locator('.net-floor-card')).toContainText('przejęty', { timeout: 30_000 });
     const turn = JSON.parse(combatantOf('Iskra').turnState!) as {
       action: { net?: { count: number; max: number } };
     };
@@ -900,10 +900,8 @@ test.describe.serial('T5b: „Brama” — walka druga, Sieć, wieżyczka, pad A
     const turnBefore = combatantOf('Iskra').turnState;
     await ola.page.reload();
     await expect(runWindow(ola)).toBeVisible({ timeout: 30_000 });
-    await expect(runWindow(ola).locator('.net-run-floor').nth(3)).toHaveClass(
-      /net-run-floor--here/,
-    );
-    await expect(runWindow(ola).locator('.net-run-floor').nth(3)).toContainText('przejęty');
+    expect(runOf('Iskra')?.state.position.floor).toBe(3);
+    await expect(runWindow(ola).locator('.net-floor-card')).toContainText('przejęty');
     await expect
       .poll(() => queueOf(ola), { timeout: 30_000 })
       .toEqual(['Diablik', 'Kowal', 'Iskra', 'Strażnik']);

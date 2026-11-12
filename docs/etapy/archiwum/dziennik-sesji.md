@@ -1,5 +1,27 @@
 # Dziennik sesji — archiwum
 
+### Sesja 10–11.11 — lewa belka bez ramek (etap 69)
+
+**Zlecenie MG:** nowy wygląd lewej belki — „mniej generycznych prostokątów”, przyciski różnej
+wielkości i kształtu, bardziej funkcjonalne. **Decyzje MG** (pytania na starcie, potem makieta
+z trzema wariantami): kierunek „bez ramek, tusz i odstępy”, trzy rozmiary przycisków,
+przeładowanie przy broni, koszt na przycisku, liczby broni na kaflu; wariant A, portret
+o ćwierć wyższy, podświetlenie pod kursorem, opis po chwili, kubek o ćwierć większy; w trakcie
+oględzin: **skróty 1–9 do usunięcia**, linijka z nazwą pod ikonami też. **Zrobione (bez
+migracji):** `CombatHud.tsx` przepisany na `WeaponTile` / `MediumSlot` / `IconSlot`, dymek
+`HudTip.tsx`, sloty w `shared` z `cost`, `damage`, `rof`, `rangeDv` (bez `key`),
+`HudContext.target` (cel, dystans, PT pod bronią w ręku), kadr portretu 16:15, budżet tury
+tuszem, stopka z końcem tury obok kubka 65 px. **Rozstrzygnięcia bez pytań** — w pliku etapu.
+**Testy:** `shared` 2995/2995, klient 489/489, ESLint, Prettier i `tsc --noEmit` (shared,
+klient, serwer, e2e) czyste; serwer niepuszczany (bez zmian w kodzie serwera). E2E: `t46c-amunicja`
+9 zaliczonych, `t4a-walka-knajpa` z `po-T3` 13 zaliczonych (po 2 pominięte `@llm`); pełne
+`@szybkie` niepuszczane. Trzy testy-strażnicy złapały pierwszą wersję (kolor wprost, zmienne
+belki poza motywem, strzałka trybów bez `title`). **Oglądane w Firefoksie** (Playwright MCP,
+MG na „Oględzinach 12.09”, dzień i noc): figura bez portretu i z portretem, broń w ręku z celem,
+dymek, podświetlenie; budżet tury i koniec tury na stanie walki podstawionym lokalnie
+(`setState` w przeglądarce, bez serwera). Gracz, zwinięta belka, szuflada trybów i Chrome
+nieoglądane. Pułapka na górze `ogledziny`, umowa na górze `ui`.
+
 ### Sesja 10.11, druga — grafika auta to model, skala na miniaturach
 
 **Zgłoszenie MG:** „statystyki chyba wszystkich pojazdów są takie same — Statek powietrzny,

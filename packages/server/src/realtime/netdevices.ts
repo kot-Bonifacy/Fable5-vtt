@@ -108,13 +108,16 @@ async function requireNode(
   if (!architecture || !state) throw new RealtimeError('ARCHITECTURE_NOT_FOUND');
 
   const floorId = typeof payload?.floorId === 'string' ? payload.floorId : '';
+  // Etap 70a: najpierw „nie trzymasz”, dopiero potem „co to za piętro” — id
+  // piętra, którego nie ma, i id węzła, do którego netrunner nie doszedł,
+  // dostają tę samą odmowę, więc `floorId` nie jest wyrocznią szybu.
+  if (!state.controlled.some((hold) => hold.floorId === floorId)) {
+    throw new RealtimeError('NET_NODE_NOT_HELD');
+  }
   const floor = architecture.branches
     .flatMap((branch) => branch.floors)
     .find((entry) => entry.id === floorId);
   if (!floor || floor.kind !== 'controlNode') throw new RealtimeError('NET_WRONG_FLOOR');
-  if (!state.controlled.some((hold) => hold.floorId === floor.id)) {
-    throw new RealtimeError('NET_NODE_NOT_HELD');
-  }
 
   const device = floor.devices?.find((entry) => entry.id === payload?.deviceId);
   if (!device) throw new RealtimeError('NET_DEVICE_UNKNOWN');

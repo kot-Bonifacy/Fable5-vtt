@@ -180,6 +180,12 @@ export interface CombatActionLogEntry {
   passed?: boolean;
   /** The GM ran their own NPC past the budget — logged, never blocked. */
   overspent?: boolean;
+  /**
+   * Id of the public line this fuller one stands in for (stage 70a). The reader
+   * it is addressed to sees this row instead of that one, not both — see
+   * `dropShadowedRows` in the client. The GM keeps both.
+   */
+  shadows?: number;
 }
 
 /**

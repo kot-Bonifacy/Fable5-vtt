@@ -82,3 +82,24 @@ export function chatContinuations(
   }
   return out;
 }
+
+/**
+ * Wiersze bez tych, które mają pełniejszego zastępcę (etap 70a, 66e pkt 23).
+ *
+ * Akcja w Sieci idzie do stołu skrótem („Kopia Pliku”), a do netrunnera i MG
+ * dodatkowo pełnym wierszem „poufne” z nazwą Pliku albo urządzenia. Pełny wiersz
+ * niesie `action.shadows` z id skrótu — netrunner czyta wtedy jeden wiersz, nie
+ * dwa. To nie jest ukrywanie danych: skrót zawiera się w pełnym wierszu, który
+ * ten widz i tak dostał. MG zostaje przy obu (widzi, co usłyszał stół).
+ */
+export function dropShadowedRows(items: readonly ChatItem[], isGm: boolean): readonly ChatItem[] {
+  if (isGm) return items;
+  const shadowed = new Set<number>();
+  for (const item of items) {
+    if (item.type !== 'message') continue;
+    const id = item.message.action?.shadows;
+    if (typeof id === 'number') shadowed.add(id);
+  }
+  if (shadowed.size === 0) return items;
+  return items.filter((item) => item.type !== 'message' || !shadowed.has(item.message.id));
+}

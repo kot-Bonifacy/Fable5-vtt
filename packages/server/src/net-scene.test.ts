@@ -296,19 +296,37 @@ describe('Sieć ze sceny (etap 62)', () => {
     expect(firstRun.run.architectureName).toBeUndefined();
   });
 
-  it('netrunner od razu widzi nazwę i rodzaj urządzeń; mina i ludzie są poza Siecią', () => {
-    expect(firstRun.run.sightedDevices).toEqual([
+  it('od podłączenia okno nie mówi o urządzeniach nic (70a, decyzja MG nr 2 z 11.11)', () => {
+    expect(firstRun.run.nodeDevices).toBeUndefined();
+    expect(firstRun.run.exits.down).toEqual([
+      { to: { branchId: 'trunk', floor: 1 }, knowledge: 'unknown' },
+    ]);
+    const wire = JSON.stringify(firstRun);
+    expect(wire).not.toContain('Wieżyczka');
+    expect(wire).not.toContain('Kamera');
+    expect(wire).not.toContain(cameraId);
+  });
+
+  it('na piętrze węzła, przed Kontrolą: nazwa i rodzaj; mina i ludzie są poza Siecią', async () => {
+    const onNode = data(
+      await emitAck<NetRunPayload>(player, 'netrun:move', {
+        runId: firstRun.runId,
+        to: { branchId: 'trunk', floor: 1 },
+      }),
+      'netrun:move',
+    );
+    expect(onNode.run.nodeDevices).toEqual([
       { name: 'Kamera', deviceKind: 'camera' },
       { name: 'Wieżyczka', deviceKind: 'turret' },
     ]);
-  });
-
-  it('przed Kontrolą: węzeł zakryty, bez przycisków i bez miejsca kamery na mapie', () => {
-    const floors = firstRun.run.branches.flatMap((branch) => branch.floors);
-    expect(floors.map((floor) => floor.knowledge)).toEqual(['entered', 'hidden']);
-    expect(floors.every((floor) => !floor.devices)).toBe(true);
-    expect(JSON.stringify(firstRun)).not.toContain('Kamera nad barem');
-    expect(JSON.stringify(firstRun)).not.toContain(cameraId);
+    // Bez przycisków i bez miejsca kamery na mapie — to daje dopiero Kontrola.
+    expect(onNode.run.here?.devices).toBeUndefined();
+    expect(JSON.stringify(onNode)).not.toContain('Kamera nad barem');
+    expect(JSON.stringify(onNode)).not.toContain(cameraId);
+    // MG nie potrzebuje skrótu: ma pełną listę na piętrze planu.
+    const gmRun = (await roundTrip(gm)).netRuns.find((run) => run.runId === firstRun.runId)!;
+    expect(gmRun.run.nodeDevices).toBeUndefined();
+    expect(gmRun.run.here?.devices).toHaveLength(2);
   });
 
   it('gniazdo zostaje podpięte do złożonej Sieci', async () => {
@@ -339,8 +357,10 @@ describe('Sieć ze sceny (etap 62)', () => {
               id: 'trunk',
               parentFloor: null,
               floors: [
-                { id: 'f0', kind: 'password', label: 'Hasło', dv: 6 },
-                { id: 'f1', kind: 'controlNode', label: 'Węzeł zaplecza', dv: 10, devices: [] },
+                // Węzeł na wejściu: lista urządzeń przychodzi dopiero na piętrze
+                // węzła (70a), a ten test jest o dopinaniu figur, nie o haśle.
+                { id: 'f0', kind: 'controlNode', label: 'Węzeł zaplecza', dv: 10, devices: [] },
+                { id: 'f1', kind: 'password', label: 'Hasło', dv: 6 },
               ],
             },
           ],
@@ -364,7 +384,7 @@ describe('Sieć ze sceny (etap 62)', () => {
       'netrun:start',
     );
     expect(nodeDevices(await architecture(ownId))).toEqual([[droneId]]);
-    expect(run.run.sightedDevices).toEqual([{ name: 'Dron ochrony', deviceKind: 'drone' }]);
+    expect(run.run.nodeDevices).toEqual([{ name: 'Dron ochrony', deviceKind: 'drone' }]);
   });
 
   it('kamera postawiona w trakcie runu dochodzi od razu, bez ponownego podłączenia (29.10)', async () => {
@@ -372,7 +392,7 @@ describe('Sieć ze sceny (etap 62)', () => {
     const synced = new Promise<NetRunPayload[]>((resolve, reject) => {
       const timer = setTimeout(() => reject(new Error('netrun:sync timeout')), 4000);
       const onSync = ({ runs }: { runs: NetRunPayload[] }) => {
-        if (!runs.some((run) => run.run.sightedDevices?.some((d) => d.deviceKind === 'camera')))
+        if (!runs.some((run) => run.run.nodeDevices?.some((d) => d.deviceKind === 'camera')))
           return;
         clearTimeout(timer);
         player.off('netrun:sync', onSync);
@@ -392,7 +412,7 @@ describe('Sieć ze sceny (etap 62)', () => {
     ).id;
     expect(nodeDevices(await architecture(owned.id))[0]).toContain(lateCamera);
     const runs = await synced;
-    expect(runs[0]!.run.sightedDevices).toContainEqual({
+    expect(runs[0]!.run.nodeDevices).toContainEqual({
       name: 'Kamera w magazynie',
       deviceKind: 'camera',
     });

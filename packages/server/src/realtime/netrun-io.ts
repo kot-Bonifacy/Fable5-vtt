@@ -3,6 +3,7 @@ import type {
   ChatMessageView,
   CombatActionLogEntry,
   CpredNetArchitecture,
+  CpredNetFloor,
   CpredNetPosition,
   CpredNetProgramProfile,
   CpredNetRunState,
@@ -337,7 +338,11 @@ export async function runPayloadFor(
       combat,
       demons: netDemonViews(defence, { gm }),
       devicesOf: (floor) => devices.get(floor.id) ?? [],
-      sightedDevices: await sightedDevicesOf(deps.ctx.prisma, architecture),
+      // Etap 70a (decyzja MG nr 2 z 11.11): nazwy urządzeń dopiero na piętrze
+      // ich węzła — od podłączenia okno nie mówi o nich nic.
+      nodeDevices: gm
+        ? []
+        : await sightedDevicesOf(prisma, netFloorAt(architecture, state.position)),
       round: combatRow && combatRow.round > 0 ? combatRow.round : null,
       tries: netTriesOf(runtime, {
         characterId: row.characterId,
@@ -411,17 +416,19 @@ async function disarmedZoneDevicesOf(
 }
 
 /**
- * Etap 62: every device of the Architecture as the table names it (#37) — the
- * figure under its table name, a hidden or missing figure by its kind. The
- * editor's own device name is content and stays behind Control.
+ * The devices of one control node as the table names them (#37) — the figure
+ * under its table name, a hidden or missing figure by its kind. The editor's
+ * own device name is content and stays behind Control.
+ *
+ * Etap 62 sent this list for the whole Architecture from the moment of jacking
+ * in; since 70a (decyzja MG nr 2 z 11.11) it is the node stood on and nothing
+ * else — nineteen names at the door gave away the scale of the defence.
  */
 async function sightedDevicesOf(
   prisma: PrismaClient,
-  architecture: CpredNetArchitecture,
+  floor: CpredNetFloor | undefined,
 ): Promise<NetSightedDevice[]> {
-  const devices = architecture.branches
-    .flatMap((branch) => branch.floors)
-    .flatMap((floor) => floor.devices ?? []);
+  const devices = floor?.kind === 'controlNode' ? (floor.devices ?? []) : [];
   const ids = devices.map((device) => device.tokenId).filter((id): id is string => !!id);
   const tokens = new Map(
     (ids.length ? await prisma.token.findMany({ where: { id: { in: ids } } }) : []).map((token) => [
@@ -784,8 +791,9 @@ export function runnerOwnerOf(row: {
  * urządzenie pod nazwą z mapy), a MG i netrunner — dodatkowo pełny wiersz
  * (`secretNote`) jako `gmaction` z adresatem: tak wraca im z historią po F5
  * (`visibleTo`: MG po rodzaju, netrunner po `recipientId` albo `authorId`),
- * a nikomu innemu nie dociera nawet ramką. Decyzja MG: dwa wiersze u MG
- * i netrunnera, jeden u reszty stołu.
+ * a nikomu innemu nie dociera nawet ramką. Decyzja MG: dwa wiersze u MG,
+ * jeden u reszty stołu. Netrunner od etapu 70a czyta jeden: pełny wiersz
+ * niesie `shadows` z id skrótu i czat gracza skrót pomija (66e, pkt 23).
  */
 export async function logNetLineWithSecret(
   deps: RealtimeDeps,
@@ -815,6 +823,8 @@ export async function logNetLineWithSecret(
     actionId: CPRED_ACTION_NET,
     actionName: input.actionName,
     note: input.secretNote,
+    // Etap 70a: netrunner czyta ten wiersz zamiast skrótu dla stołu, nie obok.
+    shadows: view.id,
   };
   const stored = await deps.ctx.prisma.chatMessage.create({
     data: {

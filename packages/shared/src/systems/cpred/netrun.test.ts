@@ -12,6 +12,7 @@ import {
   netFloorAt,
   netIsBottom,
   netMove,
+  netMoveAllowedFor,
   netMoveRefusal,
   netParent,
   netRunPath,
@@ -234,62 +235,332 @@ const NO_FIGHT: NetCombatView = netCombatView(freshNetCombat(), {
   describeEffect: () => '',
 });
 
-describe('widok filtrowany', () => {
+describe('widok filtrowany — jedno piętro (etap 70a)', () => {
   const state = runAt(TOP, {
     entered: ['f0', 'f1'],
     scouted: ['f2'],
     broken: ['f1'],
     identified: [],
   });
+  const player = { gm: false, netActionsMax: 3, combat: NO_FIGHT };
+  const gm = { gm: true, netActionsMax: 3, combat: NO_FIGHT };
 
-  it('never puts an unopened floor in a player payload', () => {
-    const view = netRunView(ARCHITECTURE, state, { gm: false, netActionsMax: 3, combat: NO_FIGHT });
-    const hidden = view.branches[0]!.floors.find((floor) => floor.id === 'f3')!;
-    expect(hidden.knowledge).toBe('hidden');
-    expect(hidden.kind).toBeNull();
-    expect(JSON.stringify(hidden)).not.toContain('Kamery');
+  it('gives a player the floor underfoot and no shaft at all', () => {
+    const view = netRunView(ARCHITECTURE, state, player);
+    expect(view.here?.id).toBe('f0');
+    expect(view.here?.here).toBe(true);
+    expect(view.shaft).toBeUndefined();
+    expect('branches' in view).toBe(false);
+    expect('sightedDevices' in view).toBe(false);
+    const wire = JSON.stringify(view);
+    // Nothing of the floors below the next door: no id, no label, no branch.
+    for (const secret of ['f3', 'f4', 'g0', 'g1', 'Kamery', 'Strażnik', 'Faktury', 'Księgowość']) {
+      expect(wire).not.toContain(secret);
+    }
   });
 
-  it('gives a scouted floor its kind but not its DV', () => {
-    const view = netRunView(ARCHITECTURE, state, { gm: false, netActionsMax: 3, combat: NO_FIGHT });
-    const scouted = view.branches[0]!.floors.find((floor) => floor.id === 'f2')!;
-    expect(scouted.knowledge).toBe('scouted');
-    expect(scouted.kind).toBe('file');
-    expect(scouted.label).toBe('Listy przewozowe');
-    expect(scouted.dv).toBeUndefined();
+  it('shows one exit per floor directly below, the unknown one bare', () => {
+    const top = netRunView(ARCHITECTURE, runAt(TOP), player);
+    expect(top.exits.up).toBeNull();
+    expect(top.exits.down).toEqual([{ to: { branchId: 'trunk', floor: 1 }, knowledge: 'unknown' }]);
+
+    const junction = netRunView(
+      ARCHITECTURE,
+      runAt({ branchId: 'trunk', floor: 1 }, { entered: ['f0', 'f1'], broken: ['f1'] }),
+      player,
+    );
+    expect(junction.exits.up).toEqual(TOP);
+    expect(junction.exits.down).toEqual([
+      { to: { branchId: 'trunk', floor: 2 }, knowledge: 'unknown' },
+      { to: { branchId: 'b1', floor: 0 }, knowledge: 'unknown', branch: true },
+    ]);
+  });
+
+  it('gives a scouted exit its kind and label but never its DV', () => {
+    const view = netRunView(
+      ARCHITECTURE,
+      runAt(
+        { branchId: 'trunk', floor: 1 },
+        { entered: ['f0', 'f1'], broken: ['f1'], scouted: ['f2', 'g0'] },
+      ),
+      player,
+    );
+    expect(view.exits.down).toEqual([
+      {
+        to: { branchId: 'trunk', floor: 2 },
+        knowledge: 'scouted',
+        kind: 'file',
+        label: 'Listy przewozowe',
+      },
+      {
+        to: { branchId: 'b1', floor: 0 },
+        knowledge: 'scouted',
+        branch: true,
+        kind: 'empty',
+        label: 'Poczekalnia',
+        branchName: 'Księgowość',
+      },
+    ]);
+    expect(JSON.stringify(view.exits)).not.toContain('"dv"');
+  });
+
+  it('marks every way down blocked while the password underfoot holds', () => {
+    const held = netRunView(
+      ARCHITECTURE,
+      runAt({ branchId: 'trunk', floor: 1 }, { entered: ['f0', 'f1'] }),
+      player,
+    );
+    expect(held.exits.down.map((exit) => exit.blocked)).toEqual([true, true]);
+    const open = netRunView(
+      ARCHITECTURE,
+      runAt({ branchId: 'trunk', floor: 1 }, { entered: ['f0', 'f1'], broken: ['f1'] }),
+      player,
+    );
+    expect(open.exits.down.some((exit) => exit.blocked)).toBe(false);
+  });
+
+  it('has no way down at the end of a column', () => {
+    const view = netRunView(
+      ARCHITECTURE,
+      runAt({ branchId: 'b1', floor: 1 }, { entered: ['f0', 'f1', 'g0', 'g1'], broken: ['f1'] }),
+      player,
+    );
+    expect(view.exits.down).toEqual([]);
+    expect(view.exits.up).toEqual({ branchId: 'b1', floor: 0 });
+  });
+
+  it('allows a Virus on the bottom only', () => {
+    const bottom = netRunView(
+      ARCHITECTURE,
+      runAt({ branchId: 'trunk', floor: 4 }, { broken: ['f1'] }),
+      player,
+    );
+    expect(bottom.here?.virusAllowed).toBe(true);
+    const blindBranch = netRunView(
+      ARCHITECTURE,
+      runAt({ branchId: 'b1', floor: 1 }, { broken: ['f1'] }),
+      player,
+    );
+    expect(blindBranch.here?.virusAllowed).toBeUndefined();
+    expect(netRunView(ARCHITECTURE, state, player).here?.virusAllowed).toBeUndefined();
+  });
+
+  it('lays the trail from the top to the floor underfoot, side trips after it', () => {
+    const view = netRunView(
+      ARCHITECTURE,
+      runAt(
+        { branchId: 'trunk', floor: 2 },
+        { entered: ['f0', 'f1', 'g0', 'f2'], broken: ['f1'], copied: ['f2'] },
+      ),
+      player,
+    );
+    expect(view.trail.map((step) => step.id)).toEqual(['f0', 'f1', 'f2', 'g0']);
+    expect(view.trail.map((step) => step.onPath)).toEqual([true, true, true, false]);
+    expect(view.trail[1]).toMatchObject({ kind: 'password', broken: true, depth: 1 });
+    expect(view.trail[2]).toMatchObject({ here: true, copied: true });
+    // The trail is a way back, not a dossier: no DV travels with it.
+    expect(JSON.stringify(view.trail)).not.toContain('"dv"');
   });
 
   it('keeps the GM note off a File until Ajdi succeeds', () => {
+    const onFile = { branchId: 'trunk', floor: 2 };
     const before = netRunView(
       ARCHITECTURE,
-      { ...state, entered: ['f0', 'f1', 'f2'] },
-      { gm: false, netActionsMax: 3, combat: NO_FIGHT },
+      runAt(onFile, { entered: ['f0', 'f1', 'f2'], broken: ['f1'] }),
+      player,
     );
-    expect(before.branches[0]!.floors.find((floor) => floor.id === 'f2')?.notes).toBeUndefined();
-
+    expect(before.here?.notes).toBeUndefined();
+    expect(before.here?.dv).toBe(6);
     const after = netRunView(
       ARCHITECTURE,
-      { ...state, entered: ['f0', 'f1', 'f2'], identified: ['f2'] },
-      { gm: false, netActionsMax: 3, combat: NO_FIGHT },
+      runAt(onFile, { entered: ['f0', 'f1', 'f2'], broken: ['f1'], identified: ['f2'] }),
+      player,
     );
-    expect(after.branches[0]!.floors.find((floor) => floor.id === 'f2')?.notes).toBe(
-      'Manifest przemytu',
-    );
+    expect(after.here?.notes).toBe('Manifest przemytu');
   });
 
-  it('shows the GM everything, whatever the netrunner has found', () => {
-    const view = netRunView(ARCHITECTURE, state, { gm: true, netActionsMax: 3, combat: NO_FIGHT });
-    const floor = view.branches[0]!.floors.find((entry) => entry.id === 'f3')!;
+  it('names the devices of the node underfoot before Kontrola, hands them over after', () => {
+    const onNode = { branchId: 'trunk', floor: 3 };
+    const sighted = [{ name: 'Kamera nad bramą', deviceKind: 'camera' as const }];
+    const devicesOf = () => [
+      { id: 'cam', name: 'Kamera 1', deviceKind: 'camera' as const, on: true, operations: [] },
+    ];
+    const before = netRunView(ARCHITECTURE, runAt(onNode, { broken: ['f1'] }), {
+      ...player,
+      nodeDevices: sighted,
+      devicesOf,
+    });
+    expect(before.nodeDevices).toEqual(sighted);
+    expect(before.here?.devices).toBeUndefined();
+
+    const held = runAt(onNode, { broken: ['f1'], controlled: [{ floorId: 'f3', dv: 14 }] });
+    const after = netRunView(ARCHITECTURE, held, { ...player, nodeDevices: sighted, devicesOf });
+    expect(after.nodeDevices).toBeUndefined();
+    expect(after.here?.devices).toHaveLength(1);
+
+    // …and off the node the list is gone, while the held node keeps its devices
+    // on the trail — the netrunner works them from wherever they stand.
+    const away = netRunView(
+      ARCHITECTURE,
+      { ...held, position: TOP, entered: ['f0', 'f1', 'f2', 'f3'] },
+      { ...player, nodeDevices: sighted, devicesOf },
+    );
+    expect(away.nodeDevices).toBeUndefined();
+    expect(away.trail.find((step) => step.id === 'f3')?.devices).toHaveLength(1);
+  });
+
+  it('shows the GM the whole shaft, whatever the netrunner has found', () => {
+    const view = netRunView(ARCHITECTURE, state, gm);
+    const floor = view.shaft![0]!.floors.find((entry) => entry.id === 'f3')!;
     expect(floor.knowledge).toBe('entered');
     expect(floor.dv).toBe(10);
-    expect(view.branches[1]!.floors[1]!.label).toBe('Faktury');
+    expect(view.shaft![1]!.floors[1]!.label).toBe('Faktury');
+    expect(view.shaft![0]!.floors.filter((entry) => entry.here)).toHaveLength(1);
+    // The GM's exits say what is behind the door, the netrunner's knowledge honestly.
+    expect(view.exits.down[0]).toMatchObject({ knowledge: 'entered', kind: 'password' });
   });
 
-  it('marks where the netrunner is standing', () => {
-    const view = netRunView(ARCHITECTURE, state, { gm: false, netActionsMax: 3, combat: NO_FIGHT });
-    expect(view.branches[0]!.floors.filter((floor) => floor.here)).toHaveLength(1);
-    expect(view.branches[0]!.floors[0]!.here).toBe(true);
+  it('lets a player move along the trail and through the doors underfoot, nowhere else', () => {
+    const onPassword = runAt({ branchId: 'trunk', floor: 1 }, { entered: ['f0', 'f1'] });
+    expect(netMoveAllowedFor(ARCHITECTURE, onPassword, TOP)).toBe(true);
+    expect(netMoveAllowedFor(ARCHITECTURE, onPassword, { branchId: 'trunk', floor: 2 })).toBe(true);
+    expect(netMoveAllowedFor(ARCHITECTURE, onPassword, { branchId: 'b1', floor: 0 })).toBe(true);
+    // A real floor nobody has reached and a made-up one answer alike.
+    expect(netMoveAllowedFor(ARCHITECTURE, onPassword, { branchId: 'trunk', floor: 4 })).toBe(
+      false,
+    );
+    expect(netMoveAllowedFor(ARCHITECTURE, onPassword, { branchId: 'trunk', floor: 40 })).toBe(
+      false,
+    );
+    expect(netMoveAllowedFor(ARCHITECTURE, onPassword, { branchId: 'b9', floor: 0 })).toBe(false);
+    expect(netMoveAllowedFor(ARCHITECTURE, runAt(TOP), { branchId: 'b1', floor: 0 })).toBe(false);
   });
+});
+
+/**
+ * The leak test of stage 70a: random shafts, random walks, and after every step
+ * the player's payload is searched for the id, label and branch of every floor
+ * it has no business knowing. Tokens are fenced with `#` so `id#1#` is not found
+ * inside `id#12#`.
+ */
+describe('ładunek gracza nie zdradza szybu (etap 70a)', () => {
+  function mulberry(seed: number): () => number {
+    let a = seed >>> 0;
+    return () => {
+      a = (a + 0x6d2b79f5) >>> 0;
+      let t = a;
+      t = Math.imul(t ^ (t >>> 15), t | 1);
+      t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+
+  const KINDS = ['empty', 'password', 'file', 'controlNode', 'ice'] as const;
+
+  function randomShaft(random: () => number): CpredNetArchitecture {
+    const pick = (n: number) => Math.floor(random() * n);
+    let serial = 0;
+    const floors = (count: number) =>
+      Array.from({ length: count }, () => {
+        serial += 1;
+        const kind = KINDS[pick(KINDS.length)]!;
+        return {
+          id: `id#${serial}#`,
+          kind,
+          label: `canary#${serial}#`,
+          ...(kind === 'password' || kind === 'file' || kind === 'controlNode' ? { dv: 8 } : {}),
+          ...(kind === 'file' ? { notes: `note#${serial}#` } : {}),
+        };
+      });
+    const trunkLength = 3 + pick(8);
+    const branches: CpredNetArchitecture['branches'] = [
+      { id: 'br#0#', parentFloor: null, floors: floors(trunkLength) },
+    ];
+    const sideCount = pick(4);
+    for (let index = 1; index <= sideCount; index += 1) {
+      const parentFloor = pick(trunkLength - 1);
+      branches.push({
+        id: `br#${index}#`,
+        name: `bname#${index}#`,
+        parentFloor,
+        floors: floors(1 + pick(3)),
+      });
+    }
+    return { id: 'net.random', name: 'aname#0#', difficulty: 'standard', branches };
+  }
+
+  it('holds over 200 random shafts and random walks', () => {
+    const random = mulberry(70);
+    for (let round = 0; round < 200; round += 1) {
+      const shaft = randomShaft(random);
+      const rungs = netShaftRungs(shaft);
+      const entry = netEntryPosition(shaft)!;
+      let state = freshNetRun(entry, netFloorAt(shaft, entry)!.id);
+
+      for (let step = 0; step < 14; step += 1) {
+        const view = netRunView(shaft, state, { gm: false, netActionsMax: 3, combat: NO_FIGHT });
+        const wire = JSON.stringify(view);
+        const entered = new Set(state.entered);
+        const scouted = new Set(state.scouted);
+        const doors = netChildren(shaft, state.position);
+        const isDoor = (rung: (typeof rungs)[number]) =>
+          doors.some((door) => door.branchId === rung.branchId && door.floor === rung.index);
+
+        expect(view.shaft).toBeUndefined();
+        expect(wire).not.toContain('aname#');
+        for (const rung of rungs) {
+          const stood = entered.has(rung.floor.id);
+          const seenDoor = isDoor(rung) && scouted.has(rung.floor.id);
+          if (!stood) expect(wire, `id of ${rung.floor.id}`).not.toContain(rung.floor.id);
+          if (!stood && !seenDoor) {
+            expect(wire, `label of ${rung.floor.id}`).not.toContain(rung.floor.label);
+          }
+          if (!(stood && identifiedOf(state).has(rung.floor.id)) && rung.floor.notes) {
+            expect(wire).not.toContain(rung.floor.notes);
+          }
+        }
+        for (const branch of shaft.branches) {
+          const touched =
+            branch.floors.some((floor) => entered.has(floor.id)) ||
+            doors.some((door) => door.branchId === branch.id);
+          if (!touched) expect(wire, `branch ${branch.id}`).not.toContain(branch.id);
+          const firstId = branch.floors[0]!.id;
+          const named =
+            doors.some((door) => door.branchId === branch.id && door.floor === 0) &&
+            (entered.has(firstId) || scouted.has(firstId));
+          if (branch.name && !named) expect(wire).not.toContain(branch.name);
+        }
+        // The count of exits is the count of floors directly below — no more.
+        expect(view.exits.down).toHaveLength(doors.length);
+
+        // One random thing a netrunner may do next.
+        const here = netFloorAt(shaft, state.position)!;
+        const dice = random();
+        if (here.kind === 'password' && !state.broken.includes(here.id) && dice < 0.6) {
+          state = { ...state, broken: [...state.broken, here.id] };
+          continue;
+        }
+        if (dice < 0.25) {
+          const revealed = netScoutReveal(shaft, state, 20);
+          state = { ...state, scouted: [...state.scouted, ...revealed] };
+          continue;
+        }
+        const options = [
+          ...view.exits.down.map((exit) => exit.to),
+          ...view.trail.filter((entry) => !entry.here).map((entry) => entry.position),
+        ].filter((to) => netMoveAllowedFor(shaft, state, to) && netCanMove(shaft, state, to).ok);
+        const to = options[Math.floor(random() * options.length)];
+        if (!to) continue;
+        const path = netCanMove(shaft, state, to).path!;
+        const ids = path.map((position) => netFloorAt(shaft, position)!.id);
+        state = netMove(state, path, ids);
+      }
+    }
+  });
+
+  function identifiedOf(state: { identified: string[] }): Set<string> {
+    return new Set(state.identified);
+  }
 });
 
 describe('Interfejs jako warunek wejścia', () => {

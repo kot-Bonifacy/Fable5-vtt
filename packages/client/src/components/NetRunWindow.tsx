@@ -2,32 +2,11 @@ import { useEffect, useRef, useState } from 'react';
 import type {
   CpredNetPosition,
   NetAbilityId,
-  NetCombatView,
-  NetDemonView,
   NetDeviceOperation,
   NetDeviceView,
-  NetFloorView,
-  NetIceView,
-  NetProgramSlotView,
-  NetShaftBranchView,
+  NetRunView,
 } from '@vtt/shared';
-import {
-  NET_ABILITIES_AVAILABLE,
-  NET_CAMERA_DIRECTIONS,
-  NET_DEMON_MODE_LABELS,
-  NET_DEVICE_KIND_LABELS,
-  NET_DEVICE_OPERATION_LABELS,
-  NET_FLOOR_KIND_LABELS,
-  NET_ICE_MODE_LABELS,
-  NET_PROGRAM_CLASS_LABELS,
-  NET_PROGRAM_TARGET_LABELS,
-  ROLE_GM,
-  conditionRegistry,
-  netAbility,
-  netCameraDirectionLabel,
-  normalizeFacing,
-  tokenCondition,
-} from '@vtt/shared';
+import { ROLE_GM, conditionRegistry, tokenCondition } from '@vtt/shared';
 import {
   attackInNet,
   clearNetGlue,
@@ -45,6 +24,7 @@ import {
   useNetAbility,
 } from '../socket.js';
 import { useAuthStore } from '../stores/authStore.js';
+import { useCombatStore } from '../stores/combatStore.js';
 import { useTokenStore } from '../stores/tokenStore.js';
 import { useSceneStore } from '../stores/sceneStore.js';
 import { showNetDevice, showNetDevices } from '../map-frame.js';
@@ -52,752 +32,68 @@ import { currentRun, useNetRunStore } from '../stores/netRunStore.js';
 import { netErrorText } from '../netErrors.js';
 import { clearNotices, notifyChoice, notifyInfo, notifyRefusal } from '../notices.js';
 import { InlineNotice } from './NoticeColumn.js';
-import { plural } from '../plural.js';
 import { useWindowPlacement } from '../window-placement.js';
 import { WindowResizeGrip } from './WindowResizeGrip.js';
-import { NumberStepper } from './NumberStepper.js';
-
-/** Widełki wirusa (etap 21c): PT ustala MG, a pisanie trwa tyle Akcji Sieciowych. */
-const VIRUS_DV_MIN = 1;
-const VIRUS_DV_MAX = 30;
-const VIRUS_DV_DEFAULT = 12;
-const VIRUS_ACTIONS_MIN = 1;
-const VIRUS_ACTIONS_MAX = 20;
+import { NetDeckSection } from './netrun/NetDeckSection.js';
+import { NetExits } from './netrun/NetExits.js';
+import { NetFloorCard, type VirusDraft } from './netrun/NetFloorCard.js';
+import { NetGmShaft } from './netrun/NetGmShaft.js';
+import { NetNodeDevices, type NetNodeLike, type OperateExtra } from './netrun/NetNodeDevices.js';
+import { NetThreats } from './netrun/NetThreats.js';
+import { NetTrail } from './netrun/NetTrail.js';
+import { floorName } from './netrun/net-glyphs.js';
 
 /**
- * Ekran Sieci (etapy 26b i 26c) — pływające okno z windą (decyzja MG z 14.08).
+ * Okno SIEĆ (etap 70a) — jedno piętro zamiast całego szybu.
  *
  * Okno, nie zakładka: run dzieje się w trakcie walki fizycznej, więc mapa musi
- * zostać widoczna. Winda idzie z góry na dół, tak jak w podręczniku, a to, ile
- * z niej widać, jest **już rozstrzygnięte na serwerze** — piętro z `kind: null`
- * nie ma nazwy ani PT, bo ich tu nie przysłano. Klient niczego nie ukrywa.
+ * zostać widoczna (decyzja MG z 14.08). Do 70a rysowało cały szyb z „?” na
+ * nieodkrytych piętrach, czyli zdradzało, ile ich jest. Teraz gracz dostaje
+ * z serwera piętro pod stopami, wyjścia z niego i ślad odwiedzonych — i tylko
+ * to da się tu narysować. Klient niczego nie ukrywa, bo nie ma czego.
  *
- * Zwykły DOM i SVG, świadomie: winda to lista, a nie mapa, i nie ma powodu,
- * żeby dokładać ją do canvasu Pixi, który w tym czasie rysuje strzelaninę.
+ * Kolejność sekcji jest stała, a pusta sekcja nie istnieje: belka stanu, ślad,
+ * karta piętra, wyjścia, zagrożenia (LOD i Demony), przejęte węzły, cyberdek.
+ * MG ma obok zwijaną kolumnę „Plan Architektury” z całym szybem.
  *
- * Etap 26c dokłada dwie sekcje pod szybem: **Czarny LOD** (jeden wiersz na
- * napotkany Program, z paskiem REZ i przyciskami ataku) oraz **Cyberdek**
- * (gniazda z Programami). Obie są puste, dopóki nie ma czym walczyć — okno
- * netrunnera bez deku wygląda dokładnie tak, jak w 26b.
- *
- * Etap 26e dokłada trzecią: **Demony**. Wygląda jak lista LOD-ów i celowo — to
- * ten sam rodzaj przeciwnika z ekranu netrunnera. Różnice widać w wierszu:
- * zamiast ATK/OBR są Interfejs i Wartość bojowa (u MG), a zamiast przycisku
- * Ślizgu stoi zdanie, dlaczego go nie ma.
+ * Zwykły DOM, świadomie: to lista, a nie mapa, i nie ma powodu dokładać jej do
+ * canvasu Pixi, który w tym czasie rysuje strzelaninę.
  */
-
-/** Ikona piętra — jedno spojrzenie mówi, co za drzwiami. */
-const FLOOR_GLYPHS: Record<string, string> = {
-  empty: '·',
-  password: '🔒',
-  file: '🗎',
-  controlNode: '⚙',
-  ice: '☠',
-  demon: '👹',
-};
-
-/**
- * Rzeczy podłączone do przejętego węzła (etap 26d).
- *
- * Sekcja pojawia się **dopiero po** udanej Kontroli — nie dlatego, że jest
- * chowana, tylko dlatego, że przed przejęciem serwer nie przysyła listy
- * urządzeń („po przejęciu kontroli nad węzłem", s. 199). Każdy przycisk to
- * osobna Akcja Sieciowa, a cały węzeł gaśnie po pierwszym użyciu w Turze.
- *
- * Od 20.10 (zlecenie MG) nazwa urządzenia z figurą na oglądanej scenie to
- * przycisk kadru, a kamera na mapie ma przy „Obróć” wybór kierunku.
- */
-function NodeDevices({
-  floor,
-  targets,
-  busy,
-  sceneId,
-  onOperate,
-  onShow,
-}: {
-  floor: NetFloorView;
-  targets: { id: string; name: string }[];
-  busy: boolean;
-  /** Scena, którą rysuje mapa — tylko tam da się pokazać urządzenie. */
-  sceneId: string | null;
-  onOperate: (deviceId: string, operation: NetDeviceOperation, extra: OperateExtra) => void;
-  onShow: (device: NetDeviceView) => void;
-}) {
-  const [target, setTarget] = useState('');
-  /** Kierunek „Obróć” per kamera; bez wyboru — ćwierć obrotu od obecnego. */
-  const [aims, setAims] = useState<Record<string, number>>({});
-  const devices = floor.devices ?? [];
-  if (devices.length === 0) return null;
-  const spent = floor.nodeUsed === true;
-  return (
-    <div className="net-node-devices">
-      <span className="net-node-title">
-        Podłączone urządzenia
-        {spent && <span className="net-run-floor-flag">węzeł użyty w tej Turze</span>}
-      </span>
-      <ul className="net-node-list">
-        {devices.map((device) => (
-          <li
-            key={device.id}
-            className={`net-node-device${device.on ? '' : ' net-node-device--off'}`}
-          >
-            {device.at && device.at.sceneId === sceneId ? (
-              <button
-                type="button"
-                className="net-node-name net-node-name--show"
-                title="Pokaż na mapie"
-                onClick={() => onShow(device)}
-              >
-                ⌖ {device.name}
-              </button>
-            ) : (
-              <span className="net-node-name">{device.name}</span>
-            )}
-            <span className="net-node-kind">{NET_DEVICE_KIND_LABELS[device.deviceKind]}</span>
-            {device.deviceKind === 'camera' && device.tokenId && device.facing !== undefined && (
-              <span className="net-run-floor-flag">
-                patrzy na {netCameraDirectionLabel(device.facing)}
-              </span>
-            )}
-            {device.disarmed ? (
-              <span className="net-run-floor-flag">rozbrojona na miejscu</span>
-            ) : (
-              !device.on && <span className="net-run-floor-flag">wyłączone</span>
-            )}
-            {device.turned && <span className="net-run-floor-flag">obrócona</span>}
-            {device.detail && <span className="net-deck-effect">{device.detail}</span>}
-            {device.notes && <p className="net-run-floor-notes">{device.notes}</p>}
-            <span className="net-node-buttons">
-              {device.operations.map((operation) => {
-                // „Włącz" przy działającym urządzeniu i „Wyłącz" przy wyłączonym
-                // to przyciski, które nic nie zmieniają — serwer je zresztą
-                // odrzuci, więc niech nie kuszą.
-                if (operation === 'on' && device.on) return null;
-                if (operation !== 'on' && !device.on) return null;
-                const needsTarget = operation === 'fire';
-                const aimsCamera =
-                  operation === 'turn' && device.deviceKind === 'camera' && !!device.tokenId;
-                const aim = aims[device.id] ?? nextCameraFacing(device.facing);
-                const button = (
-                  <button
-                    key={operation}
-                    type="button"
-                    className="small-button"
-                    disabled={
-                      busy ||
-                      spent ||
-                      (needsTarget && (!device.tokenId || target === '')) ||
-                      (operation === 'open' || operation === 'close'
-                        ? device.wallId === undefined
-                        : false)
-                    }
-                    title={
-                      needsTarget
-                        ? 'Strzał z tej figury Umiejętnościami netrunnera — kosztuje Akcję Sieciową'
-                        : 'Obsługa urządzenia kosztuje Akcję Sieciową, a węzeł działa raz na Turę'
-                    }
-                    onClick={() =>
-                      onOperate(device.id, operation, {
-                        ...(needsTarget ? { targetTokenId: target } : {}),
-                        ...(aimsCamera ? { facing: aim } : {}),
-                      })
-                    }
-                  >
-                    {NET_DEVICE_OPERATION_LABELS[operation]}
-                  </button>
-                );
-                if (!aimsCamera) return button;
-                return (
-                  <span key={operation} className="net-node-aim">
-                    {button}
-                    <select
-                      value={String(aim)}
-                      title="Dokąd obrócić kamerę"
-                      aria-label={`Kierunek kamery ${device.name}`}
-                      disabled={busy || spent}
-                      onChange={(event) =>
-                        setAims((now) => ({ ...now, [device.id]: Number(event.target.value) }))
-                      }
-                    >
-                      {NET_CAMERA_DIRECTIONS.map((direction) => (
-                        <option key={direction.facing} value={String(direction.facing)}>
-                          na {direction.label}
-                        </option>
-                      ))}
-                    </select>
-                  </span>
-                );
-              })}
-            </span>
-          </li>
-        ))}
-      </ul>
-      {devices.some((device) => device.operations.includes('fire')) && (
-        <label className="net-node-target">
-          <span className="auth-label">Cel strzału</span>
-          <select value={target} onChange={(event) => setTarget(event.target.value)}>
-            <option value="">— wskaż figurę —</option>
-            {targets.map((entry) => (
-              <option key={entry.id} value={entry.id}>
-                {entry.name}
-              </option>
-            ))}
-          </select>
-        </label>
-      )}
-    </div>
-  );
-}
-
-/** Co poza rodzajem obsługi niesie jedno kliknięcie urządzenia. */
-interface OperateExtra {
-  targetTokenId?: string;
-  facing?: number;
-}
-
-/**
- * Kierunek, który lista „Obróć” podsuwa kamerze: ćwierć obrotu zgodnie
- * z zegarem od obecnego, przyciągnięty do jednego z ośmiu kierunków.
- */
-function nextCameraFacing(facing: number | undefined): number {
-  return normalizeFacing(Math.round(((facing ?? 0) + 90) / 45) * 45);
-}
-
-function FloorRow({
-  floor,
-  branchId,
-  onMove,
-  onCopy,
-  onOperate,
-  onShow,
-  targets,
-  busy,
-  sceneId,
-}: {
-  floor: NetFloorView;
-  branchId: string;
-  onMove: (to: CpredNetPosition) => void;
-  onCopy: (floorId: string) => void;
-  onOperate: (
-    floorId: string,
-    deviceId: string,
-    operation: NetDeviceOperation,
-    extra: OperateExtra,
-  ) => void;
-  onShow: (device: NetDeviceView) => void;
-  targets: { id: string; name: string }[];
-  busy: boolean;
-  sceneId: string | null;
-}) {
-  const unknown = floor.kind === null;
-  const label = unknown
-    ? '?'
-    : floor.label || NET_FLOOR_KIND_LABELS[floor.kind as keyof typeof NET_FLOOR_KIND_LABELS];
-  return (
-    <li className={`net-run-floor${floor.here ? ' net-run-floor--here' : ''}`}>
-      <button
-        type="button"
-        className="net-run-floor-body"
-        disabled={busy || floor.here}
-        title={
-          floor.here
-            ? 'Netrunner stoi na tym piętrze'
-            : 'Zjedź na to piętro — ruch po Architekturze nie kosztuje Akcji Sieciowej'
-        }
-        onClick={() => onMove({ branchId, floor: floor.index })}
-      >
-        <span className="net-run-floor-depth">{floor.depth + 1}</span>
-        <span className={`net-run-floor-glyph${unknown ? ' net-run-floor-glyph--unknown' : ''}`}>
-          {unknown ? '?' : (FLOOR_GLYPHS[floor.kind as string] ?? '·')}
-        </span>
-        <span className="net-run-floor-label">{label}</span>
-        {floor.here && (
-          <span className="net-run-floor-flag net-run-floor-flag--here">tu jesteś</span>
-        )}
-        {floor.dv !== undefined && <span className="net-run-floor-dv">PT {floor.dv}</span>}
-        {floor.broken && <span className="net-run-floor-flag">złamane</span>}
-        {floor.controlledDv !== undefined && (
-          <span className="net-run-floor-flag">przejęty · PT {floor.controlledDv}</span>
-        )}
-        {floor.identified && <span className="net-run-floor-flag">rozpoznany</span>}
-        {floor.hackFailed && (
-          <span
-            className="net-run-floor-flag"
-            title="Ta postać już raz poległa tu na tej scenie — drugiej próby nie ma"
-          >
-            próba zużyta
-          </span>
-        )}
-        {floor.copied && <span className="net-run-floor-flag">kopia na deku</span>}
-        {floor.knowledge === 'scouted' && <span className="net-run-floor-flag">ze Zwiadu</span>}
-      </button>
-      {floor.notes && <p className="net-run-floor-notes">{floor.notes}</p>}
-      {floor.here && floor.kind === 'file' && !floor.copied && (
-        <button
-          type="button"
-          className="small-button"
-          title="Kopia Pliku na cyberdek — nie zużywa Akcji Sieciowej"
-          disabled={busy}
-          onClick={() => onCopy(floor.id)}
-        >
-          Skopiuj Plik
-        </button>
-      )}
-      {floor.programIds && floor.programIds.length > 0 && (
-        <span className="net-run-floor-flag net-run-floor-flag--ice">
-          {plural(floor.programIds.length, 'Program', 'Programy', 'Programów')} — walka w Sieci
-        </span>
-      )}
-      <NodeDevices
-        floor={floor}
-        targets={targets}
-        busy={busy}
-        sceneId={sceneId}
-        onOperate={(deviceId, operation, extra) => onOperate(floor.id, deviceId, operation, extra)}
-        onShow={onShow}
-      />
-    </li>
-  );
-}
-
-function Branch({
-  branch,
-  onMove,
-  onCopy,
-  onOperate,
-  onShow,
-  targets,
-  busy,
-  sceneId,
-}: {
-  branch: NetShaftBranchView;
-  onMove: (to: CpredNetPosition) => void;
-  onCopy: (floorId: string) => void;
-  onOperate: (
-    floorId: string,
-    deviceId: string,
-    operation: NetDeviceOperation,
-    extra: OperateExtra,
-  ) => void;
-  onShow: (device: NetDeviceView) => void;
-  targets: { id: string; name: string }[];
-  busy: boolean;
-  sceneId: string | null;
-}) {
-  return (
-    <div className={`net-run-column${branch.trunk ? '' : ' net-run-column--branch'}`}>
-      <h4 className="net-run-column-title">
-        {branch.trunk ? 'Trzon' : (branch.name ?? 'Odgałęzienie')}
-        {!branch.trunk && branch.parentFloor !== null && (
-          <span className="net-entry-meta"> · z piętra {branch.parentFloor + 1}</span>
-        )}
-      </h4>
-      <ul className="net-run-floors">
-        {branch.floors.map((floor) => (
-          <FloorRow
-            key={floor.id}
-            floor={floor}
-            branchId={branch.id}
-            onMove={onMove}
-            onCopy={onCopy}
-            onOperate={onOperate}
-            onShow={onShow}
-            targets={targets}
-            busy={busy}
-            sceneId={sceneId}
-          />
-        ))}
-      </ul>
-    </div>
-  );
-}
-
-/**
- * Gniazda cyberdeku (etap 26c).
- *
- * Dwie klasy zachowują się inaczej i widać to na przycisku: Dopalacz i Obrońca
- * chodzą w tle („Uruchom" / „Zatrzymaj", po Akcji Sieciowej za każde), a Agresor
- * nie ma stanu — odpala się go atakiem i sam się wyłącza (s. 201). Dlatego przy
- * Agresorze nie ma żadnego przycisku: jest w rozwijanej liście przy LOD-zie.
- */
-function DeckSlot({
-  slot,
-  busy,
-  onToggle,
-}: {
-  slot: NetProgramSlotView;
-  busy: boolean;
-  onToggle: (rowId: string, action: 'run' | 'stop') => void;
-}) {
-  const attacker = slot.programClass === 'attacker';
-  const running = slot.rezzedId !== undefined;
-  return (
-    <li className={`net-deck-slot${running && !slot.derezzed ? ' net-deck-slot--rezzed' : ''}`}>
-      <span className="net-deck-name">{slot.name}</span>
-      <span className="net-deck-class">
-        {NET_PROGRAM_CLASS_LABELS[slot.programClass]}
-        {slot.target ? ` ${NET_PROGRAM_TARGET_LABELS[slot.target]}` : ''}
-        {slot.blackIce ? ' · Czarny LOD' : ''}
-      </span>
-      {slot.effect && <span className="net-deck-effect">{slot.effect}</span>}
-      {running && (
-        <span className="net-run-floor-flag">
-          {slot.derezzed ? 'zderezowany' : `zrezowany · REZ ${slot.rezCurrent}/${slot.rez}`}
-        </span>
-      )}
-      {slot.spent && <span className="net-run-floor-flag">zużyty na to wejście</span>}
-      {!attacker && (
-        <button
-          type="button"
-          className="small-button"
-          disabled={busy || (!running && slot.spent === true)}
-          title={
-            running
-              ? 'Zatrzymanie Programu kosztuje Akcję Sieciową. Zderezowany wraca dopiero po zatrzymaniu i ponownym uruchomieniu.'
-              : 'Uruchomienie Programu kosztuje Akcję Sieciową'
-          }
-          onClick={() => onToggle(slot.rowId, running ? 'stop' : 'run')}
-        >
-          {running ? 'Zatrzymaj' : 'Uruchom'}
-        </button>
-      )}
-      {attacker && slot.vsIce === 0 && (
-        <span className="net-deck-note">
-          {slot.target === 'antiPersonnel'
-            ? 'przeciwbiałkowy — Czarnemu LOD-owi nic nie zrobi'
-            : 'brak danych efektu — rozstrzyga MG'}
-        </span>
-      )}
-    </li>
-  );
-}
-
-/**
- * Jeden Czarny LOD.
- *
- * Gracz widzi nazwę, ikonę i pasek REZ — walka toczy się o ten pasek. ATK, OBR,
- * PER i PRĘ zostają u MG: to liczby, których podręcznik każe się dowiedzieć
- * rzutem. Dwa przyciski MG („wykrywa intruza", „Tura LOD-a") to decyzja MG
- * z 15.08: LOD nigdy nie rusza się sam.
- */
-function IceRow({
-  ice,
-  weapons,
-  slideTargets,
-  isGm,
-  busy,
-  onAttack,
-  onSlide,
-  onDetect,
-  onTurn,
-}: {
-  ice: NetIceView;
-  weapons: NetProgramSlotView[];
-  slideTargets: NetCombatView['slideTargets'];
-  isGm: boolean;
-  busy: boolean;
-  onAttack: (iceId: string, rowId?: string) => void;
-  onSlide: (iceId: string, to?: CpredNetPosition) => void;
-  onDetect: (iceId: string) => void;
-  onTurn: (iceId: string) => void;
-}) {
-  const [weapon, setWeapon] = useState('');
-  const [escape, setEscape] = useState('0');
-  const down = ice.mode === 'derezzed' || ice.mode === 'destroyed';
-  // LOD, który ściga, jest tam, gdzie netrunner („ściga swój cel po całej
-  // Architekturze", s. 205); czyhający wymaga stania na jego piętrze.
-  const inReach = ice.mode === 'hunting' || ice.here;
-  const rezPercent = ice.rezMax > 0 ? Math.round((ice.rezCurrent / ice.rezMax) * 100) : 0;
-  return (
-    <li className={`net-ice${down ? ' net-ice--down' : ''}`}>
-      <div className="net-ice-head">
-        <span className="net-ice-glyph">☠</span>
-        <span className="net-ice-name">{ice.name}</span>
-        <span className="net-run-floor-flag">{NET_ICE_MODE_LABELS[ice.mode]}</span>
-        {ice.here && <span className="net-run-floor-flag">na tym piętrze</span>}
-        <span className="net-ice-rez">
-          REZ {ice.rezCurrent}/{ice.rezMax}
-        </span>
-      </div>
-      <div className="net-ice-bar">
-        <span style={{ width: `${rezPercent}%` }} />
-      </div>
-      {ice.effect && <p className="net-ice-effect">{ice.effect}</p>}
-      {isGm && (
-        <p className="net-ice-stats">
-          ATK {ice.atk} · OBR {ice.def} · PER {ice.per ?? '—'} · PRĘ {ice.speed ?? '—'}
-        </p>
-      )}
-      {!down && (
-        <div className="net-ice-actions">
-          <select
-            value={weapon}
-            disabled={busy || !inReach}
-            title="Czym uderzyć — Agresor z deku odpala się i sam wyłącza"
-            onChange={(event) => setWeapon(event.target.value)}
-          >
-            <option value="">Paf (1k6, bez Programu)</option>
-            {weapons.map((slot) => (
-              <option key={slot.rowId} value={slot.rowId}>
-                {slot.name} — {slot.vsIce}k6
-              </option>
-            ))}
-          </select>
-          <button
-            type="button"
-            className="small-button"
-            disabled={busy || !inReach}
-            title={
-              inReach
-                ? 'Interfejs + ATK Programu + 1k10 przeciw OBR + 1k10. Kosztuje Akcję Sieciową.'
-                : 'Ten Czarny LOD jest na innym piętrze'
-            }
-            onClick={() => onAttack(ice.id, weapon || undefined)}
-          >
-            Atakuj
-          </button>
-          {slideTargets.length > 0 && (
-            <select
-              value={escape}
-              disabled={busy || !inReach}
-              title="Dokąd uciec — hasła nie da się minąć nawet Ślizgiem"
-              onChange={(event) => setEscape(event.target.value)}
-            >
-              {slideTargets.map((target, index) => (
-                <option key={target.label} value={String(index)}>
-                  ucieczka: {target.label}
-                </option>
-              ))}
-            </select>
-          )}
-          <button
-            type="button"
-            className="small-button"
-            disabled={busy || !inReach || slideTargets.length === 0}
-            title="Test sporny przeciw PER LOD-u. Raz na Turę, ucieczka na sąsiednie piętro."
-            onClick={() => onSlide(ice.id, slideTargets[Number(escape)]?.position)}
-          >
-            Ślizg
-          </button>
-          {isGm && !(ice.detected && ice.mode === 'hunting') && (
-            <button
-              type="button"
-              className="small-button net-ice-gm"
-              disabled={busy}
-              title="Interfejs + premie do PRĘ + 1k10 przeciw PRĘ + 1k10. Przegrana netrunnera to darmowy atak i wejście LOD-u do kolejki inicjatywy."
-              onClick={() => onDetect(ice.id)}
-            >
-              LOD wykrywa intruza
-            </button>
-          )}
-          {isGm && ice.detected && ice.mode === 'hunting' && (
-            <button
-              type="button"
-              className="small-button net-ice-gm"
-              disabled={busy}
-              title="Jeden atak LOD-u — raz na Turę"
-              onClick={() => onTurn(ice.id)}
-            >
-              Tura LOD-a
-            </button>
-          )}
-        </div>
-      )}
-    </li>
-  );
-}
-
-/**
- * Jeden Demon (etap 26e).
- *
- * Od Czarnego LOD-a różni się trzema rzeczami i wszystkie trzy widać: broni się
- * Testem Interfejsu, więc MG nie ma tu kolumny OBR; nie ma PER, więc nie ma
- * przycisku Ślizgu, tylko zdanie dlaczego; i nie czyha na piętrze, tylko wie
- * o wszystkim, więc nie ma plakietki „na tym piętrze".
- *
- * Gracz widzi Demona dopiero wtedy, gdy ten zacznie go ścigać — wcześniej nie
- * ma go w payloadzie. Dwa przyciski MG to ta sama decyzja co przy LOD-zie
- * z 26c: w Sieci nic nie rusza się samo.
- */
-function DemonRow({
-  demon,
-  weapons,
-  isGm,
-  busy,
-  onAttack,
-  onDetect,
-  onTurn,
-}: {
-  demon: NetDemonView;
-  weapons: NetProgramSlotView[];
-  isGm: boolean;
-  busy: boolean;
-  onAttack: (demonId: string, rowId?: string) => void;
-  onDetect: (demonId: string) => void;
-  onTurn: (demonId: string) => void;
-}) {
-  const [weapon, setWeapon] = useState('');
-  const down = demon.mode === 'derezzed' || demon.mode === 'destroyed';
-  const rezPercent = demon.rezMax > 0 ? Math.round((demon.rezCurrent / demon.rezMax) * 100) : 0;
-  return (
-    <li className={`net-ice${down ? ' net-ice--down' : ''}`}>
-      <div className="net-ice-head">
-        <span className="net-ice-glyph">👹</span>
-        <span className="net-ice-name">{demon.name}</span>
-        <span className="net-run-floor-flag">{NET_DEMON_MODE_LABELS[demon.mode]}</span>
-        <span className="net-ice-rez">
-          REZ {demon.rezCurrent}/{demon.rezMax}
-        </span>
-      </div>
-      <div className="net-ice-bar">
-        <span style={{ width: `${rezPercent}%` }} />
-      </div>
-      {isGm && (
-        <p className="net-ice-stats">
-          Interfejs {demon.interfaceRank ?? '—'} · Akcje Sieciowe {demon.netActions ?? '—'} ·
-          Wartość bojowa {demon.combatValue ?? '—'}
-          {demon.holds ? ` · węzły z Testu Kontroli: ${demon.holds}` : ''}
-        </p>
-      )}
-      {!down && (
-        <div className="net-ice-actions">
-          <select
-            value={weapon}
-            disabled={busy}
-            title="Czym uderzyć — Demon to Program, więc czyta zwykłą kolumnę obrażeń"
-            onChange={(event) => setWeapon(event.target.value)}
-          >
-            <option value="">Paf (1k6, bez Programu)</option>
-            {weapons.map((slot) => (
-              <option key={slot.rowId} value={slot.rowId}>
-                {slot.name} — {slot.vsProgram}k6
-              </option>
-            ))}
-          </select>
-          <button
-            type="button"
-            className="small-button"
-            disabled={busy}
-            title="Interfejs + ATK Programu + 1k10 przeciw Testowi Interfejsu Demona. Kosztuje Akcję Sieciową."
-            onClick={() => onAttack(demon.id, weapon || undefined)}
-          >
-            Atakuj
-          </button>
-          <span className="net-deck-note">Ślizg nie działa — Demon nie ma Percepcji.</span>
-          {isGm && demon.mode === 'lurking' && (
-            <button
-              type="button"
-              className="small-button net-ice-gm"
-              disabled={busy}
-              title="Demon nie ma PRĘDKOŚCI, więc nie ma tu testu spornego: zaczyna ścigać i wchodzi na czoło kolejki inicjatywy."
-              onClick={() => onDetect(demon.id)}
-            >
-              Demon wykrywa intruza
-            </button>
-          )}
-          {isGm && demon.mode === 'hunting' && (
-            <button
-              type="button"
-              className="small-button net-ice-gm"
-              disabled={busy}
-              title="Cała Tura naraz: najpierw odbiera węzły, potem strzela z wieżyczek, a z resztek Akcji Sieciowych Pafa netrunnera."
-              onClick={() => onTurn(demon.id)}
-            >
-              Tura Demona
-            </button>
-          )}
-        </div>
-      )}
-    </li>
-  );
-}
-
-/** „Opisz MG, co chcesz, by twój Wirus zrobił" (s. 200) — trzy pola, bez magii. */
-function VirusForm({
-  onSubmit,
-  onCancel,
-  busy,
-}: {
-  onSubmit: (virus: { description: string; dv: number; actions: number }) => void;
-  onCancel: () => void;
-  busy: boolean;
-}) {
-  const [description, setDescription] = useState('');
-  const [dv, setDv] = useState(VIRUS_DV_DEFAULT);
-  const [actions, setActions] = useState(VIRUS_ACTIONS_MIN);
-  return (
-    <form
-      className="net-virus-form"
-      onSubmit={(event) => {
-        event.preventDefault();
-        // Zakresu pilnuje przełącznik, więc tu nie ma czego parsować ani ścinać.
-        if (!description.trim()) return;
-        onSubmit({ description: description.trim(), dv, actions });
-      }}
-    >
-      <label className="bot-field">
-        <span className="auth-label">Co ma zrobić Wirus</span>
-        <textarea
-          rows={2}
-          maxLength={500}
-          value={description}
-          placeholder="Co 5 minut zmienia wszystkie hasła w tej Architekturze"
-          onChange={(event) => setDescription(event.target.value)}
-        />
-      </label>
-      <div className="net-generator-row">
-        <label className="bot-field">
-          <span className="auth-label">PT (ustala MG)</span>
-          <NumberStepper
-            min={VIRUS_DV_MIN}
-            max={VIRUS_DV_MAX}
-            value={dv}
-            onChange={setDv}
-            label="PT wirusa"
-          />
-        </label>
-        <label className="bot-field">
-          <span className="auth-label">Akcji Sieciowych</span>
-          <NumberStepper
-            min={VIRUS_ACTIONS_MIN}
-            max={VIRUS_ACTIONS_MAX}
-            value={actions}
-            onChange={setActions}
-            label="Akcji Sieciowych na napisanie wirusa"
-          />
-        </label>
-      </div>
-      <p className="placeholder-text">
-        Wirusa pisze się przez kilka Tur: każda Akcja Sieciowa to jeden krok, a rzut idzie dopiero
-        na ostatnim. PT zniszczenia gotowego Wirusa równa się wynikowi tego rzutu.
-      </p>
-      <div className="net-generator-foot">
-        <button type="submit" className="small-button" disabled={busy}>
-          Pisz Wirusa
-        </button>
-        <button type="button" className="small-button" onClick={onCancel}>
-          Anuluj
-        </button>
-      </div>
-    </form>
-  );
-}
 
 /** Odstęp okna runu od pasa, znacznika i krawędzi mapy. */
 const NET_RUN_GAP = 8;
+/** Szerokość okna gracza i kolumny planu MG (`17-net.css`). */
+const NET_RUN_WIDTH = 360;
+const NET_PLAN_WIDTH = 320;
+const PLAN_OPEN_KEY = 'vtt.net.plan';
+
+function readPlanOpen(): boolean {
+  try {
+    return window.localStorage.getItem(PLAN_OPEN_KEY) !== '0';
+  } catch {
+    return true;
+  }
+}
+
+function writePlanOpen(open: boolean): void {
+  try {
+    window.localStorage.setItem(PLAN_OPEN_KEY, open ? '1' : '0');
+  } catch {
+    // Prywatne okno bez pamięci: plan po prostu otworzy się przy następnym runie.
+  }
+}
 
 /**
  * Gdzie okno runu staje za pierwszym razem (#34, 29.09, decyzja MG).
  *
- * Do 29.09 stało w (200, 80): na czarnym pasie kolejki netrunnera (kość
- * „Rzuć inicjatywę" pod belką okna), a u MG na pasku narzędzi mapy i czacie.
- * Teraz przy prawej krawędzi mapy, górą pod pasem kolejki i pod znacznikiem
- * „Czeka na MG". Oba miejsca rezerwuje się także wtedy, gdy ich jeszcze nie
- * ma: run zaczyna się zwykle przed walką, a pas wchodzi nad mapę dopiero z nią
- * i spycha ją (razem ze znacznikiem) w dół — okno postawione pod gołą mapą
- * wylądowałoby wtedy na pasie. Znacznik pojawia się u MG, gdy coś czeka.
+ * Przy prawej krawędzi mapy, górą pod pasem kolejki i pod znacznikiem „Czeka
+ * na MG". Oba miejsca rezerwuje się także wtedy, gdy ich jeszcze nie ma: run
+ * zaczyna się zwykle przed walką, a pas wchodzi nad mapę dopiero z nią i spycha
+ * ją (razem ze znacznikiem) w dół — okno postawione pod gołą mapą wylądowałoby
+ * wtedy na pasie. Od 70a liczone dla wąskiego okna (360 px, u MG z planem 680):
+ * zostaje w prawym pasie mapy, z dala od kubka i lewej belki.
  */
-function netRunFallback(isGm: boolean): { x: number; y: number } {
+function netRunFallback(isGm: boolean, width: number): { x: number; y: number } {
   const box = (selector: string) => {
     const rect = document.querySelector(selector)?.getBoundingClientRect();
     return rect && rect.height > 0 ? rect : undefined;
@@ -811,12 +107,63 @@ function netRunFallback(isGm: boolean): { x: number; y: number } {
   const mapTop = (map?.top ?? 0) + barShift;
   // Znacznik: `top: 0.75rem` kolumny rogu mapy i jeden wiersz odznaki.
   const badgeBottom = badge ? badge.bottom + barShift : isGm ? mapTop + 2.75 * rem : 0;
-  const width = Math.min(560, window.innerWidth - 32);
+  const fitted = Math.min(width, window.innerWidth - 32);
   const right = map?.right ?? window.innerWidth;
   return {
-    x: Math.max(0, right - width - NET_RUN_GAP * 2),
+    x: Math.max(0, right - fitted - NET_RUN_GAP * 2),
     y: Math.max(mapTop, bar?.bottom ?? 0, badgeBottom) + NET_RUN_GAP,
   };
+}
+
+/** Węzły runu z listą urządzeń: piętro pod stopami i przejęte na śladzie. */
+function heldNodes(view: NetRunView): NetNodeLike[] {
+  const nodes: NetNodeLike[] = [];
+  if (view.here?.devices?.length) nodes.push(view.here);
+  for (const step of view.trail) {
+    if (!step.here && step.devices?.length) nodes.push(step);
+  }
+  return nodes;
+}
+
+/**
+ * Kropki Akcji Sieciowych (etap 70a; kropka = Akcja, jak na lewej belce z 69).
+ *
+ * Liczone z budżetu tury uczestnika walki: wiersz „Sieć” pojawia się z pierwszą
+ * Akcją Sieciową, a Akcja wydana w Somie zamyka Sieć na tę Turę („albo Soma,
+ * albo Sieć”). Poza walką nikt Akcji nie liczy — wszystkie kropki są pełne.
+ */
+function NetActionDots({ tokenId, max }: { tokenId: string; max: number }) {
+  const combat = useCombatStore((s) => s.combat);
+  const turn =
+    combat && combat.round > 0
+      ? combat.combatants.find((entry) => entry.tokenId === tokenId)?.turn
+      : undefined;
+  const net = turn?.resources.find((resource) => resource.id === 'net');
+  const action = turn?.resources.find((resource) => resource.id === 'action');
+  const total = net?.max ?? max;
+  const left = !turn
+    ? total
+    : net
+      ? Math.max(0, net.max - net.used)
+      : action && action.used >= action.max
+        ? 0
+        : total;
+  const title = !turn
+    ? `Akcje Sieciowe: ${total} na Turę — poza walką nikt ich nie liczy`
+    : `Akcje Sieciowe w tej Turze: zostało ${left} z ${total}`;
+  return (
+    <span className="net-actions" title={title} role="img" aria-label={title}>
+      <span className="net-actions-label">Akcje Sieciowe</span>
+      <span className="net-actions-dots" aria-hidden>
+        {Array.from({ length: total }, (_, index) => (
+          <span
+            key={index}
+            className={`net-action-dot${index < left ? '' : ' net-action-dot--spent'}`}
+          />
+        ))}
+      </span>
+    </span>
+  );
 }
 
 /**
@@ -836,12 +183,16 @@ function NetRunWindowBody() {
   const isGm = useAuthStore((s) => s.user?.role === ROLE_GM);
   const tokens = useTokenStore((s) => s.tokens);
   const statusRows = useTokenStore((s) => s.statuses);
+  const [planOpen, setPlanOpen] = useState(readPlanOpen);
   // Liczone raz, przy otwarciu: miejsce pierwszego otwarcia i zarazem granica
   // wysokości okna (niżej), żeby klamra nie wypychała go z powrotem na pas.
-  const [fit] = useState(() => netRunFallback(isGm));
-  const placement = useWindowPlacement('net-run', () => fit);
+  const [fit] = useState(() =>
+    netRunFallback(isGm, NET_RUN_WIDTH + (isGm && planOpen ? NET_PLAN_WIDTH : 0)),
+  );
+  // Klucz z numerem etapu: położenie i rozmiar zapamiętane dla okna 560 px
+  // sprzed 70a nie pasują do wąskiego — pierwsze otwarcie liczy się na nowo.
+  const placement = useWindowPlacement('net-run-70', () => fit);
   const [busy, setBusy] = useState(false);
-  const [virusOpen, setVirusOpen] = useState(false);
   const sceneId = useSceneStore((s) => s.effectiveScene?.id ?? null);
   /**
    * Węzeł, którego urządzenia mapa ma pokazać, gdy przyjdzie ich lista
@@ -851,23 +202,22 @@ function NetRunWindowBody() {
   const frameNode = useRef<string | null>(null);
 
   useEffect(() => {
-    if (run)
-      frameTakenNode(
-        run.run.branches.flatMap((branch) => branch.floors),
-        run.tokenId,
-      );
+    if (run) frameTakenNode(run.run, run.tokenId);
   }, [run]);
 
   if (!run) return null;
+  const view = run.run;
+  const here = view.here;
+  const showPlan = isGm && view.shaft !== undefined;
 
   /** Kadr na urządzeniach węzła, który ten klient właśnie przejął. */
-  function frameTakenNode(floors: NetFloorView[], runnerTokenId: string) {
+  function frameTakenNode(latest: NetRunView, runnerTokenId: string) {
     const floorId = frameNode.current;
     if (!floorId) return;
-    const floor = floors.find((entry) => entry.id === floorId);
-    if (!floor?.devices?.length) return;
+    const node = heldNodes(latest).find((entry) => entry.id === floorId);
+    if (!node?.devices?.length) return;
     frameNode.current = null;
-    showNetDevices(floor.devices, runnerTokenId);
+    showNetDevices(node.devices, runnerTokenId);
   }
 
   async function guard<T>(work: Promise<{ ok: boolean; error?: string; data?: T }>) {
@@ -907,17 +257,16 @@ function NetRunWindowBody() {
     if (ack.ok) report(ack.data?.summary);
     // Strzał wieżyczki: rzut oka na nią i powrót do netrunnera (20.10).
     if (ack.ok && operation === 'fire') {
-      const device = floors
-        .find((floor) => floor.id === floorId)
+      const device = nodes
+        .find((node) => node.id === floorId)
         ?.devices?.find((entry) => entry.id === deviceId);
       if (device) showNetDevice(device, run!.tokenId);
     }
     /*
-     * Strzał odrzucony przez osłonę (16c/26d) — pytanie z powtórką. Strzelec
-     * przy mapie dostaje kartę wyboru **przed** zapłatą, bo osłonę widać już
-     * w podglądzie. Urządzenie strzela od razu, więc tutaj wybór może przyjść
-     * dopiero po odmowie — i musi mieć przycisk, inaczej `ignoreCover` jest
-     * polem w protokole, którego nikt nie ma jak ustawić (zaległość z 26d).
+     * Strzał odrzucony przez osłonę (16c/26d) — pytanie z powtórką. Urządzenie
+     * strzela od razu, więc wybór może przyjść dopiero po odmowie i musi mieć
+     * przycisk. Znika w 70b razem ze strzałem z listy: przejęta figura celuje
+     * z mapy i pyta o osłonę przed zapłatą.
      */
     if (ack.error === 'NET_SHOT_COVERED') {
       notifyChoice(
@@ -940,12 +289,9 @@ function NetRunWindowBody() {
     if (ack.ok) clearNotices('net');
   }
 
-  async function ability(
-    id: NetAbilityId,
-    virus?: { description: string; dv: number; actions: number },
-  ) {
+  async function ability(id: NetAbilityId, virus?: VirusDraft) {
     // Kontrola: piętro, na którym netrunner stoi, to węzeł, który przejmuje.
-    const standing = id === 'control' ? floors.find((floor) => floor.here)?.id : undefined;
+    const standing = id === 'control' ? here?.id : undefined;
     const ack = await guard(
       useNetAbility({ runId: run!.runId, ability: id, ...(virus ? { virus } : {}) }),
     );
@@ -953,17 +299,11 @@ function NetRunWindowBody() {
     if (ack.ok && ack.data?.success && standing) {
       frameNode.current = standing;
       const latest = currentRun(useNetRunStore.getState());
-      if (latest) {
-        frameTakenNode(
-          latest.run.branches.flatMap((branch) => branch.floors),
-          latest.tokenId,
-        );
-      }
+      if (latest) frameTakenNode(latest.run, latest.tokenId);
     }
-    setVirusOpen(false);
   }
 
-  /** Każde wejście do walki w Sieci wraca tym samym zdaniem pod szybem. */
+  /** Każde wejście do walki w Sieci wraca tym samym zdaniem nad mapą. */
   async function fight<T extends { summary: string }>(
     work: Promise<{ ok: boolean; error?: string; data?: T }>,
   ) {
@@ -971,19 +311,17 @@ function NetRunWindowBody() {
     if (ack.ok) report(ack.data?.summary);
   }
 
-  const floors = run.run.branches.flatMap((branch) => branch.floors);
-  const here = floors.find((floor) => floor.here);
+  const nodes = heldNodes(view);
   /*
    * Figury, w które wieżyczka może wycelować (etap 26d). Lista jest tym, co
    * ten klient **i tak już widzi** na mapie — u gracza po filtrze widoczności
    * z 18a, u MG wszystko. Serwer i tak sprawdza mgłę i ukrycie celu, więc to
-   * jest wygoda, nie uprawnienie.
+   * jest wygoda, nie uprawnienie. Bez pojemników, martwych i figur-urządzeń
+   * (66e, pkt 22).
    */
-  // Bez pojemników, martwych i figur-urządzeń (66e, pkt 22): „Szafka ochrony”
-  // i ciało Małego w liście celów wieżyczki tylko zasłaniały żywych.
   const conditions = conditionRegistry(statusRows);
   const deviceTokens = new Set(
-    floors.flatMap((floor) => (floor.devices ?? []).map((device) => device.tokenId)),
+    nodes.flatMap((node) => (node.devices ?? []).map((device) => device.tokenId)),
   );
   const targets = Object.values(tokens)
     .filter(
@@ -994,42 +332,15 @@ function NetRunWindowBody() {
     )
     .map((token) => ({ id: token.id, name: token.name }))
     .sort((a, b) => a.name.localeCompare(b.name, 'pl'));
-  const virusPending = run.run.virus;
-  const fightState = run.run.combat;
-  /** Agresory, które mają czym uderzyć w Czarnego LOD-a (etap 26c). */
-  const weapons = fightState.deck.filter((slot) => slot.vsIce > 0);
-  /** Te same Agresory wobec Demona, który jest zwykłym Programem (etap 26e). */
-  const demonWeapons = fightState.deck.filter((slot) => slot.vsProgram > 0);
-  /*
-   * „Gdy dotrzesz do najniższego poziomu Architektury, możesz zostawić tam
-   * Wirusa" (s. 200). Liczone tu z widoku, nie zgadywane: dno to jedyne
-   * najgłębsze piętro, a remis znaczy, że dna nie ma — ta sama zasada, którą
-   * 26a wypisuje w „Uwagach" pod szybem. Serwer i tak odmówi; przycisk ma
-   * o tym powiedzieć wcześniej, zamiast otwierać formularz do kosza.
-   */
-  /*
-   * Co dalej z piętra, na którym netrunner stoi (zgłoszenie gracza z 02.11:
-   * „nie wiedziałem, czy Backdoor zadziałał i czy mogę zjechać niżej”).
-   */
-  const floorHint = here?.hackFailed
-    ? 'Na tym piętrze ta postać już raz poległa — na tej scenie drugiej próby nie ma.'
-    : here?.kind === 'password'
-      ? here.broken
-        ? 'Hasło złamane — droga w dół wolna: kliknij piętro niżej.'
-        : 'Hasło blokuje zjazd niżej — najpierw złam je Backdoorem.'
-      : here?.kind === 'controlNode' && here.controlledDv === undefined
-        ? 'Węzeł kontrolny — Kontrola daje władzę nad jego urządzeniami.'
-        : null;
-  const deepest = floors.reduce((max, floor) => Math.max(max, floor.depth), -1);
-  const atBottom =
-    here !== undefined &&
-    here.depth === deepest &&
-    floors.filter((floor) => floor.depth === deepest).length === 1;
+  const fightState = view.combat;
+  /** Przejęte węzły, na których netrunner teraz nie stoi — obsługa bez wracania. */
+  const awayNodes = view.trail.filter((step) => !step.here && step.devices?.length);
+  const showDevice = (device: NetDeviceView) => showNetDevice(device);
 
   return (
     <section
       ref={placement.ref}
-      className="sheet-window net-run-window"
+      className={`sheet-window net-run-window${showPlan && planOpen ? ' net-run-window--plan' : ''}`}
       style={{
         ...placement.style,
         // Okno bez własnej wysokości mieści się pod pasem w całości: z samym
@@ -1040,12 +351,12 @@ function NetRunWindowBody() {
           : {}),
         zIndex: 330,
       }}
-      aria-label={`Sieć: ${run.run.architectureName ?? 'SIEĆ'}`}
+      aria-label={`Sieć: ${view.architectureName ?? 'SIEĆ'}`}
     >
       <div className="sheet-header" {...placement.dragProps}>
         <span className="sheet-name net-run-title">
           {/* Nazwa przychodzi tylko do MG (#32); gracz widzi „SIEĆ”. */}
-          {run.run.architectureName ?? 'SIEĆ'}
+          {view.architectureName ?? 'SIEĆ'}
           <span className="net-entry-meta"> · {run.characterName}</span>
         </span>
         {runs.length > 1 && (
@@ -1061,6 +372,20 @@ function NetRunWindowBody() {
             ))}
           </select>
         )}
+        {showPlan && (
+          <button
+            type="button"
+            className="small-button"
+            aria-pressed={planOpen}
+            title="Plan Architektury — cały szyb, widoczny tylko dla MG"
+            onClick={() => {
+              writePlanOpen(!planOpen);
+              setPlanOpen(!planOpen);
+            }}
+          >
+            Plan
+          </button>
+        )}
         <button
           type="button"
           className="small-button"
@@ -1072,251 +397,140 @@ function NetRunWindowBody() {
         </button>
       </div>
 
-      <div className="net-run-body">
-        <div className="net-run-status">
-          <span>Interfejs {run.interfaceRank}</span>
-          <span>
-            {plural(run.run.netActionsMax, 'Akcja Sieciowa', 'Akcje Sieciowe', 'Akcji Sieciowych')}{' '}
-            na Turę
-          </span>
-          <span>Punkt dostępu: {run.accessPointName}</span>
-          {here && <span>Piętro {here.depth + 1}</span>}
-          {fightState.netActionDebt > 0 && (
-            <span className="net-run-debt">
-              W kolejnej Turze −{fightState.netActionDebt} Akcji Sieciowej
-            </span>
-          )}
-          {fightState.slideMarks > 0 && (
-            <span className="net-run-debt">
-              Ślizg −{2 * fightState.slideMarks} (Skunks ×{fightState.slideMarks})
-            </span>
-          )}
-        </div>
-
-        {fightState.glue && (
-          <InlineNotice tone="warn" title="Klej" className="net-run-notice--glue" role="status">
-            {fightState.glue.source}: ani niżej, ani bezpiecznego odłączenia
-            {fightState.glue.untilRound !== null
-              ? ` — do rundy ${fightState.glue.untilRound}`
-              : ' — do zdjęcia przez MG'}
-            . Awaryjne odłączenie wciąż działa.
-            {isGm && (
-              <button
-                type="button"
-                className="small-button"
-                disabled={busy}
-                onClick={() => void guard(clearNetGlue(run.runId))}
-              >
-                Zdejmij
-              </button>
+      <div className="net-run-cols">
+        <div className="net-run-body">
+          <div className="net-run-status">
+            <NetActionDots tokenId={run.tokenId} max={view.netActionsMax} />
+            <span>Interfejs {run.interfaceRank}</span>
+            {fightState.netActionDebt > 0 && (
+              <span className="net-run-debt">
+                W kolejnej Turze −{fightState.netActionDebt} Akcji Sieciowej
+              </span>
             )}
-          </InlineNotice>
-        )}
+            {fightState.slideMarks > 0 && (
+              <span className="net-run-debt">
+                Ślizg −{2 * fightState.slideMarks} (Skunks ×{fightState.slideMarks})
+              </span>
+            )}
+          </div>
 
-        <div className="net-run-shaft">
-          {run.run.branches.map((branch) => (
-            <Branch
-              key={branch.id}
-              branch={branch}
+          {fightState.glue && (
+            <InlineNotice tone="warn" title="Klej" className="net-run-notice--glue" role="status">
+              {fightState.glue.source}: ani niżej, ani bezpiecznego odłączenia
+              {fightState.glue.untilRound !== null
+                ? ` — do rundy ${fightState.glue.untilRound}`
+                : ' — do zdjęcia przez MG'}
+              . Awaryjne odłączenie wciąż działa.
+              {isGm && (
+                <button
+                  type="button"
+                  className="small-button"
+                  disabled={busy}
+                  onClick={() => void guard(clearNetGlue(run.runId))}
+                >
+                  Zdejmij
+                </button>
+              )}
+            </InlineNotice>
+          )}
+
+          <NetTrail trail={view.trail} busy={busy} onMove={(to) => void move(to)} />
+
+          {here && (
+            <NetFloorCard
+              here={here}
+              run={view}
               busy={busy}
+              sceneId={sceneId}
               targets={targets}
-              onMove={(to) => void move(to)}
+              onAbility={(id, virus) => void ability(id, virus)}
               onCopy={(floorId) => void guard(copyNetFile(run.runId, floorId))}
               onOperate={(floorId, deviceId, operation, extra) =>
                 void operate(floorId, deviceId, operation, extra)
               }
-              onShow={(device) => showNetDevice(device)}
-              sceneId={sceneId}
+              onShow={showDevice}
             />
-          ))}
-        </div>
+          )}
 
-        {floorHint && <p className="net-run-hint">{floorHint}</p>}
+          <NetExits exits={view.exits} busy={busy} onMove={(to) => void move(to)} />
 
-        {isGm && run.run.spentTries > 0 && (
-          <p className="net-run-hint">
-            Zużyte próby tej postaci na scenie: {run.run.spentTries}.{' '}
-            <button
-              type="button"
-              className="small-button"
-              disabled={busy}
-              title="Ta postać na tej scenie znów ma po jednej próbie każdej zdolności"
-              onClick={() => void guard(resetNetHacks(run.runId))}
-            >
-              Oddaj próby
-            </button>
-          </p>
-        )}
+          <NetThreats
+            combat={fightState}
+            demons={view.demons}
+            isGm={isGm}
+            busy={busy}
+            onAttackIce={(iceId, rowId) =>
+              void fight(attackInNet({ runId: run.runId, iceId, ...(rowId ? { rowId } : {}) }))
+            }
+            onAttackDemon={(demonId, rowId) =>
+              void fight(attackInNet({ runId: run.runId, demonId, ...(rowId ? { rowId } : {}) }))
+            }
+            onSlide={(iceId, to) =>
+              void fight(slideInNet({ runId: run.runId, iceId, ...(to ? { to } : {}) }))
+            }
+            onIceDetect={(iceId) => void fight(iceDetects({ runId: run.runId, iceId }))}
+            onIceTurn={(iceId) => void fight(iceTakesTurn({ runId: run.runId, iceId }))}
+            onDemonDetect={(demonId) => void fight(demonDetects({ runId: run.runId, demonId }))}
+            onDemonTurn={(demonId) => void fight(demonTakesTurn({ runId: run.runId, demonId }))}
+          />
 
-        {run.run.sightedDevices.length > 0 && (
-          <div className="net-sighted">
-            <h4 className="net-run-column-title">
-              Urządzenia w tej Sieci
-              <span className="net-entry-meta"> · władzę daje Kontrola węzła</span>
-            </h4>
-            <ul className="net-node-list">
-              {run.run.sightedDevices.map((device, index) => (
-                <li key={index} className="net-sighted-device">
-                  <span className="net-node-name">{device.name}</span>
-                  {device.name !== NET_DEVICE_KIND_LABELS[device.deviceKind] && (
-                    <span className="net-node-kind">
-                      {NET_DEVICE_KIND_LABELS[device.deviceKind]}
-                    </span>
-                  )}
+          {awayNodes.length > 0 && (
+            <div className="net-section net-held">
+              <h4 className="net-section-title">Przejęte węzły</h4>
+              {awayNodes.map((step) => (
+                <div key={step.id} className="net-held-node">
+                  <button
+                    type="button"
+                    className="net-held-name"
+                    disabled={busy}
+                    title="Wróć na ten węzeł — ruch nic nie kosztuje"
+                    onClick={() => void move(step.position)}
+                  >
+                    ⚙ {floorName(step)}
+                  </button>
+                  <NetNodeDevices
+                    node={step}
+                    targets={targets}
+                    busy={busy}
+                    sceneId={sceneId}
+                    onOperate={(deviceId, operation, extra) =>
+                      void operate(step.id, deviceId, operation, extra)
+                    }
+                    onShow={showDevice}
+                  />
+                </div>
+              ))}
+            </div>
+          )}
+
+          <NetDeckSection
+            combat={fightState}
+            busy={busy}
+            onToggle={(rowId, action) =>
+              void fight(toggleNetProgram({ runId: run.runId, rowId, action }))
+            }
+          />
+
+          {view.viruses.length > 0 && (
+            <ul className="net-virus-list">
+              {view.viruses.map((virus) => (
+                <li key={virus.id}>
+                  <strong>Wirus PT {virus.dv}</strong> — {virus.description}
+                  {virus.author ? ` (${virus.author})` : ''}
                 </li>
               ))}
             </ul>
-          </div>
-        )}
-
-        {virusPending && (
-          <InlineNotice tone="info" title="Wirus w budowie" role="status">
-            {virusPending.actionsSpent} / {virusPending.actionsNeeded} Akcji Sieciowych · PT{' '}
-            {virusPending.dv} — {virusPending.description}
-          </InlineNotice>
-        )}
-
-        {fightState.ice.length > 0 && (
-          <div className="net-ice-list-wrap">
-            <h4 className="net-run-column-title">Czarny LOD</h4>
-            <ul className="net-ice-list">
-              {fightState.ice.map((ice) => (
-                <IceRow
-                  key={ice.id}
-                  ice={ice}
-                  weapons={weapons}
-                  isGm={isGm}
-                  busy={busy}
-                  onAttack={(iceId, rowId) =>
-                    void fight(
-                      attackInNet({ runId: run!.runId, iceId, ...(rowId ? { rowId } : {}) }),
-                    )
-                  }
-                  slideTargets={fightState.slideTargets}
-                  onSlide={(iceId, to) =>
-                    void fight(slideInNet({ runId: run!.runId, iceId, ...(to ? { to } : {}) }))
-                  }
-                  onDetect={(iceId) => void fight(iceDetects({ runId: run!.runId, iceId }))}
-                  onTurn={(iceId) => void fight(iceTakesTurn({ runId: run!.runId, iceId }))}
-                />
-              ))}
-            </ul>
-          </div>
-        )}
-
-        {run.run.demons.length > 0 && (
-          <div className="net-ice-list-wrap">
-            <h4 className="net-run-column-title">Demony</h4>
-            <ul className="net-ice-list">
-              {run.run.demons.map((demon) => (
-                <DemonRow
-                  key={demon.id}
-                  demon={demon}
-                  weapons={demonWeapons}
-                  isGm={isGm}
-                  busy={busy}
-                  onAttack={(demonId, rowId) =>
-                    void fight(
-                      attackInNet({ runId: run!.runId, demonId, ...(rowId ? { rowId } : {}) }),
-                    )
-                  }
-                  onDetect={(demonId) => void fight(demonDetects({ runId: run!.runId, demonId }))}
-                  onTurn={(demonId) => void fight(demonTakesTurn({ runId: run!.runId, demonId }))}
-                />
-              ))}
-            </ul>
-          </div>
-        )}
-
-        {fightState.deck.length > 0 && (
-          <div className="net-deck">
-            <h4 className="net-run-column-title">
-              Cyberdek
-              {fightState.brainArmour > 0 && (
-                <span className="net-entry-meta">
-                  {' '}
-                  · Pancerz zdejmuje {fightState.brainArmour} z obrażeń w mózg
-                </span>
-              )}
-            </h4>
-            <ul className="net-deck-slots">
-              {fightState.deck.map((slot) => (
-                <DeckSlot
-                  key={slot.rowId}
-                  slot={slot}
-                  busy={busy}
-                  onToggle={(rowId, action) =>
-                    void fight(toggleNetProgram({ runId: run!.runId, rowId, action }))
-                  }
-                />
-              ))}
-            </ul>
-          </div>
-        )}
-
-        <div className="net-abilities">
-          {NET_ABILITIES_AVAILABLE.filter((entry) => entry.id !== 'scanner').map((entry) => {
-            // Zdolność, która potrzebuje konkretnego piętra, jest wyszarzona,
-            // dopóki netrunner na nim nie stanie — odmowa serwera i tak by
-            // przyszła, ale przycisk ma mówić o tym wcześniej.
-            const wrongFloor =
-              (entry.floorKind !== undefined && here?.kind !== entry.floorKind) ||
-              (entry.id === 'virus' && !atBottom);
-            // Zlecenia MG z 02.11: zdolność, której jedyną próbę ta postać już
-            // tu wykorzystała na tej scenie (`NET_TRY_LIMITS`; serwer i tak odmówi),
-            // i włamanie, które już się udało (pamiętane po ponownym połączeniu).
-            const spent = run.run.spentAbilities.includes(entry.id);
-            const done =
-              (entry.id === 'backdoor' && here?.broken === true) ||
-              (entry.id === 'eyed' && here?.identified === true);
-            return (
-              <button
-                key={entry.id}
-                type="button"
-                className="small-button net-ability"
-                title={
-                  spent
-                    ? 'Próba już zużyta na tej scenie'
-                    : done
-                      ? 'Już się udało — nie trzeba powtarzać'
-                      : entry.hint
-                }
-                disabled={busy || wrongFloor || spent || done}
-                onClick={() => {
-                  if (entry.id === 'virus' && !virusPending) setVirusOpen(true);
-                  else void ability(entry.id);
-                }}
-              >
-                {entry.name}
-              </button>
-            );
-          })}
+          )}
         </div>
 
-        {virusOpen && (
-          <VirusForm
+        {showPlan && planOpen && (
+          <NetGmShaft
+            shaft={view.shaft!}
+            spentTries={view.spentTries}
             busy={busy}
-            onCancel={() => setVirusOpen(false)}
-            onSubmit={(virus) => void ability('virus', virus)}
+            onMove={(to) => void move(to)}
+            onResetTries={() => void guard(resetNetHacks(run.runId))}
           />
-        )}
-
-        {run.run.viruses.length > 0 && (
-          <ul className="net-virus-list">
-            {run.run.viruses.map((virus) => (
-              <li key={virus.id}>
-                <strong>Wirus PT {virus.dv}</strong> — {virus.description}
-                {virus.author ? ` (${virus.author})` : ''}
-              </li>
-            ))}
-          </ul>
-        )}
-
-        {fightState.ice.length === 0 && (
-          <p className="placeholder-text">
-            {netAbility('slide')?.name} i {netAbility('zap')?.name} czekają na Czarnego LOD-a — oba
-            są testami spornymi i pojawiają się przy nim, gdy jakiś stanie w szybie.
-          </p>
         )}
       </div>
       <WindowResizeGrip resizeProps={placement.resizeProps} />

@@ -13,8 +13,8 @@ import { pendingDice, scriptDice } from '../../instance/instance.ts';
  * w „restauracji Mariana” i nie zobaczył żadnej kamery: kamery stały na mapie
  * tylko jako figury, a gniazdo nie prowadziło do żadnej Architektury. Teraz
  * figura z ikoną urządzenia sama jest urządzeniem Sieci, gniazdo bez
- * Architektury składa prostą Sieć ze sceny, a nazwę i rodzaj każdego urządzenia
- * netrunner widzi od podłączenia. Ola (Firefox) gra Iskrą, MG stawia scenę z gniazda.
+ * Architektury składa prostą Sieć ze sceny, a nazwę i rodzaj urządzeń netrunner
+ * widzi na piętrze ich węzła (od 70a; wcześniej od podłączenia). Ola (Firefox) gra Iskrą, MG stawia scenę z gniazda.
  */
 
 type Ack<T> = { ok: true; data: T } | { ok: false; error: string };
@@ -123,23 +123,15 @@ test.describe.serial('T62 Sieć ze sceny: kamery bez Architektury', () => {
     await expect(card).not.toContainText('Bez Architektury');
     await card.getByRole('button', { name: 'Podłącz się' }).click();
     await expect(runWindow()).toBeVisible();
-    await expect(runWindow().locator('.net-run-status')).toContainText(
-      'Punkt dostępu: Gniazdo przy kasie',
-    );
+    // 70a: belka stanu nie pisze już punktu dostępu — piętro stoi w karcie.
+    await expect(runWindow().locator('.net-floor-card-title')).toHaveText('Wejście');
   });
 
-  test('zaraz po podłączeniu Iskra widzi kamerę i wieżyczkę z nazwy i rodzaju', async () => {
-    const sighted = runWindow().locator('.net-sighted');
-    await expect(sighted).toBeVisible();
-    await expect(sighted.locator('.net-sighted-device')).toHaveText([
-      // Kamera stoi na warstwie MG: nazwa figury zostaje u MG, gracz zna rodzaj.
-      'Kamera',
-      'Wieżyczka',
-    ]);
-    await expect(sighted).not.toContainText('Mina');
-    await expect(sighted).not.toContainText('Marian');
-    // Szyb zostaje zakryty jak dotąd: węzeł to „?” aż do zjazdu.
-    await expect(runWindow().locator('.net-run-floor-label')).toHaveText(['Wejście', '?']);
+  test('po podłączeniu okno nie mówi o urządzeniach nic — tylko wyjście „Niżej: ?”', async () => {
+    // 70a (decyzja MG nr 2 z 11.11): lista urządzeń dopiero na piętrze ich węzła.
+    await expect(runWindow().locator('.net-sighted-device')).toHaveCount(0);
+    await expect(runWindow().locator('.net-floor-card')).toHaveCount(1);
+    await expect(runWindow().locator('.net-exit--down')).toHaveText('▼ Niżej: ?');
     expect(await ola.sniffer.found([CAMERA_NAME])).toEqual([]);
   });
 
@@ -150,14 +142,17 @@ test.describe.serial('T62 Sieć ze sceny: kamery bez Architektury', () => {
     expect(list.map((entry) => entry.name)).toContain(`Sieć: ${SCENE}`);
   });
 
-  test('zjazd na węzeł i Kontrola: oba urządzenia z przyciskami, Iskra patrzy oczami kamery', async () => {
-    const floors = runWindow().locator('.net-run-floor');
-    await floors.nth(1).locator('.net-run-floor-body').click();
+  test('zjazd na węzeł: nazwy i rodzaje, po Kontroli oba urządzenia z przyciskami, Iskra patrzy oczami kamery', async () => {
+    await runWindow().locator('.net-exit--down').click();
     await expect.poll(() => runOf('Iskra')?.state.position.floor).toBe(1);
-    await expect(runWindow().locator('.net-run-floor-label')).toHaveText([
-      'Wejście',
-      'Węzeł kontrolny',
-    ]);
+    await expect(runWindow().locator('.net-floor-card-title')).toHaveText('Węzeł kontrolny');
+    // Przed Kontrolą: nazwa stołu i rodzaj. Kamera stoi na warstwie MG, więc
+    // nazwa figury zostaje u MG, a gracz zna sam rodzaj.
+    const sighted = runWindow().locator('.net-node-sighted');
+    await expect(sighted.locator('.net-sighted-device')).toHaveText(['Kamera', 'Wieżyczka']);
+    await expect(sighted).not.toContainText('Mina');
+    await expect(sighted).not.toContainText('Marian');
+    expect(await ola.sniffer.found([CAMERA_NAME])).toEqual([]);
 
     // Interfejs Iskry + 9 przebija PT węzła Sieci ze sceny (Standardowy, 8).
     scriptDice([9]);
@@ -217,7 +212,11 @@ test.describe.serial('T62 Sieć ze sceny: kamery bez Architektury', () => {
       .getByLabel(/^Karta obiektu: /)
       .getByRole('button', { name: 'Podłącz się' })
       .click();
-    await expect(runWindow().locator('.net-sighted-device')).toHaveCount(3);
+    // Urządzenia stoją na piętrze węzła: przed Kontrolą z nazwy i rodzaju,
+    // a z pamięci przejętego węzła (02.11) od razu z przyciskami.
+    await runWindow().locator('.net-exit--down').click();
+    await expect.poll(() => runOf('Iskra')?.state.position.floor).toBe(1);
+    await expect(runWindow().locator('.net-sighted-device, .net-node-device')).toHaveCount(3);
     const list = dataOf<{ architectures: { name: string }[] }>(
       await emitAck(gm, 'net:list', undefined),
     ).architectures;

@@ -6,12 +6,19 @@ w `POMYSLY.md` („Do sprawdzenia przy stole”), decyzje MG — w `decyzje-i-up
 
 ## Otwarte
 
+**12.11.2026 — T5b po przebudowie okna Sieci (70a) niepuszczony do końca.** Spec przepięty na
+kartę piętra i wyjścia (`.net-floor-card`, `.net-exit--down`), ale pierwszy krok wymaga
+żywego AI Gatewaya — bez niego przeszły tylko asercje startowe (okno Oli na Pliku, położenie
+okien). Do sprawdzenia z gatewayem: `E2E_FROM=po-T5a pnpm test:e2e 30-rozgrywka/t5b` — zjazd
+do Kruka i na węzeł wyjściem „Niżej”, F5 w Sieci, strzał i „Wyłącz” wieżyczki z listy,
+`tuckRunWindow(mg)` przy oknie MG z planem (680 px zwijane uchwytem do 280). `po-T5a` zapisany
+na nowo 12.11 przez zielone T5a.
+
 **07.11.2026 (szósta) — dokończenie rozegrania „Po zamknięciu”: nowe błędy.** Opis i diagnozy:
 `etap-66e-po-zamknieciu.md` („Rozegranie — dokończenie”, pkt 15–29). **Pkt 15, 17 i 21
 zamknięte 07.11 (siódma sesja), 16, 20, 22, 26, 27 i 28 — 07.11 (ósma); czekają na
 wdrożenie** — `archiwum/zamkniete-zaleglosci.md`.
-(23) podwójne wiersze akcji Sieci u netrunnera (jawny + „POUFNE”);
-(24) jasnoniebieskie podpisy w oknie Sieci nieczytelne na beżu; (25) potrójna odmowa „Wróg
+**Pkt 23 i 24 zamknięte 12.11 etapem 70a** (`archiwum/zamkniete-zaleglosci.md`). (25) potrójna odmowa „Wróg
 w zasięgu wzroku”; (29) etykiety w biurze i gabinecie nachodzą na siebie, a po śmierci Kucharza licznik rund
 skoczył z 7 na 9. Punkty 18 (okno Sieci zasłania kubek) i 19 (atak poza walką bez trybu
 turowego) **nie są zaległościami — decyzja MG z 07.11**.

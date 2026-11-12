@@ -9,6 +9,17 @@ go czytać.
 albo gdy chcesz sprawdzić, czy pozycja, która wygląda na nową, nie jest wracającą starą.
 Treść wpisów jest niezmieniona — łącznie z datami i odsyłaczami do notatek sesji.
 
+## Zamknięte 2026-11-12, etap 70a (okno SIEĆ jednego piętra)
+
+- **66e pkt 23 — podwójne wiersze akcji Sieci u netrunnera (jawny + „POUFNE”).** Stół dostaje
+  skrót, netrunner i MG dodatkowo pełny wiersz — netrunner czytał oba. Pełny wiersz niesie teraz
+  `action.shadows` z id skrótu, a `dropShadowedRows` (`chat-grouping.ts`) pomija skrót u gracza;
+  MG zostaje przy obu. Test serwera w `netrun.test.ts`, klienta w `chat-grouping.test.ts`.
+- **66e pkt 24 — jasnoniebieskie podpisy w oknie Sieci nieczytelne na beżu.** Ciało okna to
+  ekran cyberdeka z własnym tłem i tuszem (`--net-screen`, `--net-text`, `--net-text-dim`),
+  takim samym w dzień i w nocy; oglądane w Firefoksie i Chromium w obu motywach. Przy okazji
+  nazwa postaci w nagłówku okna dostała tusz nagłówka (w dzień ginęła na czerwonej belce).
+
 ## Zamknięte 2026-11-07, ósma sesja („zrób kilka zaległości”)
 
 Siedem punktów z dokończenia rozegrania „Po zamknięciu” (66e). Oglądane na instancji E2E

@@ -927,7 +927,7 @@ export interface NetFloorView {
   index: number;
   depth: number;
   knowledge: NetFloorKnowledge;
-  /** Null while the floor is still a `?`. */
+  /** Null while the floor is still a question mark — the GM's plan never has one. */
   kind: NetFloorKind | null;
   label?: string;
   /** Only once the floor has been stood on — Zwiad „nie podaje PT". */
@@ -951,6 +951,11 @@ export interface NetFloorView {
   /** This netrunner already failed this floor's hack on this scene — no second try. */
   hackFailed?: boolean;
   here?: boolean;
+  /**
+   * Stage 70a, on the floor stood on only: a Virus may be left here. The server
+   * says so, because the client no longer has a shaft to find the bottom in.
+   */
+  virusAllowed?: boolean;
 }
 
 export interface NetShaftBranchView {
@@ -962,6 +967,53 @@ export interface NetShaftBranchView {
   floors: NetFloorView[];
 }
 
+/** What the netrunner knows about a floor directly below (stage 70a). */
+export type NetExitKnowledge = 'unknown' | 'scouted' | 'entered';
+
+/**
+ * One way down from the floor stood on (stage 70a).
+ *
+ * An unknown exit carries where it leads and nothing else: no floor id, no
+ * kind, no label. `to` is the address `netrun:move` takes, not a description.
+ */
+export interface NetExitView {
+  to: CpredNetPosition;
+  knowledge: NetExitKnowledge;
+  /** The door of a side branch rather than the next floor of this column. */
+  branch?: boolean;
+  /** From Zwiad or from having stood there — never for an unknown exit. */
+  kind?: NetFloorKind;
+  label?: string;
+  branchName?: string;
+  /** An unbroken password underfoot holds every way down. */
+  blocked?: boolean;
+}
+
+/**
+ * One floor the netrunner has stood on (stage 70a) — the trail back.
+ *
+ * Carries the floor id, because everything about an entered floor is known and
+ * a held node's devices are operated by it.
+ */
+export interface NetTrailStep {
+  id: string;
+  position: CpredNetPosition;
+  depth: number;
+  kind: NetFloorKind;
+  label?: string;
+  /** On the route from the top of the shaft to where the netrunner stands. */
+  onPath: boolean;
+  here?: boolean;
+  broken?: boolean;
+  identified?: boolean;
+  copied?: boolean;
+  controlledDv?: number;
+  hackFailed?: boolean;
+  nodeUsed?: boolean;
+  /** A held node's devices — its payout, wherever the netrunner stands now. */
+  devices?: NetDeviceView[];
+}
+
 export interface NetRunView {
   architectureId: string;
   /**
@@ -970,8 +1022,24 @@ export interface NetRunView {
    * for the same reason (`toAccessPointView`).
    */
   architectureName?: string;
-  branches: NetShaftBranchView[];
   position: CpredNetPosition;
+  /** The floor stood on, whole. Null only when the build lost it mid-run. */
+  here: NetFloorView | null;
+  /** The ways off this floor: up when there is one, down one per floor below. */
+  exits: { up: CpredNetPosition | null; down: NetExitView[] };
+  /** Floors stood on, the route from the top first and in order of descent. */
+  trail: NetTrailStep[];
+  /**
+   * The devices of the node stood on **before** it is taken (decyzja MG nr 2
+   * z 11.11): the table's name and the kind, nothing else. After Kontrola the
+   * floor carries the full `devices` instead.
+   */
+  nodeDevices?: NetSightedDevice[];
+  /**
+   * The whole shaft — **the GM's copy only** (stage 70a). A player's payload has
+   * no such field: floors they have not reached do not exist in it.
+   */
+  shaft?: NetShaftBranchView[];
   netActionsMax: number;
   virus: CpredNetVirusProgress | null;
   /** Viruses this viewer knows about: the GM's whole list, the runner's own. */
@@ -984,12 +1052,6 @@ export interface NetRunView {
    */
   demons: NetDemonView[];
   /**
-   * Every device of this Architecture as the table names it (etap 62) — seen
-   * from the moment of jacking in, before any node is taken. Name and kind only:
-   * the figure's place, state and buttons still wait for Control.
-   */
-  sightedDevices: NetSightedDevice[];
-  /**
    * Abilities whose one try this netrunner already spent where they stand, on
    * this scene (`NET_TRY_LIMITS`) — the window greys them out.
    */
@@ -999,12 +1061,33 @@ export interface NetRunView {
 }
 
 /**
- * The shaft as one pair of eyes may see it.
+ * May a **player** send the lift there (stage 70a)? Only to a floor already
+ * stood on, or through one of the doors of the floor underfoot.
  *
- * The whole point of the stage's „gracze nie widzą nieodkrytych pięter"
- * criterion lives in this function: it runs on the server, before the payload is
- * built, so a floor the netrunner has not reached carries no name, no DV and no
- * Program id — there is nothing in the message for a curious client to read.
+ * Asked before `netCanMove`, and answered with the refusal a floor that does not
+ * exist gets: otherwise `netrun:move` to a guessed position tells „there is
+ * such a floor, a password is in the way" from „there is none", and the depth of
+ * the shaft can be felt out one request at a time. The GM is not asked.
+ */
+export function netMoveAllowedFor(
+  architecture: CpredNetArchitecture,
+  state: CpredNetRunState,
+  to: CpredNetPosition,
+): boolean {
+  const floor = netFloorAt(architecture, to);
+  if (!floor) return false;
+  if (state.entered.includes(floor.id)) return true;
+  return netChildren(architecture, state.position).some((step) => netSamePosition(step, to));
+}
+
+/**
+ * The run as one pair of eyes may see it.
+ *
+ * The whole point of „gracze nie widzą nieodkrytych pięter" lives in this
+ * function: it runs on the server, before the payload is built. Since stage 70a
+ * a player gets the floor underfoot, the doors out of it and the floors already
+ * stood on — and **nothing** of the rest: no placeholder, no id, no count. How
+ * deep the shaft goes is not in the message for a curious client to read.
  */
 export function netRunView(
   architecture: CpredNetArchitecture,
@@ -1024,8 +1107,8 @@ export function netRunView(
     devicesOf?: (floor: CpredNetFloor) => NetDeviceView[];
     /** Round the fight is in, for the „raz na Turę" flag on a node. */
     round?: number | null;
-    /** Etap 62: the whole device list, already named for this pair of eyes. */
-    sightedDevices?: NetSightedDevice[];
+    /** Stage 70a: the devices of the node stood on, as the table names them. */
+    nodeDevices?: NetSightedDevice[];
     /** Tries this run's character spent on this scene (`netTriesOf`). */
     tries?: CpredNetTry[];
   },
@@ -1037,10 +1120,10 @@ export function netRunView(
       .filter((entry) => NET_ABILITIES.some((a) => a.id === entry.ability && a.floorKind))
       .map((entry) => entry.floorId),
   );
-  const hereFloorId = netFloorAt(architecture, state.position)?.id ?? null;
+  const hereFloor = netFloorAt(architecture, state.position) ?? null;
   // `tries` is already this character's on this scene, so only the key is left.
   const spentAbilities = NET_ABILITIES.filter((entry) => {
-    const key = tryFloorOf(entry.id, hereFloorId);
+    const key = tryFloorOf(entry.id, hereFloor?.id ?? null);
     return (
       key !== null && tries.some((spent) => spent.ability === entry.id && spent.floorId === key)
     );
@@ -1055,83 +1138,138 @@ export function netRunView(
   const usedNodes = new Set(
     round === null ? [] : state.nodeUse.filter((use) => use.round === round).map((u) => u.floorId),
   );
+  const isHere = (branchId: string, index: number) =>
+    state.position.branchId === branchId && state.position.floor === index;
 
-  const branches: NetShaftBranchView[] = architecture.branches.map((branch) => {
-    const top = branchTop(branch);
-    return {
-      id: branch.id,
-      ...(branch.name ? { name: branch.name } : {}),
-      trunk: branch.parentFloor === null,
-      parentFloor: branch.parentFloor,
-      floors: branch.floors.map((floor, index) => {
-        const knowledge: NetFloorKnowledge = options.gm
-          ? 'entered'
-          : entered.has(floor.id)
-            ? 'entered'
-            : scouted.has(floor.id)
-              ? 'scouted'
-              : 'hidden';
-        const here =
-          state.position.branchId === branch.id && state.position.floor === index
-            ? { here: true }
-            : {};
-        if (knowledge === 'hidden') {
-          return {
-            id: floor.id,
-            branchId: branch.id,
-            index,
-            depth: top + index,
-            knowledge,
-            kind: null,
-            ...here,
-          };
-        }
-        const full = knowledge === 'entered';
-        // Ajdi is what a File pays out: „pozwala określić, czym jest znaleziony
-        // fragment danych […] i poznać jego wartość" — so the GM's note on that
-        // one floor stops being GM-only the moment the Check succeeds.
-        const showNotes = options.gm || (floor.kind === 'file' && identified.has(floor.id));
-        // Stage 26d: the devices of a node are its payout, so they travel once
-        // the Check has been passed — and always to the GM, who authored them.
-        const devices =
-          floor.kind === 'controlNode' && (options.gm || holds.has(floor.id))
-            ? (options.devicesOf?.(floor) ?? [])
-            : [];
-        return {
-          id: floor.id,
-          branchId: branch.id,
-          index,
-          depth: top + index,
-          knowledge,
-          kind: floor.kind,
-          ...(floor.label ? { label: floor.label } : {}),
-          ...(full && floor.dv !== undefined ? { dv: floor.dv } : {}),
-          ...(floor.programIds?.length ? { programIds: floor.programIds } : {}),
-          ...(showNotes && floor.notes ? { notes: floor.notes } : {}),
-          ...(broken.has(floor.id) ? { broken: true } : {}),
-          ...(identified.has(floor.id) ? { identified: true } : {}),
-          ...(copied.has(floor.id) ? { copied: true } : {}),
-          ...(holds.has(floor.id) ? { controlledDv: holds.get(floor.id)! } : {}),
-          ...(devices.length > 0 ? { devices } : {}),
-          ...(usedNodes.has(floor.id) ? { nodeUsed: true } : {}),
-          ...(failed.has(floor.id) ? { hackFailed: true } : {}),
-          ...here,
-        };
-      }),
-    };
+  /** The marks a floor carries once it is known — shared by card, trail and plan. */
+  const marksOf = (floor: CpredNetFloor) => ({
+    ...(broken.has(floor.id) ? { broken: true } : {}),
+    ...(identified.has(floor.id) ? { identified: true } : {}),
+    ...(copied.has(floor.id) ? { copied: true } : {}),
+    ...(holds.has(floor.id) ? { controlledDv: holds.get(floor.id)! } : {}),
+    ...(usedNodes.has(floor.id) ? { nodeUsed: true } : {}),
+    ...(failed.has(floor.id) ? { hackFailed: true } : {}),
   });
+  // Stage 26d: the devices of a node are its payout, so they travel once the
+  // Check has been passed — and always to the GM, who authored them.
+  const devicesOf = (floor: CpredNetFloor): NetDeviceView[] =>
+    floor.kind === 'controlNode' && (options.gm || holds.has(floor.id))
+      ? (options.devicesOf?.(floor) ?? [])
+      : [];
+
+  /** A floor the viewer is entitled to in full: stood on, or the GM's plan. */
+  const fullFloor = (branch: CpredNetBranch, floor: CpredNetFloor, index: number): NetFloorView => {
+    // Ajdi is what a File pays out: „pozwala określić, czym jest znaleziony
+    // fragment danych […] i poznać jego wartość" — so the GM's note on that
+    // one floor stops being GM-only the moment the Check succeeds.
+    const showNotes = options.gm || (floor.kind === 'file' && identified.has(floor.id));
+    const devices = devicesOf(floor);
+    return {
+      id: floor.id,
+      branchId: branch.id,
+      index,
+      depth: branchTop(branch) + index,
+      knowledge: 'entered',
+      kind: floor.kind,
+      ...(floor.label ? { label: floor.label } : {}),
+      ...(floor.dv !== undefined ? { dv: floor.dv } : {}),
+      ...(floor.programIds?.length ? { programIds: floor.programIds } : {}),
+      ...(showNotes && floor.notes ? { notes: floor.notes } : {}),
+      ...marksOf(floor),
+      ...(devices.length > 0 ? { devices } : {}),
+      ...(isHere(branch.id, index) ? { here: true } : {}),
+    };
+  };
+
+  const hereBranch = branchOf(architecture, state.position.branchId);
+  const here: NetFloorView | null =
+    hereBranch && hereFloor
+      ? {
+          ...fullFloor(hereBranch, hereFloor, state.position.floor),
+          ...(netIsBottom(architecture, state.position) ? { virusAllowed: true } : {}),
+        }
+      : null;
+
+  const blocked = hereFloor?.kind === 'password' && !broken.has(hereFloor.id);
+  const down: NetExitView[] = netChildren(architecture, state.position).flatMap((to) => {
+    const branch = branchOf(architecture, to.branchId);
+    const floor = netFloorAt(architecture, to);
+    if (!branch || !floor) return [];
+    const knowledge: NetExitKnowledge = entered.has(floor.id)
+      ? 'entered'
+      : scouted.has(floor.id)
+        ? 'scouted'
+        : 'unknown';
+    const known = options.gm || knowledge !== 'unknown';
+    const sideDoor = to.branchId !== state.position.branchId;
+    return [
+      {
+        to,
+        knowledge,
+        ...(sideDoor ? { branch: true } : {}),
+        ...(known ? { kind: floor.kind } : {}),
+        ...(known && floor.label ? { label: floor.label } : {}),
+        ...(known && sideDoor && branch.name ? { branchName: branch.name } : {}),
+        ...(blocked ? { blocked: true } : {}),
+      },
+    ];
+  });
+
+  const route = ancestry(architecture, state.position);
+  const onRoute = (position: CpredNetPosition) =>
+    route.some((step) => netSamePosition(step, position));
+  const stepOf = (rung: CpredNetRung): NetTrailStep => {
+    const position = { branchId: rung.branchId, floor: rung.index };
+    const devices = holds.has(rung.floor.id) ? devicesOf(rung.floor) : [];
+    return {
+      id: rung.floor.id,
+      position,
+      depth: rung.depth,
+      kind: rung.floor.kind,
+      ...(rung.floor.label ? { label: rung.floor.label } : {}),
+      onPath: onRoute(position),
+      ...(isHere(rung.branchId, rung.index) ? { here: true } : {}),
+      ...marksOf(rung.floor),
+      ...(devices.length > 0 ? { devices } : {}),
+    };
+  };
+  const stood = netShaftRungs(architecture)
+    .filter((rung) => entered.has(rung.floor.id))
+    .map(stepOf);
+  const trail = [
+    ...stood.filter((step) => step.onPath).sort((a, b) => a.depth - b.depth),
+    ...stood.filter((step) => !step.onPath),
+  ];
+
+  const nodeDevices =
+    hereFloor?.kind === 'controlNode' && !holds.has(hereFloor.id) && !options.gm
+      ? (options.nodeDevices ?? [])
+      : [];
+
+  const shaft: NetShaftBranchView[] | undefined = options.gm
+    ? architecture.branches.map((branch) => ({
+        id: branch.id,
+        ...(branch.name ? { name: branch.name } : {}),
+        trunk: branch.parentFloor === null,
+        parentFloor: branch.parentFloor,
+        floors: branch.floors.map((floor, index) => fullFloor(branch, floor, index)),
+      }))
+    : undefined;
 
   return {
     architectureId: architecture.id,
     ...(options.gm ? { architectureName: architecture.name } : {}),
-    branches,
     position: state.position,
+    here,
+    exits: { up: netParent(architecture, state.position), down },
+    trail,
+    ...(nodeDevices.length > 0 ? { nodeDevices } : {}),
+    ...(shaft ? { shaft } : {}),
     netActionsMax: options.netActionsMax,
     virus: state.virus,
     viruses: options.runtime?.viruses ?? [],
     combat: options.combat,
     demons: options.demons ?? [],
-    sightedDevices: options.sightedDevices ?? [],
     spentAbilities,
     spentTries: tries.length,
   };

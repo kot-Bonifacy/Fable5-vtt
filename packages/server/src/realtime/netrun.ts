@@ -25,6 +25,7 @@ import {
   CPRED_ACTION_NET,
   CPRED_ACTION_SCANNER,
   NET_ACCESS_RANGE_M,
+  NET_RUN_PROBLEM_MESSAGES,
   ROLE_GM,
   cpredInterfaceRank,
   freshNetCombat,
@@ -39,6 +40,7 @@ import {
   netGlueHolds,
   netIsBottom,
   netMove,
+  netMoveAllowedFor,
   netMoveGoesDeeper,
   netMoveRefusal,
   netScoutReveal,
@@ -458,6 +460,13 @@ export const netRunMoveEvent = defineEvent<NetRunMovePayload, NetRunPayload>({
       throw new RealtimeError('BAD_REQUEST');
     }
 
+    // Etap 70a: gracz jeździ tylko po śladzie i przez wyjścia piętra, na którym
+    // stoi. Pytane **przed** `netCanMove` i z odmową piętra, którego nie ma —
+    // inaczej hasło na trasie odróżniałoby „jest głębiej” od „nie ma” i szyb
+    // dałoby się wymacać żądaniami. MG rusza netrunnerem bez tego ograniczenia.
+    if (user.role !== ROLE_GM && !netMoveAllowedFor(architecture, state, to)) {
+      throw new RealtimeError(NET_RUN_PROBLEM_MESSAGES.NET_NO_SUCH_FLOOR);
+    }
     const verdict = netCanMove(architecture, state, to);
     if (!verdict.ok || !verdict.path) throw new RealtimeError(netMoveRefusal(verdict));
 

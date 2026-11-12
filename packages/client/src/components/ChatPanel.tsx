@@ -60,7 +60,7 @@ import { CardSubmissionRow } from './CardSubmission.js';
 import { SightingRow } from './SightingRow.js';
 import { RollTableRow } from './RollTableCard.js';
 import { useAuthStore } from '../stores/authStore.js';
-import { chatContinuations } from '../chat-grouping.js';
+import { chatContinuations, dropShadowedRows } from '../chat-grouping.js';
 import {
   attackThreadSettled,
   attackThreadSummary,
@@ -1199,7 +1199,7 @@ export function ChatPanel() {
   }, [items, myUserId, isGm, myTokenIds]);
 
   /** Atak z Unikiem, obrażeniami i ich nałożeniem jako jedna karta (03.11). */
-  const threads = useMemo(() => foldAttackThreads(items), [items]);
+  const threads = useMemo(() => foldAttackThreads(dropShadowedRows(items, isGm)), [items, isGm]);
 
   /**
    * „To dotyczy mnie” przebiegu to najmocniejsze z jego kroków: strzał mojej

@@ -26,6 +26,7 @@ import type {
 import type { ServerConfig } from './config.js';
 import { buildApp, type BuiltApp } from './app.js';
 import { joinUrl } from './test-join.js';
+import { runFloor } from './test-net.js';
 
 /**
  * Węzły kontrolne i urządzenia (etap 26d) na żywych gniazdach.
@@ -266,7 +267,7 @@ describe('węzły kontrolne na żywych gniazdach', () => {
   }
 
   function nodeOf(run: NetRunPayload) {
-    return run.run.branches[0]!.floors.find((floor) => floor.id === 'f0');
+    return runFloor(run, 'f0');
   }
 
   /** Jedna obsługa urządzenia, z ręki gracza. */
@@ -729,16 +730,10 @@ describe('węzły kontrolne na żywych gniazdach', () => {
 
     // Nowa Runda otwiera węzeł z powrotem — i mówi o tym oknu Sieci gracza
     // (66e pkt 17: „węzeł użyty” gasł dopiero po F5).
-    const usedFlag = (sync: {
-      runs: {
-        runId: string;
-        run: { branches: { floors: { id: string; nodeUsed?: boolean }[] }[] };
-      }[];
-    }) =>
-      sync.runs
-        .find((entry) => entry.runId === runId)
-        ?.run.branches.flatMap((branch) => branch.floors)
-        .find((floor) => floor.id === 'f0')?.nodeUsed;
+    const usedFlag = (sync: { runs: NetRunPayload[] }) => {
+      const run = sync.runs.find((entry) => entry.runId === runId);
+      return run ? runFloor(run, 'f0')?.nodeUsed : undefined;
+    };
     const refreshed = waitFor<Parameters<typeof usedFlag>[0]>(player, 'netrun:sync');
     await emitAck(gm, 'combat:next');
     expect(usedFlag(await refreshed)).toBeUndefined();
@@ -822,7 +817,7 @@ describe('węzły kontrolne na żywych gniazdach', () => {
 
     const outcome = data(attempt, 'netrun:ability');
     const holderNow = (await roundTrip(gm)).netRuns
-      .filter((entry) => entry.run.branches[0]!.floors[0]!.controlledDv !== undefined)
+      .filter((entry) => runFloor(entry, 'f0')?.controlledDv !== undefined)
       .map((entry) => entry.runId);
     // Węzeł ma dokładnie jednego właściciela, kimkolwiek by nie był.
     expect(holderNow).toHaveLength(1);

@@ -279,22 +279,32 @@
   font-size: 0.8rem;
 }
 
-/* ── Run netrunnera: winda i punkty dostępu (etap 26b) ─────────────────────── */
+/* ── Run netrunnera: okno jednego piętra (etapy 26b–26e, przebudowa 70a) ──── */
 
 /*
  * Okno „Sieć" jest terminalem, nie panelem: mapa zostaje pod nim widoczna
- * (decyzja MG z 14.08), więc winda musi być wąska i czytelna z ukosa. Klasy są
- * osobne od `.net-*` edytora architektur z 26a — te dwa okna wyglądają inaczej
- * na celowo: jedno jest narzędziem MG poza sesją, drugie stoi przy stole.
+ * (decyzja MG z 14.08), więc ma być wąskie i czytelne z ukosa. Od 70a pokazuje
+ * jedno piętro — kartę, wyjścia i ślad — zamiast całego szybu.
+ *
+ * Ciało okna to **ekran cyberdeka**: własne ciemne tło (`--net-screen`) i własny
+ * tusz (`--net-text`, `--net-ink`), takie same w dzień i w nocy. Do 70a ekran
+ * stał na tle okna z motywu i w dzień jasnoniebieskie podpisy lądowały na beżu
+ * (66e, pkt 24). Reguły w tym pliku nie sięgają po `--text` / `--text-dim`
+ * motywu wewnątrz `.net-run-cols` — to są kolory papieru, nie ekranu.
  */
 /* Podniesiona specyficzność: `sheet.css` wczytuje się po tym pliku i ustawia
    `.sheet-window` na 1180 px — okno Sieci ma być wąskie jak terminal. */
 .sheet-window.net-run-window {
-  width: min(560px, calc(100vw - 32px));
+  width: min(360px, calc(100vw - 32px));
   max-height: calc(100vh - 120px);
   display: flex;
   flex-direction: column;
   border-color: var(--net-line);
+}
+
+/* MG z otwartym „Planem Architektury": ta sama kolumna 360 px i plan obok. */
+.sheet-window.net-run-window--plan {
+  width: min(680px, calc(100vw - 32px));
 }
 
 .net-run-title {
@@ -304,7 +314,24 @@
   letter-spacing: 0.08em;
 }
 
+/* Nazwa postaci w nagłówku: tusz nagłówka, tylko cichszy — `--text-dim` ginął
+   w dzień na czerwonej belce (oględziny 12.11). */
+.net-run-title .net-entry-meta {
+  color: inherit;
+  opacity: 0.8;
+}
+
+.net-run-cols {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  background: var(--net-screen);
+  color: var(--net-text);
+}
+
 .net-run-body {
+  flex: 0 1 360px;
+  min-width: 0;
   display: flex;
   flex-direction: column;
   gap: 0.55rem;
@@ -312,41 +339,247 @@
   overflow-y: auto;
 }
 
-/* Przewija się całe ciało, nie sekcje. Bez tego szyb (`overflow-x: auto`
-   zeruje mu minimalną wysokość) kurczył się do zera, gdy lista urządzeń Sieci
-   była długa — w „Fabryce dronów” gracz nie widział pięter (02.11). */
+/* Przewija się całe ciało, nie sekcje: dziecko z własnym `overflow` traci
+   minimalną wysokość i przy długiej liście kurczy się do zera — tak w „Fabryce
+   dronów” zniknął szyb (02.11). Nowa sekcja okna nie może tego zdejmować. */
 .net-run-body > * {
   flex-shrink: 0;
 }
 
-/* Własny pasek zamiast `.cp-bar`: ten skleja dzieci w jeden ciąg i pisze je
-   Wielkimi Literami (poprawka z 26a) — „Punkt Dostępu" na pasku statusu runa
-   wyglądałoby jak nazwa własna. */
+/* Podpisy pól i teksty pomocnicze wspólnych komponentów (formularz Wirusa)
+   biorą kolor z motywu — na ekranie cyberdeka dostają jego tusz. */
+.net-run-cols .auth-label,
+.net-run-cols .placeholder-text {
+  color: var(--net-text-dim);
+}
+
+/* Belka stanu: ile Akcji Sieciowych zostało w tej Turze i czym się rzuca. */
 .net-run-status {
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
   gap: 0.15rem 0.9rem;
-  padding: 0.25rem 0.4rem;
+  font-size: 0.8rem;
+  color: var(--net-text-dim);
+}
+
+.net-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.net-actions-label {
+  color: var(--net-ink);
+}
+
+.net-actions-dots {
+  display: inline-flex;
+  gap: 0.25rem;
+}
+
+/* Kropka = Akcja, jak na lewej belce (etap 69); zużyta zostaje obrysem. */
+.net-action-dot {
+  width: 0.6rem;
+  height: 0.6rem;
+  border-radius: 50%;
+  border: 1px solid var(--net-here);
+  background: var(--net-here);
+}
+
+.net-action-dot--spent {
+  background: none;
+  border-color: var(--net-ink-dim);
+}
+
+/* Ślad: piętra, na których postać stała. Ikona to przycisk powrotu. */
+.net-trail {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.2rem 0.5rem;
+}
+
+.net-trail-route,
+.net-trail-aside,
+.net-trail-link {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.2rem;
+}
+
+.net-trail-sep {
+  color: var(--net-ink-dim);
+}
+
+.net-trail-step {
+  min-width: 1.7rem;
+  height: 1.7rem;
+  padding: 0 0.2rem;
   border: 1px solid var(--net-line-dim);
   border-radius: 4px;
-  font-size: 0.8rem;
-  color: var(--text-dim);
+  background: var(--net-floor-bg);
+  color: var(--net-ink);
+  font: inherit;
+  line-height: 1;
+  cursor: pointer;
 }
 
-.net-run-shaft {
+.net-trail-step:hover:not(:disabled),
+.net-trail-step:focus-visible {
+  border-color: var(--net-ink);
+}
+
+.net-trail-step--held {
+  border-color: var(--net-rezzed);
+  background: var(--net-rezzed-bg);
+}
+
+/* Piętro pod stopami: wyłączone (nie ma dokąd jechać), ale nie blednie. */
+.net-trail-step--here,
+.net-trail-step--here:disabled {
+  border-color: var(--net-here);
+  box-shadow: 0 0 0 1px var(--net-here-glow) inset;
+  opacity: 1;
+  cursor: default;
+}
+
+/* Karta piętra — jedyny element okna świecący obwódką. */
+.net-floor-card {
   display: flex;
-  gap: 0.9rem;
-  align-items: flex-start;
-  overflow-x: auto;
+  flex-direction: column;
+  gap: 0.4rem;
+  padding: 0.55rem 0.6rem;
+  border: 1px solid var(--net-here);
+  border-radius: 6px;
+  background: var(--net-floor-bg);
+  box-shadow: 0 0 0 1px var(--net-here-glow) inset;
 }
 
-.net-run-column {
-  min-width: 15rem;
+.net-floor-card-head {
+  display: flex;
+  align-items: baseline;
+  gap: 0.45rem;
+}
+
+.net-floor-card-glyph {
+  flex: 0 0 auto;
+  font-size: 1.05rem;
+  color: var(--net-here);
+}
+
+.net-floor-card-title {
   flex: 1;
+  min-width: 0;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  overflow-wrap: anywhere;
+}
+
+.net-floor-card-dv {
+  flex: 0 0 auto;
+  font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  font-size: 0.82rem;
+  color: var(--net-ink);
+}
+
+.net-floor-card-meta {
+  margin: -0.25rem 0 0;
+  font-size: 0.75rem;
+  color: var(--net-text-dim);
+}
+
+.net-floor-card-flags {
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+}
+
+.net-run-hint {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--net-text);
+}
+
+.net-abilities {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+}
+
+/* Wyjścia z piętra: w górę i po jednym na każde piętro pod spodem. */
+.net-exits {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.net-exit {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.net-exit-end {
+  font-size: 0.8rem;
+  color: var(--net-text-dim);
+}
+
+/* Sekcje pod kartą piętra: kreska u góry i mały nagłówek. */
+.net-section {
+  border-top: 1px solid var(--net-line-dim);
+  padding-top: 0.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.net-section-title {
+  margin: 0;
+  font-size: 0.78rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--net-ink);
+}
+
+.net-section-meta {
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: 0;
+  color: var(--net-text-dim);
+}
+
+/* „Plan Architektury" — cały szyb, kolumna tylko w oknie MG (etap 70a). */
+.net-plan {
+  flex: 1 1 320px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.7rem;
+  border-left: 1px solid var(--net-gm-line);
+  overflow-y: auto;
+}
+
+.net-plan > * {
+  flex-shrink: 0;
+}
+
+.net-plan-tries {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--net-text-dim);
 }
 
 /* Odgałęzienie jest wcięte i podpięte pionową kreską — szyb ma wyglądać jak
-   szyb, a nie jak dwie niezależne listy obok siebie. */
+   szyb, a nie jak dwie niezależne listy pod sobą. */
 .net-run-column--branch {
   margin-left: 0.4rem;
   padding-left: 0.7rem;
@@ -355,10 +588,11 @@
 
 .net-run-column-title {
   margin: 0 0 0.3rem;
-  font-size: 0.82rem;
+  font-size: 0.75rem;
+  font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  color: var(--text-dim);
+  color: var(--net-text-dim);
 }
 
 .net-run-floors {
@@ -380,7 +614,7 @@
   background: var(--net-floor-bg);
 }
 
-/* Piętro, na którym stoi netrunner — jedyny element okna świecący na zielono. */
+/* Piętro, na którym stoi netrunner. */
 .net-run-floor--here {
   border-color: var(--net-here);
   box-shadow: 0 0 0 1px var(--net-here-glow) inset;
@@ -398,7 +632,7 @@
   padding: 0.28rem 0.4rem;
   border: 0;
   background: none;
-  color: var(--net-ink);
+  color: var(--net-text);
   font: inherit;
   text-align: left;
   cursor: pointer;
@@ -408,9 +642,8 @@
   cursor: default;
 }
 
-/* Piętro, na którym netrunner stoi, ma przycisk wyłączony (nie ma dokąd
-   jechać), ale nie może przez to blednąć — to ma być najwyraźniejszy wiersz
-   szybu (zgłoszenie gracza z 02.11: „nie wiem, na którym jestem poziomie”). */
+/* Wiersz netrunnera ma przycisk wyłączony, ale nie może przez to blednąć
+   (zgłoszenie gracza z 02.11: „nie wiem, na którym jestem poziomie”). */
 .net-run-floor--here > .net-run-floor-body:disabled {
   opacity: 1;
 }
@@ -431,12 +664,6 @@
   text-align: center;
 }
 
-/* Nieodkryte piętro nie ma nazwy w payloadzie — i ma wyglądać na pustą kartę,
-   a nie na coś, co ktoś ukrył CSS-em. */
-.net-run-floor-glyph--unknown {
-  color: var(--net-ink-dim);
-}
-
 .net-run-floor-label {
   flex: 1 1 8rem;
   min-width: 0;
@@ -444,7 +671,7 @@
 
 .net-run-floor-dv {
   font-size: 0.78rem;
-  color: var(--text-dim);
+  color: var(--net-text-dim);
 }
 
 .net-run-floor-flag {
@@ -469,15 +696,12 @@
 .net-run-floor-notes {
   width: 100%;
   margin: 0;
-  padding: 0 0.45rem 0.3rem;
   font-size: 0.78rem;
-  color: var(--text-dim);
+  color: var(--net-text-dim);
 }
 
-.net-abilities {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.3rem;
+.net-run-floor > .net-run-floor-notes {
+  padding: 0 0.45rem 0.3rem;
 }
 
 /* Haki mechaniczne Programu w edytorze MG (etap 26c) — dziewięć pozycji,
@@ -488,19 +712,8 @@
   gap: 0.15rem 0.6rem;
 }
 
-/* Walka w Sieci (etap 26c): dwie sekcje pod szybem — Czarny LOD i cyberdek.
-   Obie znikają, gdy nie ma z czym walczyć, więc okno netrunnera bez deku
-   wygląda dokładnie tak, jak w 26b. */
-.net-ice-list-wrap,
-.net-sighted,
-.net-deck {
-  border-top: 1px solid var(--net-line-dim);
-  padding-top: 0.5rem;
-  display: flex;
-  flex-direction: column;
-  gap: 0.35rem;
-}
-
+/* Walka w Sieci (etap 26c): „Zagrożenia” (Czarny LOD i Demony) i cyberdek.
+   Obie sekcje istnieją tylko wtedy, gdy mają co pokazać. */
 .net-ice-list,
 .net-deck-slots {
   list-style: none;
@@ -546,7 +759,7 @@
 .net-ice-rez {
   margin-left: auto;
   font-size: 0.78rem;
-  color: var(--text-dim);
+  color: var(--net-text-dim);
 }
 
 /* Pasek REZ: jedyna liczba, o którą toczy się ta walka — dlatego widzi go
@@ -570,7 +783,7 @@
 .net-deck-note {
   margin: 0;
   font-size: 0.78rem;
-  color: var(--text-dim);
+  color: var(--net-text-dim);
 }
 
 .net-ice-stats {
@@ -584,8 +797,27 @@
   gap: 0.3rem;
 }
 
+/* Listy „czym uderzyć" i „dokąd uciec" mieszczą się w kolumnie 360 px. */
+.net-ice-actions select {
+  min-width: 0;
+  max-width: 100%;
+}
+
 .net-ice-gm {
   border-color: var(--net-gm-line);
+}
+
+/* Cyberdek zwinięty do nagłówka: liczba Programów i to, co działa. */
+.net-deck-summary {
+  cursor: pointer;
+}
+
+.net-deck-summary > .net-section-meta {
+  margin-left: 0.5em;
+}
+
+.net-deck[open] > .net-deck-summary {
+  margin-bottom: 0.35rem;
 }
 
 .net-deck-slot {
@@ -664,10 +896,11 @@
 
 /* ── węzły kontrolne i urządzenia (etap 26d) ── */
 
-/* Lista rzeczy przy przejętym węźle w oknie Sieci. Wcięcie i lewa krecha
-   mówią, że to nie kolejne piętro, tylko to, co z tego piętra wystaje. */
+/* Lista rzeczy przy przejętym węźle w oknie Sieci: w karcie piętra, a dla
+   węzłów, na których netrunner nie stoi — w sekcji „Przejęte węzły”. Lewa
+   krecha mówi, że to nie piętro, tylko to, co z niego wystaje. Znika w 70b:
+   przejęte urządzenie będzie figurą sterowaną z mapy. */
 .net-node-devices {
-  margin: 0.35rem 0 0.1rem 1.4rem;
   padding-left: 0.5rem;
   border-left: 2px solid var(--net-line-branch);
   display: flex;
@@ -677,6 +910,7 @@
 
 .net-node-title {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 0.35rem;
   font-size: 0.75rem;
@@ -712,33 +946,46 @@
   font-weight: 600;
 }
 
-/* Etap 62: urządzenia Sieci widziane od podłączenia — sama nazwa i rodzaj,
-   bez obwódki przejętego urządzenia, bo jeszcze nic nie da się z nimi zrobić. */
-.net-sighted-device {
+/* Urządzenia węzła przed Kontrolą (etap 70a): sama nazwa i rodzaj, w rzędach,
+   bez obwódki przejętego urządzenia — jeszcze nic nie da się z nimi zrobić. */
+.net-node-sighted {
+  list-style: none;
+  margin: 0;
+  padding: 0;
   display: flex;
   flex-wrap: wrap;
-  align-items: baseline;
-  gap: 0.35rem;
-  padding: 0 0.4rem;
-}
-
-/* Lista bywa długa (fabryka: 19 urządzeń), więc idzie w rzędach, żeby szyb
-   i zdolności zostały w zasięgu wzroku. */
-.net-sighted .net-node-list {
-  flex-direction: row;
-  flex-wrap: wrap;
-  gap: 0.2rem 0.6rem;
-}
-
-.net-sighted .net-sighted-device {
-  padding: 0;
-}
-
-.net-run-hint {
-  margin: 0;
+  gap: 0.15rem 0.7rem;
   font-size: 0.85rem;
+}
+
+.net-sighted-device {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.3rem;
+}
+
+/* „Przejęte węzły”: nazwa węzła to przycisk powrotu na jego piętro. */
+.net-held-node {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.net-held-name {
+  align-self: flex-start;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--net-text);
+  font: inherit;
   font-weight: 600;
-  color: var(--text);
+  cursor: pointer;
+}
+
+.net-held-name:hover:not(:disabled),
+.net-held-name:focus-visible {
+  color: var(--net-here);
 }
 
 /* Nazwa urządzenia z figurą na oglądanej scenie — klik przewozi kadr (20.10). */
@@ -756,7 +1003,7 @@
 
 .net-node-name--show:hover,
 .net-node-name--show:focus-visible {
-  color: var(--text);
+  color: var(--net-text);
 }
 
 /* „Obróć” kamery z listą kierunków obok. */
@@ -772,7 +1019,7 @@
 
 .net-node-kind {
   font-size: 0.75rem;
-  color: var(--text-dim);
+  color: var(--net-text-dim);
 }
 
 .net-node-buttons {
@@ -787,6 +1034,11 @@
   align-items: center;
   gap: 0.35rem;
   font-size: 0.78rem;
+}
+
+.net-node-target select {
+  min-width: 0;
+  flex: 1;
 }
 
 /* Edytor Architektury: urządzenia wiszące u węzła kontrolnego. */

@@ -450,6 +450,11 @@
    ========================================================================== */
 
 :root {
+  /* Ekran cyberdeka: tło ciała okna Sieci — to samo w dzień i w nocy. */
+  --net-screen: #07171c;
+  /* Zwykły tekst ekranu i jego cichsza odmiana (podpisy, liczby poboczne). */
+  --net-text: #d6eef4;
+  --net-text-dim: #86aab5;
   /* Krawędź panelu i ramka piętra. */
   --net-line: #1c5f72;
   /* Cichsza krawędź: podział wewnątrz panelu. */

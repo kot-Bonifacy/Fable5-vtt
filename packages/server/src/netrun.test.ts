@@ -21,6 +21,7 @@ import type {
 import type { ServerConfig } from './config.js';
 import { buildApp, type BuiltApp } from './app.js';
 import { joinUrl } from './test-join.js';
+import { runFloor } from './test-net.js';
 import { paceTesting } from './realtime/pace.js';
 
 // Ten plik nie pyta o pulę Eksploracji — do etapu 52 chodził w „Swobodnym”,
@@ -230,7 +231,7 @@ describe('run netrunnera na żywych gniazdach', () => {
   let runId: string;
 
   function floorOf(run: NetRunPayload, id: string) {
-    return run.run.branches[0]!.floors.find((floor) => floor.id === id);
+    return runFloor(run, id);
   }
 
   async function runOf(socket: ClientSocket): Promise<NetRunPayload | undefined> {
@@ -411,17 +412,39 @@ describe('run netrunnera na żywych gniazdach', () => {
     expect(started.interfaceRank).toBe(10);
     expect(started.run.position).toEqual({ branchId: 'trunk', floor: 0 });
 
-    const floors = started.run.branches[0]!.floors;
-    expect(floors[0]!.knowledge).toBe('entered');
-    expect(floors[0]!.label).toBe('Lobby');
-    // Everything below is a `?`: no kind, no label, no DV in the payload at all.
-    for (const floor of floors.slice(1)) {
-      expect(floor.knowledge).toBe('hidden');
-      expect(floor.kind).toBeNull();
-      expect(floor.label).toBeUndefined();
-      expect(floor.dv).toBeUndefined();
+    expect(started.run.here?.label).toBe('Lobby');
+    // Etap 70a: one door down, bare — and of the rest of the shaft nothing at
+    // all. No id, no label, no placeholder to count.
+    expect(started.run.exits).toEqual({
+      up: null,
+      down: [{ to: { branchId: 'trunk', floor: 1 }, knowledge: 'unknown' }],
+    });
+    expect(started.run.trail.map((step) => step.id)).toEqual(['f0']);
+    expect(started.run.shaft).toBeUndefined();
+    expect('branches' in started.run).toBe(false);
+    const wire = JSON.stringify(started);
+    for (const secret of [
+      '"f1"',
+      '"f2"',
+      '"f3"',
+      'Brama serwisowa',
+      'Listy przewozowe',
+      'Kamery',
+    ]) {
+      expect(wire).not.toContain(secret);
     }
-    expect(JSON.stringify(started)).not.toContain('Listy przewozowe');
+    // The same cut on the wire the window listens to, not only in the ack.
+    const synced = JSON.stringify((await roundTrip(player)).netRuns);
+    for (const secret of [
+      '"f1"',
+      '"f2"',
+      '"f3"',
+      'Brama serwisowa',
+      'Listy przewozowe',
+      'Kamery',
+    ]) {
+      expect(synced).not.toContain(secret);
+    }
     // #32: the architecture's name is the GM's label — the player's window says „SIEĆ".
     expect(started.run.architectureName).toBeUndefined();
     expect((await roundTrip(player)).netRuns[0]?.run.architectureName).toBeUndefined();
@@ -432,18 +455,36 @@ describe('run netrunnera na żywych gniazdach', () => {
     const run = sync.netRuns.find((entry) => entry.runId === runId);
     expect(run?.gmView).toBe(true);
     expect(run?.run.architectureName).toBeTruthy();
-    const floors = run!.run.branches[0]!.floors;
+    const floors = run!.run.shaft![0]!.floors;
     expect(floors.map((floor) => floor.kind)).toEqual(['empty', 'password', 'file', 'controlNode']);
     expect(floors[3]!.dv).toBe(1);
   });
 
-  it('refuses to walk past a password nobody has broken', async () => {
-    const ack = await emitAck(player, 'netrun:move', {
-      runId,
-      to: { branchId: 'trunk', floor: 3 } satisfies CpredNetPosition,
-    });
-    // The refusal is the ready Polish sentence, with the floor named in it.
-    expect(errorOf(ack)).toContain('Brama serwisowa');
+  it('answers a floor the player has not reached like a floor that is not there (70a)', async () => {
+    const move = (socket: ClientSocket, to: CpredNetPosition) =>
+      emitAck(socket, 'netrun:move', { runId, to }).then(errorOf);
+    // Floor 3 exists behind a password, floor 30 and branch „b9” do not: one
+    // refusal for all three, so the depth cannot be felt out by asking.
+    const real = await move(player, { branchId: 'trunk', floor: 3 });
+    expect(real).toBeTruthy();
+    expect(real).not.toContain('Brama serwisowa');
+    expect(await move(player, { branchId: 'trunk', floor: 30 })).toBe(real);
+    expect(await move(player, { branchId: 'b9', floor: 0 })).toBe(real);
+    // The GM moves the netrunner without that limit — and so hears the truth:
+    // the ready Polish sentence, with the password named in it.
+    expect(await move(gm, { branchId: 'trunk', floor: 3 })).toContain('Brama serwisowa');
+    expect(await move(gm, { branchId: 'trunk', floor: 30 })).toBe(real);
+    // The same for a device: a node not reached and a floor that is not there.
+    const operate = (floorId: string) =>
+      emitAck(player, 'netrun:device', {
+        runId,
+        floorId,
+        deviceId: 'whatever',
+        operation: 'off',
+      }).then(errorOf);
+    expect(await operate('f3')).toBe('NET_NODE_NOT_HELD');
+    expect(await operate('f33')).toBe('NET_NODE_NOT_HELD');
+    expect(await operate('f0')).toBe('NET_NODE_NOT_HELD');
   });
 
   it('lets the lift stop on the password itself and breaks it with Backdoor', async () => {
@@ -456,6 +497,19 @@ describe('run netrunnera na żywych gniazdach', () => {
     );
     expect(floorOf(onFloor, 'f1')?.knowledge).toBe('entered');
     expect(floorOf(onFloor, 'f1')?.dv).toBe(1);
+    // One floor down, exactly one floor more in the payload (70a).
+    expect(onFloor.run.trail.map((step) => step.id)).toEqual(['f0', 'f1']);
+    expect(onFloor.run.exits.down).toEqual([
+      { to: { branchId: 'trunk', floor: 2 }, knowledge: 'unknown', blocked: true },
+    ]);
+    expect(JSON.stringify(onFloor)).not.toContain('Listy przewozowe');
+    expect(JSON.stringify(onFloor)).not.toContain('"f2"');
+    // The password underfoot holds the door below it.
+    const held = await emitAck(player, 'netrun:move', {
+      runId,
+      to: { branchId: 'trunk', floor: 2 },
+    });
+    expect(errorOf(held)).toContain('Brama serwisowa');
 
     // The dice are real, so the loop is the honest way to reach a broken
     // password: each attempt asserts the invariant that the verdict and the
@@ -492,6 +546,16 @@ describe('run netrunnera na żywych gniazdach', () => {
   });
 
   it('walks the whole shaft once the password is broken', async () => {
+    // Door by door since 70a: floor 3 is not a door of floor 1.
+    const onFile = data(
+      await emitAck<NetRunPayload>(player, 'netrun:move', {
+        runId,
+        to: { branchId: 'trunk', floor: 2 },
+      }),
+      'netrun:move',
+    );
+    expect(onFile.run.here?.id).toBe('f2');
+    expect(JSON.stringify(onFile)).not.toContain('Kamery');
     const run = data(
       await emitAck<NetRunPayload>(player, 'netrun:move', {
         runId,
@@ -553,6 +617,19 @@ describe('run netrunnera na żywych gniazdach', () => {
     await emitAck(gm, 'netrun:hacks:reset', { runId });
     expect(floorOf((await runOf(player))!, 'f2')?.hackFailed).toBeUndefined();
 
+    // 70a (66e pkt 23): the netrunner's full line names the public one it
+    // stands in for, so their chat shows one row for the copy, not two.
+    const lines: { id: number; kind: string; action?: { note?: string; shadows?: number } }[] = [];
+    const onLine = (frame: { message: (typeof lines)[number] }) => lines.push(frame.message);
+    player.on('chat:message', onLine);
+    data(await emitAck(player, 'netrun:copy', { runId, floorId: 'f2' }), 'netrun:copy');
+    await new Promise((resolve) => setTimeout(resolve, 150));
+    player.off('chat:message', onLine);
+    const shown = lines.find((line) => line.kind === 'action');
+    const full = lines.find((line) => line.kind === 'gmaction');
+    expect(full?.action?.note).toBe('Listy przewozowe');
+    expect(full?.action?.shadows).toBe(shown?.id);
+
     data(
       await emitAck(gm, 'net:save', { id: architectureId, architecture: sampleArchitecture() }),
       'net:save',
@@ -561,6 +638,9 @@ describe('run netrunnera na żywych gniazdach', () => {
   });
 
   it('leaves a Virus on the bottom floor and keeps it past the disconnection', async () => {
+    // 70a: the server says where a Virus may go — the client has no shaft to
+    // find the bottom in.
+    expect((await runOf(player))!.run.here?.virusAllowed).toBe(true);
     for (let attempt = 0; attempt < 10; attempt += 1) {
       const result = data(
         await emitAck<NetRunAbilityResult>(player, 'netrun:ability', {

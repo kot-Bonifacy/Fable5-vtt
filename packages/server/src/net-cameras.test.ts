@@ -357,7 +357,7 @@ describe('kamera przejęta w Sieci (20.10)', () => {
 
   it('niesie w oknie Sieci położenie i kierunek kamery', async () => {
     const run = (await roundTrip(player)).netRuns.find((entry) => entry.runId === runId)!;
-    const camera = run.run.branches[0]!.floors[0]!.devices![0]!;
+    const camera = run.run.here!.devices![0]!;
     expect(camera.at).toEqual({ sceneId, x: 450, y: 1450 });
     expect(camera.facing).toBe(90);
   });
