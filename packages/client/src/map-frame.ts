@@ -128,7 +128,19 @@ export function showNetDevices(devices: readonly NetDeviceView[], runnerTokenId:
 }
 
 /**
- * Kadr na jednym urządzeniu: klik w jego nazwę w oknie Sieci (zostaje) albo
+ * „⌂” paska oczu (etap 70c): kadr wraca na figurę netrunnera i tam zostaje.
+ * Kasuje rzuty oka w toku — ich powrót i tak prowadziłby tutaj.
+ */
+export function showNetRunner(runnerTokenId: string): void {
+  if (!framer) return;
+  const runner = framer.tokenCentre(runnerTokenId);
+  if (!runner) return;
+  cancelFrames();
+  frame(runner);
+}
+
+/**
+ * Kadr na jednym urządzeniu: klik w miniaturę paska oczu (zostaje) albo
  * strzał wieżyczki (`returnTo` — rzut oka i powrót do figury netrunnera).
  */
 export function showNetDevice(device: NetDeviceView, returnTo?: string): void {

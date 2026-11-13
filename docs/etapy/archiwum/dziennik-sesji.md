@@ -1,5 +1,32 @@
 # Dziennik sesji — archiwum
 
+### Sesja 11–12.11 — etap 70a: okno SIEĆ jednego piętra
+
+**Dwie sesje** (pierwsza przerwana limitem przed commitem, druga dokończyła). **Zrobione (bez
+migracji, czeka na wdrożenie):** `shared` — `netRunView` w kroju `here` / `exits` / `trail` /
+`nodeDevices` (+ `shaft` tylko MG), `virusAllowed`, `netMoveAllowedFor`,
+`CombatActionLogEntry.shadows`; serwer — odmowa ruchu poza ślad i wyjścia przed `netCanMove`,
+`netrun:device` najpierw `NET_NODE_NOT_HELD`, `sightedDevicesOf` tylko dla piętra pod stopami,
+pełny wiersz czatu z `shadows`; klient — `NetRunWindow.tsx` jako powłoka i sekcje
+w `components/netrun/`, `dropShadowedRows` w czacie, `17-net.css` na ekranie `--net-screen`
+(360 px, 680 z planem MG), klucz okna `net-run-70`. E2E: nowa fikstura `fixtures/siec.ts`
+i spec `47-siec/t70a-okno-pietro` (`@szybkie`, 9 kroków: jedna karta, podsłuch z kanarkami
+w etykietach i `id` pięter, hasło, Zwiad, ślad, wyrocznia ruchu, dno, plan MG, Chromium jako
+gracz); `t62-siec-sceny`, T5a i T5b przepięte ze starej listy pięter. **Odstępstwa od projektu**
+— w pliku etapu (`exits.up` to pozycja; ślad niesie urządzenia przejętych węzłów do 70c; odnoga
+E2E bez LOD-u). **Z oględzin poprawione:** nazwa postaci w nagłówku okna niewidoczna w dzień,
+„Cyberdek6 Programów” bez odstępu, „Kontrola” aktywna na już przejętym węźle. Zamyka 66e pkt 23
+i 24. **Testy:** `shared` 3002/3002, serwer 1765/1765, klient 492/492 (pełne `pnpm test` przed
+trzema poprawkami z oględzin; po nich `tsc`, `theme`, `a11y`), ESLint, Prettier i `tsc`
+e2e czyste w zmienionych plikach; E2E `47-siec` 15/15 (`t70a` 9, `t62` 6), T5a od `po-T4`
+23/23 (`po-T5a` zapisany na nowo); **T5b nie ruszył — wymaga gatewaya** (zaległość), pełnego
+`@szybkie` nie puszczano. **Oglądane w Firefoksie (gracz) i Chromium (MG)** tymczasowym specem
+na instancji E2E, 1920 × 1080, dzień i noc: wejście, hasło, Zwiad, rozwidlenie z rozpoznanym
+Plikiem, węzeł przed i po Kontroli, dno z formularzem Wirusa, rozwinięty cyberdek, plan MG
+otwarty i zwinięty; konsole czyste, okno gracza 360 px, nie nachodzi na kubek. Walka w Sieci
+(LOD, Demon, Klej) i Chrome MG nieoglądane. Pliki `specs/99-kubek/` to tymczasowe oględziny
+z sesji 10.11 — nie z tego etapu, niezacommitowane. **Dalej:** 70b.
+
 ### Sesja 11.11 — projekt przebudowy netrunningu (etap 70)
 
 **Zlecenie MG:** plik z projektem zmian netrunningu — okno SIEĆ przejrzyste, tylko bieżące

@@ -3,10 +3,12 @@ import {
   NET_DEVICE_FIGURE_PROFILES,
   NET_DEVICE_MESSAGES,
   netDeviceFigureProfile,
+  netDeviceMoveSlot,
   netDeviceTurnOf,
   netDeviceUse,
   netDeviceVerbSlots,
   netOperatedCost,
+  netOperatedMoveLeft,
   netOperatedRefusal,
   netOperatedState,
   readNetDeviceTurns,
@@ -51,9 +53,23 @@ function must(result: ReturnType<typeof netDeviceUse>): Ledger & { charge: boole
 
 describe('czynności przejętej figury wg rodzaju', () => {
   it('kamera obraca się i gaśnie, wieżyczka strzela, dron także jeździ', () => {
-    expect(netDeviceFigureProfile('camera')).toEqual({ moves: false, verbs: ['turn', 'off'] });
-    expect(netDeviceFigureProfile('turret')).toEqual({ moves: false, verbs: ['fire', 'off'] });
-    expect(netDeviceFigureProfile('drone')).toEqual({ moves: true, verbs: ['fire', 'off'] });
+    expect(netDeviceFigureProfile('camera')).toMatchObject({
+      moves: false,
+      verbs: ['turn', 'off'],
+    });
+    expect(netDeviceFigureProfile('turret')).toMatchObject({
+      moves: false,
+      verbs: ['fire', 'off'],
+    });
+    expect(netDeviceFigureProfile('drone')).toMatchObject({ moves: true, verbs: ['fire', 'off'] });
+  });
+
+  it('oczy (70c): kamera stożkiem 90°, wieżyczka i dron kołem, drzwi i instalacje wcale', () => {
+    expect(netDeviceFigureProfile('camera').sight).toEqual({ coneDeg: 90 });
+    expect(netDeviceFigureProfile('turret').sight).toEqual({ coneDeg: null });
+    expect(netDeviceFigureProfile('drone').sight).toEqual({ coneDeg: null });
+    expect(netDeviceFigureProfile('door').sight).toBeNull();
+    expect(netDeviceFigureProfile('environment').sight).toBeNull();
   });
 
   it('drzwi i instalacje nie są figurami do prowadzenia', () => {
@@ -117,8 +133,24 @@ describe('aktywacja urządzenia: Akcja Sieciowa = ruch i czynność', () => {
     expect(moved.charge).toBe(false);
     expect(use(moved, 'drone', 'move', { spendM: 2 })).toEqual({
       ok: false,
-      error: 'NET_DEVICE_STATIONARY',
+      error: 'NET_DEVICE_NO_MOVE_LEFT',
     });
+  });
+
+  it('ruch ponad budżet odmawia od razu, a setne metra luzu przechodzą (70c)', () => {
+    expect(use(EMPTY, 'drone', 'move', { moveM: 8, spendM: 9 })).toEqual({
+      ok: false,
+      error: 'NET_DEVICE_NO_MOVE_LEFT',
+    });
+    const exact = must(use(EMPTY, 'drone', 'move', { moveM: 8, spendM: 8.03 }));
+    expect(netDeviceTurnOf(exact.deviceTurns, 'node-a', 'drone', 3)?.moveLeftM).toBe(0);
+  });
+
+  it('dwa marsze jednej aktywacji płacą z tych samych metrów (70c)', () => {
+    const first = must(use(EMPTY, 'drone', 'move', { moveM: 8, spendM: 3.5 }));
+    const second = must(use(first, 'drone', 'move', { moveM: 8, spendM: 4 }));
+    expect(second.charge).toBe(false);
+    expect(netDeviceTurnOf(second.deviceTurns, 'node-a', 'drone', 3)?.moveLeftM).toBe(0.5);
   });
 
   it('urządzenie, które stoi, nie rusza się wcale', () => {
@@ -191,6 +223,49 @@ describe('stan aktywacji na belce', () => {
     expect(turret.map((slot) => slot.verb)).toEqual(['off']);
     expect(turret[0]?.disabled).toBe(NET_DEVICE_MESSAGES.NET_DEVICE_SPENT);
     expect(turret[0]?.id).toBe('device:t2:off');
+  });
+});
+
+describe('kafel „Ruch” drona (70c)', () => {
+  const drone = { tokenId: 'd1', deviceKind: 'drone' as const, moveM: 8 };
+
+  it('metry: pełny RUCH przed aktywacją, reszta po niej, bez limitu poza walką', () => {
+    expect(netOperatedMoveLeft({ ...drone, state: 'ready' })).toBe(8);
+    expect(netOperatedMoveLeft({ ...drone, state: 'active', moveLeftM: 3 })).toBe(3);
+    // Strzał zamyka czynność, nie jazdę.
+    expect(netOperatedMoveLeft({ ...drone, state: 'spent', moveLeftM: 3 })).toBe(3);
+    expect(netOperatedMoveLeft({ ...drone, state: 'node-used' })).toBe(0);
+    expect(netOperatedMoveLeft({ ...drone, state: 'free' })).toBeNull();
+    expect(netOperatedMoveLeft({ ...drone, moveM: 0, state: 'free' })).toBe(0);
+  });
+
+  it('kafel: koszt Akcja Sieciowa przed aktywacją, potem z aktywacji; odmowy z powodem', () => {
+    expect(netDeviceMoveSlot({ ...drone, state: 'ready' })).toMatchObject({
+      id: 'device:d1:move',
+      label: 'Ruch',
+      metres: 8,
+      cost: 'net',
+      disabled: null,
+    });
+    expect(netDeviceMoveSlot({ ...drone, state: 'active', moveLeftM: 2 })).toMatchObject({
+      metres: 2,
+      cost: 'action',
+      disabled: null,
+    });
+    expect(netDeviceMoveSlot({ ...drone, state: 'spent', moveLeftM: 0 })?.disabled).toBe(
+      NET_DEVICE_MESSAGES.NET_DEVICE_NO_MOVE_LEFT,
+    );
+    expect(netDeviceMoveSlot({ ...drone, state: 'node-used' })?.disabled).toBe(
+      NET_DEVICE_MESSAGES.NET_NODE_USED,
+    );
+    expect(netDeviceMoveSlot({ ...drone, moveM: 0, state: 'ready' })?.disabled).toBe(
+      NET_DEVICE_MESSAGES.NET_DEVICE_NO_MOVE,
+    );
+  });
+
+  it('wieżyczka i kamera kafla „Ruch” nie mają', () => {
+    expect(netDeviceMoveSlot({ tokenId: 't', deviceKind: 'turret', state: 'ready' })).toBeNull();
+    expect(netDeviceMoveSlot({ tokenId: 'c', deviceKind: 'camera', state: 'ready' })).toBeNull();
   });
 });
 

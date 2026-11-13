@@ -7,6 +7,7 @@ import type {
   CpredHotbarWeaponGroup,
   CpredHotbarWeaponSlot,
   CpredSlotCost,
+  NetDeviceMoveSlot,
   NetDeviceVerbSlot,
   NetOperatedState,
   TokenContainerView,
@@ -56,6 +57,7 @@ import { useTokenStore } from '../stores/tokenStore.js';
 import { useGameTimeStore } from '../stores/gameTimeStore.js';
 import { useNetRunStore } from '../stores/netRunStore.js';
 import { activateDeviceVerb, useDeviceAimStore } from '../net-operated.js';
+import { notifyInfo, notifyRefusal } from '../notices.js';
 import { usePortraitFrameStyle } from '../portrait-banner.js';
 import { CombatAwarenessPanel } from './CombatAwarenessPanel.js';
 import { BackupPanel } from './BackupPanel.js';
@@ -439,6 +441,41 @@ function DeviceVerbTile({
         <span className="hud-slot-cost">
           <CostMark cost={slot.cost} />
           <span>{cost}</span>
+        </span>
+      </span>
+    </button>
+  );
+}
+
+/**
+ * Kafel „Ruch” przejętego drona (etap 70c): ile metrów zostało z aktywacji
+ * i czym się za nie płaci. Jeździ się klikiem w podłoże — kafel bierze figurę
+ * w rękę i mówi zdaniem, dokąd kliknąć (albo czemu nie).
+ */
+function DeviceMoveTile({ slot, onActivate }: { slot: NetDeviceMoveSlot; onActivate: () => void }) {
+  const cost =
+    slot.cost === 'net' ? 'Akcja Sieciowa' : slot.cost === 'action' ? 'z aktywacji' : 'za darmo';
+  const metres = slot.metres === null ? 'bez limitu' : formatMetres(slot.metres);
+  const tip = useHudTip({
+    title: slot.label,
+    cost: slot.metres === null ? cost : `${metres} · ${cost}`,
+    body: slot.hint,
+    refusal: slot.disabled,
+  });
+  return (
+    <button
+      type="button"
+      className={`hud-slot hud-slot--medium hud-slot--action${slot.disabled ? ' hud-slot--refused' : ''}`}
+      data-device-move
+      onClick={onActivate}
+      {...tip}
+    >
+      <HudIcon name="move" className="hud-slot-icon" />
+      <span className="hud-slot-body">
+        <span className="hud-slot-label">{slot.label}</span>
+        <span className="hud-slot-cost">
+          <CostMark cost={slot.cost === 'net' ? 'net' : 'move'} />
+          <span data-device-metres>{metres}</span>
         </span>
       </span>
     </button>
@@ -1213,10 +1250,25 @@ export function CombatHud() {
               </section>
             )}
 
-            {context.device && context.device.verbs.length > 0 && (
+            {context.device && (context.device.verbs.length > 0 || context.device.move) && (
               <section className="hud-group">
                 <h3 className="hud-group-title">Urządzenie</h3>
                 <div className="hud-slots hud-slots--medium">
+                  {context.device.move && (
+                    <DeviceMoveTile
+                      slot={context.device.move}
+                      onActivate={() => {
+                        const move = context.device!.move!;
+                        takeFigure(token.id, false);
+                        if (move.disabled) notifyRefusal('action', move.disabled);
+                        else
+                          notifyInfo('Kliknij podłoże, dokąd urządzenie ma pojechać.', {
+                            title: move.label,
+                            topic: 'net',
+                          });
+                      }}
+                    />
+                  )}
                   {context.device.verbs.map((slot) => (
                     <DeviceVerbTile
                       key={slot.id}

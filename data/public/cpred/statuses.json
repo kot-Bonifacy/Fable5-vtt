@@ -64,6 +64,12 @@
       "id": "net-seized",
       "name": "Przejęty w Sieci",
       "icon": "/public/cpred/status-icons/net-seized.svg"
+    },
+    {
+      "id": "net-off",
+      "name": "Wyłączony",
+      "icon": "/public/cpred/status-icons/net-off.svg",
+      "dims": true
     }
   ]
 }

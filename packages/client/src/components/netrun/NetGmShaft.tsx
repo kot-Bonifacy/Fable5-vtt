@@ -63,7 +63,7 @@ function PlanFloor({
  * Gracz nie ma tej kolumny, bo nie ma jej z czego narysować: `shaft` przychodzi
  * wyłącznie w ładunku MG. To jest podgląd i skok — klik przestawia netrunnera
  * ręką MG (bez ograniczenia do śladu i wyjść). Urządzenia węzła obsługuje się
- * z karty piętra albo z sekcji „Przejęte węzły”, nie stąd.
+ * z paska „Oczy i urządzenia” (70c), nie stąd.
  */
 export function NetGmShaft({
   shaft,

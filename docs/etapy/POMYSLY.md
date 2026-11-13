@@ -1,5 +1,13 @@
 # Pomysły poza zakresem etapów
 
+**13.11.2026 (etap 70c, pasek „Oczy i urządzenia”) — czego pasek jeszcze nie robi.** (1) **Kadr
+przy krawędzi sceny** — `showNetDevice` nie wyjeżdża poza brzeg mapy, więc urządzenie w pasie
+pod oknem SIEĆ przy prawej krawędzi zostaje pod oknem; pomógłby chwilowy luz kamery albo kadr,
+który przesuwa okno. (2) **Kafel „Ruch” uzbrajający marsz** (klik w kafel, potem klik w cel,
+z kółkiem zasięgu także poza turą) — dziś bierze drona w rękę i podpowiada zdaniem. (3) **Pełna
+nazwa urządzenia na miniaturze** — w 360 px mieszczą się trzy kafle, długie nazwy ucina wielokropek
+(pełna jest w dymku).
+
 **06.11.2026 (etap 68, warsztat) — czego warsztat jeszcze nie umie.** (1) **Demontaż przez
 gracza i odkup ulepszenia** (dziś zdejmuje MG w oknie pojazdu, bez zwrotu). (2) **Płatne
 uzupełnianie** rakiet wyrzutni i zbiorników Nitro (dziś naboje bez dna, Nitro odnawia MG

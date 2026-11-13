@@ -37,7 +37,6 @@ import {
   type SceneVehicleView,
   type TokenGlyph,
   type TokenView,
-  NET_DEVICE_MESSAGES,
 } from '@vtt/shared';
 import {
   MapRenderer,
@@ -137,6 +136,8 @@ import {
   myOperatedTokenIds,
   operatedEntries,
   operatedFigureOf,
+  operatedMoveMetresLeft,
+  operatedWalkRefusal,
   turnDeviceAt,
   useDeviceAimStore,
 } from '../net-operated.js';
@@ -603,7 +604,16 @@ function moveAllowanceOf(
   combat: CombatView | null,
   userId: string | null,
   isGm: boolean,
+  selectedTokenId: string | null = null,
 ): MoveAllowance | null {
+  // Etap 70c: zaznaczony przejęty dron jedzie z metrów aktywacji urządzenia,
+  // a nie z budżetu tury aktywnego uczestnika (to tura netrunnera).
+  const operated = isGm ? null : operatedFigureOf(selectedTokenId);
+  if (operated && combat && combat.round >= 1) {
+    const metresLeft = operatedMoveMetresLeft(operated);
+    if (metresLeft === null || operatedWalkRefusal(operated, combat)) return null;
+    return { tokenId: operated.figure.tokenId, metresLeft, costFactor: 1, enforced: true };
+  }
   const active = activeCombatantOf(combat);
   const distance = active?.turn?.distance;
   // Uczestnik bez figury (Czarny LOD z 26c) nie chodzi po mapie.
@@ -648,13 +658,14 @@ function walkRefusalFor(
   scene: SceneView | null,
 ): string | null {
   if (!tokenId || isGm) return null;
-  // Przejęte urządzenie (etap 70b) stoi: wieżyczka i kamera nie mają ruchu,
-  // a marsz drona przychodzi w 70c.
-  if (operatedFigureOf(tokenId)) return NET_DEVICE_MESSAGES.NET_DEVICE_STATIONARY;
   // „Ruch graczy: Stop" (etap 45; mapa zamknięta od 12.09) wyprzedza wszystko
   // inne: dopóki MG nie puści drużyny, ani Tura, ani stan figury nie mają nic
   // do rzeczy.
   if (scene?.playerMove === 'stop') return PLAYER_MOVE_STOP_NOTE;
+  // Przejęte urządzenie (etap 70b): wieżyczka i kamera stoją, dron jedzie
+  // w turze netrunnera z metrów aktywacji (70c) — nie z budżetu własnej tury.
+  const operated = operatedFigureOf(tokenId);
+  if (operated) return operatedWalkRefusal(operated, combat);
   const blocked = token ? cpredMovementBlock(token.statuses) : null;
   if (blocked) return blocked;
   // Pusta pula Eksploracji marszu już nie zatrzymuje (24.10) — płaci z niej
@@ -1474,6 +1485,10 @@ export function MapArea() {
       // What a sticker does to the figure comes from the same registry the
       // icon does (stage 27j) — the map never learns what „unconscious" means.
       conditions: conditionRegistry(tokenState.statuses),
+      // Etap 70c: „Wyłączony” z Sieci szarzy figurę — rejestr mówi które.
+      dimmedStatuses: new Set(
+        tokenState.statuses.filter((status) => status.dims).map((status) => status.id),
+      ),
       activeTokenId: activeTokenIdOf(useCombatStore.getState().combat),
       // Znaczek „⚔ W starciu” (etap 50a) — tylko u MG.
       combatTokenIds: combatTokenIdsFor(useCombatStore.getState().combat, user?.role === ROLE_GM),
@@ -2027,14 +2042,31 @@ export function MapArea() {
     const state = useCombatStore.getState();
     const user = useAuthStore.getState().user;
     const isGm = user?.role === ROLE_GM;
-    const allowance = moveAllowanceOf(state.combat, user?.id ?? null, isGm);
+    const allowance = moveAllowanceOf(
+      state.combat,
+      user?.id ?? null,
+      isGm,
+      useSelectionStore.getState().tokenId,
+    );
     rendererRef.current?.setMoveAllowance(allowance && { ...allowance, showReach: isGm });
   }, []);
 
   useEffect(() => {
     if (!ready) return;
     pushMoveAllowance();
-    return useCombatStore.subscribe(pushMoveAllowance);
+    const unsubCombat = useCombatStore.subscribe(pushMoveAllowance);
+    // Etap 70c: zasięg przejętego drona zależy od zaznaczenia i od księgi runu.
+    const unsubSelection = useSelectionStore.subscribe((state, previous) => {
+      if (state.tokenId !== previous.tokenId) pushMoveAllowance();
+    });
+    const unsubRuns = useNetRunStore.subscribe((state, previous) => {
+      if (state.runs !== previous.runs) pushMoveAllowance();
+    });
+    return () => {
+      unsubCombat();
+      unsubSelection();
+      unsubRuns();
+    };
   }, [ready, pushMoveAllowance]);
 
   useEffect(() => {

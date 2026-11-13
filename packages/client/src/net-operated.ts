@@ -1,13 +1,22 @@
 import type {
   CombatView,
   CpredCharacterData,
+  NetDeviceMoveSlot,
   NetDeviceOperation,
   NetDeviceVerbSlot,
   NetOperatedFigure,
   NetRunPayload,
   ScenePoint,
 } from '@vtt/shared';
-import { ROLE_GM, netDeviceVerbSlots, netOperatedRefusal } from '@vtt/shared';
+import {
+  NET_DEVICE_MESSAGES,
+  ROLE_GM,
+  netDeviceFigureProfile,
+  netDeviceMoveSlot,
+  netDeviceVerbSlots,
+  netOperatedMoveLeft,
+  netOperatedRefusal,
+} from '@vtt/shared';
 import { create } from 'zustand';
 import { useAuthStore } from './stores/authStore.js';
 import { useNetRunStore } from './stores/netRunStore.js';
@@ -91,6 +100,45 @@ export function operatedTurnRefusal(
     }
   }
   return netOperatedRefusal(entry.figure.state);
+}
+
+/**
+ * Dlaczego przejęta figura nie pojedzie teraz klikiem w podłoże — albo null
+ * (70c). Wieżyczka i kamera stoją; dron jedzie w turze netrunnera, z metrów
+ * aktywacji, także po strzale, i nie wtedy, gdy węzeł zużyło inne urządzenie.
+ */
+export function operatedWalkRefusal(
+  entry: OperatedEntry,
+  combat: CombatView | null,
+): string | null {
+  const { figure } = entry;
+  if (!netDeviceFigureProfile(figure.deviceKind).moves) {
+    return NET_DEVICE_MESSAGES.NET_DEVICE_STATIONARY;
+  }
+  if ((figure.moveM ?? 0) <= 0) return NET_DEVICE_MESSAGES.NET_DEVICE_NO_MOVE;
+  const turn = operatedTurnRefusal(entry, combat);
+  // „Czynność wykonana” zamyka strzał, nie jazdę — metry mogą jeszcze zostać.
+  if (turn && turn !== NET_DEVICE_MESSAGES.NET_DEVICE_SPENT) return turn;
+  return netOperatedMoveLeft(figure) === 0 ? NET_DEVICE_MESSAGES.NET_DEVICE_NO_MOVE_LEFT : null;
+}
+
+/**
+ * Ile metrów przejęty dron przejedzie jednym marszem (70c) — kółko zasięgu
+ * i przycięcie trasy w planerze. Null, gdy nikt metrów nie liczy (poza walką).
+ */
+export function operatedMoveMetresLeft(entry: OperatedEntry): number | null {
+  return netOperatedMoveLeft(entry.figure);
+}
+
+/** Kafel „Ruch” drona na belce, z odmową tury netrunnera (70c). */
+export function operatedMoveSlot(
+  entry: OperatedEntry,
+  combat: CombatView | null,
+): NetDeviceMoveSlot | null {
+  const slot = netDeviceMoveSlot(entry.figure);
+  if (!slot) return null;
+  const refusal = operatedWalkRefusal(entry, combat);
+  return refusal ? { ...slot, disabled: refusal } : slot;
 }
 
 /** Przyciski czynności przejętej figury poza strzałem („Obróć”, „Wyłącz”). */

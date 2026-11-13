@@ -23,6 +23,7 @@ import type { RealtimeDeps } from './registry.js';
 import { RealtimeError } from './registry.js';
 import { containerTokenIds } from './containers.js';
 import { offstageVehicleIds } from './chase-offstage.js';
+import { netSilencedOnScene } from './net-control.js';
 import { emitToCampaignUser, gmRoom } from './state.js';
 import { loadVisionContext } from './vision.js';
 import {
@@ -207,9 +208,13 @@ async function eligibleFoes(deps: RealtimeDeps, sceneId: string): Promise<Token[
   const containers = await containerTokenIds(deps.ctx.prisma, rows);
   // Załoga auta poza pościgiem (66c) nie zakłada walki — gracz jej nie widzi.
   const offstage = await offstageVehicleIds(deps.ctx.prisma, sceneId);
+  // Urządzenie przejęte albo wyłączone w Sieci (70b, 70c) walki nie zakłada —
+  // pierwsze jedzie ręką netrunnera, drugie stoi martwe.
+  const silenced = await netSilencedOnScene(deps.ctx.prisma, sceneId);
   return rows.filter(
     (row) =>
       !containers.has(row.id) &&
+      !silenced.has(row.id) &&
       !(row.sceneVehicleId !== null && offstage.has(row.sceneVehicleId)) &&
       sheetTurnForfeit(readTokenStatuses(row.statuses)) === null,
   );

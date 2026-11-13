@@ -176,12 +176,12 @@ test.describe.serial('@szybkie T70b przejęta wieżyczka na mapie', () => {
   test('2. Kontrola: figura przejęta — naklejka na mapie, wiersz w „Postaciach”', async () => {
     scriptDice([9]);
     await abilityButton(ola, 'Kontrola').click();
-    await expect(runWindow(ola).locator('.net-node-device')).toHaveCount(1, { timeout: 20_000 });
+    // Od 70c urządzenia przejętego węzła stoją w pasku „Oczy i urządzenia”.
+    await expect(runWindow(ola).locator('.net-eye[data-eye]')).toHaveCount(1, { timeout: 20_000 });
     expect(pendingDice()).toBe('');
     await expect.poll(() => statusesOf(TURRET)).toContain('net-seized');
-    // Okno nie strzela: lista nie ma ani celu, ani „Strzelaj”.
+    // Okno nie strzela: pasek nie ma ani celu, ani „Strzelaj”.
     await expect(runWindow(ola).getByRole('button', { name: 'Strzelaj' })).toHaveCount(0);
-    await expect(runWindow(ola).locator('.net-node-target')).toHaveCount(0);
     const seized = ola.page.locator('[data-character-group="operated"]');
     await expect(seized).toContainText('Przejęte (1)');
     await expect(seized).toContainText('przez: Obrona magazynu');

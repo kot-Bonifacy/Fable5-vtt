@@ -290,6 +290,14 @@ export const CPRED_POISONED_STATUS_ID = 'poisoned';
  */
 export const CPRED_NET_SEIZED_STATUS_ID = 'net-seized';
 
+/**
+ * Figura urządzenia wyłączona w Sieci (etap 70c, pomysł z 31.10) — szary
+ * krążek, który widzi każdy, kto widzi figurę. Nakłada i zdejmuje ją serwer
+ * za stanem urządzenia w Architekturze; turę, straż i oczy wyłączonej figury
+ * gasi stan urządzenia, nie naklejka.
+ */
+export const CPRED_NET_OFF_STATUS_ID = 'net-off';
+
 /** Legs oiled, glued or wired by a defence system (stage 26f). */
 export const CPRED_SLOWED_STATUS_ID = 'slowed';
 

@@ -37,6 +37,7 @@ import {
 import { requireTurnSpend } from './combat-actions.js';
 import { containerTokenIds } from './containers.js';
 import { checkSighting, type LivePosition } from './foe-sighting.js';
+import { netSilencedOnScene } from './net-control.js';
 import { RealtimeError, defineEvent, type RealtimeDeps } from './registry.js';
 import { toSceneView } from './scenes.js';
 import { emitToCampaignUser, gmRoom } from './state.js';
@@ -336,7 +337,9 @@ async function watchersOnScene(deps: RealtimeDeps, sceneId: string): Promise<Tok
     );
   if (npc.length === 0) return npc;
   const containers = await containerTokenIds(deps.ctx.prisma, npc);
-  return npc.filter((token) => !containers.has(token.id));
+  // Kamera wyłączona albo przejęta w Sieci (70c) nie patrzy na skradających się.
+  const silenced = await netSilencedOnScene(deps.ctx.prisma, sceneId);
+  return npc.filter((token) => !containers.has(token.id) && !silenced.has(token.id));
 }
 
 /** Konto MG kampanii — ręka, którą idą wiersze rzutów w ukryciu. */

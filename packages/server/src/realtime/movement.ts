@@ -179,6 +179,18 @@ export interface MoveIntent {
    * ciągiem. Pula pilnuje już tylko przeciągania i Skoku.
    */
   marched?: boolean;
+  /**
+   * Figura przejęta w Sieci (etap 70c, dron): metry płaci aktywacja urządzenia
+   * (`operatedMoveFor` w `netdevices.ts`), nie Tura figury ani pula Eksploracji
+   * — jej własna tura w kolejce jest pomijana.
+   */
+  operated?: OperatedMoveBudget;
+}
+
+/** Rachunek metrów przejętej figury — wypełnia go `operatedMoveFor`. */
+export interface OperatedMoveBudget {
+  check: (metres: number) => Promise<void>;
+  bill: (metres: number) => Promise<void>;
 }
 
 /** What the validator decided; the caller only ever sees a pass or a throw. */
@@ -210,6 +222,16 @@ export async function validateTokenMove(
   const walked = movementPath(intent.from, intent.to, intent.path);
   await refuseWalkIntoFog(deps, campaignId, user, intent, walked);
   await refuseWalkThroughSolid(deps, campaignId, user, intent, walked);
+
+  // Etap 70c: dron w rękach netrunnera — ściany, mgła i figury jak u każdego,
+  // ale metry z aktywacji urządzenia, w walce i poza nią.
+  if (intent.operated) {
+    await refuseWalkThroughFigures(deps, campaignId, user, intent, walked, null);
+    const metres = movementMetres(scene, token, walked);
+    if (dryRun) await intent.operated.check(metres);
+    else await intent.operated.bill(metres);
+    return { metres, enforced: true };
+  }
 
   const found = await findCombatantForToken(deps.ctx.prisma, scene.id, token.id);
   if (!found) {

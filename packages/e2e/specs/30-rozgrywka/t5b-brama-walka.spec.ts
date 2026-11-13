@@ -1057,8 +1057,14 @@ test.describe.serial('T5b: „Brama” — walka druga, Sieć, wieżyczka, pad A
   test('5.5 runda 3, tura Oli: wyłącza wieżyczkę — strefa ostrzału rozbrojona przez węzeł', async () => {
     expect(activeLabel()).toBe('Iskra');
     await clientsSeeTurn(ola);
-    const devices = runWindow(ola).locator('.net-node-devices');
-    await devices.getByRole('button', { name: 'Wyłącz' }).click();
+    // Etap 70c: urządzenie z figurą bierze się z paska „Oczy i urządzenia”,
+    // a „Wyłącz” stoi na lewej belce przejętej figury.
+    const turretTile = runWindow(ola)
+      .getByTestId('net-eyes')
+      .locator('.net-eye')
+      .filter({ hasText: 'Wieżyczka' });
+    await turretTile.locator('.net-eye-take').click();
+    await ola.page.locator('.hud-rail [data-device-verb="off"]').click();
     const device = trunk()[3]!.devices![0]!;
     await expect
       .poll(() => {
@@ -1068,7 +1074,7 @@ test.describe.serial('T5b: „Brama” — walka druga, Sieć, wieżyczka, pad A
         return (runtime.devices ?? []).find((d) => (d.deviceId ?? d.id) === device.id)?.on;
       })
       .toBe(false);
-    await expect(devices).toContainText('wyłączone', { timeout: 30_000 });
+    await expect(turretTile.locator('[data-eye-state="off"]')).toHaveCount(1, { timeout: 30_000 });
     // Od 17.10 Test Przeżywalności Strażnika rzuca serwer na starcie jego tury —
     // kość skryptuje się przed przejściem tury. Rzut niski: przeżywa.
     scriptDice([2]);

@@ -75,8 +75,8 @@ import { requireCampaignScene } from './scenes.js';
 import { releaseSceneTargets } from './target.js';
 import { calmFoe, calmVisibleFoes } from './foe-sighting.js';
 import { endSneak } from './sneak.js';
-import { emitRunsOnRoundChange } from './netrun-io.js';
-import { seizedGrantOf } from './net-control.js';
+import { emitRunsOnRoundChange, resetNetLedgersOnScene } from './netrun-io.js';
+import { netSilencedTokenIds } from './net-control.js';
 
 /**
  * The action economy (stage 14b).
@@ -673,12 +673,12 @@ export async function passForfeitedTurns(
     const active = lap.combatants.find((row) => row.id === lap!.activeCombatantId);
     if (!active || !hasFigure(active) || turnOwesDeathSave(active.turnState)) return;
     // Figura urządzenia przejęta w Sieci (etap 70b) nie gra własnej tury —
-    // prowadzi ją netrunner w swojej. Pytany jest węzeł, nie naklejka.
+    // prowadzi ją netrunner w swojej; wyłączona w Sieci (70c) stoi. Pytany jest
+    // węzeł i stan urządzenia, nie naklejka.
+    const silence = (await netSilencedTokenIds(deps.ctx.prisma, campaignId)).get(active.tokenId);
     const forfeit =
       sheetTurnForfeit(readTokenStatuses(active.token.statuses)) ??
-      ((await seizedGrantOf(deps.ctx.prisma, campaignId, active.tokenId))
-        ? 'przejęta w Sieci'
-        : null);
+      (silence === 'seized' ? 'przejęta w Sieci' : silence === 'off' ? 'wyłączona w Sieci' : null);
     if (!forfeit) return;
     await logForfeitedTurn(deps, campaignId, user, active, forfeit);
     await stepTurn(deps, campaignId, scene, lap, user);
@@ -787,6 +787,8 @@ export const combatEndEvent = defineEvent({
       data: { momentum: null },
     });
     await emitCombatOfScene(deps, campaignId, scene);
+    // Księga węzłów liczy rundy tej walki — następna zacznie od rundy 1 (70c).
+    await resetNetLedgersOnScene(deps, scene.id);
     // Bez walki nie ma rundy, więc „węzeł użyty” gaśnie (66e pkt 17).
     await emitRunsOnRoundChange(deps, scene.id);
     // Trwałe cele (etap 50c) kończą się z walką — decyzja MG z 10.10.

@@ -170,16 +170,101 @@ export async function seizedGrantOf(
   return (await loadNetDeviceGrants(prisma, campaignId)).get(tokenId) ?? null;
 }
 
+/** Konta, które prowadzą tę figurę przez węzeł — puste, gdy nikt (70c: klatki marszu drona). */
+export async function operatorIdsOf(
+  prisma: PrismaClient,
+  campaignId: string,
+  tokenId: string,
+): Promise<ReadonlySet<string>> {
+  return (await loadNetDeviceGrants(prisma, campaignId)).get(tokenId)?.operatorIds ?? new Set();
+}
+
+/**
+ * Figury urządzeń wyłączonych w Sieci (etap 70c) — stan urządzenia
+ * w Architekturze, który przeżywa odłączenie („kamera wyłączona zostaje
+ * wyłączona”, 26d). Dla naklejki „Wyłączony”, kolejki, straży i oczu.
+ */
+export async function loadNetSwitchedOffTokenIds(
+  prisma: PrismaClient,
+  campaignId: string,
+): Promise<Set<string>> {
+  const off = new Set<string>();
+  const rows = await prisma.netArchitecture.findMany({
+    where: { campaignId },
+    select: { id: true, name: true, difficulty: true, data: true, runtime: true },
+  });
+  for (const row of rows) {
+    const runtime = readNetRuntime(row.runtime);
+    if ((runtime.devices ?? []).every((state) => state.on)) continue;
+    const architecture = parseArchitecture(row);
+    if (!architecture) continue;
+    for (const floor of architecture.branches.flatMap((branch) => branch.floors)) {
+      for (const device of floor.devices ?? []) {
+        if (device.tokenId && !netDeviceStateOf(runtime.devices, device.id).on) {
+          off.add(device.tokenId);
+        }
+      }
+    }
+  }
+  return off;
+}
+
+/** Dlaczego figura urządzenia milczy: przejęta w Sieci albo w niej wyłączona. */
+export type NetSilence = 'seized' | 'off';
+
+/**
+ * Figury urządzeń, które nie działają same (70b, 70c): tury nie grają, obszar
+ * straży nie strzela, nie patrzą na skradających się i nie zakładają walki
+ * z zauważenia. Jedno pytanie dla kolejki, stref, skradania i walki z 56 —
+ * pytany jest węzeł i stan urządzenia, nie naklejka.
+ */
+export async function netSilencedTokenIds(
+  prisma: PrismaClient,
+  campaignId: string,
+): Promise<Map<string, NetSilence>> {
+  const silenced = new Map<string, NetSilence>();
+  for (const tokenId of await loadNetSwitchedOffTokenIds(prisma, campaignId)) {
+    silenced.set(tokenId, 'off');
+  }
+  for (const tokenId of (await loadNetDeviceGrants(prisma, campaignId)).keys()) {
+    silenced.set(tokenId, 'seized');
+  }
+  return silenced;
+}
+
+/** To samo dla jednej sceny — wołający z kolejki i walki z 56 znają tylko scenę. */
+export async function netSilencedOnScene(
+  prisma: PrismaClient,
+  sceneId: string,
+): Promise<Map<string, NetSilence>> {
+  const scene = await prisma.scene.findUnique({
+    where: { id: sceneId },
+    select: { campaignId: true },
+  });
+  if (!scene) return new Map();
+  const runs = await prisma.netRun.count({ where: { campaignId: scene.campaignId } });
+  const architectures = await prisma.netArchitecture.count({
+    where: { campaignId: scene.campaignId },
+  });
+  if (runs === 0 && architectures === 0) return new Map();
+  return netSilencedTokenIds(prisma, scene.campaignId);
+}
+
 /**
  * Odcisk tego, kto co trzyma w kampanii — `emitRuns` porównuje go z poprzednim
  * i dopiero zmiana (węzeł przejęty, urządzenie wyłączone, run zakończony)
- * przelicza widok graczy i naklejki figur.
+ * przelicza widok graczy i naklejki figur. Od 70c obejmuje też figury
+ * wyłączone w Sieci (naklejka „Wyłączony”).
  */
-export function netGrantSignature(grants: ReadonlyMap<string, NetDeviceGrant>): string {
-  return [...grants.values()]
+export function netGrantSignature(
+  grants: ReadonlyMap<string, NetDeviceGrant>,
+  switchedOff: ReadonlySet<string> = new Set(),
+): string {
+  const held = [...grants.values()]
     .map((grant) => `${grant.tokenId}:${grant.runId}:${[...grant.operatorIds].sort().join(',')}`)
     .sort()
     .join('|');
+  return `${held}#${[...switchedOff].sort().join(',')}`;
 }
 
 function parseArchitecture(row: { id: string; name: string; difficulty: string; data: string }) {

@@ -10,6 +10,7 @@ import type {
   SessionUser,
 } from '@vtt/shared';
 import {
+  CPRED_METRES_PER_MOVE_POINT,
   NET_DEVICE_KIND_LABELS,
   cpredDrawnWeapons,
   isNetDeviceOperation,
@@ -27,6 +28,7 @@ import {
   netDeviceOperations,
   netDeviceStateAfter,
   netDeviceStateOf,
+  netDeviceTurnOf,
   netDeviceUse,
   netOperatedState,
   netFloorAt,
@@ -34,7 +36,7 @@ import {
   readNetRuntime,
   tokenTableName,
 } from '@vtt/shared';
-import { SHEET_STATIST_WEAPON_ROW_ID } from '../sheets.js';
+import { SHEET_STATIST_WEAPON_ROW_ID, readSheetMoveBudget } from '../sheets.js';
 import { RealtimeError, defineEvent, type RealtimeDeps } from './registry.js';
 import { emitTokenUpsert, requireCampaignToken } from './tokens.js';
 import {
@@ -43,6 +45,7 @@ import {
   emitRuns,
   loadRunRow,
   logNetLineWithSecret,
+  netActionsForRun,
   readFullRun,
   refreshNetCameraSight,
   runnerOwnerOf,
@@ -50,7 +53,7 @@ import {
   saveRuntime,
 } from './netrun-io.js';
 import { roundOfScene, spendNetAction } from './netcombat.js';
-import { loadCombat } from './combat.js';
+import { findCombatantForToken, loadCombat, spendTurnForCombatant } from './combat.js';
 import { outsideHandsOf, performAttackRoll } from './attacks.js';
 import { campaignEntry } from './compendium.js';
 import { loadNetDeviceGrants, operatorOf, type NetDeviceGrant } from './net-control.js';
@@ -308,44 +311,155 @@ export async function operatedShotFor(
       operatorUserId: user.id,
     },
     weaponRowId: await deviceWeaponRowId(deps, campaignId, grant.tokenId),
-    bill: () => billOperatedAction(deps, campaignId, grant, user, 'strzał'),
+    bill: () => billOperatedUse(deps, campaignId, grant, user, 'strzał'),
   };
 }
 
-/** Stan runu trzymającego figurę i to, co księga powie o następnej czynności. */
+/**
+ * Marsz przejętej figury (etap 70c) — to, czym ścieżka ruchu zastępuje budżet
+ * Tury figury: metry z aktywacji urządzenia (`netDeviceUse` z `use: 'move'`),
+ * a pierwsza czynność w rundzie płaci Akcją Sieciową netrunnera. Przekazywane
+ * do `validateTokenMove` jako `intent.operated`.
+ */
+export interface OperatedMove {
+  grant: NetDeviceGrant;
+  /** Na sucho (`token:walk`): czy trasa się zmieści i czy jest czym zapłacić. */
+  check: (metres: number) => Promise<void>;
+  /** Lądowanie: księguje metry (i Akcję Sieciową przy aktywacji). */
+  bill: (metres: number) => Promise<void>;
+}
+
+/**
+ * Czy ten ruch to marsz figury przejętej w Sieci — a jeśli tak, na jakich
+ * warunkach. Null dla każdej figury, której to konto przez węzeł nie prowadzi
+ * (i zawsze u MG). Przejęta figura, która nie jeździ, odmawia od razu:
+ * operator ją widzi, więc „nie wolno” byłoby nieprawdą.
+ */
+export async function operatedMoveFor(
+  deps: RealtimeDeps,
+  campaignId: string,
+  user: SessionUser,
+  tokenId: string,
+): Promise<OperatedMove | null> {
+  if (user.role === ROLE_GM) return null;
+  const grant = await operatorOf(deps.ctx.prisma, campaignId, tokenId, user);
+  if (!grant) return null;
+  if (!netDeviceFigureProfile(grant.deviceKind).moves) {
+    throw new RealtimeError('NET_DEVICE_STATIONARY');
+  }
+  if ((await netDeviceMoveMetres(deps, campaignId, grant)) <= 0) {
+    throw new RealtimeError('NET_DEVICE_NO_MOVE');
+  }
+  return {
+    grant,
+    check: (metres) => checkOperatedUse(deps, campaignId, grant, user, metres),
+    bill: (metres) => billOperatedUse(deps, campaignId, grant, user, 'ruch', metres),
+  };
+}
+
+/**
+ * Stan runu trzymającego figurę i to, co księga powie o następnej czynności
+ * (`spendM` — o ruchu tylu metrów). Urządzenie, które jeździ, dostaje przy
+ * aktywacji swój RUCH niezależnie od tego, czym zaczęło: dron, który najpierw
+ * strzelił, dalej może podjechać (70c).
+ */
 async function operatedUse(
   deps: RealtimeDeps,
   campaignId: string,
   grant: NetDeviceGrant,
   user: SessionUser,
+  spendM?: number,
 ) {
   const row = await loadRunRow(deps.ctx.prisma, campaignId, grant.runId);
   const state = row ? readFullRun(row.data) : null;
   if (!row || !state || !controlsRun(row, user)) throw new RealtimeError('FORBIDDEN');
   const { scene, token } = await requireCampaignToken(deps.ctx.prisma, campaignId, row.tokenId);
   const round = await roundOfScene(deps, scene.id);
+  const moveM = netDeviceFigureProfile(grant.deviceKind).moves
+    ? await netDeviceMoveMetres(deps, campaignId, grant)
+    : 0;
   const use = netDeviceUse(state, {
     floorId: grant.floorId,
     deviceId: grant.deviceId,
     round,
-    use: 'action',
+    ...(spendM === undefined ? { use: 'action' as const } : { use: 'move' as const, spendM }),
+    moveM,
   });
   return { row, state, scene, token, round, use };
 }
 
+/** Czy netrunner jest teraz w swojej Turze — budżet aktywacji gaśnie z jej końcem. */
+async function requireRunnerTurn(deps: RealtimeDeps, sceneId: string, runnerTokenId: string) {
+  const combat = await loadCombat(deps.ctx.prisma, sceneId);
+  const active = combat?.combatants.find((entry) => entry.id === combat.activeCombatantId);
+  if (active?.tokenId !== runnerTokenId) throw new RealtimeError('NOT_YOUR_TURN');
+}
+
 /**
- * Jedna czynność przejętej figury zaksięgowana w runie: aktywacja płaci Akcją
- * Sieciową netrunnera (`spendNetAction` — a więc tylko w jego Turze), kolejna
- * czynność aktywowanego urządzenia wymaga, żeby ta Tura dalej trwała.
+ * Marsz na sucho (`token:walk`, 70c): ta sama księga co przy lądowaniu, a przy
+ * aktywacji — czy netrunner ma czym zapłacić (`requireTurnSpend` na sucho),
+ * żeby dron nie przejechał pół mapy i nie wrócił skokiem z odmową.
  */
-async function billOperatedAction(
+async function checkOperatedUse(
+  deps: RealtimeDeps,
+  campaignId: string,
+  grant: NetDeviceGrant,
+  user: SessionUser,
+  metres: number,
+): Promise<void> {
+  const { row, state, scene, token, round, use } = await operatedUse(
+    deps,
+    campaignId,
+    grant,
+    user,
+    metres,
+  );
+  if (!use.ok) throw new RealtimeError(use.error);
+  if (round === null) return;
+  if (!use.charge) {
+    await requireRunnerTurn(deps, scene.id, token.id);
+    return;
+  }
+  const found = await findCombatantForToken(deps.ctx.prisma, scene.id, token.id);
+  if (!found) return;
+  const { actions } = await netActionsForRun(
+    deps.ctx.prisma,
+    deps.ctx.cpred,
+    row.characterId,
+    state.netActionDebt,
+  );
+  const outcome = await spendTurnForCombatant(
+    deps,
+    found.combat,
+    found.combatant,
+    { kind: 'net', label: `${grant.deviceName}: ruch`, max: Math.max(1, actions) },
+    user,
+    { dryRun: true },
+  );
+  if (outcome.kind === 'refused') throw new RealtimeError(outcome.error);
+}
+
+/**
+ * Jedna czynność albo jeden ruch przejętej figury zaksięgowany w runie:
+ * aktywacja płaci Akcją Sieciową netrunnera (`spendNetAction` — a więc tylko
+ * w jego Turze), kolejna czynność aktywowanego urządzenia wymaga, żeby ta Tura
+ * dalej trwała. `spendM` — ruch tylu metrów zamiast czynności (70c).
+ */
+async function billOperatedUse(
   deps: RealtimeDeps,
   campaignId: string,
   grant: NetDeviceGrant,
   user: SessionUser,
   what: string,
+  spendM?: number,
 ): Promise<void> {
-  const { row, state, scene, token, round, use } = await operatedUse(deps, campaignId, grant, user);
+  const { row, state, scene, token, round, use } = await operatedUse(
+    deps,
+    campaignId,
+    grant,
+    user,
+    spendM,
+  );
   if (!use.ok) throw new RealtimeError(use.error);
   let next: FullRunState = state;
   if (use.charge) {
@@ -360,9 +474,7 @@ async function billOperatedAction(
     });
   } else if (round !== null) {
     // Budżet aktywacji gaśnie z końcem Tury netrunnera, nie dopiero z rundą.
-    const combat = await loadCombat(deps.ctx.prisma, scene.id);
-    const active = combat?.combatants.find((entry) => entry.id === combat.activeCombatantId);
-    if (active?.tokenId !== token.id) throw new RealtimeError('NOT_YOUR_TURN');
+    await requireRunnerTurn(deps, scene.id, token.id);
   }
   await saveRunState(deps.ctx.prisma, row.id, {
     ...next,
@@ -412,6 +524,13 @@ export async function operatedFiguresOf(
       verbs: [...profile.verbs],
       state: netOperatedState(state, grant.floorId, grant.deviceId, round),
     };
+    if (profile.moves) {
+      // Etap 70c: kafel „Ruch” i zasięg marszu drona — RUCH z aktywacji
+      // i to, co z niego zostało w tej Turze.
+      figure.moveM = await netDeviceMoveMetres(deps, campaignId, grant);
+      const turn = netDeviceTurnOf(state.deviceTurns, grant.floorId, grant.deviceId, round);
+      if (turn) figure.moveLeftM = turn.moveLeftM;
+    }
     const hp = token.character
       ? toLinkedSheet(token.character, deps.ctx.cpred).hp
       : token.hpMax === null
@@ -464,18 +583,54 @@ export async function netDeviceCombatValue(
   campaignId: string,
   grant: Pick<NetDeviceGrant, 'tokenId' | 'entryId'>,
 ): Promise<number | undefined> {
+  for (const entry of await netDeviceEntries(deps, campaignId, grant)) {
+    if (entry.combatValue !== undefined) return entry.combatValue;
+  }
+  return undefined;
+}
+
+/**
+ * Wpisy systemu obronnego przejętej figury w kolejności źródeł: obszar straży
+ * przypięty do figury (etap 51), potem wpis urządzenia w Architekturze.
+ */
+async function netDeviceEntries(
+  deps: RealtimeDeps,
+  campaignId: string,
+  grant: Pick<NetDeviceGrant, 'tokenId' | 'entryId'>,
+) {
   const zone = await deps.ctx.prisma.defenseZone.findFirst({
     where: { tokenId: grant.tokenId },
     select: { entryId: true },
   });
+  const entries = [];
   for (const entryId of [zone?.entryId, grant.entryId]) {
     if (!entryId) continue;
     const entry = await campaignEntry(deps, campaignId, entryId);
-    if (entry && isNetDefenseEntry(entry) && entry.combatValue !== undefined) {
-      return entry.combatValue;
-    }
+    if (entry && isNetDefenseEntry(entry)) entries.push(entry);
   }
-  return undefined;
+  return entries;
+}
+
+/**
+ * Metry, które daje aktywacja przejętej figury, która jeździ (etap 70c): RUCH
+ * z wpisu systemu obronnego („RUCH 8”, ta sama kolejność źródeł co Wartość
+ * bojowa), a bez wpisu — z karty figury, jak Akcja Ruchu postaci (RUCH × 2,
+ * `readSheetMoveBudget`). Figura bez żadnego z nich stoi (0).
+ */
+export async function netDeviceMoveMetres(
+  deps: RealtimeDeps,
+  campaignId: string,
+  grant: Pick<NetDeviceGrant, 'tokenId' | 'entryId'>,
+): Promise<number> {
+  for (const entry of await netDeviceEntries(deps, campaignId, grant)) {
+    if (entry.move !== undefined) return Math.max(0, entry.move) * CPRED_METRES_PER_MOVE_POINT;
+  }
+  const token = await deps.ctx.prisma.token.findUnique({
+    where: { id: grant.tokenId },
+    include: { character: true },
+  });
+  if (!token?.character) return 0;
+  return Math.max(0, readSheetMoveBudget(token.character, deps.ctx.cpred).metresPerMove);
 }
 
 /**

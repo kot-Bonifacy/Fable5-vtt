@@ -1,11 +1,5 @@
 import { useState } from 'react';
-import type {
-  NetAbilityId,
-  NetDeviceOperation,
-  NetDeviceView,
-  NetFloorView,
-  NetRunView,
-} from '@vtt/shared';
+import type { NetAbilityId, NetFloorView, NetRunView } from '@vtt/shared';
 import {
   NET_ABILITIES_AVAILABLE,
   NET_DEVICE_KIND_LABELS,
@@ -14,7 +8,6 @@ import {
 import { plural } from '../../plural.js';
 import { InlineNotice } from '../NoticeColumn.js';
 import { NumberStepper } from '../NumberStepper.js';
-import { NetNodeDevices } from './NetNodeDevices.js';
 import { FLOOR_GLYPHS } from './net-glyphs.js';
 
 /** Widełki wirusa (etap 21c): PT ustala MG, a pisanie trwa tyle Akcji Sieciowych. */
@@ -139,26 +132,21 @@ function floorHint(here: NetFloorView): string | null {
  * i Maskowanie zawsze. Koniec rzędu sześciu wyszarzonych przycisków.
  *
  * Urządzenia węzła: przed Kontrolą sama nazwa i rodzaj (`nodeDevices`), po niej
- * lista z przełącznikami; figury urządzeń prowadzi się z mapy (70b).
+ * stoją w pasku „Oczy i urządzenia” pod kartą (70c), a figury urządzeń
+ * prowadzi się z mapy (70b).
  */
 export function NetFloorCard({
   here,
   run,
   busy,
-  sceneId,
   onAbility,
   onCopy,
-  onOperate,
-  onShow,
 }: {
   here: NetFloorView;
   run: NetRunView;
   busy: boolean;
-  sceneId: string | null;
   onAbility: (id: NetAbilityId, virus?: VirusDraft) => void;
   onCopy: (floorId: string) => void;
-  onOperate: (floorId: string, deviceId: string, operation: NetDeviceOperation) => void;
-  onShow: (device: NetDeviceView) => void;
 }) {
   const [virusOpen, setVirusOpen] = useState(false);
   const kind = here.kind ?? 'empty';
@@ -234,14 +222,6 @@ export function NetFloorCard({
           ))}
         </ul>
       )}
-
-      <NetNodeDevices
-        node={here}
-        busy={busy}
-        sceneId={sceneId}
-        onOperate={(deviceId, operation) => onOperate(here.id, deviceId, operation)}
-        onShow={onShow}
-      />
 
       {virusPending && (
         <InlineNotice tone="info" title="Wirus w budowie" role="status">

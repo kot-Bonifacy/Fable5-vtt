@@ -896,54 +896,13 @@
 
 /* ── węzły kontrolne i urządzenia (etap 26d) ── */
 
-/* Lista rzeczy przy przejętym węźle w oknie Sieci: w karcie piętra, a dla
-   węzłów, na których netrunner nie stoi — w sekcji „Przejęte węzły”. Lewa
-   krecha mówi, że to nie piętro, tylko to, co z niego wystaje. Znika w 70b:
-   przejęte urządzenie będzie figurą sterowaną z mapy. */
-.net-node-devices {
-  padding-left: 0.5rem;
-  border-left: 2px solid var(--net-line-branch);
-  display: flex;
-  flex-direction: column;
-  gap: 0.3rem;
-}
-
-.net-node-title {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.35rem;
-  font-size: 0.75rem;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--net-ink);
-}
-
-.net-node-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-}
-
-.net-node-device {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.35rem;
-  padding: 0.25rem 0.4rem;
-  border: 1px solid var(--net-line-dim);
-  border-radius: 5px;
-}
-
-.net-node-device--off {
-  opacity: 0.62;
-}
-
 .net-node-name {
   font-weight: 600;
+}
+
+.net-node-kind {
+  font-size: 0.75rem;
+  color: var(--net-text-dim);
 }
 
 /* Urządzenia węzła przed Kontrolą (etap 70a): sama nazwa i rodzaj, w rzędach,
@@ -965,80 +924,148 @@
   gap: 0.3rem;
 }
 
-/* „Przejęte węzły”: nazwa węzła to przycisk powrotu na jego piętro. */
-.net-held-node {
+/* Pasek „Oczy i urządzenia” (etap 70c): miniatury urządzeń trzymanych węzłów,
+   pogrupowane węzłami. Oko (figura na mapie) to przycisk — kadr i zaznaczenie;
+   przełączniki tego, czego belka nie ma, stoją pod nazwą. */
+.net-eyes-head {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.net-eyes-nav {
+  margin-left: auto;
+  display: inline-flex;
+  gap: 0.2rem;
+}
+
+.net-eyes-node {
   display: flex;
   flex-direction: column;
+  gap: 0.25rem;
+}
+
+.net-eyes-node-name {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.75rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--net-ink);
+}
+
+.net-eyes-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(6.5rem, 1fr));
   gap: 0.3rem;
 }
 
-.net-held-name {
-  align-self: flex-start;
+.net-eye {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  min-width: 0;
+  padding: 0.25rem 0.35rem;
+  border: 1px solid var(--net-line-dim);
+  border-radius: 5px;
+  background: var(--net-floor-bg);
+}
+
+.net-eye--selected {
+  border-color: var(--net-here);
+  box-shadow: 0 0 0 1px var(--net-here-glow) inset;
+}
+
+.net-eye--off {
+  opacity: 0.62;
+}
+
+.net-eye-take {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  min-width: 0;
   padding: 0;
   border: 0;
   background: none;
   color: var(--net-text);
   font: inherit;
-  font-weight: 600;
+  text-align: left;
+}
+
+button.net-eye-take {
   cursor: pointer;
 }
 
-.net-held-name:hover:not(:disabled),
-.net-held-name:focus-visible {
+button.net-eye-take:hover .net-eye-name,
+button.net-eye-take:focus-visible .net-eye-name {
   color: var(--net-here);
 }
 
-/* Nazwa urządzenia z figurą na oglądanej scenie — klik przewozi kadr (20.10). */
-.net-node-name--show {
-  padding: 0;
-  border: 0;
-  background: none;
-  color: var(--net-ink);
-  font: inherit;
-  font-weight: 600;
-  cursor: pointer;
-  text-decoration: underline dotted;
-  text-underline-offset: 0.2em;
-}
-
-.net-node-name--show:hover,
-.net-node-name--show:focus-visible {
-  color: var(--net-text);
-}
-
-/* „Obróć” kamery z listą kierunków obok. */
-.net-node-aim {
+.net-eye-glyph {
+  flex: 0 0 auto;
   display: inline-flex;
   align-items: center;
-  gap: 0.25rem;
+  justify-content: center;
+  width: 1.2rem;
+  height: 1.2rem;
+  color: var(--net-ink);
+  font-size: 0.9rem;
+  line-height: 1;
 }
 
-.net-node-aim select {
-  font-size: 0.78rem;
+.net-eye-icon {
+  width: 1.1rem;
+  height: 1.1rem;
 }
 
-.net-node-kind {
-  font-size: 0.75rem;
-  color: var(--net-text-dim);
-}
-
-.net-node-buttons {
-  margin-left: auto;
-  display: flex;
-  gap: 0.25rem;
-  flex-wrap: wrap;
-}
-
-.net-node-target {
-  display: flex;
-  align-items: center;
-  gap: 0.35rem;
-  font-size: 0.78rem;
-}
-
-.net-node-target select {
+.net-eye-name {
+  flex: 1 1 auto;
   min-width: 0;
-  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+/* Kropka stanu: zielona — aktywne, bursztynowa — czynność wykonana, przygaszona
+   — węzeł zużyty, szara — wyłączone; gotowe świeci kolorem ekranu. */
+.net-eye-dot {
+  flex: 0 0 auto;
+  width: 0.55rem;
+  height: 0.55rem;
+  border-radius: 50%;
+  background: var(--net-ink);
+}
+
+.net-eye-dot--active {
+  background: var(--net-eye-active);
+}
+
+.net-eye-dot--spent {
+  background: var(--net-eye-spent);
+}
+
+.net-eye-dot--node-used,
+.net-eye-dot--away {
+  background: transparent;
+  border: 1px solid var(--net-text-dim);
+}
+
+.net-eye-dot--off {
+  background: var(--net-text-dim);
+}
+
+.net-eye-switches {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.2rem;
 }
 
 /* Edytor Architektury: urządzenia wiszące u węzła kontrolnego. */

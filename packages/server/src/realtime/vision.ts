@@ -52,7 +52,7 @@ import { fetchSceneWalls } from './walls-io.js';
 import { fetchSceneCovers } from './covers-io.js';
 import { fetchSceneLights, lightSourceOf, toLightScene, tokenLightOf } from './lights-io.js';
 import { campaignRoom, emitToCampaignUser } from './state.js';
-import { loadNetCameraSights } from './net-cameras.js';
+import { loadNetDeviceSights } from './net-cameras.js';
 
 /**
  * Server-side field of view (stages 18a, 18b, 18d) — core VTT, no game system.
@@ -125,19 +125,23 @@ interface CarriedLight {
 }
 
 /**
- * Eyes a viewer borrows from a figure that is not theirs (20.10) — today a
- * camera whose control node the netrunner holds (`net-cameras.ts`).
+ * Eyes a viewer borrows from a figure that is not theirs (20.10) — a camera,
+ * a turret or a drone whose control node the netrunner holds (`net-cameras.ts`,
+ * etap 70c).
  *
  * The figure sees from its centre with its own sight range, in a cone along its
  * facing (`coneDeg`; null = all round). What it shows is shown only to
- * `viewers`, and only as *sight*: it opens no door, plans no walk, lights
- * nothing in the dark and adds nothing to the party's memory of the map —
- * those belong to a body standing there.
+ * `viewers`, and only as *sight*: it opens no door, lights nothing for the
+ * others and adds nothing to the party's memory of the map — those belong to a
+ * body standing there. A figure that drives (`moves`, the drone of 70c) plans
+ * its own march by these eyes: the barriers it sees go to the viewer's planner.
  */
 export interface BorrowedSight {
   token: Token;
   viewers: ReadonlySet<string>;
   coneDeg: number | null;
+  /** Figura jeździ (dron) — jej oczy prowadzą jej marsz (`visibleWalkBlockersFor`). */
+  moves?: boolean;
 }
 
 /**
@@ -251,7 +255,7 @@ export async function loadVisionContext(
       gridMode: scene.gridMode === 'gridless' ? 'gridless' : 'grid',
       grid: measure.grid,
     }),
-    borrowed: await loadNetCameraSights(prisma, scene),
+    borrowed: await loadNetDeviceSights(prisma, scene),
   };
 }
 
@@ -493,6 +497,12 @@ export interface ViewerSight {
   ownLighting: ViewerLighting | null;
   /** The sight sources themselves — the door test and the glow list need them. */
   sources: SightSource[];
+  /**
+   * Borrowed eyes in the order of their polygons at the end of `polygons`
+   * (70c). Only the ones that drive (`moves`) are read — by the route planner's
+   * barrier list, because a drone plans its march by what it sees itself.
+   */
+  borrowedEyes?: { source: SightSource; moves: boolean }[];
 }
 
 /**
@@ -561,6 +571,7 @@ export async function viewerSightFor(
     ownLighting,
     sources,
     figurePolygons,
+    borrowedEyes: borrowed.map((eye) => ({ source: eye.source, moves: eye.moves })),
   };
 }
 
@@ -587,6 +598,8 @@ interface BorrowedEye {
   source: SightSource;
   facing: number;
   coneDeg: number;
+  /** Figura jeździ — jej oczy planują jej marsz (70c). */
+  moves: boolean;
 }
 
 function borrowedEyesOf(
@@ -607,6 +620,7 @@ function borrowedEyesOf(
         // A camera nobody ever turned looks north, like the map's facing knob.
         facing: token.facing ?? 0,
         coneDeg: entry.coneDeg ?? 360,
+        moves: entry.moves === true,
       };
     });
 }
@@ -845,8 +859,11 @@ export function visibleWalkBlockersFor(
   const spacing = context.reachPx / (WALL_REACH_M * 2);
   const seen = new Set<number>();
   const found: WalkBlocker[] = [];
-  sight.sources.forEach((source, index) => {
-    const polygon = sight.polygons[index];
+  const collect = (
+    source: SightSource,
+    polygon: ScenePoint[] | undefined,
+    lighting: ViewerLighting | null,
+  ) => {
     if (!polygon) return;
     const candidates = walkOnlyWallsFor(context.walls, source.origin, {
       curtainReachPx: context.curtainReachPx,
@@ -854,12 +871,21 @@ export function visibleWalkBlockersFor(
     for (const wall of candidates) {
       if (seen.has(wall.id)) continue;
       const inSight = wallSamplePoints(wall, spacing).some((point) =>
-        isPointObservable(point, [polygon], sight.ownLighting, context.overrides),
+        isPointObservable(point, [polygon], lighting, context.overrides),
       );
       if (!inSight) continue;
       seen.add(wall.id);
       found.push(walkBlockerOf(wall));
     }
+  };
+  sight.sources.forEach((source, index) =>
+    collect(source, sight.polygons[index], sight.ownLighting),
+  );
+  // Etap 70c: przejęty dron planuje swój marsz własnymi oczami — barierę, którą
+  // widzi tylko on, planer też musi obejść (kamera i wieżyczka nie jeżdżą).
+  (sight.borrowedEyes ?? []).forEach((eye, index) => {
+    if (!eye.moves) return;
+    collect(eye.source, sight.polygons[sight.sources.length + index], sight.lighting);
   });
   return found;
 }

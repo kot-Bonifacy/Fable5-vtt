@@ -57,6 +57,7 @@ export async function loadStatusRegistry(
         icon: entry.icon,
         ...(condition ? { condition } : {}),
         ...((entry as { searchable?: unknown }).searchable === true ? { searchable: true } : {}),
+        ...((entry as { dims?: unknown }).dims === true ? { dims: true } : {}),
       };
     });
     return { list: clean, ids: new Set(clean.map((s) => s.id)) };

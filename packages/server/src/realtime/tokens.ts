@@ -121,7 +121,8 @@ import { forgetPace } from './pace.js';
 import { enforceNetRunRange } from './netice.js';
 import { refuseMoveWhileJackedIn } from './netrun-io.js';
 import { adoptSceneDeviceLive } from './net-scene.js';
-import { operatedTokenIdsOf, seizedGrantOf } from './net-control.js';
+import { operatedTokenIdsOf, operatorIdsOf, seizedGrantOf } from './net-control.js';
+import { operatedMoveFor } from './netdevices.js';
 import { runZonesAfterMove } from './zones.js';
 import { runHiddenFiguresAfterMove } from './hidden-figures.js';
 import { createMixedRng } from './dice-rng.js';
@@ -1800,7 +1801,12 @@ async function emitDynamicMove(
   final: boolean,
 ): Promise<void> {
   const linked = await loadLinkedSheet(deps, token);
-  const controllers = controllerIds(token, linked);
+  // Etap 70c: netrunner prowadzący przejętego drona dostaje każdą klatkę jak
+  // właściciel — figura jedzie jego ręką, choć `ownerId` się nie zmienia.
+  const controllers = new Set([
+    ...controllerIds(token, linked),
+    ...(await operatorIdsOf(deps.ctx.prisma, campaignId, token.id)),
+  ]);
   // Czyj wzrok ten ruch zmienia: „oczy drużyny" (etap 45) patrzą za wszystkich
   // graczy, więc ich krok przelicza widok całej drużyny, nie tylko prowadzącego.
   const party = sharesVision(token, linked, scene);
@@ -1808,7 +1814,7 @@ async function emitDynamicMove(
   deps.io.to(gmRoom(campaignId)).emit('token:move', move);
 
   const context = await loadVisionContext(deps.ctx.prisma, scene);
-  // Kamera przejęta w Sieci (20.10): jej ruch zmienia to, co widzi netrunner.
+  // Urządzenie przejęte w Sieci (20.10, 70c): jego ruch zmienia to, co widzi netrunner.
   for (const eye of context.borrowed) {
     if (eye.token.id === token.id) for (const viewer of eye.viewers) sightOwners.add(viewer);
   }
@@ -1928,8 +1934,14 @@ export const tokenWalkEvent = defineEvent<TokenWalkPayload, { tokenId: string }>
       payload?.tokenId,
     );
     const isGm = user.role === ROLE_GM;
-    if (!isGm && token.hidden) throw new RealtimeError('TOKEN_NOT_FOUND');
-    if (!isGm && token.ownerId !== user.id) throw new RealtimeError('FORBIDDEN');
+    // Etap 70c: dron przejęty w Sieci jeździ ręką netrunnera (`operatorOf`),
+    // choć `ownerId` się nie zmienia — także ukryty, bo operator go widzi.
+    const operated =
+      !isGm && token.ownerId !== user.id
+        ? await operatedMoveFor(deps, campaignId, user, token.id)
+        : null;
+    if (!isGm && token.hidden && !operated) throw new RealtimeError('TOKEN_NOT_FOUND');
+    if (!isGm && token.ownerId !== user.id && !operated) throw new RealtimeError('FORBIDDEN');
     if (!isGm && scene.playerMove === 'stop') throw new RealtimeError('MOVE_LOCKED');
     // Etap 65b: figura w fotelu jedzie z autem, nie chodzi — także u MG
     // (04.11.2026: przypadkowy klik w jezdnię wyprowadzał NPC-a z fotela przez
@@ -1964,7 +1976,8 @@ export const tokenWalkEvent = defineEvent<TokenWalkPayload, { tokenId: string }>
           to,
           path: legs,
           marched: true,
-          ...(payload.extra === true ? { extra: true } : {}),
+          ...(payload.extra === true && !operated ? { extra: true } : {}),
+          ...(operated ? { operated } : {}),
         },
         { dryRun: true },
       );
@@ -2036,11 +2049,28 @@ export async function emitTokenMoveFrame(
     deps.io.to(sceneRoom(scene.id)).emit('token:move', move);
   } else if (token.hidden) {
     deps.io.to(gmRoom(campaignId)).emit('token:move', move);
+    // Etap 70c: ukryty dron przejęty w Sieci jedzie u netrunnera, który go
+    // prowadzi (on jeden z graczy go widzi), a jego oczy idą razem z nim.
+    const operators = await operatorIdsOf(deps.ctx.prisma, campaignId, token.id);
+    for (const userId of operators) {
+      await emitToCampaignUser(deps.io, campaignId, userId, 'token:move', move);
+      if (isFinal) continue;
+      const live = { tokenId: token.id, ...position };
+      await emitDragVision(deps, campaignId, scene, userId, live, false);
+    }
+    if (isFinal && operators.size > 0) {
+      await emitSceneTokensToPlayers(deps, campaignId, scene);
+      await emitVisionToPlayers(deps, campaignId, scene, { onlyUserIds: operators });
+    }
   } else if (fogMatters && !sharesVision(token, fogLinked, scene)) {
     // „Oczy drużyny" (etap 45) idą gałęzią niżej: drużyna widzi je zawsze,
     // więc granica mgły nie zmienia, dla kogo figura istnieje.
     deps.io.to(gmRoom(campaignId)).emit('token:move', move);
-    for (const userId of controllerIds(token, fogLinked)) {
+    const movers = new Set([
+      ...controllerIds(token, fogLinked),
+      ...(await operatorIdsOf(deps.ctx.prisma, campaignId, token.id)),
+    ]);
+    for (const userId of movers) {
       await emitToCampaignUser(deps.io, campaignId, userId, 'token:move', move);
     }
     if (isFinal) await emitSceneTokensToPlayers(deps, campaignId, scene);
@@ -2098,10 +2128,16 @@ export async function performTokenMove(
       payload?.tokenId,
     );
     const isGm = user.role === ROLE_GM;
+    // Etap 70c: dron przejęty w Sieci — prawo daje węzeł (`operatorOf`), metry
+    // aktywacja urządzenia. Bot na koncie MG i ręka MG idą zwykłą drogą.
+    const operated =
+      !isGm && !judged && token.ownerId !== user.id
+        ? await operatedMoveFor(deps, campaignId, user, token.id)
+        : null;
     // Non-owners get NOT_FOUND-style rejection semantics only for hidden
     // tokens (existence must not leak); owning a visible token is required.
-    if (!isGm && token.hidden) throw new RealtimeError('TOKEN_NOT_FOUND');
-    if (!isGm && token.ownerId !== user.id) throw new RealtimeError('FORBIDDEN');
+    if (!isGm && token.hidden && !operated) throw new RealtimeError('TOKEN_NOT_FOUND');
+    if (!isGm && token.ownerId !== user.id && !operated) throw new RealtimeError('FORBIDDEN');
     // „Ruch graczy: Stop" (etap 45; blokada mapy z 12.09): drużyna, która
     // dostanie planszę przed rozpoczęciem gry, obejdzie ją własną figurą i pozna
     // zanim MG cokolwiek powie. Stop to Pauza z Foundry — zatrzymuje także
@@ -2184,7 +2220,9 @@ export async function performTokenMove(
         // zauważyła. Na polu, na którym nie wolno stanąć, nikt nie rzuca —
         // następna klatka spróbuje jeszcze raz.
         const stand = snapTokenPosition(x, y, token.size, snapScene);
+        // Przejęty dron (70c) nie rzuca Percepcji w drodze — to nie postać.
         if (
+          !operated &&
           !noticeRolling.has(token.id) &&
           (await hiddenNoticeDue(deps, campaignId, scene, token, stand))
         ) {
@@ -2285,9 +2323,10 @@ export async function performTokenMove(
             to: { x, y },
             path: reportedPath,
             marched,
-            ...(payload.extra === true || (noticeHalt && walk?.extra === true)
+            ...(!operated && (payload.extra === true || (noticeHalt && walk?.extra === true))
               ? { extra: true }
               : {}),
+            ...(operated ? { operated } : {}),
           });
       } catch (error) {
         if (walk) endWalk(token.id);
@@ -2346,9 +2385,13 @@ export async function performTokenMove(
         to: { x, y },
         path: reportedPath ?? [],
       };
-      spots.push(...(await runZonesAfterMove(deps, moved)).spots);
-      // Etap 58d: ukryte figury, obok których przeszła — ta sama droga co strefy.
-      spots.push(...(await runHiddenFiguresAfterMove(deps, moved)));
+      // Etap 70c: przejęty dron nie odpala stref i nie rzuca Percepcji na
+      // ukryte rzeczy po drodze — jest okiem i lufą netrunnera, nie postacią.
+      if (!operated) {
+        spots.push(...(await runZonesAfterMove(deps, moved)).spots);
+        // Etap 58d: ukryte figury, obok których przeszła — ta sama droga co strefy.
+        spots.push(...(await runHiddenFiguresAfterMove(deps, moved)));
+      }
       // Ukryta figura, która zmieniła miejsce, siedzi w nowej kryjówce (58d):
       // kto ją zauważył, traci ją z mapy, a każda postać dostaje nowy rzut.
       if (

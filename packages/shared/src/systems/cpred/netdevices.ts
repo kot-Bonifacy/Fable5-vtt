@@ -246,22 +246,28 @@ export function netMarkNodeUse(
  * z pomysłu MG — nic spoza tabeli przejęta figura nie robi.
  */
 export interface NetDeviceFigureProfile {
-  /** Jeździ z własnego RUCH-u (marsz dochodzi w 70c). */
+  /** Jeździ z własnego RUCH-u (marsz od 70c). */
   moves: boolean;
   /** Czynności figury, w kolejności belki. */
   verbs: readonly NetDeviceOperation[];
+  /**
+   * Jak figura pożycza netrunnerowi oczy, dopóki trzyma jej węzeł (70c):
+   * stożek kamery wzdłuż kierunku figury albo koło (`coneDeg: null`) na zasięg
+   * wzroku figury. `null` — nie patrzy wcale.
+   */
+  sight: { coneDeg: number | null } | null;
 }
 
 export const NET_DEVICE_FIGURE_PROFILES: Record<NetDeviceKind, NetDeviceFigureProfile> = {
-  camera: { moves: false, verbs: ['turn', 'off'] },
-  turret: { moves: false, verbs: ['fire', 'off'] },
-  drone: { moves: true, verbs: ['fire', 'off'] },
-  door: { moves: false, verbs: [] },
-  environment: { moves: false, verbs: [] },
+  camera: { moves: false, verbs: ['turn', 'off'], sight: { coneDeg: NET_CAMERA_CONE_DEG } },
+  turret: { moves: false, verbs: ['fire', 'off'], sight: { coneDeg: null } },
+  drone: { moves: true, verbs: ['fire', 'off'], sight: { coneDeg: null } },
+  door: { moves: false, verbs: [], sight: null },
+  environment: { moves: false, verbs: [], sight: null },
 };
 
 export function netDeviceFigureProfile(kind: NetDeviceKind): NetDeviceFigureProfile {
-  return NET_DEVICE_FIGURE_PROFILES[kind] ?? { moves: false, verbs: [] };
+  return NET_DEVICE_FIGURE_PROFILES[kind] ?? { moves: false, verbs: [], sight: null };
 }
 
 // ─────────────────── aktywacja: Akcja Sieciowa = pełna tura ───────────────────
@@ -335,7 +341,18 @@ export type NetDeviceUseResult =
       nodeUse: CpredNetNodeUse[];
       deviceTurns: CpredNetDeviceTurn[];
     }
-  | { ok: false; error: 'NET_NODE_USED' | 'NET_DEVICE_SPENT' | 'NET_DEVICE_STATIONARY' };
+  | {
+      ok: false;
+      error:
+        'NET_NODE_USED' | 'NET_DEVICE_SPENT' | 'NET_DEVICE_STATIONARY' | 'NET_DEVICE_NO_MOVE_LEFT';
+    };
+
+/**
+ * Luz rachunku metrów (70c): trasa liczona u klienta i na serwerze rozjeżdża
+ * się o setne części metra na zaokrągleniach pikseli — przy takim ułamku
+ * odmowa „za daleko” byłaby kłamstwem.
+ */
+const NET_DEVICE_MOVE_SLACK_M = 0.05;
 
 /**
  * Jedna czynność albo ruch przejętego urządzenia — czy wolno, ile kosztuje
@@ -346,6 +363,10 @@ export type NetDeviceUseResult =
  * druga czynność odmawia. Inne urządzenie tego samego węzła w tej samej
  * rundzie dostaje `NET_NODE_USED` — węzeł, nie urządzenie, jest „raz na Turę”.
  * Poza walką (`round === null`) nie ma rund, więc nie ma czego liczyć.
+ *
+ * Ruch (70c): aktywacja daje `moveM` metrów; urządzenie, które ich nie dostało,
+ * stoi (`NET_DEVICE_STATIONARY`), a ruch ponad resztę budżetu odmawia
+ * `NET_DEVICE_NO_MOVE_LEFT`.
  */
 export function netDeviceUse(
   ledger: NetDeviceLedger,
@@ -383,10 +404,11 @@ export function netDeviceUse(
     after = { ...before, actionLeft: false };
   } else {
     const spend = Math.max(0, input.spendM ?? 0);
-    if (before.moveLeftM <= 0 || spend > before.moveLeftM) {
-      return { ok: false, error: 'NET_DEVICE_STATIONARY' };
+    if (!current && before.moveLeftM <= 0) return { ok: false, error: 'NET_DEVICE_STATIONARY' };
+    if (spend > before.moveLeftM + NET_DEVICE_MOVE_SLACK_M) {
+      return { ok: false, error: 'NET_DEVICE_NO_MOVE_LEFT' };
     }
-    after = { ...before, moveLeftM: before.moveLeftM - spend };
+    after = { ...before, moveLeftM: Math.max(0, roundCentimetres(before.moveLeftM - spend)) };
   }
   return {
     ok: true,
@@ -394,6 +416,32 @@ export function netDeviceUse(
     nodeUse: netMarkNodeUse(ledger.nodeUse, input.floorId, round),
     deviceTurns: [...live.filter((turn) => turn !== current), after],
   };
+}
+
+function roundCentimetres(metres: number): number {
+  return Math.round(metres * 100) / 100;
+}
+
+/**
+ * Ile metrów przejęta figura może jeszcze przejechać w tej Turze (70c) — to
+ * samo, co powie księga przy następnym ruchu. `null`: poza walką nikt metrów
+ * nie liczy; 0: figura stoi albo węzeł jest w tej Turze zużyty.
+ */
+export function netOperatedMoveLeft(
+  figure: Pick<NetOperatedFigure, 'state' | 'moveM' | 'moveLeftM'>,
+): number | null {
+  if ((figure.moveM ?? 0) <= 0) return 0;
+  switch (figure.state) {
+    case 'free':
+      return null;
+    case 'ready':
+      return figure.moveM ?? 0;
+    case 'active':
+    case 'spent':
+      return figure.moveLeftM ?? 0;
+    case 'node-used':
+      return 0;
+  }
 }
 
 // ─────────────────────── przejęta figura w ładunku runu ───────────────────────
@@ -449,6 +497,52 @@ export interface NetOperatedFigure<Sheet = unknown> {
   weaponRowId?: string;
   /** Urządzenie strzelające bez Wartości bojowej — odmowa z podpowiedzią dla MG. */
   noCombatValue?: true;
+  /**
+   * Metry, które daje aktywacja (70c): RUCH × 2 figury, która jeździ. Brak
+   * u urządzeń, które stoją; 0 u drona bez RUCH-u (podpowiedź dla MG).
+   */
+  moveM?: number;
+  /** Metry zostałe z aktywacji w tej Turze — tylko po aktywacji. */
+  moveLeftM?: number;
+}
+
+/** Kafel „Ruch” przejętej figury, która jeździ (70c). */
+export interface NetDeviceMoveSlot {
+  id: string;
+  label: string;
+  hint: string;
+  /** Ile metrów zostało; null — poza walką nikt ich nie liczy. */
+  metres: number | null;
+  cost: NetOperatedCost;
+  disabled: string | null;
+}
+
+/**
+ * Kafel „Ruch” drona na belce (70c): ile metrów zostało i czym się płaci.
+ * Jeździ się klikiem w podłoże, jak figurą postaci — kafel mówi tylko, ile
+ * i za co. Null u figury, która nie jeździ.
+ */
+export function netDeviceMoveSlot(
+  figure: Pick<NetOperatedFigure, 'tokenId' | 'deviceKind' | 'state' | 'moveM' | 'moveLeftM'>,
+): NetDeviceMoveSlot | null {
+  if (!netDeviceFigureProfile(figure.deviceKind).moves) return null;
+  const metres = netOperatedMoveLeft(figure);
+  const disabled =
+    (figure.moveM ?? 0) <= 0
+      ? NET_DEVICE_MESSAGES.NET_DEVICE_NO_MOVE
+      : figure.state === 'node-used'
+        ? NET_DEVICE_MESSAGES.NET_NODE_USED
+        : metres === 0
+          ? NET_DEVICE_MESSAGES.NET_DEVICE_NO_MOVE_LEFT
+          : null;
+  return {
+    id: `device:${figure.tokenId}:move`,
+    label: 'Ruch',
+    hint: 'Kliknij podłoże, dokąd urządzenie ma pojechać — w tej samej aktywacji może też strzelić.',
+    metres,
+    cost: netOperatedCost(figure.state),
+    disabled,
+  };
 }
 
 /** Jedna czynność przejętej figury jako przycisk belki. */
@@ -546,11 +640,14 @@ export function netDeviceLine(
   if (operation === 'turn' && facing !== undefined) {
     return `${what} — obrócona na ${netCameraDirectionLabel(facing)}.`;
   }
+  // Rodzaj zdania idzie za rodzajem urządzenia (70c): „Dron — wyłączony”,
+  // „Kamera — wyłączona”; nazwa z edytora bywa dowolna, rodzaj zostaje.
+  const masculine = device.deviceKind === 'drone' || device.deviceKind === 'environment';
   switch (operation) {
     case 'on':
-      return `${what} — włączona.`;
+      return `${what} — ${masculine ? 'włączony' : 'włączona'}.`;
     case 'off':
-      return `${what} — wyłączona.`;
+      return `${what} — ${masculine ? 'wyłączony' : 'wyłączona'}.`;
     case 'turn':
       return state.turned
         ? `${what} — obrócona: nie patrzy już na broniony obszar.`
@@ -579,7 +676,9 @@ export type NetDeviceProblem =
   | 'NET_DEVICE_SPENT'
   | 'NET_DEVICE_FIRES_FROM_MAP'
   | 'NET_DEVICE_NO_COMBAT_VALUE'
-  | 'NET_DEVICE_STATIONARY';
+  | 'NET_DEVICE_STATIONARY'
+  | 'NET_DEVICE_NO_MOVE'
+  | 'NET_DEVICE_NO_MOVE_LEFT';
 
 export const NET_DEVICE_MESSAGES: Record<NetDeviceProblem, string> = {
   NET_NODE_NOT_HELD: 'Nie kontrolujesz tego węzła — najpierw przejmij go Kontrolą.',
@@ -604,6 +703,9 @@ export const NET_DEVICE_MESSAGES: Record<NetDeviceProblem, string> = {
   NET_DEVICE_NO_COMBAT_VALUE:
     'To urządzenie nie ma Wartości bojowej — MG wpisuje ją w „Edytuj…” figury albo wybiera wpis systemu obronnego.',
   NET_DEVICE_STATIONARY: 'To urządzenie stoi w miejscu — nie da się nim ruszyć.',
+  NET_DEVICE_NO_MOVE:
+    'To urządzenie nie ma RUCH-u — MG wpisuje go na karcie figury albo wybiera wpis systemu obronnego.',
+  NET_DEVICE_NO_MOVE_LEFT: 'Urządzeniu nie zostało tyle ruchu w tej Turze.',
 };
 
 // ──────────────────────────── widok dla klienta ────────────────────────────

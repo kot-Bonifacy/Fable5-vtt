@@ -65,7 +65,15 @@ export interface TokenNodeCtx {
    * zaznacza je jak własne, choć `ownerId` się nie zmienia. Puste u MG.
    */
   operatedTokenIds?: ReadonlySet<string>;
+  /**
+   * Naklejki, które wygaszają figurę na szaro (etap 70c, `StatusDefinition.dims`)
+   * — z rejestru, więc mapa nie wie, że to „Wyłączony” z Sieci.
+   */
+  dimmedStatuses?: ReadonlySet<string>;
 }
+
+/** Wygaszona figura (urządzenie wyłączone w Sieci) — szarość bez krzyżyka śmierci. */
+const DIMMED_TINT = 0x6b7280;
 
 const RING_OWN = 0x4ade80;
 const RING_OTHER_PLAYER = 0x38bdf8;
@@ -405,7 +413,10 @@ export class TokenNode extends Container {
     }
 
     const condition = tokenCondition(token, ctx.conditions);
+    const dimmed =
+      condition !== 'dead' && token.statuses.some((id) => ctx.dimmedStatuses?.has(id) === true);
     const signature = JSON.stringify([
+      dimmed,
       token.name,
       token.imageUrl,
       token.glyph ?? null,
@@ -499,13 +510,14 @@ export class TokenNode extends Container {
     this.initial.text = token.name.trim().charAt(0).toUpperCase() || '?';
     this.initial.style.fontSize = extent * 0.4;
     this.initial.position.set(center, center);
-    this.image.tint = CONDITION_TINT[condition];
-    this.placeholder.tint = CONDITION_TINT[condition];
+    this.image.tint = dimmed ? DIMMED_TINT : CONDITION_TINT[condition];
+    this.placeholder.tint = dimmed ? DIMMED_TINT : CONDITION_TINT[condition];
     this.tiltPortrait(condition);
 
     this.imageCrop = cropFor(token.imageUrl, ctx);
     this.updateImage(hasImage ? token.imageUrl : null, extent);
     this.updateGlyph(glyph, extent, condition);
+    if (dimmed) this.glyph.tint = DIMMED_TINT;
     this.drawHpArc(token, extent, condition);
     this.drawNose(extent, this.ringTint);
     this.drawDownMark(center, radius, condition);

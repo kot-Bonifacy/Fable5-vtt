@@ -157,14 +157,15 @@ test.describe.serial('T62 Sieć ze sceny: kamery bez Architektury', () => {
     // Interfejs Iskry + 9 przebija PT węzła Sieci ze sceny (Standardowy, 8).
     scriptDice([9]);
     await runWindow().locator('.net-abilities').getByRole('button', { name: 'Kontrola' }).click();
-    const devices = runWindow().locator('.net-node-device');
+    const devices = runWindow().locator('.net-eye');
     await devices.first().waitFor({ timeout: 20_000 });
     expect(pendingDice()).toBe('');
     await expect(devices).toHaveCount(2);
-    // Etap 70b: figury prowadzi się z mapy — lista ma przełącznik, a „Obróć”
-    // i „Strzelaj” przeszły na lewą belkę przejętej figury.
-    await expect(devices.nth(0).getByRole('button', { name: 'Wyłącz' })).toBeVisible();
-    await expect(devices.getByRole('button', { name: /Obróć|Strzel/ })).toHaveCount(0);
+    // Etap 70b/70c: figury prowadzi się z mapy — „Obróć”, „Strzelaj” i „Wyłącz”
+    // stoją na lewej belce przejętej figury, a pasek „Oczy i urządzenia” ma dla
+    // nich tylko miniaturę-oko (kadr i zaznaczenie).
+    await expect(runWindow().locator('.net-eye[data-eye]')).toHaveCount(2);
+    await expect(devices.getByRole('button', { name: /Obróć|Strzel|Wyłącz/ })).toHaveCount(0);
     await expect
       .poll(async () =>
         (
@@ -172,7 +173,8 @@ test.describe.serial('T62 Sieć ze sceny: kamery bez Architektury', () => {
         ).runs[0]?.operated.map((figure) => figure.deviceKind),
       )
       .toEqual(['camera', 'turret']);
-    await expect.poll(() => polygonsOf(ola)).toBe(basePolygons + 1);
+    // Od 70c patrzy też wieżyczka (koło na zasięg figury) — dwie pary oczu.
+    await expect.poll(() => polygonsOf(ola)).toBe(basePolygons + 2);
     await expect
       .poll(async () =>
         Object.values(
@@ -197,8 +199,8 @@ test.describe.serial('T62 Sieć ze sceny: kamery bez Architektury', () => {
       }),
     ).id;
     await emitAck(gm, 'token:facing', { tokenId: late, facing: 180 });
-    await expect(runWindow().locator('.net-node-device')).toHaveCount(3);
-    await expect.poll(() => polygonsOf(ola)).toBe(basePolygons + 2);
+    await expect(runWindow().locator('.net-eye')).toHaveCount(3);
+    await expect.poll(() => polygonsOf(ola)).toBe(basePolygons + 3);
     await expect
       .poll(async () =>
         Object.values(
@@ -225,7 +227,7 @@ test.describe.serial('T62 Sieć ze sceny: kamery bez Architektury', () => {
     // a z pamięci przejętego węzła (02.11) od razu z przyciskami.
     await runWindow().locator('.net-exit--down').click();
     await expect.poll(() => runOf('Iskra')?.state.position.floor).toBe(1);
-    await expect(runWindow().locator('.net-sighted-device, .net-node-device')).toHaveCount(3);
+    await expect(runWindow().locator('.net-sighted-device, .net-eye')).toHaveCount(3);
     const list = dataOf<{ architectures: { name: string }[] }>(
       await emitAck(gm, 'net:list', undefined),
     ).architectures;

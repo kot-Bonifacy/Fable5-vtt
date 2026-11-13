@@ -1,11 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import type {
-  CpredNetPosition,
-  NetAbilityId,
-  NetDeviceOperation,
-  NetDeviceView,
-  NetRunView,
-} from '@vtt/shared';
+import type { CpredNetPosition, NetAbilityId, NetDeviceOperation, NetRunView } from '@vtt/shared';
 import { ROLE_GM } from '@vtt/shared';
 import {
   attackInNet,
@@ -26,7 +20,7 @@ import {
 import { useAuthStore } from '../stores/authStore.js';
 import { useCombatStore } from '../stores/combatStore.js';
 import { useSceneStore } from '../stores/sceneStore.js';
-import { showNetDevice, showNetDevices } from '../map-frame.js';
+import { showNetDevices } from '../map-frame.js';
 import { currentRun, useNetRunStore } from '../stores/netRunStore.js';
 import { netErrorText } from '../netErrors.js';
 import { clearNotices, notifyInfo, notifyRefusal } from '../notices.js';
@@ -37,12 +31,9 @@ import { NetDeckSection } from './netrun/NetDeckSection.js';
 import { NetExits } from './netrun/NetExits.js';
 import { NetFloorCard, type VirusDraft } from './netrun/NetFloorCard.js';
 import { NetGmShaft } from './netrun/NetGmShaft.js';
-import { NetNodeDevices, type NetNodeLike } from './netrun/NetNodeDevices.js';
-import { operatedFigureOf } from '../net-operated.js';
-import { takeFigure } from '../hud.js';
+import { NetEyesStrip, heldNodes } from './netrun/NetEyesStrip.js';
 import { NetThreats } from './netrun/NetThreats.js';
 import { NetTrail } from './netrun/NetTrail.js';
-import { floorName } from './netrun/net-glyphs.js';
 
 /**
  * Okno SIEĆ (etap 70a) — jedno piętro zamiast całego szybu.
@@ -54,7 +45,8 @@ import { floorName } from './netrun/net-glyphs.js';
  * to da się tu narysować. Klient niczego nie ukrywa, bo nie ma czego.
  *
  * Kolejność sekcji jest stała, a pusta sekcja nie istnieje: belka stanu, ślad,
- * karta piętra, wyjścia, zagrożenia (LOD i Demony), przejęte węzły, cyberdek.
+ * karta piętra, wyjścia, zagrożenia (LOD i Demony), oczy i urządzenia (70c),
+ * cyberdek.
  * MG ma obok zwijaną kolumnę „Plan Architektury” z całym szybem.
  *
  * Zwykły DOM, świadomie: to lista, a nie mapa, i nie ma powodu dokładać jej do
@@ -114,16 +106,6 @@ function netRunFallback(isGm: boolean, width: number): { x: number; y: number } 
     x: Math.max(0, right - fitted - NET_RUN_GAP * 2),
     y: Math.max(mapTop, bar?.bottom ?? 0, badgeBottom) + NET_RUN_GAP,
   };
-}
-
-/** Węzły runu z listą urządzeń: piętro pod stopami i przejęte na śladzie. */
-function heldNodes(view: NetRunView): NetNodeLike[] {
-  const nodes: NetNodeLike[] = [];
-  if (view.here?.devices?.length) nodes.push(view.here);
-  for (const step of view.trail) {
-    if (!step.here && step.devices?.length) nodes.push(step);
-  }
-  return nodes;
 }
 
 /**
@@ -234,8 +216,8 @@ function NetRunWindowBody() {
   }
 
   /**
-   * Przełącznik urządzenia z listy (bez figury, drzwi, „Włącz”). Strzał i obrót
-   * kamery poszły w 70b na mapę: przejętą figurę prowadzi lewa belka.
+   * Przełącznik urządzenia z paska oczu (bez figury, drzwi, „Włącz”). Strzał,
+   * obrót kamery i jazda drona są na mapie: przejętą figurę prowadzi lewa belka.
    */
   async function operate(floorId: string, deviceId: string, operation: NetDeviceOperation) {
     const ack = await guard(operateNetDevice({ runId: run!.runId, floorId, deviceId, operation }));
@@ -270,13 +252,6 @@ function NetRunWindowBody() {
   }
 
   const fightState = view.combat;
-  /** Przejęte węzły, na których netrunner teraz nie stoi — obsługa bez wracania. */
-  const awayNodes = view.trail.filter((step) => !step.here && step.devices?.length);
-  /** Nazwa urządzenia: kadr na figurze, a przejętą bierze się od razu w rękę (70b). */
-  const showDevice = (device: NetDeviceView) => {
-    showNetDevice(device);
-    if (device.tokenId && operatedFigureOf(device.tokenId)) takeFigure(device.tokenId, false);
-  };
 
   return (
     <section
@@ -382,13 +357,8 @@ function NetRunWindowBody() {
               here={here}
               run={view}
               busy={busy}
-              sceneId={sceneId}
               onAbility={(id, virus) => void ability(id, virus)}
               onCopy={(floorId) => void guard(copyNetFile(run.runId, floorId))}
-              onOperate={(floorId, deviceId, operation) =>
-                void operate(floorId, deviceId, operation)
-              }
-              onShow={showDevice}
             />
           )}
 
@@ -414,31 +384,14 @@ function NetRunWindowBody() {
             onDemonTurn={(demonId) => void fight(demonTakesTurn({ runId: run.runId, demonId }))}
           />
 
-          {awayNodes.length > 0 && (
-            <div className="net-section net-held">
-              <h4 className="net-section-title">Przejęte węzły</h4>
-              {awayNodes.map((step) => (
-                <div key={step.id} className="net-held-node">
-                  <button
-                    type="button"
-                    className="net-held-name"
-                    disabled={busy}
-                    title="Wróć na ten węzeł — ruch nic nie kosztuje"
-                    onClick={() => void move(step.position)}
-                  >
-                    ⚙ {floorName(step)}
-                  </button>
-                  <NetNodeDevices
-                    node={step}
-                    busy={busy}
-                    sceneId={sceneId}
-                    onOperate={(deviceId, operation) => void operate(step.id, deviceId, operation)}
-                    onShow={showDevice}
-                  />
-                </div>
-              ))}
-            </div>
-          )}
+          <NetEyesStrip
+            view={view}
+            operated={run.operated ?? []}
+            runnerTokenId={run.tokenId}
+            sceneId={sceneId}
+            busy={busy}
+            onOperate={(floorId, deviceId, operation) => void operate(floorId, deviceId, operation)}
+          />
 
           <NetDeckSection
             combat={fightState}

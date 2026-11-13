@@ -8,6 +8,7 @@ import type {
   CpredHotbarSlot,
   CpredHotbarWeaponGroup,
   NetDeviceKind,
+  NetDeviceMoveSlot,
   NetDeviceVerbSlot,
   NetOperatedState,
   TokenView,
@@ -56,6 +57,7 @@ import {
 import {
   myOperatedTokenIds,
   operatedFigureOf,
+  operatedMoveSlot,
   operatedTurnRefusal,
   operatedVerbSlots,
   useDeviceAimStore,
@@ -232,6 +234,8 @@ export interface HudDevice {
   state: NetOperatedState;
   hp: { current: number; max: number } | null;
   verbs: NetDeviceVerbSlot[];
+  /** Kafel „Ruch” drona (70c) — metry z aktywacji; null u figury, która stoi. */
+  move: NetDeviceMoveSlot | null;
   /** „Obróć” czeka na klik w mapę. */
   turning: boolean;
 }
@@ -514,6 +518,7 @@ function operatedHudContext(
       state: figure.state,
       hp: figure.hp ?? null,
       verbs: operatedVerbSlots(entry, combat),
+      move: operatedMoveSlot(entry, combat),
       turning,
     },
   };
@@ -714,6 +719,9 @@ export function hudSignature(context: HudContext): string {
           context.device.hp,
           context.device.turning,
           context.device.verbs.map((slot) => [slot.id, slot.cost, slot.disabled]),
+          context.device.move
+            ? [context.device.move.metres, context.device.move.cost, context.device.move.disabled]
+            : null,
         ]
       : null,
     context.combatant?.id ?? null,

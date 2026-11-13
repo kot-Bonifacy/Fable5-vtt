@@ -37,6 +37,7 @@ import {
   netrunningDataOf,
   parseCharacterData,
   readNetCombatState,
+  CPRED_NET_OFF_STATUS_ID,
   CPRED_NET_SEIZED_STATUS_ID,
   readNetDemonState,
   readNetRunState,
@@ -61,7 +62,12 @@ import {
 } from './chat-io.js';
 import { toSceneView } from './scenes.js';
 import { emitVisionToPlayers, hasLineOfFire, loadVisionContext } from './vision.js';
-import { loadNetDeviceGrants, netGrantSignature, type NetDeviceGrant } from './net-control.js';
+import {
+  loadNetDeviceGrants,
+  loadNetSwitchedOffTokenIds,
+  netGrantSignature,
+  type NetDeviceGrant,
+} from './net-control.js';
 import { emitSceneTokensToPlayers, emitTokenUpsert } from './tokens.js';
 import { operatedFiguresOf } from './netdevices.js';
 import { campaignGmUser } from './campaign-gm.js';
@@ -563,6 +569,24 @@ export async function emitRunsOnRoundChange(deps: RealtimeDeps, sceneId: string)
   if (runs > 0) await emitRuns(deps, scene.campaignId);
 }
 
+/**
+ * Księga „węzeł raz na Turę” i aktywacji urządzeń (26d, 70b) liczy rundy
+ * **jednej** walki, a każda nowa walka znów zaczyna od rundy 1 — wpis z rundy 1
+ * poprzedniej walki odmawiał w nowej („węzeł użyty”, „czynność wykonana”;
+ * znalezione w 70c). Zeruje ją początek i koniec walki na scenie netrunnera.
+ */
+export async function resetNetLedgersOnScene(deps: RealtimeDeps, sceneId: string): Promise<void> {
+  const rows = await deps.ctx.prisma.netRun.findMany({
+    where: { token: { sceneId } },
+    select: { id: true, data: true },
+  });
+  for (const row of rows) {
+    const state = readFullRun(row.data);
+    if (!state || (state.nodeUse.length === 0 && (state.deviceTurns?.length ?? 0) === 0)) continue;
+    await saveRunState(deps.ctx.prisma, row.id, { ...state, nodeUse: [], deviceTurns: [] });
+  }
+}
+
 /** Kampania → ostatni odcisk tego, kto co trzyma w Sieci (kamery, wieżyczki, drony). */
 const cameraSignatures = new Map<string, string>();
 
@@ -580,8 +604,10 @@ export async function refreshNetCameraSight(
 ): Promise<void> {
   // Od etapu 70b odcisk obejmuje każdą przejętą figurę, nie tylko kamery:
   // operator dostaje ukrytą wieżyczkę na listę figur, a stół — naklejkę.
+  // Od 70c także figury wyłączone w Sieci (naklejka „Wyłączony”).
   const grants = await loadNetDeviceGrants(deps.ctx.prisma, campaignId);
-  const signature = netGrantSignature(grants);
+  const switchedOff = await loadNetSwitchedOffTokenIds(deps.ctx.prisma, campaignId);
+  const signature = netGrantSignature(grants, switchedOff);
   // Brak wpisu (świeży proces po restarcie) to „nie wiem”, a nie „bez kamer”:
   // odłączenie po restarcie dawało pusty odcisk równy domyślnemu i gracz
   // zostawał z oczami kamer do F5 — a planer chodził po nich przez ściany
@@ -589,7 +615,7 @@ export async function refreshNetCameraSight(
   const known = cameraSignatures.get(campaignId);
   if (!options.force && known !== undefined && signature === known) return;
   cameraSignatures.set(campaignId, signature);
-  await syncSeizedFigures(deps, campaignId, grants);
+  await syncSeizedFigures(deps, campaignId, grants, switchedOff);
   const scenes = await deps.ctx.prisma.scene.findMany({ where: { campaignId, active: true } });
   for (const scene of scenes) {
     // Lista figur najpierw: to, co kamera pokazuje (albo przestała), to także
@@ -600,9 +626,11 @@ export async function refreshNetCameraSight(
 }
 
 /**
- * Naklejka „Przejęty w Sieci” idzie za pożyczoną kontrolą (etap 70b).
+ * Naklejki Sieci na figurach urządzeń: „Przejęty w Sieci” idzie za pożyczoną
+ * kontrolą (etap 70b), „Wyłączony” — za stanem urządzenia w Architekturze
+ * (etap 70c; przeżywa odłączenie, jak sam stan).
  *
- * Jedno miejsce nakłada ją i zdejmuje — po każdej zmianie odcisku — więc nie
+ * Jedno miejsce nakłada je i zdejmuje — po każdej zmianie odcisku — więc nie
  * ma drogi, którą figura zostałaby „przejęta” po odłączeniu, odebraniu węzła
  * przez Demona albo „Wyłącz”. Naklejka jest zwykłym stanem figury: jedzie do
  * każdego, kto figurę widzi, i do nikogo więcej. Figura, która wróciła do
@@ -612,13 +640,15 @@ async function syncSeizedFigures(
   deps: RealtimeDeps,
   campaignId: string,
   grants: ReadonlyMap<string, NetDeviceGrant>,
+  switchedOff: ReadonlySet<string>,
 ): Promise<void> {
   const tokens = await deps.ctx.prisma.token.findMany({
     where: {
       scene: { campaignId },
       OR: [
-        { id: { in: [...grants.keys()] } },
+        { id: { in: [...grants.keys(), ...switchedOff] } },
         { statuses: { contains: CPRED_NET_SEIZED_STATUS_ID } },
+        { statuses: { contains: CPRED_NET_OFF_STATUS_ID } },
       ],
     },
     include: { scene: true },
@@ -626,21 +656,31 @@ async function syncSeizedFigures(
   const released: Token[] = [];
   for (const { scene, ...token } of tokens) {
     const statuses = readStatusIds(token.statuses);
-    const marked = statuses.includes(CPRED_NET_SEIZED_STATUS_ID);
     const held = grants.has(token.id);
-    if (marked === held) continue;
-    const next = held
-      ? [...statuses, CPRED_NET_SEIZED_STATUS_ID]
-      : statuses.filter((id) => id !== CPRED_NET_SEIZED_STATUS_ID);
+    const off = switchedOff.has(token.id);
+    const next = statuses.filter(
+      (id) => id !== CPRED_NET_SEIZED_STATUS_ID && id !== CPRED_NET_OFF_STATUS_ID,
+    );
+    if (held) next.push(CPRED_NET_SEIZED_STATUS_ID);
+    if (off) next.push(CPRED_NET_OFF_STATUS_ID);
+    const before = statuses.filter(
+      (id) => id === CPRED_NET_SEIZED_STATUS_ID || id === CPRED_NET_OFF_STATUS_ID,
+    );
+    const after = next.filter(
+      (id) => id === CPRED_NET_SEIZED_STATUS_ID || id === CPRED_NET_OFF_STATUS_ID,
+    );
+    if (before.sort().join() === after.sort().join()) continue;
     const updated = await deps.ctx.prisma.token.update({
       where: { id: token.id },
       data: { statuses: JSON.stringify(next) },
     });
     await emitTokenUpsert(deps, campaignId, scene, updated);
-    if (!held) released.push(updated);
+    if (!held && statuses.includes(CPRED_NET_SEIZED_STATUS_ID)) released.push(updated);
   }
   if (released.length === 0) return;
-  const back = await switchedOnAmong(deps.ctx.prisma, campaignId, released);
+  const back = released.filter(
+    (token) => !switchedOff.has(token.id) && !readStatusIds(token.statuses).includes('dead'),
+  );
   if (back.length === 0) return;
   const gm = await campaignGmUser(deps.ctx.prisma, campaignId);
   if (!gm) return;
@@ -663,37 +703,6 @@ function readStatusIds(raw: string): string[] {
   } catch {
     return [];
   }
-}
-
-/**
- * Które z oddanych figur dalej działają — wyłączona z węzła nie „wraca do
- * obrony”, tylko stoi wyłączona, a zniszczona nie wraca nigdzie.
- */
-async function switchedOnAmong(
-  prisma: PrismaClient,
-  campaignId: string,
-  tokens: readonly Token[],
-): Promise<Token[]> {
-  const off = new Set<string>();
-  const rows = await prisma.netArchitecture.findMany({
-    where: { campaignId },
-    select: { id: true, name: true, difficulty: true, data: true, runtime: true },
-  });
-  for (const row of rows) {
-    const architecture = architectureOf(row);
-    if (!architecture) continue;
-    const runtime = readNetRuntime(row.runtime);
-    for (const floor of architecture.branches.flatMap((branch) => branch.floors)) {
-      for (const device of floor.devices ?? []) {
-        if (device.tokenId && !netDeviceStateOf(runtime.devices, device.id).on) {
-          off.add(device.tokenId);
-        }
-      }
-    }
-  }
-  return tokens.filter(
-    (token) => !off.has(token.id) && !readStatusIds(token.statuses).includes('dead'),
-  );
 }
 
 /**

@@ -1,8 +1,8 @@
 # Etap 70 — Przebudowa netrunningu: okno jednego piętra i przejęte urządzenia na mapie
 
 **Faza:** przed betą (zlecenie MG z 11.11 spoza planu) · **Wymaga etapów:** 26a–26f (Sieć),
-51 i 58 (strefy), 62 (Sieć ze sceny), 69 (lewa belka) · **Status:** ⬜ projekt — czeka na
-akceptację MG; realizacja w sześciu sesjach (70a–70f)
+51 i 58 (strefy), 62 (Sieć ze sceny), 69 (lewa belka) · **Status:** 🟨 realizacja w sześciu
+sesjach (70a–70f); 70a ✅ 12.11, 70b ✅ 13.11, 70c ✅ 13.11
 
 ## Skąd ten etap
 
@@ -373,14 +373,37 @@ odmawia; inny gracz nie ruszy tej figury; po odłączeniu wieżyczka wraca do ob
 
 ### 70c — Dron w ruchu, oczy urządzeń, pasek
 
-- [ ] Serwer: marsz przejętego drona z budżetu `deviceTurn` i jego oczu, pożyczony wzrok
+- [x] Serwer: marsz przejętego drona z budżetu `deviceTurn` i jego oczu, pożyczony wzrok
       wieżyczki i drona (dostawcy obok kamer), naklejka „Wyłączony”
-- [ ] Klient: pasek „Oczy i urządzenia” z kadrem tam i z powrotem, kafel „Ruch” drona
-- [ ] Testy: `vision` / `net-control` (serwer), E2E `t70c-dron-oczy`
+- [x] Klient: pasek „Oczy i urządzenia” z kadrem tam i z powrotem, kafel „Ruch” drona
+- [x] Testy: `vision` / `net-control` (serwer), E2E `t70c-dron-oczy`
 
 **Kryteria ukończenia:** dron w jednej aktywacji podjeżdża i strzela; netrunner widzi to, co
 widzi dron, także w ciemności, a jego własna pamięć mapy się nie powiększa; pasek przełącza kadr
 między trzema oczami i wraca na postać.
+
+**Zrobione 13.11.2026. Odstępstwa od projektu:**
+
+- **Pasek czyta urządzenia z karty piętra i śladu** (`here.devices`, `trail[].devices` — pomost
+  z 70a), nie z nowego pola ładunku: ślad niesie dokładnie urządzenia trzymanych węzłów, także
+  te bez figury i wyłączone, których nie ma w `operated`. Sekcja „Przejęte węzły” i lista
+  `NetNodeDevices` zniknęły; przed Kontrolą karta piętra dalej pokazuje nazwy i rodzaje.
+- **Urządzenie z figurą nie ma w pasku przełączników** (nawet „Wyłącz”) — to wszystko stoi na
+  belce figury; w pasku zostaje „Włącz” wyłączonego i przełączniki drzwi, instalacji i kamery
+  bez figury. Wyłączony dron nie znika z paska, tylko **przestaje być okiem**: szara kropka,
+  „Włącz”, „◂ ▸” go pomijają.
+- **Kafel „Ruch” niczego nie uzbraja** — bierze drona w rękę i mówi zdaniem, że jeździ się klikiem
+  w podłoże (jak postać); metry z aktywacji pokazuje kafel i zasięg planera (`moveAllowanceOf`
+  z zaznaczonej figury).
+- **„Szary krążek” to pole rejestru stanów `dims`** (`statuses.json`), nie rysunek na sztywno —
+  rdzeń mapy nie wie, co znaczy „Wyłączony”.
+- **Dron nie odpala stref i nie rzuca Percepcji w drodze**, a wyłączone urządzenie (tura, straż,
+  oczy na skradających się, walka z zauważenia) milczy jak przejęte — jedno pytanie
+  `netSilencedTokenIds`. Wpis w `decyzje-i-uproszczenia.md`.
+- **Przy okazji naprawiony błąd z 70b:** księga „węzeł raz na Turę” przeżywała koniec walki
+  i odmawiała w rundzie 1 następnej (pułapka na górze `siec`).
+- **Testy serwera w nowym `net-drone.test.ts`** (własna fikstura ciemnej hali), nie
+  w `vision` / `net-control`.
 
 ### 70d — Edycja mapy, strefy, Sieć ze sceny
 

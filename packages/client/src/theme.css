@@ -473,6 +473,10 @@
   /* Program wgrany do dekaMauza. */
   --net-rezzed: #1f8fa8;
   --net-rezzed-bg: rgb(31 143 168 / 12%);
+  /* Pasek „Oczy i urządzenia” (70c): kropka urządzenia aktywnego w tej Turze
+     i urządzenia, które czynność już wykonało. */
+  --net-eye-active: #4ade80;
+  --net-eye-spent: #f5b041;
 
   /* LÓD: druga rodzina barw tego okna — wroga, więc czerwona. */
   --net-ice-line: #5d2233;

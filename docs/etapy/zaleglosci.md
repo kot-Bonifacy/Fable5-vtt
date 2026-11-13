@@ -12,7 +12,9 @@ kartę piętra i wyjścia (`.net-floor-card`, `.net-exit--down`), ale pierwszy k
 okien). Do sprawdzenia z gatewayem: `E2E_FROM=po-T5a pnpm test:e2e 30-rozgrywka/t5b` — zjazd
 do Kruka i na węzeł wyjściem „Niżej”, F5 w Sieci, strzał i „Wyłącz” wieżyczki z listy,
 `tuckRunWindow(mg)` przy oknie MG z planem (680 px zwijane uchwytem do 280). `po-T5a` zapisany
-na nowo 12.11 przez zielone T5a.
+na nowo 12.11 przez zielone T5a. **13.11 (70c):** krok 5.5 przepięty z listy urządzeń na pasek
+„Oczy i urządzenia” (miniatura wieżyczki → „Wyłącz” na belce, kropka `[data-eye-state="off"]`)
+— też niepuszczony, z tego samego powodu.
 
 **07.11.2026 (szósta) — dokończenie rozegrania „Po zamknięciu”: nowe błędy.** Opis i diagnozy:
 `etap-66e-po-zamknieciu.md` („Rozegranie — dokończenie”, pkt 15–29). **Pkt 15, 17 i 21

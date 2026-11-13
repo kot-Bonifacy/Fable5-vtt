@@ -9,6 +9,28 @@ czytany na starcie każdej sesji został listą zadań, a nie archiwum ustaleń.
 inaczej, niż mówi podręcznik, albo gdy dotykasz wymienionego tu kodu. Jeśli któraś z tych decyzji
 przestanie się bronić, przenieś ją stąd do `POMYSLY.md` jako zadanie — nie odwrotnie.
 
+## Przejęty dron jeździ, urządzenia pożyczają oczy, wyłączone milczą (etap 70c, 13.11.2026)
+
+Rozstrzygnięcia bez pytań z projektu etapu (nr 3, 5 i 6) i drobniejsze z sesji — do słowa MG.
+
+- **RUCH drona = metry jednej Akcji Ruchu** (RUCH × 2, jak u postaci): z wpisu systemu obronnego
+  („RUCH 8”, ta sama kolejność źródeł co Wartość bojowa: obszar straży, potem wpis urządzenia),
+  a bez wpisu z karty figury (`readSheetMoveBudget`). Bez Biegu. Dron bez RUCH-u stoi z odmową
+  `NET_DEVICE_NO_MOVE` i podpowiedzią dla MG. Kilka marszów jednej aktywacji płaci z tych samych
+  metrów; strzał nie zamyka jazdy (dron może strzelić, a potem podjechać). Poza walką bez limitu.
+- **Przejęty dron nie odpala stref, nie rzuca Percepcji w drodze i nie zakłada walki
+  z zauważenia** — jest okiem i lufą netrunnera, nie postacią. Ściany, mgła i figury na drodze
+  zatrzymują go jak każdego.
+- **Wieżyczka i dron pożyczają oczy kołem** na zasięg wzroku figury (kamera dalej stożkiem 90°),
+  w ciemności też, tylko netrunnerowi. Bez pamięci mapy, bez otwierania drzwi. Dron planuje
+  marsz własnymi oczami (bariery, które widzi tylko on, trafiają do planera operatora).
+- **Urządzenie wyłączone w Sieci** (stan w Architekturze, przeżywa odłączenie): naklejka
+  „Wyłączony” (szara figura na mapie), tura oddana z wierszem „wyłączona w Sieci”, obszar straży
+  milczy, nie patrzy na skradających się i nie zakłada walki z zauważenia. Włącza się je
+  z paska „Oczy i urządzenia” w oknie SIEĆ (Akcja Sieciowa jak każda obsługa).
+- **Księga „węzeł raz na Turę” zeruje się z początkiem i końcem walki** — liczy rundy jednej
+  walki, a każda zaczyna od rundy 1.
+
 ## Przejęte urządzenie: aktywacja to pełna tura, strzał Wartością bojową (etap 70b, 12.11.2026, decyzje MG z 11.11)
 
 - **Jedna Akcja Sieciowa aktywuje urządzenie na Turę: ruch i jedna czynność** — zamiast RAW
@@ -26,7 +48,8 @@ przestanie się bronić, przenieś ją stąd do `POMYSLY.md` jako zadanie — ni
   węzeł — także NPC-netrunner MG. Zostaje w kolejce, a wskaźnik ją przeskakuje z wierszem
   „Tura oddana — przejęta w Sieci”. O tym, czy wrogowie ją ostrzelają, decyduje MG.
 - **„Wyłącz” oddaje figurę** — wyłączone urządzenie wypada spod ręki netrunnera (bez naklejki
-  „Przejęty w Sieci”, bez wiersza „wraca do obrony”) i włącza się je z listy w oknie SIEĆ.
+  „Przejęty w Sieci”, bez wiersza „wraca do obrony”) i włącza się je z okna SIEĆ (od 70c
+  z paska „Oczy i urządzenia”, z naklejką „Wyłączony” na figurze).
 - **Strzał z okna SIEĆ nie istnieje** (`NET_DEVICE_FIRES_FROM_MAP`): cel z listy, płatne pytanie
   o osłonę po fakcie i „Strzelaj mimo osłony” zniknęły. Osłona pyta przed zapłatą, jak u strzelca
   przy mapie. Zastępuje „strzał z urządzenia Umiejętnościami netrunnera” z etapu 26d niżej;

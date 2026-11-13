@@ -241,6 +241,12 @@ export interface StatusDefinition {
    * (`bodySearchable`).
    */
   searchable?: boolean;
+  /**
+   * Figura z tą naklejką stoi na mapie szara — krążek i ikona wygaszone, bez
+   * krzyżyka śmierci (etap 70c: urządzenie wyłączone w Sieci). Dane, nie kod:
+   * mapa nie wie, co znaczy „Wyłączony”.
+   */
+  dims?: boolean;
 }
 
 /** Ack data of the token image upload (`POST /api/uploads/tokens`). */

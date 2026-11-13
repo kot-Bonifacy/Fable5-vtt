@@ -178,6 +178,16 @@ describe('widok urządzenia i zdania po polsku', () => {
     expect(netDeviceLine(camera, 'off', { deviceId: 'd1', on: false })).toContain('wyłączona');
   });
 
+  it('dron i system środowiskowy mówią w rodzaju męskim (70c)', () => {
+    const drone = { name: 'Szerszeń', deviceKind: 'drone' as const };
+    expect(netDeviceLine(drone, 'off', { deviceId: 'd2', on: false })).toBe(
+      'Szerszeń — wyłączony.',
+    );
+    expect(
+      netDeviceLine({ name: '', deviceKind: 'environment' }, 'on', { deviceId: 'd3', on: true }),
+    ).toBe('System środowiskowy — włączony.');
+  });
+
   it('kamera na mapie mówi, dokąd patrzy po obróceniu (20.10)', () => {
     expect(netDeviceLine(camera, 'turn', { deviceId: 'd1', on: true }, 90)).toBe(
       'Kamera nad barem — obrócona na wschód.',
