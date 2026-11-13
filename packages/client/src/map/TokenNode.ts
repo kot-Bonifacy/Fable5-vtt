@@ -60,6 +60,11 @@ export interface TokenNodeCtx {
    * Puste poza pościgiem.
    */
   captionAbove?: ReadonlySet<string>;
+  /**
+   * Figury urządzeń, które ten gracz prowadzi przez węzeł Sieci (etap 70b):
+   * zaznacza je jak własne, choć `ownerId` się nie zmienia. Puste u MG.
+   */
+  operatedTokenIds?: ReadonlySet<string>;
 }
 
 const RING_OWN = 0x4ade80;

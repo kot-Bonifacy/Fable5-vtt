@@ -1,5 +1,22 @@
 # Dziennik sesji — archiwum
 
+### Sesja 11.11 — projekt przebudowy netrunningu (etap 70)
+
+**Zlecenie MG:** plik z projektem zmian netrunningu — okno SIEĆ przejrzyste, tylko bieżące
+piętro, bez zdradzania liczby pięter, mechaniki „bardziej przemyślane”, realne sterowanie
+elementami mapy (strefy, drony, podgląd z kamer), testy z E2E; propozycje niejednoznaczne —
+najpierw pytania. **Decyzje MG (dwie tury pytań):** węzeł raz na Turę, a 1 Akcja Sieciowa daje
+urządzeniu ruch i czynność; lista urządzeń dopiero na piętrze węzła (cofa 28.10); strefy
+środowiskowe tylko „Wyłącz / Włącz”; LOD i Demon automatem z hamulcem MG (cofa 15.08); Sieć ze
+sceny z węzłami wg rodzaju; podgląd mapą i paskiem „oczu”; strzał Wartością bojową urządzenia
+(wbrew s. 213); urządzenie to figura z obszarem straży. **Zrobione:**
+`etap-70-siec-przebudowa.md` — 11 punktów diagnozy z kodu i rozegrań 66b / 66e (m.in. `netRunView`
+wysyła graczowi cały szyb z `id` nieodkrytych pięter, a `netrun:move` jest wyrocznią głębokości),
+projekt A–G, podział 70a–70f z kryteriami, testy `shared`, serwera i pięć speców E2E
+(`47-siec/t70a`–`t70e`), dziesięć **rozstrzygnięć bez pytań** do słowa MG. Wiersz w tabeli
+etapów, wskaźnik przy zaległości z 07.11. **Kodu nie ruszano; testów nie puszczano, w przeglądarce
+nie oglądano** (sam dokument). **Dalej:** akceptacja MG, potem 70a.
+
 ### Sesja 10–11.11 — lewa belka bez ramek (etap 69)
 
 **Zlecenie MG:** nowy wygląd lewej belki — „mniej generycznych prostokątów”, przyciski różnej

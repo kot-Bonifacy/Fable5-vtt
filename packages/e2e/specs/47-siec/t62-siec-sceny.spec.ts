@@ -142,7 +142,7 @@ test.describe.serial('T62 Sieć ze sceny: kamery bez Architektury', () => {
     expect(list.map((entry) => entry.name)).toContain(`Sieć: ${SCENE}`);
   });
 
-  test('zjazd na węzeł: nazwy i rodzaje, po Kontroli oba urządzenia z przyciskami, Iskra patrzy oczami kamery', async () => {
+  test('zjazd na węzeł: nazwy i rodzaje, po Kontroli oba urządzenia przejęte, Iskra patrzy oczami kamery', async () => {
     await runWindow().locator('.net-exit--down').click();
     await expect.poll(() => runOf('Iskra')?.state.position.floor).toBe(1);
     await expect(runWindow().locator('.net-floor-card-title')).toHaveText('Węzeł kontrolny');
@@ -161,8 +161,17 @@ test.describe.serial('T62 Sieć ze sceny: kamery bez Architektury', () => {
     await devices.first().waitFor({ timeout: 20_000 });
     expect(pendingDice()).toBe('');
     await expect(devices).toHaveCount(2);
-    await expect(devices.nth(0).getByRole('button', { name: 'Obróć' })).toBeVisible();
-    await expect(devices.nth(1).getByRole('button', { name: /Strzel/ })).toBeVisible();
+    // Etap 70b: figury prowadzi się z mapy — lista ma przełącznik, a „Obróć”
+    // i „Strzelaj” przeszły na lewą belkę przejętej figury.
+    await expect(devices.nth(0).getByRole('button', { name: 'Wyłącz' })).toBeVisible();
+    await expect(devices.getByRole('button', { name: /Obróć|Strzel/ })).toHaveCount(0);
+    await expect
+      .poll(async () =>
+        (
+          await ola.store<{ runs: { operated: { deviceKind: string }[] }[] }>('netRun')
+        ).runs[0]?.operated.map((figure) => figure.deviceKind),
+      )
+      .toEqual(['camera', 'turret']);
     await expect.poll(() => polygonsOf(ola)).toBe(basePolygons + 1);
     await expect
       .poll(async () =>

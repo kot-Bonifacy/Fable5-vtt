@@ -381,6 +381,32 @@ describe('kamera przejęta w Sieci (20.10)', () => {
     expect(seen).not.toContain('Strażnik');
   });
 
+  it('„Obróć” na punkt mapy ustawia dowolny kąt, a kamera jest figurą operatora (70b)', async () => {
+    const turn = (lookAt: { x: number; y: number }) =>
+      emitAck<NetRunAbilityResult>(player, 'netrun:device', {
+        runId,
+        floorId: 'f0',
+        deviceId: 'dev-cam',
+        operation: 'turn',
+        lookAt,
+      });
+    // Środek kamery to (450, 1450): punkt na południowy wschód daje 135°.
+    expect((await turn({ x: 650, y: 1650 })).ok).toBe(true);
+    expect((await roundTrip(gm)).tokens.find((token) => token.id === cameraTokenId)?.facing).toBe(
+      135,
+    );
+    const run = (await roundTrip(player)).netRuns.find((entry) => entry.runId === runId)!;
+    expect(run.operated.find((figure) => figure.tokenId === cameraTokenId)).toMatchObject({
+      deviceKind: 'camera',
+      verbs: ['turn', 'off'],
+    });
+    // Z powrotem na południe — testy niżej liczą na ten kierunek.
+    expect((await turn({ x: 450, y: 1900 })).ok).toBe(true);
+    expect((await roundTrip(gm)).tokens.find((token) => token.id === cameraTokenId)?.facing).toBe(
+      180,
+    );
+  });
+
   it('w ciemnej scenie kamera widzi w swoim stożku — tylko dla netrunnera (07.11)', async () => {
     // „Fabryka dronów”: hala bez świateł, a kamery pokazywały czerń (decyzja MG:
     // przejęta kamera widzi w ciemności na swój zasięg).

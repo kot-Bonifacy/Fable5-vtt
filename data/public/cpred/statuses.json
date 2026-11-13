@@ -59,6 +59,11 @@
       "id": "intimidated",
       "name": "Onieśmielony",
       "icon": "/public/cpred/status-icons/intimidated.svg"
+    },
+    {
+      "id": "net-seized",
+      "name": "Przejęty w Sieci",
+      "icon": "/public/cpred/status-icons/net-seized.svg"
     }
   ]
 }

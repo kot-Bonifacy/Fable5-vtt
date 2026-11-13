@@ -7,6 +7,8 @@ import type {
   CpredHotbarWeaponGroup,
   CpredHotbarWeaponSlot,
   CpredSlotCost,
+  NetDeviceVerbSlot,
+  NetOperatedState,
   TokenContainerView,
 } from '@vtt/shared';
 import {
@@ -35,6 +37,7 @@ import {
   activateSlot,
   currentHudContext,
   hudSignature,
+  takeFigure,
   type HudContext,
   type HudVitals,
 } from '../hud.js';
@@ -51,6 +54,8 @@ import { useSelectionStore } from '../stores/selectionStore.js';
 import { useTargetStore } from '../stores/targetStore.js';
 import { useTokenStore } from '../stores/tokenStore.js';
 import { useGameTimeStore } from '../stores/gameTimeStore.js';
+import { useNetRunStore } from '../stores/netRunStore.js';
+import { activateDeviceVerb, useDeviceAimStore } from '../net-operated.js';
 import { usePortraitFrameStyle } from '../portrait-banner.js';
 import { CombatAwarenessPanel } from './CombatAwarenessPanel.js';
 import { BackupPanel } from './BackupPanel.js';
@@ -267,6 +272,7 @@ function isMediumAction(slot: CpredHotbarSlot): boolean {
 
 /** Czym się płaci, słowami — to samo, co znaczek na przycisku mówi kształtem. */
 function costText(slot: CpredHotbarSlot): string {
+  if (slot.cost === 'net') return 'Akcja Sieciowa';
   if (slot.cost === 'action') return 'Akcja';
   if (slot.cost === 'free') return 'za darmo';
   return slot.kind === 'action' && slot.moveCostM !== null
@@ -382,6 +388,57 @@ function MediumSlot({
               ? formatMetres(slot.moveCostM)
               : costText(slot)}
           </span>
+        </span>
+      </span>
+    </button>
+  );
+}
+
+/** Co stan aktywacji przejętego urządzenia znaczy dla gracza — jedno zdanie. */
+const DEVICE_STATE_TEXT: Record<NetOperatedState, string> = {
+  ready: 'pierwsza czynność: Akcja Sieciowa',
+  active: 'aktywne w tej Turze',
+  spent: 'czynność wykonana',
+  'node-used': 'węzeł użyty w tej Turze',
+  free: 'poza walką bez kosztu',
+};
+
+const DEVICE_VERB_GLYPHS: Partial<Record<string, string>> = { turn: '⟳', off: '⏻' };
+
+/**
+ * Czynność przejętego urządzenia poza strzałem (etap 70b): „Obróć” kamery
+ * i „Wyłącz”. Średni kafel jak Bieg i Skok — bierze się je co turę.
+ */
+function DeviceVerbTile({
+  slot,
+  armed,
+  onActivate,
+}: {
+  slot: NetDeviceVerbSlot;
+  armed: boolean;
+  onActivate: () => void;
+}) {
+  const cost =
+    slot.cost === 'net' ? 'Akcja Sieciowa' : slot.cost === 'action' ? 'czynność' : 'za darmo';
+  const tip = useHudTip({ title: slot.label, cost, body: slot.hint, refusal: slot.disabled });
+  return (
+    <button
+      type="button"
+      className={`hud-slot hud-slot--medium hud-slot--action${armed ? ' hud-slot--armed' : ''}${
+        slot.disabled ? ' hud-slot--refused' : ''
+      }`}
+      data-device-verb={slot.verb}
+      onClick={onActivate}
+      {...tip}
+    >
+      <span className="hud-slot-icon hud-device-glyph" aria-hidden>
+        {DEVICE_VERB_GLYPHS[slot.verb] ?? '⚙'}
+      </span>
+      <span className="hud-slot-body">
+        <span className="hud-slot-label">{slot.label}</span>
+        <span className="hud-slot-cost">
+          <CostMark cost={slot.cost} />
+          <span>{cost}</span>
         </span>
       </span>
     </button>
@@ -766,6 +823,9 @@ function useHudContext(): HudContext {
       useChaseStore.subscribe(refresh),
       // Etap 69: trwały cel figury stoi na kaflu broni w ręku.
       useTargetStore.subscribe(refresh),
+      // Etap 70b: przejęte urządzenia jadą z runem, a „Obróć” czeka na klik.
+      useNetRunStore.subscribe(refresh),
+      useDeviceAimStore.subscribe(refresh),
     ];
     return () => {
       for (const unsub of unsubs) unsub();
@@ -961,7 +1021,7 @@ export function CombatHud() {
     <HudTipLayer>
       <aside ref={railRef} className="hud-rail" aria-label="Panel aktywnej postaci">
         <div className="hud-head">
-          <span className="hud-head-title">Postać</span>
+          <span className="hud-head-title">{context.device ? 'Urządzenie' : 'Postać'}</span>
           <button
             type="button"
             className="hud-collapse"
@@ -999,13 +1059,26 @@ export function CombatHud() {
               key={token.id}
               name={token.name}
               imageUrl={token.imageUrl}
-              hp={token.hp}
+              hp={context.device ? context.device.hp : token.hp}
               vitals={context.vitals}
               container={token.container}
             />
 
             <StatusChips statuses={token.statuses} />
             <StatEffectChips effects={context.statEffects} />
+
+            {/* Etap 70b: przejęte urządzenie mówi, przez co je trzymasz i co
+                zostało z aktywacji — budżetu tury nie ma, płaci netrunner. */}
+            {context.device && (
+              <p className="hud-device-via" data-testid="hud-device">
+                <span>
+                  przez: <strong>{context.device.nodeLabel}</strong>
+                </span>
+                <span data-device-state={context.device.state}>
+                  {DEVICE_STATE_TEXT[context.device.state]}
+                </span>
+              </p>
+            )}
 
             {/* Showing is not steering: the rail fills itself in with this
                 figure, but the map still belongs to nobody until the user says
@@ -1062,7 +1135,7 @@ export function CombatHud() {
               />
             )}
 
-            {context.slots.length === 0 && (
+            {context.slots.length === 0 && !context.device && (
               <p className="hud-empty">
                 <HudIcon name="pistol" className="hud-empty-icon" />
                 <span>
@@ -1138,6 +1211,34 @@ export function CombatHud() {
                   })}
                 </div>
               </section>
+            )}
+
+            {context.device && context.device.verbs.length > 0 && (
+              <section className="hud-group">
+                <h3 className="hud-group-title">Urządzenie</h3>
+                <div className="hud-slots hud-slots--medium">
+                  {context.device.verbs.map((slot) => (
+                    <DeviceVerbTile
+                      key={slot.id}
+                      slot={slot}
+                      armed={slot.verb === 'turn' && context.device!.turning}
+                      onActivate={() => {
+                        takeFigure(token.id, false);
+                        activateDeviceVerb(token.id, slot);
+                      }}
+                    />
+                  ))}
+                </div>
+              </section>
+            )}
+            {context.device?.turning && (
+              <p className="hud-armed hud-armed--note">
+                <span className="hud-armed-mark" aria-hidden />
+                <span>
+                  <strong>Obróć</strong> — kliknij punkt mapy, na który kamera ma patrzeć.
+                  <span className="hud-armed-hint"> Esc odkłada obrót.</span>
+                </span>
+              </p>
             )}
 
             {/* 03.11.2026 (MG): schowanej broni pasek nie wymienia wcale — co jest

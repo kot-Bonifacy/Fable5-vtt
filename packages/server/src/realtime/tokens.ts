@@ -121,6 +121,7 @@ import { forgetPace } from './pace.js';
 import { enforceNetRunRange } from './netice.js';
 import { refuseMoveWhileJackedIn } from './netrun-io.js';
 import { adoptSceneDeviceLive } from './net-scene.js';
+import { operatedTokenIdsOf, seizedGrantOf } from './net-control.js';
 import { runZonesAfterMove } from './zones.js';
 import { runHiddenFiguresAfterMove } from './hidden-figures.js';
 import { createMixedRng } from './dice-rng.js';
@@ -417,6 +418,12 @@ export async function fetchSceneTokensFor(
   liveOverride?: { tokenId: string; x: number; y: number },
 ): Promise<TokenView[]> {
   const isGm = user.role === ROLE_GM;
+  // Figura urządzenia przejęta w Sieci (etap 70b) jedzie do swojego operatora
+  // zawsze — ukryta, za ścianą, w ciemności: prowadzi ją, więc jej miejsce
+  // i tak zna (widok urządzenia niósł `at` od 20.10).
+  const operated = isGm
+    ? new Set<string>()
+    : await operatedTokenIdsOf(prisma, scene.campaignId, user.id);
   // Ukryta figura jedzie tylko do kont, które ją zauważyły (58d) — i to jako
   // zwykła, bo gracz nie dostaje widoków z `hidden: true`.
   const rows = (
@@ -425,7 +432,7 @@ export async function fetchSceneTokensFor(
       orderBy: { createdAt: 'asc' },
     })
   )
-    .filter((row) => isGm || !tokenHiddenFrom(row, user.id))
+    .filter((row) => isGm || operated.has(row.id) || !tokenHiddenFrom(row, user.id))
     .map((row) => (isGm || !row.hidden ? row : { ...row, hidden: false }));
   const sheets = await loadLinkedSheets(prisma, registry, rows);
   const concealment = await concealmentFor(prisma, scene, user, context, liveOverride);
@@ -446,7 +453,7 @@ export async function fetchSceneTokensFor(
     ) {
       continue;
     }
-    if (concealedFrom(row, scene, concealment, linked, user.id)) continue;
+    if (!operated.has(row.id) && concealedFrom(row, scene, concealment, linked, user.id)) continue;
     views.push(toTokenView(row, seesPrivate(row, linked, user), linked, scene));
   }
   return views;
@@ -714,7 +721,11 @@ export async function emitTokenUpsert(
     deps.io.to(gmRoom(campaignId)).emit('token:upsert', privatePayload);
     // Zauważona (58d): każdy z tych, którzy ją widzą, dostaje własną listę —
     // mgła i ściany dalej mogą ją przed nim chować.
-    if (readTokenSightings(token.sightings).users.length > 0) {
+    // Przejęta w Sieci (70b): operator też dostaje własną listę.
+    if (
+      readTokenSightings(token.sightings).users.length > 0 ||
+      ((await seizedGrantOf(deps.ctx.prisma, campaignId, token.id))?.operatorIds.size ?? 0) > 0
+    ) {
       await emitSceneTokensToPlayers(deps, campaignId, scene);
     }
     return;

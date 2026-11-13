@@ -36,8 +36,9 @@ import { runFloor } from './test-net.js';
  *
  *  - **lista urządzeń nie istnieje w payloadzie**, dopóki węzeł nie zostanie
  *    przejęty — nie jest ukryta, tylko jej tam nie ma;
- *  - **wieżyczka strzela silnikiem z etapu 16 Umiejętnościami netrunnera** —
- *    w rozbiciu rzutu stoi REF i Broń krótka *jego* karty, a nie profil figury;
+ *  - **przejęta wieżyczka strzela z mapy** (etap 70b): zwykłym `attack:roll`,
+ *    własną Wartością bojową, za Akcję Sieciową netrunnera — a uprawnieniem
+ *    jest węzeł, nie własność żetonu;
  *  - **PT odebrania węzła** to wynik Testu, którym go przejęto — widać go
  *    w tytule karty rzutu drugiego netrunnera;
  *  - **węzeł działa raz na Turę**, ale dopiero gdy Tury w ogóle istnieją.
@@ -74,6 +75,7 @@ let playerCookie: string;
 let playerId: string;
 /** Gracz spoza runu — sprawdza, czego nie widzi reszta stołu (#37). */
 let bystanderCookie: string;
+let bystanderId: string;
 const openSockets: ClientSocket[] = [];
 
 function cookieOf(setCookieHeader: string | string[] | undefined): string {
@@ -189,6 +191,7 @@ beforeAll(async () => {
     url: await joinUrl(built, invite, 'Gapa'),
   });
   bystanderCookie = cookieOf(bystanderRes.headers['set-cookie']);
+  bystanderId = (bystanderRes.json() as { user: { id: string } }).user.id;
 }, 60_000);
 
 afterAll(async () => {
@@ -622,37 +625,102 @@ describe('węzły kontrolne na żywych gniazdach', () => {
     bystander.disconnect();
   });
 
-  it('strzela wieżyczką Umiejętnościami netrunnera, nie profilem figury', async () => {
-    const message = waitFor<ChatMessageBroadcast>(gm, 'chat:message');
-    const shot = data(
-      await operate('dev-turret', 'fire', { targetTokenId }),
-      'netrun:device — strzał',
+  /** Strzał figurą z mapy — ta sama droga, którą strzela każda figura. */
+  function shoot(
+    socket: ClientSocket,
+    attackerTokenId: string,
+    target: string,
+    request: Record<string, unknown> = {},
+  ) {
+    return emitAck<{ messageId?: number; blocked?: unknown }>(socket, 'attack:roll', {
+      attackerTokenId,
+      targetTokenId: target,
+      request: { weaponRowId: 'statist-weapon', ...request },
+    });
+  }
+
+  function operatedOf(run: NetRunPayload | undefined, id: string) {
+    return run?.operated.find((figure) => figure.tokenId === id);
+  }
+
+  it('okno Sieci nie strzela — strzela się z mapy (etap 70b)', async () => {
+    expect(errorOf(await operate('dev-turret', 'fire', { targetTokenId }))).toBe(
+      'NET_DEVICE_FIRES_FROM_MAP',
     );
-    expect(shot.summary).toContain('Grzechot');
+  });
+
+  it('ładunek runu niesie przejęte figury: gracz z kartą do podglądu, MG bez', async () => {
+    const mine = await runOf(player);
+    const turret = operatedOf(mine, turretTokenId);
+    expect(turret).toMatchObject({
+      deviceId: 'dev-turret',
+      deviceKind: 'turret',
+      name: 'Grzechot',
+      nodeLabel: 'Węzeł ochrony',
+      verbs: ['fire', 'off'],
+      // Poza walką nikt niczego nie liczy.
+      state: 'free',
+      weaponRowId: 'statist-weapon',
+    });
+    // Tylko lufa: reszta karty figury nie jedzie do operatora.
+    expect(turret?.sheet?.weapons.map((row) => row.name)).toEqual(['Zgrzyt 9']);
+    expect(turret?.sheet?.gear).toEqual([]);
+    // Kamera bez figury i brama nie są figurami do prowadzenia.
+    expect(mine?.operated.map((figure) => figure.deviceId).sort()).toEqual([
+      'dev-drone',
+      'dev-turret',
+    ]);
+    const gmCopy = operatedOf(await runOf(gm), turretTokenId);
+    expect(gmCopy?.deviceId).toBe('dev-turret');
+    expect(gmCopy?.sheet).toBeUndefined();
+  });
+
+  it('przejęta figura dostaje naklejkę „Przejęty w Sieci”', async () => {
+    const state = await roundTrip(gm);
+    expect(state.tokens.find((token) => token.id === turretTokenId)?.statuses).toContain(
+      'net-seized',
+    );
+    expect(state.tokens.find((token) => token.id === targetTokenId)?.statuses).not.toContain(
+      'net-seized',
+    );
+  });
+
+  it('strzela przejętą wieżyczką z mapy — Wartością bojową, nie Umiejętnością netrunnera', async () => {
+    // Wartość bojowa 14 w bloku statystyk figury (decyzja MG nr 7 z 11.11).
+    await emitAck(gm, 'token:stat', {
+      tokenId: turretTokenId,
+      quick: { ...TURRET_PROFILE, combatValue: 14 },
+    });
+    const message = waitFor<ChatMessageBroadcast>(gm, 'chat:message');
+    // Lufy i Szczęścia netrunner nie wybiera — serwer nadpisuje oba.
+    const shot = data(
+      await shoot(player, turretTokenId, targetTokenId, { weaponRowId: 'zmyslona', luckSpent: 3 }),
+      'attack:roll przejętą wieżyczką',
+    );
+    expect(shot.messageId).toBeGreaterThan(0);
 
     const roll = (await message).message.roll;
-    const stat = roll?.breakdown?.find((row) => row.kind === 'stat');
-    const skill = roll?.breakdown?.find((row) => row.kind === 'skill');
-    // REF 8 i Broń krótka 9 są netrunnera; profil wieżyczki niesie 3 i 1.
-    expect(stat?.value).toBe(8);
-    expect(skill?.value).toBe(9);
-    // Ale magazynek jest wieżyczki i to on się opróżnia.
+    // REF 8 i Broń krótka 9 netrunnera nie wchodzą do rzutu: Wartość bojowa
+    // jest sumą Cechy i Umiejętności urządzenia.
+    expect(roll?.breakdown?.find((row) => row.kind === 'stat')?.value ?? 0).toBe(0);
+    expect(roll?.breakdown?.find((row) => row.kind === 'skill')?.value).toBe(14);
+    expect(roll?.breakdown?.some((row) => row.kind === 'luck')).toBe(false);
+    // Karta ataku wyszła z figury wieżyczki, a magazynek jest jej.
+    expect(roll?.actor).toBe('Grzechot');
     const state = await roundTrip(gm);
     const turret = state.tokens.find((entry) => entry.id === turretTokenId);
     const card = state.characters.find((entry) => entry.id === turret?.characterId)?.data as
       CpredCharacterData | undefined;
     expect(card?.weapons[0]?.ammoCurrent).toBe(9);
-    // A karta ataku wyszła z figury wieżyczki, nie z karty netrunnera.
-    expect(roll?.actor).toBe('Grzechot');
   });
 
   it('netrunner rzuca obrażenia za strzał wieżyczki, którą prowadzi — i tylko on (#38)', async () => {
-    // Strzał do skutku: REF 8 + Broń krótka 9 + k10 przeciw PT z 8 m trafia
-    // prawie zawsze, a tylko trafienie ma obrażenia do rzucenia.
+    // Strzał do skutku: Wartość bojowa 14 + k10 przeciw PT z 8 m trafia prawie
+    // zawsze, a tylko trafienie ma obrażenia do rzucenia.
     let messageId = 0;
-    for (let attempt = 0; attempt < 4 && messageId === 0; attempt += 1) {
+    for (let attempt = 0; attempt < 5 && messageId === 0; attempt += 1) {
       const card = waitFor<ChatMessageBroadcast>(gm, 'chat:message');
-      data(await operate('dev-turret', 'fire', { targetTokenId }), 'netrun:device — strzał');
+      data(await shoot(player, turretTokenId, targetTokenId), 'attack:roll — strzał');
       const roll = (await card).message;
       if (roll.roll?.attack?.hit) messageId = roll.id;
     }
@@ -663,10 +731,23 @@ describe('węzły kontrolne na żywych gniazdach', () => {
         request: { kind: 'damage', weaponRowId: 'statist-weapon', attackMessageId },
       });
 
-    // Gracz spoza runu nie rzuca za cudzą wieżyczkę.
+    // Gracz spoza runu nie strzela cudzą wieżyczką i nie rzuca za nią obrażeń.
     const bystanderConn = createSocket(bystanderCookie);
     await bystanderConn.firstSync;
+    expect(errorOf(await shoot(bystanderConn.socket, turretTokenId, targetTokenId))).toBe(
+      'CHARACTER_NOT_FOUND',
+    );
     expect(errorOf(await damage(bystanderConn.socket, messageId))).toBe('CHARACTER_NOT_FOUND');
+    // Ani jej nie przestawi — własność żetonu się nie zmieniła.
+    expect(
+      (
+        await emitAck(bystanderConn.socket, 'token:move', {
+          tokenId: turretTokenId,
+          x: 0,
+          y: 0,
+        })
+      ).ok,
+    ).toBe(false);
     bystanderConn.socket.disconnect();
 
     // Netrunner — tak, obrażeniami broni wieżyczki.
@@ -674,35 +755,140 @@ describe('węzły kontrolne na żywych gniazdach', () => {
     expect(errorOf(rolled)).toBeUndefined();
 
     // Strzał wieżyczki ręką MG (bez operatora na karcie) zostaje rzutem MG.
-    const gmShot = data(
-      await emitAck<{ messageId?: number; hit?: boolean }>(gm, 'attack:roll', {
-        attackerTokenId: turretTokenId,
-        targetTokenId,
-        request: { weaponRowId: 'statist-weapon' },
-      }),
-      'attack:roll (MG)',
-    );
+    const gmShot = data(await shoot(gm, turretTokenId, targetTokenId), 'attack:roll (MG)');
     expect(gmShot.messageId).toBeGreaterThan(0);
     // Pudło nie ma obrażeń w ogóle (`NOT_A_HIT`) — ale nie może być `ok`.
     expect((await damage(player, gmShot.messageId!)).ok).toBe(false);
   });
 
-  it('strzela dronem z pełną kartą NPC-a — bronią, którą dron trzyma (07.11)', async () => {
-    const message = waitFor<ChatMessageBroadcast>(gm, 'chat:message');
-    const shot = data(
-      await operate('dev-drone', 'fire', { targetTokenId }),
-      'netrun:device — strzał drona',
+  it('dron bez Wartości bojowej odmawia; z Umiejętnością na karcie strzela własną (70b)', async () => {
+    // Karta NPC-a z wzorca: broń jest, liczb do rzutu nie ma.
+    expect(operatedOf(await runOf(player), droneTokenId)?.noCombatValue).toBe(true);
+    expect(errorOf(await shoot(player, droneTokenId, targetTokenId))).toBe(
+      'NET_DEVICE_NO_COMBAT_VALUE',
     );
-    expect(shot.summary).toContain('Szerszeń');
+
+    const drone = (await roundTrip(gm)).tokens.find((entry) => entry.id === droneTokenId);
+    await emitAck(gm, 'character:update', {
+      characterId: drone!.characterId,
+      patch: { data: { skills: { handgun: 5 } } },
+    });
+    expect(operatedOf(await runOf(player), droneTokenId)?.noCombatValue).toBeUndefined();
+
+    const message = waitFor<ChatMessageBroadcast>(gm, 'chat:message');
+    data(await shoot(player, droneTokenId, targetTokenId), 'attack:roll dronem');
     const roll = (await message).message.roll;
     expect(roll?.actor).toBe('Szerszeń');
-    // Umiejętności netrunnera, jak przy wieżyczce.
-    expect(roll?.breakdown?.find((row) => row.kind === 'stat')?.value).toBe(8);
+    // Broń krótka 5 drona — nie 9 netrunnera.
+    expect(roll?.breakdown?.find((row) => row.kind === 'skill')?.value).toBe(5);
     const state = await roundTrip(gm);
-    const drone = state.tokens.find((entry) => entry.id === droneTokenId);
     const card = state.characters.find((entry) => entry.id === drone?.characterId)?.data as
       CpredCharacterData | undefined;
+    // Strzela bronią, którą trzyma (07.11) — wiersz spoza statysty.
     expect(card?.weapons.find((row) => row.id === 'drone-gun')?.ammoCurrent).toBe(11);
+  });
+
+  it('ukryta przejęta figura jedzie do operatora — i tylko do niego', async () => {
+    await emitAck(gm, 'token:update', { tokenId: turretTokenId, patch: { hidden: true } });
+    const mine = (await roundTrip(player)).tokens.find((token) => token.id === turretTokenId);
+    // Gracz nie dostaje widoków z `hidden: true` — figura jest u niego zwykła.
+    expect(mine?.hidden).toBe(false);
+    const bystanderConn = createSocket(bystanderCookie);
+    const theirs = (await bystanderConn.firstSync).tokens;
+    expect(theirs.some((token) => token.id === turretTokenId)).toBe(false);
+    bystanderConn.socket.disconnect();
+    // I dalej nią strzela.
+    expect((await shoot(player, turretTokenId, targetTokenId)).ok).toBe(true);
+    await emitAck(gm, 'token:update', { tokenId: turretTokenId, patch: { hidden: false } });
+  });
+
+  it('obszar straży przejętej wieżyczki milczy; po odłączeniu znów strzela (70b)', async () => {
+    data(
+      await emitAck<CompendiumEntry>(gm, 'compendium:upsert', {
+        entry: {
+          category: 'netDefense',
+          name: 'Automatyczna wieżyczka',
+          cost: 5000,
+          defenseKind: 'emplacement',
+          disableDv: 17,
+          hp: 25,
+          combatValue: 14,
+          trigger: 'Cel bez przepustki wchodzi na strzeżony obszar.',
+          effects: { fires: true },
+        },
+      }),
+      'compendium:upsert (wieżyczka)',
+    );
+    const post = data(
+      await emitAck<DefenseZoneView>(gm, 'zone:create', {
+        sceneId,
+        entryId: 'defense.automatyczna-wiezyczka',
+        x: 1200,
+        y: 1200,
+        width: 300,
+        height: 200,
+        hidden: false,
+      }),
+      'zone:create (obszar straży)',
+    );
+    await emitAck(gm, 'zone:update', { zoneId: post.id, patch: { tokenId: turretTokenId } });
+    // Wpis obszaru straży idzie przed blokiem statystyk figury (kolejność źródeł).
+    expect(operatedOf(await runOf(player), turretTokenId)?.sheet?.statBlock?.combatValue).toBe(14);
+
+    const bystanderConn = createSocket(bystanderCookie);
+    const bystander = bystanderConn.socket;
+    await bystanderConn.firstSync;
+    const gapaId = data(
+      await emitAck<TokenView>(gm, 'token:create', {
+        sceneId,
+        name: 'Gapa',
+        x: 1100,
+        y: 1250,
+        ownerId: bystanderId,
+        hp: { current: 30, max: 30 },
+      }),
+      'token:create (Gapa)',
+    ).id;
+    // Domyślnie mapa jest zamknięta dla graczy („Ruch graczy: Stop”).
+    await emitAck(gm, 'scene:update', { sceneId, patch: { playerMove: 'explore' } });
+    const step = async (x: number) =>
+      data(
+        await emitAck<{ x: number }>(bystander, 'token:move', {
+          tokenId: gapaId,
+          x,
+          y: 1250,
+          final: true,
+        }),
+        'token:move (Gapa)',
+      );
+    const shotsHeard = async (walk: () => Promise<unknown>) => {
+      const heard: string[] = [];
+      const onMessage = (payload: ChatMessageBroadcast) => {
+        heard.push(payload.message.kind);
+      };
+      gm.on('chat:message', onMessage);
+      await walk();
+      await roundTrip(gm);
+      gm.off('chat:message', onMessage);
+      return heard.filter((kind) => kind === 'roll').length;
+    };
+
+    // Kroki po jednej kratce (2 m) — pula Eksploracji figury bez karty jest mała.
+    // Przejęta: Gapa wchodzi na obszar straży i nic nie strzela.
+    expect(await shotsHeard(() => step(1200))).toBe(0);
+    await step(1100);
+
+    // Po odłączeniu wieżyczka wraca do obrony — to samo wejście kończy się strzałem.
+    await emitAck(player, 'netrun:leave', { runId });
+    expect(await shotsHeard(() => step(1200))).toBe(1);
+
+    await emitAck(gm, 'zone:delete', { zoneId: post.id });
+    await emitAck(gm, 'token:delete', { tokenId: gapaId });
+    bystander.disconnect();
+    runId = data(
+      await emitAck<NetRunPayload>(player, 'netrun:start', { tokenId, accessPointId: pointId }),
+      'netrun:start',
+    ).runId;
   });
 
   it('wyłączonego urządzenia nie da się obsłużyć, dopóki nie wróci', async () => {
@@ -741,15 +927,18 @@ describe('węzły kontrolne na żywych gniazdach', () => {
     await emitAck(gm, 'combat:end');
   });
 
-  it('odmowa strzału przed rzutem zwraca Akcję Sieciową (07.11)', async () => {
+  it('aktywacja: strzał bierze Akcję Sieciową i węzeł, druga czynność odmawia (70b)', async () => {
     const combat = data(
-      await emitAck<CombatView>(gm, 'combat:start', { sceneId, tokenIds: [tokenId] }),
+      await emitAck<CombatView>(gm, 'combat:start', {
+        sceneId,
+        tokenIds: [tokenId, turretTokenId],
+      }),
       'combat:start',
     );
-    await emitAck(gm, 'combat:set-initiative', {
-      combatantId: combat.combatants[0]!.id,
-      initiative: 12,
-    });
+    const runner = combat.combatants.find((entry) => entry.tokenId === tokenId)!;
+    const turret = combat.combatants.find((entry) => entry.tokenId === turretTokenId)!;
+    await emitAck(gm, 'combat:set-initiative', { combatantId: runner.id, initiative: 12 });
+    await emitAck(gm, 'combat:set-initiative', { combatantId: turret.id, initiative: 5 });
     await emitAck(gm, 'combat:next');
     const turnState = async () =>
       JSON.stringify(
@@ -757,16 +946,72 @@ describe('węzły kontrolne na żywych gniazdach', () => {
           null,
       );
     const before = await turnState();
+    expect(operatedOf(await runOf(player), turretTokenId)?.state).toBe('ready');
 
-    // Dron w siebie samego — ścieżka ataku odmawia, zanim cokolwiek rzuci.
-    expect(errorOf(await operate('dev-drone', 'fire', { targetTokenId: droneTokenId }))).toBe(
-      'BAD_REQUEST',
-    );
+    // Dron w siebie samego — ścieżka ataku odmawia, zanim cokolwiek rzuci,
+    // więc Akcja Sieciowa i węzeł zostają nietknięte.
+    expect(errorOf(await shoot(player, droneTokenId, droneTokenId))).toBe('BAD_REQUEST');
     expect(await turnState()).toEqual(before);
-    // Węzeł dalej wolny: strzał, który poszedł, kosztuje jak zawsze.
-    expect((await operate('dev-drone', 'fire', { targetTokenId })).ok).toBe(true);
+    expect(operatedOf(await runOf(player), droneTokenId)?.state).toBe('ready');
+
+    // Pierwszy strzał aktywuje wieżyczkę: jedna Akcja Sieciowa, węzeł zużyty.
+    expect((await shoot(player, turretTokenId, targetTokenId)).ok).toBe(true);
     expect(await turnState()).not.toEqual(before);
+    const afterShot = await runOf(player);
+    expect(operatedOf(afterShot, turretTokenId)?.state).toBe('spent');
+    expect(operatedOf(afterShot, droneTokenId)?.state).toBe('node-used');
+    const spent = await turnState();
+
+    // Drugi strzał tą samą figurą, inne urządzenie węzła i przełącznik z okna
+    // — wszystko odmawia, i nic nie kosztuje.
+    expect(errorOf(await shoot(player, turretTokenId, targetTokenId))).toBe('NET_DEVICE_SPENT');
+    expect(errorOf(await shoot(player, droneTokenId, targetTokenId))).toBe('NET_NODE_USED');
+    expect(errorOf(await operate('dev-door', 'open'))).toBe('NET_NODE_USED');
+    expect(await turnState()).toEqual(spent);
+
+    // Tura przejętej wieżyczki przechodzi sama: po netrunnerze kolejka wraca
+    // do niego w rundzie 2, a czat mówi dlaczego.
+    const lines: string[] = [];
+    const onMessage = (payload: ChatMessageBroadcast) => {
+      lines.push(JSON.stringify(payload.message.action ?? {}));
+    };
+    gm.on('chat:message', onMessage);
+    const next = data(await emitAck<CombatView>(gm, 'combat:next'), 'combat:next');
+    gm.off('chat:message', onMessage);
+    expect(next.round).toBe(2);
+    expect(next.activeCombatantId).toBe(runner.id);
+    expect(lines.some((line) => line.includes('przejęta w Sieci'))).toBe(true);
+
+    // Nowa runda oddaje aktywację.
+    expect(operatedOf(await runOf(player), turretTokenId)?.state).toBe('ready');
+    expect((await shoot(player, droneTokenId, targetTokenId)).ok).toBe(true);
     await emitAck(gm, 'combat:end');
+  });
+
+  it('odłączenie oddaje figurę: naklejka znika, czat mówi „wraca do obrony”, strzał odmawia', async () => {
+    const lines: string[] = [];
+    const onMessage = (payload: ChatMessageBroadcast) => {
+      lines.push(JSON.stringify(payload.message.action ?? {}));
+    };
+    gm.on('chat:message', onMessage);
+    await emitAck(player, 'netrun:leave', { runId });
+    const state = await roundTrip(gm);
+    gm.off('chat:message', onMessage);
+    expect(state.tokens.find((token) => token.id === turretTokenId)?.statuses).not.toContain(
+      'net-seized',
+    );
+    expect(lines.filter((line) => line.includes('wraca do obrony'))).toHaveLength(2);
+    expect(errorOf(await shoot(player, turretTokenId, targetTokenId))).toBe('CHARACTER_NOT_FOUND');
+
+    // Ponowne podłączenie oddaje węzeł bez Testu (pamięć z 02.11), a z nim figury.
+    runId = data(
+      await emitAck<NetRunPayload>(player, 'netrun:start', { tokenId, accessPointId: pointId }),
+      'netrun:start',
+    ).runId;
+    expect(operatedOf(await runOf(player), turretTokenId)?.deviceId).toBe('dev-turret');
+    expect(
+      (await roundTrip(gm)).tokens.find((token) => token.id === turretTokenId)?.statuses,
+    ).toContain('net-seized');
   });
 
   it('rozlicza odebranie węzła PT równym wynikowi Testu, którym go przejęto', async () => {

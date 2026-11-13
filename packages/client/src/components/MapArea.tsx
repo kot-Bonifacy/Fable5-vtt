@@ -37,6 +37,7 @@ import {
   type SceneVehicleView,
   type TokenGlyph,
   type TokenView,
+  NET_DEVICE_MESSAGES,
 } from '@vtt/shared';
 import {
   MapRenderer,
@@ -131,6 +132,14 @@ import { useAttackStore, type AttackTargeting } from '../stores/attackStore.js';
 import { useRollStore } from '../stores/rollStore.js';
 import { activeWeaponOf, useHudStore, type HudJump } from '../stores/hudStore.js';
 import { disarmJump, jumpAtPoint } from '../jump.js';
+import {
+  dropLostOperated,
+  myOperatedTokenIds,
+  operatedEntries,
+  operatedFigureOf,
+  turnDeviceAt,
+  useDeviceAimStore,
+} from '../net-operated.js';
 import { useRulerStore } from '../stores/rulerStore.js';
 import { useExplorationStore } from '../stores/explorationStore.js';
 import { useFogStore } from '../stores/fogStore.js';
@@ -639,6 +648,9 @@ function walkRefusalFor(
   scene: SceneView | null,
 ): string | null {
   if (!tokenId || isGm) return null;
+  // Przejęte urządzenie (etap 70b) stoi: wieżyczka i kamera nie mają ruchu,
+  // a marsz drona przychodzi w 70c.
+  if (operatedFigureOf(tokenId)) return NET_DEVICE_MESSAGES.NET_DEVICE_STATIONARY;
   // „Ruch graczy: Stop" (etap 45; mapa zamknięta od 12.09) wyprzedza wszystko
   // inne: dopóki MG nie puści drużyny, ani Tura, ani stan figury nie mają nic
   // do rzeczy.
@@ -1054,6 +1066,8 @@ export function MapArea() {
       // Skok w ręku (19.10.2026) bierze klik przed granatem: to on był ostatnim
       // wyborem z paska, a klik obok pól go odkłada, zamiast rzucać.
       if (jumpAtPoint(worldX, worldY)) return true;
+      // „Obróć” przejętej kamery (70b): klik mówi, dokąd ma patrzeć.
+      if (turnDeviceAt(worldX, worldY)) return true;
       // A grenade in hand outranks the car: the charge is aimed at the square,
       // and that square may well be the one the car is standing on (stage 16d).
       if (throwAtPoint(worldX, worldY)) return true;
@@ -1471,6 +1485,7 @@ export function MapArea() {
         Object.values(tokenState.tokens),
         current?.grid.sizePx ?? 100,
       ),
+      operatedTokenIds: myOperatedTokenIds(useNetRunStore.getState().runs),
     });
   }, []);
 
@@ -1703,6 +1718,31 @@ export function MapArea() {
     const unsubPortraits = usePortraitStore.subscribe(pushTokens);
     // Podpisy figur w fotelach (04.11) zależą od położenia auta.
     const unsubChase = useChaseStore.subscribe(pushTokens);
+    // Etap 70b: przejęte figury jadą z runem — nowa kontrola daje zaznaczanie,
+    // utracona zdejmuje je i oddaje belkę netrunnerowi.
+    let operatedBefore = myOperatedTokenIds(useNetRunStore.getState().runs);
+    let runnerOf = new Map(
+      operatedEntries(useNetRunStore.getState().runs).map((entry) => [
+        entry.figure.tokenId,
+        entry.run.tokenId,
+      ]),
+    );
+    const unsubRuns = useNetRunStore.subscribe((state, previous) => {
+      if (state.runs === previous.runs) return;
+      const now = myOperatedTokenIds(state.runs);
+      const lostRunner = runnerOf;
+      dropLostOperated(
+        operatedBefore,
+        now,
+        (tokenId) => lostRunner.get(tokenId) ?? null,
+        (tokenId) => rendererRef.current?.setSelection(tokenId),
+      );
+      operatedBefore = now;
+      runnerOf = new Map(
+        operatedEntries(state.runs).map((entry) => [entry.figure.tokenId, entry.run.tokenId]),
+      );
+      pushTokens();
+    });
     // Pula jest publiczna dla każdego zalogowanego, więc gracz czyta kadry tą
     // samą drogą co MG. Nieudane pobranie nie psuje mapy: bez wpisu figura
     // dostaje kadr domyślny.
@@ -1713,6 +1753,7 @@ export function MapArea() {
       unsubCombat();
       unsubPortraits();
       unsubChase();
+      unsubRuns();
     };
   }, [ready, pushTokens]);
 
@@ -1867,11 +1908,13 @@ export function MapArea() {
     // musi dojść tą samą drogą, co powalenie figury — inaczej gracz miałby
     // kursor „nie wolno" jeszcze długo po otwarciu mapy.
     const unsubScene = useSceneStore.subscribe(pushWalkRefusal);
+    const unsubNetRuns = useNetRunStore.subscribe(pushWalkRefusal);
     return () => {
       unsubSelection();
       unsubCombat();
       unsubTokens();
       unsubScene();
+      unsubNetRuns();
     };
   }, [ready, pushWalkRefusal]);
 
@@ -2728,6 +2771,11 @@ export function MapArea() {
         }
         if (hud.form) {
           hud.setForm(null);
+          return;
+        }
+        // „Obróć” przejętej kamery (70b) — też wzięte później niż broń.
+        if (useDeviceAimStore.getState().turning) {
+          useDeviceAimStore.getState().arm(null);
           return;
         }
         // Skok w ręku schodzi przed bronią: wzięło się go później.

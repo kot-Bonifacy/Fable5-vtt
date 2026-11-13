@@ -76,6 +76,7 @@ import { releaseSceneTargets } from './target.js';
 import { calmFoe, calmVisibleFoes } from './foe-sighting.js';
 import { endSneak } from './sneak.js';
 import { emitRunsOnRoundChange } from './netrun-io.js';
+import { seizedGrantOf } from './net-control.js';
 
 /**
  * The action economy (stage 14b).
@@ -671,7 +672,13 @@ export async function passForfeitedTurns(
     if (lap.round === 0 || steps >= lap.combatants.length) return;
     const active = lap.combatants.find((row) => row.id === lap!.activeCombatantId);
     if (!active || !hasFigure(active) || turnOwesDeathSave(active.turnState)) return;
-    const forfeit = sheetTurnForfeit(readTokenStatuses(active.token.statuses));
+    // Figura urządzenia przejęta w Sieci (etap 70b) nie gra własnej tury —
+    // prowadzi ją netrunner w swojej. Pytany jest węzeł, nie naklejka.
+    const forfeit =
+      sheetTurnForfeit(readTokenStatuses(active.token.statuses)) ??
+      ((await seizedGrantOf(deps.ctx.prisma, campaignId, active.tokenId))
+        ? 'przejęta w Sieci'
+        : null);
     if (!forfeit) return;
     await logForfeitedTurn(deps, campaignId, user, active, forfeit);
     await stepTurn(deps, campaignId, scene, lap, user);

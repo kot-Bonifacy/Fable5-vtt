@@ -337,6 +337,7 @@ import {
   CPRED_ROLE_CHANGE_PROBLEMS,
   CPRED_ATTACHMENT_PROBLEM_MESSAGES,
   CPRED_ATTACK_PROBLEM_MESSAGES,
+  NET_DEVICE_MESSAGES,
   CPRED_TURN_PROBLEM_MESSAGES,
   CPRED_COMBAT_AWARENESS_PROBLEMS,
   CPRED_DEATH_SAVE_PENDING_MESSAGE,
@@ -2275,7 +2276,11 @@ function noteAttackAck(ack: SocketAck<unknown>): void {
 /** Polish hints for attack rejections (stage 16). */
 function attackAckErrorText(code: string): string {
   if (code === 'CHARACTER_AWAITING_GM') return CHARACTER_AWAITING_GM_TEXT;
-  const known = CPRED_ATTACK_PROBLEM_MESSAGES[code as keyof typeof CPRED_ATTACK_PROBLEM_MESSAGES];
+  const known =
+    CPRED_ATTACK_PROBLEM_MESSAGES[code as keyof typeof CPRED_ATTACK_PROBLEM_MESSAGES] ??
+    // Etap 70b: strzał przejętą figurą odmawia też zdaniami węzła kontrolnego
+    // („węzeł był już aktywowany”, „nie ma Wartości bojowej”).
+    NET_DEVICE_MESSAGES[code as keyof typeof NET_DEVICE_MESSAGES];
   if (known) return known;
   switch (code) {
     case 'TOKEN_NOT_FOUND':

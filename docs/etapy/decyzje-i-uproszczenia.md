@@ -9,6 +9,29 @@ czytany na starcie każdej sesji został listą zadań, a nie archiwum ustaleń.
 inaczej, niż mówi podręcznik, albo gdy dotykasz wymienionego tu kodu. Jeśli któraś z tych decyzji
 przestanie się bronić, przenieś ją stąd do `POMYSLY.md` jako zadanie — nie odwrotnie.
 
+## Przejęte urządzenie: aktywacja to pełna tura, strzał Wartością bojową (etap 70b, 12.11.2026, decyzje MG z 11.11)
+
+- **Jedna Akcja Sieciowa aktywuje urządzenie na Turę: ruch i jedna czynność** — zamiast RAW
+  „obsługa każdej rzeczy … wymaga użycia osobnej Akcji Sieciowej” (s. 199). Węzeł dalej działa
+  **raz na Turę** (s. 199 zostaje): drugie urządzenie tego samego węzła w tej rundzie odmawia,
+  a siłę netrunnera MG ustawia liczbą węzłów. Poza walką nie ma rund, więc nic nie kosztuje.
+  Kod: `netDeviceUse` (`shared/systems/cpred/netdevices.ts`), zapis `deviceTurns` w runie.
+- **Przejęte urządzenie strzela własną Wartością bojową, nie Umiejętnością netrunnera** — wbrew
+  s. 213 („rzucając na Umiejętności tego Netrunnera”). Źródła po kolei: wpis systemu obronnego
+  obszaru straży przypiętego do figury → wpis urządzenia w Architekturze → Wartość bojowa
+  w bloku statystyk figury → figura z pełną kartą NPC-a strzela Umiejętnością broni z własnej
+  karty. Brak którejkolwiek liczby to odmowa `NET_DEVICE_NO_COMBAT_VALUE` bez kosztu
+  (podpowiedź dla MG), nie strzał zerem. Bez Szczęścia netrunnera — to nie jest Test postaci.
+- **Figura przejęta nie gra własnej tury i jej obszar straży milczy**, dopóki ktoś trzyma jej
+  węzeł — także NPC-netrunner MG. Zostaje w kolejce, a wskaźnik ją przeskakuje z wierszem
+  „Tura oddana — przejęta w Sieci”. O tym, czy wrogowie ją ostrzelają, decyduje MG.
+- **„Wyłącz” oddaje figurę** — wyłączone urządzenie wypada spod ręki netrunnera (bez naklejki
+  „Przejęty w Sieci”, bez wiersza „wraca do obrony”) i włącza się je z listy w oknie SIEĆ.
+- **Strzał z okna SIEĆ nie istnieje** (`NET_DEVICE_FIRES_FROM_MAP`): cel z listy, płatne pytanie
+  o osłonę po fakcie i „Strzelaj mimo osłony” zniknęły. Osłona pyta przed zapłatą, jak u strzelca
+  przy mapie. Zastępuje „strzał z urządzenia Umiejętnościami netrunnera” z etapu 26d niżej;
+  strzał Demona i strefy (Wartość bojowa, `fireDevice`) bez zmian.
+
 ## Zwiad widzi tylko jedno piętro w dół (10.11.2026, decyzja MG)
 
 - **Zwiad odsłania wyłącznie piętra tuż pod netrunnerem** — kolejne piętro pnia i szczyt każdej

@@ -237,6 +237,274 @@ export function netMarkNodeUse(
   return [...kept, { floorId, round }];
 }
 
+// ─────────────────── przejęta figura: czynności wg rodzaju ───────────────────
+
+/**
+ * Co przejęte urządzenie umie jako **figura na mapie** (etap 70b, decyzja MG
+ * nr 1 z 11.11): jedna Akcja Sieciowa aktywuje je na Turę i daje mu ruch
+ * (jeśli jeździ) oraz jedną czynność z tej listy. To są „okrojone mechaniki”
+ * z pomysłu MG — nic spoza tabeli przejęta figura nie robi.
+ */
+export interface NetDeviceFigureProfile {
+  /** Jeździ z własnego RUCH-u (marsz dochodzi w 70c). */
+  moves: boolean;
+  /** Czynności figury, w kolejności belki. */
+  verbs: readonly NetDeviceOperation[];
+}
+
+export const NET_DEVICE_FIGURE_PROFILES: Record<NetDeviceKind, NetDeviceFigureProfile> = {
+  camera: { moves: false, verbs: ['turn', 'off'] },
+  turret: { moves: false, verbs: ['fire', 'off'] },
+  drone: { moves: true, verbs: ['fire', 'off'] },
+  door: { moves: false, verbs: [] },
+  environment: { moves: false, verbs: [] },
+};
+
+export function netDeviceFigureProfile(kind: NetDeviceKind): NetDeviceFigureProfile {
+  return NET_DEVICE_FIGURE_PROFILES[kind] ?? { moves: false, verbs: [] };
+}
+
+// ─────────────────── aktywacja: Akcja Sieciowa = pełna tura ───────────────────
+
+/**
+ * Budżet urządzenia aktywowanego w tej rundzie (etap 70b).
+ *
+ * „Dany węzeł kontrolny można aktywować tylko raz na Turę” (s. 199) liczy
+ * węzły w `nodeUse`, a ten zapis mówi tylko, **które** urządzenie węzła
+ * dostało aktywację i co mu z niej zostało. Netrunner trzymający dwa węzły ma
+ * dwa wpisy — stąd lista w stanie runu.
+ */
+export interface CpredNetDeviceTurn {
+  floorId: string;
+  deviceId: string;
+  round: number;
+  /** Metry ruchu do wydania (dron); 0 u urządzeń, które stoją. */
+  moveLeftM: number;
+  /** Jedna czynność na aktywację — strzał, obrót, przełącznik. */
+  actionLeft: boolean;
+}
+
+export function readNetDeviceTurns(raw: unknown): CpredNetDeviceTurn[] {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .map((entry) => entry as Record<string, unknown>)
+    .filter(
+      (entry) =>
+        typeof entry?.floorId === 'string' &&
+        typeof entry?.deviceId === 'string' &&
+        Number.isInteger(entry?.round),
+    )
+    .map((entry) => ({
+      floorId: entry.floorId as string,
+      deviceId: entry.deviceId as string,
+      round: entry.round as number,
+      moveLeftM:
+        typeof entry.moveLeftM === 'number' && Number.isFinite(entry.moveLeftM)
+          ? Math.max(0, entry.moveLeftM)
+          : 0,
+      actionLeft: entry.actionLeft !== false,
+    }));
+}
+
+/** Aktywacja tego urządzenia w tej rundzie, jeśli już padła. */
+export function netDeviceTurnOf(
+  turns: readonly CpredNetDeviceTurn[] | undefined,
+  floorId: string,
+  deviceId: string,
+  round: number | null,
+): CpredNetDeviceTurn | null {
+  if (round === null) return null;
+  return (
+    turns?.find(
+      (turn) => turn.floorId === floorId && turn.deviceId === deviceId && turn.round === round,
+    ) ?? null
+  );
+}
+
+/** Księga aktywacji w stanie runu — to, co czytają i piszą funkcje niżej. */
+export interface NetDeviceLedger {
+  nodeUse: readonly CpredNetNodeUse[];
+  deviceTurns?: readonly CpredNetDeviceTurn[] | undefined;
+}
+
+export type NetDeviceUseResult =
+  | {
+      ok: true;
+      /** Ta czynność aktywuje urządzenie — kosztuje jedną Akcję Sieciową. */
+      charge: boolean;
+      nodeUse: CpredNetNodeUse[];
+      deviceTurns: CpredNetDeviceTurn[];
+    }
+  | { ok: false; error: 'NET_NODE_USED' | 'NET_DEVICE_SPENT' | 'NET_DEVICE_STATIONARY' };
+
+/**
+ * Jedna czynność albo ruch przejętego urządzenia — czy wolno, ile kosztuje
+ * i co zostaje w księdze.
+ *
+ * Pierwsze użycie w rundzie aktywuje urządzenie (`charge`) i znaczy węzeł;
+ * kolejne idą już z budżetu aktywacji: ruch i czynność w dowolnej kolejności,
+ * druga czynność odmawia. Inne urządzenie tego samego węzła w tej samej
+ * rundzie dostaje `NET_NODE_USED` — węzeł, nie urządzenie, jest „raz na Turę”.
+ * Poza walką (`round === null`) nie ma rund, więc nie ma czego liczyć.
+ */
+export function netDeviceUse(
+  ledger: NetDeviceLedger,
+  input: {
+    floorId: string;
+    deviceId: string;
+    round: number | null;
+    use: 'action' | 'move';
+    /** Metry, które daje aktywacja (RUCH figury); 0 u stojących. */
+    moveM?: number;
+    /** Metry tego ruchu, gdy `use === 'move'`. */
+    spendM?: number;
+  },
+): NetDeviceUseResult {
+  const turns = ledger.deviceTurns ?? [];
+  if (input.round === null) {
+    return { ok: true, charge: false, nodeUse: [...ledger.nodeUse], deviceTurns: [...turns] };
+  }
+  const round = input.round;
+  const live = turns.filter((turn) => turn.round >= round);
+  const current = netDeviceTurnOf(live, input.floorId, input.deviceId, round);
+  if (!current && !netNodeIsFree(ledger.nodeUse, input.floorId, round)) {
+    return { ok: false, error: 'NET_NODE_USED' };
+  }
+  const before: CpredNetDeviceTurn = current ?? {
+    floorId: input.floorId,
+    deviceId: input.deviceId,
+    round,
+    moveLeftM: Math.max(0, input.moveM ?? 0),
+    actionLeft: true,
+  };
+  let after: CpredNetDeviceTurn;
+  if (input.use === 'action') {
+    if (!before.actionLeft) return { ok: false, error: 'NET_DEVICE_SPENT' };
+    after = { ...before, actionLeft: false };
+  } else {
+    const spend = Math.max(0, input.spendM ?? 0);
+    if (before.moveLeftM <= 0 || spend > before.moveLeftM) {
+      return { ok: false, error: 'NET_DEVICE_STATIONARY' };
+    }
+    after = { ...before, moveLeftM: before.moveLeftM - spend };
+  }
+  return {
+    ok: true,
+    charge: current === null,
+    nodeUse: netMarkNodeUse(ledger.nodeUse, input.floorId, round),
+    deviceTurns: [...live.filter((turn) => turn !== current), after],
+  };
+}
+
+// ─────────────────────── przejęta figura w ładunku runu ───────────────────────
+
+/**
+ * Stan aktywacji przejętej figury, jak widzi go belka (etap 70b).
+ *
+ *  - `ready` — pierwsza czynność kosztuje Akcję Sieciową;
+ *  - `active` — aktywowana w tej Turze, czynność jeszcze przed nią;
+ *  - `spent` — czynność wykonana;
+ *  - `node-used` — węzeł aktywowało w tej Turze inne jego urządzenie;
+ *  - `free` — poza walką nikt niczego nie liczy.
+ */
+export type NetOperatedState = 'ready' | 'active' | 'spent' | 'node-used' | 'free';
+
+export function netOperatedState(
+  ledger: NetDeviceLedger,
+  floorId: string,
+  deviceId: string,
+  round: number | null,
+): NetOperatedState {
+  if (round === null) return 'free';
+  const turn = netDeviceTurnOf(ledger.deviceTurns, floorId, deviceId, round);
+  if (turn) return turn.actionLeft ? 'active' : 'spent';
+  return netNodeIsFree(ledger.nodeUse, floorId, round) ? 'ready' : 'node-used';
+}
+
+/**
+ * Figura urządzenia pożyczona netrunnerowi przez węzeł (etap 70b) — jedzie
+ * w ładunku runu, więc dostaje ją tylko netrunner i MG. Uprawnienie to dalej
+ * węzeł: `Token.ownerId` się nie zmienia, a ten wpis znika razem z kontrolą.
+ */
+export interface NetOperatedFigure<Sheet = unknown> {
+  tokenId: string;
+  sceneId: string;
+  floorId: string;
+  deviceId: string;
+  deviceKind: NetDeviceKind;
+  /** Nazwa urządzenia z Architektury — po Kontroli netrunner ją zna. */
+  name: string;
+  /** Etykieta węzła („przez: Obrona”). */
+  nodeLabel: string;
+  verbs: NetDeviceOperation[];
+  state: NetOperatedState;
+  /** PW urządzenia — operator je zna, reszta stołu widzi ułamek. */
+  hp?: { current: number; max: number };
+  /**
+   * Karta do podglądu strzału: broń w lufie i liczby, którymi serwer rzuci
+   * (Wartość bojowa w `statBlock`). Tylko u gracza-operatora — MG ma karty.
+   */
+  sheet?: Sheet;
+  /** Wiersz broni, z której urządzenie strzela. */
+  weaponRowId?: string;
+  /** Urządzenie strzelające bez Wartości bojowej — odmowa z podpowiedzią dla MG. */
+  noCombatValue?: true;
+}
+
+/** Jedna czynność przejętej figury jako przycisk belki. */
+export interface NetDeviceVerbSlot {
+  id: string;
+  verb: NetDeviceOperation;
+  label: string;
+  hint: string;
+  /** `net` — ta czynność aktywuje urządzenie; `action` — idzie z aktywacji. */
+  cost: NetOperatedCost;
+  disabled: string | null;
+}
+
+/** Czym płaci się za czynność przejętej figury. */
+export type NetOperatedCost = 'net' | 'action' | 'free';
+
+const NET_DEVICE_VERB_HINTS: Partial<Record<NetDeviceOperation, string>> = {
+  turn: 'Kliknij punkt mapy, na który kamera ma patrzeć.',
+  off: 'Wyłączone urządzenie nie patrzy, nie strzela i wypada spod twojej ręki — włączysz je z okna SIEĆ.',
+  fire: 'Kliknij cel na mapie.',
+};
+
+/** Czym płaci się za czynność w tym stanie aktywacji. */
+export function netOperatedCost(state: NetOperatedState): NetOperatedCost {
+  if (state === 'free') return 'free';
+  return state === 'ready' ? 'net' : 'action';
+}
+
+/** Dlaczego przejęta figura nic już w tej Turze nie zrobi — albo null. */
+export function netOperatedRefusal(state: NetOperatedState): string | null {
+  if (state === 'spent') return NET_DEVICE_MESSAGES.NET_DEVICE_SPENT;
+  if (state === 'node-used') return NET_DEVICE_MESSAGES.NET_NODE_USED;
+  return null;
+}
+
+/**
+ * Przyciski czynności przejętej figury poza strzałem (ten jest kaflem broni):
+ * „Obróć” kamery i „Wyłącz”.
+ */
+export function netDeviceVerbSlots(
+  figure: Pick<NetOperatedFigure, 'tokenId' | 'verbs' | 'state'>,
+): NetDeviceVerbSlot[] {
+  const refusal = netOperatedRefusal(figure.state);
+  const cost = netOperatedCost(figure.state);
+  return figure.verbs
+    .filter((verb) => verb !== 'fire')
+    .map((verb) => ({
+      id: `device:${figure.tokenId}:${verb}`,
+      verb,
+      label: NET_DEVICE_OPERATION_LABELS[verb],
+      hint: NET_DEVICE_VERB_HINTS[verb] ?? '',
+      cost,
+      disabled: refusal,
+    }));
+}
+
 // ─────────────────────────── odbieranie węzła ───────────────────────────
 
 /**
@@ -307,7 +575,11 @@ export type NetDeviceProblem =
   | 'NET_DEVICE_OFF'
   | 'NET_DEVICE_WRONG_OPERATION'
   | 'NET_SHOT_COVERED'
-  | 'NET_SHOT_BLOCKED';
+  | 'NET_SHOT_BLOCKED'
+  | 'NET_DEVICE_SPENT'
+  | 'NET_DEVICE_FIRES_FROM_MAP'
+  | 'NET_DEVICE_NO_COMBAT_VALUE'
+  | 'NET_DEVICE_STATIONARY';
 
 export const NET_DEVICE_MESSAGES: Record<NetDeviceProblem, string> = {
   NET_NODE_NOT_HELD: 'Nie kontrolujesz tego węzła — najpierw przejmij go Kontrolą.',
@@ -327,6 +599,11 @@ export const NET_DEVICE_MESSAGES: Record<NetDeviceProblem, string> = {
   NET_SHOT_COVERED:
     'Na linii strzału stoi osłona — Akcja Sieciowa poszła. Strzel jeszcze raz mimo niej albo ostrzelaj osłonę z mapy.',
   NET_SHOT_BLOCKED: 'Na linii strzału stoi figura — z tego miejsca nie ma czystego strzału.',
+  NET_DEVICE_SPENT: 'To urządzenie wykonało już czynność w tej Turze — węzeł był już aktywowany.',
+  NET_DEVICE_FIRES_FROM_MAP: 'Strzela się z mapy: zaznacz przejęte urządzenie i kliknij cel.',
+  NET_DEVICE_NO_COMBAT_VALUE:
+    'To urządzenie nie ma Wartości bojowej — MG wpisuje ją w „Edytuj…” figury albo wybiera wpis systemu obronnego.',
+  NET_DEVICE_STATIONARY: 'To urządzenie stoi w miejscu — nie da się nim ruszyć.',
 };
 
 // ──────────────────────────── widok dla klienta ────────────────────────────

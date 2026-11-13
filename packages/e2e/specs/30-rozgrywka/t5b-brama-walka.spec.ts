@@ -915,18 +915,19 @@ test.describe.serial('T5b: „Brama” — walka druga, Sieć, wieżyczka, pad A
     await expectClean(ola, secretsFor(ola), since);
   });
 
-  test('5.5 runda 2, tura Oli: strzał wieżyczką w Strażnika (Umiejętności netrunnerki)', async () => {
+  test('5.5 runda 2, tura Oli: strzał przejętą wieżyczką w Strażnika (z mapy, Wartość bojowa)', async () => {
     test.setTimeout(3 * 60_000);
-    // Strzał wieżyczką: Umiejętności Oli, cel z listy figur, które widzi.
-    const devices = runWindow(ola).locator('.net-node-devices');
-    await devices.getByLabel('Cel strzału').selectOption({ label: 'Strażnik' });
+    // Etap 70b: wieżyczkę prowadzi się z mapy — zaznaczenie figury, klik w cel,
+    // kubek. Rzuca Wartość bojowa urządzenia (14), nie Umiejętności Oli.
+    const cell = sceneRow().gridSizePx;
+    await clickOnMap(ola.page, tokenCentre(token('Wieżyczka'), cell));
+    await expect(ola.page.getByTestId('hud-device')).toBeVisible();
     const beforeShot = lastMessageId();
     scriptDice([10, 9]);
-    await devices.getByRole('button', { name: 'Strzelaj' }).click();
+    await clickOnMap(ola.page, tokenCentre(token('Strażnik'), cell));
+    await ola.page.waitForTimeout(400);
     const title = 'Bardzo ciężki pistolet → Strażnik';
-    await expect
-      .poll(() => messageAfter(beforeShot, title)?.id ?? 0, { timeout: 20_000 })
-      .toBeGreaterThan(0);
+    await rollAndWait(ola, beforeShot, title);
     const shot = rollById(messageAfter(beforeShot, title)!.id);
     test
       .info()

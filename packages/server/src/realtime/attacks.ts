@@ -71,6 +71,7 @@ import {
   weaponMagazineWith,
   type CpredAttachmentProfile,
   cpredSheetOperatedBy,
+  cpredSkillLevel,
   cpredSheetWithCombatValue,
   concentrationBase,
   cpredSmokeModifiers,
@@ -180,6 +181,7 @@ import { createMixedRng } from './dice-rng.js';
 import { sanitizeGesture } from './chat.js';
 import { attackFromSneak, endSneak } from './sneak.js';
 import { autoEvasionHandsOf, type AutoEvasionHand } from './auto-evasion.js';
+import { operatedShotFor } from './netdevices.js';
 
 /**
  * Attacks from the map (stage 16).
@@ -979,7 +981,16 @@ async function buildFigureSource(
    * stay the turret's in both cases, which is why the *stored* card below is
    * never the substituted one.
    */
-  hands?: { operator?: CpredCharacterData; combatValue?: number },
+  hands?: {
+    operator?: CpredCharacterData;
+    combatValue?: number;
+    /**
+     * Etap 70b: figura przejęta w Sieci strzela **własną** Wartością bojową
+     * (decyzja MG nr 7). Bez niej — ani z wpisu, ani z karty — nie ma czym
+     * rzucić, i to jest odmowa z podpowiedzią dla MG, a nie strzał zerem.
+     */
+    requireValue?: boolean;
+  },
 ): Promise<AttackSource> {
   const { character, data } = await requireFigureSheet(deps, campaignId, registry, token);
 
@@ -1001,7 +1012,16 @@ async function buildFigureSource(
     : hands?.combatValue !== undefined
       ? cpredSheetWithCombatValue(data, hands.combatValue)
       : data;
-  return { character, token, data: sheetForRoll(firing, skillId), stored: data };
+  const rolled = sheetForRoll(firing, skillId);
+  if (
+    hands?.requireValue &&
+    hands.combatValue === undefined &&
+    data.statBlock?.combatValue == null &&
+    (!skillId || cpredSkillLevel(rolled, skillId) <= 0)
+  ) {
+    throw new RealtimeError('NET_DEVICE_NO_COMBAT_VALUE');
+  }
+  return { character, token, data: rolled, stored: data };
 }
 
 export const attackRollEvent = defineEvent<AttackRollPayload<CpredAttackRequest>, AttackRollResult>(
@@ -1042,13 +1062,35 @@ export async function performAttackRoll(
   if (!deps.presentation)
     return withPresentation(deps, (scoped) => performAttackRoll(scoped, options));
   {
-    const { campaignId, user, payload, device } = options;
+    const { campaignId, user, device } = options;
     {
       const registry = deps.ctx.cpred;
       // Stage 16b: an attack no longer has to come from a sheet. Naming no
       // character means „the token itself is the fighter", and the profile on it
       // supplies the numbers a sheet would have.
-      const statist = typeof payload?.characterId !== 'string' || payload.characterId.length === 0;
+      const statist =
+        typeof options.payload?.characterId !== 'string' ||
+        options.payload.characterId.length === 0;
+      // Etap 70b: figura urządzenia przejęta w Sieci strzela tą samą drogą co
+      // każda inna — z mapy, celownikiem i kubkiem. Uprawnieniem jest węzeł
+      // (`operatorOf`), ręką Wartość bojowa urządzenia, a ceną Akcja Sieciowa
+      // netrunnera zamiast Akcji figury. Lufy i Szczęścia netrunner nie wybiera.
+      const operated =
+        statist && !device
+          ? await operatedShotFor(deps, campaignId, user, options.payload?.attackerTokenId)
+          : null;
+      const payload =
+        operated && options.payload
+          ? {
+              ...options.payload,
+              request: {
+                ...(options.payload.request ?? ({} as CpredAttackRequest)),
+                weaponRowId: operated.weaponRowId,
+                luckSpent: 0,
+              },
+            }
+          : options.payload;
+      const hands = device ?? operated?.hands;
       const character = statist
         ? null
         : await requireRollableCharacter(deps, campaignId, user, payload?.characterId);
@@ -1117,7 +1159,7 @@ export async function performAttackRoll(
             user,
             scene.id,
             payload?.attackerTokenId,
-            device !== undefined,
+            hands !== undefined,
           );
       if (target && attacker.id === target.id) throw new RealtimeError('BAD_REQUEST');
       // Własnego auta się nie ostrzeliwuje — strzał z fotela idzie na zewnątrz.
@@ -1139,7 +1181,7 @@ export async function performAttackRoll(
             payload?.request,
             mounted,
           )
-        : await buildFigureSource(deps, campaignId, registry, attacker, payload?.request, device);
+        : await buildFigureSource(deps, campaignId, registry, attacker, payload?.request, hands);
       const data = source.data;
 
       const sceneView = toSceneView(scene);
@@ -1346,7 +1388,12 @@ export async function performAttackRoll(
       // Net Action that bought the shot has already been charged to the
       // netrunner, and the turret is a device, not a combatant with a Turn of
       // its own. Billing it twice would make one Action cost two.
-      if (!device) {
+      //
+      // Figura przejęta (70b) płaci tutaj — po wszystkich odmowach i po pytaniu
+      // o osłonę, jak strzelec przy mapie — ale Akcją Sieciową netrunnera.
+      if (operated) {
+        await operated.bill();
+      } else if (!device) {
         await requireTurnSpend(
           deps,
           campaignId,
@@ -1428,7 +1475,7 @@ export async function performAttackRoll(
         );
         // Netrunner na spuście wieżyczki rzuca też jej obrażenia (#38): karta
         // pamięta, czyje to było ramię, bo żeton wieżyczki nie ma właściciela.
-        if (device?.operator) {
+        if (device?.operator || operated) {
           result.attack.system = { ...result.attack.system, operatorUserId: user.id };
         }
         // Whoever fired past a cover said so out loud (stage 16c): the card carries

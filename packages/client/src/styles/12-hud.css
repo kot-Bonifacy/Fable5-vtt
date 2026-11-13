@@ -1018,6 +1018,35 @@ body:has(.dice-cup--moved) .hud-foot {
   transform: skewX(-16deg);
 }
 
+/* Akcja Sieciowa (etap 70b): romb — pierwsza czynność przejętego urządzenia. */
+.hud-cost--net {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 1px;
+  background: var(--accent);
+  transform: rotate(45deg);
+}
+
+/* Belka przejętego urządzenia: przez który węzeł i co zostało z aktywacji. */
+.hud-device-via {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.2rem 0.6rem;
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--text-dim);
+}
+
+.hud-device-via strong {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.hud-device-glyph {
+  font-size: 1.2rem;
+  line-height: 1;
+}
+
 /* --- Duży kafel: broń --- */
 
 /* One row per weapon rather than per fire mode (decyzja MG z 20.08). Wiersz

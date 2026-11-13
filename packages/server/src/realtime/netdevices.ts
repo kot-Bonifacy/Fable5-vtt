@@ -3,6 +3,7 @@ import type {
   CpredCharacterData,
   CpredNetDevice,
   CpredNetFloor,
+  NetOperatedFigure,
   NetRunAbilityResult,
   NetRunDevicePayload,
   RollGesture,
@@ -13,16 +14,22 @@ import {
   cpredDrawnWeapons,
   isNetDeviceOperation,
   netApplyDeviceState,
+  CPRED_EVASION_SKILL_ID,
+  ROLE_GM,
+  createDefaultCharacterData,
+  cpredSheetWithCombatValue,
+  facingFromDelta,
+  isNetDefenseEntry,
   netCameraFacingAfterTurn,
+  netDeviceFigureProfile,
   netDeviceLine,
-  netDeviceNeedsToken,
   netDeviceNeedsWall,
   netDeviceOperations,
   netDeviceStateAfter,
   netDeviceStateOf,
+  netDeviceUse,
+  netOperatedState,
   netFloorAt,
-  netMarkNodeUse,
-  netNodeIsFree,
   parseCharacterData,
   readNetRuntime,
   tokenTableName,
@@ -43,8 +50,11 @@ import {
   saveRuntime,
 } from './netrun-io.js';
 import { roundOfScene, spendNetAction } from './netcombat.js';
-import { emitCombatOfScene, loadCombat } from './combat.js';
+import { loadCombat } from './combat.js';
 import { outsideHandsOf, performAttackRoll } from './attacks.js';
+import { campaignEntry } from './compendium.js';
+import { loadNetDeviceGrants, operatorOf, type NetDeviceGrant } from './net-control.js';
+import { toLinkedSheet } from '../sheets.js';
 import { afterWallChange } from './walls.js';
 import type { FullRunState } from './netice.js';
 
@@ -149,89 +159,58 @@ export const netDeviceEvent = defineEvent<NetRunDevicePayload, NetRunAbilityResu
       throw new RealtimeError('NET_DEVICE_WRONG_OPERATION');
     }
 
+    // Etap 70b: strzela się z mapy — przejętą figurą, celownikiem i kubkiem
+    // (`attack:roll`). Lista „Cel strzału” i płatne pytanie o osłonę zniknęły.
+    if (operation === 'fire') throw new RealtimeError('NET_DEVICE_FIRES_FROM_MAP');
+
     const { scene, token } = await requireCampaignToken(deps.ctx.prisma, campaignId, row.tokenId);
     const round = await roundOfScene(deps, scene.id);
-    if (!netNodeIsFree(state.nodeUse, floor.id, round)) throw new RealtimeError('NET_NODE_USED');
+    // Jedna księga dla okna i dla mapy (70b): przełącznik z listy jest tą samą
+    // czynnością, co „Wyłącz” z belki przejętej figury.
+    const use = netDeviceUse(state, {
+      floorId: floor.id,
+      deviceId: device.id,
+      round,
+      use: 'action',
+    });
+    if (!use.ok) throw new RealtimeError(use.error);
 
     const runtime = readNetRuntime(row.architecture.runtime);
     const before = netDeviceStateOf(runtime.devices, device.id);
     // A device somebody switched off does nothing until it is switched back on
     // — and the switch itself is the one operation that must still work.
     if (!before.on && operation !== 'on') throw new RealtimeError('NET_DEVICE_OFF');
-    if (netDeviceNeedsToken(operation) && !device.tokenId) {
-      throw new RealtimeError('NET_DEVICE_NO_TOKEN');
-    }
     if (netDeviceNeedsWall(operation) && device.wallId === undefined) {
       throw new RealtimeError('NET_DEVICE_NO_WALL');
     }
 
     const actorName = tokenTableName(row.token, row.token.character?.name ?? row.token.name);
-    // Stan Tury sprzed wydatku — zwracany, gdy strzał odmówi, zanim padnie rzut.
-    const turnBefore =
-      operation === 'fire'
-        ? ((await loadCombat(deps.ctx.prisma, scene.id))?.combatants.find(
-            (entry) => entry.tokenId === token.id,
-          ) ?? null)
-        : null;
-    let next: FullRunState = await spendNetAction(deps, {
-      campaignId,
-      scene,
-      tokenId: token.id,
-      user,
-      label: `${device.name}: ${operation === 'fire' ? 'strzał' : 'obsługa'}`,
-      characterId: row.characterId,
-      state,
-    });
+    let next: FullRunState = use.charge
+      ? await spendNetAction(deps, {
+          campaignId,
+          scene,
+          tokenId: token.id,
+          user,
+          label: `${device.name}: obsługa`,
+          characterId: row.characterId,
+          state,
+        })
+      : state;
 
     const shownAs = await publicDeviceName(deps, device);
     let summary: string;
     let publicSummary: string;
-    let messageId = 0;
-    if (operation === 'fire') {
-      const character = await deps.ctx.prisma.character.findUnique({
-        where: { id: row.characterId },
-      });
-      if (!character) throw new RealtimeError('CHARACTER_NOT_FOUND');
-      let shot: Awaited<ReturnType<typeof fireDevice>>;
-      try {
-        shot = await fireDevice(deps, {
-          campaignId,
-          user,
-          device,
-          hands: { operator: parseCharacterData(character.data, deps.ctx.cpred) },
-          summary: `${device.name} — strzał Umiejętnością netrunnera.`,
-          ...(payload?.targetTokenId ? { targetTokenId: payload.targetTokenId } : {}),
-          ...(payload?.request ? { request: payload.request } : {}),
-          ...(payload?.gesture ? { gesture: payload.gesture } : {}),
-        });
-      } catch (error) {
-        // Odmowa ścieżki ataku przed rzutem (brak linii strzału, poza zasięgiem,
-        // pusty magazynek) nie kosztuje Akcji Sieciowej — strzelec przy mapie
-        // też za nią nie płaci, a netrunner nie ma podglądu geometrii (07.11).
-        // Osłona na linii (`blocked`) to co innego: jest płatnym pytaniem.
-        if (error instanceof RealtimeError && turnBefore) {
-          await deps.ctx.prisma.combatant.update({
-            where: { id: turnBefore.id },
-            data: { turnState: turnBefore.turnState },
-          });
-          await emitCombatOfScene(deps, campaignId, scene);
-        }
-        throw error;
-      }
-      // „Ostrzelaj osłonę czy strzelaj mimo niej" (16c) wraca ze ścieżki ataku
-      // jako pytanie, a nie karta. Netrunner odpowiada na nie tak samo jak
-      // strzelec — strzelając jeszcze raz z `ignoreCover` — ale Akcja Sieciowa
-      // poszła już wcześniej i odmowa mówi to wprost. Sprawdzenie osłony przed
-      // rachunkiem znaczyłoby policzenie geometrii drugi raz, a jednej
-      // geometrii pilnuje 16b.
-      if (shot.blocked) throw new RealtimeError(shot.blocked.code);
-      messageId = shot.messageId;
-      summary = shot.summary;
-      publicSummary = `${shownAs} — strzał Umiejętnością netrunnera.`;
-    } else if (operation === 'turn' && device.deviceKind === 'camera' && device.tokenId) {
+    if (operation === 'turn' && device.deviceKind === 'camera' && device.tokenId) {
       // Kamera stojąca na mapie (20.10) obraca się naprawdę: kierunek figury
-      // to oś stożka, przez który patrzy netrunner.
-      const facing = await turnCamera(deps, campaignId, device.tokenId, payload?.facing);
+      // to oś stożka, przez który patrzy netrunner. Od 70b celem jest punkt
+      // mapy (`lookAt`), nie jedna z ośmiu stron świata.
+      const facing = await turnCamera(
+        deps,
+        campaignId,
+        device.tokenId,
+        payload?.facing,
+        payload?.lookAt,
+      );
       summary = netDeviceLine(device, operation, before, facing);
       publicSummary = netDeviceLine({ ...device, name: shownAs }, operation, before, facing);
     } else if (operation === 'open' || operation === 'close') {
@@ -248,7 +227,7 @@ export const netDeviceEvent = defineEvent<NetRunDevicePayload, NetRunAbilityResu
       publicSummary = netDeviceLine({ ...device, name: shownAs }, operation, after);
     }
 
-    next = { ...next, nodeUse: netMarkNodeUse(next.nodeUse, floor.id, round) };
+    next = { ...next, nodeUse: use.nodeUse, deviceTurns: use.deviceTurns };
     await saveRunState(deps.ctx.prisma, row.id, next);
 
     const nodeName =
@@ -264,13 +243,240 @@ export const netDeviceEvent = defineEvent<NetRunDevicePayload, NetRunAbilityResu
     });
     await emitRuns(deps, campaignId);
     return {
-      messageId: messageId || line.id,
+      messageId: line.id,
       total: 0,
       success: true,
       summary,
     };
   },
 });
+
+// ───────────────────── strzał przejętą figurą z mapy (70b) ─────────────────────
+
+/**
+ * Strzał przejętej figury, zanim padnie rzut — wszystko, co ścieżka ataku
+ * musi wiedzieć, żeby potraktować go jak strzał z mapy.
+ */
+export interface OperatedShot {
+  grant: NetDeviceGrant;
+  /**
+   * Czym rzuca urządzenie (decyzja MG nr 7 z 11.11, wbrew s. 213): własną
+   * Wartością bojową, nie Umiejętnością netrunnera. `combatValue` z wpisu
+   * systemu obronnego, gdy go ma; inaczej rozstrzyga karta figury, a jej
+   * brak liczb kończy się odmową (`requireValue`).
+   */
+  hands: { combatValue?: number; requireValue: true; operatorUserId: string };
+  /** Lufa — netrunner jej nie wybiera (`deviceWeaponRowId`). */
+  weaponRowId: string;
+  /**
+   * Księguje czynność: pierwsza w rundzie aktywuje urządzenie (Akcja Sieciowa
+   * netrunnera, znacznik węzła), kolejna idzie z budżetu aktywacji. Wołana
+   * tam, gdzie strzelec przy mapie płaci Akcją — po wszystkich odmowach
+   * i po pytaniu o osłonę.
+   */
+  bill: () => Promise<void>;
+}
+
+/**
+ * Czy ten strzał oddaje figura przejęta w Sieci — a jeśli tak, na jakich
+ * warunkach. Null dla każdej innej figury (zwykła ścieżka statysty).
+ *
+ * Odmowy, które nie potrzebują geometrii, padają tutaj: urządzenie, które nie
+ * strzela, węzeł zużyty w tej Turze, czynność już wykonana. Nic nie jest
+ * jeszcze zapłacone.
+ */
+export async function operatedShotFor(
+  deps: RealtimeDeps,
+  campaignId: string,
+  user: SessionUser,
+  attackerTokenId: unknown,
+): Promise<OperatedShot | null> {
+  if (user.role === ROLE_GM) return null;
+  const grant = await operatorOf(deps.ctx.prisma, campaignId, attackerTokenId, user);
+  if (!grant) return null;
+  if (!netDeviceFigureProfile(grant.deviceKind).verbs.includes('fire')) {
+    throw new RealtimeError('NET_DEVICE_WRONG_OPERATION');
+  }
+  const probe = await operatedUse(deps, campaignId, grant, user);
+  if (!probe.use.ok) throw new RealtimeError(probe.use.error);
+  const combatValue = await netDeviceCombatValue(deps, campaignId, grant);
+  return {
+    grant,
+    hands: {
+      ...(combatValue !== undefined ? { combatValue } : {}),
+      requireValue: true,
+      operatorUserId: user.id,
+    },
+    weaponRowId: await deviceWeaponRowId(deps, campaignId, grant.tokenId),
+    bill: () => billOperatedAction(deps, campaignId, grant, user, 'strzał'),
+  };
+}
+
+/** Stan runu trzymającego figurę i to, co księga powie o następnej czynności. */
+async function operatedUse(
+  deps: RealtimeDeps,
+  campaignId: string,
+  grant: NetDeviceGrant,
+  user: SessionUser,
+) {
+  const row = await loadRunRow(deps.ctx.prisma, campaignId, grant.runId);
+  const state = row ? readFullRun(row.data) : null;
+  if (!row || !state || !controlsRun(row, user)) throw new RealtimeError('FORBIDDEN');
+  const { scene, token } = await requireCampaignToken(deps.ctx.prisma, campaignId, row.tokenId);
+  const round = await roundOfScene(deps, scene.id);
+  const use = netDeviceUse(state, {
+    floorId: grant.floorId,
+    deviceId: grant.deviceId,
+    round,
+    use: 'action',
+  });
+  return { row, state, scene, token, round, use };
+}
+
+/**
+ * Jedna czynność przejętej figury zaksięgowana w runie: aktywacja płaci Akcją
+ * Sieciową netrunnera (`spendNetAction` — a więc tylko w jego Turze), kolejna
+ * czynność aktywowanego urządzenia wymaga, żeby ta Tura dalej trwała.
+ */
+async function billOperatedAction(
+  deps: RealtimeDeps,
+  campaignId: string,
+  grant: NetDeviceGrant,
+  user: SessionUser,
+  what: string,
+): Promise<void> {
+  const { row, state, scene, token, round, use } = await operatedUse(deps, campaignId, grant, user);
+  if (!use.ok) throw new RealtimeError(use.error);
+  let next: FullRunState = state;
+  if (use.charge) {
+    next = await spendNetAction(deps, {
+      campaignId,
+      scene,
+      tokenId: token.id,
+      user,
+      label: `${grant.deviceName}: ${what}`,
+      characterId: row.characterId,
+      state,
+    });
+  } else if (round !== null) {
+    // Budżet aktywacji gaśnie z końcem Tury netrunnera, nie dopiero z rundą.
+    const combat = await loadCombat(deps.ctx.prisma, scene.id);
+    const active = combat?.combatants.find((entry) => entry.id === combat.activeCombatantId);
+    if (active?.tokenId !== token.id) throw new RealtimeError('NOT_YOUR_TURN');
+  }
+  await saveRunState(deps.ctx.prisma, row.id, {
+    ...next,
+    nodeUse: use.nodeUse,
+    deviceTurns: use.deviceTurns,
+  });
+  await emitRuns(deps, campaignId);
+}
+
+/**
+ * Figury, które ten run trzyma przez swoje węzły — jak je widzi belka (70b).
+ *
+ * Gracz dostaje do każdej kartę do podglądu strzału: broń w lufie i liczby,
+ * którymi serwer rzuci (Wartość bojowa z wpisu wchodzi w `statBlock`), bez
+ * reszty karty figury — ekwipunku, notatek, Ścieżki. MG karty ma i tak.
+ */
+export async function operatedFiguresOf(
+  deps: RealtimeDeps,
+  campaignId: string,
+  runId: string,
+  state: Pick<FullRunState, 'nodeUse' | 'deviceTurns'>,
+  round: number | null,
+  gm: boolean,
+): Promise<NetOperatedFigure<CpredCharacterData>[]> {
+  const grants = [...(await loadNetDeviceGrants(deps.ctx.prisma, campaignId)).values()].filter(
+    (grant) => grant.runId === runId,
+  );
+  if (grants.length === 0) return [];
+  const tokens = await deps.ctx.prisma.token.findMany({
+    where: { id: { in: grants.map((grant) => grant.tokenId) }, scene: { campaignId } },
+    include: { character: true },
+  });
+  const figures: NetOperatedFigure<CpredCharacterData>[] = [];
+  for (const grant of grants) {
+    const token = tokens.find((entry) => entry.id === grant.tokenId);
+    if (!token) continue;
+    const profile = netDeviceFigureProfile(grant.deviceKind);
+    const data = token.character ? parseCharacterData(token.character.data, deps.ctx.cpred) : null;
+    const figure: NetOperatedFigure<CpredCharacterData> = {
+      tokenId: token.id,
+      sceneId: token.sceneId,
+      floorId: grant.floorId,
+      deviceId: grant.deviceId,
+      deviceKind: grant.deviceKind,
+      name: grant.deviceName,
+      nodeLabel: grant.nodeLabel,
+      verbs: [...profile.verbs],
+      state: netOperatedState(state, grant.floorId, grant.deviceId, round),
+    };
+    const hp = token.character
+      ? toLinkedSheet(token.character, deps.ctx.cpred).hp
+      : token.hpMax === null
+        ? null
+        : { current: token.hpCurrent ?? 0, max: token.hpMax };
+    if (hp) figure.hp = hp;
+    if (data && profile.verbs.includes('fire')) {
+      const weaponRowId = await deviceWeaponRowId(deps, campaignId, token.id);
+      const row = data.weapons.find((weapon) => weapon.id === weaponRowId);
+      const combatValue = await netDeviceCombatValue(deps, campaignId, grant);
+      const firing =
+        combatValue !== undefined ? cpredSheetWithCombatValue(data, combatValue) : data;
+      if (row) figure.weaponRowId = row.id;
+      if (
+        combatValue === undefined &&
+        data.statBlock?.combatValue == null &&
+        (data.statBlock?.weaponSkill ?? 0) <= 0 &&
+        Object.entries(data.skills).every(
+          ([id, level]) => id === CPRED_EVASION_SKILL_ID || level <= 0,
+        )
+      ) {
+        figure.noCombatValue = true;
+      }
+      if (!gm) {
+        figure.sheet = {
+          ...createDefaultCharacterData(),
+          stats: { ...firing.stats, luck: 0 },
+          skills: firing.skills,
+          statBlock: firing.statBlock,
+          weapons: row ? [row] : [],
+          hpCurrent: firing.hpCurrent,
+          luckCurrent: 0,
+          criticalInjuries: firing.criticalInjuries,
+        };
+      }
+    }
+    figures.push(figure);
+  }
+  return figures;
+}
+
+/**
+ * Wartość bojowa przejętego urządzenia z wpisu systemu obronnego: najpierw
+ * obszar straży przypięty do figury (etap 51), potem wpis urządzenia
+ * w Architekturze. Brak — rozstrzyga karta figury (statysta ma ją w bloku
+ * statystyk, pełna karta NPC-a strzela własną Umiejętnością).
+ */
+export async function netDeviceCombatValue(
+  deps: RealtimeDeps,
+  campaignId: string,
+  grant: Pick<NetDeviceGrant, 'tokenId' | 'entryId'>,
+): Promise<number | undefined> {
+  const zone = await deps.ctx.prisma.defenseZone.findFirst({
+    where: { tokenId: grant.tokenId },
+    select: { entryId: true },
+  });
+  for (const entryId of [zone?.entryId, grant.entryId]) {
+    if (!entryId) continue;
+    const entry = await campaignEntry(deps, campaignId, entryId);
+    if (entry && isNetDefenseEntry(entry) && entry.combatValue !== undefined) {
+      return entry.combatValue;
+    }
+  }
+  return undefined;
+}
 
 /**
  * Urządzenie tak, jak nazywa je stół (#37): figura na mapie pod swoją nazwą
@@ -366,7 +572,7 @@ export async function fireDevice(
  * the map follows (`cpredDrawnWeapons`, 29.10). Before 07.11 such a drone
  * refused every shot with `UNKNOWN_WEAPON`.
  */
-async function deviceWeaponRowId(
+export async function deviceWeaponRowId(
   deps: RealtimeDeps,
   campaignId: string,
   tokenId: string,
@@ -406,6 +612,7 @@ async function turnCamera(
   campaignId: string,
   tokenId: string,
   asked: unknown,
+  lookAt?: unknown,
 ): Promise<number> {
   const token = await deps.ctx.prisma.token.findUnique({
     where: { id: tokenId },
@@ -413,12 +620,31 @@ async function turnCamera(
   });
   if (!token || token.scene.campaignId !== campaignId)
     throw new RealtimeError('NET_DEVICE_NO_TOKEN');
-  const facing = netCameraFacingAfterTurn(token.facing, asked);
+  const facing = netCameraFacingAfterTurn(
+    token.facing,
+    cameraFacingToward(token, token.scene.gridSizePx, lookAt) ?? asked,
+  );
   const { scene, ...row } = token;
   const updated = await deps.ctx.prisma.token.update({ where: { id: row.id }, data: { facing } });
   await emitTokenUpsert(deps, campaignId, scene, updated);
   await refreshNetCameraSight(deps, campaignId, { force: true });
   return facing;
+}
+
+/**
+ * Kierunek kamery patrzącej na wskazany punkt mapy (70b) — dowolny kąt, liczony
+ * ze środka figury. Null, gdy punktu nie podano albo leży w samym środku.
+ */
+function cameraFacingToward(
+  token: { x: number; y: number; size: number },
+  gridSizePx: number,
+  lookAt: unknown,
+): number | null {
+  const point = lookAt as { x?: unknown; y?: unknown } | null | undefined;
+  if (typeof point?.x !== 'number' || typeof point.y !== 'number') return null;
+  if (!Number.isFinite(point.x) || !Number.isFinite(point.y)) return null;
+  const half = (token.size * gridSizePx) / 2;
+  return facingFromDelta(point.x - (token.x + half), point.y - (token.y + half));
 }
 
 /** Opening a door or window of stage 18d from the other end of the cable. */

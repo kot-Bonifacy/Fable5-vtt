@@ -283,6 +283,13 @@ export const CPRED_EMP_STATUS_ID = 'emp';
 /** Generic poison: the same machinery as fire, with a value the GM picks. */
 export const CPRED_POISONED_STATUS_ID = 'poisoned';
 
+/**
+ * Figura urządzenia przejęta w Sieci (etap 70b) — naklejka, którą widzi każdy,
+ * kto widzi figurę. Nakłada i zdejmuje ją serwer razem z pożyczoną kontrolą;
+ * sama niczego nie blokuje — turę figury oddaje kolejka, nie stan.
+ */
+export const CPRED_NET_SEIZED_STATUS_ID = 'net-seized';
+
 /** Legs oiled, glued or wired by a defence system (stage 26f). */
 export const CPRED_SLOWED_STATUS_ID = 'slowed';
 

@@ -3,11 +3,14 @@ import type {
   CpredNetArchitecture,
   CpredNetPosition,
   NetAbilityId,
+  CpredCharacterData,
   NetDeviceOperation,
   NetDifficulty,
+  NetOperatedFigure,
   NetRunView,
 } from './systems/cpred/index.js';
 import type { RollGesture } from './protocol.js';
+import type { ScenePoint } from './measure.js';
 
 /**
  * Wire shapes of the Net Architecture library (stage 26a).
@@ -160,6 +163,12 @@ export interface NetRunPayload {
   /** True for the GM's copy, which carries the whole shaft. */
   gmView: boolean;
   run: NetRunView;
+  /**
+   * Figury urządzeń, które ten run trzyma przez swoje węzły (etap 70b) —
+   * netrunner zaznacza je na mapie i prowadzi lewą belką. Pusta lista bez
+   * przejętych węzłów; karta do podglądu strzału jedzie tylko do gracza.
+   */
+  operated: NetOperatedFigure<CpredCharacterData>[];
 }
 
 export interface NetRunSyncBroadcast {
@@ -301,6 +310,11 @@ export interface NetRunDevicePayload {
    * (degrees clockwise from up). Missing — a quarter turn clockwise.
    */
   facing?: number;
+  /**
+   * Punkt mapy, na który kamera ma patrzeć (etap 70b) — serwer liczy z niego
+   * kierunek figury. Wygrywa z `facing`.
+   */
+  lookAt?: ScenePoint;
   /**
    * Only the parts of the shot the window has an opinion about — today that is
    * `ignoreCover`, set by „Strzelaj mimo osłony" after a refusal. The weapon row

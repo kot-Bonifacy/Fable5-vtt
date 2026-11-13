@@ -14,6 +14,7 @@ import type {
 } from '@vtt/shared';
 import {
   CPRED_ATTACK_PROBLEM_MESSAGES,
+  CPRED_AUTOFIRE_SKILL_ID,
   ROLE_GM,
   STATIST_WEAPON_ROW_ID,
   VEHICLE_WINDOW_LABELS,
@@ -59,6 +60,7 @@ import { useSceneStore } from './stores/sceneStore.js';
 import { useTokenStore } from './stores/tokenStore.js';
 import { useWallStore } from './stores/wallStore.js';
 import { withTokenMounts } from './chase-mounts.js';
+import { operatedFigureOf } from './net-operated.js';
 
 /**
  * Turning a click on a token into an attack loaded in the cup (stage 16).
@@ -197,7 +199,7 @@ export function planAttackPreview(
   // Where the numbers come from: a sheet, or the token's own combat profile.
   const fighter = intent.characterId
     ? sheetFighter(intent.characterId)
-    : statistFighter(attackerToken, intent.weaponRowId);
+    : statistFighter(attackerToken, intent.weaponRowId, intent.mode);
   if (typeof fighter === 'string') return { ok: false, message: fighter };
   const { name } = fighter;
   // Etap 65d2: broń pokładowa auta, które ta figura prowadzi.
@@ -791,7 +793,26 @@ function sheetFighter(characterId: string): Fighter {
  * broni: bez tego podgląd pokazywałby strzał jak niewyszkolony i kubek
  * reklamowałby modyfikator, którego serwer nie użyje.
  */
-function statistFighter(token: TokenView, weaponRowId: string): Fighter {
+function statistFighter(token: TokenView, weaponRowId: string, mode: CpredAttackMode): Fighter {
+  // Figura przejęta w Sieci (etap 70b): jej karta nie jedzie do gracza, więc
+  // podgląd liczy z tej, którą serwer dołożył do ładunku runu — z Wartością
+  // bojową podstawianą tak samo jak przy rzucie.
+  const operated = operatedFigureOf(token.id)?.figure;
+  if (operated) {
+    if (!operated.sheet) return 'To urządzenie nie ma czym strzelić.';
+    const compendium = useCompendiumStore.getState();
+    const row = operated.sheet.weapons.find((weapon) => weapon.id === weaponRowId);
+    const entry = row?.compendiumId ? compendium.entries[row.compendiumId] : undefined;
+    const weaponSkill =
+      entry && isWeaponEntry(entry)
+        ? (resolveWeapon(entry, {
+            weaponTypeById: new Map(Object.entries(compendium.weaponTypeById)),
+          }).skillId ?? null)
+        : null;
+    const skillId =
+      mode === 'autofire' || mode === 'suppressive' ? CPRED_AUTOFIRE_SKILL_ID : weaponSkill;
+    return { data: cpredSheetRollSheet(operated.sheet, skillId), name: token.name };
+  }
   const character = token.characterId
     ? useCharacterStore.getState().characters[token.characterId]
     : undefined;

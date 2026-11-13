@@ -20,6 +20,7 @@ zmienione na identyfikatory statusów CP RED używane w `../statuses.json`.
 | `poisoned.svg`         | Poison bottle       | Lorc       |
 | `suppressed.svg`       | Bullet impacts      | Delapouite |
 | `slowed.svg`           | Sticky boot         | Delapouite |
+| `net-seized.svg`       | Plug                | Delapouite |
 
 Źródło: <https://github.com/game-icons/icons> (gałąź `master`).
 

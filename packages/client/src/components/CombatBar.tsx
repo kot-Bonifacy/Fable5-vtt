@@ -5,6 +5,7 @@ import {
   COMBAT_INITIATIVE_MIN,
   ROLE_GM,
   cpredOutOfFight,
+  CPRED_NET_SEIZED_STATUS_ID,
   cpredSheetInitiative,
   cpredTurnReminders,
   findInitiativeTies,
@@ -28,6 +29,8 @@ import { useCharacterStore } from '../stores/characterStore.js';
 import { useDeathSaveAutoLoad, useDeathSavePrompt } from '../death-save.js';
 import { usePortraitFrameStyle } from '../portrait-banner.js';
 import { takeFigure } from '../hud.js';
+import { seizedByName } from '../net-operated.js';
+import { useNetRunStore } from '../stores/netRunStore.js';
 import { askEndCombat } from '../foes-defeated.js';
 import { BotTurnButton } from './BotTurnButton.js';
 import { PlayerMoveSwitch } from './PlayerMoveSwitch.js';
@@ -273,6 +276,7 @@ export function CombatBar() {
   const isGm = user?.role === ROLE_GM;
   const [dragged, setDragged] = useState<string | null>(null);
   const tokens = useTokenStore((s) => s.tokens);
+  const runs = useNetRunStore((s) => s.runs);
   // The dead leave the strip (17.10.2026, decyzja MG) — they play no more
   // turns, and the server's queue already steps over them. Read off the live
   // statuses where the figure is on hand, so a sticker set or lifted shows at
@@ -509,6 +513,13 @@ export function CombatBar() {
               ? `Trzyma: ${combatant.grapple.otherName} (−2 do Akcji)`
               : `W Trzymaniu: ${combatant.grapple.otherName} (−2 do Akcji, bez Akcji Ruchu)`
             : null;
+          // Etap 70b: naklejka „Przejęty w Sieci” jedzie z figurą; kto ją
+          // trzyma, wie tylko ten, kto ma run w ładunku (MG, netrunner).
+          const seized =
+            combatant.tokenId !== null &&
+            (tokens[combatant.tokenId]?.statuses.includes(CPRED_NET_SEIZED_STATUS_ID) ?? false);
+          const seizedBy =
+            seized && combatant.tokenId ? seizedByName(combatant.tokenId, runs) : null;
           // Everything a row cannot hold — the tie-break, a held Action, a
           // grapple — is one hover away.
           const label = [
@@ -559,6 +570,19 @@ export function CombatBar() {
                     to leave to the tooltip. */}
                 {(held || grapple) && (
                   <span className="combat-chip-badge">{combatant.held ? '⏸' : '🤼'}</span>
+                )}
+                {/* Etap 70b: figura przejęta w Sieci nie gra własnej tury. */}
+                {seized && (
+                  <span
+                    className="combat-chip-badge combat-chip-badge--seized"
+                    title={
+                      seizedBy
+                        ? `Przejęta w Sieci: ${seizedBy} — tura pomijana`
+                        : 'Przejęta w Sieci — tura pomijana'
+                    }
+                  >
+                    przejęta
+                  </span>
                 )}
               </span>
               <span className="combat-chip-name">{combatant.name}</span>

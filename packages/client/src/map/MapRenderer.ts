@@ -1331,6 +1331,8 @@ export class MapRenderer {
   private readonly tokenNodes = new Map<string, TokenNode>();
   /** tokenId → may the local user drag it (GM or owner). */
   private readonly movableTokens = new Map<string, boolean>();
+  /** Figury przejęte w Sieci (70b): do zaznaczenia, ale bez uchwytu obrotu. */
+  private operatedTokens: ReadonlySet<string> = new Set();
   private drag: DragState | null = null;
   /**
    * Czy ten widz ma na tej mapie związane ręce („Ruch graczy: Stop", 12.09,
@@ -2227,6 +2229,7 @@ export class MapRenderer {
       this.updateReach();
     }
     this.viewerId = ctx.myUserId;
+    this.operatedTokens = ctx.operatedTokenIds ?? new Set();
     const seen = new Set<string>();
     for (const token of tokens) {
       seen.add(token.id);
@@ -2245,7 +2248,10 @@ export class MapRenderer {
       // (`endDrag` wybiera ją, gdy chwyt nie stał się przeciągnięciem), a gracz
       // z zamkniętą mapą ma nadal móc kliknąć własną postać i zobaczyć ją
       // w pasku. Zamkniętą mapę zatrzymuje `moveLocked` — jedno pole niżej.
-      const movable = ctx.isGm || token.ownerId === ctx.myUserId;
+      // Figura urządzenia przejęta w Sieci (70b) zaznacza się jak własna —
+      // uprawnieniem jest węzeł, a serwer i tak sprawdza je sam.
+      const movable =
+        ctx.isGm || token.ownerId === ctx.myUserId || this.operatedTokens.has(token.id);
       this.movableTokens.set(token.id, movable);
       node.eventMode = 'static';
       node.cursor = movable ? 'pointer' : 'default';
@@ -3669,6 +3675,7 @@ export class MapRenderer {
     // byłoby widać, że obrócić ją w ogóle można.
     if (node.facing !== null || this.rotating !== null) return;
     if (this.movableTokens.get(node.tokenId) === false) return;
+    if (this.operatedTokens.has(node.tokenId)) return;
     const hint = nosePolygon(
       centre.x,
       centre.y,
@@ -4195,6 +4202,8 @@ export class MapRenderer {
     const node = this.selectedTokenId ? this.tokenNodes.get(this.selectedTokenId) : undefined;
     if (!scene || !node || node.destroyed) return null;
     if (this.movableTokens.get(node.tokenId) === false) return null;
+    // Kamerę przejętą w Sieci obraca „Obróć” z belki (Akcja Sieciowa), nie uchwyt.
+    if (this.operatedTokens.has(node.tokenId)) return null;
     const half = (node.token.size * scene.grid.sizePx) / 2;
     const k = this.overlayScale();
     const centre = { x: node.x + half, y: node.y + half };

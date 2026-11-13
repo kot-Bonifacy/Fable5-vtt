@@ -6,7 +6,7 @@ import type {
   NetDeviceView,
   NetRunView,
 } from '@vtt/shared';
-import { ROLE_GM, conditionRegistry, tokenCondition } from '@vtt/shared';
+import { ROLE_GM } from '@vtt/shared';
 import {
   attackInNet,
   clearNetGlue,
@@ -25,12 +25,11 @@ import {
 } from '../socket.js';
 import { useAuthStore } from '../stores/authStore.js';
 import { useCombatStore } from '../stores/combatStore.js';
-import { useTokenStore } from '../stores/tokenStore.js';
 import { useSceneStore } from '../stores/sceneStore.js';
 import { showNetDevice, showNetDevices } from '../map-frame.js';
 import { currentRun, useNetRunStore } from '../stores/netRunStore.js';
 import { netErrorText } from '../netErrors.js';
-import { clearNotices, notifyChoice, notifyInfo, notifyRefusal } from '../notices.js';
+import { clearNotices, notifyInfo, notifyRefusal } from '../notices.js';
 import { InlineNotice } from './NoticeColumn.js';
 import { useWindowPlacement } from '../window-placement.js';
 import { WindowResizeGrip } from './WindowResizeGrip.js';
@@ -38,7 +37,9 @@ import { NetDeckSection } from './netrun/NetDeckSection.js';
 import { NetExits } from './netrun/NetExits.js';
 import { NetFloorCard, type VirusDraft } from './netrun/NetFloorCard.js';
 import { NetGmShaft } from './netrun/NetGmShaft.js';
-import { NetNodeDevices, type NetNodeLike, type OperateExtra } from './netrun/NetNodeDevices.js';
+import { NetNodeDevices, type NetNodeLike } from './netrun/NetNodeDevices.js';
+import { operatedFigureOf } from '../net-operated.js';
+import { takeFigure } from '../hud.js';
 import { NetThreats } from './netrun/NetThreats.js';
 import { NetTrail } from './netrun/NetTrail.js';
 import { floorName } from './netrun/net-glyphs.js';
@@ -181,8 +182,6 @@ function NetRunWindowBody() {
   const runs = useNetRunStore((s) => s.runs);
   const openRun = useNetRunStore((s) => s.openRun);
   const isGm = useAuthStore((s) => s.user?.role === ROLE_GM);
-  const tokens = useTokenStore((s) => s.tokens);
-  const statusRows = useTokenStore((s) => s.statuses);
   const [planOpen, setPlanOpen] = useState(readPlanOpen);
   // Liczone raz, przy otwarciu: miejsce pierwszego otwarcia i zarazem granica
   // wysokości okna (niżej), żeby klamra nie wypychała go z powrotem na pas.
@@ -224,7 +223,7 @@ function NetRunWindowBody() {
     setBusy(true);
     const ack = await work;
     setBusy(false);
-    if (!ack.ok && ack.error !== 'NET_SHOT_COVERED') notifyRefusal('net', netErrorText(ack.error));
+    if (!ack.ok) notifyRefusal('net', netErrorText(ack.error));
     return ack;
   }
 
@@ -234,54 +233,13 @@ function NetRunWindowBody() {
     else clearNotices('net');
   }
 
-  /** Jedna obsługa urządzenia; `ignoreCover` wraca tu z przycisku powtórki. */
-  async function operate(
-    floorId: string,
-    deviceId: string,
-    operation: NetDeviceOperation,
-    extra: OperateExtra,
-    ignoreCover?: boolean,
-  ) {
-    const { targetTokenId, facing } = extra;
-    const ack = await guard(
-      operateNetDevice({
-        runId: run!.runId,
-        floorId,
-        deviceId,
-        operation,
-        ...(targetTokenId ? { targetTokenId } : {}),
-        ...(facing !== undefined ? { facing } : {}),
-        ...(ignoreCover ? { request: { ignoreCover: true } } : {}),
-      }),
-    );
+  /**
+   * Przełącznik urządzenia z listy (bez figury, drzwi, „Włącz”). Strzał i obrót
+   * kamery poszły w 70b na mapę: przejętą figurę prowadzi lewa belka.
+   */
+  async function operate(floorId: string, deviceId: string, operation: NetDeviceOperation) {
+    const ack = await guard(operateNetDevice({ runId: run!.runId, floorId, deviceId, operation }));
     if (ack.ok) report(ack.data?.summary);
-    // Strzał wieżyczki: rzut oka na nią i powrót do netrunnera (20.10).
-    if (ack.ok && operation === 'fire') {
-      const device = nodes
-        .find((node) => node.id === floorId)
-        ?.devices?.find((entry) => entry.id === deviceId);
-      if (device) showNetDevice(device, run!.tokenId);
-    }
-    /*
-     * Strzał odrzucony przez osłonę (16c/26d) — pytanie z powtórką. Urządzenie
-     * strzela od razu, więc wybór może przyjść dopiero po odmowie i musi mieć
-     * przycisk. Znika w 70b razem ze strzałem z listy: przejęta figura celuje
-     * z mapy i pyta o osłonę przed zapłatą.
-     */
-    if (ack.error === 'NET_SHOT_COVERED') {
-      notifyChoice(
-        'net',
-        netErrorText(ack.error),
-        [
-          {
-            label: 'Strzelaj mimo osłony',
-            title: 'Cel się wychylił — decyzja stołu, kosztuje drugą Akcję Sieciową',
-            run: () => void operate(floorId, deviceId, operation, extra, true),
-          },
-        ],
-        { title: 'Osłona' },
-      );
-    }
   }
 
   async function move(to: CpredNetPosition) {
@@ -311,31 +269,14 @@ function NetRunWindowBody() {
     if (ack.ok) report(ack.data?.summary);
   }
 
-  const nodes = heldNodes(view);
-  /*
-   * Figury, w które wieżyczka może wycelować (etap 26d). Lista jest tym, co
-   * ten klient **i tak już widzi** na mapie — u gracza po filtrze widoczności
-   * z 18a, u MG wszystko. Serwer i tak sprawdza mgłę i ukrycie celu, więc to
-   * jest wygoda, nie uprawnienie. Bez pojemników, martwych i figur-urządzeń
-   * (66e, pkt 22).
-   */
-  const conditions = conditionRegistry(statusRows);
-  const deviceTokens = new Set(
-    nodes.flatMap((node) => (node.devices ?? []).map((device) => device.tokenId)),
-  );
-  const targets = Object.values(tokens)
-    .filter(
-      (token) =>
-        token.container === undefined &&
-        !deviceTokens.has(token.id) &&
-        tokenCondition(token, conditions) !== 'dead',
-    )
-    .map((token) => ({ id: token.id, name: token.name }))
-    .sort((a, b) => a.name.localeCompare(b.name, 'pl'));
   const fightState = view.combat;
   /** Przejęte węzły, na których netrunner teraz nie stoi — obsługa bez wracania. */
   const awayNodes = view.trail.filter((step) => !step.here && step.devices?.length);
-  const showDevice = (device: NetDeviceView) => showNetDevice(device);
+  /** Nazwa urządzenia: kadr na figurze, a przejętą bierze się od razu w rękę (70b). */
+  const showDevice = (device: NetDeviceView) => {
+    showNetDevice(device);
+    if (device.tokenId && operatedFigureOf(device.tokenId)) takeFigure(device.tokenId, false);
+  };
 
   return (
     <section
@@ -442,11 +383,10 @@ function NetRunWindowBody() {
               run={view}
               busy={busy}
               sceneId={sceneId}
-              targets={targets}
               onAbility={(id, virus) => void ability(id, virus)}
               onCopy={(floorId) => void guard(copyNetFile(run.runId, floorId))}
-              onOperate={(floorId, deviceId, operation, extra) =>
-                void operate(floorId, deviceId, operation, extra)
+              onOperate={(floorId, deviceId, operation) =>
+                void operate(floorId, deviceId, operation)
               }
               onShow={showDevice}
             />
@@ -490,12 +430,9 @@ function NetRunWindowBody() {
                   </button>
                   <NetNodeDevices
                     node={step}
-                    targets={targets}
                     busy={busy}
                     sceneId={sceneId}
-                    onOperate={(deviceId, operation, extra) =>
-                      void operate(step.id, deviceId, operation, extra)
-                    }
+                    onOperate={(deviceId, operation) => void operate(step.id, deviceId, operation)}
                     onShow={showDevice}
                   />
                 </div>

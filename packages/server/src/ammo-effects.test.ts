@@ -458,7 +458,14 @@ describe('ammunition that deals no damage', () => {
     // przed kośćmi i z niczym się nie łączył.
     it('posts each failure after the attack card and names that card', async () => {
       await load('ammo.sample-gas');
-      const { posted, messageId } = await lob();
+      // Both figures pass the check about one throw in three, and then there is
+      // nothing to look at — throw again until somebody fails.
+      let thrown = await lob();
+      for (let tries = 1; tries < 8; tries += 1) {
+        if (thrown.posted.some((entry) => entry.message.damage)) break;
+        thrown = await lob();
+      }
+      const { posted, messageId } = thrown;
       const attackAt = posted.findIndex((entry) => entry.message.id === messageId);
       const damageCards = posted.filter((entry) => entry.message.damage);
       expect(damageCards.length).toBeGreaterThan(0);

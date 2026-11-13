@@ -1,14 +1,8 @@
-import {
-  NET_CAMERA_CONE_DEG,
-  netCameraSees,
-  netDeviceStateOf,
-  readNetRunState,
-  readNetRuntime,
-  validateNetArchitecture,
-} from '@vtt/shared';
+import { NET_CAMERA_CONE_DEG } from '@vtt/shared';
 import type { PrismaClient } from '../db.js';
 import type { Scene } from '../generated/prisma/client.js';
 import type { BorrowedSight } from './vision.js';
+import { loadNetDeviceGrants } from './net-control.js';
 
 /**
  * Kamery przejęte w Sieci (zlecenie MG z 20.10) — wzrok, który netrunner
@@ -26,43 +20,20 @@ import type { BorrowedSight } from './vision.js';
  *    karty runu. NPC-netrunner MG nikomu wzroku nie pożycza.
  */
 
-/** Figura kamery → konta, które przez nią patrzą. */
+/**
+ * Figura kamery → konta, które przez nią patrzą. Od etapu 70b to wycinek
+ * pożyczonej kontroli (`loadNetDeviceGrants`): kamera jest jednym z rodzajów
+ * przejętych figur, a warunki — węzeł w `controlled`, urządzenie włączone —
+ * sprawdza tamten moduł.
+ */
 export async function loadNetCameraGrants(
   prisma: PrismaClient,
   campaignId: string,
 ): Promise<Map<string, Set<string>>> {
-  const runs = await prisma.netRun.findMany({
-    where: { campaignId },
-    select: {
-      data: true,
-      architecture: {
-        select: { id: true, name: true, difficulty: true, data: true, runtime: true },
-      },
-      token: { select: { ownerId: true, character: { select: { ownerId: true } } } },
-    },
-  });
   const grants = new Map<string, Set<string>>();
-  for (const run of runs) {
-    const viewers = [run.token.ownerId, run.token.character?.ownerId].filter(
-      (id): id is string => typeof id === 'string',
-    );
-    if (viewers.length === 0) continue;
-    const state = readNetRunState(run.data);
-    if (!state || state.controlled.length === 0) continue;
-    const architecture = parseArchitecture(run.architecture);
-    if (!architecture) continue;
-    const runtime = readNetRuntime(run.architecture.runtime);
-    const held = new Set(state.controlled.map((hold) => hold.floorId));
-    for (const floor of architecture.branches.flatMap((branch) => branch.floors)) {
-      if (!held.has(floor.id)) continue;
-      for (const device of floor.devices ?? []) {
-        if (device.deviceKind !== 'camera' || !device.tokenId) continue;
-        if (!netCameraSees(netDeviceStateOf(runtime.devices, device.id))) continue;
-        const entry = grants.get(device.tokenId) ?? new Set<string>();
-        for (const viewer of viewers) entry.add(viewer);
-        grants.set(device.tokenId, entry);
-      }
-    }
+  for (const grant of (await loadNetDeviceGrants(prisma, campaignId)).values()) {
+    if (grant.deviceKind !== 'camera' || grant.operatorIds.size === 0) continue;
+    grants.set(grant.tokenId, new Set(grant.operatorIds));
   }
   return grants;
 }
@@ -95,18 +66,4 @@ export function netCameraSignature(grants: ReadonlyMap<string, ReadonlySet<strin
     .map(([tokenId, viewers]) => `${tokenId}:${[...viewers].sort().join(',')}`)
     .sort()
     .join('|');
-}
-
-function parseArchitecture(row: { id: string; name: string; difficulty: string; data: string }) {
-  try {
-    const parsed = validateNetArchitecture({
-      ...JSON.parse(row.data),
-      id: row.id,
-      name: row.name,
-      difficulty: row.difficulty,
-    });
-    return parsed.ok ? parsed.architecture : null;
-  } catch {
-    return null;
-  }
 }

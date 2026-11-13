@@ -7,6 +7,9 @@ import type {
   CpredHotbarGroup,
   CpredHotbarSlot,
   CpredHotbarWeaponGroup,
+  NetDeviceKind,
+  NetDeviceVerbSlot,
+  NetOperatedState,
   TokenView,
   TurnBudgetView,
 } from '@vtt/shared';
@@ -44,10 +47,21 @@ import {
   humanityMaxWith,
   isAmmoEntry,
   isWeaponEntry,
+  NET_DEVICE_MESSAGES,
+  netOperatedCost,
   resolveWeapon,
   sanitizeCriticalInjuryRows,
   toAmmoProfile,
 } from '@vtt/shared';
+import {
+  myOperatedTokenIds,
+  operatedFigureOf,
+  operatedTurnRefusal,
+  operatedVerbSlots,
+  useDeviceAimStore,
+  type OperatedEntry,
+} from './net-operated.js';
+import { useNetRunStore } from './stores/netRunStore.js';
 import { loadAttackFor } from './attack-targeting.js';
 import { coverAt } from './stores/coverStore.js';
 import {
@@ -202,6 +216,24 @@ export interface HudContext {
    * nie jest prowadzona, nie ma celu albo cel zniknął z widoku.
    */
   target: { tokenId: string; name: string; metres: number } | null;
+  /**
+   * Figura urządzenia przejęta w Sieci (etap 70b) — belka pokazuje wtedy
+   * urządzenie, nie postać: jego PW, węzeł, przez który jest trzymane, stan
+   * aktywacji i czynności poza strzałem („Obróć”, „Wyłącz”). Null przy każdej
+   * innej figurze i zawsze u MG.
+   */
+  device: HudDevice | null;
+}
+
+export interface HudDevice {
+  name: string;
+  kind: NetDeviceKind;
+  nodeLabel: string;
+  state: NetOperatedState;
+  hp: { current: number; max: number } | null;
+  verbs: NetDeviceVerbSlot[];
+  /** „Obróć” czeka na klik w mapę. */
+  turning: boolean;
 }
 
 /**
@@ -292,8 +324,13 @@ export function hudContextFor(tokenId: string | null): HudContext {
   const combatant = token
     ? (combat?.combatants.find((row) => row.tokenId === token.id) ?? null)
     : null;
-  const turn = combatant?.turn ?? null;
-  const refusal = hudTurnRefusal(combat, tokenId, isGm);
+  // Przejęta figura (70b): jej własny wiersz w kolejce jest pomijany, a jej
+  // czynności płaci netrunner — więc ani jej budżet, ani jej tura nie mówią nic.
+  const operated = operatedFigureOf(tokenId);
+  const turn = operated ? null : (combatant?.turn ?? null);
+  const refusal = operated
+    ? operatedTurnRefusal(operated, combat)
+    : hudTurnRefusal(combat, tokenId, isGm);
   const steering = tokenId !== null && useSelectionStore.getState().tokenId === tokenId;
 
   if (!token) {
@@ -314,8 +351,11 @@ export function hudContextFor(tokenId: string | null): HudContext {
       figureSkills: [],
       statEffects: [],
       target: null,
+      device: null,
     };
   }
+
+  if (operated) return operatedHudContext(token, operated, combat, refusal, steering);
 
   const character = token.characterId
     ? (useCharacterStore.getState().characters[token.characterId] ?? null)
@@ -400,6 +440,82 @@ export function hudContextFor(tokenId: string | null): HudContext {
     figureSkills: character ? [] : figureSkillsOf(token),
     statEffects: character ? hudStatEffects(character.data) : [],
     target: steering ? standingTargetOf(token) : null,
+    device: null,
+  };
+}
+
+/**
+ * Belka przejętego urządzenia (etap 70b) — „okrojone mechaniki” z pomysłu MG.
+ *
+ * Z całego paska zostaje kafel broni z trybami ognia: bez przeładowania
+ * (strzela tym, co ma w magazynku), bez akcji z katalogu, bez Szczęścia
+ * i formularzy. Liczby bierze karta z ładunku runu — ta sama, którą czyta
+ * podgląd strzału. Znak kosztu mówi „Akcja Sieciowa” do aktywacji, potem
+ * zwykłą czynność.
+ */
+function operatedHudContext(
+  token: TokenView,
+  entry: OperatedEntry,
+  combat: CombatView | null,
+  refusal: string | null,
+  steering: boolean,
+): HudContext {
+  const { figure } = entry;
+  const compendium = useCompendiumStore.getState();
+  const weaponTypeById = new Map(Object.entries(compendium.weaponTypeById));
+  const cost = netOperatedCost(figure.state);
+  const blocked = figure.noCombatValue ? NET_DEVICE_MESSAGES.NET_DEVICE_NO_COMBAT_VALUE : refusal;
+  const weapons = figure.sheet
+    ? hotbarSlotsFor({
+        sheet: figure.sheet,
+        resolve: (compendiumId) => {
+          const item = compendiumId ? compendium.entries[compendiumId] : undefined;
+          return item && isWeaponEntry(item) ? resolveWeapon(item, { weaponTypeById }) : null;
+        },
+        resolveAmmo: (ammoId) => {
+          const item = compendium.entries[ammoId];
+          return item && isAmmoEntry(item) ? toAmmoProfile(item) : null;
+        },
+        statuses: [],
+        // Budżet tury urządzenia nie istnieje — płaci netrunner.
+        turn: null,
+        isGm: false,
+      })
+        .filter((slot) => slot.kind === 'weapon')
+        .map((slot) => ({
+          ...slot,
+          cost,
+          attacks: null,
+          disabled: blocked ?? slot.disabled,
+        }))
+    : [];
+  const turning = useDeviceAimStore.getState().turning === token.id;
+  return {
+    token,
+    combatant: null,
+    turn: null,
+    slots: weapons,
+    groups: cpredHotbarGroups(weapons),
+    vitals: null,
+    acting: false,
+    isGm: false,
+    isActiveTurn: refusal === null,
+    refusal,
+    steering,
+    sheetNotMine: false,
+    injuries: [],
+    figureSkills: [],
+    statEffects: [],
+    target: steering ? standingTargetOf(token) : null,
+    device: {
+      name: figure.name,
+      kind: figure.deviceKind,
+      nodeLabel: figure.nodeLabel,
+      state: figure.state,
+      hp: figure.hp ?? null,
+      verbs: operatedVerbSlots(entry, combat),
+      turning,
+    },
   };
 }
 
@@ -589,6 +705,17 @@ export function hudSignature(context: HudContext): string {
     // Etap 69: dystans do celu stoi na kaflu — w metrach zasad, więc marsz
     // odświeża panel co kratkę, nie co klatkę.
     context.target,
+    // Etap 70b: stan aktywacji, PW i przyciski urządzenia — co widać na belce.
+    context.device
+      ? [
+          context.device.name,
+          context.device.nodeLabel,
+          context.device.state,
+          context.device.hp,
+          context.device.turning,
+          context.device.verbs.map((slot) => [slot.id, slot.cost, slot.disabled]),
+        ]
+      : null,
     context.combatant?.id ?? null,
     context.combatant?.grapple?.role ?? null,
     // Co ze slotu **widać**. Nabój wpadł tu w sesji naprawczej 22.08 (błąd #5):
@@ -622,6 +749,8 @@ export function hudSignature(context: HudContext): string {
       // Schowanie broni przy wydanej Akcji nie zmienia zdania odmowy, a zmienia
       // to, co kursor ma trzymać (25.09).
       slot.kind === 'weapon' ? slot.outOfHand : null,
+      // Etap 70b: „Akcja Sieciowa” zamienia się w czynność po aktywacji.
+      slot.cost,
     ]),
   ]);
 }
@@ -1048,8 +1177,10 @@ export function nextSteerableToken(from: string | null): string | null {
       .map((row) => row.tokenId)
       .filter((id): id is string => id !== null && id in tokens);
   } else {
+    // Przejęte urządzenia (70b) stoją w tym samym kółku co figury gracza.
+    const operated = myOperatedTokenIds(useNetRunStore.getState().runs);
     ordered = Object.values(tokens)
-      .filter((token) => isGm || token.ownerId === userId)
+      .filter((token) => isGm || token.ownerId === userId || operated.has(token.id))
       .sort((a, b) => a.name.localeCompare(b.name, 'pl') || a.id.localeCompare(b.id))
       .map((token) => token.id);
   }

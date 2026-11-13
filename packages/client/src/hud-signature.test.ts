@@ -61,6 +61,7 @@ function context(slots: CpredHotbarWeaponSlot[]): HudContext {
     statEffects: [],
     steering: false,
     target: null,
+    device: null,
   };
 }
 

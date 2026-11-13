@@ -66,6 +66,7 @@ import { toSessionUser } from '../auth/sessions.js';
 import type { HiddenSpot } from './hidden-notice.js';
 import { rollSecretPerception } from './character-rolls.js';
 import { campaignInCombat } from './combat-lock.js';
+import { loadNetDeviceGrants, seizedGrantOf } from './net-control.js';
 import { advanceGameTime } from './gametime.js';
 import { requireOwnCharacter, tokensOf } from './inventory.js';
 import {
@@ -674,9 +675,13 @@ export async function runZonesAfterMove(
   if ((await controllerOf(deps, token)) !== user.id) return { spots };
   // Strzał i obrażenia idą kontem MG, nie gracza, który wszedł w strefę (#39).
   let hand: SessionUser | null = null;
+  // Obszar straży figury przejętej w Sieci nie strzela sam (etap 70b) — jej
+  // spust trzyma netrunner. Jedno zapytanie na ruch, tylko gdy scena ma strefy.
+  const seized = await loadNetDeviceGrants(deps.ctx.prisma, campaignId);
   for (const { row, profile } of live) {
     if (!profile || !netDefenseActs(profile.effects)) continue;
     if (!row.armed) continue;
+    if (row.tokenId && seized.has(row.tokenId)) continue;
     if (row.hpMax > 0 && row.hpCurrent <= 0) continue;
     if (readZoneExempt(row.exempt).includes(token.id)) continue;
     if (await zoneDisarmedByNetrunner(deps, row)) continue;
@@ -763,6 +768,7 @@ export async function runZonesAtTurnEnd(
     if (!profile?.effects?.repeats) continue;
     if (!isPointInRect(row, centre)) continue;
     if (await zoneDisarmedByNetrunner(deps, row)) continue;
+    if (await seizedGrantOf(deps.ctx.prisma, campaignId, row.tokenId)) continue;
 
     const fired = await fireZone(deps, {
       campaignId,

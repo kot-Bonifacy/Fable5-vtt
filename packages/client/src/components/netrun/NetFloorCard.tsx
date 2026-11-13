@@ -14,7 +14,7 @@ import {
 import { plural } from '../../plural.js';
 import { InlineNotice } from '../NoticeColumn.js';
 import { NumberStepper } from '../NumberStepper.js';
-import { NetNodeDevices, type OperateExtra } from './NetNodeDevices.js';
+import { NetNodeDevices } from './NetNodeDevices.js';
 import { FLOOR_GLYPHS } from './net-glyphs.js';
 
 /** Widełki wirusa (etap 21c): PT ustala MG, a pisanie trwa tyle Akcji Sieciowych. */
@@ -139,14 +139,13 @@ function floorHint(here: NetFloorView): string | null {
  * i Maskowanie zawsze. Koniec rzędu sześciu wyszarzonych przycisków.
  *
  * Urządzenia węzła: przed Kontrolą sama nazwa i rodzaj (`nodeDevices`), po niej
- * lista z przyciskami. Sterowanie z mapy przychodzi w 70b.
+ * lista z przełącznikami; figury urządzeń prowadzi się z mapy (70b).
  */
 export function NetFloorCard({
   here,
   run,
   busy,
   sceneId,
-  targets,
   onAbility,
   onCopy,
   onOperate,
@@ -156,15 +155,9 @@ export function NetFloorCard({
   run: NetRunView;
   busy: boolean;
   sceneId: string | null;
-  targets: { id: string; name: string }[];
   onAbility: (id: NetAbilityId, virus?: VirusDraft) => void;
   onCopy: (floorId: string) => void;
-  onOperate: (
-    floorId: string,
-    deviceId: string,
-    operation: NetDeviceOperation,
-    extra: OperateExtra,
-  ) => void;
+  onOperate: (floorId: string, deviceId: string, operation: NetDeviceOperation) => void;
   onShow: (device: NetDeviceView) => void;
 }) {
   const [virusOpen, setVirusOpen] = useState(false);
@@ -244,10 +237,9 @@ export function NetFloorCard({
 
       <NetNodeDevices
         node={here}
-        targets={targets}
         busy={busy}
         sceneId={sceneId}
-        onOperate={(deviceId, operation, extra) => onOperate(here.id, deviceId, operation, extra)}
+        onOperate={(deviceId, operation) => onOperate(here.id, deviceId, operation)}
         onShow={onShow}
       />
 

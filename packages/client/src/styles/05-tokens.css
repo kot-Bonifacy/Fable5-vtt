@@ -327,6 +327,23 @@
   min-width: 0;
 }
 
+/* Etap 70b: wiersz przejętego urządzenia jest przyciskiem „weź na mapie”. */
+.net-operated-row {
+  flex: 1;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.net-operated-row:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
 .character-row-name {
   font-weight: 600;
   overflow: hidden;

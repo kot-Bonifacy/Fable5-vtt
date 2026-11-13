@@ -339,20 +339,37 @@ zdolność z 26b–26e da się wykonać z nowego okna; MG widzi cały szyb.
 
 ### 70b — Przejęta wieżyczka i kamera na mapie
 
-- [ ] `shared`: tabela czynności wg rodzaju, `netDeviceTurn` (aktywacja, budżet, wygaśnięcie),
+- [x] `shared`: tabela czynności wg rodzaju, `netDeviceTurn` (aktywacja, budżet, wygaśnięcie),
       sloty belki dla urządzenia, koszt „Akcja Sieciowa”
-- [ ] Serwer: `net-control.ts` (`loadNetDeviceGrants`, `operatorOf`), `operated` w widoku figury,
+- [x] Serwer: `net-control.ts` (`loadNetDeviceGrants`, `operatorOf`), `operated` w widoku figury,
       atak przejętą figurą przez zwykłe `attack:*` z Wartością bojową, pomijanie tury i obszaru
       straży, koniec kontroli, obrót kamery na punkt
-- [ ] Klient: zaznaczanie przejętej figury, belka urządzenia, znacznik „przejęta”, sekcja
+- [x] Klient: zaznaczanie przejętej figury, belka urządzenia, znacznik „przejęta”, sekcja
       „Przejęte” w „Postaciach”; usunięcie `NodeDevices` z listą celów
-- [ ] Wpisy w `decyzje-i-uproszczenia.md`: aktywacja = pełna tura (s. 199), Wartość bojowa (s. 213)
-- [ ] Testy: `netdevices.test.ts` (shared), `net-control.test.ts` (serwer), E2E
+- [x] Wpisy w `decyzje-i-uproszczenia.md`: aktywacja = pełna tura (s. 199), Wartość bojowa (s. 213)
+- [x] Testy: `netdevices.test.ts` (shared), `net-control.test.ts` (serwer), E2E
       `t70b-przejeta-wiezyczka`; poprawione T5b
 
 **Kryteria ukończenia:** netrunner po Kontroli zaznacza wieżyczkę na mapie, wybiera serię, celuje
 z podglądem osłony i strzela za jedną Akcję Sieciową; drugi strzał z tego węzła w tej rundzie
 odmawia; inny gracz nie ruszy tej figury; po odłączeniu wieżyczka wraca do obrony i do kolejki.
+
+**Zrobione 12–13.11.2026. Odstępstwa od projektu:**
+
+- **Księga aktywacji to `deviceTurns` (lista) w stanie runu**, nie pojedyncze `deviceTurn` —
+  netrunner trzymający dwa węzły aktywuje w rundzie po jednym urządzeniu z każdego.
+- **Widok przejętej figury jedzie w `NetRunPayload.operated`**, nie w polu figury — belka,
+  „Postacie” i mapa czytają jedno źródło (`client/src/net-operated.ts`), a ładunek figur zostaje
+  bez wiedzy o Sieci.
+- **Znacznik „przejęta” to naklejka stanu `net-seized` („Przejęty w Sieci”)**, nie obwódka
+  w kolorze netrunnera — widzi ją każdy, kto widzi figurę, i MG ma ją na liście stanów.
+- **„Wyłącz” oddaje figurę** (wpis w `decyzje-i-uproszczenia.md`); naklejka „Wyłączony” zostaje
+  do 70c, jak w podziale.
+- **Testy serwera stoją w `netdevices.test.ts` i `net-cameras.test.ts`**, nie w osobnym
+  `net-control.test.ts` (ta sama fikstura sceny); testy `shared` w `netdevices-turn.test.ts`.
+- **Wiersz rzutu mówi „Refleks +0 · <Umiejętność> +N”** jak u każdego statysty z Wartością
+  bojową — wspólna ścieżka `cpredSheetWithCombatValue`, nie osobna etykieta dla urządzeń.
+- **T5b poprawione, ale nie puszczone** — od kroku 5.10 wymaga gatewaya (zaległość z 70a).
 
 ### 70c — Dron w ruchu, oczy urządzeń, pasek
 

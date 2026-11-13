@@ -518,8 +518,10 @@ export const CPRED_SNEAK_GM_REFUSAL =
  * przycisku”). Pasek rysuje z tego znak przy przycisku — ten sam, który stoi
  * w budżecie tury — więc „co zgaśnie, gdy wydam Akcję” widać przed kliknięciem.
  * `free` to wyjście ze skradania: nie kosztuje nic, także w cudzej turze.
+ * `net` (etap 70b) to Akcja Sieciowa netrunnera — pierwsza czynność przejętego
+ * urządzenia w Turze, zanim aktywacja zamieni ją w zwykłą czynność.
  */
-export type CpredSlotCost = CpredActionCost;
+export type CpredSlotCost = CpredActionCost | 'net';
 
 /** A weapon in one of its fire modes — clicking a target loads the cup. */
 export interface CpredHotbarWeaponSlot {

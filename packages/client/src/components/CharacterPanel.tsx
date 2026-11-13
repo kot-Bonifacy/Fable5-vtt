@@ -34,6 +34,7 @@ import { CreationRankPanel } from './CreationRankPanel.js';
 import { CharacterReadyPanel, useWaitingCharacters } from './CharacterReadyPanel.js';
 import { PortraitPicker } from './PortraitPicker.js';
 import { startTokenDrag } from '../map/token-drag.js';
+import { NetOperatedList } from './netrun/NetOperatedList.js';
 
 /**
  * Właściciel postaci jako słowo, a lista dopiero po kliknięciu (etap 43a):
@@ -371,6 +372,8 @@ export function CharacterPanel() {
         ) : (
           <ul className="character-list">{live.map(renderRow)}</ul>
         )}
+        {/* Etap 70b: urządzenia przejęte w Sieci — figury, które gracz prowadzi. */}
+        <NetOperatedList />
         {/* 24.09: a player's new character starts with the GM's consent and
             the rules. */}
         <CreationGate resume={resume} another={live.length > 0} />

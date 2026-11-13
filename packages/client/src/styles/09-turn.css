@@ -259,6 +259,22 @@
 
 /* „Action held" / „grappling" — a corner mark on the portrait rather than a
    word in the row, which would push the names of everybody after it. */
+/* Etap 70b: figura przejęta w Sieci — słowo, nie znaczek, bo tura przechodzi sama. */
+.combat-chip-badge.combat-chip-badge--seized {
+  /* Słowo jest szersze od portretu: kotwiczy się z lewej, inaczej wychodzi
+     poza kafel i ucina je sąsiad. */
+  right: auto;
+  left: -2px;
+  white-space: nowrap;
+  width: auto;
+  height: auto;
+  padding: 0 0.25rem;
+  border-radius: 3px;
+  font-size: 0.58rem;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
 .combat-chip-badge {
   position: absolute;
   right: -3px;

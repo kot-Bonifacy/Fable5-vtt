@@ -1,0 +1,197 @@
+import type { NetDeviceKind, SessionUser } from '@vtt/shared';
+import {
+  NET_DEVICE_KIND_LABELS,
+  ROLE_GM,
+  netDeviceStateOf,
+  readNetRunState,
+  readNetRuntime,
+  validateNetArchitecture,
+} from '@vtt/shared';
+import type { PrismaClient } from '../db.js';
+
+/**
+ * Pożyczona kontrola (etap 70b) — figury urządzeń, które netrunner prowadzi,
+ * dopóki trzyma ich węzeł kontrolny. Uogólnia pożyczony wzrok kamer z 20.10:
+ * kamera jest tu jednym z rodzajów.
+ *
+ * **Uprawnienie to dalej węzeł, nie własność żetonu** (umowa 26d):
+ * `Token.ownerId` się nie zmienia, a każda ścieżka, która pyta „czy to konto
+ * może ruszyć tę figurę przez Sieć”, pyta `operatorOf` — osobne warunki
+ * w ataku, ruchu i widoku rozjechałyby się przy pierwszej poprawce.
+ *
+ * Moduł czyta wyłącznie bazę i czyste funkcje z `@vtt/shared`: woła go
+ * `vision.ts` (przez `net-cameras.ts`) i `tokens.ts` przy każdym liczeniu
+ * widoku, więc zależność od `netrun-io.ts` zrobiłaby z tego pętlę.
+ *
+ * Cztery warunki wpisu:
+ *  - węzeł jest w `controlled` runu („po przejęciu kontroli nad węzłem”,
+ *    s. 199) — odłączenie kasuje run, więc i kontrolę;
+ *  - urządzenie ma figurę na mapie (`tokenId`);
+ *  - jest włączone — „Wyłącz” oddaje figurę (włącza się ją z okna SIEĆ);
+ *  - strefa obronna za nim nie jest rozbrojona na miejscu (66e, pkt 27).
+ */
+export interface NetDeviceGrant {
+  tokenId: string;
+  runId: string;
+  architectureId: string;
+  floorId: string;
+  /** Etykieta węzła z Architektury — „przez: Obrona”. */
+  nodeLabel: string;
+  deviceId: string;
+  deviceKind: NetDeviceKind;
+  /** Nazwa urządzenia z edytora Architektury (jej zawartość). */
+  deviceName: string;
+  /** Wpis systemu obronnego urządzenia, gdy MG go wybrał. */
+  entryId: string | null;
+  /** Figura netrunnera — to jej tura i jej Akcje Sieciowe płacą. */
+  runnerTokenId: string;
+  runnerSceneId: string;
+  characterId: string;
+  /**
+   * Konta, które prowadzą: właściciel figury albo karty runu. Puste przy
+   * NPC-netrunnerze MG — figura jest wtedy przejęta (tura pominięta, straż
+   * milczy), ale żaden gracz jej nie prowadzi.
+   */
+  operatorIds: Set<string>;
+}
+
+/** Figura urządzenia → kto i przez co ją trzyma. */
+export async function loadNetDeviceGrants(
+  prisma: PrismaClient,
+  campaignId: string,
+): Promise<Map<string, NetDeviceGrant>> {
+  const runs = await prisma.netRun.findMany({
+    where: { campaignId },
+    orderBy: { createdAt: 'asc' },
+    select: {
+      id: true,
+      data: true,
+      tokenId: true,
+      characterId: true,
+      architecture: {
+        select: { id: true, name: true, difficulty: true, data: true, runtime: true },
+      },
+      token: {
+        select: { sceneId: true, ownerId: true, character: { select: { ownerId: true } } },
+      },
+    },
+  });
+  const grants = new Map<string, NetDeviceGrant>();
+  const disarmedByArchitecture = new Map<string, Set<string>>();
+  for (const run of runs) {
+    const state = readNetRunState(run.data);
+    if (!state || state.controlled.length === 0) continue;
+    const architecture = parseArchitecture(run.architecture);
+    if (!architecture) continue;
+    const runtime = readNetRuntime(run.architecture.runtime);
+    let disarmed = disarmedByArchitecture.get(run.architecture.id);
+    if (!disarmed) {
+      disarmed = await disarmedDevicesOf(prisma, run.architecture.id);
+      disarmedByArchitecture.set(run.architecture.id, disarmed);
+    }
+    const operatorIds = new Set(
+      [run.token.ownerId, run.token.character?.ownerId].filter(
+        (id): id is string => typeof id === 'string',
+      ),
+    );
+    const held = new Set(state.controlled.map((hold) => hold.floorId));
+    for (const floor of architecture.branches.flatMap((branch) => branch.floors)) {
+      if (!held.has(floor.id)) continue;
+      for (const device of floor.devices ?? []) {
+        if (!device.tokenId || grants.has(device.tokenId)) continue;
+        if (!netDeviceStateOf(runtime.devices, device.id).on) continue;
+        if (disarmed.has(device.id)) continue;
+        grants.set(device.tokenId, {
+          tokenId: device.tokenId,
+          runId: run.id,
+          architectureId: run.architecture.id,
+          floorId: floor.id,
+          nodeLabel: floor.label || 'Węzeł kontrolny',
+          deviceId: device.id,
+          deviceKind: device.deviceKind,
+          deviceName: device.name || NET_DEVICE_KIND_LABELS[device.deviceKind],
+          entryId: device.entryId ?? null,
+          runnerTokenId: run.tokenId,
+          runnerSceneId: run.token.sceneId,
+          characterId: run.characterId,
+          operatorIds,
+        });
+      }
+    }
+  }
+  return grants;
+}
+
+/** Urządzenia, za którymi stoi strefa rozbrojona na mapie (`armed = false`). */
+async function disarmedDevicesOf(prisma: PrismaClient, architectureId: string) {
+  const rows = await prisma.defenseZone.findMany({
+    where: { architectureId, armed: false, deviceId: { not: null } },
+    select: { deviceId: true },
+  });
+  return new Set(rows.flatMap((row) => (row.deviceId ? [row.deviceId] : [])));
+}
+
+/**
+ * Czy to konto prowadzi tę figurę przez węzeł — **jedyne** pytanie o prawo do
+ * przejętej figury. MG nie jest operatorem: prowadzi każdą figurę z urzędu,
+ * zwykłą drogą i bez Akcji Sieciowych.
+ */
+export async function operatorOf(
+  prisma: PrismaClient,
+  campaignId: string,
+  tokenId: unknown,
+  user: SessionUser,
+): Promise<NetDeviceGrant | null> {
+  if (user.role === ROLE_GM || typeof tokenId !== 'string' || tokenId.length === 0) return null;
+  const grant = (await loadNetDeviceGrants(prisma, campaignId)).get(tokenId);
+  return grant?.operatorIds.has(user.id) ? grant : null;
+}
+
+/** Figury, które to konto prowadzi przez swoje węzły — dla widoku listy figur. */
+export async function operatedTokenIdsOf(
+  prisma: PrismaClient,
+  campaignId: string,
+  userId: string,
+): Promise<Set<string>> {
+  const ids = new Set<string>();
+  for (const grant of (await loadNetDeviceGrants(prisma, campaignId)).values()) {
+    if (grant.operatorIds.has(userId)) ids.add(grant.tokenId);
+  }
+  return ids;
+}
+
+/** Czy figura jest teraz w czyichś rękach w Sieci (tura pominięta, straż milczy). */
+export async function seizedGrantOf(
+  prisma: PrismaClient,
+  campaignId: string,
+  tokenId: string | null | undefined,
+): Promise<NetDeviceGrant | null> {
+  if (!tokenId) return null;
+  return (await loadNetDeviceGrants(prisma, campaignId)).get(tokenId) ?? null;
+}
+
+/**
+ * Odcisk tego, kto co trzyma w kampanii — `emitRuns` porównuje go z poprzednim
+ * i dopiero zmiana (węzeł przejęty, urządzenie wyłączone, run zakończony)
+ * przelicza widok graczy i naklejki figur.
+ */
+export function netGrantSignature(grants: ReadonlyMap<string, NetDeviceGrant>): string {
+  return [...grants.values()]
+    .map((grant) => `${grant.tokenId}:${grant.runId}:${[...grant.operatorIds].sort().join(',')}`)
+    .sort()
+    .join('|');
+}
+
+function parseArchitecture(row: { id: string; name: string; difficulty: string; data: string }) {
+  try {
+    const parsed = validateNetArchitecture({
+      ...JSON.parse(row.data),
+      id: row.id,
+      name: row.name,
+      difficulty: row.difficulty,
+    });
+    return parsed.ok ? parsed.architecture : null;
+  } catch {
+    return null;
+  }
+}

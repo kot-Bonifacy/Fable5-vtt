@@ -43,8 +43,13 @@ import type { NetCombatView } from './netcombat.js';
 // Same bargain for stage 26e's Demons: the view is built there, the run merely
 // carries it. Type-only, so the two modules never import each other's values.
 import type { NetDemonView } from './netdemons.js';
-import type { CpredNetDeviceState, CpredNetNodeUse, NetDeviceView } from './netdevices.js';
-import { readNetDeviceStates, readNetNodeUses } from './netdevices.js';
+import type {
+  CpredNetDeviceState,
+  CpredNetDeviceTurn,
+  CpredNetNodeUse,
+  NetDeviceView,
+} from './netdevices.js';
+import { readNetDeviceStates, readNetDeviceTurns, readNetNodeUses } from './netdevices.js';
 import type { NetSightedDevice } from './netscene.js';
 
 // ─────────────────────────── Interfejs jako zdolność ───────────────────────────
@@ -399,6 +404,12 @@ export interface CpredNetRunState {
    */
   nodeUse: CpredNetNodeUse[];
   /**
+   * Urządzenia aktywowane w bieżącej rundzie i reszta ich budżetu (etap 70b):
+   * jedna Akcja Sieciowa daje urządzeniu ruch i jedną czynność. Brak pola —
+   * run sprzed 70b albo nic jeszcze nie aktywowano.
+   */
+  deviceTurns?: CpredNetDeviceTurn[];
+  /**
    * Black ICE **floors** met during this entry. Stage 26c spawns an instance
    * per Program on such a floor (`CpredNetCombatState.ice`) and bills the
    * emergency jack-out from those, but the floor list is what tells it which
@@ -474,6 +485,9 @@ export function readNetRunState(raw: unknown): CpredNetRunState | null {
     copied: stringList(input.copied),
     controlled,
     nodeUse: readNetNodeUses(input.nodeUse),
+    ...(Array.isArray(input.deviceTurns)
+      ? { deviceTurns: readNetDeviceTurns(input.deviceTurns) }
+      : {}),
     metIce: stringList(input.metIce),
     virus,
   };
