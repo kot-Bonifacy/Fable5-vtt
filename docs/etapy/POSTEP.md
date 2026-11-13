@@ -831,7 +831,8 @@ Kontroli, belka drona z „Ruch 8 m”, po marszu i strzale („0 m”, kropka b
 wieżyczce, „Wyłączony” u Oli, Marka i MG, stan po F5. Nieoglądane: Chrome MG, w pasku kamera bez
 figury i drzwi, bariera widziana tylko okiem drona. Z oględzin poprawione: zdanie obsługi
 mówiło „Dron 70c — wyłączona.” (rodzaj żeński z 26d) — teraz rodzaj idzie za urządzeniem.
-Pliki `specs/99-kubek/` dalej niezacommitowane (oględziny z 10.11). **Dalej:** 70d.
+Pliki `specs/99-kubek/` (tymczasowe oględziny kubka z 10.11) zacommitowane osobno na prośbę MG.
+**Dalej:** 70d.
 
 ### Sesja 12–13.11 — etap 70b: przejęta wieżyczka i kamera na mapie
 
