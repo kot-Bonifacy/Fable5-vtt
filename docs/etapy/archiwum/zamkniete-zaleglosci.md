@@ -9,6 +9,16 @@ go czytać.
 albo gdy chcesz sprawdzić, czy pozycja, która wygląda na nową, nie jest wracającą starą.
 Treść wpisów jest niezmieniona — łącznie z datami i odsyłaczami do notatek sesji.
 
+## Zamknięte 2026-11-13, etap 70d (edycja mapy, strefy, Sieć ze sceny)
+
+- **66e pkt 3 — 🔴 klik gracza w zauważoną strefę był marszem na nią bez pytania** (Iskra −10 PW
+  na podłodze, którą widziała; rozbrojenie było tylko w menu prawego kliku). Mapa pyta teraz
+  przed marszem (`MapRenderer.onWalkZoneAsk`): klik w strefę i marsz przez nią do punktu za nią
+  otwierają przy kursorze okienko „Strefa na drodze” — „Wejdź mimo to”, „Rozbrój” (w zasięgu
+  ręki) i u netrunnera trzymającego jej węzeł „Wyłącz / Włącz” (`ZoneAskMenu.tsx`,
+  `zone-ask.ts`). Strefa, na której figura stoi, nie pyta. Testy: `zone-ask.test.ts`, E2E
+  `t70d-edycja-straz-strefy` (krok 3). Czeka na wdrożenie.
+
 ## Zamknięte 2026-11-12, etap 70a (okno SIEĆ jednego piętra)
 
 - **66e pkt 23 — podwójne wiersze akcji Sieci u netrunnera (jawny + „POUFNE”).** Stół dostaje

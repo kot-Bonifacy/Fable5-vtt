@@ -1,5 +1,35 @@
 # Dziennik sesji — archiwum
 
+### Sesja 12–13.11 — etap 70b: przejęta wieżyczka i kamera na mapie
+
+**Dwie sesje** (pierwsza przerwana przed commitem i notatką, druga — „resume” — sprawdziła
+i domknęła). **Zrobione (bez migracji, czeka na wdrożenie):** `shared` — tabela czynności wg
+rodzaju (`NET_DEVICE_FIGURE_PROFILES`), księga aktywacji `netDeviceUse` z `deviceTurns`
+w stanie runu, stan belki (`ready` / `spent` / `node-used` / `free`), koszt `net` na slotach,
+naklejka `net-seized`; serwer — `realtime/net-control.ts` (`loadNetDeviceGrants`, `operatorOf`,
+`seizedGrantOf`), strzał przejętą figurą zwykłym `attack:roll` bez `characterId` (Wartość
+bojowa, `NET_DEVICE_NO_COMBAT_VALUE`, rachunek po pytaniu o osłonę), `operated` w ładunku runu,
+ukryta przejęta figura jedzie do operatora, tura przejętej figury i jej obszar straży pomijane,
+`syncSeizedFigures` (naklejka i „wraca do obrony”), obrót kamery na punkt (`lookAt`), `fire`
+z okna odmawia `NET_DEVICE_FIRES_FROM_MAP`; klient — `net-operated.ts`, belka „Urządzenie”
+(`HudContext.device`), zaznaczanie przejętej figury na mapie, sekcja „Przejęte” w „Postaciach”
+(`NetOperatedList`), plakietka „przejęta” w kolejce, okno SIEĆ bez listy celów. Decyzje
+w `decyzje-i-uproszczenia.md`, umowa i pułapka na górze `siec`, odstępstwa w pliku etapu.
+**W sesji domykającej poprawione:** plakietka „przejęta” w kolejce wychodziła poza kafel i była
+ucięta (kotwica z lewej, `09-turn.css`); migoczący `ammo-effects.test.ts` („posts each failure
+after the attack card”) — przy dwóch zdanych Testach nie było czego sprawdzać, test rzuca teraz
+do pierwszej porażki (błąd testu, nie kodu). **Testy:** `shared` 3023/3023, serwer 1772 (pełny
+przebieg 1771 + naprawiony migoczący, potem 5/5 w pojedynkę), klient 492/492, `tsc` wszystkich
+pakietów, ESLint i Prettier czyste w zmienionych plikach; E2E `47-siec` 23/23 (`t62` 6, `t70a`
+9, `t70b` 8). **T5b poprawione, ale nie puszczone — wymaga gatewaya**; pełnego `@szybkie` nie
+puszczano. **Oglądane w Firefoksie (gracz) i Chromium (MG)** zrzutami z tymczasowej kopii
+`t70b` na instancji E2E, 1920 × 1080, noc: belka urządzenia przed strzałem, celownik z serią
+i PT na kubku, belka po czynności z odmową, okno SIEĆ z „Węzeł użyty w tej Turze”, karta ataku
+u MG, kolejka z plakietką. Nieoglądane: kamera z „Obróć”, motyw dzienny, stan po odłączeniu,
+Chrome MG. Uwaga do słowa MG: karta rzutu wieżyczki pisze „Refleks +0 · Ogień ciągły +14” (jak
+każdy statysta), nie „Wartość bojowa +14”. Pliki `specs/99-kubek/` dalej niezacommitowane
+(oględziny z 10.11). **Dalej:** 70c.
+
 ### Sesja 11–12.11 — etap 70a: okno SIEĆ jednego piętra
 
 **Dwie sesje** (pierwsza przerwana limitem przed commitem, druga dokończyła). **Zrobione (bez

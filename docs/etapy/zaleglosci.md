@@ -42,8 +42,8 @@ działa z okna Sieci). Kandydat na osobny etap. **Projekt: `etap-70-siec-przebud
 **07.11.2026 (piąta) — błędy z rozegrania „Po zamknięciu” w przeglądarce (przebieg przerwany,
 do wznowienia).** Pełny opis i stan: `etap-66e-po-zamknieciu.md` („Rozegranie w przeglądarce”).
 **Pkt 1, 2 i 4 zamknięte 07.11 (siódma sesja), 5 — 07.11 (ósma); czekają na wdrożenie** —
-`archiwum/zamkniete-zaleglosci.md`. (3) 🔴 klik gracza w zauważoną strefę to marsz na nią bez
-pytania; (6) 🟠 gniazdo znalezione Skanerem poza wzrokiem nie ma znacznika u gracza; (7) 🟠
+`archiwum/zamkniete-zaleglosci.md`. ~~(3) 🔴 klik gracza w zauważoną strefę to marsz na nią bez
+pytania~~ — zamknięte 13.11 w 70d (okienko strefy), czeka na wdrożenie; (6) 🟠 gniazdo znalezione Skanerem poza wzrokiem nie ma znacznika u gracza; (7) 🟠
 przycisk karty po najechaniu ma tekst w kolorze tła, „Postać nie ma pojazdu” czerwone na
 czerwonym; (8) „Dodaj za darmo” w Kompendium celuje w pierwszą postać, nie w otwartą kartę;
 (9) brak zamiany Roli głównej z poprzednią na karcie; (10) kubek zasłania ostatnie akcje

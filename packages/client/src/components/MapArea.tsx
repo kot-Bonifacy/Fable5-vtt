@@ -157,6 +157,9 @@ import {
 import { useAimMenuStore } from '../stores/aimMenuStore.js';
 import { AimMenu } from './AimMenu.js';
 import { TargetPickMenu } from './TargetPickMenu.js';
+import { ZoneAskMenu } from './ZoneAskMenu.js';
+import { zonesOnWalk } from '../zone-ask.js';
+import { useZoneAskStore } from '../stores/zoneAskStore.js';
 import { useTargetPickStore } from '../stores/targetPickStore.js';
 import { sameSceneObject, useSceneSelectionStore } from '../stores/sceneSelectionStore.js';
 import { useSceneCardStore } from '../stores/sceneCardStore.js';
@@ -1230,6 +1233,34 @@ export function MapArea() {
       const result = await requestTokenWalk(tokenId, route, extra);
       return result.ok ? null : moveErrorText(result.error);
     };
+    // Okienko strefy (etap 70d, 66e pkt 3): klik albo marsz gracza w zauważoną
+    // strefę pyta przy kursorze. Tylko własna figura gracza — MG przestawia
+    // planszę, a przejęty dron stref nie odpala (70c).
+    renderer.onWalkZoneAsk = ({ tokenId, goal, route, screen }) => {
+      if (useAuthStore.getState().user?.role === ROLE_GM) return false;
+      const token = useTokenStore.getState().tokens[tokenId];
+      const current = useSceneStore.getState().effectiveScene;
+      const me = useAuthStore.getState().user?.id ?? null;
+      if (!token || !current || !me || token.ownerId !== me) return false;
+      if (operatedFigureOf(tokenId)) return false;
+      const hit = zonesOnWalk({
+        zones: useZoneStore.getState().zones,
+        scene: current,
+        token,
+        goal,
+        route,
+      });
+      if (hit.length === 0) return false;
+      const at = screen ?? { x: window.innerWidth / 2, y: window.innerHeight / 2 };
+      useZoneAskStore.getState().open({
+        zoneIds: hit.map((zone) => zone.id),
+        tokenId,
+        goal,
+        x: at.x,
+        y: at.y,
+      });
+      return true;
+    };
     renderer.onWalkStateChange = (tokenId, previewed) => {
       setMarchingTokenId(tokenId);
       // Pierwszy marsz z narysowanej trasy to dowód, że ślady stóp są już
@@ -1349,6 +1380,20 @@ export function MapArea() {
       const current = useSceneStore.getState().effectiveScene;
       if (!current) return;
       const tools = useMapToolStore.getState();
+      // Obszar straży figury urządzenia (etap 70d) — jeden prostokąt z menu
+      // figury, potem narzędzie wraca do ręki.
+      const guard = tools.zoneGuard;
+      if (guard) {
+        tools.setTool('pointer');
+        void createZone(current.id, guard.entryId, rect, {
+          tokenId: guard.tokenId,
+          hidden: true,
+          ...(guard.spotDv !== null ? { spotDv: guard.spotDv } : {}),
+        }).then((ack) => {
+          noteAck('scene', ack, netErrorText);
+        });
+        return;
+      }
       if (!tools.zoneEntryId) {
         notifyRefusal('scene', 'Wybierz system obronny w pasku narzędzi.', { tone: 'warn' });
         return;
@@ -2952,6 +2997,9 @@ export function MapArea() {
       </div>
       <AimMenu />
       <TargetPickMenu onPick={fireAtToken} />
+      <ZoneAskMenu
+        onProceed={(tokenId, goal) => rendererRef.current?.walkToWaived(tokenId, goal.x, goal.y)}
+      />
       <ChaseVehicleMenu />
       <ChaseObstacleMenu />
       <DrawingTextEditor />

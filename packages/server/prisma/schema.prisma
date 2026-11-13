@@ -1293,6 +1293,10 @@ model Wall {
   lockRule String?
   hidesFigures Boolean @default(false)
   concealPenalty Int @default(-4)
+  /// Openings only (stage 70d): the scene's own Net runs this door — the first
+  /// jack-in on the scene wires it to the „Instalacje" node. GM plan, never sent
+  /// to a player.
+  netControlled Boolean @default(false)
   /// Endpoints in scene (world) pixels.
   x1 Float
   y1 Float
@@ -1644,6 +1648,9 @@ model DefenseZone {
   spotDv   Int?
   /// JSON array of character ids that tried to disarm it and failed (58b).
   disarmTried String @default("[]")
+  /// Stage 70d: an environmental system stays out of the scene's own Net
+  /// („Poza Siecią"). GM plan, never sent to a player.
+  netExcluded Boolean @default(false)
 
   createdAt DateTime @default(now())
 

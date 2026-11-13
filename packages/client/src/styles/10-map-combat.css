@@ -773,3 +773,30 @@
   flex-wrap: wrap;
   margin-top: 0.4rem;
 }
+
+/* Okienko strefy (etap 70d) — skóra wyboru celu, ale bursztyn strefy
+   (`ZONE_GLYPH_TINT`), bo to pytanie o pułapkę, nie o strzał. */
+.zone-ask {
+  border-color: var(--map-warn);
+}
+
+.zone-ask .target-pick-item:hover,
+.zone-ask .target-pick-item:focus-visible {
+  border-color: var(--map-warn);
+}
+
+.zone-ask-zone + .zone-ask-zone {
+  border-top: 1px solid var(--map-line);
+  padding-top: 0.2rem;
+}
+
+.zone-ask .target-pick-title {
+  color: var(--map-ink-bright);
+  font-weight: 600;
+  opacity: 1;
+}
+
+.zone-ask-proceed {
+  margin-top: 0.15rem;
+  color: var(--map-ink);
+}

@@ -259,7 +259,8 @@ describe('zrzut kampanii → nowa kampania', () => {
       data: { sceneId: scene.id, name: 'Wieżyczka', x: 100, y: 0, characterId: copy.id },
     });
     const door = await built.prisma.wall.create({
-      data: { sceneId: scene.id, kind: 'door', x1: 0, y1: 0, x2: 50, y2: 0 },
+      // „Sterowane z Sieci” (70d) jedzie razem z otworem.
+      data: { sceneId: scene.id, kind: 'door', x1: 0, y1: 0, x2: 50, y2: 0, netControlled: true },
     });
     await built.prisma.wall.create({
       data: { sceneId: scene.id, kind: 'wall', x1: 0, y1: 50, x2: 50, y2: 50 },
@@ -298,6 +299,7 @@ describe('zrzut kampanii → nowa kampania', () => {
         width: 2,
         height: 2,
         tokenId: turret.id,
+        netExcluded: true,
         exempt: JSON.stringify([playerToken.id]),
         sightings: JSON.stringify({ users: [playerId], tried: [player.id] }),
         architectureId: architecture.id,
@@ -423,10 +425,16 @@ describe('zrzut kampanii → nowa kampania', () => {
     const freshDoor = freshScene.walls.find((w) => w.kind === 'door')!;
     expect(devices[0]!.wallId).toBe(freshDoor.id);
     expect(freshDoor.id).not.toBe(door.id);
+    expect(freshDoor.netControlled).toBe(true);
     expect(devices[1]!.tokenId).toBe(wieza.id);
     expect(freshScene.accessPoints[0]!.architectureId).toBe(freshArch.id);
     const zone = freshScene.defenseZones[0]!;
-    expect(zone).toMatchObject({ tokenId: wieza.id, architectureId: freshArch.id, deviceId: 'd2' });
+    expect(zone).toMatchObject({
+      tokenId: wieza.id,
+      architectureId: freshArch.id,
+      deviceId: 'd2',
+      netExcluded: true,
+    });
     expect(JSON.parse(zone.exempt)).toEqual([kowal.id]);
     expect(JSON.parse(zone.sightings)).toEqual({ users: [playerId], tried: [byName('Kowal').id] });
 

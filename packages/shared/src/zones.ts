@@ -100,6 +100,11 @@ export interface DefenseZoneView {
   spotDv?: number | null;
   /** Characters that tried to disarm it and failed (stage 58b) — GM only. */
   disarmTried?: string[];
+  /**
+   * Stage 70d: kept out of the scene's own Net („Poza Siecią") — the first
+   * jack-in does not wire it to the „Instalacje" node. GM only.
+   */
+  netExcluded?: boolean;
 }
 
 /** Rectangles only, and axis-aligned — the covers' bargain exactly. */
@@ -143,6 +148,12 @@ export interface DefenseZoneCreatePayload {
   spotDv?: number;
   /** Disarm DV; absent keeps the entry's (23.10). */
   disarmDv?: number;
+  /**
+   * Stage 70d: the device figure this is the guard area of („Obszar straży" on
+   * the figure's menu) — a turret or a drone on the same scene. The zone fires
+   * from it and its body points live on it.
+   */
+  tokenId?: string;
 }
 
 /** Client → server `zone:update` — move, rename, arm, reveal, repair or wire one. */
@@ -172,7 +183,19 @@ export interface DefenseZoneUpdatePayload {
     spotDv?: number | null;
     /** „Pozwól spróbować znowu” — clears the list of failed disarm attempts. */
     resetDisarmTries?: true;
+    /** Stage 70d: „Poza Siecią" — keep it out of the scene's own Net. */
+    netExcluded?: boolean;
   };
+}
+
+/**
+ * Client → server `zone:figure` (stage 70d) — „Postaw figurę urządzenia" on an
+ * old drone or emplacement zone with nothing standing on it: the server puts a
+ * device figure in the middle of the zone, binds it, and moves the body points
+ * onto it.
+ */
+export interface DefenseZoneFigurePayload {
+  zoneId: number;
 }
 
 /**
@@ -226,7 +249,9 @@ export type DefenseZoneProblem =
   | 'ZONE_UNKNOWN_ENTRY'
   | 'ZONE_LIMIT_REACHED'
   | 'ZONE_NO_EFFECT'
-  | 'ZONE_NOBODY_INSIDE';
+  | 'ZONE_NOBODY_INSIDE'
+  | 'ZONE_HAS_FIGURE'
+  | 'ZONE_NO_FIGURE_KIND';
 
 export const ZONE_MESSAGES: Record<DefenseZoneProblem, string> = {
   ZONE_NOT_FOUND: 'Tej strefy już nie ma — odśwież stronę.',
@@ -234,6 +259,9 @@ export const ZONE_MESSAGES: Record<DefenseZoneProblem, string> = {
   ZONE_LIMIT_REACHED: 'Na tej scenie stoi już maksymalna liczba stref obronnych.',
   ZONE_NO_EFFECT: 'Ten system nie ma opisanego efektu — uzupełnij go w kompendium.',
   ZONE_NOBODY_INSIDE: 'Na tej strefie nikt nie stoi.',
+  ZONE_HAS_FIGURE: 'Ta strefa ma już figurę urządzenia.',
+  ZONE_NO_FIGURE_KIND:
+    'System środowiskowy nie stoi figurą — figurę urządzenia dostaje tylko dron albo stanowisko.',
 };
 
 /**

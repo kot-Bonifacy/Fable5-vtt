@@ -5,6 +5,7 @@ import { query, queryOne } from './db.ts';
 import { material } from './materials.ts';
 import { characterId } from './nocna-zmiana.ts';
 import {
+  clickOnMap,
   dropTool,
   openObjectCard,
   openTokenEditor,
@@ -263,6 +264,38 @@ export async function drawZone(
   await dragWorld(page, from, to);
   await expect.poll(() => zonesOn(sceneId).length, { message: system }).toBe(before + 1);
   await dropTool(page);
+  return zonesOn(sceneId).at(-1)!;
+}
+
+/**
+ * Obszar straży figury urządzenia (etap 70d): prawy klik na figurze →
+ * „🛡 Obszar straży…” → wpis systemu (domyślny dla ikony albo `system`) →
+ * „▭ Narysuj obszar straży” → prostokąt. Od 70d tylko tędy staje strefa
+ * wieżyczki i drona — narzędzie „Strefy bronione” ma same systemy środowiskowe.
+ */
+export async function drawGuardArea(
+  page: Page,
+  sceneId: string,
+  figureAt: WorldPoint,
+  from: WorldPoint,
+  to: WorldPoint,
+  system?: string,
+): Promise<ZoneRow> {
+  await clickOnMap(page, figureAt, 'right');
+  await page.getByRole('button', { name: '🛡 Obszar straży…' }).click();
+  const panel = page.getByRole('group', { name: 'Obszar straży' });
+  await expect(panel).toBeVisible();
+  if (system) {
+    await panel.getByRole('button', { name: 'System obronny', exact: true }).click();
+    await panel.getByRole('option', { name: system, exact: true }).click();
+  }
+  const before = zonesOn(sceneId).length;
+  await panel.getByRole('button', { name: '▭ Narysuj obszar straży' }).click();
+  await expect(page.getByRole('group', { name: 'Rysowanie obszaru straży' })).toBeVisible();
+  await dragWorld(page, from, to);
+  await expect.poll(() => zonesOn(sceneId).length, { message: 'obszar straży' }).toBe(before + 1);
+  // Narzędzie wraca do ręki samo — jeden prostokąt.
+  await expect(page.locator('.map-tools > button[aria-pressed="true"]')).toHaveCount(0);
   return zonesOn(sceneId).at(-1)!;
 }
 

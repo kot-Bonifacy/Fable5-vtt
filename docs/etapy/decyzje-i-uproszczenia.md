@@ -9,6 +9,43 @@ czytany na starcie każdej sesji został listą zadań, a nie archiwum ustaleń.
 inaczej, niż mówi podręcznik, albo gdy dotykasz wymienionego tu kodu. Jeśli któraś z tych decyzji
 przestanie się bronić, przenieś ją stąd do `POMYSLY.md` jako zadanie — nie odwrotnie.
 
+## Sieć ze sceny wg rodzaju, urządzenia dopiero na węźle, obszar straży od figury (etap 70d, 13.11.2026)
+
+Decyzje MG z 11.11 (nr 2, 3, 5, 8) i rozstrzygnięcia bez pytań z sesji — do słowa MG.
+
+- **Lista urządzeń dopiero na piętrze węzła** (decyzja nr 2, wdrożona w 70a): od podłączenia
+  okno SIEĆ nie mówi o urządzeniach nic, na piętrze węzła — nazwa stołu i rodzaj, władzę daje
+  Kontrola. Cofa decyzję nr 4 z 28.10 (etap 62: lista od podłączenia zdradzała skalę obrony).
+- **Sieć ze sceny ma węzły wg rodzaju** (decyzja nr 5): wejście → „Monitoring” (kamery,
+  czujniki) → „Obrona” (wieżyczki, drony, roboty) → „Instalacje” (terminale, strefy
+  środowiskowe, drzwi „Sterowane z Sieci”). Węzeł powstaje tylko z urządzeniem; nadmiar ponad
+  6 idzie do „Monitoring 2” itd. Siłę netrunnera MG ustawia liczbą węzłów — każdy działa raz na
+  Turę. Scena bez urządzeń to samo wejście (wcześniej pusty węzeł do zdobycia).
+- **Strefy i drzwi dochodzą same tylko do Sieci złożonej ze sceny.** Do Architektury z edytora
+  (np. „Brama” z T5) dalej dochodzą wyłącznie figury z ikoną (jak w 62); strefę wiąże tam pole
+  „Węzeł kontrolny” karty strefy (#33), drzwi — urządzenie „Drzwi lub winda”. Dzięki temu ręcznie
+  zbudowana Sieć nie zmienia się od tego, co MG dołoży na mapie.
+- **Strefa środowiskowa wchodzi do Sieci ze sceny sama**, chyba że MG zaznaczy na karcie
+  „Poza Siecią”; drzwi, okno i brama — tylko z przełącznikiem „Sterowane z Sieci” na karcie
+  otworu (domyślnie wyłączony). Odhaczenie zdejmuje urządzenie z węzła, węzeł zostaje (pozycje
+  pięter trwających runów).
+- **Strefę netrunner tylko wyłącza i włącza** (decyzja nr 3) — klikiem w strefę na mapie
+  (okienko strefy) albo z paska „Oczy i urządzenia”; bez odpalania i przepustek. Strefy
+  rozbrojonej na miejscu z Sieci się nie uzbroi (66e pkt 27).
+- **Okienko strefy pyta przy każdym kliku w zauważoną strefę i przy marszu przez nią** —
+  także w cudzej turze i u podłączonego netrunnera (wtedy „Wejdź mimo to” kończy się zwykłą
+  odmową). Strefa, na której figura już stoi, nie pyta. Pytanie nie zdradza niczego, czego
+  gracz nie ma: zna wyłącznie strefy widoczne albo przez siebie zauważone.
+- **Obszar straży rysuje się od figury urządzenia** (decyzja nr 8): menu wieżyczki, drona,
+  drona naziemnego i robota → „🛡 Obszar straży…” (wpis stanowiska albo aktywnego systemu, PT
+  zauważenia, „Narysuj”). Narzędzie „Strefy bronione” ma już same systemy środowiskowe. Obszar
+  startuje ukryty — gracze widzą wieżyczkę, nie jej pole ostrzału. **Wpis daje figurze Wartość
+  bojową, RUCH i PW** (figura bez paska PW dostaje PW wpisu), **broni nie** — tabela s. 213–214
+  opisuje broń zdaniem („zwykle jedną z poniższych”), więc lufę MG ustawia w „Edytuj…”.
+- **„Postaw figurę urządzenia”** na starej strefie drona albo stanowiska bez figury: figura
+  z ikoną (stanowisko — wieżyczka, dron z nazwy wpisu) na środku strefy, z PW strefy; strefa
+  zostaje jej obszarem straży. System środowiskowy figury nie dostaje.
+
 ## Przejęty dron jeździ, urządzenia pożyczają oczy, wyłączone milczą (etap 70c, 13.11.2026)
 
 Rozstrzygnięcia bez pytań z projektu etapu (nr 3, 5 i 6) i drobniejsze z sesji — do słowa MG.

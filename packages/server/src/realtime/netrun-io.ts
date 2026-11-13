@@ -325,9 +325,14 @@ export async function runPayloadFor(
   // is doing. Looked up once for the whole shaft rather than per floor — a
   // catalogue read inside `netRunView` would be a database call inside a pure
   // function, and the same camera appears in two viewers' payloads.
-  const devices = await deviceViewsOf(deps, campaignId, architecture, runtime, gm, {
-    disarmed: await disarmedZoneDevicesOf(prisma, row.architecture.id),
-  });
+  const devices = await deviceViewsOf(
+    deps,
+    campaignId,
+    architecture,
+    runtime,
+    gm,
+    await zoneDevicesOf(prisma, row.architecture.id),
+  );
   const combatRow = await prisma.combat.findUnique({
     where: { sceneId: row.token.sceneId },
     select: { round: true },
@@ -379,7 +384,7 @@ async function deviceViewsOf(
   architecture: CpredNetArchitecture,
   runtime: CpredNetRuntime,
   gm: boolean,
-  options: { disarmed?: ReadonlySet<string> } = {},
+  options: { disarmed?: ReadonlySet<string>; zoneOf?: ReadonlyMap<string, number> } = {},
 ): Promise<Map<string, NetDeviceView[]>> {
   const byFloor = new Map<string, NetDeviceView[]>();
   const placed = await devicePlacesOf(deps.ctx.prisma, campaignId, architecture);
@@ -393,11 +398,17 @@ async function deviceViewsOf(
           : undefined;
         const detail = entry && isNetDefenseEntry(entry) ? describeNetDefense(entry) : '';
         const place = device.tokenId ? placed.get(device.tokenId) : undefined;
-        const view = netDeviceView(device, netDeviceStateOf(runtime.devices, device.id), {
-          gm,
-          ...(detail ? { detail } : {}),
-          ...(place ? { at: place.at, facing: place.facing } : {}),
-        });
+        const zoneId = options.zoneOf?.get(device.id);
+        const view = {
+          ...netDeviceView(device, netDeviceStateOf(runtime.devices, device.id), {
+            gm,
+            ...(detail ? { detail } : {}),
+            ...(place ? { at: place.at, facing: place.facing } : {}),
+          }),
+          // Strefa na mapie, którą to urządzenie przełącza (70d) — okienko strefy
+          // daje netrunnerowi trzymającemu węzeł „Wyłącz / Włącz”.
+          ...(zoneId !== undefined ? { zoneId } : {}),
+        };
         // Strefa rozbrojona na miejscu (Test albo przełącznik MG) nie strzeli,
         // co by węzeł nie mówił — „Wyłącz” przy niej kłamał (66e, pkt 27).
         // Z Sieci się jej nie uzbroi z powrotem: to decyzja MG.
@@ -414,18 +425,27 @@ async function deviceViewsOf(
 }
 
 /**
- * Urządzenia węzła, za którymi stoi strefa obronna rozbrojona na mapie
- * (`armed = false`) — ręką gracza albo przełącznikiem MG (66e, pkt 27).
+ * Strefy obronne związane z urządzeniami tej Architektury (#33, od 70d także
+ * Sieć ze sceny): `zoneOf` — które urządzenie przełącza którą strefę (okienko
+ * strefy u netrunnera), `disarmed` — urządzenia, za którymi stoi strefa
+ * rozbrojona na mapie (`armed = false`), ręką gracza albo MG (66e, pkt 27).
  */
-async function disarmedZoneDevicesOf(
+async function zoneDevicesOf(
   prisma: PrismaClient,
   architectureId: string,
-): Promise<Set<string>> {
+): Promise<{ disarmed: Set<string>; zoneOf: Map<string, number> }> {
   const rows = await prisma.defenseZone.findMany({
-    where: { architectureId, armed: false, deviceId: { not: null } },
-    select: { deviceId: true },
+    where: { architectureId, deviceId: { not: null } },
+    select: { id: true, deviceId: true, armed: true },
   });
-  return new Set(rows.flatMap((row) => (row.deviceId ? [row.deviceId] : [])));
+  const disarmed = new Set<string>();
+  const zoneOf = new Map<string, number>();
+  for (const row of rows) {
+    if (!row.deviceId) continue;
+    zoneOf.set(row.deviceId, row.id);
+    if (!row.armed) disarmed.add(row.deviceId);
+  }
+  return { disarmed, zoneOf };
 }
 
 /**

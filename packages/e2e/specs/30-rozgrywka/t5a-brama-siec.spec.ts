@@ -4,6 +4,7 @@ import { query, queryOne, stateFingerprint } from '../../fixtures/db.ts';
 import {
   architecture,
   createBot,
+  drawGuardArea,
   drawZone,
   figureOf,
   openZoneCard,
@@ -356,11 +357,29 @@ test.describe.serial('T5a: „Brama” — przygotowanie, wejście przez bramę,
 
   test('przygotowanie: strefy — ostrzał wieżyczki i podłoga elektryczna, obie ukryte', async () => {
     const page = mg.page;
-    const turretZone = await drawZone(
+    // Etap 70d: strefę wieżyczki rysuje się od figury („Obszar straży” w menu)
+    // — narzędzie stref ma już same systemy środowiskowe. Figura jest od razu
+    // stanowiskiem, a obszar startuje ukryty.
+    // Od 70d wieżyczka to figura urządzenia: ikona z „🖼 Zmień grafikę…”.
+    const turretAt = tokenCentre(tokenOn(bramaId, 'Wieżyczka'), sceneByName('Brama').gridSizePx);
+    await clickOnMap(page, turretAt, 'right');
+    await page.getByRole('button', { name: '🖼 Zmień grafikę…' }).click();
+    await page.locator('button[title="Ikona urządzenia: Wieżyczka"]').click();
+    await expect
+      .poll(
+        () =>
+          queryOne<{ glyph: string | null }>(
+            'SELECT glyph FROM Token WHERE id = ?',
+            tokenOn(bramaId, 'Wieżyczka').id,
+          )?.glyph,
+      )
+      .toBe('turret');
+    await page.keyboard.press('Escape');
+    const turret = tokenOn(bramaId, 'Wieżyczka');
+    const turretZone = await drawGuardArea(
       page,
       bramaId,
-      'Automatyczna wieżyczka',
-      true,
+      turretAt,
       BRAMA.turretZone.from,
       BRAMA.turretZone.to,
     );
@@ -383,23 +402,13 @@ test.describe.serial('T5a: „Brama” — przygotowanie, wejście przez bramę,
       1,
     ]);
 
-    // Stanowisko strefy wieżyczki: figura, z której strzela (26f).
+    // Stanowisko strefy wieżyczki: figura, z której strzela (26f; od 70d — od razu).
+    expect(turretZone.tokenId).toBe(turret.id);
     const centreOf = (zone: { from: WorldPoint; to: WorldPoint }) => ({
       x: (zone.from.x + zone.to.x) / 2,
       y: (zone.from.y + zone.to.y) / 2,
     });
-    let card = await openZoneCard(page, centreOf(BRAMA.turretZone));
-    await card
-      .locator('label', { hasText: 'Stanowisko' })
-      .locator('select')
-      .selectOption({ label: 'Wieżyczka' });
-    await expect
-      .poll(() => zonesOn(bramaId).find((z) => z.id === turretZone.id)?.tokenId)
-      .toBe(tokenOn(bramaId, 'Wieżyczka').id);
-    await page.keyboard.press('Escape');
-    await page.keyboard.press('Escape');
-
-    card = await openZoneCard(page, centreOf(BRAMA.floorZone));
+    const card = await openZoneCard(page, centreOf(BRAMA.floorZone));
     const notes = card.locator('label', { hasText: 'Notatka MG' }).locator('textarea');
     await notes.fill(`Prąd z budki. ${fromPlayers.secret('notatka-strefy')}`);
     await notes.press('Tab');

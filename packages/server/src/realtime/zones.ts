@@ -7,6 +7,7 @@ import type {
   DefenseZoneDeletePayload,
   DefenseZoneDisarmPayload,
   DefenseZoneDisarmResult,
+  DefenseZoneFigurePayload,
   DefenseZoneFirePayload,
   DefenseZoneUpdatePayload,
   DefenseZoneView,
@@ -32,8 +33,12 @@ import {
   isPointInRect,
   metresPerPixel,
   netDefenseActs,
+  netDefenseFigureGlyph,
   netDefenseTrigger,
   netDeviceStateOf,
+  netSceneZoneDeviceId,
+  NET_SCENE_ZONE_DEVICE_PREFIX,
+  snapTokenPosition,
   readNetRuntime,
   sanitizeZoneName,
   sanitizeZoneRect,
@@ -45,6 +50,7 @@ import {
   rectSeenFrom,
   zoneWithinReachOfPath,
 } from '@vtt/shared';
+import type { NetDefenseKind } from '@vtt/shared';
 import type { DefenseZone as ZoneRow, Scene, Token } from '../generated/prisma/client.js';
 import { SHEET_SLOWED_STATUS_ID, writeSheetStatusData } from '../sheets.js';
 import { buildCompendiumSync } from './compendium.js';
@@ -59,7 +65,8 @@ import { rememberDeletion, scalarRow } from './undo-buffer.js';
 import { emitCombatOfScene, loadCombat } from './combat.js';
 import { requireCampaignScene, toSceneView } from './scenes.js';
 import { fetchSightBlockers } from './walls-io.js';
-import { emitTokensById } from './tokens.js';
+import { emitTokenUpsert, emitTokensById, toSnapScene } from './tokens.js';
+import { adoptSceneDeviceLive, releaseSceneDevice } from './net-scene.js';
 import { createCheckCall, type CheckFrame } from './checks.js';
 import { campaignGmUser } from './campaign-gm.js';
 import { toSessionUser } from '../auth/sessions.js';
@@ -153,6 +160,7 @@ export function zoneProfileOf(
   entryId: string,
 ):
   | (ZoneProfile & {
+      defenseKind: NetDefenseKind;
       spotDv: number | undefined;
       hp: number | undefined;
       disableDv: number | undefined;
@@ -163,6 +171,7 @@ export function zoneProfileOf(
   if (!entry || !isNetDefenseEntry(entry)) return null;
   return {
     name: entry.name,
+    defenseKind: entry.defenseKind,
     effects: entry.effects,
     combatValue: entry.combatValue,
     spotDv: entry.spotDv,
@@ -200,6 +209,10 @@ export const zoneCreateEvent = defineEvent<DefenseZoneCreatePayload, DefenseZone
     const spotDv = zoneDvOf(payload.spotDv);
     const disarmDv = zoneDvOf(payload.disarmDv);
 
+    // Obszar straży figury urządzenia (etap 70d): prostokąt rysuje się z menu
+    // wieżyczki albo drona, a strefa od razu strzela z tej figury.
+    const guard = await guardFigureOf(deps, scene.id, payload.tokenId);
+
     // A system with a Perception DV is a trap and starts hidden; a turret bolted
     // to the ceiling is a machine everybody can see. The GM's toggle overrides
     // both, which is why the default is only a default.
@@ -216,13 +229,21 @@ export const zoneCreateEvent = defineEvent<DefenseZoneCreatePayload, DefenseZone
         name: sanitizeZoneName(payload.name) ?? profile.name,
         ...rect,
         hidden,
-        hpMax: hp,
-        hpCurrent: hp,
+        // PW obszaru straży liczy figura (etap 51) — do niej się strzela.
+        hpMax: guard ? 0 : hp,
+        hpCurrent: guard ? 0 : hp,
         spotDv,
         disarmDv,
+        ...(guard ? { tokenId: guard.id } : {}),
       },
     });
+    if (guard) await giveFigureEntryHp(deps, campaignId, scene, guard, hp);
     await emitZones(deps, campaignId, scene.id);
+    // System środowiskowy wchodzi do Sieci ze sceny sam (70d) — od razu, gdy
+    // na scenie trwa run.
+    if (!guard && profile.defenseKind === 'environment') {
+      await adoptSceneDeviceLive(deps, campaignId, scene.id);
+    }
     return toZoneView(created, true, false);
   },
 });
@@ -300,6 +321,11 @@ export const zoneUpdateEvent = defineEvent<DefenseZoneUpdatePayload, DefenseZone
     // PT Percepcji tej strefy (23.10) — null wraca do PT wpisu.
     if (patch.spotDv !== undefined) data.spotDv = zoneDvOf(patch.spotDv);
     if (patch.resetDisarmTries === true) data.disarmTried = '[]';
+    // „Poza Siecią” (etap 70d): strefa schodzi z Sieci ze sceny albo do niej wraca.
+    if (patch.netExcluded !== undefined) {
+      if (typeof patch.netExcluded !== 'boolean') throw new RealtimeError('BAD_REQUEST');
+      data.netExcluded = patch.netExcluded;
+    }
 
     if (Object.keys(data).length === 0) return toZoneView(row, true, false);
     const updated = await deps.ctx.prisma.defenseZone.update({ where: { id: row.id }, data });
@@ -309,6 +335,16 @@ export const zoneUpdateEvent = defineEvent<DefenseZoneUpdatePayload, DefenseZone
     if (!updated.armed || dead) await dropZoneFromQueue(deps, campaignId, row.sceneId, row.id);
     if (dead && row.hpCurrent > 0) {
       await releaseDrainOnDestroyed(deps, campaignId, row.sceneId, row.id);
+    }
+    if (updated.netExcluded && !row.netExcluded) {
+      await releaseSceneDevice(
+        deps,
+        campaignId,
+        sceneZoneDevice(row) ?? netSceneZoneDeviceId(row.id),
+        row.id,
+      );
+    } else if (!updated.netExcluded && row.netExcluded) {
+      await adoptSceneDeviceLive(deps, campaignId, row.sceneId);
     }
     return toZoneView(updated, true, false);
   },
@@ -330,6 +366,8 @@ export const zoneDeleteEvent = defineEvent<DefenseZoneDeletePayload>({
     await deps.ctx.prisma.defenseZone.delete({ where: { id: row.id } });
     await emitZones(deps, campaignId, row.sceneId);
     await dropZoneFromQueue(deps, campaignId, row.sceneId, row.id);
+    const device = sceneZoneDevice(row);
+    if (device) await releaseSceneDevice(deps, campaignId, device);
   },
 });
 
@@ -357,8 +395,111 @@ export const zoneClearEvent = defineEvent<DefenseZoneClearPayload>({
       scene,
       doomed.map((z) => z.id),
     );
+    for (const zone of doomed) {
+      const device = sceneZoneDevice(zone);
+      if (device) await releaseSceneDevice(deps, campaignId, device);
+    }
   },
 });
+
+/**
+ * „Postaw figurę urządzenia” (etap 70d) na starej strefie drona albo
+ * stanowiska, na której nic nie stoi: figura z ikoną (`netDefenseFigureGlyph`)
+ * staje na środku strefy, strefa ją przypina, a PW strefy przechodzą na figurę
+ * — od 70d urządzenie to zawsze figura, a prostokąt to jej obszar straży.
+ */
+export const zoneFigureEvent = defineEvent<DefenseZoneFigurePayload, DefenseZoneView>({
+  name: 'zone:figure',
+  role: ROLE_GM,
+  handler: async ({ deps, socket, payload }) => {
+    const campaignId = requireCampaignId(socket.data);
+    const row = await requireCampaignZone(deps, campaignId, payload?.zoneId);
+    if (row.tokenId) throw new RealtimeError('ZONE_HAS_FIGURE');
+    const { entries } = await buildCompendiumSync(deps, campaignId);
+    const profile = zoneProfileOf(entries, row.entryId);
+    if (!profile) throw new RealtimeError('ZONE_UNKNOWN_ENTRY');
+    const glyph = netDefenseFigureGlyph({ defenseKind: profile.defenseKind, name: profile.name });
+    if (!glyph) throw new RealtimeError('ZONE_NO_FIGURE_KIND');
+
+    const scene = row.scene;
+    const hp = row.hpMax > 0 ? { current: row.hpCurrent, max: row.hpMax } : null;
+    const entryHp = profile.hp ?? 0;
+    const bodyPoints = hp ?? (entryHp > 0 ? { current: entryHp, max: entryHp } : null);
+    const { x, y } = snapTokenPosition(
+      row.x + row.width / 2 - scene.gridSizePx / 2,
+      row.y + row.height / 2 - scene.gridSizePx / 2,
+      1,
+      toSnapScene(scene),
+    );
+    const token = await deps.ctx.prisma.token.create({
+      data: {
+        sceneId: scene.id,
+        name: row.name,
+        glyph,
+        x,
+        y,
+        size: 1,
+        hidden: row.hidden,
+        hpCurrent: bodyPoints?.current ?? null,
+        hpMax: bodyPoints?.max ?? null,
+      },
+    });
+    const updated = await deps.ctx.prisma.defenseZone.update({
+      where: { id: row.id },
+      data: { tokenId: token.id, hpMax: 0, hpCurrent: 0 },
+    });
+    await emitTokenUpsert(deps, campaignId, scene, token, null);
+    await emitZones(deps, campaignId, row.sceneId);
+    await adoptSceneDeviceLive(deps, campaignId, scene.id, glyph);
+    return toZoneView(updated, true, false);
+  },
+});
+
+/**
+ * Urządzenie Sieci ze sceny, które wiąże tę strefę (70d) — id `zone-…`. Po
+ * wczytaniu kampanii strefa ma nowy numer, a urządzenie stary, więc liczy się
+ * przedrostek, nie równość z `netSceneZoneDeviceId(row.id)`. Urządzenia z edytora
+ * MG (#33) mają inne id i zostają w spokoju.
+ */
+function sceneZoneDevice(row: Pick<ZoneRow, 'deviceId'>): string | null {
+  return row.deviceId?.startsWith(NET_SCENE_ZONE_DEVICE_PREFIX) ? row.deviceId : null;
+}
+
+/**
+ * Figura, której obszar straży MG rysuje (`zone:create` z `tokenId`, 70d) —
+ * na tej samej scenie, bez karty pojemnika. Brak pola — zwykła strefa.
+ */
+async function guardFigureOf(
+  deps: RealtimeDeps,
+  sceneId: string,
+  raw: unknown,
+): Promise<Token | null> {
+  if (raw === undefined || raw === null) return null;
+  if (typeof raw !== 'string') throw new RealtimeError('BAD_REQUEST');
+  const token = await deps.ctx.prisma.token.findUnique({ where: { id: raw } });
+  if (!token || token.sceneId !== sceneId) throw new RealtimeError('TOKEN_NOT_FOUND');
+  return token;
+}
+
+/**
+ * Figura obszaru straży bez żadnych PW dostaje PW wpisu (70d) — od 51 to ona
+ * jest celem i to jej PW mówią, czy stanowisko stoi. Figura z kartą albo
+ * z własnym paskiem zostaje przy swoich.
+ */
+async function giveFigureEntryHp(
+  deps: RealtimeDeps,
+  campaignId: string,
+  scene: Scene,
+  token: Token,
+  hp: number,
+): Promise<void> {
+  if (hp <= 0 || token.characterId || token.hpMax !== null) return;
+  const updated = await deps.ctx.prisma.token.update({
+    where: { id: token.id },
+    data: { hpCurrent: hp, hpMax: hp },
+  });
+  await emitTokenUpsert(deps, campaignId, scene, updated, null);
+}
 
 /**
  * „Odpal system" and „Tura systemu" — the GM's own hand on the trigger.

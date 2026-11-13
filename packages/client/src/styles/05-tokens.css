@@ -624,3 +624,31 @@
   font-size: 0.8rem;
   color: var(--text-dim);
 }
+
+/* „Obszar straży” figury urządzenia w menu MG (etap 70d): wybór wpisu, PT
+   i jeden przycisk — wcięty pod pozycją, którą otwiera, jak wyrzutnia ataku. */
+.guard-area {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  margin: 0.15rem 0.5rem 0.35rem;
+}
+
+.guard-area .zone-picker-button {
+  min-width: 0;
+  max-width: none;
+}
+
+.guard-area .placeholder-text {
+  margin: 0;
+}
+
+.guard-area-dv {
+  display: flex;
+  gap: 0.4rem;
+  align-items: center;
+}
+
+.guard-area-dv .map-tool-number {
+  width: 4rem;
+}

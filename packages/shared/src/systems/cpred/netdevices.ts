@@ -743,6 +743,12 @@ export interface NetDeviceView {
   facing?: number;
   /** Set when the device opens a door or window of stage 18d. */
   wallId?: number;
+  /**
+   * The defended zone on the map this device switches (stage 70d) — the zone's
+   * popup offers „Wyłącz / Włącz" to the netrunner holding the node. Sent with
+   * the device list, so only once the node has been taken.
+   */
+  zoneId?: number;
   /** Effect line off the catalogue entry, when the GM picked one. */
   detail?: string;
   notes?: string;

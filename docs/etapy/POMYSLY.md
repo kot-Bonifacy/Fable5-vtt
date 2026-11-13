@@ -1,5 +1,14 @@
 # Pomysły poza zakresem etapów
 
+**13.11.2026 (etap 70d, obszar straży i okienko strefy) — czego jeszcze nie ma.** (1) **Broń
+z wpisu systemu obronnego** — tabela s. 213–214 opisuje lufę zdaniem („zwykle jedną
+z poniższych”), więc wpis daje figurze Wartość bojową, RUCH i PW, a broń MG ustawia w „Edytuj…”;
+pomogłoby pole „broń domyślna” w danych kompendium i wybór lufy w panelu „Obszar straży”.
+(2) **PT rozbrojenia w panelu obszaru straży** (dziś tylko PT zauważenia; rozbrojenie zmienia się
+na karcie strefy). (3) **Okienko strefy u MG** — MG przestawia planszę bez pytania, ale klik
+w strefę mógłby dawać mu jej skróty (Uzbrój, Odpal system). (4) **Planer omijający znane strefy**
+(druga połowa propozycji z 66e pkt 3) — dziś okienko pyta, a trasa idzie prosto.
+
 **13.11.2026 (etap 70c, pasek „Oczy i urządzenia”) — czego pasek jeszcze nie robi.** (1) **Kadr
 przy krawędzi sceny** — `showNetDevice` nie wyjeżdża poza brzeg mapy, więc urządzenie w pasie
 pod oknem SIEĆ przy prawej krawędzi zostaje pod oknem; pomógłby chwilowy luz kamery albo kadr,

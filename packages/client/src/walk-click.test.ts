@@ -89,7 +89,9 @@ describe('gest marszu w rendererze (etap 54)', () => {
   });
 
   it('klik planuje trasę sam, zamiast brać ją z podglądu', () => {
-    const walkTo = blockAfter('private walkTo(worldX: number, worldY: number): void {');
+    const walkTo = blockAfter(
+      'private walkTo(worldX: number, worldY: number, options?: WalkClickOptions): void {',
+    );
     expect(walkTo).toContain('this.planWalkRoute(goal)');
     expect(walkTo).toContain('walkClickNeedsConfirm(');
   });

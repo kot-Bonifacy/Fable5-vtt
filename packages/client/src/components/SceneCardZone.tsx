@@ -9,12 +9,19 @@ import {
   isNetDefenseEntry,
   isPointInZone,
   netDefenseActs,
+  netDefenseFigureGlyph,
   netDefenseTrigger,
   NET_DEFENSE_TRIGGER_LABELS,
   tokenCentre,
   type DefenseZoneView,
 } from '@vtt/shared';
-import { fetchNetArchitecture, fetchNetArchitectures, fireZone, updateZone } from '../socket.js';
+import {
+  fetchNetArchitecture,
+  fetchNetArchitectures,
+  fireZone,
+  updateZone,
+  zoneFigure,
+} from '../socket.js';
 import { useAuthStore } from '../stores/authStore.js';
 import { useCharacterStore } from '../stores/characterStore.js';
 import { useCompendiumStore } from '../stores/compendiumStore.js';
@@ -131,6 +138,14 @@ export function SceneCardZone({ zone }: { zone: DefenseZoneView }) {
     noteAck('net', ack, netErrorText);
   }
 
+  /** „Postaw figurę urządzenia” (70d): figura na środku strefy, PW przechodzą na nią. */
+  async function placeFigure() {
+    setBusy(true);
+    const ack = await zoneFigure(zone.id);
+    setBusy(false);
+    noteAck('net', ack, netErrorText);
+  }
+
   async function fire() {
     setBusy(true);
     const ack = await fireZone(zone.id);
@@ -204,8 +219,8 @@ export function SceneCardZone({ zone }: { zone: DefenseZoneView }) {
       {profile?.defenseKind === 'drone' && !netDefenseActs(effects) && (
         <p className="placeholder-text">
           Dron nie atakuje sam — działa tylko, gdy jego węzeł kontrolny obsługuje Demon albo steruje
-          nim netrunner (s. 213). Postaw figurę z ikoną drona i podepnij ją do węzła kontrolnego
-          Architektury z Demonem; bez tego rozstrzygasz drona ręcznie.
+          nim netrunner (s. 213). Figura drona sama wchodzi do Sieci sceny; bez Demona i netrunnera
+          rozstrzygasz drona ręcznie.
         </p>
       )}
       {profile && profile.defenseKind !== 'drone' && !netDefenseActs(effects) && (
@@ -255,6 +270,20 @@ export function SceneCardZone({ zone }: { zone: DefenseZoneView }) {
 
       {/* Pole stanowiska tylko tam, gdzie coś strzela (etap 51) — ślizgawce
           i podłodze nie ma kogo przypiąć. Stara wiązka zostaje widoczna. */}
+      {/* Etap 70d: dron i stanowisko to figura — stara strefa bez niej dostaje
+          ją jednym kliknięciem, a prostokąt zostaje jej obszarem straży. */}
+      {profile && !zone.tokenId && netDefenseFigureGlyph(profile) && (
+        <button
+          type="button"
+          className="small-button"
+          title="Stawia figurę urządzenia na środku strefy i przypina ją: PW strefy przechodzą na figurę, a strefa zostaje jej obszarem straży. Broń figury ustawiasz w „Edytuj…”"
+          disabled={busy}
+          onClick={() => void placeFigure()}
+        >
+          Postaw figurę urządzenia
+        </button>
+      )}
+
       {(effects?.fires || zone.tokenId) && (
         <label className="bot-field">
           <span className="auth-label">Stanowisko (żeton, który strzela)</span>
@@ -270,6 +299,22 @@ export function SceneCardZone({ zone }: { zone: DefenseZoneView }) {
               </option>
             ))}
           </select>
+        </label>
+      )}
+
+      {/* „Poza Siecią” (70d): system środowiskowy sam wchodzi do Sieci ze sceny. */}
+      {profile?.defenseKind === 'environment' && (
+        <label
+          className="bot-checkbox"
+          title="Bez tego system wchodzi sam do węzła „Instalacje” Sieci tej sceny, a netrunner, który go przejmie, wyłącza go klikiem w strefę"
+        >
+          <input
+            type="checkbox"
+            checked={zone.netExcluded === true}
+            disabled={busy}
+            onChange={(event) => void patch({ netExcluded: event.target.checked })}
+          />
+          Poza Siecią
         </label>
       )}
 

@@ -2,7 +2,7 @@
 
 **Faza:** przed betą (zlecenie MG z 11.11 spoza planu) · **Wymaga etapów:** 26a–26f (Sieć),
 51 i 58 (strefy), 62 (Sieć ze sceny), 69 (lewa belka) · **Status:** 🟨 realizacja w sześciu
-sesjach (70a–70f); 70a ✅ 12.11, 70b ✅ 13.11, 70c ✅ 13.11
+sesjach (70a–70f); 70a ✅ 12.11, 70b ✅ 13.11, 70c ✅ 13.11, 70d ✅ 13.11
 
 ## Skąd ten etap
 
@@ -407,18 +407,48 @@ między trzema oczami i wraca na postać.
 
 ### 70d — Edycja mapy, strefy, Sieć ze sceny
 
-- [ ] Karta figury urządzenia: „Obszar straży”; narzędzie „Strefa” tylko środowiskowe; „Postaw
+- [x] Karta figury urządzenia: „Obszar straży”; narzędzie „Strefa” tylko środowiskowe; „Postaw
       figurę urządzenia” na starej strefie; „Sterowane z Sieci” na karcie otworu (migracja)
-- [ ] `netscene.ts`: grupy węzłów, strefy i drzwi jako urządzenia sceny, `netAdoptSceneDevices`
+- [x] `netscene.ts`: grupy węzłów, strefy i drzwi jako urządzenia sceny, `netAdoptSceneDevices`
       wg grupy; `adoptSceneDeviceLive` dla nowej strefy i przełączonych drzwi
-- [ ] Okienko strefy u gracza z „Wyłącz / Włącz” netrunnera
-- [ ] Wpisy w `decyzje-i-uproszczenia.md`: lista urządzeń dopiero na węźle, węzły wg rodzaju
-- [ ] Testy: `netscene.test.ts` (shared), `net-scene.test.ts`, `zones.test.ts` (serwer), E2E
+- [x] Okienko strefy u gracza z „Wyłącz / Włącz” netrunnera
+- [x] Wpisy w `decyzje-i-uproszczenia.md`: lista urządzeń dopiero na węźle, węzły wg rodzaju
+- [x] Testy: `netscene.test.ts` (shared), `net-scene.test.ts`, `zones.test.ts` (serwer), E2E
       `t70d-edycja-straz-strefy`; wzorce scen w kopii kampanii (`archive`)
 
 **Kryteria ukończenia:** MG stawia wieżyczkę z obszarem straży i podłogę elektryczną bez
 otwierania edytora Architektury; netrunner z gniazda bez Architektury przechodzi trzy węzły,
 wyłącza podłogę klikiem w strefę i otwiera drzwi; stara scena „Brama” z T5 działa bez zmian.
+
+**Zrobione 13.11.2026 (migracja `20261113180000_net_scene_installations`). Odstępstwa od
+projektu:**
+
+- **Strefy i drzwi dochodzą same tylko do Sieci złożonej ze sceny** (`netIsSceneArchitecture`),
+  nie do Architektury z edytora — tam wiąże je karta strefy (#33) i urządzenie „Drzwi lub
+  winda”. Projekt nie rozróżniał; bez tego „Brama” z T5 dostałaby przy następnym podłączeniu
+  podłogę do węzła wieżyczki i przestałaby „działać bez zmian”. Figury z ikoną dochodzą do
+  Architektury MG jak w 62, ale do węzła swojej grupy (pierwszy z miejscem bez cudzej grupy).
+- **„Karta figury urządzenia” to menu figury MG** („🛡 Obszar straży…” przy ikonie wieżyczki,
+  drona, drona naziemnego i robota), nie okno „Edycja tokenu” — prostokąt rysuje się na mapie,
+  a okno edycji jest modalne. **Wpis nie daje figurze broni** — w danych kompendium broń jest
+  zdaniem opisu (pomysł w `POMYSLY.md`); PW wpisu dostaje figura bez paska PW, RUCH i Wartość
+  bojową czyta się z wpisu obszaru jak od 70b/70c.
+- **Scena bez urządzeń to samo wejście** — projekt mówi „węzeł tylko z urządzeniem”; wcześniej
+  pusty węzeł kontrolny. Urządzenie dołożone w trakcie runu dostaje nowy węzeł swojej grupy na
+  dole trzonu.
+- **„Poza Siecią” to kolumna `DefenseZone.netExcluded`** w tej samej migracji co
+  `Wall.netControlled` (rozstrzygnięcie nr 7 jej potrzebowało, projekt wymieniał jedną kolumnę).
+- **Odhaczenie drzwi, „Poza Siecią”, skasowanie strefy albo ściany zdejmuje urządzenie z węzła**
+  (`releaseSceneDevice`), węzeł zostaje — pozycje pięter trwających runów liczą się od jego miejsca.
+- **Okienko strefy pyta też przed odmową marszu** (cudza tura, podłączony netrunner) — „Rozbrój”
+  i „Wyłącz” tury nie potrzebują; „Wejdź mimo to” kończy się wtedy zwykłą odmową.
+- **E2E `t70d`**: gniazdo, drzwi i kamerę stawia surowe gniazdo MG (ich UI sprawdzają T5a i T3);
+  dochodzi kamera, żeby Sieć miała trzy węzły z kryterium. Krok 5 („stara strefa z »Bramy«”) to
+  stara strefa drona naziemnego bez figury na tej samej scenie — spec startuje z `po-T6`, nie
+  z `po-T5a`. Strzał starej wieżyczki „Bramy” pilnuje T5b (gateway) i `zones.test.ts`.
+- **T5a**: wieżyczka „Bramy” dostaje ikonę („🖼 Zmień grafikę…” → „Wieżyczka”) i obszar straży
+  z menu figury zamiast strefy z narzędzia i pola „Stanowisko”. Szablony scen (`scene.json`) nie
+  znają jeszcze `netControlled` / „Poza Siecią” — dojdzie z wzorcami w 70f.
 
 ### 70e — Automat LOD-u i Demona
 

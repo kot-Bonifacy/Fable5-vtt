@@ -181,6 +181,19 @@ export function SceneCardWall({ wall }: { wall: WallView }) {
               ? 'Gracz widzi klamkę i sięga po nią z odległości ramienia.'
               : 'Otwór jest twój: gracze go nie dostają, dopóki tego nie odklikniesz.'}
           </p>
+          {/* Etap 70d: otwór jako urządzenie Sieci ze sceny (węzeł „Instalacje”). */}
+          <label
+            className="bot-checkbox"
+            title="Netrunner, który przejmie węzeł „Instalacje” Sieci tej sceny, otwiera i zamyka ten otwór z paska urządzeń — także zaryglowany. Działa w Sieci złożonej ze sceny; w Architekturze z edytora drzwi wskazuje urządzenie „Drzwi lub winda”."
+          >
+            <input
+              type="checkbox"
+              checked={wall.netControlled === true}
+              disabled={busy}
+              onChange={(event) => void patch({ netControlled: event.target.checked })}
+            />
+            Sterowane z Sieci
+          </label>
 
           <div className="net-generator-foot">
             <button

@@ -1065,6 +1065,115 @@ describe('defended zones on a scene', () => {
     await walk(player, runnerTokenId, 0, 1250);
   });
 
+  it('a guard area drawn from a turret figure fires from it and keeps PW on it (70d)', async () => {
+    const turretTokenId = data(
+      await emitAck<TokenView>(gm, 'token:create', {
+        sceneId,
+        name: 'Wieżyczka nad drzwiami',
+        x: 70 * PX_PER_M,
+        y: 1600,
+        glyph: 'turret',
+      }),
+      'token:create (wieżyczka z ikoną)',
+    ).id;
+    // Figura spoza sceny (albo nieistniejąca) nie dostaje obszaru.
+    const stray = await emitAck(gm, 'zone:create', {
+      sceneId,
+      entryId: 'defense.automatyczna-wiezyczka',
+      x: 66 * PX_PER_M,
+      y: 1200,
+      width: 6 * PX_PER_M,
+      height: 4 * PX_PER_M,
+      tokenId: 'nie-ma-takiej',
+    });
+    expect(stray).toMatchObject({ ok: false, error: 'TOKEN_NOT_FOUND' });
+
+    const guard = data(
+      await emitAck<DefenseZoneView>(gm, 'zone:create', {
+        sceneId,
+        entryId: 'defense.automatyczna-wiezyczka',
+        x: 66 * PX_PER_M,
+        y: 1200,
+        width: 6 * PX_PER_M,
+        height: 4 * PX_PER_M,
+        tokenId: turretTokenId,
+        hidden: true,
+      }),
+      'zone:create (obszar straży)',
+    );
+    expect(guard).toMatchObject({ tokenId: turretTokenId, hpMax: 0, hpCurrent: 0, hidden: true });
+    // Figura bez paska PW dostaje PW wpisu — to ona jest celem.
+    const turret = (await roundTrip(gm)).tokens.find((token) => token.id === turretTokenId);
+    expect(turret?.hp).toEqual({ current: 25, max: 25 });
+    // Gracz nie dostaje obszaru (ukryty, wieżyczka nie ma PT zauważenia).
+    expect((await roundTrip(player)).zones.map((zone) => zone.id)).not.toContain(guard.id);
+    await emitAck(gm, 'zone:delete', { zoneId: guard.id });
+    await emitAck(gm, 'token:delete', { tokenId: turretTokenId });
+  });
+
+  it('„Postaw figurę urządzenia” stands a turret in the middle of an old zone (70d)', async () => {
+    const old = data(
+      await emitAck<DefenseZoneView>(gm, 'zone:create', {
+        sceneId,
+        entryId: 'defense.automatyczna-wiezyczka',
+        x: 40 * PX_PER_M,
+        y: 1200,
+        width: 6 * PX_PER_M,
+        height: 4 * PX_PER_M,
+        hidden: false,
+      }),
+      'zone:create (stara strefa stanowiska)',
+    );
+    expect(old.hpMax).toBe(25);
+    await emitAck(gm, 'zone:update', { zoneId: old.id, patch: { hpCurrent: 18 } });
+
+    const placed = data(
+      await emitAck<DefenseZoneView>(gm, 'zone:figure', { zoneId: old.id }),
+      'zone:figure',
+    );
+    expect(placed).toMatchObject({ hpMax: 0, hpCurrent: 0 });
+    const figure = (await roundTrip(gm)).tokens.find((token) => token.id === placed.tokenId);
+    // PW przechodzą ze strefy na figurę, która staje na środku prostokąta.
+    expect(figure).toMatchObject({ glyph: 'turret', hp: { current: 18, max: 25 } });
+    const half = 100 / 2;
+    expect(figure!.x + half).toBeGreaterThanOrEqual(40 * PX_PER_M);
+    expect(figure!.x + half).toBeLessThanOrEqual(46 * PX_PER_M);
+
+    expect(await emitAck(gm, 'zone:figure', { zoneId: old.id })).toMatchObject({
+      ok: false,
+      error: 'ZONE_HAS_FIGURE',
+    });
+    expect(await emitAck(gm, 'zone:figure', { zoneId: floorZoneId })).toMatchObject({
+      ok: false,
+      error: 'ZONE_NO_FIGURE_KIND',
+    });
+    expect(await emitAck(player, 'zone:figure', { zoneId: old.id })).toMatchObject({ ok: false });
+    await emitAck(gm, 'zone:delete', { zoneId: old.id });
+    await emitAck(gm, 'token:delete', { tokenId: placed.tokenId });
+  });
+
+  it('„Poza Siecią” is the GM’s flag on an environmental zone and never reaches a player (70d)', async () => {
+    const flagged = data(
+      await emitAck<DefenseZoneView>(gm, 'zone:update', {
+        zoneId: floorZoneId,
+        patch: { netExcluded: true },
+      }),
+      'zone:update (poza Siecią)',
+    );
+    expect(flagged.netExcluded).toBe(true);
+    expect(
+      await emitAck(gm, 'zone:update', { zoneId: floorZoneId, patch: { netExcluded: 'tak' } }),
+    ).toMatchObject({ ok: false, error: 'BAD_REQUEST' });
+    await emitAck(gm, 'zone:update', { zoneId: floorZoneId, patch: { hidden: false } });
+    const seen = (await roundTrip(player)).zones.find((zone) => zone.id === floorZoneId);
+    expect(seen).toBeDefined();
+    expect(seen?.netExcluded).toBeUndefined();
+    await emitAck(gm, 'zone:update', {
+      zoneId: floorZoneId,
+      patch: { netExcluded: false, hidden: true },
+    });
+  });
+
   describe('Percepcja w drodze (etap 58a, ukryty rzut od 24.10)', () => {
     // Pusty pas na dole sceny, daleko od stref z poprzednich testów.
     const LANE = 2400;

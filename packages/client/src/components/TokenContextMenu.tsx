@@ -78,6 +78,7 @@ import { useCompendiumStore } from '../stores/compendiumStore.js';
 import { AttackLauncher } from './AttackLauncher.js';
 import { FacedownLauncher } from './FacedownLauncher.js';
 import { TokenImagePicker } from './TokenImagePicker.js';
+import { GuardAreaPanel, hasGuardArea } from './GuardAreaPanel.js';
 import type { TokenMenuState } from './MapArea.js';
 import { NumberStepper } from './NumberStepper.js';
 import { useZoneStore } from '../stores/zoneStore.js';
@@ -1049,6 +1050,7 @@ export function TokenContextMenu({ menu, onClose }: { menu: TokenMenuState; onCl
   const [aiming, setAiming] = useState(false);
   const [staring, setStaring] = useState(false);
   const [picturing, setPicturing] = useState(false);
+  const [guarding, setGuarding] = useState(false);
   const groupIds = useSelectionStore((s) => s.groupIds);
   const steered = useSelectionStore((s) => s.tokenId);
   const fightOn = (combat?.round ?? 0) >= 1;
@@ -1396,6 +1398,19 @@ export function TokenContextMenu({ menu, onClose }: { menu: TokenMenuState; onCl
         <button type="button" className="context-menu-item" onClick={() => setEditing(true)}>
           ✏️ Edytuj…
         </button>
+        {/* Etap 70d: wieżyczka i dron rysują swój obszar straży od figury. */}
+        {hasGuardArea(token.glyph) && (
+          <button
+            type="button"
+            className="context-menu-item"
+            aria-expanded={guarding}
+            title="Prostokąt, na którym figura sama strzela do intruzów, i wpis systemu obronnego z jej liczbami"
+            onClick={() => setGuarding((open) => !open)}
+          >
+            🛡 Obszar straży…
+          </button>
+        )}
+        {guarding && hasGuardArea(token.glyph) && <GuardAreaPanel token={token} onDone={onClose} />}
         <button
           type="button"
           className="context-menu-item"

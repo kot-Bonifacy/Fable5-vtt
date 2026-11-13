@@ -172,6 +172,7 @@ import {
   zoneDeleteEvent,
   zoneDisarmEvent,
   zoneFireEvent,
+  zoneFigureEvent,
   zoneUpdateEvent,
 } from './zones.js';
 import { backupResolveEvent } from './backup.js';
@@ -573,6 +574,7 @@ export const EVENTS: RealtimeEvent<never, unknown>[] = [
   zoneDeleteEvent,
   zoneClearEvent,
   zoneFireEvent,
+  zoneFigureEvent,
   zoneDisarmEvent,
   lightCreateEvent,
   lightUpdateEvent,

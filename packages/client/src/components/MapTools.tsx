@@ -166,7 +166,19 @@ export function MapTools() {
       ),
     [compendiumEntries, compendiumOrder],
   );
-  const zoneEntry = defenseEntries.find((entry) => entry.id === zoneEntryId);
+  // Etap 70d: narzędzie „Strefa” stawia już tylko systemy środowiskowe —
+  // wieżyczka i dron to figura urządzenia z obszarem straży (menu figury).
+  const environmentEntries = useMemo(
+    () => defenseEntries.filter((entry) => entry.defenseKind === 'environment'),
+    [defenseEntries],
+  );
+  const zoneEntry = environmentEntries.find((entry) => entry.id === zoneEntryId);
+  const zoneGuard = useMapToolStore((s) => s.zoneGuard);
+  // Wpis spoza listy (wieżyczka wybrana przed 70d w tej samej karcie) nie
+  // może zostać w ręku niewidoczny — następny prostokąt postawiłby stanowisko.
+  useEffect(() => {
+    if (zoneEntryId && environmentEntries.length > 0 && !zoneEntry) setZoneEntryId('');
+  }, [zoneEntryId, zoneEntry, environmentEntries.length, setZoneEntryId]);
   const netPointArchitectureId = useMapToolStore((s) => s.netPointArchitectureId);
   const setNetPointArchitectureId = useMapToolStore((s) => s.setNetPointArchitectureId);
   const netPointHidden = useMapToolStore((s) => s.netPointHidden);
@@ -922,11 +934,19 @@ export function MapTools() {
         </div>
       )}
 
-      {isGm && tool === 'zone' && (
+      {isGm && tool === 'zone' && zoneGuard && (
+        <div className="map-tool-options" role="group" aria-label="Rysowanie obszaru straży">
+          <span className="map-tool-hint">
+            Obszar straży: „{zoneGuard.name}” — przeciągnij prostokąt na mapie. Esc — odwołaj.
+          </span>
+        </div>
+      )}
+
+      {isGm && tool === 'zone' && !zoneGuard && (
         <div className="map-tool-options" role="group" aria-label="Ustawienia stref bronionych">
           <ZoneSystemPicker
-            entries={defenseEntries}
-            value={zoneEntryId}
+            entries={environmentEntries}
+            value={zoneEntry ? zoneEntryId : ''}
             onChange={setZoneEntryId}
           />
           <button
@@ -990,9 +1010,9 @@ export function MapTools() {
           >
             <IconTrashAll />
           </button>
-          {defenseEntries.length === 0 && (
+          {environmentEntries.length === 0 && (
             <span className="map-tool-hint">
-              Kompendium nie ma wpisów „Obrona Sieci” — zaimportuj rozdział 11
+              Kompendium nie ma systemów środowiskowych „Obrona Sieci” — zaimportuj rozdział 11
             </span>
           )}
         </div>

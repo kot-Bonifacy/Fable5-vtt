@@ -986,6 +986,7 @@ const CASES: Record<string, Case> = {
   'zone:delete': foreign((a) => ({ zoneId: a.zoneId })),
   'zone:clear': foreign((a) => ({ sceneId: a.sceneId })),
   'zone:fire': foreign((a) => ({ zoneId: a.zoneId, tokenId: a.tokenId })),
+  'zone:figure': foreign((a) => ({ zoneId: a.zoneId })),
   'zone:disarm': foreign((a) => ({ zoneId: a.zoneId, characterId: a.characterId })),
 };
 

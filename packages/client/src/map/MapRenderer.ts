@@ -973,6 +973,15 @@ class FootprintPool {
  * Layer order (stage 04): background → grid. Later stages append containers:
  * drawings → tokens → lighting → fog → UI overlay.
  */
+/**
+ * Klik w podłoże (etap 70d): `screen` — gdzie kliknięto (okienko strefy staje
+ * przy kursorze), `zoneWaived` — „Wejdź mimo to” z tego okienka.
+ */
+interface WalkClickOptions {
+  screen?: ScenePoint;
+  zoneWaived?: boolean;
+}
+
 export class MapRenderer {
   /** Reports background loading (preview, bytes so far); null once it is over. */
   onBackgroundLoad: ((load: BackgroundLoad | null) => void) | null = null;
@@ -1053,6 +1062,20 @@ export class MapRenderer {
   onWalkApprove:
     ((tokenId: string, route: ScenePoint[], extra: boolean) => Promise<string | null>) | null =
     null;
+  /**
+   * Okienko strefy (etap 70d): klik w zauważoną strefę (`route` null — przed
+   * odmową i planem) albo trasa przez nią do punktu za nią (`route` — położenia
+   * figury od startu). `true` — `MapArea` otworzyło pytanie i marszu nie ma;
+   * „Wejdź mimo to” wraca przez `walkToWaived`. Mapa nie wie, co to strefa.
+   */
+  onWalkZoneAsk:
+    | ((ask: {
+        tokenId: string;
+        goal: ScenePoint;
+        route: readonly ScenePoint[] | null;
+        screen: ScenePoint | null;
+      }) => boolean)
+    | null = null;
   /**
    * Czy przez tę figurę nie da się przejść (etap 52) — rozstrzyga system gry
    * (leżącego bez przytomności się przekracza). Bez niego: każda figura spoza
@@ -2062,7 +2085,9 @@ export class MapRenderer {
         this.addWalkWaypoint(event.world.x, event.world.y);
         return;
       }
-      this.walkTo(event.world.x, event.world.y);
+      this.walkTo(event.world.x, event.world.y, {
+        screen: { x: pointer.clientX, y: pointer.clientY },
+      });
     });
 
     this.wireRuler(viewport);
@@ -5779,7 +5804,7 @@ export class MapRenderer {
    * rozstrzyga: zielony rusza od razu, bursztyn, szary i mgła wskazują cel,
    * a drugi klik w to samo pole go potwierdza.
    */
-  private walkTo(worldX: number, worldY: number): void {
+  private walkTo(worldX: number, worldY: number, options?: WalkClickOptions): void {
     if (this.march) {
       this.finishMarch('Marsz przerwany.');
       return;
@@ -5788,11 +5813,22 @@ export class MapRenderer {
     const node = this.selectedTokenId ? this.tokenNodes.get(this.selectedTokenId) : undefined;
     const scene = this.scene;
     if (!node || node.destroyed || !scene) return;
+    const goal = { x: worldX, y: worldY };
+    // Etap 70d: klik w zauważoną strefę pyta, zanim cokolwiek odmówi — okienko
+    // daje też „Rozbrój” i przełącznik Sieci, które tury nie potrzebują.
+    const askZone = (route: readonly ScenePoint[] | null) =>
+      options?.zoneWaived !== true &&
+      this.onWalkZoneAsk?.({
+        tokenId: node.tokenId,
+        goal,
+        route,
+        screen: options?.screen ?? null,
+      }) === true;
+    if (askZone(null)) return;
     if (this.walkRefusal) {
       this.onWalkNote?.(this.walkRefusal);
       return;
     }
-    const goal = { x: worldX, y: worldY };
     const cell = scene.grid.sizePx || 1;
     const target = this.walkTarget;
     const confirmed =
@@ -5812,8 +5848,17 @@ export class MapRenderer {
       this.noteWalkConfirm(band);
       return;
     }
+    // Trasa przez zauważoną strefę do punktu za nią pyta tym samym okienkiem.
+    const lane = band === 'extra' ? plan.extraWalk?.points : plan.walkable;
+    if (askZone(lane ?? plan.walkable)) return;
     this.walkTarget = null;
     this.startWalk(node, plan, { extra: band === 'extra' });
+  }
+
+  /** „Wejdź mimo to” z okienka strefy (70d): ten sam klik, bez pytania o strefę. */
+  walkToWaived(tokenId: string, worldX: number, worldY: number): void {
+    if (this.selectedTokenId !== tokenId) return;
+    this.walkTo(worldX, worldY, { zoneWaived: true });
   }
 
   /** Zdanie przy wskazanym celu: o koszcie za każdym razem, reszta raz na wczytanie. */

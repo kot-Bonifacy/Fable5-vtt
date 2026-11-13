@@ -8,6 +8,10 @@ import { io as ioClient, type Socket as ClientSocket } from 'socket.io-client';
 import type {
   CampaignSummary,
   CharacterView,
+  CompendiumEntry,
+  DefenseZoneView,
+  NetRunAbilityResult,
+  WallView,
   NetAccessPointView,
   NetArchitectureView,
   NetRunPayload,
@@ -180,6 +184,7 @@ describe('Sieć ze sceny (etap 62)', () => {
   let tokenId: string;
   let cameraId: string;
   let turretId: string;
+  let netrunnerId: string;
   let firstRun: NetRunPayload;
 
   async function architectures(): Promise<{ id: string; name: string }[]> {
@@ -210,6 +215,7 @@ describe('Sieć ze sceny (etap 62)', () => {
       await emitAck<CharacterView>(gm, 'character:create', { name: 'Iskra', ownerId: playerId }),
       'character:create',
     );
+    netrunnerId = netrunner.id;
     // Netrunner 1. poziomu: Interfejs 2 i dek ze startu, bez Programów.
     await emitAck(gm, 'character:update', {
       characterId: netrunner.id,
@@ -292,7 +298,8 @@ describe('Sieć ze sceny (etap 62)', () => {
       (entry) => entry.name === 'Sieć: restauracja Mariana',
     );
     expect(scene?.id).toBe(firstRun.run.architectureId);
-    expect(nodeDevices(await architecture(scene!.id))).toEqual([[cameraId, turretId]]);
+    // Etap 70d: węzły wg rodzaju — kamera w „Monitoringu”, wieżyczka w „Obronie”.
+    expect(nodeDevices(await architecture(scene!.id))).toEqual([[cameraId], [turretId]]);
     expect(firstRun.run.architectureName).toBeUndefined();
   });
 
@@ -315,10 +322,9 @@ describe('Sieć ze sceny (etap 62)', () => {
       }),
       'netrun:move',
     );
-    expect(onNode.run.nodeDevices).toEqual([
-      { name: 'Kamera', deviceKind: 'camera' },
-      { name: 'Wieżyczka', deviceKind: 'turret' },
-    ]);
+    // Piętro 1 to „Monitoring” (70d) — wieżyczka stoi w „Obronie” niżej.
+    expect(onNode.run.here?.label).toBe('Monitoring');
+    expect(onNode.run.nodeDevices).toEqual([{ name: 'Kamera', deviceKind: 'camera' }]);
     // Bez przycisków i bez miejsca kamery na mapie — to daje dopiero Kontrola.
     expect(onNode.run.here?.devices).toBeUndefined();
     expect(JSON.stringify(onNode)).not.toContain('Kamera nad barem');
@@ -326,7 +332,7 @@ describe('Sieć ze sceny (etap 62)', () => {
     // MG nie potrzebuje skrótu: ma pełną listę na piętrze planu.
     const gmRun = (await roundTrip(gm)).netRuns.find((run) => run.runId === firstRun.runId)!;
     expect(gmRun.run.nodeDevices).toBeUndefined();
-    expect(gmRun.run.here?.devices).toHaveLength(2);
+    expect(gmRun.run.here?.devices).toHaveLength(1);
   });
 
   it('gniazdo zostaje podpięte do złożonej Sieci', async () => {
@@ -425,5 +431,364 @@ describe('Sieć ze sceny (etap 62)', () => {
     expect(nodeDevices(await architecture(owned.id))[0]).not.toContain(plain);
     await emitAck(gm, 'token:update', { tokenId: plain, patch: { glyph: 'sensor' } });
     expect(nodeDevices(await architecture(owned.id))[0]).toContain(plain);
+  });
+
+  // ─────────────── etap 70d: węzły wg rodzaju, strefy i drzwi ───────────────
+
+  describe('węzły wg rodzaju, strefy i drzwi (70d)', () => {
+    let hallId: string;
+    let runnerId: string;
+    let hallCamera: string;
+    let hallTurret: string;
+    let floorZone: DefenseZoneView;
+    let quietZone: DefenseZoneView;
+    let doorId: number;
+    let run: NetRunPayload;
+
+    const floorsOf = (view: NetArchitectureView) => view.architecture.branches[0]!.floors;
+
+    it('scena z kamerą, wieżyczką, podłogą i drzwiami składa trzy węzły, a strefa się wiąże', async () => {
+      await emitAck(player, 'netrun:leave', {
+        runId: (await roundTrip(player)).netRuns[0]?.runId ?? '',
+      });
+      data(
+        await emitAck<CompendiumEntry>(gm, 'compendium:upsert', {
+          entry: {
+            category: 'netDefense',
+            name: 'Podłoga elektryczna',
+            cost: 1000,
+            defenseKind: 'environment',
+            disableDv: 13,
+            hp: 20,
+            spotDv: 17,
+            trigger: 'Cel wchodzi na zelektryfikowany obszar.',
+            effects: { damage: '6k6', noAblation: true, repeats: true },
+          },
+        }),
+        'compendium:upsert (podłoga)',
+      );
+      hallId = data(await emitAck<SceneView>(gm, 'scene:create', { name: 'Hala' }), 'scene').id;
+      await emitAck(gm, 'scene:update', {
+        sceneId: hallId,
+        patch: { width: 2000, height: 2000, grid: { sizePx: 100 }, metersPerSquare: 2 },
+      });
+      const activated = waitFor(player, 'scene:activate');
+      await emitAck(gm, 'scene:activate', { sceneId: hallId });
+      await activated;
+      await emitAck(gm, 'scene:view', { sceneId: hallId });
+      runnerId = data(
+        await emitAck<TokenView>(gm, 'token:create', {
+          sceneId: hallId,
+          name: 'Iskra',
+          x: 0,
+          y: 0,
+          ownerId: playerId,
+          characterId: netrunnerId,
+        }),
+        'token:create',
+      ).id;
+      hallCamera = data(
+        await emitAck<TokenView>(gm, 'token:create', {
+          sceneId: hallId,
+          name: 'Kamera hali',
+          x: 1400,
+          y: 200,
+          glyph: 'camera',
+        }),
+        'token:create',
+      ).id;
+      hallTurret = data(
+        await emitAck<TokenView>(gm, 'token:create', {
+          sceneId: hallId,
+          name: 'Wieżyczka hali',
+          x: 1600,
+          y: 200,
+          glyph: 'turret',
+        }),
+        'token:create',
+      ).id;
+      floorZone = data(
+        await emitAck<DefenseZoneView>(gm, 'zone:create', {
+          sceneId: hallId,
+          entryId: 'defense.podloga-elektryczna',
+          x: 400,
+          y: 0,
+          width: 200,
+          height: 200,
+          hidden: false,
+        }),
+        'zone:create',
+      );
+      quietZone = data(
+        await emitAck<DefenseZoneView>(gm, 'zone:create', {
+          sceneId: hallId,
+          entryId: 'defense.podloga-elektryczna',
+          name: 'Podłoga w składzie',
+          x: 400,
+          y: 800,
+          width: 200,
+          height: 200,
+        }),
+        'zone:create',
+      );
+      await emitAck(gm, 'zone:update', { zoneId: quietZone.id, patch: { netExcluded: true } });
+      const [door] = data(
+        await emitAck<WallView[]>(gm, 'wall:create', {
+          sceneId: hallId,
+          points: [
+            { x: 1000, y: 0 },
+            { x: 1000, y: 100 },
+          ],
+          kind: 'door',
+        }),
+        'wall:create',
+      );
+      doorId = door!.id;
+      const flagged = data(
+        await emitAck<WallView>(gm, 'wall:update', {
+          wallId: doorId,
+          patch: { netControlled: true },
+        }),
+        'wall:update',
+      );
+      expect(flagged.netControlled).toBe(true);
+      // Zwykła ściana nie jest urządzeniem — przełącznik nic na niej nie zapisze.
+      const [plain] = data(
+        await emitAck<WallView[]>(gm, 'wall:create', {
+          sceneId: hallId,
+          points: [
+            { x: 1200, y: 0 },
+            { x: 1200, y: 100 },
+          ],
+          kind: 'wall',
+        }),
+        'wall:create',
+      );
+      const ignored = data(
+        await emitAck<WallView>(gm, 'wall:update', {
+          wallId: plain!.id,
+          patch: { netControlled: true },
+        }),
+        'wall:update',
+      );
+      expect(ignored.netControlled).toBeUndefined();
+
+      const point = data(
+        await emitAck<NetAccessPointView>(gm, 'netpoint:place', {
+          sceneId: hallId,
+          x: 50,
+          y: 50,
+          name: 'Gniazdo hali',
+          architectureId: null,
+          hidden: false,
+        }),
+        'netpoint:place',
+      );
+      run = data(
+        await emitAck<NetRunPayload>(player, 'netrun:start', {
+          tokenId: runnerId,
+          accessPointId: point.id,
+        }),
+        'netrun:start',
+      );
+      const built = await architecture(run.run.architectureId);
+      const floors = floorsOf(built);
+      expect(floors.map((floor) => floor.label)).toEqual([
+        'Wejście',
+        'Monitoring',
+        'Obrona',
+        'Instalacje',
+      ]);
+      expect(floors[1]!.devices?.map((device) => device.tokenId)).toEqual([hallCamera]);
+      expect(floors[2]!.devices?.map((device) => device.tokenId)).toEqual([hallTurret]);
+      // Podłoga i drzwi w „Instalacjach”; strefa „Poza Siecią” — nie.
+      expect(floors[3]!.devices).toEqual([
+        { id: `zone-${floorZone.id}`, name: 'Podłoga elektryczna', deviceKind: 'environment' },
+        { id: `wall-${doorId}`, name: 'Drzwi', deviceKind: 'door', wallId: doorId },
+      ]);
+      const zones = (await roundTrip(gm)).zones;
+      expect(zones.find((zone) => zone.id === floorZone.id)).toMatchObject({
+        architectureId: run.run.architectureId,
+        floorId: floors[3]!.id,
+        deviceId: `zone-${floorZone.id}`,
+      });
+      expect(zones.find((zone) => zone.id === quietZone.id)?.deviceId).toBeUndefined();
+    });
+
+    it('gracz nie dostaje „Sterowane z Sieci” ani „Poza Siecią”', async () => {
+      await emitAck(gm, 'wall:update', { wallId: doorId, patch: { playerToggle: true } });
+      const sync = await roundTrip(player);
+      // Gracz dostaje otwory polem `openings` (`playerOpeningView`), ścian wcale.
+      const door = sync.openings.find((wall) => wall.id === doorId);
+      expect(door).toBeDefined();
+      expect(door?.netControlled).toBeUndefined();
+      expect(JSON.stringify(sync.zones)).not.toContain('netExcluded');
+      expect(JSON.stringify(sync.zones)).not.toContain(`zone-${floorZone.id}`);
+    });
+
+    it('po Kontroli „Instalacji” urządzenie strefy niesie jej numer, a „Wyłącz” ją rozbraja', async () => {
+      // PT węzła ze sceny to 8 — test nie gra o kość, więc MG zbija go do 1.
+      const built = await architecture(run.run.architectureId);
+      const easy = {
+        ...built.architecture,
+        branches: built.architecture.branches.map((branch) => ({
+          ...branch,
+          floors: branch.floors.map((floor) =>
+            floor.kind === 'controlNode' ? { ...floor, dv: 1 } : floor,
+          ),
+        })),
+      };
+      data(
+        await emitAck(gm, 'net:save', { id: run.run.architectureId, architecture: easy }),
+        'net:save',
+      );
+      for (const floor of [1, 2, 3]) {
+        data(
+          await emitAck<NetRunPayload>(player, 'netrun:move', {
+            runId: run.runId,
+            to: { branchId: 'trunk', floor },
+          }),
+          'netrun:move',
+        );
+      }
+      const result = data(
+        await emitAck<NetRunAbilityResult>(player, 'netrun:ability', {
+          runId: run.runId,
+          ability: 'control',
+        }),
+        'netrun:ability',
+      );
+      expect(result.success).toBe(true);
+      const held = (await roundTrip(player)).netRuns.find((entry) => entry.runId === run.runId)!;
+      const devices = held.run.here?.devices ?? [];
+      const switchable = devices.find((device) => device.zoneId === floorZone.id);
+      expect(switchable).toMatchObject({ id: `zone-${floorZone.id}`, on: true });
+      expect(devices.find((device) => device.wallId === doorId)?.zoneId).toBeUndefined();
+
+      data(
+        await emitAck<NetRunAbilityResult>(player, 'netrun:device', {
+          runId: run.runId,
+          floorId: held.run.here!.id,
+          deviceId: switchable!.id,
+          operation: 'off',
+        }),
+        'netrun:device (off)',
+      );
+      const after = (await roundTrip(player)).netRuns.find((entry) => entry.runId === run.runId)!;
+      expect(after.run.here?.devices?.find((d) => d.zoneId === floorZone.id)?.on).toBe(false);
+
+      // Drzwi otwiera ten sam węzeł — bez rygla w drodze (s. 199).
+      data(
+        await emitAck<NetRunAbilityResult>(player, 'netrun:device', {
+          runId: run.runId,
+          floorId: held.run.here!.id,
+          deviceId: `wall-${doorId}`,
+          operation: 'open',
+        }),
+        'netrun:device (open)',
+      );
+      expect((await roundTrip(gm)).walls.find((wall) => wall.id === doorId)?.open).toBe(true);
+    });
+
+    it('nowa strefa i nowe drzwi „Sterowane z Sieci” dochodzą do „Instalacji” w trakcie runu', async () => {
+      const late = data(
+        await emitAck<DefenseZoneView>(gm, 'zone:create', {
+          sceneId: hallId,
+          entryId: 'defense.podloga-elektryczna',
+          name: 'Podłoga przy windzie',
+          x: 800,
+          y: 800,
+          width: 200,
+          height: 200,
+        }),
+        'zone:create',
+      );
+      const [second] = data(
+        await emitAck<WallView[]>(gm, 'wall:create', {
+          sceneId: hallId,
+          points: [
+            { x: 1500, y: 600 },
+            { x: 1500, y: 700 },
+          ],
+          kind: 'door',
+        }),
+        'wall:create',
+      );
+      await emitAck(gm, 'wall:update', { wallId: second!.id, patch: { netControlled: true } });
+      const installations = floorsOf(await architecture(run.run.architectureId))[3]!;
+      expect(installations.devices?.map((device) => device.id)).toEqual([
+        `zone-${floorZone.id}`,
+        `wall-${doorId}`,
+        `zone-${late.id}`,
+        `wall-${second!.id}`,
+      ]);
+      // Dwoje drzwi na scenie — nowe dostają numer.
+      expect(installations.devices?.[3]?.name).toBe('Drzwi 2');
+
+      // Odhaczone drzwi i „Poza Siecią” schodzą z węzła, węzeł zostaje.
+      await emitAck(gm, 'wall:update', { wallId: second!.id, patch: { netControlled: false } });
+      await emitAck(gm, 'zone:update', { zoneId: late.id, patch: { netExcluded: true } });
+      const trimmed = floorsOf(await architecture(run.run.architectureId));
+      expect(trimmed).toHaveLength(4);
+      expect(trimmed[3]!.devices?.map((device) => device.id)).toEqual([
+        `zone-${floorZone.id}`,
+        `wall-${doorId}`,
+      ]);
+      const zones = (await roundTrip(gm)).zones;
+      expect(zones.find((zone) => zone.id === late.id)?.deviceId).toBeUndefined();
+    });
+
+    it('Architektura MG nie bierze stref ani drzwi sama — wiąże je karta strefy (#33)', async () => {
+      await emitAck(player, 'netrun:leave', { runId: run.runId });
+      const ownId = data(
+        await emitAck<NetArchitectureView>(gm, 'net:save', {
+          architecture: {
+            name: 'Brama hali',
+            difficulty: 'standard',
+            branches: [
+              {
+                id: 'trunk',
+                parentFloor: null,
+                floors: [{ id: 'f0', kind: 'controlNode', label: 'Węzeł', dv: 10, devices: [] }],
+              },
+            ],
+          },
+        }),
+        'net:save',
+      ).id;
+      const unbound = data(
+        await emitAck<DefenseZoneView>(gm, 'zone:create', {
+          sceneId: hallId,
+          entryId: 'defense.podloga-elektryczna',
+          name: 'Podłoga bramy',
+          x: 1200,
+          y: 1200,
+          width: 200,
+          height: 200,
+        }),
+        'zone:create',
+      );
+      const point = data(
+        await emitAck<NetAccessPointView>(gm, 'netpoint:place', {
+          sceneId: hallId,
+          x: 60,
+          y: 60,
+          name: 'Gniazdo bramy',
+          architectureId: ownId,
+          hidden: false,
+        }),
+        'netpoint:place',
+      );
+      data(
+        await emitAck<NetRunPayload>(player, 'netrun:start', {
+          tokenId: runnerId,
+          accessPointId: point.id,
+        }),
+        'netrun:start',
+      );
+      const own = await architecture(ownId);
+      expect(JSON.stringify(own.architecture)).not.toContain(`zone-${unbound.id}`);
+      expect(JSON.stringify(own.architecture)).not.toContain('"wallId"');
+    });
   });
 });

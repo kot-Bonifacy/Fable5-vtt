@@ -507,6 +507,8 @@ export async function importCampaign(
               disarmDv: typeof row.disarmDv === 'number' ? Math.round(row.disarmDv) : null,
               spotDv: typeof row.spotDv === 'number' ? Math.round(row.spotDv) : null,
               disarmTried: jsonText(remap(row.disarmTried), '[]'),
+              // Plik sprzed 70d nie ma kolumny — strefa wchodzi do Sieci ze sceny.
+              netExcluded: bool(row.netExcluded, false),
             })),
           });
         }

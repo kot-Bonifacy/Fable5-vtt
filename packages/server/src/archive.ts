@@ -523,6 +523,8 @@ export async function exportScene(
           armor: true,
           hidesFigures: true,
           concealPenalty: true,
+          // Drzwi „Sterowane z Sieci” (70d).
+          netControlled: true,
           x1: true,
           y1: true,
           x2: true,
@@ -870,6 +872,8 @@ export async function insertScene(
     armor: sanitizeWallArmor(row.armor) ?? 0,
     hidesFigures: row.hidesFigures === true,
     concealPenalty: sanitizeConcealPenalty(row.concealPenalty) ?? -4,
+    // Plik sprzed 70d nie ma kolumny — drzwi zostają poza Siecią ze sceny.
+    netControlled: row.netControlled === true,
     x1: num(row.x1),
     y1: num(row.y1),
     x2: num(row.x2),
@@ -1222,6 +1226,8 @@ export async function exportCampaign(
           disarmDv: true,
           spotDv: true,
           disarmTried: true,
+          // „Poza Siecią” (70d).
+          netExcluded: true,
         },
       }),
     ]);

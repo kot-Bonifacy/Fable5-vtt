@@ -18,6 +18,7 @@ import {
   sanitizeConcealPenalty,
   sanitizeWallChain,
   sanitizeWallSegment,
+  netSceneWallDeviceId,
 } from '@vtt/shared';
 import type { Scene, Wall } from '../generated/prisma/client.js';
 import { keyHolderAtOpening } from './opening-locks.js';
@@ -28,6 +29,7 @@ import { gmRoom } from './state.js';
 import { emitSceneTokensToPlayers } from './tokens.js';
 import { emitBlockersToPlayers } from './blockers.js';
 import { fetchSceneWalls, toWallView } from './walls-io.js';
+import { adoptSceneDeviceLive, releaseSceneDevice } from './net-scene.js';
 import {
   emitVisionToPlayers,
   isWallInReach,
@@ -183,6 +185,8 @@ export const wallUpdateEvent = defineEvent<WallUpdatePayload, WallView>({
         data.open = false;
         data.locked = false;
         data.lockRule = null;
+        // Ściana nie jest urządzeniem Sieci (70d) — urządzenie schodzi niżej.
+        data.netControlled = false;
       }
       // Armour belongs to a see-through partition (stage 42b). Barrier ↔ gate
       // keeps it; a fence retyped into masonry or glass loses it.
@@ -222,8 +226,21 @@ export const wallUpdateEvent = defineEvent<WallUpdatePayload, WallView>({
       if (locked) data.open = false;
     }
 
+    if (patch.netControlled !== undefined) {
+      if (typeof patch.netControlled !== 'boolean') throw new RealtimeError('BAD_REQUEST');
+      const kind = ((data.kind as string | undefined) ?? row.kind) as WallView['kind'];
+      data.netControlled = isOpening({ kind }) && patch.netControlled;
+    }
+
     const updated = await deps.ctx.prisma.wall.update({ where: { id: row.id }, data });
     await afterWallChange(deps, campaignId, row.scene);
+    // Etap 70d: drzwi „Sterowane z Sieci” wchodzą do Sieci ze sceny (od razu,
+    // gdy na scenie trwa run), a odhaczone — schodzą z niej.
+    if (updated.netControlled && !row.netControlled) {
+      await adoptSceneDeviceLive(deps, campaignId, row.sceneId);
+    } else if (!updated.netControlled && row.netControlled) {
+      await releaseSceneDevice(deps, campaignId, netSceneWallDeviceId(row.id));
+    }
     return toWallView(updated);
   },
 });
@@ -255,6 +272,9 @@ export const wallDeleteEvent = defineEvent<WallDeletePayload>({
     });
     await deps.ctx.prisma.wall.delete({ where: { id: row.id } });
     await afterWallChange(deps, campaignId, row.scene);
+    if (row.netControlled) {
+      await releaseSceneDevice(deps, campaignId, netSceneWallDeviceId(row.id));
+    }
   },
 });
 

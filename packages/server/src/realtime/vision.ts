@@ -828,8 +828,10 @@ export function visibleOpeningsFor(
  * (stage 58c).
  */
 export function playerOpeningView(door: WallView): WallView {
+  // „Sterowane z Sieci” (70d) to plan MG — tak jak zamek, zostaje na serwerze.
+  const { netControlled: _plan, ...seen } = door;
   return {
-    ...door,
+    ...seen,
     locked: false,
     lockRule: null,
     armor: 0,

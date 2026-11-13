@@ -111,6 +111,12 @@ export interface WallView {
   hidesFigures?: boolean;
   /** Non-positive attack modifier; absent on older rows means -4. */
   concealPenalty?: number;
+  /**
+   * Openings only (stage 70d): the scene's own Net runs this one — it becomes a
+   * device of the „Instalacje" node. Opaque to the core (a game system with a
+   * Net reads it); GM plan, absent from a player's copy.
+   */
+  netControlled?: boolean;
   x1: number;
   y1: number;
   x2: number;
@@ -203,6 +209,8 @@ export interface WallUpdatePayload {
     playerToggle?: boolean;
     /** Openings only (stage 18d); bolting one also shuts it. */
     locked?: boolean;
+    /** Openings only (stage 70d): run from the scene's Net. */
+    netControlled?: boolean;
     /** Barriers and gates only (stage 42b); retyping to anything else zeroes it. */
     armor?: number;
     /**

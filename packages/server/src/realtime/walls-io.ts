@@ -48,6 +48,8 @@ export function toWallView(row: WallRow): WallView {
     hidesFigures: isBarrier({ kind }) && row.hidesFigures,
     concealPenalty: isBarrier({ kind }) ? row.concealPenalty : -4,
     lockRule: isOpening({ kind }) ? parseLockRule(row.lockRule) : null,
+    // Etap 70d: plan MG — `playerOpeningView` zdejmuje to pole graczowi.
+    ...(isOpening({ kind }) && row.netControlled ? { netControlled: true } : {}),
     x1: row.x1,
     y1: row.y1,
     x2: row.x2,

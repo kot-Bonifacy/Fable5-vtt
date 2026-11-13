@@ -111,6 +111,7 @@ export function toZoneView(row: ZoneRow, gm: boolean, spotted: boolean): Defense
           disarmTried: readZoneDisarmTried(row.disarmTried),
         }
       : {}),
+    ...(gm && row.netExcluded ? { netExcluded: true } : {}),
     ...(!gm && spotted ? { spotted: true } : {}),
   };
 }

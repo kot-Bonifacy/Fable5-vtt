@@ -142,14 +142,15 @@ test.describe.serial('T62 Sieć ze sceny: kamery bez Architektury', () => {
     expect(list.map((entry) => entry.name)).toContain(`Sieć: ${SCENE}`);
   });
 
-  test('zjazd na węzeł: nazwy i rodzaje, po Kontroli oba urządzenia przejęte, Iskra patrzy oczami kamery', async () => {
+  test('zjazd na węzły: nazwy i rodzaje, po Kontroli „Monitoringu” i „Obrony” oba urządzenia przejęte', async () => {
     await runWindow().locator('.net-exit--down').click();
     await expect.poll(() => runOf('Iskra')?.state.position.floor).toBe(1);
-    await expect(runWindow().locator('.net-floor-card-title')).toHaveText('Węzeł kontrolny');
+    // Etap 70d: węzły wg rodzaju — kamera w „Monitoringu”, wieżyczka w „Obronie”.
+    await expect(runWindow().locator('.net-floor-card-title')).toHaveText('Monitoring');
     // Przed Kontrolą: nazwa stołu i rodzaj. Kamera stoi na warstwie MG, więc
     // nazwa figury zostaje u MG, a gracz zna sam rodzaj.
     const sighted = runWindow().locator('.net-node-sighted');
-    await expect(sighted.locator('.net-sighted-device')).toHaveText(['Kamera', 'Wieżyczka']);
+    await expect(sighted.locator('.net-sighted-device')).toHaveText(['Kamera']);
     await expect(sighted).not.toContainText('Mina');
     await expect(sighted).not.toContainText('Marian');
     expect(await ola.sniffer.found([CAMERA_NAME])).toEqual([]);
@@ -160,7 +161,17 @@ test.describe.serial('T62 Sieć ze sceny: kamery bez Architektury', () => {
     const devices = runWindow().locator('.net-eye');
     await devices.first().waitFor({ timeout: 20_000 });
     expect(pendingDice()).toBe('');
-    await expect(devices).toHaveCount(2);
+    await expect(devices).toHaveCount(1);
+
+    // Piętro niżej „Obrona” z wieżyczką — druga Kontrola.
+    await runWindow().locator('.net-exit--down').click();
+    await expect.poll(() => runOf('Iskra')?.state.position.floor).toBe(2);
+    await expect(runWindow().locator('.net-floor-card-title')).toHaveText('Obrona');
+    await expect(sighted.locator('.net-sighted-device')).toHaveText(['Wieżyczka']);
+    scriptDice([9]);
+    await runWindow().locator('.net-abilities').getByRole('button', { name: 'Kontrola' }).click();
+    await expect(devices).toHaveCount(2, { timeout: 20_000 });
+    expect(pendingDice()).toBe('');
     // Etap 70b/70c: figury prowadzi się z mapy — „Obróć”, „Strzelaj” i „Wyłącz”
     // stoją na lewej belce przejętej figury, a pasek „Oczy i urządzenia” ma dla
     // nich tylko miniaturę-oko (kadr i zaznaczenie).
@@ -170,7 +181,9 @@ test.describe.serial('T62 Sieć ze sceny: kamery bez Architektury', () => {
       .poll(async () =>
         (
           await ola.store<{ runs: { operated: { deviceKind: string }[] }[] }>('netRun')
-        ).runs[0]?.operated.map((figure) => figure.deviceKind),
+        ).runs[0]?.operated
+          .map((figure) => figure.deviceKind)
+          .sort(),
       )
       .toEqual(['camera', 'turret']);
     // Od 70c patrzy też wieżyczka (koło na zasięg figury) — dwie pary oczu.
@@ -224,7 +237,8 @@ test.describe.serial('T62 Sieć ze sceny: kamery bez Architektury', () => {
       .getByRole('button', { name: 'Podłącz się' })
       .click();
     // Urządzenia stoją na piętrze węzła: przed Kontrolą z nazwy i rodzaju,
-    // a z pamięci przejętego węzła (02.11) od razu z przyciskami.
+    // a z pamięci przejętych węzłów (02.11) od razu w pasku — obie kamery
+    // „Monitoringu” i wieżyczka „Obrony” ze śladu (70d: dwa węzły zamiast jednego).
     await runWindow().locator('.net-exit--down').click();
     await expect.poll(() => runOf('Iskra')?.state.position.floor).toBe(1);
     await expect(runWindow().locator('.net-sighted-device, .net-eye')).toHaveCount(3);

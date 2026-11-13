@@ -187,6 +187,17 @@ function saveDrawSettings(settings: DrawSettings): void {
   }
 }
 
+/** Obszar straży figury urządzenia, który MG właśnie rysuje (etap 70d). */
+export interface ZoneGuardDraft {
+  tokenId: string;
+  /** Wpis „Obrona Sieci” — stanowisko albo aktywny system obronny. */
+  entryId: string;
+  /** Nazwa figury — do podpowiedzi w pasku narzędzia. */
+  name: string;
+  /** PT Percepcji obszaru; null — PT wpisu. */
+  spotDv: number | null;
+}
+
 interface MapToolStoreState extends DrawSettings {
   tool: MapTool;
   /** Żeton w ręku, czekający na klik w mapę; null = ręka pusta. */
@@ -232,6 +243,12 @@ interface MapToolStoreState extends DrawSettings {
    */
   zoneSpotDv: number | null;
   zoneDisarmDv: number | null;
+  /**
+   * Stage 70d: the next dragged rectangle is the guard area of this device
+   * figure („Obszar straży" on its menu), not a zone of the palette. Cleared by
+   * the drawing itself and by any other tool.
+   */
+  zoneGuard: ZoneGuardDraft | null;
   /** Architecture the next placed socket leads to; '' = a dead socket. */
   netPointArchitectureId: string;
   /** Hidden until a Scanner finds it — the default, and the point of the flag. */
@@ -268,6 +285,8 @@ interface MapToolStoreState extends DrawSettings {
   setCoverHp: (coverHp: number) => void;
   setCoverHidden: (coverHidden: boolean) => void;
   setZoneEntryId: (zoneEntryId: string) => void;
+  /** Arms the zone tool for one guard area (70d); null drops it. */
+  setZoneGuard: (zoneGuard: ZoneGuardDraft | null) => void;
   setZoneHidden: (zoneHidden: boolean) => void;
   setZoneSpotDv: (zoneSpotDv: number | null) => void;
   setZoneDisarmDv: (zoneDisarmDv: number | null) => void;
@@ -329,6 +348,7 @@ export const useMapToolStore = create<MapToolStoreState>((set, get) => {
     zoneHidden: true,
     zoneSpotDv: null,
     zoneDisarmDv: null,
+    zoneGuard: null,
     netPointArchitectureId: '',
     netPointHidden: true,
     lightFitRoom: false,
@@ -343,10 +363,19 @@ export const useMapToolStore = create<MapToolStoreState>((set, get) => {
     // „Jedno kliknięcie trafia w jedną rzecz" — a to znaczy, że jednym
     // przypisaniem odkłada się poprzedni tryb. Narzędzie wytrąca żeton z ręki
     // i odwrotnie; `pointer` niczego nie wytrąca, bo to jest stan „ręce wolne".
-    setTool: (tool) => set(tool === 'pointer' ? { tool } : { tool, tokenPlacement: null }),
+    setTool: (tool) =>
+      set(
+        tool === 'pointer'
+          ? { tool, zoneGuard: null }
+          : { tool, tokenPlacement: null, ...(tool === 'zone' ? {} : { zoneGuard: null }) },
+      ),
     toggleTool: (tool) => {
       const next = get().tool === tool ? 'pointer' : tool;
-      set(next === 'pointer' ? { tool: next } : { tool: next, tokenPlacement: null });
+      set(
+        next === 'pointer'
+          ? { tool: next, zoneGuard: null }
+          : { tool: next, tokenPlacement: null, ...(next === 'zone' ? {} : { zoneGuard: null }) },
+      );
     },
     setTokenPlacement: (tokenPlacement) =>
       set(tokenPlacement === null ? { tokenPlacement } : { tokenPlacement, tool: 'pointer' }),
@@ -377,6 +406,8 @@ export const useMapToolStore = create<MapToolStoreState>((set, get) => {
       }),
     setCoverHidden: (coverHidden) => set({ coverHidden }),
     setZoneEntryId: (zoneEntryId) => set({ zoneEntryId, zoneSpotDv: null, zoneDisarmDv: null }),
+    setZoneGuard: (zoneGuard) =>
+      set(zoneGuard ? { zoneGuard, tool: 'zone', tokenPlacement: null } : { zoneGuard: null }),
     setZoneHidden: (zoneHidden) => set({ zoneHidden }),
     setZoneSpotDv: (zoneSpotDv) => set({ zoneSpotDv }),
     setZoneDisarmDv: (zoneDisarmDv) => set({ zoneDisarmDv }),

@@ -2774,7 +2774,14 @@ export const createZone = (
   sceneId: string,
   entryId: string,
   rect: { x: number; y: number; width: number; height: number },
-  options: { name?: string; hidden?: boolean; spotDv?: number; disarmDv?: number } = {},
+  options: {
+    name?: string;
+    hidden?: boolean;
+    spotDv?: number;
+    disarmDv?: number;
+    /** Obszar straży tej figury urządzenia (70d). */
+    tokenId?: string;
+  } = {},
 ) =>
   emitSceneAck<DefenseZoneView>('zone:create', {
     sceneId,
@@ -2787,6 +2794,10 @@ export const updateZone = (zoneId: number, patch: DefenseZoneUpdatePayload['patc
   emitSceneAck<DefenseZoneView>('zone:update', { zoneId, patch });
 
 export const deleteZone = (zoneId: number) => emitSceneAck('zone:delete', { zoneId });
+
+/** „Postaw figurę urządzenia” na starej strefie drona albo stanowiska (70d). */
+export const zoneFigure = (zoneId: number) =>
+  emitSceneAck<DefenseZoneView>('zone:figure', { zoneId });
 
 export const clearZones = (sceneId: string) => emitSceneAck('zone:clear', { sceneId });
 
