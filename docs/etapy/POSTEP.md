@@ -54,7 +54,8 @@ Szczęście z menu kubka (serwer je przyjmuje i zdejmuje z puli). Menu kubka ma 
 
 **Zwiad i Maskowanie (decyzje MG z 14.11) — czekają na wdrożenie (bez migracji).** Zwiad
 podaje nazwy Programów za wyjściem, Maskowanie liczy się piętro po piętrze z próbami w jednej
-Turze i zostawia znacznik na planie MG. Do słowa MG: Demon porównany Interfejsem.
+Turze i zostawia znacznik na planie MG. Do słowa MG: Demon porównany Interfejsem. Od siódmej
+sesji 14.11 piętra opuszczone bez zatartych śladów są **czerwone** u MG i u gracza.
 
 **Zaległości 14.11 (dwie sesje „wykonaj kilka zaległości”) — czekają na wdrożenie (bez
 migracji).** Belka przejętego urządzenia bez czerwonego „ODMOWA” po strzale, okienko strefy mówi
@@ -813,7 +814,7 @@ a nie do tego pliku.
 | `postac`    | kreator, PD i awanse, koszyk i cofanie awansów, Role i Zdolności, cyborgizacje, chrom zmieniający liczby, ekonomia, Test montażu gracza, pojazdy i Tabor | 58   | 3       |
 | `ekwipunek` | wiersze wyposażenia, przekazanie, łup (także ciała graczy), handel, sklepy, asortyment handlarza z kompendium, zasięg, amunicja bez dna, egzoszkielet, latarka z ekwipunku, narkotyki i fiolki, siatka okna „Wymiana”, zgoda z góry, odświeżanie po naklejkach, znaczek „w użyciu”, zakup auta z modelu, warsztat (ulepszenia i naprawa auta), auto bokiem i „w garażu”, grafika auta to model i skala miniatur, postać na karcie przekazania, zasięg ręki do figury spoza siatki | 50   | 3       |
 | `czas`      | zegar świata, kalendarz, `statEffects`, leczenie po dobie, dawki i uzależnienia (`chems`) | 19   | 2       |
-| `siec`      | Programy, LOD, demony, piętra architektury, dek jako towar, strefy bronione, kamery (także w ciemności), rozbrajanie, Sieć ze sceny, jedna próba i pamięć sukcesów, strzał z urządzenia, strefa tylko z marszu gracza, widok runu z rundą, strefa rozbrojona w Sieci, okno jednego piętra i ładunek bez szybu, pełny wiersz czatu zamiast skrótu, przejęta figura urządzenia (`operatorOf`, `netDeviceUse`), marsz drona, oczy urządzeń, figury wyciszone (`net-off`), pasek „Oczy i urządzenia”, Sieć ze sceny wg rodzaju, strefy i drzwi w „Instalacjach”, obszar straży od figury, okienko strefy, automat obrony Sieci i hamulec MG, „Włącz / Wyłącz w Sieci” MG i przeszukanie wyłączonego, Maskowanie piętro po piętrze, Programy za wyjściem, rzut Sieci na kubek ze Szczęściem, „Zapomnij” sceny czyści Sieć | 31   | 12      |
+| `siec`      | Programy, LOD, demony, piętra architektury, dek jako towar, strefy bronione, kamery (także w ciemności), rozbrajanie, Sieć ze sceny, jedna próba i pamięć sukcesów, strzał z urządzenia, strefa tylko z marszu gracza, widok runu z rundą, strefa rozbrojona w Sieci, okno jednego piętra i ładunek bez szybu, pełny wiersz czatu zamiast skrótu, przejęta figura urządzenia (`operatorOf`, `netDeviceUse`), marsz drona, oczy urządzeń, figury wyciszone (`net-off`), pasek „Oczy i urządzenia”, Sieć ze sceny wg rodzaju, strefy i drzwi w „Instalacjach”, obszar straży od figury, okienko strefy, automat obrony Sieci i hamulec MG, „Włącz / Wyłącz w Sieci” MG i przeszukanie wyłączonego, Maskowanie piętro po piętrze, czerwone ślady bez Maskowania, Programy za wyjściem, rzut Sieci na kubek ze Szczęściem, „Zapomnij” sceny czyści Sieć | 32   | 12      |
 | `boty`      | llama-server, RAG, reindeks, dziennik i baza wiedzy, brama AI  | 10   | 10      |
 | `dane`      | `parse-manual.py`, kompendium poza repo, tabele z podręcznika  | 9    | 12      |
 | `kopie`     | `snapshot`, `archive`, paczki ZIP, wczytanie kampanii, „czeka na gracza”, kopie kampanii i cofnięcie, sklep i bot w paczce, zgłoszenie karty gracza, pojazdy w paczce, auta na scenie pościgu, przeszkody poza paczką | 22   | 6       |
@@ -824,6 +825,24 @@ a nie do tego pliku.
 ## Notatki z dwóch ostatnich sesji
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
+
+### Sesja 14.11 (siódma) — czerwone ślady na piętrach bez Maskowania
+
+**Zrobione (bez migracji, czeka na wdrożenie)** — zlecenie MG, rozstrzygnięcia z pytań w sesji:
+
+- **Na „Planie Architektury” piętra z niezatartymi śladami są czerwone**: czerwony brzeg wiersza
+  i plakietka „ślady: nieudane” (Maskowanie przegrane) albo „ślady: bez maskowania” (zszedł bez
+  próby). Piętro pod stopami czerwienieje dopiero, gdy jego szansa przepadła.
+- **Gracz też widzi czerwień** (MG zmienił zdanie w trakcie): plakietka na karcie piętra,
+  czerwona kropka na piętrze w śladzie runu.
+- **Przetrwa odłączenie**: serwer pamięta odwiedzone piętra postaci na scenie (pamięć runu,
+  bez migracji, czyści „Zapomnij”). Ślad gracza się przez to nie wydłuża.
+
+Decyzje w `decyzje-i-uproszczenia.md`, umowa na górze `siec`. **Oglądane w Firefoksie** (Ola
+w E2E `T70a`, zrzuty planu MG i okna gracza w kroku 8; MG w tym speku też jedzie Firefoksem).
+Testy: shared 3073 (+4), klient 508, serwer `netrun.test.ts` 25, E2E `T70a` 10/10
+(krok 8 sprawdza czerwień u MG i w śladzie Oli) — zielone; `tsc` trzech pakietów i ESLint
+czyste. Pełnych suit nie puszczałem; `T70b–e` i `T62` nie puszczone.
 
 ### Sesja 14.11 (szósta) — „Zapomnij” w edycji sceny czyści też Sieć i mówi, co zrobił
 
@@ -846,27 +865,3 @@ widzenia” i sceny z prawdziwą pamięcią Sieci nie klikałem na `dev.db` (że
 „Fabryki dronów”) — pokrywa go test serwera. Testy: shared 3069 (+2), klient 508, serwer
 `netrun.test.ts` + `exploration.test.ts` 48 (nowy krok `net:forget-scene`) — zielone; `tsc`
 shared/serwer/klient, ESLint i Prettier czyste. Pełnych suit i E2E nie puszczałem.
-
-### Sesja 14.11 (piąta) — rzut Sieci na kubek, Szczęście w Sieci, nowe menu kubka
-
-**Zrobione (bez migracji, czeka na wdrożenie)** — zlecenie MG:
-
-- **Rzut przy hakowaniu czeka na kubek.** Klik zdolności (Backdoor, Zwiad, Kontrola,
-  Maskowanie, Wirus na ostatnim kroku…), ataku (Paf, Agresor), Ślizgu i Skanera (lewa belka
-  i karta gniazda) nie rzuca sam: kubek się świeci z napisem „Backdoor · Interfejs 6”, gracz go
-  chwyta, potrząsa i rzuca. Kroki pisania Wirusa, które nie są ostatnie, idą od razu (nie
-  rzucają). Rzuty obrony Sieci (LOD, Demon, automat) bez zmian.
-- **Szczęście w rzutach Sieci** — z menu kubka, jak przy Teście z karty: serwer sprawdza pulę przed
-  Akcją Sieciową, zdejmuje punkty przy kościach, karta ma wiersz „Szczęście (N pkt)”.
-- **Plakietka „+N” na kubku większa** (0,95 rem, cyfry mono, poświata).
-- **Menu kubka: Szczęście jako żetony** zamiast przełącznika „0 ▲▼ z 5” — jeden żeton na punkt
-  w puli, klik ustawia, klik w ostatni zapalony gasi, duże „+N” obok nazwy, sekcja oddzielona
-  kreską; reszta w dymku.
-
-Umowy na górze `siec` i `ui`. **Oglądane w Firefoksie** (Playwright MCP na żywym Vite, MG
-w przygotowaniu „Oględzin 12.09”, ładunek kubka wstawiony ze sklepu): świecący kubek, menu
-z żetonami (bez kursora i z podglądem najechania), plakietka „+3”, rzut gestem przekazał +3.
-Pełnego runu z kubkiem na `dev.db` nie grałem — pokrywają go E2E. Testy: serwer 1800 (+1, Szczęście
-przy Skanerze), klient 508 — zielone; E2E `99-kubek` 2/2, `T70a` i `T70b` zielone;
-**nie puszczone:** `T5a`, `T5b` (LLM), `T62`, `T70c–e` — dostały rzut kubkiem po kliku zdolności
-(`throwNetRoll` w `fixtures/siec.ts`).

@@ -8,7 +8,7 @@ import {
 import { plural } from '../../plural.js';
 import { InlineNotice } from '../NoticeColumn.js';
 import { NumberStepper } from '../NumberStepper.js';
-import { FLOOR_GLYPHS } from './net-glyphs.js';
+import { FLOOR_GLYPHS, TRACES_LABELS, TRACES_TITLES } from './net-glyphs.js';
 
 /** Widełki wirusa (etap 21c): PT ustala MG, a pisanie trwa tyle Akcji Sieciowych. */
 const VIRUS_DV_MIN = 1;
@@ -203,12 +203,12 @@ export function NetFloorCard({
             </span>
           )}
           {here.cloak === 'masked' && <span className="net-run-floor-flag">ślady zatarte</span>}
-          {here.cloak === 'failed' && (
+          {here.traces && (
             <span
-              className="net-run-floor-flag"
-              title="Maskowanie mieści się w jednej Turze — tu już przepadło"
+              className="net-run-floor-flag net-run-floor-flag--traces"
+              title={`${TRACES_TITLES[here.traces]}. Maskowanie mieści się w jednej Turze — tu już przepadło`}
             >
-              maskowanie nieudane
+              {TRACES_LABELS[here.traces]}
             </span>
           )}
           {here.cloak === 'trying' && (

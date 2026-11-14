@@ -1,6 +1,6 @@
 import type { CpredNetPosition, NetFloorView, NetShaftBranchView } from '@vtt/shared';
 import { plural } from '../../plural.js';
-import { FLOOR_GLYPHS, floorName } from './net-glyphs.js';
+import { FLOOR_GLYPHS, TRACES_LABELS, TRACES_TITLES, floorName } from './net-glyphs.js';
 
 function PlanFloor({
   floor,
@@ -15,7 +15,9 @@ function PlanFloor({
 }) {
   const kind = floor.kind ?? 'empty';
   return (
-    <li className={`net-run-floor${floor.here ? ' net-run-floor--here' : ''}`}>
+    <li
+      className={`net-run-floor${floor.here ? ' net-run-floor--here' : ''}${floor.traces ? ' net-run-floor--traces' : ''}`}
+    >
       <button
         type="button"
         className="net-run-floor-body"
@@ -51,8 +53,13 @@ function PlanFloor({
             ślady zatarte{floor.cloakTotal !== undefined ? ` · ${floor.cloakTotal}` : ''}
           </span>
         )}
-        {floor.cloak === 'failed' && (
-          <span className="net-run-floor-flag">maskowanie nieudane</span>
+        {floor.traces && (
+          <span
+            className="net-run-floor-flag net-run-floor-flag--traces"
+            title={TRACES_TITLES[floor.traces]}
+          >
+            {TRACES_LABELS[floor.traces]}
+          </span>
         )}
         {floor.cloak === 'trying' && <span className="net-run-floor-flag">maskowanie w toku</span>}
         {floor.programIds && floor.programIds.length > 0 && (

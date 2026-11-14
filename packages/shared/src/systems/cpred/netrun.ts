@@ -576,6 +576,13 @@ export interface CpredNetMemory {
   scouted: string[];
   /** Nodes held, with the DV of taking them back — the Check's own total. */
   controlled: CpredNetHold[];
+  /**
+   * Every floor stood on here, across runs (zlecenie MG z 14.11) — only so the
+   * floors left without Maskowanie stay red after a reconnection
+   * (`NetFloorView.traces`). Not folded back into `entered` by `netRestoreRun`:
+   * the player's trail stays what it was. Absent on rows from before 14.11.
+   */
+  visited?: string[];
 }
 
 function memoryOf(runtime: CpredNetRuntime, who: NetTryWho): CpredNetMemory | undefined {
@@ -594,7 +601,9 @@ const union = (a: string[], b: string[]) => [...new Set([...a, ...b])];
 export function netRememberRun(
   runtime: CpredNetRuntime,
   who: NetTryWho,
-  state: Pick<CpredNetRunState, 'broken' | 'identified' | 'copied' | 'scouted' | 'controlled'>,
+  state: Pick<CpredNetRunState, 'broken' | 'identified' | 'copied' | 'scouted' | 'controlled'> & {
+    entered?: readonly string[];
+  },
 ): CpredNetRuntime {
   const before = memoryOf(runtime, who);
   const holds = new Map((before?.controlled ?? []).map((hold) => [hold.floorId, hold.dv]));
@@ -608,8 +617,44 @@ export function netRememberRun(
     scouted: union(before?.scouted ?? [], state.scouted),
     controlled: [...holds].map(([floorId, dv]) => ({ floorId, dv })),
   };
+  const visited = union(before?.visited ?? [], [...(state.entered ?? [])]);
+  if (visited.length > 0) next.visited = visited;
   const others = (runtime.memories ?? []).filter((entry) => entry !== before);
   return { ...runtime, memories: [...others, next] };
+}
+
+/**
+ * The floors a move has made this character stand on, kept in the memory
+ * (14.11) — called with the run's whole `entered` by every move of the lift,
+ * so the floors left behind are known after a jack-out too.
+ */
+export function netRememberVisited(
+  runtime: CpredNetRuntime,
+  who: NetTryWho,
+  floorIds: readonly string[],
+): CpredNetRuntime {
+  const before = memoryOf(runtime, who);
+  const visited = union(before?.visited ?? [], [...floorIds]);
+  if (before && visited.length === (before.visited?.length ?? 0)) return runtime;
+  const next: CpredNetMemory = before
+    ? { ...before, visited }
+    : {
+        characterId: who.characterId,
+        sceneId: who.sceneId,
+        broken: [],
+        identified: [],
+        copied: [],
+        scouted: [],
+        controlled: [],
+        visited,
+      };
+  const others = (runtime.memories ?? []).filter((entry) => entry !== before);
+  return { ...runtime, memories: [...others, next] };
+}
+
+/** Floors this character has stood on in this Architecture on this scene. */
+export function netVisitedOf(runtime: CpredNetRuntime, who: NetTryWho): string[] {
+  return memoryOf(runtime, who)?.visited ?? [];
 }
 
 /** A rival took this node: the character no longer gets it back on reconnecting. */
@@ -682,6 +727,7 @@ function readMemories(raw: unknown): CpredNetMemory[] {
         .map((hold) => hold as Record<string, unknown>)
         .filter((hold) => typeof hold?.floorId === 'string' && Number.isInteger(hold?.dv))
         .map((hold) => ({ floorId: hold.floorId as string, dv: hold.dv as number })),
+      ...(stringList(entry.visited).length > 0 ? { visited: stringList(entry.visited) } : {}),
     }));
 }
 
@@ -1163,6 +1209,15 @@ export function netScoutReveal(
 
 // ───────────────────────────── widok filtrowany ─────────────────────────────
 
+/**
+ * Traces a netrunner left on a floor (zlecenie MG z 14.11) — the red mark of
+ * the plan, the floor card and the trail. „failed”: Maskowanie tried and lost,
+ * „unmasked”: the floor was walked off (or jacked out of) without a try. The
+ * floor stood on is marked only once its chance is gone — a floor with no try
+ * yet can still be masked.
+ */
+export type NetTraces = 'failed' | 'unmasked';
+
 /** How much of a floor the viewer has earned. */
 export type NetFloorKnowledge = 'hidden' | 'scouted' | 'entered';
 
@@ -1205,6 +1260,8 @@ export interface NetFloorView {
   cloakTotal?: number;
   /** Tries still left in the Turn, while `cloak` is „trying”. */
   cloakTriesLeft?: number;
+  /** Traces left on a floor walked off without Maskowanie (`NetTraces`). */
+  traces?: NetTraces;
   here?: boolean;
   /**
    * Stage 70a, on the floor stood on only: a Virus may be left here. The server
@@ -1272,6 +1329,7 @@ export interface NetTrailStep {
   controlledDv?: number;
   hackFailed?: boolean;
   nodeUsed?: boolean;
+  traces?: NetTraces;
   /** A held node's devices — its payout, wherever the netrunner stands now. */
   devices?: NetDeviceView[];
 }
@@ -1380,6 +1438,8 @@ export function netRunView(
     tries?: CpredNetTry[];
     /** This run's character's Maskowanie on this scene (`netCloaksOf`). */
     cloaks?: CpredNetCloak[];
+    /** Floors this run's character stood on in earlier runs here (`netVisitedOf`). */
+    visited?: readonly string[];
     /**
      * A Program's name by its catalogue id, for the exits a Zwiad has shown.
      * The server's lookup, like `devicesOf`; without it an exit carries none.
@@ -1422,6 +1482,14 @@ export function netRunView(
         : {}),
     };
   };
+  const visited = new Set([...(options.visited ?? []), ...state.entered]);
+  const tracesOf = (floorId: string, here: boolean): { traces?: NetTraces } => {
+    if (!visited.has(floorId)) return {};
+    const status = netCloakStatusOf(cloaks.get(floorId), round, options.netActionsMax);
+    if (status === 'masked') return {};
+    if (status === 'failed' || (status === 'trying' && !here)) return { traces: 'failed' };
+    return here ? {} : { traces: 'unmasked' };
+  };
   const usedNodes = new Set(
     round === null ? [] : state.nodeUse.filter((use) => use.round === round).map((u) => u.floorId),
   );
@@ -1437,6 +1505,7 @@ export function netRunView(
     ...(usedNodes.has(floor.id) ? { nodeUsed: true } : {}),
     ...(failed.has(floor.id) ? { hackFailed: true } : {}),
     ...cloakMarks(floor.id),
+    ...tracesOf(floor.id, floor.id === hereFloor?.id),
   });
   // Stage 26d: the devices of a node are its payout, so they travel once the
   // Check has been passed — and always to the GM, who authored them.

@@ -26,14 +26,31 @@ Zastępuje „Maskowanie — raz na Architekturę” z 02.11 (sekcja o jednej pr
   sukcesu, koniec Rundy albo zejście z piętra — „nieudane”, i żadna późniejsza Tura tego nie
   otwiera. **Poza walką** pobyt na piętrze liczy się jak jedna Tura: tyle prób, ile Akcji
   Sieciowych.
-- **Skutek: tylko znacznik dla MG** — „ślady zatarte · wynik” / „maskowanie nieudane” na planie
-  Architektury (gracz widzi to samo na karcie piętra). Obrona Sieci nie reaguje, a cudzy Zwiad
+- **Skutek: tylko znacznik dla MG** — „ślady zatarte · wynik” na planie Architektury, a piętra
+  z niezatartymi śladami **na czerwono** (zlecenie MG z 14.11, sekcja „Czerwone ślady” niżej;
+  gracz widzi to samo na karcie piętra i w śladzie). Obrona Sieci nie reaguje, a cudzy Zwiad
   przeciw wynikowi Maskowania (s. 199) dalej nie istnieje w kodzie — to informacja dla MG
   (decyzja MG z 14.11: „zostaw, to informacja dla MG”).
 - **„Oddaj próby” MG** zeruje nieudane i rozpoczęte Maskowania postaci na scenie; zamaskowanych
   nie rusza (sukces, jak pamięć).
 - Kod: `netCloakState`, `netRecordCloak`, `netLeaveCloaks` (`shared/systems/cpred/netrun.ts`),
   `netCloakWatcher`, `netCloakPlan` (`netcombat.ts`), `cloakFloor` (`server/realtime/netrun.ts`).
+
+## Czerwone ślady na piętrach bez Maskowania (14.11.2026, zlecenie i decyzje MG)
+
+- **Czerwone jest piętro opuszczone bez zatartych śladów**: Maskowanie nieudane („ślady:
+  nieudane”) albo żadnej próby („ślady: bez maskowania”). Piętro pod stopami czerwienieje
+  dopiero, gdy jego szansa przepadła (nieudana ostatnia próba, koniec Rundy) — bez próby jeszcze
+  da się je zamaskować. Odłączenie z piętra liczy się jak zejście: po ponownym wejściu piętro
+  jest czerwone, chyba że netrunner znów na nim stoi.
+- **Wygląd:** plan MG — czerwony brzeg wiersza i czerwona plakietka; gracz (MG zmienił zdanie
+  w trakcie: „gracz też niech widzi czerwień”) — ta sama plakietka na karcie piętra i czerwona
+  kropka na piętrze w śladzie runu.
+- **Pamięć po odłączeniu:** odwiedzone piętra trafiają do pamięci postaci na scenie
+  (`CpredNetMemory.visited`, zapis przy każdym ruchu windy), czyści je „Zapomnij” sceny. Ślad
+  gracza się przez to nie wydłuża — `netRestoreRun` ich nie składa do `entered`.
+- „Oddaj próby” zeruje nieudane Maskowanie, więc piętro zmienia „ślady: nieudane” na „ślady:
+  bez maskowania” — ślady dalej są, a próba wraca.
 
 ## Zwiad pokazuje Programy na piętrze niżej (14.11.2026, decyzja MG)
 

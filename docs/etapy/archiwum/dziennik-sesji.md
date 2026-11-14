@@ -1,5 +1,29 @@
 # Dziennik sesji — archiwum
 
+### Sesja 14.11 (piąta) — rzut Sieci na kubek, Szczęście w Sieci, nowe menu kubka
+
+**Zrobione (bez migracji, czeka na wdrożenie)** — zlecenie MG:
+
+- **Rzut przy hakowaniu czeka na kubek.** Klik zdolności (Backdoor, Zwiad, Kontrola,
+  Maskowanie, Wirus na ostatnim kroku…), ataku (Paf, Agresor), Ślizgu i Skanera (lewa belka
+  i karta gniazda) nie rzuca sam: kubek się świeci z napisem „Backdoor · Interfejs 6”, gracz go
+  chwyta, potrząsa i rzuca. Kroki pisania Wirusa, które nie są ostatnie, idą od razu (nie
+  rzucają). Rzuty obrony Sieci (LOD, Demon, automat) bez zmian.
+- **Szczęście w rzutach Sieci** — z menu kubka, jak przy Teście z karty: serwer sprawdza pulę przed
+  Akcją Sieciową, zdejmuje punkty przy kościach, karta ma wiersz „Szczęście (N pkt)”.
+- **Plakietka „+N” na kubku większa** (0,95 rem, cyfry mono, poświata).
+- **Menu kubka: Szczęście jako żetony** zamiast przełącznika „0 ▲▼ z 5” — jeden żeton na punkt
+  w puli, klik ustawia, klik w ostatni zapalony gasi, duże „+N” obok nazwy, sekcja oddzielona
+  kreską; reszta w dymku.
+
+Umowy na górze `siec` i `ui`. **Oglądane w Firefoksie** (Playwright MCP na żywym Vite, MG
+w przygotowaniu „Oględzin 12.09”, ładunek kubka wstawiony ze sklepu): świecący kubek, menu
+z żetonami (bez kursora i z podglądem najechania), plakietka „+3”, rzut gestem przekazał +3.
+Pełnego runu z kubkiem na `dev.db` nie grałem — pokrywają go E2E. Testy: serwer 1800 (+1, Szczęście
+przy Skanerze), klient 508 — zielone; E2E `99-kubek` 2/2, `T70a` i `T70b` zielone;
+**nie puszczone:** `T5a`, `T5b` (LLM), `T62`, `T70c–e` — dostały rzut kubkiem po kliku zdolności
+(`throwNetRoll` w `fixtures/siec.ts`).
+
 ### Sesja 14.11 (czwarta) — Zwiad tylko informuje i podaje Programy, Maskowanie piętro po piętrze
 
 **Sprawdzone na prośbę MG: Zwiad nie daje dostępu ani kontroli.** Zapisuje wyłącznie `scouted`

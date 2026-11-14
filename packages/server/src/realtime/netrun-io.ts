@@ -47,6 +47,7 @@ import {
   netRememberRun,
   netTriesOf,
   netCloaksOf,
+  netVisitedOf,
   tokenCentre,
   tokenTableName,
   validateNetArchitecture,
@@ -380,6 +381,10 @@ export async function runPayloadFor(
         sceneId: row.token.sceneId,
       }),
       cloaks: netCloaksOf(runtime, {
+        characterId: row.characterId,
+        sceneId: row.token.sceneId,
+      }),
+      visited: netVisitedOf(runtime, {
         characterId: row.characterId,
         sceneId: row.token.sceneId,
       }),

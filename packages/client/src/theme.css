@@ -497,6 +497,10 @@
      jest kolorem na papier i w dzień ciemniał na ekranie. */
   --net-warn: #f5b041;
   --net-zone-line: #7a5312;
+  /* Niezatarte ślady netrunnera (14.11): piętro opuszczone bez Maskowania albo
+     z nieudanym — czerwień alarmu, mocniejsza od różu LODu. */
+  --net-traces: #ff3b4e;
+  --net-traces-bg: rgb(255 59 78 / 12%);
 }
 
 /* ============================================================================

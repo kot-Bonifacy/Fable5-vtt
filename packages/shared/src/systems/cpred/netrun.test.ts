@@ -29,6 +29,8 @@ import {
   netRecordCloak,
   netForgetHold,
   netRememberRun,
+  netRememberVisited,
+  netVisitedOf,
   netRestoreRun,
   netTriesOf,
   netTrySpent,
@@ -869,6 +871,86 @@ describe('Maskowanie piętro po piętrze, próby w jednej Turze (zasada domowa M
     const plan = netRunView(ARCHITECTURE, at, { ...player, gm: true, cloaks: masked });
     const floor = plan.shaft?.flatMap((branch) => branch.floors).find((f) => f.id === 'f1');
     expect(floor?.cloak).toBe('masked');
+  });
+});
+
+describe('czerwone ślady na piętrach bez Maskowania (zlecenie MG z 14.11)', () => {
+  const kolec = { characterId: 'c-kolec', sceneId: 's-magazyn' };
+  const empty = () => readNetRuntime('{}');
+  const viewer = { gm: false, netActionsMax: 3, combat: NO_FIGHT };
+  const cloak = (
+    runtime: ReturnType<typeof empty>,
+    floorId: string,
+    round: number | null,
+    success: boolean,
+  ) => netRecordCloak(runtime, kolec, { floorId, round, maxTries: 3, success, total: 12 });
+  const planFloor = (view: ReturnType<typeof netRunView>, id: string) =>
+    view.shaft?.flatMap((branch) => branch.floors).find((floor) => floor.id === id);
+
+  it('marks the floors walked off: unmasked, failed, and nothing on a masked one', () => {
+    // Stoi na f3; f0 opuszczone bez próby, f1 nieudane, f2 zamaskowane.
+    let runtime = cloak(empty(), 'f1', null, false);
+    runtime = netLeaveCloaks(runtime, kolec, 'f2');
+    runtime = cloak(runtime, 'f2', null, true);
+    const at = runAt({ branchId: 'trunk', floor: 3 }, { entered: ['f0', 'f1', 'f2', 'f3'] });
+    const plan = netRunView(ARCHITECTURE, at, {
+      ...viewer,
+      gm: true,
+      cloaks: netCloaksOf(runtime, kolec),
+    });
+    expect(planFloor(plan, 'f0')?.traces).toBe('unmasked');
+    expect(planFloor(plan, 'f1')?.traces).toBe('failed');
+    expect(planFloor(plan, 'f2')?.traces).toBeUndefined();
+    // Piętro pod stopami bez próby jeszcze ma szansę; nieodwiedzone — nic.
+    expect(planFloor(plan, 'f3')?.traces).toBeUndefined();
+    expect(planFloor(plan, 'f4')?.traces).toBeUndefined();
+  });
+
+  it('marks the floor stood on only once its chance is gone', () => {
+    const at = runAt({ branchId: 'trunk', floor: 1 }, { entered: ['f0', 'f1'] });
+    const trying = netCloaksOf(cloak(empty(), 'f1', 2, false), kolec);
+    expect(
+      netRunView(ARCHITECTURE, at, { ...viewer, round: 2, cloaks: trying }).here?.traces,
+    ).toBeUndefined();
+    // Runda poszła dalej: ta Tura przepadła.
+    expect(netRunView(ARCHITECTURE, at, { ...viewer, round: 3, cloaks: trying }).here?.traces).toBe(
+      'failed',
+    );
+  });
+
+  it('shows the player the same red mark in the trail', () => {
+    const at = runAt({ branchId: 'trunk', floor: 1 }, { entered: ['f0', 'f1'] });
+    const view = netRunView(ARCHITECTURE, at, viewer);
+    expect(view.trail.find((step) => step.id === 'f0')?.traces).toBe('unmasked');
+    expect(view.trail.find((step) => step.id === 'f1')?.traces).toBeUndefined();
+  });
+
+  it('remembers the floors stood on across a reconnection, without widening the trail', () => {
+    let runtime = netRememberVisited(empty(), kolec, ['f0', 'f1']);
+    runtime = netRememberVisited(runtime, kolec, ['f1', 'f2']);
+    expect(netVisitedOf(runtime, kolec)).toEqual(['f0', 'f1', 'f2']);
+    // Nothing new: the same object comes back.
+    expect(netRememberVisited(runtime, kolec, ['f0'])).toBe(runtime);
+    // A later success keeps the visited floors.
+    runtime = netRememberRun(runtime, kolec, { ...runAt(TOP), broken: ['f1'] });
+    expect(netVisitedOf(readNetRuntime(JSON.stringify(runtime)), kolec)).toEqual([
+      'f0',
+      'f1',
+      'f2',
+    ]);
+
+    // The player's trail does not grow: f2 was only stood on, not won.
+    const restored = netRestoreRun(runAt(TOP), runtime, kolec).state;
+    expect(restored.entered).not.toContain('f2');
+    const plan = netRunView(ARCHITECTURE, restored, {
+      ...viewer,
+      gm: true,
+      visited: netVisitedOf(runtime, kolec),
+    });
+    expect(planFloor(plan, 'f1')?.traces).toBe('unmasked');
+    expect(planFloor(plan, 'f2')?.traces).toBe('unmasked');
+    // f0 is where the fresh run stands — its chance is new.
+    expect(planFloor(plan, 'f0')?.traces).toBeUndefined();
   });
 });
 

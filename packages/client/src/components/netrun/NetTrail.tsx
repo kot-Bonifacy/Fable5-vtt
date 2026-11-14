@@ -1,6 +1,6 @@
 import type { CpredNetPosition, NetTrailStep } from '@vtt/shared';
 import { NET_FLOOR_KIND_LABELS } from '@vtt/shared';
-import { FLOOR_GLYPHS, floorName } from './net-glyphs.js';
+import { FLOOR_GLYPHS, TRACES_LABELS, floorName } from './net-glyphs.js';
 
 /** Co o piętrze śladu mówi dymek: nazwa, głębokość i to, co już tam zrobiono. */
 function stepTitle(step: NetTrailStep): string {
@@ -10,6 +10,7 @@ function stepTitle(step: NetTrailStep): string {
     step.copied ? 'kopia na deku' : null,
     step.controlledDv !== undefined ? 'przejęty' : null,
     step.hackFailed ? 'próba zużyta' : null,
+    step.traces ? TRACES_LABELS[step.traces] : null,
   ].filter((mark): mark is string => mark !== null);
   const name =
     step.label && step.label !== NET_FLOOR_KIND_LABELS[step.kind]
@@ -32,7 +33,7 @@ function Step({
   return (
     <button
       type="button"
-      className={`net-trail-step${step.here ? ' net-trail-step--here' : ''}${held ? ' net-trail-step--held' : ''}`}
+      className={`net-trail-step${step.here ? ' net-trail-step--here' : ''}${held ? ' net-trail-step--held' : ''}${step.traces ? ' net-trail-step--traces' : ''}`}
       disabled={busy || step.here}
       title={stepTitle(step)}
       aria-label={stepTitle(step)}

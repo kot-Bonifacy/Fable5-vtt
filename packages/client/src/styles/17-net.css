@@ -437,6 +437,24 @@
   background: var(--net-held-bg);
 }
 
+/* Ślady bez Maskowania: czerwona kropka w rogu, żeby nie zgasić zieleni przejętego
+   węzła ani cyjanu piętra pod stopami. */
+.net-trail-step--traces {
+  position: relative;
+}
+
+.net-trail-step--traces::after {
+  content: '';
+  position: absolute;
+  top: -3px;
+  right: -3px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--net-traces);
+  box-shadow: 0 0 4px var(--net-traces);
+}
+
 /* Piętro pod stopami: wyłączone (nie ma dokąd jechać), ale nie blednie. Większe od
    reszty śladu i jako jedyne pulsuje — ma być widać z daleka, gdzie stoi postać,
    także między dwoma takimi samymi ikonami (14.11, zlecenie MG). Cyjan należy tylko
@@ -731,6 +749,19 @@
 .net-run-floor-flag--ice {
   border-color: var(--net-warn);
   color: var(--net-warn);
+}
+
+/* Niezatarte ślady (14.11, zlecenie MG): czerwona plakietka, a na planie MG także
+   czerwony brzeg wiersza — widać z daleka nawet w długim szybie. */
+.net-run-floor-flag--traces {
+  border-color: var(--net-traces);
+  background: var(--net-traces-bg);
+  color: var(--net-traces);
+  font-weight: 700;
+}
+
+.net-run-floor--traces {
+  border-left: 3px solid var(--net-traces);
 }
 
 .net-run-floor-notes {

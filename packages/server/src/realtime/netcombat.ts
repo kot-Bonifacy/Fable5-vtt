@@ -50,6 +50,7 @@ import {
   netSamePosition,
   netFloorAt,
   netLeaveCloaks,
+  netRememberVisited,
   tokenTableName,
 } from '@vtt/shared';
 import type { Scene, Token } from '../generated/prisma/client.js';
@@ -766,10 +767,12 @@ export const netSlideEvent = defineEvent<NetRunSlidePayload, NetRunAbilityResult
 
     await saveRunState(deps.ctx.prisma, row.id, next);
     if (exchange.won) {
-      // Maskowanie (14.11): the floor fled from loses its Turn of tries.
+      // Maskowanie (14.11): the floor fled from loses its Turn of tries, and
+      // both floors go to the memory for the red traces mark.
       const landed = netFloorAt(architecture, target)?.id ?? null;
+      const who = { characterId: row.characterId, sceneId: scene.id };
       await updateRuntime(deps.ctx.prisma, row.architectureId, (runtime) =>
-        netLeaveCloaks(runtime, { characterId: row.characterId, sceneId: scene.id }, landed),
+        netRememberVisited(netLeaveCloaks(runtime, who, landed), who, next.entered),
       );
     }
     const message = await postExchange(deps, {

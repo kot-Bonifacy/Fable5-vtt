@@ -306,7 +306,31 @@ test.describe.serial('@szybkie T70a okno SIEĆ: jedno piętro', () => {
     await expect(
       runWindow(mg).locator('.net-plan .net-run-floor', { hasText: label.t2! }),
     ).toContainText('ślady zatarte');
+    // Czerwone ślady (zlecenie MG z 14.11): piętra opuszczone bez Maskowania mają
+    // czerwony brzeg i plakietkę; zamaskowane t2 i t3 pod stopami — nie.
+    const planRow = (key: string) =>
+      runWindow(mg).locator('.net-plan .net-run-floor', { hasText: label[key]! });
+    for (const key of ['t0', 't1', 't4', 't5']) {
+      await expect(planRow(key), key).toHaveClass(/net-run-floor--traces/);
+      await expect(planRow(key).locator('.net-run-floor-flag--traces')).toHaveText(
+        'ślady: bez maskowania',
+      );
+    }
+    for (const key of ['t2', 't3', 'b0', 'b1']) {
+      await expect(planRow(key), key).not.toHaveClass(/net-run-floor--traces/);
+    }
+    await expect(planRow('t1').locator('.net-run-floor-flag--traces')).toHaveCSS(
+      'color',
+      'rgb(255, 59, 78)',
+    );
+    // Gracz widzi tę samą czerwień w śladzie (MG 14.11: „gracz też niech widzi”).
+    await expect(runWindow(ola).locator('.net-trail-step--traces')).toHaveCount(4);
+    await expect(runWindow(ola).locator(`.net-trail-step[title*="${label.t1!}"]`)).toHaveAttribute(
+      'title',
+      /ślady: bez maskowania/,
+    );
     await runWindow(mg).screenshot({ path: test.info().outputPath('maskowanie-plan-mg.png') });
+    await runWindow(ola).screenshot({ path: test.info().outputPath('slady-gracz.png') });
   });
 
   test('9. konsola czysta; okno w Chromium jako gracz', async ({ cast }) => {

@@ -56,6 +56,7 @@ import {
   netCloakState,
   netRecordCloak,
   netLeaveCloaks,
+  netRememberVisited,
   netCloakWatcher,
   netCloakPlan,
   netDifficultyDv,
@@ -515,7 +516,7 @@ export const netRunMoveEvent = defineEvent<NetRunMovePayload, NetRunPayload>({
     next = await spawnIceOnFloors(deps, campaignId, architecture, next, floorIds);
     next = { ...next, ...rememberIce(next, architecture, floorIds) };
     await saveRunState(deps.ctx.prisma, row.id, next);
-    await leaveCloaks(deps, row, scene.id, floorIds.at(-1) ?? null);
+    await leaveCloaks(deps, row, scene.id, floorIds.at(-1) ?? null, next.entered);
     await emitRuns(deps, campaignId);
     const moved = await requireMyRun(deps, campaignId, row.tokenId, user);
     const answered = await answerNetDefense(deps, {
@@ -1184,16 +1185,21 @@ async function cloakFloor(
   return { messageId: message.id, total, success, summary };
 }
 
-/** A move off a floor ends that floor's Turn of Maskowanie (`netLeaveCloaks`). */
+/**
+ * A move off a floor ends that floor's Turn of Maskowanie (`netLeaveCloaks`),
+ * and the floors stood on go to the memory, so the ones left without
+ * Maskowanie stay red after a reconnection (`netRememberVisited`, 14.11).
+ */
 async function leaveCloaks(
   deps: RealtimeDeps,
   row: { characterId: string; architectureId: string },
   sceneId: string,
   stayingOn: string | null,
+  entered: readonly string[],
 ): Promise<void> {
   const who = { characterId: row.characterId, sceneId };
   await updateRuntime(deps.ctx.prisma, row.architectureId, (runtime) =>
-    netLeaveCloaks(runtime, who, stayingOn),
+    netRememberVisited(netLeaveCloaks(runtime, who, stayingOn), who, entered),
   );
 }
 
