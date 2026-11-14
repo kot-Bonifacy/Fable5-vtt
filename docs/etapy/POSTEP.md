@@ -829,8 +829,11 @@ naprawy w `archiwum/zamkniete-zaleglosci.md` („Zamknięte 2026-11-14”):
 - **66e pkt 8:** „Dodaj za darmo” w Kompendium bez wyboru celuje w kartę na wierzchu.
 - **66e pkt 25:** „Wróg w zasięgu wzroku” jednym bursztynowym paskiem (`noteCombatPending`).
 
-**Oglądane w Firefoksie** (Firefox z Playwright MCP nie wstał — `initializeServer` timeout —
-więc tymczasowy spec E2E na `po-T6`, MG w Firefoksie, skasowany): pkt 7 i 8. **Nie oglądane
+**Oglądane w Firefoksie:** pkt 7 i 8 — najpierw tymczasowym specem E2E na `po-T6` (skasowany),
+bo Firefox z Playwright MCP nie wstał, potem w Firefoksie z MCP na `dev.db` (MG, karta Szew:
+„+ Broń z katalogu” i „Dobądź (Akcja)” białe na czerwonym, „Pojazdy” jasne, Kompendium celuje
+w Szew, konsola bez błędów). **Przyczyna awarii MCP:** MG używał w tym czasie własnego
+Firefoksa — po jego zamknięciu MCP wstał od razu; pułapka na górze `ogledziny`. **Nie oglądane
 w przeglądarce:** pkt 2, 3, 5 i 25 (testy jednostkowe dla 2 i 3). Testy: shared 3053, klient 505
 (+4), serwer 1799 — zielone; lint i Prettier czyste. Umowy na górze `siec` i `ui`.
 

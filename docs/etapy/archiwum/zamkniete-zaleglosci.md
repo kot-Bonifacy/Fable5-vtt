@@ -34,10 +34,12 @@ Treść wpisów jest niezmieniona — łącznie z datami i odsyłaczami do notat
   .small-button:hover` dawały tylko czerwone tło. Naprawa: oba dostały `color: var(--cp-on-red)`;
   napisy sekcji „Pojazdy” leżące wprost na czerwonym panelu (zdanie o braku pojazdu, podpisy grup
   galerii MG, „Inne z podręcznika”, zdanie przy „Dodaj pojazd”) — `--cp-on-red-soft`. Oglądane
-  w **Firefoksie** (tymczasowy spec na `po-T6`, MG): „+ Broń z katalogu” biały na czerwonym.
+  w **Firefoksie** (tymczasowy spec na `po-T6` i Playwright MCP na `dev.db`, MG): „+ Broń
+  z katalogu” i „Dobądź (Akcja)” białe na czerwonym.
 - **07.11 (piąta) pkt 8 — „Dodaj za darmo” w Kompendium celuje w pierwszą postać drużyny.**
   Naprawa: bez ręcznego wyboru odbiorcą jest karta na wierzchu (`openSheets`, ostatnia otwarta
-  z listy), dopiero potem pierwsza postać. Oglądane w Firefoksie: otwarta Iskra → „Iskra”.
+  z listy), dopiero potem pierwsza postać. Oglądane w Firefoksie: otwarta Iskra → „Iskra”
+  (`po-T6`), otwarta Szew → „Szew” przy „Oględziny Stym” na początku listy (`dev.db`).
 - **07.11 (szósta) pkt 25 — ta sama „Wróg w zasięgu wzroku” trzy razy naraz.** Diagnoza:
   zatrzymanie marszu szło w temacie `player-move` (żółte), odmowa następnego kliku (`token:walk`
   / `token:move`) w `move` (czerwone), skoku — w `action`. Naprawa: `noteCombatPending`
