@@ -28,7 +28,7 @@ Zastępuje „Maskowanie — raz na Architekturę” z 02.11 (sekcja o jednej pr
   Sieciowych.
 - **Skutek: tylko znacznik dla MG** — „ślady zatarte · wynik” na planie Architektury, a piętra
   z niezatartymi śladami **na czerwono** (zlecenie MG z 14.11, sekcja „Czerwone ślady” niżej;
-  gracz widzi to samo na karcie piętra i w śladzie). Obrona Sieci nie reaguje, a cudzy Zwiad
+  tylko MG — gracz widzi na karcie piętra neutralne „maskowanie nieudane” po swojej próbie). Obrona Sieci nie reaguje, a cudzy Zwiad
   przeciw wynikowi Maskowania (s. 199) dalej nie istnieje w kodzie — to informacja dla MG
   (decyzja MG z 14.11: „zostaw, to informacja dla MG”).
 - **„Oddaj próby” MG** zeruje nieudane i rozpoczęte Maskowania postaci na scenie; zamaskowanych
@@ -43,9 +43,12 @@ Zastępuje „Maskowanie — raz na Architekturę” z 02.11 (sekcja o jednej pr
   dopiero, gdy jego szansa przepadła (nieudana ostatnia próba, koniec Rundy) — bez próby jeszcze
   da się je zamaskować. Odłączenie z piętra liczy się jak zejście: po ponownym wejściu piętro
   jest czerwone, chyba że netrunner znów na nim stoi.
-- **Wygląd:** plan MG — czerwony brzeg wiersza i czerwona plakietka; gracz (MG zmienił zdanie
-  w trakcie: „gracz też niech widzi czerwień”) — ta sama plakietka na karcie piętra i czerwona
-  kropka na piętrze w śladzie runu.
+- **Wygląd:** plan MG — czerwony brzeg wiersza i czerwona plakietka; w oknie MG także plakietka
+  na karcie piętra i czerwona kropka w śladzie runu.
+- **Tylko MG** (MG dwa razy zmieniał zdanie 14.11, ostatecznie: „niech gracz nie ma czerwonego
+  oznaczenia przypominającego mu o maskowaniu”). `traces` liczy się wyłącznie w ładunku MG —
+  do gracza nie wychodzi; gracz ma jak wcześniej neutralne „maskowanie nieudane” po swojej
+  przegranej próbie, a o piętrach bez próby nie dostaje nic.
 - **Pamięć po odłączeniu:** odwiedzone piętra trafiają do pamięci postaci na scenie
   (`CpredNetMemory.visited`, zapis przy każdym ruchu windy), czyści je „Zapomnij” sceny. Ślad
   gracza się przez to nie wydłuża — `netRestoreRun` ich nie składa do `entered`.

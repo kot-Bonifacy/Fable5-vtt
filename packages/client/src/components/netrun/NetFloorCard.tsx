@@ -203,13 +203,24 @@ export function NetFloorCard({
             </span>
           )}
           {here.cloak === 'masked' && <span className="net-run-floor-flag">ślady zatarte</span>}
-          {here.traces && (
+          {/* Czerwień śladów przychodzi tylko w ładunku MG; gracz widzi swój wynik
+              neutralnie (MG 14.11: bez przypominania graczowi o Maskowaniu). */}
+          {here.traces ? (
             <span
               className="net-run-floor-flag net-run-floor-flag--traces"
               title={`${TRACES_TITLES[here.traces]}. Maskowanie mieści się w jednej Turze — tu już przepadło`}
             >
               {TRACES_LABELS[here.traces]}
             </span>
+          ) : (
+            here.cloak === 'failed' && (
+              <span
+                className="net-run-floor-flag"
+                title="Maskowanie mieści się w jednej Turze — tu już przepadło"
+              >
+                maskowanie nieudane
+              </span>
+            )
           )}
           {here.cloak === 'trying' && (
             <span

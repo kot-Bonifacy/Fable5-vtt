@@ -1211,7 +1211,8 @@ export function netScoutReveal(
 
 /**
  * Traces a netrunner left on a floor (zlecenie MG z 14.11) — the red mark of
- * the plan, the floor card and the trail. „failed”: Maskowanie tried and lost,
+ * the GM's plan, floor card and trail; **never in a player's payload** (MG:
+ * the player gets no reminder to mask). „failed”: Maskowanie tried and lost,
  * „unmasked”: the floor was walked off (or jacked out of) without a try. The
  * floor stood on is marked only once its chance is gone — a floor with no try
  * yet can still be masked.
@@ -1483,8 +1484,9 @@ export function netRunView(
     };
   };
   const visited = new Set([...(options.visited ?? []), ...state.entered]);
+  // GM only (MG 14.11, second thought): the player gets no reminder to mask.
   const tracesOf = (floorId: string, here: boolean): { traces?: NetTraces } => {
-    if (!visited.has(floorId)) return {};
+    if (!options.gm || !visited.has(floorId)) return {};
     const status = netCloakStatusOf(cloaks.get(floorId), round, options.netActionsMax);
     if (status === 'masked') return {};
     if (status === 'failed' || (status === 'trying' && !here)) return { traces: 'failed' };

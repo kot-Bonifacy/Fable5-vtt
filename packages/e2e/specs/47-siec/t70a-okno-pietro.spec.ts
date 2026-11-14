@@ -323,12 +323,12 @@ test.describe.serial('@szybkie T70a okno SIEĆ: jedno piętro', () => {
       'color',
       'rgb(255, 59, 78)',
     );
-    // Gracz widzi tę samą czerwień w śladzie (MG 14.11: „gracz też niech widzi”).
-    await expect(runWindow(ola).locator('.net-trail-step--traces')).toHaveCount(4);
-    await expect(runWindow(ola).locator(`.net-trail-step[title*="${label.t1!}"]`)).toHaveAttribute(
-      'title',
-      /ślady: bez maskowania/,
-    );
+    // Ślad MG ma czerwone kropki; gracz nie dostaje znacznika wcale (MG 14.11:
+    // bez przypominania graczowi o Maskowaniu) — ani w oknie, ani w ładunku.
+    await expect(runWindow(mg).locator('.net-trail-step--traces')).toHaveCount(4);
+    await expect(runWindow(ola).locator('.net-trail-step--traces')).toHaveCount(0);
+    await expect(runWindow(ola)).not.toContainText('ślady:');
+    expect(await ola.sniffer.found(['"traces":'])).toEqual([]);
     await runWindow(mg).screenshot({ path: test.info().outputPath('maskowanie-plan-mg.png') });
     await runWindow(ola).screenshot({ path: test.info().outputPath('slady-gracz.png') });
   });

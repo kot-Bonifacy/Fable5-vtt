@@ -878,6 +878,7 @@ describe('czerwone ślady na piętrach bez Maskowania (zlecenie MG z 14.11)', ()
   const kolec = { characterId: 'c-kolec', sceneId: 's-magazyn' };
   const empty = () => readNetRuntime('{}');
   const viewer = { gm: false, netActionsMax: 3, combat: NO_FIGHT };
+  const gmViewer = { ...viewer, gm: true };
   const cloak = (
     runtime: ReturnType<typeof empty>,
     floorId: string,
@@ -910,19 +911,24 @@ describe('czerwone ślady na piętrach bez Maskowania (zlecenie MG z 14.11)', ()
     const at = runAt({ branchId: 'trunk', floor: 1 }, { entered: ['f0', 'f1'] });
     const trying = netCloaksOf(cloak(empty(), 'f1', 2, false), kolec);
     expect(
-      netRunView(ARCHITECTURE, at, { ...viewer, round: 2, cloaks: trying }).here?.traces,
+      netRunView(ARCHITECTURE, at, { ...gmViewer, round: 2, cloaks: trying }).here?.traces,
     ).toBeUndefined();
     // Runda poszła dalej: ta Tura przepadła.
-    expect(netRunView(ARCHITECTURE, at, { ...viewer, round: 3, cloaks: trying }).here?.traces).toBe(
-      'failed',
-    );
+    expect(
+      netRunView(ARCHITECTURE, at, { ...gmViewer, round: 3, cloaks: trying }).here?.traces,
+    ).toBe('failed');
   });
 
-  it('shows the player the same red mark in the trail', () => {
+  it('keeps the mark out of the player’s payload — the GM’s trail has it', () => {
     const at = runAt({ branchId: 'trunk', floor: 1 }, { entered: ['f0', 'f1'] });
-    const view = netRunView(ARCHITECTURE, at, viewer);
-    expect(view.trail.find((step) => step.id === 'f0')?.traces).toBe('unmasked');
-    expect(view.trail.find((step) => step.id === 'f1')?.traces).toBeUndefined();
+    const failed = netCloaksOf(cloak(empty(), 'f1', 2, false), kolec);
+    const player = netRunView(ARCHITECTURE, at, { ...viewer, round: 3, cloaks: failed });
+    expect(JSON.stringify(player)).not.toContain('traces');
+    // The player keeps the plain „maskowanie nieudane” of their own roll.
+    expect(player.here?.cloak).toBe('failed');
+    const gm = netRunView(ARCHITECTURE, at, { ...gmViewer, round: 3, cloaks: failed });
+    expect(gm.trail.find((step) => step.id === 'f0')?.traces).toBe('unmasked');
+    expect(gm.here?.traces).toBe('failed');
   });
 
   it('remembers the floors stood on across a reconnection, without widening the trail', () => {
