@@ -21,13 +21,22 @@ w plikach obok — czytaj je **na żądanie, nigdy rutynowo**:
 
 | stan         | etapy                                                                                          |
 | ------------ | ---------------------------------------------------------------------------------------------- |
-| ⬜ otwarty   | **71** Weryfikacja Ról bez Netrunnera (⬜ projekt z 14.11, `etap-71-weryfikacja-rol.md`: 71a audyt, 71b stan w przeglądarce i **bramka MG**, 71c–71g doróbki wg maszynerii, 71h zamknięcie; nierozpoczęty); **70** Przebudowa netrunningu: okno jednego piętra i przejęte urządzenia na mapie (🟨 zrobione 12–14.11, `etap-70-siec-przebudowa.md`: **70a** okno jednego piętra, **70b** przejęta wieżyczka i kamera, **70c** dron, oczy, pasek, **70d** obszar straży, Sieć ze sceny wg rodzaju, okienko strefy, **70e** automat LOD-u i Demona z hamulcem, **70f ✅ 14.11** wzorce 66b/66e pod nowe reguły i rozegranie; czeka na wdrożenie (70d z migracją `20261113180000_net_scene_installations`) i stół MG); **69** Lewa belka bez ramek (🟨 zrobione 11.11, czeka na wdrożenie i oględziny MG przy stole); **68** Warsztat: ulepszenia auta za ed i naprawa (🟨 zrobione 06.11, czeka na wdrożenie i oględziny MG przy stole); **67** Zakup pojazdu (🟨 zrobione 06.11, czeka na wdrożenie i oględziny MG przy stole); **66e** Scena przykładowa „Po zamknięciu” (🟨 zrobione 07.11, obejrzane w Firefoksie; rozegrana w przeglądarce do końca 07.11 — znaleziska w `zaleglosci.md` (27; pkt 18 i 19 nie, decyzja MG; 13 naprawionych 07.11); czeka na naprawę reszty, stół MG i wdrożenie); **66d** Scena przykładowa „Zastaw” (🟨 wzorzec zrobiony i rozegrany w przeglądarce 06.11; od 06.11 jeden taran na turę (decyzja MG); czeka na stół MG i wdrożenie); **66** Sceny przykładowe (🟨 zrobione 31.10, czeka na oględziny MG przy stole i wdrożenie; **66b** „Fabryka dronów” 🟨 zrobione 31.10, tak samo (netrunner obejrzany w przeglądarce 07.11, poprawki czekają na wdrożenie); **66c** „Ostatni zjazd” 🟨 wzorzec zrobiony, rozegrany w przeglądarce 04.11 i ponownie 05.11 po rebalansie (porażka o włos, balans zatwierdzony przez MG) — zaległości z przebiegów zamknięte 05.11, Esc na kubku MG 07.11 — czeka na stół MG i wdrożenie); **65** Scena pościgu i walka pojazdów (🟨 65a–65e ✅ 30–31.10, czeka na oględziny MG przy stole); **62** Sieć ze sceny (🟨 zrobione, czeka na oględziny MG na VPS po wdrożeniu); **61** Skradanie się (🟨 zrobione, czeka na słowo MG o rozstrzygnięciach); **28** Wdrożenie na VPS (🟨 działa na `https://vtt.tatanga.eu` z botami od 18.10; zostały off-site, utwardzenie, monitoring); **43b**, **43c** (UI walki); **60** Czytelny czat (zlecenie MG z 24.10; 🟨 60a–60c ✅, czeka na oględziny MG z pierwszego kryterium); T10; refaktoryzacja odłożona (MG 18.10) |
+| ⬜ otwarty   | **71** Weryfikacja Ról bez Netrunnera (🟨 `etap-71-weryfikacja-rol.md`: **71a ✅ 14.11** audyt i `role-macierz.md`; następny **71b** stan w przeglądarce i **bramka MG**, potem 71c–71g doróbki wg maszynerii, 71h zamknięcie); **70** Przebudowa netrunningu: okno jednego piętra i przejęte urządzenia na mapie (🟨 zrobione 12–14.11, `etap-70-siec-przebudowa.md`: **70a** okno jednego piętra, **70b** przejęta wieżyczka i kamera, **70c** dron, oczy, pasek, **70d** obszar straży, Sieć ze sceny wg rodzaju, okienko strefy, **70e** automat LOD-u i Demona z hamulcem, **70f ✅ 14.11** wzorce 66b/66e pod nowe reguły i rozegranie; czeka na wdrożenie (70d z migracją `20261113180000_net_scene_installations`) i stół MG); **69** Lewa belka bez ramek (🟨 zrobione 11.11, czeka na wdrożenie i oględziny MG przy stole); **68** Warsztat: ulepszenia auta za ed i naprawa (🟨 zrobione 06.11, czeka na wdrożenie i oględziny MG przy stole); **67** Zakup pojazdu (🟨 zrobione 06.11, czeka na wdrożenie i oględziny MG przy stole); **66e** Scena przykładowa „Po zamknięciu” (🟨 zrobione 07.11, obejrzane w Firefoksie; rozegrana w przeglądarce do końca 07.11 — znaleziska w `zaleglosci.md` (27; pkt 18 i 19 nie, decyzja MG; 13 naprawionych 07.11); czeka na naprawę reszty, stół MG i wdrożenie); **66d** Scena przykładowa „Zastaw” (🟨 wzorzec zrobiony i rozegrany w przeglądarce 06.11; od 06.11 jeden taran na turę (decyzja MG); czeka na stół MG i wdrożenie); **66** Sceny przykładowe (🟨 zrobione 31.10, czeka na oględziny MG przy stole i wdrożenie; **66b** „Fabryka dronów” 🟨 zrobione 31.10, tak samo (netrunner obejrzany w przeglądarce 07.11, poprawki czekają na wdrożenie); **66c** „Ostatni zjazd” 🟨 wzorzec zrobiony, rozegrany w przeglądarce 04.11 i ponownie 05.11 po rebalansie (porażka o włos, balans zatwierdzony przez MG) — zaległości z przebiegów zamknięte 05.11, Esc na kubku MG 07.11 — czeka na stół MG i wdrożenie); **65** Scena pościgu i walka pojazdów (🟨 65a–65e ✅ 30–31.10, czeka na oględziny MG przy stole); **62** Sieć ze sceny (🟨 zrobione, czeka na oględziny MG na VPS po wdrożeniu); **61** Skradanie się (🟨 zrobione, czeka na słowo MG o rozstrzygnięciach); **28** Wdrożenie na VPS (🟨 działa na `https://vtt.tatanga.eu` z botami od 18.10; zostały off-site, utwardzenie, monitoring); **43b**, **43c** (UI walki); **60** Czytelny czat (zlecenie MG z 24.10; 🟨 60a–60c ✅, czeka na oględziny MG z pierwszego kryterium); T10; refaktoryzacja odłożona (MG 18.10) |
 | ✅ ukończone | 01–11, 13–20b, 23a–27f, 27h–27l, 29a–30d, 31–35, 37–42c, 43a, 44a–44d, 45, 46a1, 46a2, 46c1, 46c2, 46b1, 46b2, 47a, 47b, 48a, 48b, 48c, 49a, 49b, 50a, 50b, 50c, 51, 52, 53, 54, 55, 56, 57 (57a–57c), 58 (58a–58d), 59 (59a–59c), 63 (63a–63b; 63c wycofane 29.10), 64 (64a–64c) (ostatni zamknięty: 64, 2026-10-30) |
 | ⛔ wycofane  | 12, 21, 22 (głos), 27g (wydajność), 36 (makra); 27, 29, 30, 38 rozdzielone na etapy literowane |
 
 Pełna tabela z nazwami i datami: `archiwum/tabela-etapow.md`.
 
 ## Od czego zacząć
+
+**Weryfikacja Ról (etap 71, zlecenie MG z 14.11) — 71a zrobione, następny 71b.** Audyt dziewięciu
+Ról (bez Netrunnera) stoi w `role-macierz.md`: 194 reguły z identyfikatorem (`SOL-10`,
+`FIX-04`…), stanem, dowodem w kodzie albo teście i klasą odwzorowalności; na końcu rewizja
+wpisów decyzji z etapu 30 i szkic listy bramki. Mechanika **nie była zmieniana**. Trzy błędy
+czekają w `testy-rejestr.md` (#83–#85) na bramkę MG po 71b. 71b: fikstura dziewięciu postaci,
+punkt kontrolny `role-start`, specyfikacje `52-role/t71-*` w wersji „stan dzisiejszy”, pierwsze
+rozegrania i **lista bramki do zatwierdzenia przez MG** — uwagi dla 71b w pliku etapu pod
+kryteriami 71a.
 
 **Przebudowa netrunningu (etap 70, zlecenie MG z 11.11) — 70a–70f zrobione (12–14.11), czeka
 na wdrożenie (70d z migracją `20261113180000_net_scene_installations`) i stół MG.** Okno SIEĆ
@@ -825,12 +834,39 @@ a nie do tego pliku.
 | `dane`      | `parse-manual.py`, kompendium poza repo, tabele z podręcznika  | 9    | 12      |
 | `kopie`     | `snapshot`, `archive`, paczki ZIP, wczytanie kampanii, „czeka na gracza”, kopie kampanii i cofnięcie, sklep i bot w paczce, zgłoszenie karty gracza, pojazdy w paczce, auta na scenie pościgu, przeszkody poza paczką | 22   | 6       |
 | `ogledziny` | CDP i Playwright MCP, zrzuty, dwie sesje, `window.confirm`    | 0    | 125     |
-| `testy`     | vitest, migotanie, `tsc --noEmit`, środowisko dev              | 0    | 161     |
+| `testy`     | vitest, migotanie, `tsc --noEmit`, środowisko dev              | 0    | 162     |
 
 
 ## Notatki z dwóch ostatnich sesji
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
+
+### Sesja 14.11 (dziewiąta) — etap 71a: audyt Ról i macierz zgodności
+
+**Zrobione (bez zmian mechaniki, nic do wdrożenia):**
+
+- **`role-macierz.md`**: dziesięć tabel (dziewięć Ról + „wspólne”), 194 wiersze — 101 ✅, 28 🟡,
+  31 📜, 21 ❌, 5 ⚠️, 8 ❓. Źródła: podręcznik (s. 43–106, 142–165, 189–192, 411), FAQ i DLC
+  (DLC bez errat do Ról). Dane kreatora porównane skryptem: szablony Cech 10 Ról bez różnic,
+  każdy pakiet Ulicznika sumuje się do 86.
+- **Trzy błędy do `testy-rejestr.md`** (naprawa po bramce — decyzja MG): #83 Wykrycie słabości
+  mnoży się z Ogniem ciągłym (FAQ: po mnożeniu), #84 zmiana Zmysłu Walki i Prowizorka w walce
+  są darmowe, gdy zdarzenie nie niesie `tokenId`, #85 Prowizorka bez Testu.
+- **Najgrubsze braki**: Krawędziarz nie dostaje pakietu Roli (WSP-08), targ Fixera nie działa przy
+  sprzedaży (FIX-04), Testów Twórcy nie ma (TEC-07), liczniki tygodniowe Rockera i Media oraz
+  wymiana i naprawa Taboru to same zdania w panelach.
+- **Dziewięć wpisów decyzji z etapu 30 ma nieaktualny powód** („nie ma maszynerii”) — tabela
+  w macierzy; wpisy w `decyzje-i-uproszczenia.md` dostaną dopiski w 71h, decyzje zostają w mocy
+  do bramki.
+- **Decyzje MG z pytań w sesji**: listy Umiejętności Rockera i Medyka wg oryginału (druk polski
+  ma je zamienione; poprawka danych w 71g), dosłowne zdania podręcznika w `roleability.ts` — na
+  listę bramki (WSP-19), błędy — po bramce.
+
+Testy: nowy `role-matrix.test.ts` (8, jeden `it.fails` na #83); `pnpm test` — shared 3082,
+klient 511, serwer 1806 zielone (pierwszy przebieg serwera skończył się kodem 1 przez błąd po
+zamknięciu `walls.test.ts`, drugi czysty — pułapka na górze `testy`, zaległość w
+`zaleglosci.md`); `tsc` shared i ESLint nowego pliku czyste. E2E nie puszczane (brak zmian
+w kodzie aplikacji). **Przeglądarki nie otwierano** — podetap nie dotyka UI.
 
 ### Sesja 14.11 (ósma) — wykrycie w Sieci zaczyna walkę
 
@@ -858,22 +894,3 @@ wykryciu). Uwaga z oględzin: przypięty pasek leży na nagłówku okna SIEĆ MG
 `net-encounter.test.ts`), E2E `T70g` 3/3 i `T70e` 5/5 — zielone (T70e krok 1 padł raz
 w pierwszym przebiegu, w dwóch następnych przeszedł — migotanie bez diagnozy); `tsc`,
 ESLint i Prettier czyste. `T5b`, `T62`, `T70a–d` nie puszczone.
-
-### Sesja 14.11 (siódma) — czerwone ślady na piętrach bez Maskowania
-
-**Zrobione (bez migracji, czeka na wdrożenie)** — zlecenie MG, rozstrzygnięcia z pytań w sesji:
-
-- **Na „Planie Architektury” piętra z niezatartymi śladami są czerwone**: czerwony brzeg wiersza
-  i plakietka „ślady: nieudane” (Maskowanie przegrane) albo „ślady: bez maskowania” (zszedł bez
-  próby). Piętro pod stopami czerwienieje dopiero, gdy jego szansa przepadła.
-- **Tylko MG** (MG zmieniał zdanie dwa razy, ostatecznie bez przypominania graczowi): znacznik
-  nie wychodzi w ładunku gracza; gracz ma jak wcześniej neutralne „maskowanie nieudane” po
-  swojej próbie. W oknie MG czerwień jest też na karcie piętra i kropką w śladzie.
-- **Przetrwa odłączenie**: serwer pamięta odwiedzone piętra postaci na scenie (pamięć runu,
-  bez migracji, czyści „Zapomnij”). Ślad gracza się przez to nie wydłuża.
-
-Decyzje w `decyzje-i-uproszczenia.md`, umowa na górze `siec`. **Oglądane w Firefoksie** (Ola
-w E2E `T70a`, zrzuty planu MG i okna gracza w kroku 8; MG w tym speku też jedzie Firefoksem).
-Testy: shared 3073 (+4), klient 508, serwer `netrun.test.ts` 25, E2E `T70a` 10/10
-(krok 8 sprawdza czerwień u MG i jej brak w oknie i podsłuchu Oli) — zielone; `tsc` trzech pakietów i ESLint
-czyste. Pełnych suit nie puszczałem; `T70b–e` i `T62` nie puszczone.

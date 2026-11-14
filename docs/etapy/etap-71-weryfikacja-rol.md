@@ -111,30 +111,46 @@ pierwsi kandydaci klasy B.
 
 ### 71a — Audyt na papierze i w kodzie (bez zmian mechaniki)
 
-- [ ] Przeczytać w `data/private/rulebook/text/` rozdział Ról (Zdolności dziewięciu Ról), części
+- [x] Przeczytać w `data/private/rulebook/text/` rozdział Ról (Zdolności dziewięciu Ról), części
       kreatora zależne od Roli (pakiety Umiejętności, wyposażenie startowe, Ścieżka Życia Roli)
       i zasady rozwoju (koszt rangi Zdolności, zmiana Roli); zajrzeć do FAQ i DLC z tego
       samego katalogu pod kątem errat do Ról
-- [ ] Założyć `role-macierz.md`: dziewięć tabel, każda reguła z identyfikatorem, stanem,
+- [x] Założyć `role-macierz.md`: dziewięć tabel, każda reguła z identyfikatorem, stanem,
       dowodem i klasą odwzorowalności
-- [ ] Dowód każdego ✅ i 🟡 to **wskazany kod albo test**, nie pamięć o etapie 30; gdzie testu
+- [x] Dowód każdego ✅ i 🟡 to **wskazany kod albo test**, nie pamięć o etapie 30; gdzie testu
       jednostkowego brak, dopisać go w tej sesji (testy wolno dodawać, mechaniki nie zmieniać)
-- [ ] Warstwa „kreator”: porównać `roleKits` i pakiety z `creation.json` (wersja z
+- [x] Warstwa „kreator”: porównać `roleKits` i pakiety z `creation.json` (wersja z
       `data/private/cpred/`) z podręcznikiem dla każdej z dziewięciu Ról; rozjazdy danych to
       wiersze ⚠️
-- [ ] Warstwa „rozwój”: koszt i sufit rangi, sakiewki Specjalizacji przy awansie (Twórca 2
+- [x] Warstwa „rozwój”: koszt i sufit rangi, sakiewki Specjalizacji przy awansie (Twórca 2
       różne, Medycyna 1), próg wieloklasowości, zachowanie Zdolności dawnej Roli
-- [ ] Rewizja **każdego** wpisu `decyzje-i-uproszczenia.md` dotyczącego etapów 30a–30d, 29b
+- [x] Rewizja **każdego** wpisu `decyzje-i-uproszczenia.md` dotyczącego etapów 30a–30d, 29b
       i kreatora Ról: wiersz macierzy + rubryka „powód nadal aktualny? tak / nie”
-- [ ] Błędy znalezione przy czytaniu kodu → `testy-rejestr.md` i wiersz ⚠️; **naprawa po
+- [x] Błędy znalezione przy czytaniu kodu → `testy-rejestr.md` i wiersz ⚠️; **naprawa po
       bramce**, chyba że błąd psuje dane (wtedy od razu i z notatką)
 
 **Kryteria ukończenia 71a**
 
-- [ ] Macierz ma komplet wierszy dla dziewięciu Ról i czterech warstw; żaden wiersz bez stanu
+- [x] Macierz ma komplet wierszy dla dziewięciu Ról i czterech warstw; żaden wiersz bez stanu
       i bez dowodu
-- [ ] `pnpm test` zielone po dopisaniu testów charakteryzujących
-- [ ] W repo nie ma ani jednego przepisanego akapitu podręcznika
+- [x] `pnpm test` zielone po dopisaniu testów charakteryzujących
+- [x] W repo nie ma ani jednego przepisanego akapitu podręcznika — macierz niesie same
+      parafrazy; zastane zdania podręcznika w `roleability.ts` (etap 30) to wiersz WSP-19,
+      decyzją MG z 14.11 na liście bramki
+
+**Wynik 71a (14.11.2026).** `role-macierz.md`: 194 wiersze (101 ✅, 28 🟡, 31 📜, 21 ❌, 5 ⚠️,
+8 ❓) w dziesięciu tabelach — dziewięć Ról i „wspólne” (kreator, rozwój, wieloklasowość).
+Testy charakteryzujące: `role-matrix.test.ts` (8, w tym jeden `it.fails` na błąd #83). Trzy
+błędy w `testy-rejestr.md` (#83–#85), naprawa po bramce (decyzja MG). Dziewięć wpisów decyzji
+z etapu 30 ma nieaktualny powód („nie ma maszynerii”) — tabela „Rewizja wpisów decyzji”
+w macierzy; same wpisy dostaną dopiski w 71h. Decyzje MG z pytań na koniec sesji stoją
+w macierzy („Decyzje MG z 14.11”): listy Umiejętności Rockera i Medyka wg oryginału, teksty
+podręcznika w kodzie na listę bramki.
+
+**Uwagi dla 71b:** (1) Krawędziarz nie dostaje pakietu Roli (WSP-08) — fikstura `role.ts` zakłada
+postacie gniazdem MG, więc to jej nie blokuje; (2) specyfikacje oznaczają #83–#85 przez
+`test.fail`; (3) do sprawdzenia asercją: Zmysł Walki w rundzie 0 (SOL-02), Wyczucie zagrożenia
+w Percepcji rzucanej przez serwer (SOL-15), Moto w Manewrze na scenie pościgu (NOM-02).
 
 ### 71b — Stan dzisiejszy w przeglądarce, potem bramka MG
 

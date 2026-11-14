@@ -284,6 +284,17 @@ i MG w Chromium skryptem biblioteki `playwright` na instancji E2E (`hold.ts`) �
 (Rola, Ścieżka, Wyposażenie, Opis), okno portretu i prośba, „Czeka na MG”, obwódki żetonów;
 asystent zasad w Chromium MCP. Firefox z Playwright MCP nie wstał (pułapka w `ogledziny`).
 
+### Błędy z audytu Ról (etap 71a, 14.11.2026)
+
+Znalezione przy czytaniu kodu, nie w przebiegu E2E. Naprawa po bramce MG (71b) — żaden nie psuje
+danych. Wiersze macierzy: `docs/etapy/role-macierz.md`.
+
+| id  | etap | waga | obszar | tytuł | kroki odtworzenia | dowód (test, zrzut, log) | status | poprawka (commit) |
+| --- | ---- | ---- | ------ | ----- | ----------------- | ------------------------ | ------ | ----------------- |
+| 83  | 71a  | B2 (do triażu MG) | atak | Wykrycie słabości Solo mnoży się razem z Ogniem ciągłym (SOL-10) | Solo z punktami w Wykryciu słabości trafia serią; rzut obrażeń to 2k6 + premia, a mnożnik serii obejmuje całą sumę: (2k6 + premia) × N. FAQ: premia dochodzi po pomnożeniu kości, przed pancerzem | `rolls.ts: planDamageRoll` (premia jako term) + `dice.ts: damageTotal`; test `role-matrix.test.ts` `it.fails SOL-10` | nowy | — |
+| 84  | 71a  | B2 (do triażu MG) | tura | Zmiana przydziału Zmysłu Walki w walce jest darmowa, gdy ładunek nie niesie `tokenId` (SOL-03) | trwa walka; z gniazda gracza `character:combat-awareness` z `characterId` i nowym `allocation`, bez `tokenId` → przydział zapisany, Akcja nietknięta. To samo w `character:field-repair` (TEC-04): Prowizorka bez Akcji | `realtime/characters.ts`: `requireTurnSpend` stoi za warunkiem `payload?.tokenId !== undefined`; brak testu podrobionego zdarzenia | nowy | — |
+| 85  | 71a  | B2 (do triażu MG) | postac | Prowizorka Technika udaje się bez Testu (TEC-04) | Technik z punktem w Naprawie klika Prowizorkę przy startym pancerzu → OB wraca do pełna bez rzutu; podręcznik (s. 147) wymaga Testu o PT zwykłej naprawy z poziomem Naprawy | `realtime/characters.ts: characterFieldRepairEvent` — brak rzutu; `specialties.test.ts` (serwer) „Prowizorka wymaga punktu w Naprawie i oddaje starte OB” | nowy | — |
+
 ## Zadania dla innych etapów (nie błędy)
 
 Rzeczy, które test wykazał, ale plan każe je zapisać jako zadanie, a nie błąd.

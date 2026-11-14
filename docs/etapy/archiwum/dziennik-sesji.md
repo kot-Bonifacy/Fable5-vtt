@@ -1,5 +1,24 @@
 # Dziennik sesji — archiwum
 
+### Sesja 14.11 (siódma) — czerwone ślady na piętrach bez Maskowania
+
+**Zrobione (bez migracji, czeka na wdrożenie)** — zlecenie MG, rozstrzygnięcia z pytań w sesji:
+
+- **Na „Planie Architektury” piętra z niezatartymi śladami są czerwone**: czerwony brzeg wiersza
+  i plakietka „ślady: nieudane” (Maskowanie przegrane) albo „ślady: bez maskowania” (zszedł bez
+  próby). Piętro pod stopami czerwienieje dopiero, gdy jego szansa przepadła.
+- **Tylko MG** (MG zmieniał zdanie dwa razy, ostatecznie bez przypominania graczowi): znacznik
+  nie wychodzi w ładunku gracza; gracz ma jak wcześniej neutralne „maskowanie nieudane” po
+  swojej próbie. W oknie MG czerwień jest też na karcie piętra i kropką w śladzie.
+- **Przetrwa odłączenie**: serwer pamięta odwiedzone piętra postaci na scenie (pamięć runu,
+  bez migracji, czyści „Zapomnij”). Ślad gracza się przez to nie wydłuża.
+
+Decyzje w `decyzje-i-uproszczenia.md`, umowa na górze `siec`. **Oglądane w Firefoksie** (Ola
+w E2E `T70a`, zrzuty planu MG i okna gracza w kroku 8; MG w tym speku też jedzie Firefoksem).
+Testy: shared 3073 (+4), klient 508, serwer `netrun.test.ts` 25, E2E `T70a` 10/10
+(krok 8 sprawdza czerwień u MG i jej brak w oknie i podsłuchu Oli) — zielone; `tsc` trzech pakietów i ESLint
+czyste. Pełnych suit nie puszczałem; `T70b–e` i `T62` nie puszczone.
+
 ### Sesja 14.11 (szósta) — „Zapomnij” w edycji sceny czyści też Sieć i mówi, co zrobił
 
 **Zrobione (bez migracji, czeka na wdrożenie)** — zlecenie MG:

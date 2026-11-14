@@ -6,6 +6,12 @@ w `POMYSLY.md` („Do sprawdzenia przy stole”), decyzje MG — w `decyzje-i-up
 
 ## Otwarte
 
+**14.11.2026 — `walls.test.ts` zostawia zapis pamięci eksploracji po zamknięciu testu.** Pełna
+suita serwera raz skończyła się kodem 1 przy 1806/1806 zielonych: `persistMemory`
+(`realtime/exploration.ts`) zapisał `playerExploration` po zwinięciu bazy (`P2021`), vitest
+policzył dwa „Unhandled Errors”. Drugi przebieg czysty. Do zrobienia: doczekać zapisu przy
+zamykaniu (test albo `close` serwera). Pułapka na górze `testy`.
+
 **14.11.2026 — rozegranie „Fabryki dronów” i „Po zamknięciu” po przebudowie Sieci (70f).**
 Tymczasowe specy oględzin (MG w Chromium, Ola i Marek w Firefoksie), oba wzorce do końca, konsole
 czyste. Dwie rzeczy poprawione od razu (pasek „Oczy i urządzenia” z nazwami w dwóch wierszach,
