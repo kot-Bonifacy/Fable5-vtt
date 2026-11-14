@@ -12,6 +12,7 @@ import {
   jackIn,
   runWindow,
   takeExit,
+  throwNetRoll,
 } from '../../fixtures/siec.ts';
 import { emitAck } from '../../fixtures/socket.ts';
 import { shakeCup } from '../../fixtures/table.ts';
@@ -310,6 +311,7 @@ test.describe.serial('@szybkie T70e automat Czarnego LOD-u i Demona', () => {
     // Kontrola: Interfejs 4 + 9 = 13 przeciw PT 6.
     scriptDice([9]);
     await abilityButton(ola, 'Kontrola').click();
+    await throwNetRoll(ola.page);
     await expect(eyes(ola)).toHaveCount(1, { timeout: 30_000 });
     expect(pendingDice()).toBe('');
     await expect.poll(() => statusesOf(TURRET)).toContain('net-seized');

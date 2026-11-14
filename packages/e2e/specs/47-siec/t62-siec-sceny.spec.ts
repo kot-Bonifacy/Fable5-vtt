@@ -1,5 +1,6 @@
 import type { Socket } from 'socket.io-client';
 import { expect, test, type Actor } from '../../fixtures/actors.ts';
+import { throwNetRoll } from '../../fixtures/siec.ts';
 import { runOf } from '../../fixtures/brama.ts';
 import { apiGm, characterId, cookieHeader, invite, userId } from '../../fixtures/nocna-zmiana.ts';
 import { startFromPoT6 } from '../../fixtures/regresja.ts';
@@ -158,6 +159,7 @@ test.describe.serial('T62 Sieć ze sceny: kamery bez Architektury', () => {
     // Interfejs Iskry + 9 przebija PT węzła Sieci ze sceny (Standardowy, 8).
     scriptDice([9]);
     await runWindow().locator('.net-abilities').getByRole('button', { name: 'Kontrola' }).click();
+    await throwNetRoll(ola.page);
     const devices = runWindow().locator('.net-eye');
     await devices.first().waitFor({ timeout: 20_000 });
     expect(pendingDice()).toBe('');
@@ -170,6 +172,7 @@ test.describe.serial('T62 Sieć ze sceny: kamery bez Architektury', () => {
     await expect(sighted.locator('.net-sighted-device')).toHaveText(['Wieżyczka']);
     scriptDice([9]);
     await runWindow().locator('.net-abilities').getByRole('button', { name: 'Kontrola' }).click();
+    await throwNetRoll(ola.page);
     await expect(devices).toHaveCount(2, { timeout: 20_000 });
     expect(pendingDice()).toBe('');
     // Etap 70b/70c: figury prowadzi się z mapy — „Obróć”, „Strzelaj” i „Wyłącz”

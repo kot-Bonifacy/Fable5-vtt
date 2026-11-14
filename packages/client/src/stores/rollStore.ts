@@ -11,6 +11,7 @@ import type {
   CpredCharismaPurpose,
   CpredProofLevel,
   CpredStatId,
+  RollGesture,
   ScenePoint,
 } from '@vtt/shared';
 import {
@@ -236,6 +237,28 @@ export interface PendingCreation {
   quiet?: boolean;
 }
 
+/**
+ * Rzut Interfejsu czekający na kubek (zlecenie MG z 14.11.2026): zdolność
+ * w runie, Paf i Agresor, Ślizg, Skaner. Do tego dnia klik w oknie SIEĆ rzucał
+ * od razu — teraz kubek się świeci, gracz go chwyta, potrząsa i może dorzucić
+ * Szczęście z menu kubka.
+ *
+ * Kubek nie zna protokołu Sieci: wołający zostawia tu `fire`, które wysyła
+ * zdarzenie z gestem i Szczęściem i samo pokazuje wynik nad mapą. Okno SIEĆ
+ * może być już zamknięte, kiedy kubek poleci — `fire` nie trzyma się jego
+ * stanu, tylko kanału ogłoszeń.
+ */
+export interface PendingNet {
+  /** Karta, której Szczęście ten rzut może wydać. */
+  characterId: string;
+  characterName: string;
+  /** Napis na kubku, np. `Backdoor · Interfejs 6`. */
+  title: string;
+  /** Rozróżnia dwa ładunki z tym samym napisem — dzwonek kubka gra przy każdym. */
+  key: string;
+  fire: (gesture: RollGesture, luck: number) => void;
+}
+
 interface RollStoreState {
   /** Open roll dialog (null = closed). */
   target: RollTarget | null;
@@ -253,6 +276,8 @@ interface RollStoreState {
   facedown: PendingFacedown | null;
   /** Character-creator stat spread loaded into the cup (stage 25a). */
   creation: PendingCreation | null;
+  /** Rzut Interfejsu w Sieci (14.11). */
+  net: PendingNet | null;
   /**
    * Szczęście zadeklarowane w menu kubka (22.10.2026, decyzja MG) — jedno
    * pole dla każdego rzutu, który je przyjmuje: Test z karty, atak, Unik,
@@ -291,6 +316,7 @@ interface RollStoreState {
   loadGrappleCup: (grapple: PendingGrapple) => void;
   loadFacedownCup: (facedown: PendingFacedown) => void;
   loadCreationCup: (creation: PendingCreation) => void;
+  loadNetCup: (net: PendingNet) => void;
   clearCup: () => void;
   setCupLuck: (luck: number) => void;
   remember: (modifier: number, visibility: 'public' | 'gm') => void;
@@ -311,6 +337,7 @@ const EMPTY_CUP = {
   grapple: null,
   facedown: null,
   creation: null,
+  net: null,
   cupLuck: 0,
 } as const;
 
@@ -323,6 +350,7 @@ export const useRollStore = create<RollStoreState>((set) => ({
   grapple: null,
   facedown: null,
   creation: null,
+  net: null,
   cupLuck: 0,
   lastModifier: 0,
   lastVisibility: 'public',
@@ -342,6 +370,7 @@ export const useRollStore = create<RollStoreState>((set) => ({
   loadGrappleCup: (grapple) => set({ ...EMPTY_CUP, grapple, target: null }),
   loadFacedownCup: (facedown) => set({ ...EMPTY_CUP, facedown, target: null }),
   loadCreationCup: (creation) => set({ ...EMPTY_CUP, creation, target: null }),
+  loadNetCup: (net) => set({ ...EMPTY_CUP, net, target: null }),
   clearCup: () => set({ ...EMPTY_CUP }),
   setCupLuck: (cupLuck) => set({ cupLuck }),
   setCupHeld: (cupHeld) => set({ cupHeld }),

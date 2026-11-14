@@ -1,4 +1,5 @@
 import { expect, test, type Actor } from '../../fixtures/actors.ts';
+import { throwNetRoll } from '../../fixtures/siec.ts';
 import { query, queryOne, stateFingerprint } from '../../fixtures/db.ts';
 import { architecture, revealFog, runOf, visibleTokenIds, zonesOn } from '../../fixtures/brama.ts';
 import { BRAMA } from '../../fixtures/maps.ts';
@@ -701,6 +702,7 @@ test.describe.serial('T5b: „Brama” — walka druga, Sieć, wieżyczka, pad A
     const ice = window.locator('.net-ice', { hasText: 'Kruk' });
     await ice.locator('select').first().selectOption({ label: 'Miecz — 3k6' });
     await ice.getByRole('button', { name: 'Atakuj' }).click();
+    await throwNetRoll(ola.page);
     // Stan runu w bazie od razu, okno Oli po animacji kości wymiany.
     await expect.poll(() => iceOf('Kruk')?.mode).toBe('derezzed');
     expect(pendingDice()).toBe('');
@@ -726,6 +728,7 @@ test.describe.serial('T5b: „Brama” — walka druga, Sieć, wieżyczka, pad A
     scriptDice([9]);
     const beforeControl = lastMessageId();
     await window.locator('.net-abilities').getByRole('button', { name: 'Kontrola' }).click();
+    await throwNetRoll(ola.page);
     await expect.poll(controlledFloors).toEqual([node.id]);
     expect(pendingDice()).toBe('');
     test

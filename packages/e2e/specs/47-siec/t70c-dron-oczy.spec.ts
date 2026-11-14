@@ -6,7 +6,14 @@ import { apiGm, characterId, cookieHeader, userId } from '../../fixtures/nocna-z
 import { query, queryOne, seat, startFromPoT6 } from '../../fixtures/regresja.ts';
 import { clickOnMap, walkOnMap } from '../../fixtures/scene.ts';
 import { DEAD_GATEWAY, rawSocket } from '../../fixtures/security.ts';
-import { abilityButton, buildNetScene, jackIn, runWindow, takeExit } from '../../fixtures/siec.ts';
+import {
+  abilityButton,
+  buildNetScene,
+  jackIn,
+  runWindow,
+  takeExit,
+  throwNetRoll,
+} from '../../fixtures/siec.ts';
 import { emitAck } from '../../fixtures/socket.ts';
 import { shakeCup } from '../../fixtures/table.ts';
 import { pendingDice, scriptDice } from '../../instance/instance.ts';
@@ -253,6 +260,7 @@ test.describe.serial('@szybkie T70c dron w ruchu, oczy urządzeń, pasek', () =>
     expect(await namesSeenBy(ola)).not.toContain('Kot 70c');
     scriptDice([9]);
     await abilityButton(ola, 'Kontrola').click();
+    await throwNetRoll(ola.page);
     // Pasek przychodzi po animacji kości (pułapka `siec` z 20.10).
     await expect(strip(ola).locator('.net-eye[data-eye]')).toHaveCount(3, { timeout: 20_000 });
     expect(pendingDice()).toBe('');

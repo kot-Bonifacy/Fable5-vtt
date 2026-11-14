@@ -218,6 +218,7 @@ import type {
   NetRunPayload,
   NetRunProgramPayload,
   NetRunSlidePayload,
+  NetScanPayload,
   NetRunSyncBroadcast,
   NoteDeleteBroadcast,
   NotePatch,
@@ -3128,8 +3129,12 @@ export const copyNetFile = (runId: string, floorId: string) =>
 export const useNetAbility = (payload: NetRunAbilityPayload) =>
   emitSceneAck<NetRunAbilityResult>('netrun:ability', payload);
 
-export const runNetScan = (tokenId: string, gesture?: RollGesture) =>
-  emitSceneAck<NetRunAbilityResult>('netrun:scan', { tokenId, gesture });
+export const runNetScan = (tokenId: string, gesture?: RollGesture, luckSpent = 0) =>
+  emitSceneAck<NetRunAbilityResult>('netrun:scan', {
+    tokenId,
+    ...(gesture ? { gesture } : {}),
+    ...(luckSpent > 0 ? { luckSpent } : {}),
+  } satisfies NetScanPayload);
 
 /* ── walka w Sieci (etap 26c) ── */
 

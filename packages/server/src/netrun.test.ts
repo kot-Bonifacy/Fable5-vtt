@@ -806,6 +806,40 @@ describe('run netrunnera na żywych gniazdach', () => {
     expect((await roundTrip(player)).accessPoints.map((entry) => entry.id)).toContain(near.id);
   });
 
+  it('takes Luck from the cup into the Scanner: checked before the Action, spent with the dice', async () => {
+    await emitAck(gm, 'character:update', {
+      characterId: netrunnerId,
+      patch: { data: { luckCurrent: 3 } },
+    });
+    const luckLeft = async () =>
+      (
+        JSON.parse(
+          (await built.prisma.character.findUniqueOrThrow({ where: { id: netrunnerId } })).data,
+        ) as { luckCurrent: number }
+      ).luckCurrent;
+
+    // Więcej, niż jest w puli — odmowa, a pula zostaje nietknięta.
+    const tooMuch = await emitAck(player, 'netrun:scan', {
+      tokenId: netrunnerTokenId,
+      luckSpent: 4,
+    });
+    expect(errorOf(tooMuch)).toBe('NOT_ENOUGH_LUCK');
+    expect(await luckLeft()).toBe(3);
+
+    const card = waitFor<{
+      message: { roll?: { breakdown?: { label: string; value: number; kind?: string }[] } };
+    }>(player, 'chat:message');
+    data(
+      await emitAck<NetRunAbilityResult>(player, 'netrun:scan', {
+        tokenId: netrunnerTokenId,
+        luckSpent: 2,
+      }),
+      'netrun:scan',
+    );
+    expect(await luckLeft()).toBe(1);
+    expect((await card).message.roll?.breakdown).toContainEqual({ label: 'Szczęście (2 pkt)', value: 2, kind: 'luck' });
+  });
+
   it('jacks out on purpose and forgets the shaft', async () => {
     const ack = await emitAck(player, 'netrun:leave', { runId });
     expect(ack.ok).toBe(true);

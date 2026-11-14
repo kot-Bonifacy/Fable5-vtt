@@ -35,6 +35,7 @@ import {
   type PendingFacedown,
   type PendingGrapple,
   type PendingInitiative,
+  type PendingNet,
   type PendingRoll,
 } from '../stores/rollStore.js';
 import { useBetweenSessions } from '../session-view.js';
@@ -175,6 +176,8 @@ type CupMode =
   | { kind: 'grapple'; pending: PendingGrapple }
   | { kind: 'facedown'; pending: PendingFacedown }
   | { kind: 'creation'; pending: PendingCreation }
+  /** Rzut Interfejsu w Sieci (14.11, MG): zdolność, atak, Ślizg, Skaner. */
+  | { kind: 'net'; pending: PendingNet }
   /**
    * Wezwanie MG czekające na tego gracza (etap 32). Kubek stoi wtedy pusty,
    * ale **woła**: chwyt otwiera okno rzutu zamiast potrząsania, bo Szczęście
@@ -215,6 +218,7 @@ function luckSheetOf(mode: CupMode): string | null {
     case 'evasion':
     case 'grapple':
     case 'facedown':
+    case 'net':
       return mode.pending.characterId;
     case 'dodge':
       return mode.call.pending.characterId;
@@ -321,6 +325,7 @@ export function DiceCup() {
   const grapple = useRollStore((s) => s.grapple);
   const facedown = useRollStore((s) => s.facedown);
   const creation = useRollStore((s) => s.creation);
+  const net = useRollStore((s) => s.net);
   const items = useChatStore((s) => s.items);
   const user = useAuthStore((s) => s.user);
   const myUserId = user?.id ?? '';
@@ -360,6 +365,7 @@ export function DiceCup() {
     if (grapple) return { kind: 'grapple', pending: grapple };
     if (facedown) return { kind: 'facedown', pending: facedown };
     if (creation) return { kind: 'creation', pending: creation };
+    if (net) return { kind: 'net', pending: net };
     // Unik przed obrażeniami: póki obrońca nie zdecyduje, strzelec i tak nie
     // rzuci, więc decyzja obrońcy wygrywa z każdym wezwaniem.
     const dodge = openEvasionCallsFor(items, user, characters, tokens).find(
@@ -397,6 +403,7 @@ export function DiceCup() {
     grapple,
     facedown,
     creation,
+    net,
     items,
     myUserId,
     isGm,
@@ -423,11 +430,13 @@ export function DiceCup() {
             ? `call:${mode.pending.call.messageId}`
             : mode.kind === 'creation' && mode.pending.quiet
               ? null
-              : 'pending' in mode
-                ? `${mode.kind}:${JSON.stringify(mode.pending)}`
-                : mode.kind === 'roll' || mode.kind === 'randtable'
-                  ? mode.kind
-                  : null;
+              : mode.kind === 'net'
+                ? `net:${mode.pending.key}`
+                : 'pending' in mode
+                  ? `${mode.kind}:${JSON.stringify(mode.pending)}`
+                  : mode.kind === 'roll' || mode.kind === 'randtable'
+                    ? mode.kind
+                    : null;
   useCupNotification(synced && campaign ? notificationKey : null, campaign?.id ?? null);
 
   // Esc puts a loaded check back on the shelf (as long as we are not mid-shake).
@@ -456,7 +465,14 @@ export function DiceCup() {
   }, [dodgeCallKey, shaking]);
   useEffect(() => {
     if (
-      (!pending && !initiative && !attack && !evasion && !grapple && !facedown && !creation) ||
+      (!pending &&
+        !initiative &&
+        !attack &&
+        !evasion &&
+        !grapple &&
+        !facedown &&
+        !creation &&
+        !net) ||
       shaking
     )
       return;
@@ -465,7 +481,7 @@ export function DiceCup() {
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [pending, initiative, attack, evasion, grapple, facedown, creation, shaking]);
+  }, [pending, initiative, attack, evasion, grapple, facedown, creation, net, shaking]);
 
   // Mapa słucha tego samego ruchu wskaźnika co kubek (Pixi łapie go na całym
   // dokumencie), więc musi wiedzieć, że ręka jest zajęta — inaczej rysuje trasę
@@ -691,6 +707,13 @@ export function DiceCup() {
             );
           }
         });
+      } else if (current.kind === 'net') {
+        const { pending: loaded } = current;
+        lastFunNotation = '1d10';
+        useRollStore.getState().clearCup();
+        void digestSamples(samples).then((entropy) => {
+          loaded.fire({ entropy, strength, toss }, luck);
+        });
       } else if (current.kind === 'creation') {
         const { pending: loaded } = current;
         lastFunNotation = loaded.notation;
@@ -800,7 +823,10 @@ export function DiceCup() {
           ? ' dice-cup--attack'
           : mode.kind === 'creation'
             ? ' dice-cup--creation'
-            : mode.kind === 'evasion' || mode.kind === 'grapple' || mode.kind === 'facedown'
+            : mode.kind === 'evasion' ||
+                mode.kind === 'grapple' ||
+                mode.kind === 'facedown' ||
+                mode.kind === 'net'
               ? ' dice-cup--sheet'
               : mode.kind === 'initiative'
                 ? ' dice-cup--sheet'
@@ -833,7 +859,7 @@ export function DiceCup() {
               ? `Potrząśnij i strzel: ${mode.pending.title} · Esc odkłada atak`
               : mode.kind === 'evasion'
                 ? `Potrząśnij i rzuć: ${mode.pending.title} · Esc odkłada rzut`
-                : mode.kind === 'grapple' || mode.kind === 'facedown'
+                : mode.kind === 'grapple' || mode.kind === 'facedown' || mode.kind === 'net'
                   ? `Potrząśnij i rzuć: ${mode.pending.title} · Esc odkłada rzut`
                   : mode.kind === 'initiative'
                     ? `Potrząśnij i rzuć inicjatywę: ${mode.pending.name} — ${initiativeLabel(mode.pending)} · Esc odkłada rzut`
@@ -903,7 +929,8 @@ export function DiceCup() {
         {(mode.kind === 'attack' ||
           mode.kind === 'evasion' ||
           mode.kind === 'grapple' ||
-          mode.kind === 'facedown') && <span className="dice-cup-label">{mode.pending.title}</span>}
+          mode.kind === 'facedown' ||
+          mode.kind === 'net') && <span className="dice-cup-label">{mode.pending.title}</span>}
         {mode.kind === 'creation' && <span className="dice-cup-label">{mode.pending.title}</span>}
         {mode.kind === 'sheet' && (
           <span className="dice-cup-label">{sheetLabel(mode.pending, luck)}</span>

@@ -10,6 +10,7 @@ import type {
   NetAccessPointUpdatePayload,
   NetAccessPointView,
   NetRunAbilityPayload,
+  NetScanPayload,
   NetRunAbilityResult,
   NetRunCopyPayload,
   NetRunIdPayload,
@@ -68,6 +69,8 @@ import {
 } from '@vtt/shared';
 import type { Character, Token } from '../generated/prisma/client.js';
 import { RealtimeError, defineEvent, type RealtimeDeps } from './registry.js';
+import { spendCharacterLuck } from './character-rolls.js';
+import { netLuckBonus, netLuckOf, requireNetLuck } from './net-luck.js';
 import { rememberDeletion, scalarRow } from './undo-buffer.js';
 import { emitTokensById, requireCampaignToken } from './tokens.js';
 import { requireCampaignScene, toSceneView } from './scenes.js';
@@ -614,6 +617,8 @@ export const netRunAbilityEvent = defineEvent<NetRunAbilityPayload, NetRunAbilit
     }
 
     const rank = readInterfaceRank(deps, character);
+    const luck = netLuckOf(payload?.luckSpent);
+    await requireNetLuck(deps, character.id, luck);
     const { actions } = await netActionsForRun(deps.ctx.prisma, deps.ctx.cpred, row.characterId);
     // Zasada domowa MG z 14.11: Maskowanie piętro po piętrze, próby w jednej
     // Turze. Odmowa przed Akcją Sieciową, jak przy zużytej próbie.
@@ -659,6 +664,10 @@ export const netRunAbilityEvent = defineEvent<NetRunAbilityPayload, NetRunAbilit
       }
     }
 
+    // Szczęście przepada przy kościach, także nieudanych (s. 74) — więc dopiero
+    // tu, gdy wiadomo, że ta Akcja naprawdę rzuca (nie krok pisania Wirusa).
+    await spendCharacterLuck(deps, campaignId, character.id, luck);
+
     if (ability.id === 'cloak' && floor) {
       return cloakFloor(deps, {
         campaignId,
@@ -672,6 +681,7 @@ export const netRunAbilityEvent = defineEvent<NetRunAbilityPayload, NetRunAbilit
         character,
         actorName: tokenTableName(token, character.name),
         rank,
+        luck,
         ...(payload?.gesture ? { gesture: payload.gesture } : {}),
       });
     }
@@ -702,7 +712,7 @@ export const netRunAbilityEvent = defineEvent<NetRunAbilityPayload, NetRunAbilit
       ability.name,
       dv,
       payload?.gesture,
-      netAbilityBonuses(state, ability.id),
+      [...netAbilityBonuses(state, ability.id), ...netLuckBonus(luck)],
     );
     const success = dv === null ? true : roll.total > dv;
 
@@ -779,10 +789,7 @@ export const netRunAbilityEvent = defineEvent<NetRunAbilityPayload, NetRunAbilit
  * total as a radius in metres — high roll, wider sweep — and leaves the GM the
  * eye on every socket to reveal by hand. That reading is the VTT's, not RAW's.
  */
-export const netScanEvent = defineEvent<
-  { tokenId: string; gesture?: RollGesture },
-  NetRunAbilityResult
->({
+export const netScanEvent = defineEvent<NetScanPayload, NetRunAbilityResult>({
   name: 'netrun:scan',
   handler: async ({ deps, socket, user, payload }) => {
     const campaignId = requireCampaignId(socket.data);
@@ -794,6 +801,8 @@ export const netScanEvent = defineEvent<
     if (user.role !== ROLE_GM && token.ownerId !== user.id) throw new RealtimeError('FORBIDDEN');
     const character = await requireNetrunner(deps, token);
     const rank = readInterfaceRank(deps, character);
+    const luck = netLuckOf(payload?.luckSpent);
+    await requireNetLuck(deps, character.id, luck);
 
     await requireTurnSpend(
       deps,
@@ -806,6 +815,7 @@ export const netScanEvent = defineEvent<
       { silent: true },
     );
 
+    await spendCharacterLuck(deps, campaignId, character.id, luck);
     const roll = performInterfaceRoll(
       deps,
       character,
@@ -814,6 +824,7 @@ export const netScanEvent = defineEvent<
       'Skaner',
       null,
       payload?.gesture,
+      netLuckBonus(luck),
     );
     const view = toSceneView(scene);
     const centre = tokenCentre({ x: token.x, y: token.y, size: token.size }, view);
@@ -1081,6 +1092,8 @@ async function cloakFloor(
     character: Character;
     actorName: string;
     rank: number;
+    /** Szczęście z kubka, już zdjęte z puli. */
+    luck: number;
     gesture?: RollGesture;
   },
 ): Promise<NetRunAbilityResult> {
@@ -1097,6 +1110,7 @@ async function cloakFloor(
       attackerIsHuman: true,
       detail: `zacieranie śladów pod okiem: ${watcher.name}`,
       actor: input.actorName,
+      luck: input.luck,
     });
     roll = exchange.roll;
     success = exchange.won;
@@ -1111,7 +1125,7 @@ async function cloakFloor(
       'Maskowanie',
       dv,
       input.gesture,
-      bonuses,
+      [...bonuses, ...netLuckBonus(input.luck)],
     );
     success = roll.total > dv;
     total = roll.total;
@@ -1193,7 +1207,7 @@ function performInterfaceRoll(
   title: string,
   dv: number | null,
   rawGesture: RollGesture | undefined,
-  boosts: readonly { label: string; value: number }[] = [],
+  boosts: readonly { label: string; value: number; kind?: string }[] = [],
 ): RollResult {
   const data = parseCharacterData(character.data, deps.ctx.cpred);
   const situational = sheetSituationModifiers({
@@ -1202,7 +1216,11 @@ function performInterfaceRoll(
   });
   const breakdown: RollBreakdownEntry[] = [
     { label: `Interfejs ${rank}`, value: rank, kind: 'skill' },
-    ...boosts.map((boost) => ({ label: boost.label, value: boost.value, kind: 'skill' as const })),
+    ...boosts.map((boost) => ({
+      label: boost.label,
+      value: boost.value,
+      kind: boost.kind ?? 'skill',
+    })),
     ...situational,
   ];
   const modifierTotal = breakdown.reduce((sum, entry) => sum + entry.value, 0);

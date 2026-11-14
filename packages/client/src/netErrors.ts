@@ -49,6 +49,8 @@ export function netErrorText(code: string | undefined): string {
       return 'Rana krytyczna zabiera ci Akcję w tej turze.';
     case 'STATUS_BLOCKED':
       return 'Stan postaci nie pozwala teraz na tę Akcję.';
+    case 'NOT_ENOUGH_LUCK':
+      return 'Za mało punktów Szczęścia w puli.';
     case 'NOT_CONNECTED':
       return 'Brak połączenia z serwerem.';
     case 'BAD_REQUEST':

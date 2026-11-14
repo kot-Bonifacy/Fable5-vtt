@@ -200,7 +200,19 @@ export interface NetRunAbilityPayload {
   ability: NetAbilityId;
   /** Wirus only: what it is meant to do, and the two numbers the GM named. */
   virus?: { description: string; dv: number; actions: number };
+  gesture?: RollGesture;  /**
+   * Szczęście dorzucone na kubku (zlecenie MG z 14.11: rzut Sieci czeka na
+   * kubek). Serwer zdejmuje je z puli przed kośćmi, jak przy Teście z karty.
+   */
+  luckSpent?: number;
+}
+
+/** Skaner (s. 199) — figura, którą netrunner szuka gniazd, i gest kubka. */
+export interface NetScanPayload {
+  tokenId: string;
   gesture?: RollGesture;
+  /** Szczęście z kubka, jak przy zdolnościach w runie. */
+  luckSpent?: number;
 }
 
 export interface NetRunAbilityResult {
@@ -243,7 +255,11 @@ export interface NetRunAttackPayload {
   /** Stage 26e: a Demon, which defends with an Interface Check instead of OBR. */
   demonId?: string;
   rowId?: string;
-  gesture?: RollGesture;
+  gesture?: RollGesture;  /**
+   * Szczęście dorzucone na kubku (zlecenie MG z 14.11: rzut Sieci czeka na
+   * kubek). Serwer zdejmuje je z puli przed kośćmi, jak przy Teście z karty.
+   */
+  luckSpent?: number;
 }
 
 /** „Ucieczka na sąsiednie piętro windy" — the destination the player picked. */
@@ -253,7 +269,11 @@ export interface NetRunSlidePayload {
   /** Only ever a refusal: a Demon has no PER to slip away from (stage 26e). */
   demonId?: string;
   to?: CpredNetPosition;
-  gesture?: RollGesture;
+  gesture?: RollGesture;  /**
+   * Szczęście dorzucone na kubku (zlecenie MG z 14.11: rzut Sieci czeka na
+   * kubek). Serwer zdejmuje je z puli przed kośćmi, jak przy Teście z karty.
+   */
+  luckSpent?: number;
 }
 
 /**

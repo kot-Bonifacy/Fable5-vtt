@@ -151,7 +151,7 @@ test.describe.serial('oględziny kubka (Firefox, tymczasowe)', () => {
     expect(Math.abs(right.x - 1300)).toBeLessThan(3);
 
     await openMenu();
-    const spin = menu().getByRole('spinbutton', { name: 'Szczęście do tego rzutu' });
+    const spin = menu().getByRole('slider', { name: 'Szczęście do tego rzutu' });
     await spin.focus();
     await spin.press('ArrowUp');
     await spin.press('ArrowUp');

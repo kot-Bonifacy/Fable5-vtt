@@ -1,10 +1,11 @@
-import type { Locator } from '@playwright/test';
+import type { Locator, Page } from '@playwright/test';
 import type { Socket } from 'socket.io-client';
 import { expect, type Actor } from './actors.ts';
 import { runOf } from './brama.ts';
 import { characterId, userId } from './nocna-zmiana.ts';
 import { centreCamera, clickOnMap } from './scene.ts';
 import { emitAck } from './socket.ts';
+import { shakeCup } from './table.ts';
 import type { WorldPoint } from './canvas.ts';
 
 /**
@@ -36,6 +37,14 @@ export const trailSteps = (actor: Actor): Locator => runWindow(actor).locator('.
 /** Zdolność z karty piętra („Backdoor”, „Zwiad”, „Kontrola”…). */
 export const abilityButton = (actor: Actor, name: string): Locator =>
   floorCard(actor).locator('.net-abilities').getByRole('button', { name, exact: true });
+/**
+ * Rzut Sieci po kliku (zlecenie MG z 14.11): zdolność, atak, Ślizg i Skaner
+ * ładują kubek, a rzuca dopiero gest — czekamy, aż kubek się zapali, i rzucamy.
+ */
+export async function throwNetRoll(page: Page): Promise<void> {
+  await expect(page.locator('.dice-cup')).toHaveClass(/dice-cup--sheet/);
+  await shakeCup(page);
+}
 /** Wiersze „Planu Architektury” — tylko okno MG. */
 export const planFloors = (actor: Actor): Locator =>
   runWindow(actor).locator('.net-plan .net-run-floor');

@@ -17,6 +17,7 @@ import {
   runWindow,
   takeExit,
   trailSteps,
+  throwNetRoll,
 } from '../../fixtures/siec.ts';
 import { Canaries } from '../../fixtures/sniffer.ts';
 import { emitAck } from '../../fixtures/socket.ts';
@@ -189,6 +190,7 @@ test.describe.serial('@szybkie T70a okno SIEĆ: jedno piętro', () => {
 
     scriptDice([9]);
     await abilityButton(ola, 'Backdoor').click();
+    await throwNetRoll(ola.page);
     await expect.poll(() => runOf('Iskra')?.state.broken).toContain(floorIds.t1);
     expect(pendingDice()).toBe('');
     await expect(down).toBeEnabled({ timeout: 20_000 });
@@ -199,6 +201,7 @@ test.describe.serial('@szybkie T70a okno SIEĆ: jedno piętro', () => {
   test('4. Zwiad: wyjście dostaje rodzaj i nazwę bez PT; na rozwidleniu dwa wyjścia', async () => {
     scriptDice([9]);
     await abilityButton(ola, 'Zwiad').click();
+    await throwNetRoll(ola.page);
     const down = exitsDown(ola);
     await expect(down).toHaveClass(/net-exit--scouted/, { timeout: 20_000 });
     expect(pendingDice()).toBe('');
@@ -220,6 +223,7 @@ test.describe.serial('@szybkie T70a okno SIEĆ: jedno piętro', () => {
   test('4b. Maskowanie: piętro bez LOD-u to łatwe PT, sukces zostaje znacznikiem (14.11)', async () => {
     scriptDice([9]);
     await abilityButton(ola, 'Maskowanie').click();
+    await throwNetRoll(ola.page);
     await expect(floorCard(ola)).toContainText('ślady zatarte', { timeout: 20_000 });
     expect(pendingDice()).toBe('');
     // Zamaskowane piętro zamyka Maskowanie — przycisk wyszarzony jak zużyta próba.

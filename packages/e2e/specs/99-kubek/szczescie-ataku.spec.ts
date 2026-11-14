@@ -64,10 +64,10 @@ test.describe.serial('Szczęście z menu kubka przed atakiem (Firefox, tymczasow
     await page.locator('.dice-cup').click({ button: 'right', position: { x: 26, y: 26 } });
     const menu = page.locator('.dice-cup-menu');
     await expect(menu).toBeVisible();
-    const spin = menu.getByRole('spinbutton', { name: 'Szczęście do tego rzutu' });
+    const spin = menu.getByRole('slider', { name: 'Szczęście do tego rzutu' });
     await spin.focus();
     for (let i = 0; i < points; i += 1) await spin.press('ArrowUp');
-    await expect(spin).toContainText(`+${points}`);
+    await expect(spin).toHaveAttribute('aria-valuenow', String(points));
     await page.screenshot({ path: `${SHOTS}atak-menu-szczescie.png` });
     await page.keyboard.press('Escape');
     await expect(menu).toHaveCount(0);

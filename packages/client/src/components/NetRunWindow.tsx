@@ -1,6 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
-import type { CpredNetPosition, NetAbilityId, NetDeviceOperation, NetRunView } from '@vtt/shared';
-import { ROLE_GM } from '@vtt/shared';
+import type {
+  CpredNetPosition,
+  NetAbilityId,
+  NetDeviceOperation,
+  NetRunAbilityPayload,
+  NetRunView,
+} from '@vtt/shared';
+import { NET_ABILITIES_AVAILABLE, ROLE_GM } from '@vtt/shared';
+import { loadNetRoll } from '../net-cup.js';
 import {
   attackInNet,
   clearNetGlue,
@@ -273,18 +280,70 @@ function NetRunWindowBody() {
     if (ack.ok) clearNotices('net');
   }
 
+  /**
+   * Rzut Interfejsu idzie przez kubek (zlecenie MG z 14.11): klik ładuje kubek,
+   * gracz nim potrząsa i może dorzucić Szczęście. Bez rzutu zostaje tylko krok
+   * pisania Wirusa, który nie jest ostatni — ten leci od razu.
+   */
+  function loadRoll(
+    title: string,
+    send: Parameters<typeof loadNetRoll>[0]['send'],
+    onDone?: Parameters<typeof loadNetRoll>[0]['onDone'],
+  ) {
+    loadNetRoll({
+      characterId: run!.characterId,
+      characterName: run!.characterName,
+      title: `${title} · Interfejs ${run!.interfaceRank}`,
+      send,
+      ...(onDone ? { onDone } : {}),
+    });
+  }
+
   async function ability(id: NetAbilityId, virus?: VirusDraft) {
+    const runId = run!.runId;
     // Kontrola: piętro, na którym netrunner stoi, to węzeł, który przejmuje.
     const standing = id === 'control' ? here?.id : undefined;
-    const ack = await guard(
-      useNetAbility({ runId: run!.runId, ability: id, ...(virus ? { virus } : {}) }),
-    );
-    if (ack.ok) report(ack.data?.summary);
-    if (ack.ok && ack.data?.success && standing) {
-      frameNode.current = standing;
-      const latest = currentRun(useNetRunStore.getState());
-      if (latest) frameTakenNode(latest.run, latest.tokenId);
+    const send = (extra: Partial<NetRunAbilityPayload>) =>
+      useNetAbility({ runId, ability: id, ...(virus ? { virus } : {}), ...extra });
+    const writing = view.virus;
+    const rolls =
+      id !== 'virus' ||
+      (writing ? writing.actionsSpent + 1 >= writing.actionsNeeded : (virus?.actions ?? 1) <= 1);
+    if (!rolls) {
+      const ack = await guard(send({}));
+      if (ack.ok) report(ack.data?.summary);
+      return;
     }
+    const name = NET_ABILITIES_AVAILABLE.find((entry) => entry.id === id)?.name ?? id;
+    loadRoll(
+      name,
+      (gesture, luck) => send({ gesture, ...(luck > 0 ? { luckSpent: luck } : {}) }),
+      (result) => {
+        if (!result?.success || !standing) return;
+        frameNode.current = standing;
+        const latest = currentRun(useNetRunStore.getState());
+        if (latest) frameTakenNode(latest.run, latest.tokenId);
+      },
+    );
+  }
+
+  /** Atak (Paf albo Agresor) w LOD-a lub Demona — na kubek, jak zdolność. */
+  function attack(target: { iceId: string } | { demonId: string }, rowId?: string) {
+    const runId = run!.runId;
+    const foe =
+      'iceId' in target
+        ? fightState.ice.find((entry) => entry.id === target.iceId)?.name
+        : view.demons.find((entry) => entry.id === target.demonId)?.name;
+    const weapon = rowId ? fightState.deck.find((slot) => slot.rowId === rowId)?.name : 'Paf';
+    loadRoll(`${weapon ?? 'Atak'}${foe ? ` → ${foe}` : ''}`, (gesture, luck) =>
+      attackInNet({
+        runId,
+        ...target,
+        ...(rowId ? { rowId } : {}),
+        gesture,
+        ...(luck > 0 ? { luckSpent: luck } : {}),
+      }),
+    );
   }
 
   /** Każde wejście do walki w Sieci wraca tym samym zdaniem nad mapą. */
@@ -420,15 +479,21 @@ function NetRunWindowBody() {
             demons={view.demons}
             isGm={isGm}
             busy={busy}
-            onAttackIce={(iceId, rowId) =>
-              void fight(attackInNet({ runId: run.runId, iceId, ...(rowId ? { rowId } : {}) }))
-            }
-            onAttackDemon={(demonId, rowId) =>
-              void fight(attackInNet({ runId: run.runId, demonId, ...(rowId ? { rowId } : {}) }))
-            }
-            onSlide={(iceId, to) =>
-              void fight(slideInNet({ runId: run.runId, iceId, ...(to ? { to } : {}) }))
-            }
+            onAttackIce={(iceId, rowId) => attack({ iceId }, rowId)}
+            onAttackDemon={(demonId, rowId) => attack({ demonId }, rowId)}
+            onSlide={(iceId, to) => {
+              const runId = run.runId;
+              const ice = fightState.ice.find((entry) => entry.id === iceId)?.name;
+              loadRoll(`Ślizg${ice ? ` przed ${ice}` : ''}`, (gesture, luck) =>
+                slideInNet({
+                  runId,
+                  iceId,
+                  ...(to ? { to } : {}),
+                  gesture,
+                  ...(luck > 0 ? { luckSpent: luck } : {}),
+                }),
+              );
+            }}
             onIceDetect={(iceId) => void fight(iceDetects({ runId: run.runId, iceId }))}
             onIceTurn={(iceId) => void fight(iceTakesTurn({ runId: run.runId, iceId }))}
             onDemonDetect={(demonId) => void fight(demonDetects({ runId: run.runId, demonId }))}

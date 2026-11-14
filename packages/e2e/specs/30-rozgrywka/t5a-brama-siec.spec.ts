@@ -1,4 +1,5 @@
 import { expect, test, type Actor } from '../../fixtures/actors.ts';
+import { throwNetRoll } from '../../fixtures/siec.ts';
 import { dragWorld, type WorldPoint } from '../../fixtures/canvas.ts';
 import { query, queryOne, stateFingerprint } from '../../fixtures/db.ts';
 import {
@@ -709,6 +710,7 @@ test.describe.serial('T5a: „Brama” — przygotowanie, wejście przez bramę,
     scriptDice([7]);
     await clickOnMap(ola.page, tokenCentre(iskra(), cell));
     await ola.page.locator('.hud-slot', { hasText: 'Skaner' }).click();
+    await throwNetRoll(ola.page);
     await expect.poll(() => accessPoint().hidden).toBe(0);
     expect(pendingDice()).toBe('');
     const scan = messageAfter(since, 'Skaner', 'gmroll');
@@ -804,6 +806,7 @@ test.describe.serial('T5a: „Brama” — przygotowanie, wejście przez bramę,
     const file = architecture(architectureName).shaft.branches[0]!.floors[1]!.id;
     scriptDice([6]);
     await window.locator('.net-abilities').getByRole('button', { name: 'Backdoor' }).click();
+    await throwNetRoll(ola.page);
     await expect.poll(() => runOf('Iskra')?.state.broken).toContain(password);
     expect(pendingDice()).toBe('');
     await expect(card).toContainText('złamane');
@@ -818,6 +821,7 @@ test.describe.serial('T5a: „Brama” — przygotowanie, wejście przez bramę,
     const since = lastMessageId();
     scriptDice([5]);
     await window.locator('.net-abilities').getByRole('button', { name: 'Ajdi' }).click();
+    await throwNetRoll(ola.page);
     await expect.poll(() => runOf('Iskra')?.state.identified).toContain(file);
     expect(pendingDice()).toBe('');
     // Ajdi wypłaca notatkę MG z Pliku — Oli, nie Markowi.

@@ -47,6 +47,11 @@ w Kevlarze, notatki MG o sterowaniu z mapy; wyłączone urządzenie da się prze
 w przeglądarce — znaleziska w `zaleglosci.md` (14.11). Rozstrzygnięcia i odstępstwa w pliku
 etapu i w `decyzje-i-uproszczenia.md`; umowy i pułapki na górze `siec` (wzorzec — `mapa`).
 
+**Rzut Sieci na kubek (zlecenie MG z 14.11) — czeka na wdrożenie (bez migracji) i stół MG.**
+Zdolność, atak, Ślizg i Skaner ładują kubek zamiast rzucać; gracz rzuca gestem i może dorzucić
+Szczęście z menu kubka (serwer je przyjmuje i zdejmuje z puli). Menu kubka ma Szczęście jako
+żetony, plakietka „+N” jest większa. E2E Sieci poza `T70a`/`T70b` nie puszczone po zmianie.
+
 **Zwiad i Maskowanie (decyzje MG z 14.11) — czekają na wdrożenie (bez migracji).** Zwiad
 podaje nazwy Programów za wyjściem, Maskowanie liczy się piętro po piętrze z próbami w jednej
 Turze i zostawia znacznik na planie MG. Do słowa MG: Demon porównany Interfejsem.
@@ -799,7 +804,7 @@ a nie do tego pliku.
 | `mapa`      | figury, zaznaczanie, narzędzia, obiekty sceny, ściany, efekty, zamek drzwi, ukryta figura zauważona, ikony urządzeń, wspólny widok drużyny, okienko strefy przy marszu gracza, scena pościgu, jazda kierowcy i dryf, Manewr i taranowanie, przeszkody pościgu, sceny przykładowe, wzorzec zwykłej mapy, ulepszenia pojazdu, stojące auto na drodze, kreator pościgu i wbudowane drogi, załoga auta poza pościgiem, rama pościgu i pęd auta bez kierowcy, długa pętla drogi, ucieczka auta ręką MG, otarcie brył, wrak za autem, podpis w fotelu, furgon z wyglądu (`van-6`), przesadzanie foteli przy starcie, skręt z menu przed przeszkodą, wysiadka tylko przeciągnięciem, światła, zamki, strefy i pojemniki we wzorcu, obszar straży we wzorcu | 96   | 27      |
 | `czat`      | rodzaje wierszy, `visibleTo`, filtr, `seq`, `gmrecovery`, „to dotyczy mnie”, grupy kart, kolor gracza, czyszczenie, gęsta karta rzutu, przebieg ataku, `/jako` za NPC-a, karta rzutu bez konta | 17   | 3       |
 | `serwer`    | Prisma i migracje, zdarzenia gniazda, zapisy karty, uploady    | 26   | 21      |
-| `ui`        | okna pływające, `z-index`, motyw, skróty, dostępność, wejście, panel decyzji MG, kubek przestawiany i jego menu, lewa belka bez ramek i dymek `HudTip` | 41   | 16      |
+| `ui`        | okna pływające, `z-index`, motyw, skróty, dostępność, wejście, panel decyzji MG, kubek przestawiany i jego menu (Szczęście jako żetony), lewa belka bez ramek i dymek `HudTip` | 42   | 16      |
 | `kosci`     | kubek, `rollFormula`, wezwania i prośby o Test, tabele losowe, PT od MG | 24   | 2       |
 | `tura`      | budżet Akcji i metrów, kolejka, trasa, ruch przez ściany, skok, walka z zauważenia, pytanie MG o przekroczenie, Percepcja w drodze (z linią wzroku), ukryte figury, skradanie, kropki ataków, kierowca bez Biegu, Test jazdy w Akcji Ruchu, darmowa ręka MG, napis wiersza Akcji, taran raz na turę, spóźniona inicjatywa rundy 1, krok planera w jednym oku, „Następna tura” z widzianą turą | 42   | 8       |
 | `atak`      | broń i dodatki, amunicja, obrażenia, pancerz, rany krytyczne, trucizna na ostrzu, auto-unik, strach z Konfrontacji, auto jako cel, broń pokładowa, wybór celu ze stosu, skutki amunicji po karcie ataku, ikona gołych rąk, broń dwuręczna w rękach przy tarczy | 57   | 8       |
@@ -808,7 +813,7 @@ a nie do tego pliku.
 | `postac`    | kreator, PD i awanse, koszyk i cofanie awansów, Role i Zdolności, cyborgizacje, chrom zmieniający liczby, ekonomia, Test montażu gracza, pojazdy i Tabor | 58   | 3       |
 | `ekwipunek` | wiersze wyposażenia, przekazanie, łup (także ciała graczy), handel, sklepy, asortyment handlarza z kompendium, zasięg, amunicja bez dna, egzoszkielet, latarka z ekwipunku, narkotyki i fiolki, siatka okna „Wymiana”, zgoda z góry, odświeżanie po naklejkach, znaczek „w użyciu”, zakup auta z modelu, warsztat (ulepszenia i naprawa auta), auto bokiem i „w garażu”, grafika auta to model i skala miniatur, postać na karcie przekazania, zasięg ręki do figury spoza siatki | 50   | 3       |
 | `czas`      | zegar świata, kalendarz, `statEffects`, leczenie po dobie, dawki i uzależnienia (`chems`) | 19   | 2       |
-| `siec`      | Programy, LOD, demony, piętra architektury, dek jako towar, strefy bronione, kamery (także w ciemności), rozbrajanie, Sieć ze sceny, jedna próba i pamięć sukcesów, strzał z urządzenia, strefa tylko z marszu gracza, widok runu z rundą, strefa rozbrojona w Sieci, okno jednego piętra i ładunek bez szybu, pełny wiersz czatu zamiast skrótu, przejęta figura urządzenia (`operatorOf`, `netDeviceUse`), marsz drona, oczy urządzeń, figury wyciszone (`net-off`), pasek „Oczy i urządzenia”, Sieć ze sceny wg rodzaju, strefy i drzwi w „Instalacjach”, obszar straży od figury, okienko strefy, automat obrony Sieci i hamulec MG, „Włącz / Wyłącz w Sieci” MG i przeszukanie wyłączonego, Maskowanie piętro po piętrze, Programy za wyjściem | 29   | 12      |
+| `siec`      | Programy, LOD, demony, piętra architektury, dek jako towar, strefy bronione, kamery (także w ciemności), rozbrajanie, Sieć ze sceny, jedna próba i pamięć sukcesów, strzał z urządzenia, strefa tylko z marszu gracza, widok runu z rundą, strefa rozbrojona w Sieci, okno jednego piętra i ładunek bez szybu, pełny wiersz czatu zamiast skrótu, przejęta figura urządzenia (`operatorOf`, `netDeviceUse`), marsz drona, oczy urządzeń, figury wyciszone (`net-off`), pasek „Oczy i urządzenia”, Sieć ze sceny wg rodzaju, strefy i drzwi w „Instalacjach”, obszar straży od figury, okienko strefy, automat obrony Sieci i hamulec MG, „Włącz / Wyłącz w Sieci” MG i przeszukanie wyłączonego, Maskowanie piętro po piętrze, Programy za wyjściem, rzut Sieci na kubek ze Szczęściem | 30   | 12      |
 | `boty`      | llama-server, RAG, reindeks, dziennik i baza wiedzy, brama AI  | 10   | 10      |
 | `dane`      | `parse-manual.py`, kompendium poza repo, tabele z podręcznika  | 9    | 12      |
 | `kopie`     | `snapshot`, `archive`, paczki ZIP, wczytanie kampanii, „czeka na gracza”, kopie kampanii i cofnięcie, sklep i bot w paczce, zgłoszenie karty gracza, pojazdy w paczce, auta na scenie pościgu, przeszkody poza paczką | 22   | 6       |
@@ -819,6 +824,30 @@ a nie do tego pliku.
 ## Notatki z dwóch ostatnich sesji
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
+
+### Sesja 14.11 (piąta) — rzut Sieci na kubek, Szczęście w Sieci, nowe menu kubka
+
+**Zrobione (bez migracji, czeka na wdrożenie)** — zlecenie MG:
+
+- **Rzut przy hakowaniu czeka na kubek.** Klik zdolności (Backdoor, Zwiad, Kontrola,
+  Maskowanie, Wirus na ostatnim kroku…), ataku (Paf, Agresor), Ślizgu i Skanera (lewa belka
+  i karta gniazda) nie rzuca sam: kubek się świeci z napisem „Backdoor · Interfejs 6”, gracz go
+  chwyta, potrząsa i rzuca. Kroki pisania Wirusa, które nie są ostatnie, idą od razu (nie
+  rzucają). Rzuty obrony Sieci (LOD, Demon, automat) bez zmian.
+- **Szczęście w rzutach Sieci** — z menu kubka, jak przy Teście z karty: serwer sprawdza pulę przed
+  Akcją Sieciową, zdejmuje punkty przy kościach, karta ma wiersz „Szczęście (N pkt)”.
+- **Plakietka „+N” na kubku większa** (0,95 rem, cyfry mono, poświata).
+- **Menu kubka: Szczęście jako żetony** zamiast przełącznika „0 ▲▼ z 5” — jeden żeton na punkt
+  w puli, klik ustawia, klik w ostatni zapalony gasi, duże „+N” obok nazwy, sekcja oddzielona
+  kreską; reszta w dymku.
+
+Umowy na górze `siec` i `ui`. **Oglądane w Firefoksie** (Playwright MCP na żywym Vite, MG
+w przygotowaniu „Oględzin 12.09”, ładunek kubka wstawiony ze sklepu): świecący kubek, menu
+z żetonami (bez kursora i z podglądem najechania), plakietka „+3”, rzut gestem przekazał +3.
+Pełnego runu z kubkiem na `dev.db` nie grałem — pokrywają go E2E. Testy: serwer 1800 (+1, Szczęście
+przy Skanerze), klient 508 — zielone; E2E `99-kubek` 2/2, `T70a` i `T70b` zielone;
+**nie puszczone:** `T5a`, `T5b` (LLM), `T62`, `T70c–e` — dostały rzut kubkiem po kliku zdolności
+(`throwNetRoll` w `fixtures/siec.ts`).
 
 ### Sesja 14.11 (czwarta) — Zwiad tylko informuje i podaje Programy, Maskowanie piętro po piętrze
 
@@ -846,20 +875,3 @@ Szczegóły w `decyzje-i-uproszczenia.md` (dwie sekcje na górze), umowy na gór
 oglądane w przeglądarce:** nazwy Programów na wyjściu (E2E nie ma prywatnego kompendium; pokrywa
 je test jednostkowy) i Maskowanie w walce przeciw LOD-owi. Testy: shared 3067 (+11), serwer 1799, klient 508 — zielone;
 E2E `T70a` 10/10; `tsc` wszystkich pakietów, ESLint i Prettier czyste.
-
-### Sesja 14.11 (trzecia) — ślad Sieci: wyraźne piętro „tu jesteś”, przejęte na zielono
-
-**Zrobione (bez migracji, czeka na wdrożenie)** — zlecenie MG ze zrzutem okna SIEĆ: w śladzie
-nie było widać, na którym piętrze stoi netrunner. „Tu jesteś” i „przejęty” były dwoma odcieniami
-cyjanu (`--net-here` / `--net-rezzed`) z tym samym tłem i rozmiarem, więc dwa ⚙ obok siebie
-wyglądały tak samo. Decyzje MG (pytania przed pracą): **bieżące piętro większe i z pulsującą
-poświatą** (bez podpisu i bez strzałki), **bez podświetleń po najechaniu**, **przejęte węzły na
-zielono**. Teraz `.net-trail-step--here` ma 2,4 rem, ramkę 2 px i puls `net-trail-here-pulse`
-(1,8 s, wyłączony przy `prefers-reduced-motion`), a przejęte piętro w śladzie i chip „przejęty ·
-PT” na karcie piętra oraz w szybie MG (`net-run-floor-flag--held`) są zielone (nowe tokeny
-`--net-held` / `--net-held-bg` w `theme.css`). Umowa na górze `siec`.
-
-**Oglądane w Firefoksie i Chromium** (biblioteka `playwright`, bo Firefox MG był otwarty, więc
-MCP by nie wstał): sam `NetTrail` wyrenderowany na żywym Vite z danymi jak na zrzucie MG,
-klatki minimum i szczytu pulsu. Pełnego runu na `dev.db` nie odtwarzałem. `tsc` klienta, ESLint
-i Prettier czyste; testów nie dotyczyło (sam CSS i klasa chipu).

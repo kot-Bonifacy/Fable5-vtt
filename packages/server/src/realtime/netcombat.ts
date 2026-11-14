@@ -54,6 +54,8 @@ import {
 } from '@vtt/shared';
 import type { Scene, Token } from '../generated/prisma/client.js';
 import { RealtimeError, defineEvent, type RealtimeDeps } from './registry.js';
+import { spendCharacterLuck } from './character-rolls.js';
+import { netLuckBonus, netLuckOf, requireNetLuck } from './net-luck.js';
 import { requireCampaignToken } from './tokens.js';
 import { emitTokensById } from './tokens.js';
 import { requireTurnSpend } from './combat-actions.js';
@@ -277,14 +279,14 @@ export async function spawnIceOnFloors(
 
 /** One side of an exchange: `1k10 + …`, with the modifiers named. */
 export function rollSide(
-  bonuses: readonly NetBonus[],
+  bonuses: readonly (NetBonus & { kind?: string })[],
   entropy: string | undefined,
   checkRule: boolean,
 ): { result: RollResult; breakdown: RollBreakdownEntry[] } {
   const breakdown: RollBreakdownEntry[] = bonuses.map((bonus) => ({
     label: bonus.label,
     value: bonus.value,
-    kind: 'skill',
+    kind: bonus.kind ?? 'skill',
   }));
   const total = bonuses.reduce((sum, bonus) => sum + bonus.value, 0);
   const formula: RollFormula = {
@@ -313,10 +315,21 @@ export function rollSide(
  */
 export function rollExchange(
   plan: NetAttackPlan,
-  input: { gesture?: RollGesture; attackerIsHuman: boolean; detail: string; actor: string },
+  input: {
+    gesture?: RollGesture;
+    attackerIsHuman: boolean;
+    detail: string;
+    actor: string;
+    /** Szczęście netrunnera z kubka (14.11) — już zdjęte z puli przez wołającego. */
+    luck?: number;
+  },
 ): { roll: RollResult; attackTotal: number; defenceTotal: number; won: boolean } {
   const gesture = sanitizeGesture(input.gesture);
-  const attack = rollSide(plan.attack, gesture?.entropy, input.attackerIsHuman);
+  const attack = rollSide(
+    [...plan.attack, ...netLuckBonus(input.luck ?? 0)],
+    gesture?.entropy,
+    input.attackerIsHuman,
+  );
   const defence = rollSide(plan.defence, undefined, false);
   const won = netAttackWins(attack.result.total, defence.result.total);
 
@@ -550,6 +563,8 @@ export const netAttackEvent = defineEvent<NetRunAttackPayload, NetRunAbilityResu
     const { rank } = await netActionsForRun(deps.ctx.prisma, deps.ctx.cpred, row.characterId);
 
     const rowId = typeof payload?.rowId === 'string' ? payload.rowId : null;
+    const luck = netLuckOf(payload?.luckSpent);
+    await requireNetLuck(deps, row.characterId, luck);
     let plan;
     let label: string;
     let spentRow: string | null = null;
@@ -600,11 +615,13 @@ export const netAttackEvent = defineEvent<NetRunAttackPayload, NetRunAbilityResu
     });
 
     const actorName = tokenTableName(row.token, row.token.character?.name ?? row.token.name);
+    await spendCharacterLuck(deps, campaignId, row.characterId, luck);
     const exchange = rollExchange(plan, {
       ...(payload?.gesture ? { gesture: payload.gesture } : {}),
       attackerIsHuman: true,
       detail: `${plan.dice}k6 obrażeń, jeśli trafi`,
       actor: actorName,
+      luck,
     });
 
     let summary: string;
@@ -695,6 +712,8 @@ export const netSlideEvent = defineEvent<NetRunSlidePayload, NetRunAbilityResult
         : destinations[0]!;
 
     const { rank } = await netActionsForRun(deps.ctx.prisma, deps.ctx.cpred, row.characterId);
+    const luck = netLuckOf(payload?.luckSpent);
+    await requireNetLuck(deps, row.characterId, luck);
     let next = await spendNetAction(deps, {
       campaignId,
       scene,
@@ -707,11 +726,13 @@ export const netSlideEvent = defineEvent<NetRunSlidePayload, NetRunAbilityResult
 
     const actorName = tokenTableName(row.token, row.token.character?.name ?? row.token.name);
     const plan = netSlidePlan({ interfaceRank: rank, marks: next.slideMarks.length, ice });
+    await spendCharacterLuck(deps, campaignId, row.characterId, luck);
     const exchange = rollExchange(plan, {
       ...(payload?.gesture ? { gesture: payload.gesture } : {}),
       attackerIsHuman: true,
       detail: 'ucieczka na sąsiednie piętro',
       actor: actorName,
+      luck,
     });
 
     // The Ślizg is spent whether or not it worked: „próbę Ślizgu można podjąć

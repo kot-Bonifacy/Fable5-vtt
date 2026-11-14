@@ -1,5 +1,22 @@
 # Dziennik sesji — archiwum
 
+### Sesja 14.11 (trzecia) — ślad Sieci: wyraźne piętro „tu jesteś”, przejęte na zielono
+
+**Zrobione (bez migracji, czeka na wdrożenie)** — zlecenie MG ze zrzutem okna SIEĆ: w śladzie
+nie było widać, na którym piętrze stoi netrunner. „Tu jesteś” i „przejęty” były dwoma odcieniami
+cyjanu (`--net-here` / `--net-rezzed`) z tym samym tłem i rozmiarem, więc dwa ⚙ obok siebie
+wyglądały tak samo. Decyzje MG (pytania przed pracą): **bieżące piętro większe i z pulsującą
+poświatą** (bez podpisu i bez strzałki), **bez podświetleń po najechaniu**, **przejęte węzły na
+zielono**. Teraz `.net-trail-step--here` ma 2,4 rem, ramkę 2 px i puls `net-trail-here-pulse`
+(1,8 s, wyłączony przy `prefers-reduced-motion`), a przejęte piętro w śladzie i chip „przejęty ·
+PT” na karcie piętra oraz w szybie MG (`net-run-floor-flag--held`) są zielone (nowe tokeny
+`--net-held` / `--net-held-bg` w `theme.css`). Umowa na górze `siec`.
+
+**Oglądane w Firefoksie i Chromium** (biblioteka `playwright`, bo Firefox MG był otwarty, więc
+MCP by nie wstał): sam `NetTrail` wyrenderowany na żywym Vite z danymi jak na zrzucie MG,
+klatki minimum i szczytu pulsu. Pełnego runu na `dev.db` nie odtwarzałem. `tsc` klienta, ESLint
+i Prettier czyste; testów nie dotyczyło (sam CSS i klasa chipu).
+
 ### Sesja 14.11 (druga) — zaległości: kadr obok okna SIEĆ, karta wykrycia, alarm skradania, marsz w ciemność, pełna karta NPC-a, koniec walki
 
 **Zrobione (bez migracji, czeka na wdrożenie)** — sześć zaległości z `zaleglosci.md`, opisy

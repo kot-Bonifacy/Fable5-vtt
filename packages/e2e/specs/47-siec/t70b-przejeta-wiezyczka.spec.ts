@@ -12,6 +12,7 @@ import {
   jackIn,
   runWindow,
   takeExit,
+  throwNetRoll,
 } from '../../fixtures/siec.ts';
 import { emitAck } from '../../fixtures/socket.ts';
 import { shakeCup } from '../../fixtures/table.ts';
@@ -176,6 +177,7 @@ test.describe.serial('@szybkie T70b przejęta wieżyczka na mapie', () => {
   test('2. Kontrola: figura przejęta — naklejka na mapie, wiersz w „Postaciach”', async () => {
     scriptDice([9]);
     await abilityButton(ola, 'Kontrola').click();
+    await throwNetRoll(ola.page);
     // Od 70c urządzenia przejętego węzła stoją w pasku „Oczy i urządzenia”.
     await expect(runWindow(ola).locator('.net-eye[data-eye]')).toHaveCount(1, { timeout: 20_000 });
     expect(pendingDice()).toBe('');

@@ -11,7 +11,14 @@ import { characterId, cookieHeader, apiGm, userId } from '../../fixtures/nocna-z
 import { query, queryOne, seat, startFromPoT6 } from '../../fixtures/regresja.ts';
 import { clickOnMap, fitCamera, openObjectCard } from '../../fixtures/scene.ts';
 import { DEAD_GATEWAY, rawSocket } from '../../fixtures/security.ts';
-import { abilityButton, floorCard, jackIn, runWindow, takeExit } from '../../fixtures/siec.ts';
+import {
+  abilityButton,
+  floorCard,
+  jackIn,
+  runWindow,
+  takeExit,
+  throwNetRoll,
+} from '../../fixtures/siec.ts';
 import { emitAck } from '../../fixtures/socket.ts';
 import { pendingDice, scriptDice } from '../../instance/instance.ts';
 
@@ -282,6 +289,7 @@ test.describe.serial('@szybkie T70d edycja mapy: obszar straży, strefy, Sieć z
 
     scriptDice([9]);
     await abilityButton(ola, 'Kontrola').click();
+    await throwNetRoll(ola.page);
     await expect(
       runWindow(ola).getByTestId('net-eyes').locator(`[data-device-id="wall-${doorId}"]`),
     ).toBeVisible({ timeout: 20_000 });

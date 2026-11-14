@@ -6,7 +6,8 @@ import {
   tokenCentre,
   type NetAccessPointView,
 } from '@vtt/shared';
-import { fetchNetArchitectures, runNetScan, startNetRun, updateNetAccessPoint } from '../socket.js';
+import { fetchNetArchitectures, startNetRun, updateNetAccessPoint } from '../socket.js';
+import { loadScanRoll } from '../net-cup.js';
 import { useAuthStore } from '../stores/authStore.js';
 import { useNetStore } from '../stores/netStore.js';
 import { useSceneStore } from '../stores/sceneStore.js';
@@ -79,12 +80,10 @@ export function SceneCardNetPoint({
     if (noteAck('net', ack, netErrorText)) onClose();
   }
 
-  async function scan() {
+  /** Rzut Skanera czeka na kubek (MG, 14.11) — karta gniazda może się zamknąć. */
+  function scan() {
     if (!chosen) return;
-    setBusy(true);
-    const ack = await runNetScan(chosen.token.id);
-    setBusy(false);
-    noteAck('net', ack, netErrorText);
+    loadScanRoll(chosen.token.id);
   }
 
   async function patch(next: Parameters<typeof updateNetAccessPoint>[0]) {
@@ -192,7 +191,7 @@ export function SceneCardNetPoint({
                 className="small-button"
                 title="Skaner — Akcja w Somie: szuka w okolicy ukrytych punktów dostępu"
                 disabled={busy}
-                onClick={() => void scan()}
+                onClick={scan}
               >
                 🛰 Skaner
               </button>

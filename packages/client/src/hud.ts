@@ -73,7 +73,6 @@ import {
   reloadWeapon,
   reloadVehicleMount,
   requestSneak,
-  runNetScan,
   setTokenTarget,
   sneakErrorText,
   spendCombatAction,
@@ -83,7 +82,7 @@ import { watchSneakApproval } from './sneak.js';
 import { tokenErrorText } from './mapErrors.js';
 import { useAimMenuStore } from './stores/aimMenuStore.js';
 import { nextTarget, targetOf, useTargetStore } from './stores/targetStore.js';
-import { netErrorText } from './netErrors.js';
+import { loadScanRoll } from './net-cup.js';
 import { useAttackStore } from './stores/attackStore.js';
 import { useAuthStore } from './stores/authStore.js';
 import { useCharacterStore } from './stores/characterStore.js';
@@ -1019,10 +1018,9 @@ export function activateSlot(slot: CpredHotbarSlot, tokenId: string): void {
   // The Scanner rolls where the figure stands and has its own event: the server
   // books the Action itself (`netrun:scan`), so sending a second spend here
   // would charge the turn twice.
+  // Od 14.11 (MG) rzut Skanera czeka na kubek, jak każdy rzut Interfejsu.
   if (slot.actionId === CPRED_ACTION_SCANNER) {
-    void runNetScan(tokenId).then((ack) => {
-      noteAck('action', ack, netErrorText);
-    });
+    loadScanRoll(tokenId);
     return;
   }
 
