@@ -639,6 +639,56 @@ describe('etap 66b: wzorzec zwykłej mapy — „Fabryka dronów”', () => {
     expect(floors.find((floor) => floor.kind === 'ice')!.programIds).toEqual(['program.osa']);
     const runtime = JSON.parse(architecture.runtime) as { devices: { on: boolean }[] };
     expect(runtime.devices.filter((device) => !device.on)).toHaveLength(11);
+
+    // 70f: uśpione drony mają naklejkę „Wyłączony” od razu po założeniu sceny,
+    // a Sowa — obszar straży na swoim lądowisku (PW liczy figura).
+    const statusesOf = async (name: string) =>
+      JSON.parse(
+        (await built.prisma.token.findFirstOrThrow({ where: { sceneId: scene.id, name } }))
+          .statuses,
+      ) as string[];
+    const sleeping = await built.prisma.token.findMany({
+      where: { sceneId: scene.id, statuses: { contains: 'net-off' } },
+    });
+    expect(sleeping).toHaveLength(11);
+    const [pad] = await built.prisma.defenseZone.findMany({ where: { sceneId: scene.id } });
+    expect(pad).toMatchObject({
+      name: 'Lądowisko Sowy',
+      entryId: 'defense.grzechot',
+      tokenId: prototype.id,
+      hidden: false,
+      hpMax: 0,
+      architectureId: null,
+    });
+
+    // 70f: „⏻ Włącz w Sieci” MG budzi uśpionego Szerszenia bez runu netrunnera.
+    const g1 = tokens.find((token) => token.name === 'Szerszeń G1')!;
+    expect(await emitAck(gm, 'net:device:switch', { tokenId: g1.id, on: true })).toEqual({
+      ok: true,
+    });
+    expect(await statusesOf('Szerszeń G1')).not.toContain('net-off');
+    const woken = JSON.parse(
+      (await built.prisma.netArchitecture.findUniqueOrThrow({ where: { id: architecture.id } }))
+        .runtime,
+    ) as { devices: { on: boolean }[] };
+    expect(woken.devices.filter((device) => !device.on)).toHaveLength(10);
+    expect(await emitAck(gm, 'net:device:switch', { tokenId: g1.id, on: false })).toEqual({
+      ok: true,
+    });
+    expect(await statusesOf('Szerszeń G1')).toContain('net-off');
+    // Figura spoza Sieci — odmowa zdaniem; gracz — odmowa roli.
+    const crate = await built.prisma.token.create({
+      data: { sceneId: scene.id, name: 'Skrzynka', x: 0, y: 0, glyph: 'drone' },
+    });
+    expect(await emitAck(gm, 'net:device:switch', { tokenId: crate.id, on: false })).toEqual({
+      ok: false,
+      error: 'NET_DEVICE_NOT_WIRED',
+    });
+    const player = await connect(playerCookie);
+    expect(await emitAck(player, 'net:device:switch', { tokenId: g1.id, on: true })).toMatchObject({
+      ok: false,
+    });
+    expect(await statusesOf('Szerszeń G1')).toContain('net-off');
   });
 });
 
@@ -691,7 +741,8 @@ describe('etap 66e: „Po zamknięciu” — światła, zamki, strefa w Sieci, p
     const key = sheetOf('Ochroniarz „Mały”').gear.find((row) => row.key);
     expect(key).toMatchObject({ name: 'Klucz: Szafka ochrony', key: szafka.container!.keyId });
 
-    // Sieć: węzeł zabezpieczeń trzyma wieżyczkę, podłogę i drzwi gabinetu.
+    // Sieć (70f): węzły wg rodzaju — Monitoring, Obrona (wieżyczka), Instalacje
+    // (podłoga i drzwi gabinetu).
     const points = await built.prisma.netAccessPoint.findMany({ where: { sceneId } });
     expect(points).toHaveLength(2);
     const architecture = await built.prisma.netArchitecture.findUniqueOrThrow({
@@ -707,26 +758,44 @@ describe('etap 66e: „Po zamknięciu” — światła, zamki, strefa w Sieci, p
         }[];
       }
     ).branches[0]!.floors;
-    expect(floors).toHaveLength(4);
+    expect(floors).toHaveLength(5);
     expect(floors[1]!.devices).toHaveLength(5);
-    const security = floors[2]!.devices!;
-    expect(security.map((device) => device.deviceKind)).toEqual(['turret', 'environment', 'door']);
-    const office = walls.find((wall) => wall.id === security[2]!.wallId)!;
-    expect(office).toMatchObject({ kind: 'door', locked: true });
+    expect(floors[2]!.devices!.map((device) => device.deviceKind)).toEqual(['turret']);
+    const installations = floors[3]!.devices!;
+    expect(installations.map((device) => device.deviceKind)).toEqual(['environment', 'door']);
+    const office = walls.find((wall) => wall.id === installations[1]!.wallId)!;
+    expect(office).toMatchObject({ kind: 'door', locked: true, netControlled: true });
     expect((JSON.parse(office.lockRule!) as { dv: number }).dv).toBe(17);
 
-    const [zone] = await built.prisma.defenseZone.findMany({ where: { sceneId } });
+    const zones = await built.prisma.defenseZone.findMany({ where: { sceneId } });
+    const zone = zones.find((row) => row.name === 'Podłoga elektryczna');
     expect(zone).toMatchObject({
       entryId: 'defense.iskrownik',
-      name: 'Podłoga elektryczna',
       hidden: true,
       armed: true,
       hpMax: 20,
+      tokenId: null,
+      netExcluded: false,
       architectureId: architecture.id,
-      floorId: floors[2]!.id,
-      deviceId: security[1]!.id,
+      floorId: floors[3]!.id,
+      deviceId: installations[0]!.id,
     });
     expect(zone!.width).toBeCloseTo(4 * scene.gridSizePx, 3);
+    // 70f: obszar straży wieżyczki — cały gabinet, PW na figurze, poza węzłem.
+    const turret = tokens.find((token) => token.name === 'Automatyczna wieżyczka')!;
+    const guard = zones.find((row) => row.tokenId === turret.id);
+    expect(guard).toMatchObject({
+      name: 'Straż wieżyczki',
+      entryId: 'defense.grzechot',
+      hidden: true,
+      hpMax: 0,
+      architectureId: null,
+    });
+    expect(guard!.width).toBeCloseTo(7 * scene.gridSizePx, 3);
+    // Balans 70f: wieżyczka z karabinem i Wartością bojową 14, Kucharz w Kevlarze.
+    const turretSheet = JSON.parse(turret.character!.data) as CpredCharacterData;
+    expect(turretSheet.statBlock).toMatchObject({ combatValue: 14 });
+    expect(turretSheet.weapons.map((row) => row.name)).toContain('Grzechotnik');
 
     // Kanarek: gracz na aktywnej scenie nie dostaje ukrytych kamer, strefy,
     // zamków ani notatek MG.

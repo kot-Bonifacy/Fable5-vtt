@@ -667,6 +667,7 @@ export type NetDeviceProblem =
   | 'NET_NODE_NOT_HELD'
   | 'NET_NODE_USED'
   | 'NET_DEVICE_UNKNOWN'
+  | 'NET_DEVICE_NOT_WIRED'
   | 'NET_DEVICE_NO_TOKEN'
   | 'NET_DEVICE_NO_WALL'
   | 'NET_DEVICE_OFF'
@@ -684,6 +685,8 @@ export const NET_DEVICE_MESSAGES: Record<NetDeviceProblem, string> = {
   NET_NODE_NOT_HELD: 'Nie kontrolujesz tego węzła — najpierw przejmij go Kontrolą.',
   NET_NODE_USED: 'Ten węzeł był już aktywowany w tej Turze.',
   NET_DEVICE_UNKNOWN: 'Do tego węzła nie jest podłączone takie urządzenie.',
+  NET_DEVICE_NOT_WIRED:
+    'Ta figura nie jest urządzeniem żadnej Sieci — podepnij ją w Architekturze albo podłącz netrunnera do gniazda sceny.',
   NET_DEVICE_NO_TOKEN: 'To urządzenie nie ma figury na mapie — nie ma czym strzelić.',
   NET_DEVICE_NO_WALL: 'To urządzenie nie wskazuje żadnych drzwi ani okna.',
   NET_DEVICE_OFF: 'Urządzenie jest wyłączone — najpierw je włącz.',

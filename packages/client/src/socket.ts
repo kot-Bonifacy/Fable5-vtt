@@ -209,6 +209,7 @@ import type {
   NetArchitectureView,
   NetDemonActPayload,
   NetDefensePausePayload,
+  NetDeviceSwitchPayload,
   NetIceActPayload,
   NetRunAbilityPayload,
   NetRunAbilityResult,
@@ -3177,6 +3178,13 @@ export const demonTakesTurn = (payload: NetDemonActPayload) =>
  */
 export const setNetDefensePaused = (runId: string, paused: boolean) =>
   emitSceneAck('netrun:defense:pause', { runId, paused } satisfies NetDefensePausePayload);
+
+/**
+ * „Włącz / Wyłącz w Sieci” z menu MG figury urządzenia (etap 70f) — bez runu:
+ * tak MG budzi uśpionego drona przy alarmie albo wyłącza wieżyczkę na start.
+ */
+export const switchNetDevice = (tokenId: string, on: boolean) =>
+  emitSceneAck('net:device:switch', { tokenId, on } satisfies NetDeviceSwitchPayload);
 
 /**
  * Dziennik kampanii. Wołane przy wejściu w zakładkę, nie w `state:sync`.

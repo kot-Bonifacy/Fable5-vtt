@@ -771,6 +771,8 @@ const CASES: Record<string, Case> = {
     floorId: 'x',
     operation: 'x',
   })),
+  // stan urządzenia z menu MG figury (etap 70f)
+  'net:device:switch': foreign((a) => ({ tokenId: a.npcTokenId, on: false })),
   // netrun
   'netpoint:place': foreign((a) => ({
     sceneId: a.sceneId,

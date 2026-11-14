@@ -2,7 +2,8 @@
 
 **Faza:** przed betą (zlecenie MG z 11.11 spoza planu) · **Wymaga etapów:** 26a–26f (Sieć),
 51 i 58 (strefy), 62 (Sieć ze sceny), 69 (lewa belka) · **Status:** 🟨 realizacja w sześciu
-sesjach (70a–70f); 70a ✅ 12.11, 70b ✅ 13.11, 70c ✅ 13.11, 70d ✅ 13.11, 70e ✅ 13.11
+sesjach (70a–70f); 70a ✅ 12.11, 70b ✅ 13.11, 70c ✅ 13.11, 70d ✅ 13.11, 70e ✅ 13.11,
+70f ✅ 14.11 — całość czeka na wdrożenie i stół MG
 
 ## Skąd ten etap
 
@@ -495,13 +496,52 @@ się nic, dopóki MG nie kliknie.
 
 ### 70f — Wzorce i rozegranie
 
-- [ ] „Fabryka dronów” (66b) i „Po zamknięciu” (66e): węzły wg nowych reguł, obszary straży na
+- [x] „Fabryka dronów” (66b) i „Po zamknięciu” (66e): węzły wg nowych reguł, obszary straży na
       figurach, notatki MG przepisane pod sterowanie z mapy, balans wieżyczki z Kucharzem
       (Wartość bojowa i seria zamiast 2k6 pojedynczo)
-- [ ] Rozegranie obu wzorców netrunnerem w przeglądarce (MG Chromium, gracz Firefox), znaleziska
+- [x] Rozegranie obu wzorców netrunnerem w przeglądarce (MG Chromium, gracz Firefox), znaleziska
       do `zaleglosci.md`
-- [ ] Umowy w sekcji `siec` (`umowy-kodu.md`), pułapki, `testy.md` (wiersz T70), zamknięcie
+- [x] Umowy w sekcji `siec` (`umowy-kodu.md`), pułapki, `testy.md` (wiersz T70), zamknięcie
       zaległości z 07.11 (przejęte urządzenie jako figura; 66e pkt 3, 23, 24; 66e nr 3 — seria)
+
+**Zrobione 14.11.2026 (bez migracji). Odstępstwa i rozstrzygnięcia:**
+
+- **Format wzorca dostał trzy pola** (umowa na górze `mapa`): `zones[].figure` — obszar straży
+  figury (`DefenseZone.tokenId`, PW na figurze), `zones[].netExcluded` („Poza Siecią”)
+  i `walls[].netControlled` („Sterowane z Sieci”). Zapowiedziane w 70d; bez nich wzorzec nie
+  postawiłby obszaru straży.
+- **Wzorce zostają przy własnych Architekturach** (hasła, LOD, plik — Sieć ze sceny tego nie ma),
+  a „węzły wg nowych reguł” to nazwy i podział jak w Sieci ze sceny. „Po zamknięciu”: hasło →
+  Monitoring (5 kamer) → **Obrona** (wieżyczka) → **Instalacje** (podłoga, zamek gabinetu) →
+  plik — dawny „Węzeł zabezpieczeń” rozpadł się na dwa, bo węzeł działa raz na Turę, a w finale
+  strzał wieżyczki i zamek gabinetu mają się zmieścić w jednej Turze. „Fabryka dronów”: ten sam
+  układ pięter, etykiety „Monitoring”, „Obrona: patrol”, „Obrona: lądowiska północ / boczne”.
+- **Obszary straży:** wieżyczka „Po zamknięciu” — cały gabinet, ukryty (zleceniodawca mówi tylko
+  „coś, co strzela samo”); Sowa — jej lądowisko, jawne (drużyna wie, gdzie czuwa prototyp).
+  Wpis obu to „Automatyczna wieżyczka” (w próbce „Grzechot”): wpisy dronów nie strzelają same,
+  a Sowa ma strzelać do każdego na lądowisku. Próbka dostała `effects.fires` przy „Grzechocie”.
+- **Balans wieżyczki z Kucharzem nie wyszedł z samej serii.** Seria to zawsze 2k6 × mnożnik
+  (najwyżej 3 dla PM), a przeciw OB 11 symulacja (20 000 przebiegów, ablacja, krytyki, 3 serie
+  z magazynka) dawała 8% szans na Kucharza w 6 rundach. Wieżyczka dostała karabin szturmowy (5k6
+  — pierwsza broń z wpisu „Automatyczna wieżyczka”) i Wartość bojową 14, a Kucharz Kevlar (OB 7)
+  zamiast lekkiej kurtki: pojedynczy strzał kładzie go w 4. rundzie w połowie przebiegów, w 6.
+  w 9 na 10, a Kucharz zestrzeliwuje wieżyczkę strzelbą w 4–5 rundach — wyścig, w którym pomaga
+  własna broń netrunnera. Notatka „Skalowanie” mówi, jak to przestawić przy stole.
+- **Poza zakresem, ale potrzebne wzorcom — trzy poprawki kodu:**
+  „⏻ Włącz / Wyłącz w Sieci” w menu MG figury (`net:device:switch`) — od 70c uśpiony dron milczy,
+  a stan urządzenia zmieniał tylko węzeł netrunnera, więc alarm „Fabryki” („co rundę budzi się
+  Szerszeń”) nie miał czym ruszyć; naklejka „Wyłączony” od założenia sceny ze wzorca
+  (`refreshNetCameraSight` w `scene:from-template`, wcześniej dopiero po pierwszym podłączeniu);
+  **wyłączone urządzenie da się przeszukać** (`searchable` stanu `net-off`) — drzazga Sowy bez
+  ręcznego „Unieruchomiony” (pomysł z 31.10). Decyzje w `decyzje-i-uproszczenia.md`.
+- **Z rozegrania poprawione od razu:** pasek „Oczy i urządzenia” miał trzy kolumny i nazwy w jednym
+  wierszu — pięć kamer „Po zamknięciu” czytało się „Kamera…”; teraz dwie kolumny i nazwa
+  w dwóch wierszach. Odłączenie z pięcioma kamerami i wieżyczką dawało sześć wierszy czatu
+  „wraca do obrony” (pięć „Urządzenie”) — teraz jeden: „wracają do obrony: Automatyczna
+  wieżyczka i 5 ukrytych urządzeń”.
+- **Rozegranie to tymczasowe specy oględzin** (`specs/99-ogledziny/t99-70f-*`, nie w repo, jak
+  w 66b): walki z ochroną i marsz przez ciemną halę były rozegrane 04–07.11 i etap 70 ich nie
+  dotyka, więc MG stawia figury przy konsolach i lądowisku; gra zaczyna się od Sieci.
 
 ## Testy
 

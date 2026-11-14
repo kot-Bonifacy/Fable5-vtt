@@ -770,6 +770,9 @@
       "hp": 25,
       "combatValue": 14,
       "trigger": "Cel bez przepustki wchodzi na strzeżony obszar.",
+      "effects": {
+        "fires": true
+      },
       "cost": 5000,
       "costCategory": "luxury"
     },

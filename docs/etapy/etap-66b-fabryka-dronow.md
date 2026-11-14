@@ -138,3 +138,11 @@ G1 obudzony — działa.
 nazwy wszystkich 19 urządzeń, także Sowy i uśpionych dronów (reguła etapu 62); lampa w hali jest
 widoczna z bramy wzdłuż środkowej alejki (taśmociąg nie zasłania) i zakłada walkę z zauważenia;
 wyłączony dron nie ma znacznika na mapie. Otwarte resztki — `zaleglosci.md` (07.11).
+
+## Wzorzec po przebudowie Sieci (14.11, etap 70f)
+
+Węzły noszą nazwy rodzajów Sieci ze sceny („Monitoring”, „Obrona: patrol”, „Obrona: lądowiska
+północ”, „Obrona: lądowiska boczne”), Sowa dostała obszar straży „Lądowisko Sowy” (strzela sama,
+Wartość bojowa 14), notatki MG mówią o sterowaniu z mapy, automacie LOD-u z hamulcem
+i „⏻ Włącz w Sieci” przy alarmie. Wyłączona Sowa przeszukuje się bez „Unieruchomiony”. Szczegóły
+i rozegranie: `etap-70-siec-przebudowa.md` (70f).

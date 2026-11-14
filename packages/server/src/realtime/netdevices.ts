@@ -4,6 +4,7 @@ import type {
   CpredNetDevice,
   CpredNetFloor,
   NetOperatedFigure,
+  NetDeviceSwitchPayload,
   NetRunAbilityResult,
   NetRunDevicePayload,
   RollGesture,
@@ -51,12 +52,18 @@ import {
   runnerOwnerOf,
   saveRunState,
   saveRuntime,
+  updateRuntime,
 } from './netrun-io.js';
 import { roundOfScene, spendNetAction } from './netcombat.js';
 import { findCombatantForToken, loadCombat, spendTurnForCombatant } from './combat.js';
 import { outsideHandsOf, performAttackRoll } from './attacks.js';
 import { campaignEntry } from './compendium.js';
-import { loadNetDeviceGrants, operatorOf, type NetDeviceGrant } from './net-control.js';
+import {
+  loadNetDeviceGrants,
+  netDevicesOfToken,
+  operatorOf,
+  type NetDeviceGrant,
+} from './net-control.js';
 import { toLinkedSheet } from '../sheets.js';
 import { afterWallChange } from './walls.js';
 import type { FullRunState } from './netice.js';
@@ -136,6 +143,43 @@ async function requireNode(
   if (!device) throw new RealtimeError('NET_DEVICE_UNKNOWN');
   return { row, architecture, state, floor, device };
 }
+
+/**
+ * „Włącz / Wyłącz w Sieci” z menu MG figury (etap 70f) — bez runu, bez Akcji
+ * Sieciowej, we wszystkich Architekturach, które figurę wskazują.
+ *
+ * Od 70c urządzenie wyłączone w Sieci milczy (tura, straż, oczy), a jedyną
+ * drogą zmiany jego stanu był węzeł trzymany przez netrunnera — MG nie miał
+ * czym obudzić uśpionego drona przy alarmie „Fabryki dronów”. Naklejkę
+ * „Wyłączony” zdejmuje i nakłada jak zawsze `emitRuns` (odcisk stanów),
+ * a figura przejęta i wyłączona tą drogą wraca do obrony jak po „Wyłącz”.
+ */
+export const netDeviceSwitchEvent = defineEvent<NetDeviceSwitchPayload, void>({
+  name: 'net:device:switch',
+  role: ROLE_GM,
+  handler: async ({ deps, socket, payload }) => {
+    const campaignId = requireCampaignId(socket.data);
+    if (typeof payload?.on !== 'boolean') throw new RealtimeError('BAD_REQUEST');
+    const { token } = await requireCampaignToken(deps.ctx.prisma, campaignId, payload.tokenId);
+    const wired = await netDevicesOfToken(deps.ctx.prisma, campaignId, token.id);
+    if (wired.length === 0) throw new RealtimeError('NET_DEVICE_NOT_WIRED');
+    const operation = payload.on ? 'on' : 'off';
+    for (const { architectureId, deviceIds } of wired) {
+      await updateRuntime(deps.ctx.prisma, architectureId, (runtime) => ({
+        ...runtime,
+        devices: deviceIds.reduce(
+          (states, deviceId) =>
+            netApplyDeviceState(
+              states,
+              netDeviceStateAfter(netDeviceStateOf(states, deviceId), operation)!,
+            ),
+          runtime.devices ?? [],
+        ),
+      }));
+    }
+    await emitRuns(deps, campaignId);
+  },
+});
 
 /**
  * „Obsługa każdej rzeczy podłączonej do danego węzła wymaga użycia osobnej

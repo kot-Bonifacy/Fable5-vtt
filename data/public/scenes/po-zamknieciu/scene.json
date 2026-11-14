@@ -71,7 +71,7 @@
           ]
         ],
         "armorBody": [
-          "armor.light-armorjack",
+          "armor.kevlar",
           "armor.kurtka-warsztatowa"
         ],
         "eddies": 300,
@@ -188,12 +188,12 @@
           "perception": 5
         },
         "statBlock": {
-          "combatValue": 12
+          "combatValue": 14
         },
         "weapons": [
           [
-            "weapon.submachine-gun",
-            "weapon.zardzewiak"
+            "weapon.assault-rifle",
+            "weapon.grzechotnik"
           ]
         ],
         "armorBody": [
@@ -808,7 +808,8 @@
           "pick-lock",
           "electronics-security"
         ]
-      }
+      },
+      "netControlled": true
     },
     {
       "kind": "door",
@@ -1077,11 +1078,27 @@
       "y": 10,
       "width": 4,
       "height": 2,
-      "notes": "Cały korytarz przed gabinetem: kto idzie do drzwi Kucharza z sali, z kuchni albo z przedsionka, staje na płytach. Gaśnie z węzła zabezpieczeń.",
+      "notes": "Cały korytarz przed gabinetem: kto idzie do drzwi Kucharza z sali, z kuchni albo z przedsionka, staje na płytach. Gaśnie z węzła Instalacje.",
       "system": {
         "entryIds": [
           "defense.podloga-elektryczna",
           "defense.iskrownik"
+        ]
+      }
+    },
+    {
+      "key": "straz-wiezyczki",
+      "figure": "wiezyczka",
+      "name": "Straż wieżyczki",
+      "x": 21,
+      "y": 6,
+      "width": 7,
+      "height": 4,
+      "notes": "Cały gabinet: wieżyczka strzela sama do postaci gracza, która w nim stanie. Przejęta albo wyłączona w Sieci milczy.",
+      "system": {
+        "entryIds": [
+          "defense.automatyczna-wiezyczka",
+          "defense.grzechot"
         ]
       }
     }
@@ -1140,19 +1157,19 @@
       "x": 23,
       "y": 21.5,
       "icon": "❓",
-      "text": "ZANIM ZACZNIECIE\n\n• Scena dla jednego gracza: netrunner Ranga 6 z bronią automatyczną. Wzorzec nie zakłada karty gracza — przeciągnij jego figurę z „Postaci” na start (zaplecze przy kontenerach).\n• Noc i półmrok: scena jest ciemna, wzrok bez światła 4 m. Świecą neon przy wejściu, lampa nad tylnymi drzwiami, lampka nad barem, ekrany monitoringu i lampa w gabinecie. Latarka z ekwipunku działa.\n• Kamery i oba gniazda Sieci są ukryte. Gniazda znajduje Skaner, kamery — Percepcja z bliska (PT to rzut Skradania kamery) albo podgląd w Sieci.\n• Sieć „Pod Neonem”: PT 8, cztery piętra, bez LOD-u. Węzeł monitoringu (5 kamer), węzeł zabezpieczeń (wieżyczka, podłoga elektryczna, zamek gabinetu), plik.\n• Ruch graczy: Eksploracja."
+      "text": "ZANIM ZACZNIECIE\n\n• Scena dla jednego gracza: netrunner Ranga 6 z bronią automatyczną. Wzorzec nie zakłada karty gracza — przeciągnij jego figurę z „Postaci” na start (zaplecze przy kontenerach).\n• Noc i półmrok: scena jest ciemna, wzrok bez światła 4 m. Świecą neon przy wejściu, lampa nad tylnymi drzwiami, lampka nad barem, ekrany monitoringu i lampa w gabinecie. Latarka z ekwipunku działa.\n• Kamery i oba gniazda Sieci są ukryte. Gniazda znajduje Skaner, kamery — Percepcja z bliska (PT to rzut Skradania kamery) albo podgląd w Sieci.\n• Sieć „Pod Neonem”: PT 8, pięć pięter, bez LOD-u — hasło, Monitoring (5 kamer), Obrona (wieżyczka), Instalacje (podłoga elektryczna i zamek gabinetu), plik.\n• Sterowanie z mapy: po Kontroli węzła netrunner zaznacza kamerę albo wieżyczkę na mapie (albo miniaturą na pasku „Oczy i urządzenia” w oknie SIEĆ) i używa lewej belki. W walce każdy węzeł działa raz na Turę, a pierwsza czynność urządzenia kosztuje 1 Akcję Sieciową.\n• Ruch graczy: Eksploracja."
     },
     {
       "x": 13.5,
       "y": 11,
       "icon": "⚠️",
-      "text": "ALARM I OCHRONA\n\nBury chodzi ręką MG: lada baru → drzwi wschodnie → toalety gości i z powrotem (2–3 rundy na odcinek). Mały siedzi przy monitorach i nie wychodzi z biura, dopóki kamery działają; gdy zgasną (Wyłącz w Sieci), wychodzi sprawdzić korytarz.\n\nKamery są Neutralne: zauważenie skradającej się postaci daje MG pasek, nie walkę. Co wtedy:\n1. Mały mówi przez radio, co widział.\n2. Bury idzie sprawdzić to miejsce, dochodzi w 2 rundy.\n3. Kucharz odkłada pieniądze i bierze strzelbę (patrz „Gabinet”).\nKamera wyłączona w Sieci nie daje alarmu. Wieżyczka działa zawsze, dopóki ktoś jej nie wyłączy.\n\nSzafka ochrony w biurze: zamek PT 13, klucz nosi Mały (łup z ciała otwiera ją bez Testu). W środku pistolet maszynowy i 200 ed."
+      "text": "ALARM I OCHRONA\n\nBury chodzi ręką MG: lada baru → drzwi wschodnie → toalety gości i z powrotem (2–3 rundy na odcinek). Mały siedzi przy monitorach i nie wychodzi z biura, dopóki kamery działają; gdy zgasną (Wyłącz w Sieci), wychodzi sprawdzić korytarz.\n\nKamery są Neutralne: zauważenie skradającej się postaci daje MG pasek, nie walkę. Co wtedy:\n1. Mały mówi przez radio, co widział.\n2. Bury idzie sprawdzić to miejsce, dochodzi w 2 rundy.\n3. Kucharz odkłada pieniądze i bierze strzelbę (patrz „Gabinet”).\nKamera wyłączona albo przejęta w Sieci nie daje alarmu. Wieżyczka strzela sama do postaci gracza w gabinecie, dopóki ktoś jej nie przejmie albo nie wyłączy.\n\nSzafka ochrony w biurze: zamek PT 13, klucz nosi Mały (łup z ciała otwiera ją bez Testu). W środku pistolet maszynowy i 200 ed."
     },
     {
       "x": 24.5,
       "y": 9.2,
       "icon": "💀",
-      "text": "GABINET\n\nKucharz broni się do końca i nie wychodzi z gabinetu. Przed alarmem liczy pieniądze przy stole; po alarmie stoi za stołem ze strzelbą wycelowaną w drzwi.\n\nDrzwi: zamek PT 17 albo „Otwórz” z węzła zabezpieczeń. Przed nimi podłoga elektryczna na cały korytarz (ukryta, zauważenie i rozbrojenie z wpisu kompendium; rozbrojenie — jedna próba, porażka o 5+ odpala na rozbrajającego).\n\nWieżyczka w prawym górnym rogu strzela w każdego, kto stanie w drzwiach. Przejęta „Strzelaj” celuje w Kucharza: stół zasłania go od drzwi, ale nie od strony wieżyczki.\nKamera w lewym dolnym rogu (ukryta) pokazuje netrunnerowi cały pokój: gdzie stoi Kucharz i gdzie wieżyczka."
+      "text": "GABINET\n\nKucharz broni się do końca i nie wychodzi z gabinetu. Przed alarmem liczy pieniądze przy stole; po alarmie stoi za stołem ze strzelbą wycelowaną w drzwi.\n\nDrzwi: zamek PT 17 albo „Otwórz” z węzła Instalacje (pasek „Oczy i urządzenia”). Przed nimi podłoga elektryczna na cały korytarz (ukryta; PT zauważenia i rozbrojenia z wpisu kompendium). Zauważona pyta okienkiem przy kliknięciu: „Rozbrój” (jedna próba, porażka o 5+ odpala na rozbrajającego), a u netrunnera z węzłem Instalacje także „Wyłącz”.\n\nWieżyczka w prawym górnym rogu: karabin szturmowy, Wartość bojowa 14, PW 25, OB 11. Jej obszar straży to cały gabinet — strzela sama do postaci gracza, która w nim stanie. Przejęta z węzła Obrona: netrunner zaznacza ją na mapie i celuje w Kucharza — stół zasłania go od drzwi, ale nie od strony wieżyczki. Po pierwszym strzale Kucharz może ostrzelać wieżyczkę strzelbą zamiast pilnować drzwi — wybór MG.\nKamera w lewym dolnym rogu (ukryta) pokazuje netrunnerowi cały pokój: gdzie stoi Kucharz i gdzie wieżyczka."
     },
     {
       "x": 30.5,
@@ -1164,7 +1181,7 @@
       "x": 30.5,
       "y": 22.5,
       "icon": "📌",
-      "text": "SKALOWANIE\n\nGracz bez netrunnera: wieżyczka startuje wyłączona (MG wyłącza ją w Sieci) albo z PW 15, podłoga elektryczna widoczna (PT zauważenia 13).\nDwóch graczy: trzeci ochroniarz w kuchni (kucharz z nożem i ciężkim pistoletem — „Nowa postać” MG), Kucharz PW 50.\nZa trudno w gabinecie: wieżyczka bez serii albo stół z większą osłoną.\nZa łatwo: Bury zaczyna przy tylnych drzwiach, kamera na zapleczu nie jest ukryta.\n\nDo oceny przy stole: PW i atak Kucharza, wieżyczka, PT zamków, czy pięć kamer to nie za dużo na jednego gracza."
+      "text": "SKALOWANIE\n\nGracz bez netrunnera: wieżyczka startuje wyłączona („⏻ Wyłącz w Sieci” w menu MG figury) albo z PW 15, podłoga elektryczna widoczna (PT zauważenia 13).\nDwóch graczy: trzeci ochroniarz w kuchni (kucharz z nożem i ciężkim pistoletem — „Nowa postać” MG), Kucharz PW 50.\nZa trudno w gabinecie: Kucharz PW 30.\nZa łatwo: Kucharz w lekkiej kurtce kuloodpornej (OB 11), Bury zaczyna przy tylnych drzwiach, kamera na zapleczu nie jest ukryta.\n\nDo oceny przy stole: PW i atak Kucharza, wieżyczka (Kucharz w Kevlarze pada od samej wieżyczki średnio w 4. rundzie, a sam zestrzeliwuje ją w 4–5 rundach), PT zamków, czy pięć kamer to nie za dużo na jednego gracza."
     }
   ],
   "system": {
@@ -1173,7 +1190,7 @@
         "key": "pod-neonem",
         "name": "Sieć „Pod Neonem”",
         "difficulty": "standard",
-        "notes": "Krótka Sieć knajpy: monitoring, zabezpieczenia gabinetu i zeszyt Kucharza. Bez Czarnego LOD-u — ma być narzędziem, nie osobnym wyzwaniem.",
+        "notes": "Krótka Sieć knajpy: monitoring, wieżyczka w gabinecie, instalacje (podłoga i zamek gabinetu) i zeszyt Kucharza. Bez Czarnego LOD-u — ma być narzędziem, nie osobnym wyzwaniem. Węzły wg rodzaju, jak w Sieci ze sceny: w walce strzał wieżyczki i zamek gabinetu to dwa węzły, więc obie rzeczy mieszczą się w jednej Turze.",
         "floors": [
           {
             "kind": "password",
@@ -1181,7 +1198,7 @@
           },
           {
             "kind": "controlNode",
-            "label": "Węzeł monitoringu",
+            "label": "Monitoring",
             "devices": [
               {
                 "figure": "kam-wejscie"
@@ -1202,11 +1219,17 @@
           },
           {
             "kind": "controlNode",
-            "label": "Węzeł zabezpieczeń",
+            "label": "Obrona",
             "devices": [
               {
                 "figure": "wiezyczka"
-              },
+              }
+            ]
+          },
+          {
+            "kind": "controlNode",
+            "label": "Instalacje",
+            "devices": [
               {
                 "zone": "podloga",
                 "name": "Podłoga elektryczna"

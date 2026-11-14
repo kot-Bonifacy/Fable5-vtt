@@ -554,3 +554,11 @@ podłączeniu zdejmuje oczy 6 → 1). Pkt 26 — tylko test `shared`.
       (próbka ma od 66e alternatywę dla podłogi, więc braków nie ma i tu).
 - [x] Oględziny netrunnera w Firefoksie (punkt 8) — wyniki niżej.
 - [x] `POSTEP.md`, `archiwum/tabela-etapow.md`, umowa w sekcji `mapa`.
+
+## Wzorzec po przebudowie Sieci (14.11, etap 70f)
+
+Sieć „Pod Neonem” ma pięć pięter: hasło, Monitoring (5 kamer), Obrona (wieżyczka), Instalacje
+(podłoga, zamek gabinetu — drzwi „Sterowane z Sieci”), plik. Wieżyczka strzela sama z obszaru
+straży „Straż wieżyczki” (cały gabinet), ma karabin szturmowy i Wartość bojową 14, a Kucharz
+Kevlar zamiast lekkiej kurtki (balans z oceny wyżej). Notatki MG mówią o sterowaniu z mapy.
+Szczegóły i rozegranie: `etap-70-siec-przebudowa.md` (70f).

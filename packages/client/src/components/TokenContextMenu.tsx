@@ -78,7 +78,7 @@ import { useCompendiumStore } from '../stores/compendiumStore.js';
 import { AttackLauncher } from './AttackLauncher.js';
 import { FacedownLauncher } from './FacedownLauncher.js';
 import { TokenImagePicker } from './TokenImagePicker.js';
-import { GuardAreaPanel, hasGuardArea } from './GuardAreaPanel.js';
+import { GuardAreaPanel, NetDeviceSwitchItem, hasGuardArea } from './GuardAreaPanel.js';
 import type { TokenMenuState } from './MapArea.js';
 import { NumberStepper } from './NumberStepper.js';
 import { useZoneStore } from '../stores/zoneStore.js';
@@ -1411,6 +1411,8 @@ export function TokenContextMenu({ menu, onClose }: { menu: TokenMenuState; onCl
           </button>
         )}
         {guarding && hasGuardArea(token.glyph) && <GuardAreaPanel token={token} onDone={onClose} />}
+        {/* Etap 70f: stan urządzenia w Sieci bez runu — MG budzi uśpionego drona. */}
+        <NetDeviceSwitchItem token={token} onDone={onClose} />
         <button
           type="button"
           className="context-menu-item"

@@ -707,8 +707,24 @@ export function cpredTemplateProblems(template: SceneTemplate): string[] {
     lockProblems(wall.lockRule, `zamek ${where}`, problems);
   }
   for (const zone of template.zones) {
+    const where = `strefa ${zone.key ?? zone.name ?? '?'}`;
     if (readCpredTemplateZone(zone.system).entryIds.length === 0) {
-      problems.push(`strefa ${zone.key ?? zone.name ?? '?'}: brak wpisu kompendium`);
+      problems.push(`${where}: brak wpisu kompendium`);
+    }
+    // Obszar straży (70f) strzela z figury wieżyczki albo drona, jak z menu MG
+    // figury (`hasGuardArea`), i nie jest osobnym urządzeniem Sieci — figurę
+    // wycisza w Sieci jej własne urządzenie (`netSilencedTokenIds`).
+    if (zone.figure !== null) {
+      const figure = figures.get(zone.figure);
+      const kind = figure?.glyph ? NET_DEVICE_KIND_BY_GLYPH[figure.glyph] : undefined;
+      if (kind !== 'turret' && kind !== 'drone') {
+        problems.push(
+          `${where}: obszar straży figury ${zone.figure} bez ikony wieżyczki ani drona`,
+        );
+      }
+      if (zone.key !== null && wired.has(`strefa ${zone.key}`)) {
+        problems.push(`${where}: obszar straży podpięty do węzła jako urządzenie`);
+      }
     }
   }
   for (const container of template.containers) {

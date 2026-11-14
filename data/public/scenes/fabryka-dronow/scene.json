@@ -1341,6 +1341,25 @@
       "hp": 25
     }
   ],
+  "zones": [
+    {
+      "key": "ladowisko-sowy",
+      "figure": "prototyp",
+      "name": "Lądowisko Sowy",
+      "x": 42.4,
+      "y": 1.0,
+      "width": 4.0,
+      "height": 3.1,
+      "hidden": false,
+      "notes": "Prototyp strzela sam do postaci gracza, która wejdzie na jego lądowisko. Przejęty albo wyłączony w Sieci milczy.",
+      "system": {
+        "entryIds": [
+          "defense.automatyczna-wiezyczka",
+          "defense.grzechot"
+        ]
+      }
+    }
+  ],
   "accessPoints": [
     {
       "name": "Konsola sterowni zachodniej",
@@ -1381,25 +1400,25 @@
       "x": 15.92,
       "y": 33.48,
       "icon": "📌",
-      "text": "FABRYKA DRONÓW — zlecenie\n\nZleceniodawca (fixer, korporacyjny konkurent — dopasuj do kampanii) chce danych prototypu „Sowa”. Drzazga siedzi w samym dronie: prototyp czuwa na prawym górnym lądowisku, przy górnej bramie. Zleceniodawca to wie i mówi drużynie wprost.\n\nDrużyna wchodzi dolną bramą towarową. Hala stoi po zmianie: lampy zgaszone, ludzi nie ma, pilnują drony i kamery.\n\nWygrana: drzazga w czyimś ekwipunku i drużyna z powrotem za dolną bramą.\nDrzazgę wyjmuje się z prototypu wyłączonego w Sieci (wtedy MG nakłada mu „Unieruchomiony” i figurę da się przeszukać) albo z wraku (PW 0 — łup z ciała).\n\nSkrojone na dwie postacie: netrunnera i bojowca (Solo, Ochroniarz). Netrunner musi siedzieć przy gnieździe (zasięg 6 m), więc bojowiec idzie sam w ciemność."
+      "text": "FABRYKA DRONÓW — zlecenie\n\nZleceniodawca (fixer, korporacyjny konkurent — dopasuj do kampanii) chce danych prototypu „Sowa”. Drzazga siedzi w samym dronie: prototyp czuwa na prawym górnym lądowisku, przy górnej bramie. Zleceniodawca to wie i mówi drużynie wprost.\n\nDrużyna wchodzi dolną bramą towarową. Hala stoi po zmianie: lampy zgaszone, ludzi nie ma, pilnują drony i kamery.\n\nWygrana: drzazga w czyimś ekwipunku i drużyna z powrotem za dolną bramą.\nDrzazgę wyjmuje się łupem z ciała: z prototypu wyłączonego w Sieci (naklejka „Wyłączony” — figurę da się przeszukać) albo z wraku (PW 0).\n\nSkrojone na dwie postacie: netrunnera i bojowca (Solo, Ochroniarz). Netrunner musi siedzieć przy gnieździe (zasięg 6 m), więc bojowiec idzie sam w ciemność — ale przejęte kamery i drony są oczami i rękami netrunnera na całej hali."
     },
     {
       "x": 28.5,
       "y": 33.48,
       "icon": "❓",
-      "text": "ZANIM ZACZNIECIE\n\n1. Scena jest ciemna, a gracze nie dzielą się widokiem: każdy widzi tylko to, co widzi jego figura (4 m w ciemności, dwie kratki).\n2. Latarki: postać z latarką w ekwipunku świeci, gdy ją dobędzie. Bez latarki zaznacz figurze gracza „Nosi światło” w menu figury — domyślnie 6 m jasno / 12 m przyćmione. Gracz sam je włącza i gasi.\n   Latarka świeci także dla dronów i kamer — kto świeci, ten jest widoczny z daleka.\n3. Aktywuj scenę i przeciągnij figury graczy z zakładki „Postacie” obok chorągiewki startu, za dolną bramą. Aktywacja sama stawia tylko figurę świeżo utworzonej postaci.\n4. Gracze chodzą w trybie Eksploracji, Skradanie działa jak zwykle: drony i kamery patrzą własnymi oczami.\n5. Kontenery to ściany (zasłaniają widok), taśmociągi to bariera — nie przejdzie się przez nie, ale widać ponad nimi. Na platformę pulpitu centralnego wchodzi się narożnikami.\n6. Gniazda Sieci są ukryte — netrunner znajduje je Skanerem albo MG odsłania je, gdy postać stanie przy konsoli."
+      "text": "ZANIM ZACZNIECIE\n\n1. Scena jest ciemna, a gracze nie dzielą się widokiem: każdy widzi tylko to, co widzi jego figura (4 m w ciemności, dwie kratki).\n2. Latarki: postać z latarką w ekwipunku świeci, gdy ją dobędzie. Bez latarki zaznacz figurze gracza „Nosi światło” w menu figury — domyślnie 6 m jasno / 12 m przyćmione. Gracz sam je włącza i gasi.\n   Latarka świeci także dla dronów i kamer — kto świeci, ten jest widoczny z daleka.\n3. Aktywuj scenę i przeciągnij figury graczy z zakładki „Postacie” obok chorągiewki startu, za dolną bramą. Aktywacja sama stawia tylko figurę świeżo utworzonej postaci.\n4. Gracze chodzą w trybie Eksploracji, Skradanie działa jak zwykle: drony i kamery patrzą własnymi oczami.\n5. Kontenery to ściany (zasłaniają widok), taśmociągi to bariera — nie przejdzie się przez nie, ale widać ponad nimi. Na platformę pulpitu centralnego wchodzi się narożnikami.\n6. Gniazda Sieci są ukryte — netrunner znajduje je Skanerem albo MG odsłania je, gdy postać stanie przy konsoli.\n7. Sieć: Kontrola węzła oddaje netrunnerowi figury jego urządzeń — zaznacza je na mapie albo miniaturą na pasku „Oczy i urządzenia”. Kamera patrzy i obraca się klikiem w mapę, dron jeździ i strzela własną Wartością bojową. W walce każdy węzeł działa raz na Turę, a pierwsza czynność urządzenia kosztuje 1 Akcję Sieciową. Uśpionego Szerszenia z przejętego węzła da się włączyć i poprowadzić — po odłączeniu wraca do obrony już obudzony."
     },
     {
       "x": 36.46,
       "y": 33.48,
       "icon": "⚠️",
-      "text": "ALARM I PRZECIWNICY\n\nPatrol (aktywny): Pająk 1, Pająk 2 (drony naziemne) i Szerszeń patrolowy przy lądowiskach. Prowadź ich trasy alejkami między kontenerami.\nKamery (4, Neutralne): zauważenie postaci daje MG pasek — to jest alarm.\n\nALARM: co rundę budzi się jeden uśpiony Szerszeń, od lądowiska najbliższego hałasu — MG włącza go w Sieci (Architektura → stan urządzenia) i od tej rundy dron działa. Uśpiony dron (wyłączony w Sieci) nie rusza się i nie strzela.\nPrototyp „Sowa” się nie budzi — on czuwa od początku i strzela do każdego, kto podejdzie na jego lądowisko.\n\nNetrunner może: wyłączać drony (węzły patrolu i lądowisk), patrzeć oczami kamer i je obracać (węzeł kamer), a wyłączenie Sowy w węźle „Lądowisk: północ” pozwala wyjąć drzazgę bez walki.\n\nTrudniej: włącz od startu dwa Szerszenie z lądowisk. Łatwiej: odsłoń graczom jedno gniazdo przy starcie."
+      "text": "ALARM I PRZECIWNICY\n\nPatrol (aktywny): Pająk 1, Pająk 2 (drony naziemne) i Szerszeń patrolowy przy lądowiskach. Prowadź ich trasy alejkami między kontenerami.\nKamery (4, Neutralne): zauważenie postaci daje MG pasek — to jest alarm.\n\nALARM: co rundę budzi się jeden uśpiony Szerszeń, od lądowiska najbliższego hałasu — MG wybiera „⏻ Włącz w Sieci” w menu jego figury. Uśpiony dron ma naklejkę „Wyłączony”: nie gra tury, nie strzela i nie patrzy.\nPrototyp „Sowa” się nie budzi — czuwa od początku i sam strzela (Wartość bojowa 14) do każdej postaci gracza, która wejdzie na jego lądowisko (obszar straży „Lądowisko Sowy”).\nCzarny LOD (Kruk) sam wykrywa netrunnera, który zjedzie na jego piętro, i sam gra swoją Turę w kolejce. Hamulec MG: „Wstrzymaj obronę” w belce okna runu.\n\nTrudniej: włącz od startu dwa Szerszenie z lądowisk. Łatwiej: odsłoń graczom jedno gniazdo przy starcie."
     },
     {
       "x": 43.76,
       "y": 6.3,
       "icon": "💰",
-      "text": "PROTOTYP „SOWA”\n\nDrzazga z danymi leży w ekwipunku karty prototypu. Wartość bojowa 14, 30 PW, pistolet maszynowy.\nWyłączony w Sieci: nałóż „Unieruchomiony” — postać obok przeszukuje figurę i zabiera drzazgę (łup z ciała).\nZniszczony: wrak z PW 0 przeszukuje się tak samo."
+      "text": "PROTOTYP „SOWA”\n\nDrzazga z danymi leży w ekwipunku karty prototypu. Wartość bojowa 14, 30 PW, pistolet maszynowy. Obszar straży: całe lądowisko — strzela sam do postaci gracza, która na nie wejdzie.\nPrzejęty w Sieci (węzeł „Obrona: lądowiska północ”): netrunner może nim podlecieć do bojowca, a „Wyłącz” na belce zostawia go z naklejką „Wyłączony” — postać obok przeszukuje figurę i zabiera drzazgę (łup z ciała).\nZniszczony: wrak z PW 0 przeszukuje się tak samo."
     }
   ],
   "system": {
@@ -1408,7 +1427,7 @@
         "key": "fabryka",
         "name": "Sieć fabryki dronów",
         "difficulty": "standard",
-        "notes": "Sieć hali montażowej: kamery, patrol, lądowiska. Gniazda w obu sterowniach, w budkach operatorów i w pulpicie centralnym.",
+        "notes": "Sieć hali montażowej: kamery, patrol, lądowiska. Gniazda w obu sterowniach, w budkach operatorów i w pulpicie centralnym. Czarny LOD wykrywa i gra sam (hamulec MG: „Wstrzymaj obronę” w oknie runu).",
         "floors": [
           {
             "kind": "password",
@@ -1416,7 +1435,7 @@
           },
           {
             "kind": "controlNode",
-            "label": "Węzeł kamer",
+            "label": "Monitoring",
             "devices": [
               {
                 "figure": "kamera-brama"
@@ -1444,7 +1463,7 @@
           },
           {
             "kind": "controlNode",
-            "label": "Węzeł patrolu",
+            "label": "Obrona: patrol",
             "devices": [
               {
                 "figure": "pajak-1"
@@ -1468,7 +1487,7 @@
           },
           {
             "kind": "controlNode",
-            "label": "Węzeł lądowisk: północ",
+            "label": "Obrona: lądowiska północ",
             "devices": [
               {
                 "figure": "ladowisko-g1",
@@ -1497,7 +1516,7 @@
           },
           {
             "kind": "controlNode",
-            "label": "Węzeł lądowisk: skrzydła",
+            "label": "Obrona: lądowiska boczne",
             "devices": [
               {
                 "figure": "ladowisko-z1",

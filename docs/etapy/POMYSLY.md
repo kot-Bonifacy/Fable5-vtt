@@ -71,7 +71,7 @@ stoją na półce; sklep z chromem potrzebowałby zakupu z montażem (Test monta
 dopisków/wykreśleń przy asortymencie. (4) **Asortyment z poziomu kampanii** — przełącznik
 „nie wyżej niż odblokowane w kampanii” dla sklepów, które mają rosnąć razem z drużyną.
 
-**31.10.2026 (etap 66b) — uśpione urządzenie na mapie.** Dron wyłączony w Sieci (`runtime.devices` z `on: false`)
+**31.10.2026 (etap 66b) — uśpione urządzenie na mapie.** **Zrobione: naklejka 70c (13.11), przeszukanie i przełącznik MG 70f (14.11).** Dron wyłączony w Sieci (`runtime.devices` z `on: false`)
 stoi na mapie jak każda figura — MG go po prostu nie rusza. Automat: naklejka „Wyłączony” na figurze urządzenia
 (szary krążek, bez tury w kolejce, bez Percepcji w drodze), zdejmowana przy „Włącz”; prototyp z drzazgą dałby się
 wtedy przeszukać bez ręcznego „Unieruchomiony”. (Latarka z ekwipunku — zrobiona 31.10, umowa

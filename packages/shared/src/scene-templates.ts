@@ -231,6 +231,8 @@ export interface SceneTemplateWall {
    * nieprzejrzany dla rdzenia; `null` — zamek domyślny systemu.
    */
   lockRule: unknown;
+  /** Tylko otwory: „Sterowane z Sieci” (`Wall.netControlled`, etap 70d; we wzorcu od 70f). */
+  netControlled: boolean;
 }
 
 /** Osłona (etap 16c): prostokąt w kratkach — lewy górny róg i rozmiar. */
@@ -263,6 +265,14 @@ export interface SceneTemplateLight {
 export interface SceneTemplateZone {
   /** Klucz, którym strefę wskazuje Architektura Sieci; `null` — nikt. */
   key: string | null;
+  /**
+   * Obszar straży figury urządzenia (etap 70d; we wzorcu od 70f): klucz figury
+   * wzorca, z której strefa strzela (`DefenseZone.tokenId`) — PW liczy wtedy
+   * figura. `null` — zwykła strefa.
+   */
+  figure: string | null;
+  /** „Poza Siecią” (`DefenseZone.netExcluded`, etap 70d): strefa nie wchodzi do Sieci ze sceny. */
+  netExcluded: boolean;
   /** Napis na mapie; `null` — nazwa wpisu kompendium. */
   name: string | null;
   x: number;
@@ -589,6 +599,9 @@ function readWall(raw: unknown): SceneTemplateWall | null {
     armor = raw.armor as number;
     if (armor < 0 || armor > WALL_ARMOR_MAX) return null;
   }
+  if (raw.netControlled !== undefined && (!opening || typeof raw.netControlled !== 'boolean')) {
+    return null;
+  }
   return {
     key,
     kind,
@@ -599,6 +612,7 @@ function readWall(raw: unknown): SceneTemplateWall | null {
     armor,
     hidesFigures: kind === 'barrier' && raw.hidesFigures === true,
     lockRule,
+    netControlled: raw.netControlled === true,
   };
 }
 
@@ -674,6 +688,8 @@ function readZone(raw: unknown): SceneTemplateZone | null {
   if (!finite(raw.width) || !finite(raw.height) || raw.width <= 0 || raw.height <= 0) return null;
   const key = readKey(raw.key);
   if (key === undefined) return null;
+  const figure = readKey(raw.figure);
+  if (figure === undefined) return null;
   let name: string | null = null;
   if (raw.name !== undefined && raw.name !== null) {
     name = text(raw.name, ZONE_NAME_MAX);
@@ -690,8 +706,11 @@ function readZone(raw: unknown): SceneTemplateZone | null {
   if (spotDv === undefined || disarmDv === undefined) return null;
   if (raw.hidden !== undefined && typeof raw.hidden !== 'boolean') return null;
   if (raw.armed !== undefined && typeof raw.armed !== 'boolean') return null;
+  if (raw.netExcluded !== undefined && typeof raw.netExcluded !== 'boolean') return null;
   return {
     key,
+    figure,
+    netExcluded: raw.netExcluded === true,
     name,
     x: raw.x,
     y: raw.y,
@@ -856,12 +875,19 @@ export function readSceneTemplate(raw: unknown, id: string): SceneTemplate | nul
   }
   const zones: SceneTemplateZone[] = [];
   const zoneKeys = new Set<string>();
+  const guarded = new Set<string>();
   for (const row of rawZones) {
     const zone = readZone(row);
     if (!zone) return null;
     if (zone.key) {
       if (zoneKeys.has(zone.key)) return null;
       zoneKeys.add(zone.key);
+    }
+    // Obszar straży (70f) wskazuje figurę tego wzorca, najwyżej jeden na figurę
+    // — menu MG figury też zna tylko jeden.
+    if (zone.figure) {
+      if (!figureKeys.has(zone.figure) || guarded.has(zone.figure)) return null;
+      guarded.add(zone.figure);
     }
     zones.push(zone);
   }

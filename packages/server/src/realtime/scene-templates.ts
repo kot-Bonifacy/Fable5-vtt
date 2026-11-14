@@ -50,6 +50,7 @@ import { chaseBodyOf, chaseGeometry } from './chase.js';
 import { campaignEntry } from './compendium.js';
 import { nextRowId } from './economy.js';
 import { emitList as emitNetList } from './netrunning.js';
+import { refreshNetCameraSight } from './netrun-io.js';
 import { RealtimeError, defineEvent, type RealtimeDeps } from './registry.js';
 import { emitSceneList } from './scenes.js';
 import { emitVehicleUpsert } from './vehicles.js';
@@ -99,7 +100,12 @@ export const sceneFromTemplateEvent = defineEvent<
     for (const character of created.characters) {
       await emitCharacterUpsert(deps, campaignId, toCharacterView(character, deps.ctx.cpred));
     }
-    if (created.architectures > 0) await emitNetList(deps, campaignId);
+    if (created.architectures > 0) {
+      await emitNetList(deps, campaignId);
+      // Uśpione drony wzorca (urządzenia z `on: false`) dostają naklejkę
+      // „Wyłączony” od razu, a nie przy pierwszym podłączeniu (70f).
+      await refreshNetCameraSight(deps, campaignId);
+    }
     return { sceneId: created.scene.id, missing: created.missing };
   },
 });
@@ -391,6 +397,7 @@ export async function instantiateSceneTemplate(
           locked: wall.locked,
           armor: wall.armor,
           hidesFigures: wall.hidesFigures,
+          netControlled: wall.netControlled,
           lockRule:
             wall.lockRule === null ? null : JSON.stringify(cpredTemplateLockRule(wall.lockRule)),
           x1: from.x,
@@ -515,7 +522,11 @@ export async function instantiateSceneTemplate(
 
     for (const { zone, entry } of zoneSpecs) {
       const corner = point(zone);
-      const hp = isNetDefenseEntry(entry) ? (entry.hp ?? 0) : 0;
+      // Obszar straży figury (70f, jak `zone:create` z `tokenId` w 70d): PW liczy
+      // figura, do niej się strzela, a strefa ma zero. Figura wzorca ma kartę,
+      // więc PW wpisu jej się nie dokłada.
+      const guard = zone.figure ? placedFigures.get(zone.figure) : undefined;
+      const hp = guard ? 0 : isNetDefenseEntry(entry) ? (entry.hp ?? 0) : 0;
       await tx.defenseZone.create({
         data: {
           sceneId: scene.id,
@@ -532,6 +543,8 @@ export async function instantiateSceneTemplate(
           spotDv: zone.spotDv,
           disarmDv: zone.disarmDv,
           notes: zone.notes,
+          netExcluded: zone.netExcluded,
+          ...(guard ? { tokenId: guard.tokenId } : {}),
           ...(zone.key ? (zoneLinks.get(zone.key) ?? {}) : {}),
         },
       });

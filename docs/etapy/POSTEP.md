@@ -21,7 +21,7 @@ w plikach obok — czytaj je **na żądanie, nigdy rutynowo**:
 
 | stan         | etapy                                                                                          |
 | ------------ | ---------------------------------------------------------------------------------------------- |
-| ⬜ otwarty   | **70** Przebudowa netrunningu: okno jednego piętra i przejęte urządzenia na mapie (🟨 projekt z 11.11 w `etap-70-siec-przebudowa.md`; **70a ✅ 12.11** — okno jednego piętra, **70b ✅ 13.11** — przejęta wieżyczka i kamera na mapie, **70c ✅ 13.11** — dron w ruchu, oczy urządzeń, pasek, **70d ✅ 13.11** — obszar straży od figury, strefy i drzwi w Sieci ze sceny wg rodzaju, okienko strefy, **70e ✅ 13.11** — automat Czarnego LOD-u i Demona z hamulcem MG; wszystkie czekają na wdrożenie (70d z migracją `20261113180000_net_scene_installations`) i oględziny MG; dalej 70f); **69** Lewa belka bez ramek (🟨 zrobione 11.11, czeka na wdrożenie i oględziny MG przy stole); **68** Warsztat: ulepszenia auta za ed i naprawa (🟨 zrobione 06.11, czeka na wdrożenie i oględziny MG przy stole); **67** Zakup pojazdu (🟨 zrobione 06.11, czeka na wdrożenie i oględziny MG przy stole); **66e** Scena przykładowa „Po zamknięciu” (🟨 zrobione 07.11, obejrzane w Firefoksie; rozegrana w przeglądarce do końca 07.11 — znaleziska w `zaleglosci.md` (27; pkt 18 i 19 nie, decyzja MG; 13 naprawionych 07.11); czeka na naprawę reszty, stół MG i wdrożenie); **66d** Scena przykładowa „Zastaw” (🟨 wzorzec zrobiony i rozegrany w przeglądarce 06.11; od 06.11 jeden taran na turę (decyzja MG); czeka na stół MG i wdrożenie); **66** Sceny przykładowe (🟨 zrobione 31.10, czeka na oględziny MG przy stole i wdrożenie; **66b** „Fabryka dronów” 🟨 zrobione 31.10, tak samo (netrunner obejrzany w przeglądarce 07.11, poprawki czekają na wdrożenie); **66c** „Ostatni zjazd” 🟨 wzorzec zrobiony, rozegrany w przeglądarce 04.11 i ponownie 05.11 po rebalansie (porażka o włos, balans zatwierdzony przez MG) — zaległości z przebiegów zamknięte 05.11, Esc na kubku MG 07.11 — czeka na stół MG i wdrożenie); **65** Scena pościgu i walka pojazdów (🟨 65a–65e ✅ 30–31.10, czeka na oględziny MG przy stole); **62** Sieć ze sceny (🟨 zrobione, czeka na oględziny MG na VPS po wdrożeniu); **61** Skradanie się (🟨 zrobione, czeka na słowo MG o rozstrzygnięciach); **28** Wdrożenie na VPS (🟨 działa na `https://vtt.tatanga.eu` z botami od 18.10; zostały off-site, utwardzenie, monitoring); **43b**, **43c** (UI walki); **60** Czytelny czat (zlecenie MG z 24.10; 🟨 60a–60c ✅, czeka na oględziny MG z pierwszego kryterium); T10; refaktoryzacja odłożona (MG 18.10) |
+| ⬜ otwarty   | **70** Przebudowa netrunningu: okno jednego piętra i przejęte urządzenia na mapie (🟨 zrobione 12–14.11, `etap-70-siec-przebudowa.md`: **70a** okno jednego piętra, **70b** przejęta wieżyczka i kamera, **70c** dron, oczy, pasek, **70d** obszar straży, Sieć ze sceny wg rodzaju, okienko strefy, **70e** automat LOD-u i Demona z hamulcem, **70f ✅ 14.11** wzorce 66b/66e pod nowe reguły i rozegranie; czeka na wdrożenie (70d z migracją `20261113180000_net_scene_installations`) i stół MG); **69** Lewa belka bez ramek (🟨 zrobione 11.11, czeka na wdrożenie i oględziny MG przy stole); **68** Warsztat: ulepszenia auta za ed i naprawa (🟨 zrobione 06.11, czeka na wdrożenie i oględziny MG przy stole); **67** Zakup pojazdu (🟨 zrobione 06.11, czeka na wdrożenie i oględziny MG przy stole); **66e** Scena przykładowa „Po zamknięciu” (🟨 zrobione 07.11, obejrzane w Firefoksie; rozegrana w przeglądarce do końca 07.11 — znaleziska w `zaleglosci.md` (27; pkt 18 i 19 nie, decyzja MG; 13 naprawionych 07.11); czeka na naprawę reszty, stół MG i wdrożenie); **66d** Scena przykładowa „Zastaw” (🟨 wzorzec zrobiony i rozegrany w przeglądarce 06.11; od 06.11 jeden taran na turę (decyzja MG); czeka na stół MG i wdrożenie); **66** Sceny przykładowe (🟨 zrobione 31.10, czeka na oględziny MG przy stole i wdrożenie; **66b** „Fabryka dronów” 🟨 zrobione 31.10, tak samo (netrunner obejrzany w przeglądarce 07.11, poprawki czekają na wdrożenie); **66c** „Ostatni zjazd” 🟨 wzorzec zrobiony, rozegrany w przeglądarce 04.11 i ponownie 05.11 po rebalansie (porażka o włos, balans zatwierdzony przez MG) — zaległości z przebiegów zamknięte 05.11, Esc na kubku MG 07.11 — czeka na stół MG i wdrożenie); **65** Scena pościgu i walka pojazdów (🟨 65a–65e ✅ 30–31.10, czeka na oględziny MG przy stole); **62** Sieć ze sceny (🟨 zrobione, czeka na oględziny MG na VPS po wdrożeniu); **61** Skradanie się (🟨 zrobione, czeka na słowo MG o rozstrzygnięciach); **28** Wdrożenie na VPS (🟨 działa na `https://vtt.tatanga.eu` z botami od 18.10; zostały off-site, utwardzenie, monitoring); **43b**, **43c** (UI walki); **60** Czytelny czat (zlecenie MG z 24.10; 🟨 60a–60c ✅, czeka na oględziny MG z pierwszego kryterium); T10; refaktoryzacja odłożona (MG 18.10) |
 | ✅ ukończone | 01–11, 13–20b, 23a–27f, 27h–27l, 29a–30d, 31–35, 37–42c, 43a, 44a–44d, 45, 46a1, 46a2, 46c1, 46c2, 46b1, 46b2, 47a, 47b, 48a, 48b, 48c, 49a, 49b, 50a, 50b, 50c, 51, 52, 53, 54, 55, 56, 57 (57a–57c), 58 (58a–58d), 59 (59a–59c), 63 (63a–63b; 63c wycofane 29.10), 64 (64a–64c) (ostatni zamknięty: 64, 2026-10-30) |
 | ⛔ wycofane  | 12, 21, 22 (głos), 27g (wydajność), 36 (makra); 27, 29, 30, 38 rozdzielone na etapy literowane |
 
@@ -29,28 +29,23 @@ Pełna tabela z nazwami i datami: `archiwum/tabela-etapow.md`.
 
 ## Od czego zacząć
 
-**Przebudowa netrunningu (etap 70, zlecenie MG z 11.11) — 70a–70e zrobione (12–13.11),
-następna sesja to 70f (wzorce „Fabryka dronów” i „Po zamknięciu” pod nowe reguły i rozegranie
-obu netrunnerem).** Okno SIEĆ pokazuje jedno
-piętro (karta piętra, wyjścia, ślad, zagrożenia, pasek „Oczy i urządzenia”, cyberdek; szyb tylko
-u MG w „Planie Architektury”). Kontrola węzła **pożycza netrunnerowi figury urządzeń**: wieżyczkę,
-kamerę i drona zaznacza się na mapie albo miniaturą paska, lewa belka pokazuje „Urządzenie”
-(broń z trybami ognia, „Wyłącz”, u kamery „Obróć”, u drona „Ruch”). Pierwsza czynność w Turze
-kosztuje 1 Akcję Sieciową, węzeł działa raz na Turę; poza walką nic nie kosztuje. **Sieć ze sceny
-ma węzły wg rodzaju** — „Monitoring”, „Obrona”, „Instalacje”; do „Instalacji” same wchodzą
-strefy środowiskowe (bez „Poza Siecią”) i drzwi „Sterowane z Sieci” — tylko w Sieci złożonej ze
-sceny, Architektury MG wiąże się dalej ręcznie. **Wieżyczka i dron mają „🛡 Obszar straży…”
-w menu MG** (narzędzie stref stawia już tylko systemy środowiskowe), stara strefa drona albo
-stanowiska ma na karcie „Postaw figurę urządzenia”. **Klik gracza w zauważoną strefę i marsz
-przez nią pytają okienkiem** („Wejdź mimo to”, „Rozbrój”, u netrunnera „Wyłącz / Włącz”).
-**Obrona Sieci gra sama:** zjazd na piętro LOD-u sam rzuca wykrycie (przegrana — darmowy atak
-i czoło kolejki), Demon budzi się na swoim piętrze albo po przejęciu węzła, a Tura LOD-u
-i Demona w kolejce gra się po „Następna tura” bez MG. **Hamulec MG** to checkbox „Wstrzymaj
-obronę” w belce stanu okna runu (na Architekturę) — wstrzymana obrona rusza się tylko na
-przyciski MG, jak przed 70e. Wszystko czeka na wdrożenie (70d z migracją bazy) i oględziny MG
-przy stole. Dalej wg `etap-70-siec-przebudowa.md`: 70f (tam też `netControlled` we wzorcach).
-Rozstrzygnięcia i odstępstwa w pliku etapu i w `decyzje-i-uproszczenia.md`; umowy i pułapki na
-górze `siec`.
+**Przebudowa netrunningu (etap 70, zlecenie MG z 11.11) — 70a–70f zrobione (12–14.11), czeka
+na wdrożenie (70d z migracją `20261113180000_net_scene_installations`) i stół MG.** Okno SIEĆ
+pokazuje jedno piętro (karta piętra, wyjścia, ślad, zagrożenia, pasek „Oczy i urządzenia”,
+cyberdek; szyb tylko u MG w „Planie Architektury”). Kontrola węzła **pożycza netrunnerowi figury
+urządzeń**: wieżyczkę, kamerę i drona zaznacza się na mapie albo miniaturą paska, lewa belka
+pokazuje „Urządzenie” (broń z trybami ognia, „Wyłącz”, u kamery „Obróć”, u drona „Ruch”).
+Pierwsza czynność w Turze kosztuje 1 Akcję Sieciową, węzeł działa raz na Turę; poza walką nic nie
+kosztuje. **Sieć ze sceny ma węzły wg rodzaju** („Monitoring”, „Obrona”, „Instalacje”; strefy
+środowiskowe i drzwi „Sterowane z Sieci” tylko w Sieci złożonej ze sceny). **Wieżyczka i dron
+mają „🛡 Obszar straży…” w menu MG**, a od 70f także **„⏻ Włącz / Wyłącz w Sieci”** (bez runu —
+tak MG budzi uśpionego drona). Klik gracza w zauważoną strefę pyta okienkiem. **Obrona Sieci gra
+sama** (wykrycie LOD-u, Demon, ich Tury w kolejce), hamulec MG to „Wstrzymaj obronę” w belce
+okna runu. **Wzorce „Fabryka dronów” i „Po zamknięciu” przepisane pod te reguły (70f)**: węzły
+wg rodzaju, obszary straży Sowy i wieżyczki, wieżyczka z karabinem przeciw Kucharzowi
+w Kevlarze, notatki MG o sterowaniu z mapy; wyłączone urządzenie da się przeszukać. Rozegrane
+w przeglądarce — znaleziska w `zaleglosci.md` (14.11). Rozstrzygnięcia i odstępstwa w pliku
+etapu i w `decyzje-i-uproszczenia.md`; umowy i pułapki na górze `siec` (wzorzec — `mapa`).
 
 **Lewa belka bez ramek (etap 69, zlecenie MG z 10.11) — czeka na wdrożenie (bez migracji)
 i oględziny MG przy stole.** Wariant A z makiety: portret 16:15 gasnący w papier, PW jako
@@ -788,7 +783,7 @@ a nie do tego pliku.
 
 | obszar      | co obejmuje                                                    | umów | pułapek |
 | ----------- | -------------------------------------------------------------- | ---- | ------- |
-| `mapa`      | figury, zaznaczanie, narzędzia, obiekty sceny, ściany, efekty, zamek drzwi, ukryta figura zauważona, ikony urządzeń, wspólny widok drużyny, okienko strefy przy marszu gracza, scena pościgu, jazda kierowcy i dryf, Manewr i taranowanie, przeszkody pościgu, sceny przykładowe, wzorzec zwykłej mapy, ulepszenia pojazdu, stojące auto na drodze, kreator pościgu i wbudowane drogi, załoga auta poza pościgiem, rama pościgu i pęd auta bez kierowcy, długa pętla drogi, ucieczka auta ręką MG, otarcie brył, wrak za autem, podpis w fotelu, furgon z wyglądu (`van-6`), przesadzanie foteli przy starcie, skręt z menu przed przeszkodą, wysiadka tylko przeciągnięciem, światła, zamki, strefy i pojemniki we wzorcu | 95   | 27      |
+| `mapa`      | figury, zaznaczanie, narzędzia, obiekty sceny, ściany, efekty, zamek drzwi, ukryta figura zauważona, ikony urządzeń, wspólny widok drużyny, okienko strefy przy marszu gracza, scena pościgu, jazda kierowcy i dryf, Manewr i taranowanie, przeszkody pościgu, sceny przykładowe, wzorzec zwykłej mapy, ulepszenia pojazdu, stojące auto na drodze, kreator pościgu i wbudowane drogi, załoga auta poza pościgiem, rama pościgu i pęd auta bez kierowcy, długa pętla drogi, ucieczka auta ręką MG, otarcie brył, wrak za autem, podpis w fotelu, furgon z wyglądu (`van-6`), przesadzanie foteli przy starcie, skręt z menu przed przeszkodą, wysiadka tylko przeciągnięciem, światła, zamki, strefy i pojemniki we wzorcu, obszar straży we wzorcu | 96   | 27      |
 | `czat`      | rodzaje wierszy, `visibleTo`, filtr, `seq`, `gmrecovery`, „to dotyczy mnie”, grupy kart, kolor gracza, czyszczenie, gęsta karta rzutu, przebieg ataku, `/jako` za NPC-a, karta rzutu bez konta | 17   | 3       |
 | `serwer`    | Prisma i migracje, zdarzenia gniazda, zapisy karty, uploady    | 26   | 21      |
 | `ui`        | okna pływające, `z-index`, motyw, skróty, dostępność, wejście, panel decyzji MG, kubek przestawiany i jego menu, lewa belka bez ramek i dymek `HudTip` | 40   | 16      |
@@ -800,17 +795,52 @@ a nie do tego pliku.
 | `postac`    | kreator, PD i awanse, koszyk i cofanie awansów, Role i Zdolności, cyborgizacje, chrom zmieniający liczby, ekonomia, Test montażu gracza, pojazdy i Tabor | 58   | 3       |
 | `ekwipunek` | wiersze wyposażenia, przekazanie, łup (także ciała graczy), handel, sklepy, asortyment handlarza z kompendium, zasięg, amunicja bez dna, egzoszkielet, latarka z ekwipunku, narkotyki i fiolki, siatka okna „Wymiana”, zgoda z góry, odświeżanie po naklejkach, znaczek „w użyciu”, zakup auta z modelu, warsztat (ulepszenia i naprawa auta), auto bokiem i „w garażu”, grafika auta to model i skala miniatur, postać na karcie przekazania, zasięg ręki do figury spoza siatki | 50   | 3       |
 | `czas`      | zegar świata, kalendarz, `statEffects`, leczenie po dobie, dawki i uzależnienia (`chems`) | 19   | 2       |
-| `siec`      | Programy, LOD, demony, piętra architektury, dek jako towar, strefy bronione, kamery (także w ciemności), rozbrajanie, Sieć ze sceny, jedna próba i pamięć sukcesów, strzał z urządzenia, strefa tylko z marszu gracza, widok runu z rundą, strefa rozbrojona w Sieci, okno jednego piętra i ładunek bez szybu, pełny wiersz czatu zamiast skrótu, przejęta figura urządzenia (`operatorOf`, `netDeviceUse`), marsz drona, oczy urządzeń, figury wyciszone (`net-off`), pasek „Oczy i urządzenia”, Sieć ze sceny wg rodzaju, strefy i drzwi w „Instalacjach”, obszar straży od figury, okienko strefy, automat obrony Sieci i hamulec MG | 24   | 12      |
+| `siec`      | Programy, LOD, demony, piętra architektury, dek jako towar, strefy bronione, kamery (także w ciemności), rozbrajanie, Sieć ze sceny, jedna próba i pamięć sukcesów, strzał z urządzenia, strefa tylko z marszu gracza, widok runu z rundą, strefa rozbrojona w Sieci, okno jednego piętra i ładunek bez szybu, pełny wiersz czatu zamiast skrótu, przejęta figura urządzenia (`operatorOf`, `netDeviceUse`), marsz drona, oczy urządzeń, figury wyciszone (`net-off`), pasek „Oczy i urządzenia”, Sieć ze sceny wg rodzaju, strefy i drzwi w „Instalacjach”, obszar straży od figury, okienko strefy, automat obrony Sieci i hamulec MG, „Włącz / Wyłącz w Sieci” MG i przeszukanie wyłączonego | 25   | 12      |
 | `boty`      | llama-server, RAG, reindeks, dziennik i baza wiedzy, brama AI  | 10   | 10      |
 | `dane`      | `parse-manual.py`, kompendium poza repo, tabele z podręcznika  | 9    | 12      |
 | `kopie`     | `snapshot`, `archive`, paczki ZIP, wczytanie kampanii, „czeka na gracza”, kopie kampanii i cofnięcie, sklep i bot w paczce, zgłoszenie karty gracza, pojazdy w paczce, auta na scenie pościgu, przeszkody poza paczką | 22   | 6       |
-| `ogledziny` | CDP i Playwright MCP, zrzuty, dwie sesje, `window.confirm`    | 0    | 124     |
-| `testy`     | vitest, migotanie, `tsc --noEmit`, środowisko dev              | 0    | 160     |
+| `ogledziny` | CDP i Playwright MCP, zrzuty, dwie sesje, `window.confirm`    | 0    | 125     |
+| `testy`     | vitest, migotanie, `tsc --noEmit`, środowisko dev              | 0    | 161     |
 
 
 ## Notatki z dwóch ostatnich sesji
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
+
+### Sesja 14.11 — etap 70f: wzorce „Fabryka dronów” i „Po zamknięciu” pod nowe reguły, rozegranie
+
+**Zrobione (bez migracji, czeka na wdrożenie):** format wzorca — `zones[].figure` (obszar straży
+figury, `DefenseZone.tokenId`), `zones[].netExcluded`, `walls[].netControlled` (`shared`
+`scene-templates.ts`, `cpredTemplateProblems`, serwer `instantiateSceneTemplate`); **„Po
+zamknięciu”** — Sieć hasło → Monitoring → Obrona (wieżyczka) → Instalacje (podłoga, zamek
+gabinetu „Sterowany z Sieci”) → plik, obszar straży „Straż wieżyczki” na cały gabinet, wieżyczka
+z karabinem szturmowym i Wartością bojową 14, Kucharz w Kevlarze (balans z symulacji — plik
+etapu), notatki MG o sterowaniu z mapy; **„Fabryka dronów”** — węzły „Monitoring”, „Obrona:
+patrol / lądowiska północ / lądowiska boczne”, obszar straży „Lądowisko Sowy” (jawny), notatki
+o automacie LOD-u, hamulcu, przejętych dronach i alarmie. Poza zakresem, ale potrzebne wzorcom:
+**„⏻ Włącz / Wyłącz w Sieci” w menu MG figury** (`net:device:switch`, `netDevicesOfToken`,
+`NetDeviceSwitchItem`; od 70c MG nie miał czym obudzić uśpionego drona), naklejka „Wyłączony” od
+założenia sceny ze wzorca, **wyłączone urządzenie da się przeszukać** (`searchable` stanu
+`net-off`), `effects.fires` przy „Grzechocie” w próbce. Z rozegrania poprawione: pasek „Oczy
+i urządzenia” w dwóch kolumnach z nazwą w dwóch wierszach (pięć kamer czytało się „Kamera…”),
+jeden wiersz „wracają do obrony: … i 5 ukrytych urządzeń” zamiast sześciu. Decyzje
+w `decyzje-i-uproszczenia.md`, umowy na górze `siec` i `mapa`, pułapki na górze `ogledziny` i `testy`,
+`testy.md` (wiersz i sekcja T70), zamknięte zaległości z 07.11 (przejęte urządzenie jako
+figura, balans wieżyczki, seria, znacznik wyłączonego drona) w `archiwum/zamkniete-zaleglosci.md`,
+nowe znaleziska w `zaleglosci.md` (14.11). **Testy:** `shared` 3053/3053, serwer 1799/1799 (w dwóch
+wcześniejszych pełnych przebiegach migotał `net-scene.test.ts` — Kontrola rzucała prawdziwą kością;
+teraz skrypt kości, pułapka na górze `testy`), klient 501/501, `tsc` wszystkich pakietów, ESLint
+i Prettier czyste w zmienionych plikach; E2E `47-siec` 39/39 po ostatniej zmianie kodu. **Rozegrane w przeglądarce** tymczasowymi specami
+`99-ogledziny/t99-70f-*` (nie w repo) na instancji E2E od `po-T6`, 1920 × 1080: MG w Chromium,
+Ola (Iskra) i Marek (Kowal) w **Firefoksie**. „Po zamknięciu” 8/8 — wzorzec z „Przykładowych”
+bez braków, Backdoor, Monitoring i kadr przez kamerę gabinetu, Kontrola Obrony i Instalacji,
+w walce zamek z paska i dwa strzały przejętą wieżyczką (Kucharz −14 i −25 PW), odłączenie,
+wejście Iskry do gabinetu i strzał ze straży, „⏻ Wyłącz w Sieci” MG. „Fabryka dronów” 8/8 —
+uśpione drony szare od założenia, Sowa strzela sama w turze Kowala na lądowisku, automat Kruka
+(wykrycie bez MG, Kruk ściga), Kontrola patrolu i lądowisk, lot przejętej Sowy do Kowala,
+„Wyłącz”, łup drzazgi bez „Unieruchomiony”, MG budzi Szerszenia Z1 z menu, odłączenie. Walki
+z ochroną i marsz przez ciemną halę nie były grane (66b, 66e — etap 70 ich nie dotyka).
+Nieoglądane: Chrome MG, motyw dzienny. **Dalej:** wdrożenie etapu 70 (migracja z 70d) i stół MG.
 
 ### Sesja 13–14.11 — etap 70e: automat Czarnego LOD-u i Demona z hamulcem MG
 
@@ -845,34 +875,3 @@ z kolejką za kośćmi (`TURN_MOVED_ON`); 14.11 — zdanie wykrycia „Sowa 70e 
 zdążył uderzyć.” (rodzaj męski przy żeńskiej nazwie; od 70e wychodzi samo) → „— bez darmowego
 ataku.” Dymki powiadomień u góry zasłaniają u MG nagłówek okna runu z hamulcem, póki ich nie
 zamknie — tak było przed etapem, nie ruszane. **Dalej:** 70f.
-
-### Sesja 13.11 — etap 70d: obszar straży, strefy i drzwi w Sieci ze sceny, okienko strefy
-
-**Zrobione (migracja `20261113180000_net_scene_installations`: `Wall.netControlled`,
-`DefenseZone.netExcluded`; czeka na wdrożenie):** `shared` — `netscene.ts` z grupami
-(`NET_SCENE_GROUPS`, `netSceneGroupOf`, `netSceneNodeGroup`), `NetSceneParts` (figury, strefy,
-drzwi), `placed` z dopinania, `netReleaseSceneDevice`, `netWiredWallIds`, `netHasDevice`,
-`netIsSceneArchitecture`, `netDefenseFigureGlyph`; `NetDeviceView.zoneId`, `WallView.netControlled`,
-`zone:create` z `tokenId`, `zone:figure`; serwer — `net-scene.ts` (strefy i drzwi tylko do Sieci
-złożonej ze sceny, `bindZones`, `releaseSceneDevice`), `wall:update` / `zone:update` dopinają
-i zdejmują na żywo, obszar straży i „Postaw figurę urządzenia” w `zones.ts`, `zoneId` w widoku
-urządzeń, pola w kopii kampanii; klient — `GuardAreaPanel` w menu MG figury, narzędzie stref tylko
-środowiskowe (`zoneGuard` na jeden prostokąt), „Sterowane z Sieci” na karcie otworu, „Poza
-Siecią” i „Postaw figurę urządzenia” na karcie strefy, okienko strefy (`onWalkZoneAsk`,
-`zone-ask.ts`, `ZoneAskMenu`) — **zamyka zaległość 🔴 66e pkt 3**. Decyzje w
-`decyzje-i-uproszczenia.md`, umowy na górze `siec` i `mapa`, pułapka na górze `siec`, odstępstwa
-w pliku etapu, pomysły w `POMYSLY.md`. **Testy:** `shared` 3039/3039, serwer 1790/1790 (nowe
-w `net-scene.test.ts` 5, `zones.test.ts` 3, `archive-package`, izolacja `zone:figure`), klient
-501/501 (nowy `zone-ask.test.ts` 9), `tsc` wszystkich pakietów, ESLint i Prettier czyste
-w zmienionych plikach; E2E `47-siec` 34/34 (nowy `t70d-edycja-straz-strefy` 5, `t62` przepisany
-na „Monitoring” + „Obrona” — ostatni krok poprawiony i puszczony osobno 6/6, `t70a` 9, `t70b` 8,
-`t70c` 6). **T5a przepięte** (wieżyczka „Bramy” dostaje ikonę i obszar straży z menu figury)
-i puszczone z `po-T4`: 23/23 (punkt `po-T5a` zapisany od nowa). T5b nie puszczone (gateway). **Oglądane w Chromium (MG) i Firefoksie (Ola, Marek)** zrzutami
-z tymczasowej kopii `t70d` na instancji E2E, 1920 × 1080, noc i dzień: menu wieżyczki z panelem
-„Obszar straży” i listą wpisów, lista narzędzia stref (same systemy środowiskowe), obszar wokół
-wieżyczki, karta drzwi, okienko strefy u Oli przed i po Kontroli („⚡ Wyłącz”) i u Marka
-(marsz przez strefę), pasek z podłogą i drzwiami, „Plan Architektury” MG z trzema węzłami, karta
-podłogi z „Poza Siecią” i karta starej strefy drona z „Postaw figurę urządzenia”. Nieoglądane:
-Chrome MG, okienko z „Rozbrój” (w zasięgu ręki), menu wieżyczki z gotowym obszarem. Z oględzin
-poprawione: zdanie na karcie strefy drona odsyłało do ręcznego podpinania figury.
-**Dalej:** 70e.

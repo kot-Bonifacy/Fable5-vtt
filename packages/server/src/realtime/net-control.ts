@@ -209,6 +209,36 @@ export async function loadNetSwitchedOffTokenIds(
   return off;
 }
 
+/**
+ * Gdzie figura jest urządzeniem Sieci (etap 70f) — każda Architektura kampanii
+ * z id urządzeń wskazujących ten żeton. Przełącznik MG „Włącz / Wyłącz
+ * w Sieci” pisze stan we wszystkich naraz: figura wpięta w dwie Sieci (wzorzec
+ * i dopięta Sieć ze sceny) milczy, gdy wyłączy ją którakolwiek
+ * (`loadNetSwitchedOffTokenIds`).
+ */
+export async function netDevicesOfToken(
+  prisma: PrismaClient,
+  campaignId: string,
+  tokenId: string,
+): Promise<{ architectureId: string; deviceIds: string[] }[]> {
+  const rows = await prisma.netArchitecture.findMany({
+    where: { campaignId, data: { contains: tokenId } },
+    select: { id: true, name: true, difficulty: true, data: true },
+  });
+  const wired: { architectureId: string; deviceIds: string[] }[] = [];
+  for (const row of rows) {
+    const architecture = parseArchitecture(row);
+    if (!architecture) continue;
+    const deviceIds = architecture.branches
+      .flatMap((branch) => branch.floors)
+      .flatMap((floor) => floor.devices ?? [])
+      .filter((device) => device.tokenId === tokenId)
+      .map((device) => device.id);
+    if (deviceIds.length > 0) wired.push({ architectureId: row.id, deviceIds });
+  }
+  return wired;
+}
+
 /** Dlaczego figura urządzenia milczy: przejęta w Sieci albo w niej wyłączona. */
 export type NetSilence = 'seized' | 'off';
 

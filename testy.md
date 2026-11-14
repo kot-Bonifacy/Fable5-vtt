@@ -35,6 +35,7 @@ Statusy: ⬜ nierozpoczęty · 🟨 w toku · ✅ ukończony · 🔁 do powtórk
 | T8c  | Przeglądarki 3/3: pobieżna regresja obszarów              | ✅     | 03.10.2026 |
 | T9a  | Konta MG 1/2: rejestracja, izolacja, uploady, linki (po 44b) | ✅     | 04.10.2026 |
 | T9b  | Konta MG 2/2: dwie grupy naraz, AI właściciela, limit (po 44d) | ✅     | 04.10.2026 |
+| T70  | Sieć po przebudowie (etap 70): okno piętra, urządzenia na mapie, automat obrony | ✅     | 14.11.2026 |
 | T10  | Werdykt lokalny (triaż, retest poprawek)                  | ⬜     |            |
 | T11  | Smoke test na VPS (po etapie 28), werdykt końcowy         | ⬜     |            |
 
@@ -820,6 +821,19 @@ z innej sieci niż MG (np. telefon jako hotspot dla laptopa), bot przez Tailscal
 → boty niedostępne, stół gra dalej. Kanarki i macierz ról puszczone jeszcze raz przeciw produkcji
 na osobnej kampanii piaskownicy (`sandbox`). Test odtworzenia kopii zrobiony w etapie 28 — tu tylko
 potwierdzenie, że jest.
+
+### 6.7. T70 — Sieć po przebudowie (etap 70, 12–14.11.2026)
+
+Spoza planu z 26.09 (zlecenie MG z 11.11, `docs/etapy/etap-70-siec-przebudowa.md`). Specy
+`packages/e2e/specs/47-siec/` (`@szybkie`, bez LLM, start z `po-T6`, MG w Chromium, Ola w
+Firefoksie, kości ze skryptu, podsłuch z kanarkami): `t62-siec-sceny` (Sieć ze sceny wg rodzaju),
+`t70a-okno-pietro` (jedno piętro u gracza, wyrocznia ruchu zamknięta), `t70b-przejeta-wiezyczka`
+(strzał z mapy Wartością bojową za Akcję Sieciową), `t70c-dron-oczy` (marsz drona, oczy, pasek),
+`t70d-edycja-straz-strefy` (obszar straży od figury, strefy i drzwi w „Instalacjach”, okienko
+strefy), `t70e-automat-lod` (wykrycie i Tura LOD-u bez MG, hamulec). Puszcza się je razem:
+`pnpm test:e2e 47-siec`. **T5b po 70a–70e przepięty, ale niepuszczony** (wymaga gatewaya —
+`docs/etapy/zaleglosci.md`). Rozegranie obu wzorców netrunnerem po 70f (tymczasowe specy
+oględzin, nie w repo) — notatka sesji 70f w `POSTEP.md`.
 
 ## 7. Bramka bety
 

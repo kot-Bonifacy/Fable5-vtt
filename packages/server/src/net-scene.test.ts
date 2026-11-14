@@ -1,6 +1,6 @@
 import { execSync } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
-import { mkdtempSync, unlinkSync } from 'node:fs';
+import { mkdtempSync, unlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -124,6 +124,17 @@ function waitFor<T>(socket: ClientSocket, event: string, ms = 4000): Promise<T> 
   });
 }
 
+/**
+ * Kości ze skryptu (`VTT_DICE_SCRIPT`, jak w `chase-ram.test.ts`) — pusty plik
+ * to los serwera. Kontrola z PT 1 przegrywała naturalną 1 z dorzutem ≥ 4 (ok.
+ * 7%) i test migotał w pełnym przebiegu (14.11).
+ */
+const DICE = join(mkdtempSync(join(tmpdir(), 'vtt-net-scene-dice-')), 'dice.txt');
+const previousDiceScript = process.env.VTT_DICE_SCRIPT;
+function scriptDice(faces: number[]): void {
+  writeFileSync(DICE, faces.join(' '));
+}
+
 async function roundTrip(socket: ClientSocket): Promise<StateSyncPayload> {
   const sync = waitFor<StateSyncPayload>(socket, 'state:sync');
   await emitAck(socket, 'state:request');
@@ -131,6 +142,8 @@ async function roundTrip(socket: ClientSocket): Promise<StateSyncPayload> {
 }
 
 beforeAll(async () => {
+  process.env.VTT_DICE_SCRIPT = DICE;
+  scriptDice([]);
   execSync('npx prisma migrate deploy', {
     env: { ...process.env, DATABASE_URL: config.databaseUrl },
     stdio: 'pipe',
@@ -168,6 +181,8 @@ beforeAll(async () => {
 }, 60_000);
 
 afterAll(async () => {
+  if (previousDiceScript === undefined) delete process.env.VTT_DICE_SCRIPT;
+  else process.env.VTT_DICE_SCRIPT = previousDiceScript;
   for (const socket of openSockets) socket.disconnect();
   await built.app.close();
   try {
@@ -651,6 +666,7 @@ describe('Sieć ze sceny (etap 62)', () => {
           'netrun:move',
         );
       }
+      scriptDice([9]);
       const result = data(
         await emitAck<NetRunAbilityResult>(player, 'netrun:ability', {
           runId: run.runId,
@@ -658,6 +674,7 @@ describe('Sieć ze sceny (etap 62)', () => {
         }),
         'netrun:ability',
       );
+      scriptDice([]);
       expect(result.success).toBe(true);
       const held = (await roundTrip(player)).netRuns.find((entry) => entry.runId === run.runId)!;
       const devices = held.run.here?.devices ?? [];

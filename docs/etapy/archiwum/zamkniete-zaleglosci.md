@@ -9,6 +9,29 @@ go czytać.
 albo gdy chcesz sprawdzić, czy pozycja, która wygląda na nową, nie jest wracającą starą.
 Treść wpisów jest niezmieniona — łącznie z datami i odsyłaczami do notatek sesji.
 
+## Zamknięte 2026-11-14, etap 70f (wzorce pod nowe reguły Sieci)
+
+- **07.11 (szósta) — projekt do decyzji MG: przejęte urządzenie jako figura netrunnera.** Ocena
+  z rozegrania „Po zamknięciu”: wieżyczka sterowana wyłącznie z okna Sieci (cel z listy, bez
+  trybu ognia, dalej w inicjatywie jako wróg, po odłączeniu bez znaku). Zrealizowane etapem 70:
+  Kontrola pożycza figury (70b — wieżyczka i kamera na mapie, strzał Wartością bojową z trybem
+  ognia, tura przejętej figury pomijana, sekcja „Przejęte” w „Postaciach”; 70c — dron w ruchu,
+  oczy, pasek, naklejka „Wyłączony”), a 70f przepisał oba wzorce pod sterowanie z mapy
+  i rozegrał je w przeglądarce (notatka sesji 70f).
+- **66e — balans przejętej wieżyczki przeciw Kucharzowi** (pojedynczo 2k6 przebijało OB 11 tylko
+  przy 6+6). Wieżyczka ma karabin szturmowy (5k6, wpis podręcznika podaje go jako pierwszy)
+  i Wartość bojową 14 z obszaru straży, Kucharz Kevlar (OB 7) zamiast lekkiej kurtki. Symulacja
+  (pojedynczy strzał, ablacja, krytyki): Kucharz pada od samej wieżyczki w 4. rundzie w połowie
+  przebiegów, w 6. w 9 na 10; sam zestrzeliwuje ją strzelbą w 4–5 rundach. Rozegrane w 70f: −14
+  i −25 PW w dwóch rundach (skrypt kości). Notatka „Gabinet” mówi, że Kucharz może ostrzelać
+  wieżyczkę.
+- **66e (wdrożenie), pkt 3 — strzał przejętej wieżyczki tylko pojedynczy.** Od 70b strzela się
+  z mapy, a tryb ognia wybiera szuflada na kaflu broni belki urządzenia.
+- **66b (oględziny netrunnera), pkt 3 — wyłączony w Sieci dron bez znacznika na mapie.** 70c dało
+  naklejkę „Wyłączony” (szara figura, bez tury, straży i oczu); 70f — naklejkę od założenia sceny
+  ze wzorca (`refreshNetCameraSight` w `scene:from-template`), przeszukanie wyłączonej figury
+  (`searchable` stanu `net-off`) i „⏻ Włącz / Wyłącz w Sieci” w menu MG figury.
+
 ## Zamknięte 2026-11-13, etap 70d (edycja mapy, strefy, Sieć ze sceny)
 
 - **66e pkt 3 — 🔴 klik gracza w zauważoną strefę był marszem na nią bez pytania** (Iskra −10 PW

@@ -6,6 +6,23 @@ w `POMYSLY.md` („Do sprawdzenia przy stole”), decyzje MG — w `decyzje-i-up
 
 ## Otwarte
 
+**14.11.2026 — rozegranie „Fabryki dronów” i „Po zamknięciu” po przebudowie Sieci (70f).**
+Tymczasowe specy oględzin (MG w Chromium, Ola i Marek w Firefoksie), oba wzorce do końca, konsole
+czyste. Dwie rzeczy poprawione od razu (pasek „Oczy i urządzenia” z nazwami w dwóch wierszach,
+jeden wiersz „wracają do obrony” po odłączeniu). **Zostało:** (1) 🟠 urządzenie przy prawej
+krawędzi sceny ląduje pod oknem SIEĆ — kadr („▸”, miniatura paska) nie wyjeżdża poza scenę,
+a w „Fabryce” tak stoi Sowa, cel zlecenia: netrunner musi odsunąć okno, żeby nią polecieć
+(propozycja: kadr wolno przesunąć poza brzeg o szerokość okna albo okno samo przeskakuje na drugą
+stronę; pułapka `siec` z 13.11 opisuje to samo w specu `t70c`); (2) 🟡 belka przejętego
+urządzenia po udanym strzale pokazuje czerwone pole „ODMOWA — To urządzenie wykonało już czynność
+w tej Turze…”, choć nic nie odmówiło — wygląda na błąd zaraz po trafieniu; (3) ℹ️ okienko strefy
+przy jawnym obszarze straży („Lądowisko Sowy — Wejdź mimo to”) nie mówi, że to obszar, na którym
+coś strzela; (4) ℹ️ karta „Wykrycie — Kruk · Udane” (Iskra wygrała, Kruk bez darmowego ataku),
+a zaraz potem Kruk „ściga” — zgodne z s. 205, ale dla gracza „Udane” brzmi jak „nie wykrył”;
+(5) ℹ️ łup z wyłączonego drona mówi „Przy ciele” i „Ciało przeszukuje się od ręki”. Do oceny MG
+przy stole: balans wieżyczki z Kucharzem (karabin, Kevlar — notatka „Skalowanie”), alarm
+„Fabryki” z „⏻ Włącz w Sieci”, przeszukiwanie wyłączonych urządzeń (także wieżyczki z bronią).
+
 **12.11.2026 — T5b po przebudowie okna Sieci (70a) niepuszczony do końca.** Spec przepięty na
 kartę piętra i wyjścia (`.net-floor-card`, `.net-exit--down`), ale pierwszy krok wymaga
 żywego AI Gatewaya — bez niego przeszły tylko asercje startowe (okno Oli na Pliku, położenie
@@ -26,20 +43,7 @@ wdrożenie** — `archiwum/zamkniete-zaleglosci.md`.
 w zasięgu wzroku”; (29) etykiety w biurze i gabinecie nachodzą na siebie, a po śmierci Kucharza licznik rund
 skoczył z 7 na 9. Punkty 18 (okno Sieci zasłania kubek) i 19 (atak poza walką bez trybu
 turowego) **nie są zaległościami — decyzja MG z 07.11**.
-**Balans wzorca:** przejęta wieżyczka (pojedynczo 2k6) przebija OB 11 Kucharza tylko przy 6+6
-— poprawić razem z serią z Sieci (punkt 3 wpisu o 66e niżej) albo pancerzem Kucharza; notatka
-„Gabinet”: Kucharz może zestrzelić wieżyczkę.
-
-**07.11.2026 (szósta) — projekt do decyzji MG: przejęte urządzenie jako figura netrunnera.**
-Ocena z rozegrania: sterowanie przejętą wieżyczką wyłącznie z okna Sieci nie wygląda sensownie —
-cel z listy (bez mapy, linii strzału, zasięgu i pytania o osłonę), bez trybu ognia, wieżyczka dalej w inicjatywie jako wróg, po odłączeniu wraca do obrony bez znaku na mapie.
-**Pomysł MG:** po Kontroli węzła wieżyczka trafia chwilowo do zakładki „Postacie” netrunnera
-(jak druga figura gracza) i gracz steruje nią na mapie zwykłą ścieżką: zaznaczenie, slot broni
-z trybem ognia (seria!), celownik z zasięgiem i osłoną, kubek; każde użycie kosztuje Akcję
-Sieciową (s. 199), kontrola i figura znikają przy odłączeniu albo odebraniu węzła, a w walce
-przejęta wieżyczka nie ma własnej tury wroga. Do rozstrzygnięcia: strzał Umiejętnością netrunnera
-(dziś) czy wieżyczki, czy obrót/ruch też, czy to samo dla dronów z 66b (tam broń w rękach już
-działa z okna Sieci). Kandydat na osobny etap. **Projekt: `etap-70-siec-przebudowa.md` (11.11). Wieżyczka i kamera zrobione w 70b (13.11, czekają na wdrożenie i stół MG); dron w ruchu — 70c, po nim wpis do zamknięcia.**
+~~Balans wzorca~~ — zamknięte 14.11 w 70f (karabin, Wartość bojowa 14, Kucharz w Kevlarze).
 
 **07.11.2026 (piąta) — błędy z rozegrania „Po zamknięciu” w przeglądarce (przebieg przerwany,
 do wznowienia).** Pełny opis i stan: `etap-66e-po-zamknieciu.md` („Rozegranie w przeglądarce”).
@@ -60,8 +64,8 @@ porównuje ręką albo daje zgodę na odczyt. (2) **Pytanie do MG:** marsz ręk�
 prostą przez korytarz) odpalił ukrytą podłogę elektryczną na figurze gracza (Iskra 24 obrażeń
 w specu oględzin). Czy przestawienie figury przez MG ma uruchamiać strefy, czy tylko marsz
 gracza? Dziś uruchamia (zachowanie sprzed 66e). **Odpowiedź MG z 07.11 (piąta sesja): tylko
-figury graczy** — wdrożone 07.11 (siódma sesja). (3) Strzał przejętej wieżyczki z okna Sieci to
-pojedynczy strzał — seria z pistoletu maszynowego wymaga ręki MG na figurze wieżyczki.
+figury graczy** — wdrożone 07.11 (siódma sesja). ~~(3) strzał przejętej wieżyczki tylko
+pojedynczy~~ — zamknięte etapem 70 (szuflada trybów ognia na belce urządzenia, 70b; 70f).
 
 **07.11.2026 — oględziny netrunnera w „Fabryce dronów”: wdrożenie (bez migracji) i resztki.**
 Poprawki (broń drona przy strzale z Sieci, zwrot Akcji Sieciowej, kamera widzi w ciemności, polskie
@@ -71,8 +75,8 @@ na sąsiednim polu, grot jej kierunku przy ikonie; figura raz zaznaczona, raz od
 6 px wyżej — tak. Przyczyny nie ustalono (grot ma `eventMode = 'none'`, obszar trafienia figury
 to jej kwadrat) — obejrzeć ręką przy stole. (2) W przeglądarce nie złapano dymka odmowy „Cel za
 przeszkodą…” w oknie Sieci (zwrot Akcji Sieciowej widać w bazie, tekst wynika z mapy kodów).
-(3) Wyłączony w Sieci dron (Pająk 2, Sowa) nie ma znacznika na mapie — MG pamięta sam i nakłada
-„Unieruchomiony” Sowie (notatka wzorca; automat w `POMYSLY.md`).
+~~(3) wyłączony w Sieci dron bez znacznika~~ — zamknięte etapem 70 (naklejka „Wyłączony” 70c,
+od założenia sceny i z przeszukaniem 70f).
 
 **05.11.2026 — rama pościgu i auto bez kierowcy: wdrożenie (migracja
 `20261105180000_chase_vehicle_momentum`) i oględziny przy stole.** Oglądane w Firefoksie i Chromium

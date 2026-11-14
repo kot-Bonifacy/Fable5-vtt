@@ -36,6 +36,7 @@ import {
   netRunView,
   netrunningDataOf,
   parseCharacterData,
+  polishPlural,
   readNetCombatState,
   CPRED_NET_OFF_STATUS_ID,
   CPRED_NET_SEIZED_STATUS_ID,
@@ -704,7 +705,8 @@ async function syncSeizedFigures(
   if (back.length === 0) return;
   const gm = await campaignGmUser(deps.ctx.prisma, campaignId);
   if (!gm) return;
-  for (const token of back) {
+  if (back.length === 1) {
+    const token = back[0]!;
     await logNetLine(
       deps,
       campaignId,
@@ -713,7 +715,30 @@ async function syncSeizedFigures(
       'Koniec kontroli z Sieci',
       'wraca do obrony',
     );
+    return;
   }
+  // Jedno odłączenie to jeden wiersz (70f): pięć kamer i wieżyczka „Po
+  // zamknięciu” dawały sześć wierszy, w tym pięć „Urządzenie”. Ukryte figury
+  // dalej bez nazw — tylko ich liczba, jak wcześniej liczba wierszy.
+  const names = back
+    .filter((token) => !token.hidden)
+    .map((token) => tokenTableName(token, token.name));
+  const hidden = back.length - names.length;
+  if (hidden > 0) {
+    names.push(
+      `${hidden} ${polishPlural(hidden, 'ukryte urządzenie', 'ukryte urządzenia', 'ukrytych urządzeń')}`,
+    );
+  }
+  const list =
+    names.length === 1 ? names[0]! : `${names.slice(0, -1).join(', ')} i ${names.at(-1)!}`;
+  await logNetLine(
+    deps,
+    campaignId,
+    toSessionUser(gm),
+    'Urządzenia',
+    'Koniec kontroli z Sieci',
+    `wracają do obrony: ${list}`,
+  );
 }
 
 function readStatusIds(raw: string): string[] {

@@ -1,5 +1,36 @@
 # Dziennik sesji — archiwum
 
+### Sesja 13.11 — etap 70d: obszar straży, strefy i drzwi w Sieci ze sceny, okienko strefy
+
+**Zrobione (migracja `20261113180000_net_scene_installations`: `Wall.netControlled`,
+`DefenseZone.netExcluded`; czeka na wdrożenie):** `shared` — `netscene.ts` z grupami
+(`NET_SCENE_GROUPS`, `netSceneGroupOf`, `netSceneNodeGroup`), `NetSceneParts` (figury, strefy,
+drzwi), `placed` z dopinania, `netReleaseSceneDevice`, `netWiredWallIds`, `netHasDevice`,
+`netIsSceneArchitecture`, `netDefenseFigureGlyph`; `NetDeviceView.zoneId`, `WallView.netControlled`,
+`zone:create` z `tokenId`, `zone:figure`; serwer — `net-scene.ts` (strefy i drzwi tylko do Sieci
+złożonej ze sceny, `bindZones`, `releaseSceneDevice`), `wall:update` / `zone:update` dopinają
+i zdejmują na żywo, obszar straży i „Postaw figurę urządzenia” w `zones.ts`, `zoneId` w widoku
+urządzeń, pola w kopii kampanii; klient — `GuardAreaPanel` w menu MG figury, narzędzie stref tylko
+środowiskowe (`zoneGuard` na jeden prostokąt), „Sterowane z Sieci” na karcie otworu, „Poza
+Siecią” i „Postaw figurę urządzenia” na karcie strefy, okienko strefy (`onWalkZoneAsk`,
+`zone-ask.ts`, `ZoneAskMenu`) — **zamyka zaległość 🔴 66e pkt 3**. Decyzje w
+`decyzje-i-uproszczenia.md`, umowy na górze `siec` i `mapa`, pułapka na górze `siec`, odstępstwa
+w pliku etapu, pomysły w `POMYSLY.md`. **Testy:** `shared` 3039/3039, serwer 1790/1790 (nowe
+w `net-scene.test.ts` 5, `zones.test.ts` 3, `archive-package`, izolacja `zone:figure`), klient
+501/501 (nowy `zone-ask.test.ts` 9), `tsc` wszystkich pakietów, ESLint i Prettier czyste
+w zmienionych plikach; E2E `47-siec` 34/34 (nowy `t70d-edycja-straz-strefy` 5, `t62` przepisany
+na „Monitoring” + „Obrona” — ostatni krok poprawiony i puszczony osobno 6/6, `t70a` 9, `t70b` 8,
+`t70c` 6). **T5a przepięte** (wieżyczka „Bramy” dostaje ikonę i obszar straży z menu figury)
+i puszczone z `po-T4`: 23/23 (punkt `po-T5a` zapisany od nowa). T5b nie puszczone (gateway). **Oglądane w Chromium (MG) i Firefoksie (Ola, Marek)** zrzutami
+z tymczasowej kopii `t70d` na instancji E2E, 1920 × 1080, noc i dzień: menu wieżyczki z panelem
+„Obszar straży” i listą wpisów, lista narzędzia stref (same systemy środowiskowe), obszar wokół
+wieżyczki, karta drzwi, okienko strefy u Oli przed i po Kontroli („⚡ Wyłącz”) i u Marka
+(marsz przez strefę), pasek z podłogą i drzwiami, „Plan Architektury” MG z trzema węzłami, karta
+podłogi z „Poza Siecią” i karta starej strefy drona z „Postaw figurę urządzenia”. Nieoglądane:
+Chrome MG, okienko z „Rozbrój” (w zasięgu ręki), menu wieżyczki z gotowym obszarem. Z oględzin
+poprawione: zdanie na karcie strefy drona odsyłało do ręcznego podpinania figury.
+**Dalej:** 70e.
+
 ### Sesja 13.11 — etap 70c: dron w ruchu, oczy urządzeń, pasek
 
 **Zrobione (bez migracji, czeka na wdrożenie):** `shared` — oczy wg rodzaju

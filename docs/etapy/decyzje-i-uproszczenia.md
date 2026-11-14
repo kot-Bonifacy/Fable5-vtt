@@ -9,6 +9,17 @@ czytany na starcie każdej sesji został listą zadań, a nie archiwum ustaleń.
 inaczej, niż mówi podręcznik, albo gdy dotykasz wymienionego tu kodu. Jeśli któraś z tych decyzji
 przestanie się bronić, przenieś ją stąd do `POMYSLY.md` jako zadanie — nie odwrotnie.
 
+## Wyłączone urządzenie: MG przełącza je z mapy, a da się je przeszukać (etap 70f, 14.11.2026)
+
+- **„⏻ Włącz / Wyłącz w Sieci” w menu MG figury urządzenia** — bez runu netrunnera i bez Akcji
+  Sieciowej, we wszystkich Architekturach, które figurę wskazują. Od 70c wyłączone urządzenie
+  milczy (tura, straż, oczy), a jego stan zmieniał tylko węzeł trzymany przez netrunnera — MG
+  nie miał czym obudzić uśpionego drona przy alarmie „Fabryki dronów”. Kod: `net:device:switch`.
+- **Urządzenie z naklejką „Wyłączony” przeszukuje się jak ciało** (`searchable` stanu `net-off`)
+  — drzazgę z wyłączonej Sowy wyjmuje się łupem bez ręcznego „Unieruchomiony” (pomysł z 31.10,
+  `POMYSLY.md`). Dotyczy każdego urządzenia z kartą: wyłączona wieżyczka oddaje też broń
+  z magazynkiem, który ma w środku. Przejęte (naklejka „Przejęty w Sieci”) — nie.
+
 ## Obrona Sieci rusza się sama, MG trzyma hamulec (etap 70e, 13.11.2026, decyzja MG nr 4 z 11.11)
 
 Cofa decyzję z 15.08 („LOD nigdy nie rusza się sam”, powtórzoną 16.08 dla Demona).

@@ -295,7 +295,7 @@ import {
   netProgramEvent,
   netSlideEvent,
 } from './netcombat.js';
-import { netDeviceEvent } from './netdevices.js';
+import { netDeviceEvent, netDeviceSwitchEvent } from './netdevices.js';
 import { netDemonDetectEvent, netDemonTurnEvent } from './netdemons.js';
 import { netDefensePauseEvent } from './net-defense.js';
 import {
@@ -627,6 +627,7 @@ export const EVENTS: RealtimeEvent<never, unknown>[] = [
   netIceTurnEvent,
   netGlueClearEvent,
   netDeviceEvent,
+  netDeviceSwitchEvent,
   netDemonDetectEvent,
   netDemonTurnEvent,
   netDefensePauseEvent,

@@ -331,6 +331,19 @@ describe('wzorce map w data/public/scenes (etap 66b)', () => {
     const prototype = template.figures.find((figure) => figure.key === 'prototyp')!;
     expect(readCpredTemplateNpcExtras(prototype.system).gear[0]!.name).toMatch(/Drzazga/);
     expect(template.accessPoints.every((point) => point.net === 'fabryka')).toBe(true);
+    // 70f: Sowa strzela sama ze swojego lądowiska (obszar straży), a węzły
+    // noszą nazwy rodzajów jak w Sieci ze sceny.
+    expect(template.zones).toEqual([
+      expect.objectContaining({ key: 'ladowisko-sowy', figure: 'prototyp', hidden: false }),
+    ]);
+    expect(
+      net!.floors.filter((floor) => floor.kind === 'controlNode').map((floor) => floor.label),
+    ).toEqual([
+      'Monitoring',
+      'Obrona: patrol',
+      'Obrona: lądowiska północ',
+      'Obrona: lądowiska boczne',
+    ]);
   });
 
   it('po zamknięciu: 47 odcinków (46 ze sceny MG + drzwi z kuchni na salę), zamki, ukryte kamery, strefa i szafka w Sieci', () => {
@@ -357,19 +370,25 @@ describe('wzorce map w data/public/scenes (etap 66b)', () => {
     expect(template.lights).toHaveLength(5);
     expect(template.zones).toEqual([
       expect.objectContaining({ key: 'podloga', hidden: true, armed: true, x: 22, y: 10 }),
+      // 70f: obszar straży wieżyczki to cały gabinet.
+      expect.objectContaining({ key: 'straz-wiezyczki', figure: 'wiezyczka', x: 21, y: 6 }),
     ]);
+    expect(template.walls.find((wall) => wall.key === 'drzwi-gabinetu')!.netControlled).toBe(true);
     const szafka = readCpredTemplateContainer(template.containers[0]!.system);
     expect(szafka).toMatchObject({ lock: 'locked', dv: 13, keyHolder: 'maly', eddies: 200 });
+    // 70f: węzły wg rodzaju, jak w Sieci ze sceny — wieżyczka osobno od zamka i podłogi.
     const [net] = readCpredTemplateNets(template.system);
-    expect(net!.floors.map((floor) => floor.kind)).toEqual([
-      'password',
-      'controlNode',
-      'controlNode',
-      'file',
+    expect(net!.floors.map((floor) => [floor.kind, floor.label])).toEqual([
+      ['password', 'Hasło: konto kierownika sali'],
+      ['controlNode', 'Monitoring'],
+      ['controlNode', 'Obrona'],
+      ['controlNode', 'Instalacje'],
+      ['file', 'Plik: zeszyt Kucharza'],
     ]);
-    expect(
-      net!.floors[2]!.devices.map((device) => device.zone ?? device.wall ?? device.figure),
-    ).toEqual(['wiezyczka', 'podloga', 'drzwi-gabinetu']);
+    const wired = (at: number) =>
+      net!.floors[at]!.devices.map((device) => device.zone ?? device.wall ?? device.figure);
+    expect(wired(2)).toEqual(['wiezyczka']);
+    expect(wired(3)).toEqual(['podloga', 'drzwi-gabinetu']);
   });
 });
 
@@ -676,6 +695,67 @@ describe('format wzorca: światła, zamki, strefy i pojemniki (etap 66e)', () =>
       items: [],
       eddies: 0,
     });
+  });
+
+  it('70f: obszar straży figury, „Poza Siecią” strefy i „Sterowane z Sieci” otworu', () => {
+    const raw = extended();
+    raw.walls[raw.walls.length - 1] = { ...raw.walls.at(-1)!, netControlled: true } as never;
+    const guard = { x: 3, y: 1, width: 3, height: 2, figure: 'dron', system: { entryIds: ['x'] } };
+    const template = readSceneTemplate(
+      {
+        ...raw,
+        zones: [{ ...raw.zones[0]!, netExcluded: true }, guard],
+      },
+      'hala',
+    )!;
+    expect(template).not.toBeNull();
+    expect(template.walls.at(-1)).toMatchObject({ key: 'drzwi', netControlled: true });
+    expect(template.walls[1]).toMatchObject({ kind: 'door', netControlled: false });
+    expect(template.zones[0]).toMatchObject({ key: 'podloga', figure: null, netExcluded: true });
+    expect(template.zones[1]).toMatchObject({ key: null, figure: 'dron', netExcluded: false });
+    expect(cpredTemplateProblems(template)).toEqual([]);
+
+    // Odmowa w całości: figura spoza wzorca, dwa obszary jednej figury,
+    // „Sterowane z Sieci” na zwykłej ścianie, zły typ przełącznika.
+    const broken: [string, unknown][] = [
+      ['figura spoza wzorca', { ...raw, zones: [{ ...guard, figure: 'nie-ma' }] }],
+      ['dwa obszary jednej figury', { ...raw, zones: [guard, guard] }],
+      [
+        'sterowana ściana',
+        {
+          ...raw,
+          walls: [
+            {
+              points: [
+                [0, 0],
+                [1, 0],
+              ],
+              netControlled: true,
+            },
+          ],
+        },
+      ],
+      ['„Poza Siecią” napisem', { ...raw, zones: [{ ...raw.zones[0], netExcluded: 'tak' }] }],
+    ];
+    for (const [label, input] of broken) {
+      expect(readSceneTemplate(input, 'hala'), label).toBeNull();
+    }
+
+    // CP RED: obszar straży tylko na wieżyczce albo dronie i nie jako urządzenie węzła.
+    const onCamera = readSceneTemplate(
+      { ...raw, zones: [raw.zones[0], { ...guard, figure: 'kam' }] },
+      'hala',
+    )!;
+    expect(cpredTemplateProblems(onCamera)).toContain(
+      'strefa ?: obszar straży figury kam bez ikony wieżyczki ani drona',
+    );
+    const wired = readSceneTemplate(
+      { ...raw, zones: [{ ...raw.zones[0], figure: 'dron' }] },
+      'hala',
+    )!;
+    expect(cpredTemplateProblems(wired)).toContain(
+      'strefa podloga: obszar straży podpięty do węzła jako urządzenie',
+    );
   });
 
   it('zamek otworu: wyrozumiały odczyt, bez listy prób; gotówka NPC-a na karcie', () => {

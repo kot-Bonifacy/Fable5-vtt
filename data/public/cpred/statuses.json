@@ -69,7 +69,8 @@
       "id": "net-off",
       "name": "Wyłączony",
       "icon": "/public/cpred/status-icons/net-off.svg",
-      "dims": true
+      "dims": true,
+      "searchable": true
     }
   ]
 }

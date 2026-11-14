@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
+  CPRED_NET_OFF_STATUS_ID,
+  CPRED_NET_SEIZED_STATUS_ID,
   CPRED_STATUS_EFFECTS,
   cpredActionBlock,
   cpredDodgeBlock,
@@ -110,6 +112,21 @@ describe('the table itself', () => {
       expect(known.has(id), `${id} has effects but no icon or name in statuses.json`).toBe(true);
       expect(known.get(id), id).toBe(effect.name);
     }
+  });
+});
+
+describe('device switched off in the Net (stage 70f)', () => {
+  it('„Wyłączony” can be searched like „Unieruchomiony”, „Przejęty w Sieci” cannot', async () => {
+    const file = new URL('../../../../../data/public/cpred/statuses.json', import.meta.url);
+    const { readFile } = await import('node:fs/promises');
+    const { bodySearchable } = await import('../../exchange.js');
+    const parsed = JSON.parse(await readFile(file, 'utf8')) as {
+      statuses: { id: string; name: string; icon: string; searchable?: boolean }[];
+    };
+    // Prototyp z drzazgą (66b) wyłączony w Sieci przeszukuje się bez ręcznego
+    // „Unieruchomiony” — pomysł z 31.10 domknięty we wzorcach 70f.
+    expect(bodySearchable('ok', [CPRED_NET_OFF_STATUS_ID], parsed.statuses)).toBe(true);
+    expect(bodySearchable('ok', [CPRED_NET_SEIZED_STATUS_ID], parsed.statuses)).toBe(false);
   });
 });
 

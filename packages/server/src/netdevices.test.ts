@@ -1000,7 +1000,10 @@ describe('węzły kontrolne na żywych gniazdach', () => {
     expect(state.tokens.find((token) => token.id === turretTokenId)?.statuses).not.toContain(
       'net-seized',
     );
-    expect(lines.filter((line) => line.includes('wraca do obrony'))).toHaveLength(2);
+    // Jedno odłączenie, jeden wiersz dla obu figur (70f).
+    const back = lines.filter((line) => line.includes('do obrony'));
+    expect(back).toHaveLength(1);
+    expect(back[0]).toContain('wracają do obrony');
     expect(errorOf(await shoot(player, turretTokenId, targetTokenId))).toBe('CHARACTER_NOT_FOUND');
 
     // Ponowne podłączenie oddaje węzeł bez Testu (pamięć z 02.11), a z nim figury.

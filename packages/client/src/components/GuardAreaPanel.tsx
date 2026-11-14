@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import {
   CHECK_CALL_DV_MAX,
   CHECK_CALL_DV_MIN,
+  CPRED_NET_OFF_STATUS_ID,
   NET_DEVICE_KIND_BY_GLYPH,
   netDefenseGlyph,
   netDefenseSystemEntries,
@@ -9,7 +10,7 @@ import {
   type TokenGlyph,
   type TokenView,
 } from '@vtt/shared';
-import { deleteZone, updateZone } from '../socket.js';
+import { deleteZone, switchNetDevice, updateZone } from '../socket.js';
 import { netErrorText } from '../netErrors.js';
 import { noteAck } from '../notices.js';
 import { useCompendiumStore } from '../stores/compendiumStore.js';
@@ -26,6 +27,36 @@ export function hasGuardArea(glyph: TokenGlyph | null | undefined): boolean {
   if (!glyph) return false;
   const kind = NET_DEVICE_KIND_BY_GLYPH[glyph];
   return kind === 'turret' || kind === 'drone';
+}
+
+/**
+ * „⏻ Włącz / Wyłącz w Sieci” w menu MG figury urządzenia (etap 70f) — stan
+ * urządzenia bez runu netrunnera. Od 70c wyłączone urządzenie milczy (tura,
+ * obszar straży, oczy), więc to jest droga MG do budzenia uśpionego drona przy
+ * alarmie. Figurę spoza Sieci serwer odmawia zdaniem (`NET_DEVICE_NOT_WIRED`).
+ */
+export function NetDeviceSwitchItem({ token, onDone }: { token: TokenView; onDone: () => void }) {
+  if (!token.glyph || !NET_DEVICE_KIND_BY_GLYPH[token.glyph]) return null;
+  const off = token.statuses.includes(CPRED_NET_OFF_STATUS_ID);
+  return (
+    <button
+      type="button"
+      className="context-menu-item"
+      title={
+        off
+          ? 'Urządzenie wraca do obrony: gra turę, strzela ze straży i patrzy'
+          : 'Urządzenie milknie: bez tury, bez strzału ze straży i bez oczu (naklejka „Wyłączony”)'
+      }
+      onClick={() =>
+        void switchNetDevice(token.id, off).then((ack) => {
+          noteAck('net', ack, netErrorText);
+          onDone();
+        })
+      }
+    >
+      {off ? '⏻ Włącz w Sieci' : '⏻ Wyłącz w Sieci'}
+    </button>
+  );
 }
 
 /** Wpis podpowiadany na start: wieżyczka — stanowisko, które strzela; dron — dron z ikoną. */

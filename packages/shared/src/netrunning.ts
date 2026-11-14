@@ -296,6 +296,17 @@ export interface NetDefensePausePayload {
   paused: boolean;
 }
 
+/**
+ * „Włącz / Wyłącz w Sieci” z menu MG figury urządzenia (etap 70f) — stan
+ * urządzenia w każdej Architekturze kampanii, która wskazuje tę figurę, bez
+ * runu netrunnera. Tak MG budzi uśpionego drona przy alarmie: od 70c figura
+ * wyłączona w Sieci nie gra tury, nie strzela i nie patrzy.
+ */
+export interface NetDeviceSwitchPayload {
+  tokenId: string;
+  on: boolean;
+}
+
 // ─────────────────────── węzły kontrolne (etap 26d) ───────────────────────
 
 /**
