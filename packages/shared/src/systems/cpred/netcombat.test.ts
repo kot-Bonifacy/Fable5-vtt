@@ -14,6 +14,8 @@ import {
   netBrainArmour,
   netCanRunProgram,
   netCanSlide,
+  netCloakPlan,
+  netCloakWatcher,
   netCombatView,
   netDamageIce,
   netDamageRezzed,
@@ -550,5 +552,49 @@ describe('widok dla klienta', () => {
     });
     expect(view.deck.find((slot) => slot.name === 'Miecz')?.vsIce).toBe(3);
     expect(view.deck.find((slot) => slot.name === 'Superklej')?.vsIce).toBe(0);
+  });
+});
+
+describe('Maskowanie pod okiem Programu (zasada domowa MG z 14.11)', () => {
+  const demon = (patch: { floorId?: string; mode?: CpredNetIce['mode'] } = {}) => ({
+    name: 'Balron',
+    floorId: patch.floorId ?? 'f3',
+    mode: patch.mode ?? ('lurking' as const),
+    profile: { interfaceRank: 7 },
+  });
+
+  it('picks the sharpest live watcher of this floor only', () => {
+    const owl = ice({ id: 'ice-2', name: 'Sowa', profile: profile({ per: 9 }) });
+    expect(netCloakWatcher('f3', [ice(), owl], [])).toEqual({
+      name: 'Sowa',
+      stat: 'PER',
+      value: 9,
+    });
+    expect(netCloakWatcher('f2', [ice(), owl], [])).toBeNull();
+    // A derezzed one watches nothing.
+    expect(netCloakWatcher('f3', [ice({ mode: 'derezzed' })], [])).toBeNull();
+  });
+
+  it('weighs a Demon by its Interface — „Demony nie mają Percepcji”', () => {
+    expect(netCloakWatcher('f3', [ice()], [demon()])).toEqual({
+      name: 'Balron',
+      stat: 'Interfejs',
+      value: 7,
+    });
+    expect(netCloakWatcher('f3', [], [demon({ mode: 'destroyed' })])).toBeNull();
+  });
+
+  it('rolls Interface and boosts against the watcher', () => {
+    const plan = netCloakPlan({
+      interfaceRank: 5,
+      bonuses: [{ label: 'Gumka', value: 2 }],
+      watcher: { name: 'Kraken', stat: 'PER', value: 6 },
+    });
+    expect(plan.attack).toEqual([
+      { label: 'Interfejs 5', value: 5 },
+      { label: 'Gumka', value: 2 },
+    ]);
+    expect(plan.defence).toEqual([{ label: 'PER Kraken', value: 6 }]);
+    expect(plan.label).toBe('Maskowanie — Kraken');
   });
 });

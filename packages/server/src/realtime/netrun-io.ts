@@ -27,6 +27,7 @@ import {
   metresBetween,
   netActionsAfterDebt,
   netActionsForInterface,
+  netChildren,
   netCombatView,
   netDemonViews,
   netDeviceStateOf,
@@ -45,6 +46,7 @@ import {
   readNetRuntime,
   netRememberRun,
   netTriesOf,
+  netCloaksOf,
   tokenCentre,
   tokenTableName,
   validateNetArchitecture,
@@ -338,6 +340,17 @@ export async function runPayloadFor(
     where: { sceneId: row.token.sceneId },
     select: { round: true },
   });
+  // What waits behind each door down, by name — only the floors directly below,
+  // because nothing further can be on an exit (`netRunView` drops the names of
+  // an exit nobody has scouted or stood on).
+  const programNames = new Map<string, string>();
+  for (const step of netChildren(architecture, state.position)) {
+    for (const programId of netFloorAt(architecture, step)?.programIds ?? []) {
+      if (programNames.has(programId)) continue;
+      const entry = await campaignEntry(deps, campaignId, programId);
+      if (entry) programNames.set(programId, entry.name);
+    }
+  }
   const round = combatRow && combatRow.round > 0 ? combatRow.round : null;
   return {
     runId: row.id,
@@ -355,6 +368,7 @@ export async function runPayloadFor(
       combat,
       demons: netDemonViews(defence, { gm }),
       devicesOf: (floor) => devices.get(floor.id) ?? [],
+      programNameOf: (programId) => programNames.get(programId),
       // Etap 70a (decyzja MG nr 2 z 11.11): nazwy urządzeń dopiero na piętrze
       // ich węzła — od podłączenia okno nie mówi o nich nic.
       nodeDevices: gm
@@ -362,6 +376,10 @@ export async function runPayloadFor(
         : await sightedDevicesOf(prisma, netFloorAt(architecture, state.position)),
       round,
       tries: netTriesOf(runtime, {
+        characterId: row.characterId,
+        sceneId: row.token.sceneId,
+      }),
+      cloaks: netCloaksOf(runtime, {
         characterId: row.characterId,
         sceneId: row.token.sceneId,
       }),

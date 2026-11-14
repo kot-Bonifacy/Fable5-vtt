@@ -217,6 +217,19 @@ test.describe.serial('@szybkie T70a okno SIEĆ: jedno piętro', () => {
     await expectNoLeak();
   });
 
+  test('4b. Maskowanie: piętro bez LOD-u to łatwe PT, sukces zostaje znacznikiem (14.11)', async () => {
+    scriptDice([9]);
+    await abilityButton(ola, 'Maskowanie').click();
+    await expect(floorCard(ola)).toContainText('ślady zatarte', { timeout: 20_000 });
+    expect(pendingDice()).toBe('');
+    // Zamaskowane piętro zamyka Maskowanie — przycisk wyszarzony jak zużyta próba.
+    await expect(abilityButton(ola, 'Maskowanie')).toBeDisabled();
+    await runWindow(ola).screenshot({
+      path: test.info().outputPath('maskowanie-karta-gracza.png'),
+    });
+    await expectNoLeak();
+  });
+
   test('5. ślad: klik w pierwsze piętro wraca, klik w ostatnie odwiedzone schodzi z powrotem', async () => {
     await expect(trailSteps(ola)).toHaveCount(3);
     await trailSteps(ola).first().click();
@@ -285,6 +298,11 @@ test.describe.serial('@szybkie T70a okno SIEĆ: jedno piętro', () => {
     }
     // MG ma tę samą kartę piętra co gracz, a obok plan.
     await expect(floorCard(mg).locator('.net-floor-card-title')).toHaveText(label.t3!);
+    // Znacznik Maskowania z kroku 4b stoi na planie MG przy tamtym piętrze.
+    await expect(
+      runWindow(mg).locator('.net-plan .net-run-floor', { hasText: label.t2! }),
+    ).toContainText('ślady zatarte');
+    await runWindow(mg).screenshot({ path: test.info().outputPath('maskowanie-plan-mg.png') });
   });
 
   test('9. konsola czysta; okno w Chromium jako gracz', async ({ cast }) => {

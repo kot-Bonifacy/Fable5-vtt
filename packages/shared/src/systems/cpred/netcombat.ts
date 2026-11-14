@@ -404,6 +404,73 @@ export function netDetectionPlan(input: {
   };
 }
 
+/** What watches a floor while the netrunner masks it (zasada domowa MG z 14.11). */
+export interface NetCloakWatcher {
+  name: string;
+  /** „PER” for a Black ICE, „Interfejs” for a Demon. */
+  stat: string;
+  value: number;
+}
+
+/**
+ * The Program the Maskowanie has to beat on this floor: the sharpest live Black
+ * ICE on it by Perception, or the Demon living there by its Interface — „Demony
+ * nie mają Percepcji” (s. 212), and Interface is what a Demon rolls to defend.
+ * Null when nothing watches the floor: then the Check is an easy DV instead.
+ */
+export function netCloakWatcher(
+  floorId: string,
+  ice: readonly Pick<CpredNetIce, 'name' | 'floorId' | 'mode' | 'profile'>[],
+  demons: readonly {
+    name: string;
+    floorId: string;
+    mode: NetIceMode;
+    profile: { interfaceRank?: number };
+  }[],
+): NetCloakWatcher | null {
+  const live = (mode: NetIceMode) => mode === 'lurking' || mode === 'hunting';
+  const watchers: NetCloakWatcher[] = [
+    ...ice
+      .filter((entry) => entry.floorId === floorId && live(entry.mode))
+      .map((entry) => ({ name: entry.name, stat: 'PER', value: entry.profile.per ?? 0 })),
+    ...demons
+      .filter((entry) => entry.floorId === floorId && live(entry.mode))
+      .map((entry) => ({
+        name: entry.name,
+        stat: 'Interfejs',
+        value: entry.profile.interfaceRank ?? 0,
+      })),
+  ];
+  return watchers.reduce<NetCloakWatcher | null>(
+    (best, entry) => (best === null || entry.value > best.value ? entry : best),
+    null,
+  );
+}
+
+/**
+ * Maskowanie against a watcher: Interfejs + boosts (Gumka) + 1k10 against its
+ * PER (or a Demon's Interface) + 1k10. The netrunner is the one acting, so a
+ * tie keeps the traces visible (`netAttackWins`).
+ */
+export function netCloakPlan(input: {
+  interfaceRank: number;
+  bonuses: readonly NetBonus[];
+  watcher: NetCloakWatcher;
+}): NetAttackPlan {
+  return {
+    attack: [
+      { label: `Interfejs ${input.interfaceRank}`, value: input.interfaceRank },
+      ...input.bonuses,
+    ],
+    defence:
+      input.watcher.value !== 0
+        ? [{ label: `${input.watcher.stat} ${input.watcher.name}`, value: input.watcher.value }]
+        : [],
+    dice: 0,
+    label: `Maskowanie — ${input.watcher.name}`,
+  };
+}
+
 /** „Jeśli uda ci się Test Ślizgu przeciw rzutowi Percepcji + 1k10" (s. 200). */
 export function netSlidePlan(input: {
   interfaceRank: number;

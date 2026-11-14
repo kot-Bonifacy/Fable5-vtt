@@ -43,6 +43,18 @@ function PlanFloor({
         {floor.identified && <span className="net-run-floor-flag">rozpoznany</span>}
         {floor.hackFailed && <span className="net-run-floor-flag">próba zużyta</span>}
         {floor.copied && <span className="net-run-floor-flag">kopia na deku</span>}
+        {floor.cloak === 'masked' && (
+          <span
+            className="net-run-floor-flag"
+            title={`Cudzy Zwiad musiałby przebić ${floor.cloakTotal ?? '?'}`}
+          >
+            ślady zatarte{floor.cloakTotal !== undefined ? ` · ${floor.cloakTotal}` : ''}
+          </span>
+        )}
+        {floor.cloak === 'failed' && (
+          <span className="net-run-floor-flag">maskowanie nieudane</span>
+        )}
+        {floor.cloak === 'trying' && <span className="net-run-floor-flag">maskowanie w toku</span>}
         {floor.programIds && floor.programIds.length > 0 && (
           <span className="net-run-floor-flag net-run-floor-flag--ice">
             {plural(floor.programIds.length, 'Program', 'Programy', 'Programów')}

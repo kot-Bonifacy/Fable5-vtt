@@ -1,13 +1,17 @@
 import type { CpredNetPosition, NetExitView, NetRunView } from '@vtt/shared';
 import { FLOOR_GLYPHS, floorName } from './net-glyphs.js';
 
-/** „Niżej: ?”, „Niżej: 🔒 Hasło serwisowe”, „Odnoga: ☠ Strażnik”. */
+/**
+ * „Niżej: ?”, „Niżej: 🔒 Hasło serwisowe”, „Odnoga: ☠ Strażnik — Piekielny Ogar”.
+ * Nazwy Programów przychodzą tylko z wyjściem znanym ze Zwiadu albo z pobytu.
+ */
 function exitLabel(exit: NetExitView): { door: string; behind: string } {
   const door = exit.branch ? (exit.branchName ? `Odnoga „${exit.branchName}”` : 'Odnoga') : 'Niżej';
+  const programs = exit.programs?.length ? ` — ${exit.programs.join(', ')}` : '';
   const behind =
     exit.kind === undefined
       ? '?'
-      : `${FLOOR_GLYPHS[exit.kind]} ${floorName({ kind: exit.kind, ...(exit.label ? { label: exit.label } : {}) })}`;
+      : `${FLOOR_GLYPHS[exit.kind]} ${floorName({ kind: exit.kind, ...(exit.label ? { label: exit.label } : {}) })}${programs}`;
   return { door, behind };
 }
 
@@ -16,8 +20,11 @@ function exitTitle(exit: NetExitView): string {
   if (exit.knowledge === 'unknown') {
     return 'Nieznane piętro — Zwiad powie, co tam jest. Zjazd nie kosztuje Akcji Sieciowej';
   }
-  if (exit.knowledge === 'scouted') return 'Znane ze Zwiadu. Zjazd nie kosztuje Akcji Sieciowej';
-  return 'Już tam byłeś. Zjazd nie kosztuje Akcji Sieciowej';
+  const programs = exit.programs?.length ? ` Czeka tam: ${exit.programs.join(', ')}.` : '';
+  if (exit.knowledge === 'scouted') {
+    return `Znane ze Zwiadu.${programs} Zjazd nie kosztuje Akcji Sieciowej`;
+  }
+  return `Już tam byłeś.${programs} Zjazd nie kosztuje Akcji Sieciowej`;
 }
 
 /**

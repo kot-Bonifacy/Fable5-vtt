@@ -1,5 +1,30 @@
 # Dziennik sesji — archiwum
 
+### Sesja 14.11 (druga) — zaległości: kadr obok okna SIEĆ, karta wykrycia, alarm skradania, marsz w ciemność, pełna karta NPC-a, koniec walki
+
+**Zrobione (bez migracji, czeka na wdrożenie)** — sześć zaległości z `zaleglosci.md`, opisy
+naprawy w `archiwum/zamkniete-zaleglosci.md` („Zamknięte 2026-11-14, druga sesja”):
+
+- **70f pkt 1:** kadr urządzenia przy brzegu sceny wyjeżdża spod okna SIEĆ — `clearOfRunWindow`
+  zwraca zapas po stronie okna, `MapRenderer.setSideInsets` poszerza o niego granicę kamery,
+  zamknięcie okna go zdejmuje. Test `map-frame.test.ts`.
+- **70f pkt 4:** karta „Wykrycie — Kruk: ucieczka przed darmowym atakiem” (`netDetectionPlan`).
+- **66e pkt 11:** zauważenie skradającego się przez Neutralnego (kamera) — bursztynowy pasek MG
+  z dzwonkiem do „Rozumiem” zamiast znikającej informacji.
+- **66e pkt 12:** marsz ucięty, bo dalej drogi nie widać, kończy się zdaniem
+  `WALK_BLIND_STOP_NOTE` (`MarchState.blind`).
+- **66e pkt 13:** „Edycja tokenu” NPC-a z pełną kartą (`cpredStatistQuickFits`) — zdanie
+  i „📄 Otwórz kartę” zamiast pól statysty; PW z paska zapisują się jak dotąd.
+- **66e pkt 14:** „Przeciwnicy pokonani” ustępuje, póki wisi pytanie „Koniec walki”.
+
+**Oglądane w Firefoksie** (Playwright MCP, `dev.db`, MG): pkt 13 — „Edycja tokenu” Haka ze
+„Zastawu” pokazuje zdanie i „Otwórz kartę”, przycisk otwiera kartę i zamyka okno, konsola bez
+błędów. **Nie oglądane w przeglądarce:** pkt 1, 4, 11, 12, 14 (wymagają walki, skradania albo
+runu — na `dev.db` nie odtwarzałem, żeby nie ruszać sceny MG). Testy: shared 3056 (+3), klient
+508 (+3), serwer 1799 — zielone; `tsc` wszystkich pakietów, ESLint i Prettier czyste; E2E `47-siec` 39/39.
+Umowy na górze `siec` i `statysta`. Pkt 10 (kubek zasłania akcje) — do sprawdzenia, czy jeszcze
+aktualny po lewej belce z etapu 69.
+
 ### Sesja 14.11 — zaległości: belka urządzenia, łup z urządzenia, obszar straży, karta, Kompendium, „Wróg w zasięgu wzroku”
 
 **Zrobione (bez migracji, czeka na wdrożenie)** — sześć zaległości z `zaleglosci.md`, opisy

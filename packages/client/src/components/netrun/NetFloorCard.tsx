@@ -183,6 +183,7 @@ export function NetFloorCard({
         here.identified ||
         here.copied ||
         here.hackFailed ||
+        here.cloak !== undefined ||
         (here.programIds?.length ?? 0) > 0) && (
         <p className="net-floor-card-flags">
           {here.broken && <span className="net-run-floor-flag">złamane</span>}
@@ -199,6 +200,23 @@ export function NetFloorCard({
               title="Ta postać już raz poległa tu na tej scenie — drugiej próby nie ma"
             >
               próba zużyta
+            </span>
+          )}
+          {here.cloak === 'masked' && <span className="net-run-floor-flag">ślady zatarte</span>}
+          {here.cloak === 'failed' && (
+            <span
+              className="net-run-floor-flag"
+              title="Maskowanie mieści się w jednej Turze — tu już przepadło"
+            >
+              maskowanie nieudane
+            </span>
+          )}
+          {here.cloak === 'trying' && (
+            <span
+              className="net-run-floor-flag"
+              title="Kolejne próby tylko w tej Turze i tylko na tym piętrze"
+            >
+              maskowanie: {plural(here.cloakTriesLeft ?? 0, 'próba', 'próby', 'prób')} w tej Turze
             </span>
           )}
           {here.programIds && here.programIds.length > 0 && (

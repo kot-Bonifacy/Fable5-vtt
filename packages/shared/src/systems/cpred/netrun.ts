@@ -166,7 +166,7 @@ export const NET_ABILITIES: readonly CpredNetAbility[] = [
     name: 'Maskowanie',
     cost: 'net',
     dv: 'open',
-    hint: 'Zacierasz ślady. Cudzy Zwiad musi przebić twój wynik, żeby cokolwiek odkryć.',
+    hint: 'Zacierasz ślady na tym piętrze: przebij czyhający tu Program albo łatwe PT. Próby tylko w jednej Turze.',
   },
   {
     id: 'virus',
@@ -517,10 +517,18 @@ export interface CpredNetVirus {
  */
 export interface CpredNetRuntime {
   viruses: CpredNetVirus[];
-  /** „PT dla tego Zwiadu będzie równe wartości uzyskanej w Teście Maskowania". */
+  /**
+   * Before 14.11 the one Maskowanie of the whole Architecture. Read so old rows
+   * still parse; nothing writes it any more — see `cloaks`.
+   */
   maskDv?: number;
-  /** Who masked the traces, for the GM's own reading of the same number. */
   maskedBy?: string;
+  /**
+   * Maskowanie floor by floor (zasada domowa MG z 14.11) — keyed like
+   * `spentTries` by character, scene and floor, and here for the same reason: a
+   * jack-out must not buy a fresh set of tries.
+   */
+  cloaks?: CpredNetCloak[];
   /**
    * What the control nodes' devices are doing (stage 26d).
    *
@@ -708,7 +716,7 @@ export const NET_TRY_LIMITS: Partial<Record<NetAbilityId, CpredNetTryLimit>> = {
   eyed: { per: 'floor', spentOn: 'failure' },
   control: { per: 'floor', spentOn: 'failure' },
   scout: { per: 'floor', spentOn: 'always' },
-  cloak: { per: 'architecture', spentOn: 'always' },
+  // Maskowanie has its own rhythm since 14.11 — one Turn per floor (`netCloakState`).
   virus: { per: 'floor', spentOn: 'failure' },
 };
 
@@ -776,8 +784,184 @@ export function netClearTries(runtime: CpredNetRuntime, who: NetTryWho): CpredNe
   const rest = (runtime.spentTries ?? []).filter(
     (entry) => !(entry.characterId === who.characterId && entry.sceneId === who.sceneId),
   );
-  const { spentTries: _dropped, ...without } = runtime;
-  return rest.length > 0 ? { ...without, spentTries: rest } : without;
+  const { spentTries: _dropped, cloaks: _cloaks, ...without } = runtime;
+  // A masked floor is a success and stays; a failed or half-tried one is a try.
+  const cloaks = (runtime.cloaks ?? []).filter(
+    (entry) =>
+      entry.outcome === 'masked' ||
+      !(entry.characterId === who.characterId && entry.sceneId === who.sceneId),
+  );
+  return {
+    ...without,
+    ...(rest.length > 0 ? { spentTries: rest } : {}),
+    ...(cloaks.length > 0 ? { cloaks } : {}),
+  };
+}
+
+// ───────────────────────────────── Maskowanie ─────────────────────────────────
+
+/**
+ * One floor's Maskowanie by one character on one scene (zasada domowa MG
+ * z 14.11, replacing „Maskowanie — raz na Architekturę” of 02.11).
+ *
+ * Every floor is masked on its own. The tries on a floor belong to **one Turn**:
+ * the netrunner may pour every Net Action of that Turn into it, and the floor is
+ * masked by the first success. A Turn that ends without one — all the Actions
+ * gone, the Round moved on, or the netrunner walked off the floor — closes it
+ * as failed, and no later Turn reopens it. Outside a fight there are no Turns,
+ * so the stay on the floor counts as one: as many tries as Net Actions.
+ *
+ * What it buys is a mark on the GM's plan (decyzja MG z 14.11: „tylko znacznik
+ * dla MG”) — and the total, which RAW makes the DV of a rival's Zwiad.
+ */
+export interface CpredNetCloak {
+  characterId: string;
+  sceneId: string;
+  floorId: string;
+  /** Tries rolled in the one Turn this floor gets. */
+  attempts: number;
+  /** Round of that Turn; null when it was spent outside a fight. */
+  round: number | null;
+  /** Set once the floor is closed. */
+  outcome?: 'masked' | 'failed';
+  /** The winning total — what a rival's Zwiad would have to beat. */
+  total?: number;
+}
+
+/**
+ * The easy Check of a floor nothing watches (decyzja MG z 14.11: „test niech
+ * również będzie, tyle że łatwy”) — the „Podstawowy” rung of s. 210 when the
+ * private data carries it, this number when it does not.
+ */
+export const NET_CLOAK_EASY_DV = 6;
+
+/** Where one floor's Maskowanie stands for the netrunner on it. */
+export type NetCloakStatus = 'open' | 'trying' | 'masked' | 'failed';
+
+type NetCloakWho = { characterId: string; sceneId: string };
+
+function cloakOf(
+  runtime: CpredNetRuntime,
+  who: NetCloakWho,
+  floorId: string,
+): CpredNetCloak | undefined {
+  return (runtime.cloaks ?? []).find(
+    (entry) =>
+      entry.characterId === who.characterId &&
+      entry.sceneId === who.sceneId &&
+      entry.floorId === floorId,
+  );
+}
+
+/**
+ * The state of a record, read against the Round now and the Net Actions a Turn
+ * has. Lazy on purpose: a Turn that simply ended leaves a record „trying” with
+ * an old round, and that already *is* a failure — nobody has to sweep it.
+ */
+export function netCloakStatusOf(
+  cloak: CpredNetCloak | undefined,
+  round: number | null,
+  maxTries: number,
+): NetCloakStatus {
+  if (!cloak) return 'open';
+  if (cloak.outcome) return cloak.outcome;
+  if (cloak.attempts >= Math.max(1, maxTries) || cloak.round !== round) return 'failed';
+  return 'trying';
+}
+
+export function netCloakState(
+  runtime: CpredNetRuntime,
+  who: NetCloakWho,
+  floorId: string,
+  round: number | null,
+  maxTries: number,
+): NetCloakStatus {
+  return netCloakStatusOf(cloakOf(runtime, who, floorId), round, maxTries);
+}
+
+/** One more try written down; the first success or the last Action closes it. */
+export function netRecordCloak(
+  runtime: CpredNetRuntime,
+  who: NetCloakWho,
+  input: {
+    floorId: string;
+    round: number | null;
+    maxTries: number;
+    success: boolean;
+    total: number;
+  },
+): CpredNetRuntime {
+  const before = cloakOf(runtime, who, input.floorId);
+  const attempts = (before?.attempts ?? 0) + 1;
+  const next: CpredNetCloak = {
+    characterId: who.characterId,
+    sceneId: who.sceneId,
+    floorId: input.floorId,
+    attempts,
+    round: before ? before.round : input.round,
+    ...(input.success
+      ? { outcome: 'masked' as const, total: input.total }
+      : attempts >= Math.max(1, input.maxTries)
+        ? { outcome: 'failed' as const }
+        : {}),
+  };
+  const rest = (runtime.cloaks ?? []).filter((entry) => entry !== before);
+  return { ...runtime, cloaks: [...rest, next] };
+}
+
+/**
+ * Walking off a floor ends the Turn that floor had: a half-tried Maskowanie
+ * left behind is a failed one. Called by every move of the lift.
+ */
+export function netLeaveCloaks(
+  runtime: CpredNetRuntime,
+  who: NetCloakWho,
+  stayingOn: string | null,
+): CpredNetRuntime {
+  let changed = false;
+  const cloaks = (runtime.cloaks ?? []).map((entry) => {
+    if (
+      entry.outcome ||
+      entry.floorId === stayingOn ||
+      entry.characterId !== who.characterId ||
+      entry.sceneId !== who.sceneId
+    ) {
+      return entry;
+    }
+    changed = true;
+    return { ...entry, outcome: 'failed' as const };
+  });
+  return changed ? { ...runtime, cloaks } : runtime;
+}
+
+/** Every floor this character has tried to mask on this scene — for the view. */
+export function netCloaksOf(runtime: CpredNetRuntime, who: NetCloakWho): CpredNetCloak[] {
+  return (runtime.cloaks ?? []).filter(
+    (entry) => entry.characterId === who.characterId && entry.sceneId === who.sceneId,
+  );
+}
+
+function readCloaks(raw: unknown): CpredNetCloak[] {
+  return (Array.isArray(raw) ? raw : [])
+    .map((entry) => entry as Record<string, unknown>)
+    .filter(
+      (entry) =>
+        typeof entry?.characterId === 'string' &&
+        typeof entry?.sceneId === 'string' &&
+        typeof entry?.floorId === 'string' &&
+        Number.isInteger(entry?.attempts),
+    )
+    .map((entry) => ({
+      characterId: entry.characterId as string,
+      sceneId: entry.sceneId as string,
+      floorId: entry.floorId as string,
+      attempts: entry.attempts as number,
+      round: Number.isInteger(entry.round) ? (entry.round as number) : null,
+      ...(entry.outcome === 'masked' || entry.outcome === 'failed'
+        ? { outcome: entry.outcome }
+        : {}),
+      ...(Number.isInteger(entry.total) ? { total: entry.total as number } : {}),
+    }));
 }
 
 function readSpentTries(raw: unknown): CpredNetTry[] {
@@ -829,6 +1013,7 @@ export function readNetRuntime(raw: unknown): CpredNetRuntime {
   const devices = readNetDeviceStates(input.devices);
   const spentTries = readSpentTries(input.spentTries);
   const memories = readMemories(input.memories);
+  const cloaks = readCloaks(input.cloaks);
   return {
     viruses,
     ...(Number.isInteger(input.maskDv) ? { maskDv: input.maskDv as number } : {}),
@@ -836,6 +1021,7 @@ export function readNetRuntime(raw: unknown): CpredNetRuntime {
     ...(devices.length > 0 ? { devices } : {}),
     ...(spentTries.length > 0 ? { spentTries } : {}),
     ...(memories.length > 0 ? { memories } : {}),
+    ...(cloaks.length > 0 ? { cloaks } : {}),
     ...(input.defensePaused === true ? { defensePaused: true } : {}),
   };
 }
@@ -973,6 +1159,15 @@ export interface NetFloorView {
   nodeUsed?: boolean;
   /** This netrunner already failed this floor's hack on this scene — no second try. */
   hackFailed?: boolean;
+  /**
+   * This netrunner's Maskowanie of the floor (14.11): under way in this Turn,
+   * masked or failed. Absent = never tried.
+   */
+  cloak?: Exclude<NetCloakStatus, 'open'>;
+  /** The masked floor's total — what a rival's Zwiad would have to beat. */
+  cloakTotal?: number;
+  /** Tries still left in the Turn, while `cloak` is „trying”. */
+  cloakTriesLeft?: number;
   here?: boolean;
   /**
    * Stage 70a, on the floor stood on only: a Virus may be left here. The server
@@ -1008,6 +1203,13 @@ export interface NetExitView {
   kind?: NetFloorKind;
   label?: string;
   branchName?: string;
+  /**
+   * The Programs waiting on that floor, by name (Black ICE, a Demon) — once the
+   * exit is known. RAW s. 200: Zwiad „ukazuje, czym ona jest” without the DVs,
+   * and the Ślizg example („czeka tam na niego kolejny Piekielny Ogar. Trzeba
+   * było wykonać Zwiad!”) is about exactly this. Their stats stay with the GM.
+   */
+  programs?: string[];
   /** An unbroken password underfoot holds every way down. */
   blocked?: boolean;
 }
@@ -1139,6 +1341,13 @@ export function netRunView(
     nodeDevices?: NetSightedDevice[];
     /** Tries this run's character spent on this scene (`netTriesOf`). */
     tries?: CpredNetTry[];
+    /** This run's character's Maskowanie on this scene (`netCloaksOf`). */
+    cloaks?: CpredNetCloak[];
+    /**
+     * A Program's name by its catalogue id, for the exits a Zwiad has shown.
+     * The server's lookup, like `devicesOf`; without it an exit carries none.
+     */
+    programNameOf?: (programId: string) => string | undefined;
   },
 ): NetRunView {
   const tries = options.tries ?? [];
@@ -1163,6 +1372,19 @@ export function netRunView(
   const copied = new Set(state.copied);
   const holds = new Map(state.controlled.map((hold) => [hold.floorId, hold.dv]));
   const round = options.round ?? null;
+  const cloaks = new Map((options.cloaks ?? []).map((entry) => [entry.floorId, entry]));
+  const cloakMarks = (floorId: string) => {
+    const entry = cloaks.get(floorId);
+    const status = netCloakStatusOf(entry, round, options.netActionsMax);
+    if (!entry || status === 'open') return {};
+    return {
+      cloak: status,
+      ...(status === 'masked' && entry.total !== undefined ? { cloakTotal: entry.total } : {}),
+      ...(status === 'trying'
+        ? { cloakTriesLeft: Math.max(1, options.netActionsMax) - entry.attempts }
+        : {}),
+    };
+  };
   const usedNodes = new Set(
     round === null ? [] : state.nodeUse.filter((use) => use.round === round).map((u) => u.floorId),
   );
@@ -1177,6 +1399,7 @@ export function netRunView(
     ...(holds.has(floor.id) ? { controlledDv: holds.get(floor.id)! } : {}),
     ...(usedNodes.has(floor.id) ? { nodeUsed: true } : {}),
     ...(failed.has(floor.id) ? { hackFailed: true } : {}),
+    ...cloakMarks(floor.id),
   });
   // Stage 26d: the devices of a node are its payout, so they travel once the
   // Check has been passed — and always to the GM, who authored them.
@@ -1230,6 +1453,12 @@ export function netRunView(
         : 'unknown';
     const known = options.gm || knowledge !== 'unknown';
     const sideDoor = to.branchId !== state.position.branchId;
+    const programs = known
+      ? (floor.programIds ?? []).flatMap((id) => {
+          const name = options.programNameOf?.(id);
+          return name ? [name] : [];
+        })
+      : [];
     return [
       {
         to,
@@ -1238,6 +1467,7 @@ export function netRunView(
         ...(known ? { kind: floor.kind } : {}),
         ...(known && floor.label ? { label: floor.label } : {}),
         ...(known && sideDoor && branch.name ? { branchName: branch.name } : {}),
+        ...(programs.length > 0 ? { programs } : {}),
         ...(blocked ? { blocked: true } : {}),
       },
     ];
@@ -1298,7 +1528,14 @@ export function netRunView(
     viruses: options.runtime?.viruses ?? [],
     combat: options.combat,
     demons: options.demons ?? [],
-    spentAbilities,
+    // Maskowanie closed on this floor (masked or failed) greys out like a spent try.
+    spentAbilities:
+      hereFloor &&
+      ['masked', 'failed'].includes(
+        netCloakStatusOf(cloaks.get(hereFloor.id), round, options.netActionsMax),
+      )
+        ? [...spentAbilities, 'cloak']
+        : spentAbilities,
     spentTries: tries.length,
     ...(options.gm ? { defensePaused: options.runtime?.defensePaused === true } : {}),
   };
@@ -1351,6 +1588,8 @@ export type NetRunProblem =
   | 'NET_WRONG_FLOOR'
   | 'NET_HACK_FAILED'
   | 'NET_TRY_SPENT'
+  | 'NET_CLOAK_DONE'
+  | 'NET_CLOAK_FAILED'
   | 'NET_NOT_BOTTOM'
   | 'NET_NO_ACTIONS'
   | 'NET_ABILITY_UNKNOWN'
@@ -1373,6 +1612,9 @@ export const NET_RUN_PROBLEM_MESSAGES: Record<NetRunProblem, string> = {
     'Ta postać już raz poległa na tym piętrze na tej scenie — drugiej próby nie ma (MG może ją oddać).',
   NET_TRY_SPENT:
     'Ta postać już raz użyła tu tej zdolności na tej scenie — drugiej próby nie ma (MG może ją oddać).',
+  NET_CLOAK_DONE: 'Ślady na tym piętrze są już zatarte.',
+  NET_CLOAK_FAILED:
+    'Maskowanie na tym piętrze przepadło — próby mieszczą się w jednej Turze (MG może je oddać).',
   NET_NOT_BOTTOM: 'Wirusa zostawia się wyłącznie na dnie Architektury.',
   NET_NO_ACTIONS: 'Nie masz już Akcji Sieciowych w tej turze.',
   NET_ABILITY_UNKNOWN: 'Nie znam takiej zdolności Interfejsu.',

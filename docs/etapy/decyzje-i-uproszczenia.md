@@ -9,6 +9,42 @@ czytany na starcie każdej sesji został listą zadań, a nie archiwum ustaleń.
 inaczej, niż mówi podręcznik, albo gdy dotykasz wymienionego tu kodu. Jeśli któraś z tych decyzji
 przestanie się bronić, przenieś ją stąd do `POMYSLY.md` jako zadanie — nie odwrotnie.
 
+## Maskowanie piętro po piętrze, próby w jednej Turze (14.11.2026, decyzje MG)
+
+Zastępuje „Maskowanie — raz na Architekturę” z 02.11 (sekcja o jednej próbie niżej).
+
+- **Każde piętro maskuje się osobno.** Nowe piętro to nowa szansa, zamaskowane zostaje
+  zamaskowane (także po odłączeniu — rekord w runtime Architektury, klucz postać + scena + piętro).
+- **Test:** spór z najczujniejszym żywym Programem tego piętra — Czarny LOD Percepcją + 1k10,
+  Demon Interfejsem + 1k10 (podręcznik: „Demony nie mają Percepcji”, s. 212; Interfejsem Demon się
+  broni). Netrunner rzuca Interfejs + Dopalacze (Gumka) + 1k10 i musi **przebić** (remis = ślady
+  zostają). Piętro bez Programu: **łatwe PT** (MG: „test niech również będzie, tyle że łatwy”) —
+  szczebel „Podstawowy” z s. 210 z danych prywatnych, bez nich 6 (`NET_CLOAK_EASY_DV`).
+  Wybór Demona i Interfejsu jako jego „Percepcji” to rozstrzygnięcie sesji — do słowa MG.
+- **Próby mieszczą się w jednej Turze.** W walce netrunner może wydać na Maskowanie wszystkie
+  Akcje Sieciowe tej Tury; pierwszy sukces zamyka piętro jako zamaskowane. Ostatnia Akcja bez
+  sukcesu, koniec Rundy albo zejście z piętra — „nieudane”, i żadna późniejsza Tura tego nie
+  otwiera. **Poza walką** pobyt na piętrze liczy się jak jedna Tura: tyle prób, ile Akcji
+  Sieciowych.
+- **Skutek: tylko znacznik dla MG** — „ślady zatarte · wynik” / „maskowanie nieudane” na planie
+  Architektury (gracz widzi to samo na karcie piętra). Obrona Sieci nie reaguje, a cudzy Zwiad
+  przeciw wynikowi Maskowania (s. 199) dalej nie istnieje w kodzie — to informacja dla MG
+  (decyzja MG z 14.11: „zostaw, to informacja dla MG”).
+- **„Oddaj próby” MG** zeruje nieudane i rozpoczęte Maskowania postaci na scenie; zamaskowanych
+  nie rusza (sukces, jak pamięć).
+- Kod: `netCloakState`, `netRecordCloak`, `netLeaveCloaks` (`shared/systems/cpred/netrun.ts`),
+  `netCloakWatcher`, `netCloakPlan` (`netcombat.ts`), `cloakFloor` (`server/realtime/netrun.ts`).
+
+## Zwiad pokazuje Programy na piętrze niżej (14.11.2026, decyzja MG)
+
+- Wyjście znane ze Zwiadu (albo z pobytu) niesie **nazwy Programów** czekających na tamtym
+  piętrze — „▼ Niżej: ☠ Strażnik — Piekielny Ogar”. MG: „zrób jak w podręczniku”; podręcznik mówi,
+  że Zwiad „ukazuje, czym ona jest, ale nie podaje Poziomów Trudności” (s. 200), a przykład Ślizgu
+  kończy się „czeka tam na niego kolejny Piekielny Ogar. Trzeba było wykonać Zwiad!”. Statystyki
+  Programów i PT zostają u MG. Kod: `NetExitView.programs`, `programNameOf` w `netRunView`.
+- **Zwiad nie daje dostępu ani kontroli** (sprawdzone 14.11 na prośbę MG): zapisuje tylko
+  `scouted`; urządzenia, kamery i figury idą wyłącznie z `controlled`, które pisze udana Kontrola.
+
 ## Wyłączone urządzenie: MG przełącza je z mapy, a da się je przeszukać (etap 70f, 14.11.2026)
 
 - **„⏻ Włącz / Wyłącz w Sieci” w menu MG figury urządzenia** — bez runu netrunnera i bez Akcji
@@ -141,7 +177,8 @@ Rozstrzygnięcia bez pytań z projektu etapu (nr 3, 5 i 6) i drobniejsze z sesji
 - **Zwiad odsłania wyłącznie piętra tuż pod netrunnerem** — kolejne piętro pnia i szczyt każdej
   odnogi odchodzącej od tego miejsca — zamiast RAW „tyle pięter, ile wyniósł Test” (s. 200).
   Przy wynikach 12+ RAW odsłaniało cały szyb, a Zwiad ma odpowiadać na jedno pytanie: co czeka
-  piętro niżej i czy tam wchodzić. PT dalej nie przychodzi (rodzaj, etykieta, programy tak).
+  piętro niżej i czy tam wchodzić. PT dalej nie przychodzi (rodzaj, etykieta, programy tak —
+  nazwy Programów dopiero od 14.11, wcześniej wpis to obiecywał, a kod ich nie wysyłał).
   Z RAW zostaje blokada hasłem: stojąc na **niezłamanym** haśle, Test musi dorównać jego PT,
   żeby zobaczyć cokolwiek pod nim. Kod: `netScoutReveal` (`shared/systems/cpred/netrun.ts`).
   Zastępuje punkt (2) „Zwiad liczy piętra wszerz” z etapu 26b niżej.
@@ -434,7 +471,8 @@ Rozstrzygnięcia bez pytań z projektu etapu (nr 3, 5 i 6) i drobniejsze z sesji
   „netrunner na danej scenie powinien móc tylko raz hackować dany element”, potem „zwiad,
   maskowanie, wirus też”. Backdoor, Ajdi, Kontrola i Wirus — raz na piętro, próbę zużywa
   porażka; Zwiad — raz z piętra, Maskowanie — raz na Architekturę, bo wynik jest odpowiedzią
-  i każdy rzut zużywa próbę. Skaner, Ślizg i Paf bez limitu (świat fizyczny, walka w Sieci).
+  i każdy rzut zużywa próbę (**Maskowanie zmienione 14.11** — piętro po piętrze, próby w jednej
+  Turze, sekcja na górze pliku). Skaner, Ślizg i Paf bez limitu (świat fizyczny, walka w Sieci).
   Druga połowa: **udane próby są pamiętane** — „powinny być zapamiętywane, aby przy ponownym
   połączeniu nie trzeba było ich na danej scenie powtarzać dla danej postaci”. Złamane hasła,
   rozpoznane i skopiowane Pliki, piętra ze Zwiadu i przejęte węzły wracają po ponownym

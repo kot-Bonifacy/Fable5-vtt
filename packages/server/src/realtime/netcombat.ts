@@ -49,6 +49,7 @@ import {
   rollFormula,
   netSamePosition,
   netFloorAt,
+  netLeaveCloaks,
   tokenTableName,
 } from '@vtt/shared';
 import type { Scene, Token } from '../generated/prisma/client.js';
@@ -71,6 +72,7 @@ import {
   netActionsForRun,
   readFullRun,
   saveRunState,
+  updateRuntime,
 } from './netrun-io.js';
 import { applyIceEffect, emergencyJackOut, type FullRunState } from './netice.js';
 import { answerNetDefense } from './net-defense.js';
@@ -742,6 +744,13 @@ export const netSlideEvent = defineEvent<NetRunSlidePayload, NetRunAbilityResult
     }
 
     await saveRunState(deps.ctx.prisma, row.id, next);
+    if (exchange.won) {
+      // Maskowanie (14.11): the floor fled from loses its Turn of tries.
+      const landed = netFloorAt(architecture, target)?.id ?? null;
+      await updateRuntime(deps.ctx.prisma, row.architectureId, (runtime) =>
+        netLeaveCloaks(runtime, { characterId: row.characterId, sceneId: scene.id }, landed),
+      );
+    }
     const message = await postExchange(deps, {
       campaignId,
       user,

@@ -2,6 +2,7 @@ import type {
   ChatMessageView,
   CpredNetPosition,
   CpredNetRunState,
+  CpredNetRuntime,
   NetAbilityId,
   NetAccessPointClearPayload,
   NetAccessPointIdPayload,
@@ -49,6 +50,14 @@ import {
   netTrySpent,
   netTrySpentBy,
   netRecordTry,
+  netCloakState,
+  netRecordCloak,
+  netLeaveCloaks,
+  netCloakWatcher,
+  netCloakPlan,
+  netDifficultyDv,
+  netrunningDataOf,
+  NET_CLOAK_EASY_DV,
   netClearTries,
   netRestoreRun,
   readNetRunState,
@@ -92,7 +101,7 @@ import {
   toAccessPointView,
 } from './netrun-io.js';
 import { dropRunFromQueue, emergencyJackOut, type FullRunState } from './netice.js';
-import { roundOfScene, spawnIceOnFloors } from './netcombat.js';
+import { postExchange, rollExchange, roundOfScene, spawnIceOnFloors } from './netcombat.js';
 import { netrunnerControlDv, releaseDemonHold, spawnDemons } from './netdemons.js';
 import { answerNetDefense } from './net-defense.js';
 
@@ -500,6 +509,7 @@ export const netRunMoveEvent = defineEvent<NetRunMovePayload, NetRunPayload>({
     next = await spawnIceOnFloors(deps, campaignId, architecture, next, floorIds);
     next = { ...next, ...rememberIce(next, architecture, floorIds) };
     await saveRunState(deps.ctx.prisma, row.id, next);
+    await leaveCloaks(deps, row, scene.id, floorIds.at(-1) ?? null);
     await emitRuns(deps, campaignId);
     const moved = await requireMyRun(deps, campaignId, row.tokenId, user);
     const answered = await answerNetDefense(deps, {
@@ -605,6 +615,20 @@ export const netRunAbilityEvent = defineEvent<NetRunAbilityPayload, NetRunAbilit
 
     const rank = readInterfaceRank(deps, character);
     const { actions } = await netActionsForRun(deps.ctx.prisma, deps.ctx.cpred, row.characterId);
+    // Zasada domowa MG z 14.11: Maskowanie piętro po piętrze, próby w jednej
+    // Turze. Odmowa przed Akcją Sieciową, jak przy zużytej próbie.
+    const round = await roundOfScene(deps, scene.id);
+    if (ability.id === 'cloak' && floor) {
+      const status = netCloakState(
+        readNetRuntime(row.architecture.runtime),
+        hacker,
+        floor.id,
+        round,
+        actions,
+      );
+      if (status === 'masked') throw new RealtimeError('NET_CLOAK_DONE');
+      if (status === 'failed') throw new RealtimeError('NET_CLOAK_FAILED');
+    }
     await requireTurnSpend(
       deps,
       campaignId,
@@ -633,6 +657,23 @@ export const netRunAbilityEvent = defineEvent<NetRunAbilityPayload, NetRunAbilit
         );
         return { messageId: message.id, total: 0, success: false, summary: line };
       }
+    }
+
+    if (ability.id === 'cloak' && floor) {
+      return cloakFloor(deps, {
+        campaignId,
+        user,
+        row,
+        state,
+        floorId: floor.id,
+        hacker,
+        round,
+        maxTries: actions,
+        character,
+        actorName: tokenTableName(token, character.name),
+        rank,
+        ...(payload?.gesture ? { gesture: payload.gesture } : {}),
+      });
     }
 
     // Stage 26d: a node somebody else already holds is taken off *them*, and
@@ -872,17 +913,6 @@ async function applyAbility(
     return { summary, detail: summary };
   }
 
-  if (abilityId === 'cloak') {
-    const runtime = readNetRuntime(context.run.architecture.runtime);
-    await saveRuntime(deps.ctx.prisma, context.run.architectureId, {
-      ...runtime,
-      maskDv: total,
-      maskedBy: context.author,
-    });
-    const summary = `Ślady zatarte — cudzy Zwiad musi przebić ${total}.`;
-    return { summary, detail: summary };
-  }
-
   if (abilityId === 'backdoor') {
     if (!success || !floor) {
       return {
@@ -1024,6 +1054,130 @@ async function advanceVirus(
   await saveRunState(deps.ctx.prisma, runId, { ...state, virus: advanced });
   state.virus = advanced;
   return null;
+}
+
+// ───────────────────────────────── Maskowanie ─────────────────────────────────
+
+/**
+ * One try of Maskowanie on the floor stood on (zasada domowa MG z 14.11).
+ *
+ * Against the sharpest Program watching the floor it is a contest
+ * (`netCloakWatcher`, `netCloakPlan`); on a floor nothing watches it is an easy
+ * DV. The first success masks the floor; the try that spends the Turn's last
+ * Net Action without one closes it as failed (`netRecordCloak`). What it
+ * changes is a mark on the GM's plan — no defence reacts to it.
+ */
+async function cloakFloor(
+  deps: RealtimeDeps,
+  input: {
+    campaignId: string;
+    user: SessionUser;
+    row: Awaited<ReturnType<typeof requireRun>>['row'];
+    state: FullRunState;
+    floorId: string;
+    hacker: { characterId: string; sceneId: string };
+    round: number | null;
+    maxTries: number;
+    character: Character;
+    actorName: string;
+    rank: number;
+    gesture?: RollGesture;
+  },
+): Promise<NetRunAbilityResult> {
+  const { campaignId, user, row, state, floorId } = input;
+  const watcher = netCloakWatcher(floorId, state.ice, state.demons);
+  const bonuses = netAbilityBonuses(state, 'cloak');
+
+  let roll: RollResult;
+  let success: boolean;
+  let total: number;
+  if (watcher) {
+    const exchange = rollExchange(netCloakPlan({ interfaceRank: input.rank, bonuses, watcher }), {
+      ...(input.gesture ? { gesture: input.gesture } : {}),
+      attackerIsHuman: true,
+      detail: `zacieranie śladów pod okiem: ${watcher.name}`,
+      actor: input.actorName,
+    });
+    roll = exchange.roll;
+    success = exchange.won;
+    total = exchange.attackTotal;
+  } else {
+    const dv = netDifficultyDv('basic', netrunningDataOf(deps.ctx.cpred)) || NET_CLOAK_EASY_DV;
+    roll = performInterfaceRoll(
+      deps,
+      input.character,
+      input.actorName,
+      input.rank,
+      'Maskowanie',
+      dv,
+      input.gesture,
+      bonuses,
+    );
+    success = roll.total > dv;
+    total = roll.total;
+  }
+
+  let runtime: CpredNetRuntime | null = null;
+  await updateRuntime(deps.ctx.prisma, row.architectureId, (current) => {
+    runtime = netRecordCloak(current, input.hacker, {
+      floorId,
+      round: input.round,
+      maxTries: input.maxTries,
+      success,
+      total,
+    });
+    return runtime;
+  });
+  const record = (runtime as CpredNetRuntime | null)?.cloaks?.find(
+    (entry) =>
+      entry.floorId === floorId &&
+      entry.characterId === input.hacker.characterId &&
+      entry.sceneId === input.hacker.sceneId,
+  );
+  const left = Math.max(1, input.maxTries) - (record?.attempts ?? 0);
+  const summary = success
+    ? 'Ślady na tym piętrze zatarte.'
+    : record?.outcome === 'failed'
+      ? 'Maskowanie się nie udało — na tym piętrze ślady zostają.'
+      : `Maskowanie się nie udało — w tej Turze ${left === 1 ? 'została jeszcze 1 próba' : `zostały jeszcze próby: ${left}`}.`;
+
+  if (!watcher) {
+    roll.outcome = {
+      success,
+      label: success ? 'Maskowanie — udane' : 'Maskowanie — nieudane',
+      detail: summary,
+    };
+  }
+  const message = await postExchange(deps, {
+    campaignId,
+    user,
+    sceneId: input.hacker.sceneId,
+    roll,
+    runnerOwnerId: runnerOwnerOf(row),
+  });
+  await logNetLine(
+    deps,
+    campaignId,
+    user,
+    input.actorName,
+    'Maskowanie',
+    success ? 'udane' : 'nieudane',
+  );
+  await emitRuns(deps, campaignId);
+  return { messageId: message.id, total, success, summary };
+}
+
+/** A move off a floor ends that floor's Turn of Maskowanie (`netLeaveCloaks`). */
+async function leaveCloaks(
+  deps: RealtimeDeps,
+  row: { characterId: string; architectureId: string },
+  sceneId: string,
+  stayingOn: string | null,
+): Promise<void> {
+  const who = { characterId: row.characterId, sceneId };
+  await updateRuntime(deps.ctx.prisma, row.architectureId, (runtime) =>
+    netLeaveCloaks(runtime, who, stayingOn),
+  );
 }
 
 /**

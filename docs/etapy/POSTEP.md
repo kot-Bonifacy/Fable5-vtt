@@ -47,6 +47,10 @@ w Kevlarze, notatki MG o sterowaniu z mapy; wyłączone urządzenie da się prze
 w przeglądarce — znaleziska w `zaleglosci.md` (14.11). Rozstrzygnięcia i odstępstwa w pliku
 etapu i w `decyzje-i-uproszczenia.md`; umowy i pułapki na górze `siec` (wzorzec — `mapa`).
 
+**Zwiad i Maskowanie (decyzje MG z 14.11) — czekają na wdrożenie (bez migracji).** Zwiad
+podaje nazwy Programów za wyjściem, Maskowanie liczy się piętro po piętrze z próbami w jednej
+Turze i zostawia znacznik na planie MG. Do słowa MG: Demon porównany Interfejsem.
+
 **Zaległości 14.11 (dwie sesje „wykonaj kilka zaległości”) — czekają na wdrożenie (bez
 migracji).** Belka przejętego urządzenia bez czerwonego „ODMOWA” po strzale, okienko strefy mówi
 o obszarze straży, łup z urządzenia „W urządzeniu”, czytelne przyciski karty i sekcja „Pojazdy”,
@@ -804,7 +808,7 @@ a nie do tego pliku.
 | `postac`    | kreator, PD i awanse, koszyk i cofanie awansów, Role i Zdolności, cyborgizacje, chrom zmieniający liczby, ekonomia, Test montażu gracza, pojazdy i Tabor | 58   | 3       |
 | `ekwipunek` | wiersze wyposażenia, przekazanie, łup (także ciała graczy), handel, sklepy, asortyment handlarza z kompendium, zasięg, amunicja bez dna, egzoszkielet, latarka z ekwipunku, narkotyki i fiolki, siatka okna „Wymiana”, zgoda z góry, odświeżanie po naklejkach, znaczek „w użyciu”, zakup auta z modelu, warsztat (ulepszenia i naprawa auta), auto bokiem i „w garażu”, grafika auta to model i skala miniatur, postać na karcie przekazania, zasięg ręki do figury spoza siatki | 50   | 3       |
 | `czas`      | zegar świata, kalendarz, `statEffects`, leczenie po dobie, dawki i uzależnienia (`chems`) | 19   | 2       |
-| `siec`      | Programy, LOD, demony, piętra architektury, dek jako towar, strefy bronione, kamery (także w ciemności), rozbrajanie, Sieć ze sceny, jedna próba i pamięć sukcesów, strzał z urządzenia, strefa tylko z marszu gracza, widok runu z rundą, strefa rozbrojona w Sieci, okno jednego piętra i ładunek bez szybu, pełny wiersz czatu zamiast skrótu, przejęta figura urządzenia (`operatorOf`, `netDeviceUse`), marsz drona, oczy urządzeń, figury wyciszone (`net-off`), pasek „Oczy i urządzenia”, Sieć ze sceny wg rodzaju, strefy i drzwi w „Instalacjach”, obszar straży od figury, okienko strefy, automat obrony Sieci i hamulec MG, „Włącz / Wyłącz w Sieci” MG i przeszukanie wyłączonego | 27   | 12      |
+| `siec`      | Programy, LOD, demony, piętra architektury, dek jako towar, strefy bronione, kamery (także w ciemności), rozbrajanie, Sieć ze sceny, jedna próba i pamięć sukcesów, strzał z urządzenia, strefa tylko z marszu gracza, widok runu z rundą, strefa rozbrojona w Sieci, okno jednego piętra i ładunek bez szybu, pełny wiersz czatu zamiast skrótu, przejęta figura urządzenia (`operatorOf`, `netDeviceUse`), marsz drona, oczy urządzeń, figury wyciszone (`net-off`), pasek „Oczy i urządzenia”, Sieć ze sceny wg rodzaju, strefy i drzwi w „Instalacjach”, obszar straży od figury, okienko strefy, automat obrony Sieci i hamulec MG, „Włącz / Wyłącz w Sieci” MG i przeszukanie wyłączonego, Maskowanie piętro po piętrze, Programy za wyjściem | 29   | 12      |
 | `boty`      | llama-server, RAG, reindeks, dziennik i baza wiedzy, brama AI  | 10   | 10      |
 | `dane`      | `parse-manual.py`, kompendium poza repo, tabele z podręcznika  | 9    | 12      |
 | `kopie`     | `snapshot`, `archive`, paczki ZIP, wczytanie kampanii, „czeka na gracza”, kopie kampanii i cofnięcie, sklep i bot w paczce, zgłoszenie karty gracza, pojazdy w paczce, auta na scenie pościgu, przeszkody poza paczką | 22   | 6       |
@@ -815,6 +819,33 @@ a nie do tego pliku.
 ## Notatki z dwóch ostatnich sesji
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
+
+### Sesja 14.11 (czwarta) — Zwiad tylko informuje i podaje Programy, Maskowanie piętro po piętrze
+
+**Sprawdzone na prośbę MG: Zwiad nie daje dostępu ani kontroli.** Zapisuje wyłącznie `scouted`
+(rodzaj i nazwa pięter tuż pod stopami, bez PT). Urządzenia, kamery i figury idą tylko
+z `controlled`, które pisze udana Kontrola.
+
+**Zrobione (bez migracji, czeka na wdrożenie)** — dwie decyzje MG z pytań w tej sesji:
+
+- **Zwiad podaje nazwy Programów za wyjściem** („▼ Niżej: ☠ Strażnik — Piekielny Ogar”), bo tak
+  czyta podręcznik (s. 200 i przykład Ślizgu). Wpis decyzji z 10.11 to obiecywał, a kod nie
+  wysyłał. `NetExitView.programs`, nazwy z kompendium podaje serwer.
+- **Maskowanie piętro po piętrze, próby w jednej Turze** (zamiast raz na Architekturę). Spór
+  z najczujniejszym żywym Programem piętra (LOD — PER, Demon — Interfejs), bez Programu łatwe PT
+  („Podstawowy” z danych albo 6). W walce wszystkie Akcje Sieciowe jednej Tury; ostatnia bez
+  sukcesu, koniec Rundy albo zejście z piętra — „nieudane” na stałe. Poza walką pobyt na piętrze =
+  jedna Tura. Skutek: tylko znacznik dla MG (plan Architektury) i chip na karcie gracza. Cudzy
+  Zwiad przeciw wynikowi dalej nie istnieje — „informacja dla MG”. **Do słowa MG:** Demon
+  porównany Interfejsem (podręcznik: Demony nie mają Percepcji).
+
+Szczegóły w `decyzje-i-uproszczenia.md` (dwie sekcje na górze), umowy na górze `siec`.
+
+**Oglądane w Firefoksie** (E2E `T70a`, nowy krok 4b i rozszerzony krok 8 ze zrzutami): chip
+„ślady zatarte” i wyszarzone Maskowanie u gracza, „ślady zatarte · 13” na planie MG. **Nie
+oglądane w przeglądarce:** nazwy Programów na wyjściu (E2E nie ma prywatnego kompendium; pokrywa
+je test jednostkowy) i Maskowanie w walce przeciw LOD-owi. Testy: shared 3067 (+11), serwer 1799, klient 508 — zielone;
+E2E `T70a` 10/10; `tsc` wszystkich pakietów, ESLint i Prettier czyste.
 
 ### Sesja 14.11 (trzecia) — ślad Sieci: wyraźne piętro „tu jesteś”, przejęte na zielono
 
@@ -832,28 +863,3 @@ PT” na karcie piętra oraz w szybie MG (`net-run-floor-flag--held`) są zielon
 MCP by nie wstał): sam `NetTrail` wyrenderowany na żywym Vite z danymi jak na zrzucie MG,
 klatki minimum i szczytu pulsu. Pełnego runu na `dev.db` nie odtwarzałem. `tsc` klienta, ESLint
 i Prettier czyste; testów nie dotyczyło (sam CSS i klasa chipu).
-
-### Sesja 14.11 (druga) — zaległości: kadr obok okna SIEĆ, karta wykrycia, alarm skradania, marsz w ciemność, pełna karta NPC-a, koniec walki
-
-**Zrobione (bez migracji, czeka na wdrożenie)** — sześć zaległości z `zaleglosci.md`, opisy
-naprawy w `archiwum/zamkniete-zaleglosci.md` („Zamknięte 2026-11-14, druga sesja”):
-
-- **70f pkt 1:** kadr urządzenia przy brzegu sceny wyjeżdża spod okna SIEĆ — `clearOfRunWindow`
-  zwraca zapas po stronie okna, `MapRenderer.setSideInsets` poszerza o niego granicę kamery,
-  zamknięcie okna go zdejmuje. Test `map-frame.test.ts`.
-- **70f pkt 4:** karta „Wykrycie — Kruk: ucieczka przed darmowym atakiem” (`netDetectionPlan`).
-- **66e pkt 11:** zauważenie skradającego się przez Neutralnego (kamera) — bursztynowy pasek MG
-  z dzwonkiem do „Rozumiem” zamiast znikającej informacji.
-- **66e pkt 12:** marsz ucięty, bo dalej drogi nie widać, kończy się zdaniem
-  `WALK_BLIND_STOP_NOTE` (`MarchState.blind`).
-- **66e pkt 13:** „Edycja tokenu” NPC-a z pełną kartą (`cpredStatistQuickFits`) — zdanie
-  i „📄 Otwórz kartę” zamiast pól statysty; PW z paska zapisują się jak dotąd.
-- **66e pkt 14:** „Przeciwnicy pokonani” ustępuje, póki wisi pytanie „Koniec walki”.
-
-**Oglądane w Firefoksie** (Playwright MCP, `dev.db`, MG): pkt 13 — „Edycja tokenu” Haka ze
-„Zastawu” pokazuje zdanie i „Otwórz kartę”, przycisk otwiera kartę i zamyka okno, konsola bez
-błędów. **Nie oglądane w przeglądarce:** pkt 1, 4, 11, 12, 14 (wymagają walki, skradania albo
-runu — na `dev.db` nie odtwarzałem, żeby nie ruszać sceny MG). Testy: shared 3056 (+3), klient
-508 (+3), serwer 1799 — zielone; `tsc` wszystkich pakietów, ESLint i Prettier czyste; E2E `47-siec` 39/39.
-Umowy na górze `siec` i `statysta`. Pkt 10 (kubek zasłania akcje) — do sprawdzenia, czy jeszcze
-aktualny po lewej belce z etapu 69.

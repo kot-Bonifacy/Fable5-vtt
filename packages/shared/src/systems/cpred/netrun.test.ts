@@ -22,6 +22,10 @@ import {
   readNetRunState,
   readNetRuntime,
   netClearTries,
+  netCloakState,
+  netCloaksOf,
+  netLeaveCloaks,
+  netRecordCloak,
   netForgetHold,
   netRememberRun,
   netRestoreRun,
@@ -302,6 +306,36 @@ describe('widok filtrowany — jedno piętro (etap 70a)', () => {
       },
     ]);
     expect(JSON.stringify(view.exits)).not.toContain('"dv"');
+  });
+
+  it('names the Programs behind a scouted exit, never behind an unknown one', () => {
+    // RAW s. 200, the Ślizg example: „czeka tam na niego kolejny Piekielny Ogar.
+    // Trzeba było wykonać Zwiad!” — Zwiad says *which* Black ICE waits below.
+    const names = { programNameOf: (id: string) => (id === 'program.osa' ? 'Osa' : undefined) };
+    const at = { branchId: 'trunk', floor: 3 };
+    const unknown = netRunView(ARCHITECTURE, runAt(at, { entered: ['f0', 'f1', 'f2', 'f3'] }), {
+      ...player,
+      ...names,
+    });
+    expect(unknown.exits.down).toEqual([
+      { to: { branchId: 'trunk', floor: 4 }, knowledge: 'unknown' },
+    ]);
+    const scouted = netRunView(
+      ARCHITECTURE,
+      runAt(at, { entered: ['f0', 'f1', 'f2', 'f3'], scouted: ['f4'] }),
+      { ...player, ...names },
+    );
+    expect(scouted.exits.down).toEqual([
+      {
+        to: { branchId: 'trunk', floor: 4 },
+        knowledge: 'scouted',
+        kind: 'ice',
+        label: 'Strażnik',
+        programs: ['Osa'],
+      },
+    ]);
+    // Stats and catalogue ids stay on the server.
+    expect(JSON.stringify(scouted.exits)).not.toContain('program.osa');
   });
 
   it('marks every way down blocked while the password underfoot holds', () => {
@@ -746,6 +780,97 @@ describe('odczyt stanu z bazy', () => {
   });
 });
 
+describe('Maskowanie piętro po piętrze, próby w jednej Turze (zasada domowa MG z 14.11)', () => {
+  const kolec = { characterId: 'c-kolec', sceneId: 's-magazyn' };
+  const empty = () => readNetRuntime('{}');
+  const tryOnce = (
+    runtime: ReturnType<typeof empty>,
+    floorId: string,
+    round: number | null,
+    success: boolean,
+    total = 12,
+  ) => netRecordCloak(runtime, kolec, { floorId, round, maxTries: 3, success, total });
+
+  it('masks a floor on the first success and keeps the total', () => {
+    let runtime = tryOnce(empty(), 'f1', 4, false);
+    expect(netCloakState(runtime, kolec, 'f1', 4, 3)).toBe('trying');
+    runtime = tryOnce(runtime, 'f1', 4, true, 15);
+    expect(netCloakState(runtime, kolec, 'f1', 4, 3)).toBe('masked');
+    expect(netCloaksOf(runtime, kolec)).toEqual([
+      { ...kolec, floorId: 'f1', attempts: 2, round: 4, outcome: 'masked', total: 15 },
+    ]);
+    // Every floor on its own: the next one is untouched.
+    expect(netCloakState(runtime, kolec, 'f2', 4, 3)).toBe('open');
+  });
+
+  it('fails a floor once the Turn’s Net Actions are gone', () => {
+    let runtime = tryOnce(empty(), 'f1', 2, false);
+    runtime = tryOnce(runtime, 'f1', 2, false);
+    expect(netCloakState(runtime, kolec, 'f1', 2, 3)).toBe('trying');
+    runtime = tryOnce(runtime, 'f1', 2, false);
+    expect(netCloakState(runtime, kolec, 'f1', 2, 3)).toBe('failed');
+    expect(netCloaksOf(runtime, kolec)[0]?.outcome).toBe('failed');
+  });
+
+  it('fails a half-tried floor when the Round moves on — no later Turn reopens it', () => {
+    const runtime = tryOnce(empty(), 'f1', 2, false);
+    expect(netCloakState(runtime, kolec, 'f1', 3, 3)).toBe('failed');
+    // Outside a fight (no round) the try belongs to the stay, not to a Round.
+    const calm = tryOnce(empty(), 'f1', null, false);
+    expect(netCloakState(calm, kolec, 'f1', null, 3)).toBe('trying');
+  });
+
+  it('fails a half-tried floor the netrunner walks off', () => {
+    let runtime = tryOnce(empty(), 'f1', null, false);
+    runtime = tryOnce(runtime, 'f2', null, true);
+    const left = netLeaveCloaks(runtime, kolec, 'f3');
+    expect(netCloakState(left, kolec, 'f1', null, 3)).toBe('failed');
+    expect(netCloakState(left, kolec, 'f2', null, 3)).toBe('masked');
+    // Staying put changes nothing — the same object comes back.
+    const stay = tryOnce(empty(), 'f1', null, false);
+    expect(netLeaveCloaks(stay, kolec, 'f1')).toBe(stay);
+    // Somebody else's tries are theirs.
+    const other = netLeaveCloaks(runtime, { ...kolec, characterId: 'c-inny' }, 'f3');
+    expect(netCloakState(other, kolec, 'f1', null, 3)).toBe('trying');
+  });
+
+  it('gives a failed floor back on „Oddaj próby” and keeps a masked one', () => {
+    let runtime = tryOnce(empty(), 'f1', null, true);
+    runtime = netLeaveCloaks(tryOnce(runtime, 'f2', null, false), kolec, 'f3');
+    const cleared = netClearTries(runtime, kolec);
+    expect(netCloakState(cleared, kolec, 'f1', null, 3)).toBe('masked');
+    expect(netCloakState(cleared, kolec, 'f2', null, 3)).toBe('open');
+  });
+
+  it('reads the records back and drops a broken one', () => {
+    const runtime = tryOnce(empty(), 'f1', 5, true, 14);
+    const read = readNetRuntime(
+      JSON.stringify({ ...runtime, cloaks: [...runtime.cloaks!, { floorId: 'f9' }] }),
+    );
+    expect(read.cloaks).toEqual(runtime.cloaks);
+  });
+
+  it('shows the mark on the floor and greys the button once the floor is closed', () => {
+    const player = { gm: false, netActionsMax: 3, combat: NO_FIGHT };
+    const at = runAt({ branchId: 'trunk', floor: 1 }, { entered: ['f0', 'f1'] });
+    const trying = netCloaksOf(tryOnce(empty(), 'f1', null, false), kolec);
+    const open = netRunView(ARCHITECTURE, at, { ...player, cloaks: trying });
+    expect(open.here?.cloak).toBe('trying');
+    expect(open.here?.cloakTriesLeft).toBe(2);
+    expect(open.spentAbilities).not.toContain('cloak');
+
+    const masked = netCloaksOf(tryOnce(empty(), 'f1', null, true, 17), kolec);
+    const done = netRunView(ARCHITECTURE, at, { ...player, cloaks: masked });
+    expect(done.here?.cloak).toBe('masked');
+    expect(done.here?.cloakTotal).toBe(17);
+    expect(done.spentAbilities).toContain('cloak');
+    // The GM's plan carries the same mark on that floor.
+    const plan = netRunView(ARCHITECTURE, at, { ...player, gm: true, cloaks: masked });
+    const floor = plan.shaft?.flatMap((branch) => branch.floors).find((f) => f.id === 'f1');
+    expect(floor?.cloak).toBe('masked');
+  });
+});
+
 describe('jedna próba na zdolność i pamięć sukcesów (zlecenia MG z 02.11)', () => {
   const kolec = { characterId: 'c-kolec', sceneId: 's-magazyn' };
   const empty = () => readNetRuntime('{}');
@@ -756,7 +881,8 @@ describe('jedna próba na zdolność i pamięć sukcesów (zlecenia MG z 02.11)'
     expect(netTrySpentBy('virus', false)).toBe(true);
     expect(netTrySpentBy('virus', true)).toBe(false);
     expect(netTrySpentBy('scout', true)).toBe(true);
-    expect(netTrySpentBy('cloak', true)).toBe(true);
+    // Maskowanie left the table on 14.11 — its rhythm is `netCloakState`.
+    expect(netTrySpentBy('cloak', true)).toBe(false);
     // No limit: the Scanner works in meatspace, Ślizg and Paf are a fight.
     expect(netTrySpentBy('scanner', false)).toBe(false);
     expect(netTrySpentBy('slide', false)).toBe(false);
@@ -771,10 +897,8 @@ describe('jedna próba na zdolność i pamięć sukcesów (zlecenia MG z 02.11)'
     expect(netTrySpent(runtime, { ...kolec, sceneId: 's-inna' }, 'backdoor', 'f1')).toBe(false);
   });
 
-  it('counts Maskowanie once per Architecture, Zwiad once per floor', () => {
-    let runtime = netRecordTry(empty(), kolec, 'cloak', 'f0');
-    expect(netTrySpent(runtime, kolec, 'cloak', 'f3')).toBe(true);
-    runtime = netRecordTry(runtime, kolec, 'scout', 'f0');
+  it('counts Zwiad once per floor', () => {
+    const runtime = netRecordTry(empty(), kolec, 'scout', 'f0');
     expect(netTrySpent(runtime, kolec, 'scout', 'f0')).toBe(true);
     expect(netTrySpent(runtime, kolec, 'scout', 'f3')).toBe(false);
   });

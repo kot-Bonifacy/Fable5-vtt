@@ -664,7 +664,7 @@ describe('run netrunnera na żywych gniazdach', () => {
     throw new Error('dziesięć Wirusów z PT 1 nie przeszło');
   });
 
-  it('gives Zwiad one roll per floor, Maskowanie one per Architecture, a failed Virus none', async () => {
+  it('gives Zwiad one roll per floor, Maskowanie one Turn per floor, a failed Virus none', async () => {
     const open = async (ability: string, extra: object = {}) =>
       emitAck<NetRunAbilityResult>(player, 'netrun:ability', { runId, ability, ...extra });
 
@@ -672,8 +672,22 @@ describe('run netrunnera na żywych gniazdach', () => {
     expect(errorOf(await open('scout'))).toBe('NET_TRY_SPENT');
     expect((await runOf(player))!.run.spentAbilities).toContain('scout');
 
-    data(await open('cloak'), 'netrun:ability');
-    expect(errorOf(await open('cloak'))).toBe('NET_TRY_SPENT');
+    // Zasada domowa MG z 14.11: outside a fight the stay on a floor is one
+    // Turn — as many tries as Net Actions, and the first success closes it.
+    let masked = false;
+    for (let attempt = 0; attempt < 10; attempt += 1) {
+      const result = data(await open('cloak'), 'netrun:ability');
+      if (result.success) {
+        masked = true;
+        break;
+      }
+      const here = (await runOf(player))!.run.here!;
+      if (here.cloak === 'failed') break;
+      expect(here.cloak).toBe('trying');
+    }
+    expect((await runOf(player))!.run.here?.cloak).toBe(masked ? 'masked' : 'failed');
+    expect(errorOf(await open('cloak'))).toBe(masked ? 'NET_CLOAK_DONE' : 'NET_CLOAK_FAILED');
+    expect((await runOf(player))!.run.spentAbilities).toContain('cloak');
 
     // PT 30 for a Virus no roll can beat: the failure spends the try, and the
     // refusal comes before a single step of the next one is written.
@@ -687,10 +701,12 @@ describe('run netrunnera na żywych gniazdach', () => {
     ).toBe('NET_TRY_SPENT');
 
     const before = (await runOf(gm))!;
-    expect(before.run.spentTries).toBe(3);
+    expect(before.run.spentTries).toBe(2);
+    expect(before.run.here?.cloak).toBe(masked ? 'masked' : 'failed');
     await emitAck(gm, 'netrun:hacks:reset', { runId });
     const after = (await runOf(player))!;
-    expect(after.run.spentAbilities).toEqual([]);
+    // A masked floor is a success and stays masked; a failed one is a try back.
+    expect(after.run.spentAbilities).toEqual(masked ? ['cloak'] : []);
     expect(after.run.spentTries).toBe(0);
   });
 
