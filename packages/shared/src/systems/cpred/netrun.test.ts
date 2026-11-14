@@ -22,6 +22,7 @@ import {
   readNetRunState,
   readNetRuntime,
   netClearTries,
+  netForgetScene,
   netCloakState,
   netCloaksOf,
   netLeaveCloaks,
@@ -950,5 +951,51 @@ describe('jedna próba na zdolność i pamięć sukcesów (zlecenia MG z 02.11)'
     expect(netRestoreRun(fresh, runtime, kolec, (id) => id === 'f3').state.controlled).toEqual([]);
     const forgotten = netForgetHold(runtime, kolec, 'f3');
     expect(netRestoreRun(fresh, forgotten, kolec).state.controlled).toEqual([]);
+  });
+});
+
+describe('„Zapomnij” sceny czyści też Sieć (zlecenie MG z 14.11)', () => {
+  const kolec = { characterId: 'c-kolec', sceneId: 's-magazyn' };
+  const there = { ...kolec, sceneId: 's-inna' };
+  const empty = () => readNetRuntime('{}');
+  const run = {
+    ...freshNetRun({ branchId: 'trunk', floor: 1 }, 'f0'),
+    broken: ['f1'],
+  };
+
+  it('drops memory, tries and Maskowanie of this scene only', () => {
+    let runtime = netRememberRun(empty(), kolec, run);
+    runtime = netRememberRun(runtime, there, run);
+    runtime = netRecordTry(runtime, kolec, 'backdoor', 'f1');
+    runtime = netRecordTry(runtime, there, 'backdoor', 'f1');
+    runtime = netRecordCloak(runtime, kolec, {
+      floorId: 'f1',
+      round: null,
+      maxTries: 3,
+      success: true,
+      total: 14,
+    });
+    runtime = {
+      ...runtime,
+      viruses: [{ id: 'v1', description: 'x', dv: 10, author: 'K', createdAt: '' }],
+    };
+
+    const { runtime: next, forgotten } = netForgetScene(runtime, 's-magazyn');
+    expect(forgotten).toBe(3);
+    const fresh = freshNetRun({ branchId: 'trunk', floor: 0 }, 'f0');
+    expect(netRestoreRun(fresh, next, kolec).state.broken).toEqual([]);
+    expect(netTrySpent(next, kolec, 'backdoor', 'f1')).toBe(false);
+    expect(netCloakState(next, kolec, 'f1', null, 3)).toBe('open');
+    // The other scene keeps its own, and the Architecture keeps its Viruses.
+    expect(netRestoreRun(fresh, next, there).state.broken).toEqual(['f1']);
+    expect(netTrySpent(next, there, 'backdoor', 'f1')).toBe(true);
+    expect(next.viruses).toHaveLength(1);
+  });
+
+  it('hands the same runtime back when there is nothing to forget', () => {
+    const runtime = netRememberRun(empty(), there, run);
+    const result = netForgetScene(runtime, 's-magazyn');
+    expect(result.forgotten).toBe(0);
+    expect(result.runtime).toBe(runtime);
   });
 });

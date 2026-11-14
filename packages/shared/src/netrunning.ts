@@ -144,6 +144,18 @@ export interface NetAccessPointClearPayload {
   sceneId: string;
 }
 
+/** „Zapomnij” sceny (zlecenie MG z 14.11) — Sieć zapomina, co na niej osiągnięto. */
+export interface NetForgetScenePayload {
+  sceneId: string;
+}
+
+export interface NetForgetSceneResult {
+  /** Entries dropped from the Architectures' memory: achievements, tries, Maskowanie. */
+  forgotten: number;
+  /** Netrunners jacked in on this scene right now — their open run is not rewound. */
+  liveRuns: number;
+}
+
 // ──────────────────────────────── run (etap 26b) ────────────────────────────────
 
 /**
@@ -200,7 +212,7 @@ export interface NetRunAbilityPayload {
   ability: NetAbilityId;
   /** Wirus only: what it is meant to do, and the two numbers the GM named. */
   virus?: { description: string; dv: number; actions: number };
-  gesture?: RollGesture;  /**
+  gesture?: RollGesture; /**
    * Szczęście dorzucone na kubku (zlecenie MG z 14.11: rzut Sieci czeka na
    * kubek). Serwer zdejmuje je z puli przed kośćmi, jak przy Teście z karty.
    */
@@ -255,7 +267,7 @@ export interface NetRunAttackPayload {
   /** Stage 26e: a Demon, which defends with an Interface Check instead of OBR. */
   demonId?: string;
   rowId?: string;
-  gesture?: RollGesture;  /**
+  gesture?: RollGesture; /**
    * Szczęście dorzucone na kubku (zlecenie MG z 14.11: rzut Sieci czeka na
    * kubek). Serwer zdejmuje je z puli przed kośćmi, jak przy Teście z karty.
    */
@@ -269,7 +281,7 @@ export interface NetRunSlidePayload {
   /** Only ever a refusal: a Demon has no PER to slip away from (stage 26e). */
   demonId?: string;
   to?: CpredNetPosition;
-  gesture?: RollGesture;  /**
+  gesture?: RollGesture; /**
    * Szczęście dorzucone na kubku (zlecenie MG z 14.11: rzut Sieci czeka na
    * kubek). Serwer zdejmuje je z puli przed kośćmi, jak przy Teście z karty.
    */

@@ -798,6 +798,43 @@ export function netClearTries(runtime: CpredNetRuntime, who: NetTryWho): CpredNe
   };
 }
 
+/**
+ * The scene's „Zapomnij” (zlecenie MG z 14.11): every character forgets what
+ * they achieved here, every try and every Maskowanie comes back. Only what is
+ * keyed by this scene goes — Viruses and devices are changes in the
+ * Architecture itself, and the same build wired on another scene keeps its
+ * own memory. `forgotten` counts the entries dropped, so the GM can be told
+ * whether there was anything to forget.
+ */
+export function netForgetScene(
+  runtime: CpredNetRuntime,
+  sceneId: string,
+): { runtime: CpredNetRuntime; forgotten: number } {
+  const elsewhere = <T extends { sceneId: string }>(list: T[] | undefined) =>
+    (list ?? []).filter((entry) => entry.sceneId !== sceneId);
+  const memories = elsewhere(runtime.memories);
+  const spentTries = elsewhere(runtime.spentTries);
+  const cloaks = elsewhere(runtime.cloaks);
+  const forgotten =
+    (runtime.memories?.length ?? 0) -
+    memories.length +
+    (runtime.spentTries?.length ?? 0) -
+    spentTries.length +
+    (runtime.cloaks?.length ?? 0) -
+    cloaks.length;
+  if (forgotten === 0) return { runtime, forgotten };
+  const { memories: _memories, spentTries: _spentTries, cloaks: _cloaks, ...without } = runtime;
+  return {
+    runtime: {
+      ...without,
+      ...(memories.length > 0 ? { memories } : {}),
+      ...(spentTries.length > 0 ? { spentTries } : {}),
+      ...(cloaks.length > 0 ? { cloaks } : {}),
+    },
+    forgotten,
+  };
+}
+
 // ───────────────────────────────── Maskowanie ─────────────────────────────────
 
 /**

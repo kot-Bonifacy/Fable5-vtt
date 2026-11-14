@@ -1,5 +1,32 @@
 # Dziennik sesji — archiwum
 
+### Sesja 14.11 (czwarta) — Zwiad tylko informuje i podaje Programy, Maskowanie piętro po piętrze
+
+**Sprawdzone na prośbę MG: Zwiad nie daje dostępu ani kontroli.** Zapisuje wyłącznie `scouted`
+(rodzaj i nazwa pięter tuż pod stopami, bez PT). Urządzenia, kamery i figury idą tylko
+z `controlled`, które pisze udana Kontrola.
+
+**Zrobione (bez migracji, czeka na wdrożenie)** — dwie decyzje MG z pytań w tej sesji:
+
+- **Zwiad podaje nazwy Programów za wyjściem** („▼ Niżej: ☠ Strażnik — Piekielny Ogar”), bo tak
+  czyta podręcznik (s. 200 i przykład Ślizgu). Wpis decyzji z 10.11 to obiecywał, a kod nie
+  wysyłał. `NetExitView.programs`, nazwy z kompendium podaje serwer.
+- **Maskowanie piętro po piętrze, próby w jednej Turze** (zamiast raz na Architekturę). Spór
+  z najczujniejszym żywym Programem piętra (LOD — PER, Demon — Interfejs), bez Programu łatwe PT
+  („Podstawowy” z danych albo 6). W walce wszystkie Akcje Sieciowe jednej Tury; ostatnia bez
+  sukcesu, koniec Rundy albo zejście z piętra — „nieudane” na stałe. Poza walką pobyt na piętrze =
+  jedna Tura. Skutek: tylko znacznik dla MG (plan Architektury) i chip na karcie gracza. Cudzy
+  Zwiad przeciw wynikowi dalej nie istnieje — „informacja dla MG”. **Do słowa MG:** Demon
+  porównany Interfejsem (podręcznik: Demony nie mają Percepcji).
+
+Szczegóły w `decyzje-i-uproszczenia.md` (dwie sekcje na górze), umowy na górze `siec`.
+
+**Oglądane w Firefoksie** (E2E `T70a`, nowy krok 4b i rozszerzony krok 8 ze zrzutami): chip
+„ślady zatarte” i wyszarzone Maskowanie u gracza, „ślady zatarte · 13” na planie MG. **Nie
+oglądane w przeglądarce:** nazwy Programów na wyjściu (E2E nie ma prywatnego kompendium; pokrywa
+je test jednostkowy) i Maskowanie w walce przeciw LOD-owi. Testy: shared 3067 (+11), serwer 1799, klient 508 — zielone;
+E2E `T70a` 10/10; `tsc` wszystkich pakietów, ESLint i Prettier czyste.
+
 ### Sesja 14.11 (trzecia) — ślad Sieci: wyraźne piętro „tu jesteś”, przejęte na zielono
 
 **Zrobione (bez migracji, czeka na wdrożenie)** — zlecenie MG ze zrzutem okna SIEĆ: w śladzie

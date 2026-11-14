@@ -5,6 +5,8 @@ import type {
   CpredNetRuntime,
   NetAbilityId,
   NetAccessPointClearPayload,
+  NetForgetScenePayload,
+  NetForgetSceneResult,
   NetAccessPointIdPayload,
   NetAccessPointPlacePayload,
   NetAccessPointUpdatePayload,
@@ -60,6 +62,7 @@ import {
   netrunningDataOf,
   NET_CLOAK_EASY_DV,
   netClearTries,
+  netForgetScene,
   netRestoreRun,
   readNetRunState,
   netForgetHold,
@@ -1346,5 +1349,41 @@ export const netHackResetEvent = defineEvent<{ runId: string }, void>({
       'oddane przez MG',
     );
     await emitRuns(deps, campaignId);
+  },
+});
+
+/**
+ * The Net half of the scene's „Zapomnij” (zlecenie MG z 14.11). The map half
+ * is `explore:forget`, which is core VTT and may not know what a netrunner is,
+ * so the client sends both.
+ *
+ * Every Architecture of the campaign, not only those wired here now: a socket
+ * re-wired to another build must not leave the old build's memory behind.
+ * A run still open on the scene is not rewound — its floors were uncovered in
+ * this very connection — so the GM is told how many there are.
+ */
+export const netForgetSceneEvent = defineEvent<NetForgetScenePayload, NetForgetSceneResult>({
+  name: 'net:forget-scene',
+  role: ROLE_GM,
+  handler: async ({ deps, socket, payload }) => {
+    const campaignId = requireCampaignId(socket.data);
+    const scene = await requireCampaignScene(deps.ctx.prisma, campaignId, payload?.sceneId);
+    const rows = await deps.ctx.prisma.netArchitecture.findMany({
+      where: { campaignId },
+      select: { id: true },
+    });
+    let forgotten = 0;
+    for (const row of rows) {
+      await updateRuntime(deps.ctx.prisma, row.id, (runtime) => {
+        const result = netForgetScene(runtime, scene.id);
+        forgotten += result.forgotten;
+        return result.runtime;
+      });
+    }
+    const liveRuns = await deps.ctx.prisma.netRun.count({
+      where: { campaignId, token: { sceneId: scene.id } },
+    });
+    if (forgotten > 0 && liveRuns > 0) await emitRuns(deps, campaignId);
+    return { forgotten, liveRuns };
   },
 });

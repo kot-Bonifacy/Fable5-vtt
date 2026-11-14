@@ -20,6 +20,7 @@ import { apiUpload } from '../api.js';
 import { fileRejectionText, uploadErrorText } from '../uploads.js';
 import {
   forgetExploration,
+  forgetSceneNet,
   setSceneExplore,
   setSceneLighting,
   setScenePartySight,
@@ -27,6 +28,7 @@ import {
   updateScene,
 } from '../socket.js';
 import { useSceneStore } from '../stores/sceneStore.js';
+import { notifyInfo } from '../notices.js';
 import { useWindowPlacement } from '../window-placement.js';
 import { WindowResizeGrip } from './WindowResizeGrip.js';
 import { Segmented } from './Segmented.js';
@@ -343,6 +345,7 @@ function SceneConfigBody() {
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [forgetting, setForgetting] = useState(false);
 
   // Pierwsze otwarcie: prawy brzeg mapy, pod paskiem narzędzi — obok panelu
   // „Sceny”, a nie na nim, i z widokiem na siatkę, którą się właśnie ustawia.
@@ -405,6 +408,36 @@ function SceneConfigBody() {
     }
   }
 
+  // „Zapomnij” (zlecenie MG z 14.11): mapa i Sieć naraz. Dwa zdarzenia, bo
+  // pamięć mapy to rdzeń, a Sieć to CP RED — serwer ich nie miesza.
+  async function forget() {
+    if (!scene) return;
+    setForgetting(true);
+    setError(null);
+    // Bez „Pola widzenia” okno nie pokazuje pamięci mapy, więc jej nie rusza —
+    // wróci nietknięta, gdy MG przełączy scenę z powrotem.
+    const withMap = scene.visibility === 'dynamic';
+    const [map, net] = await Promise.all([
+      withMap ? forgetExploration(scene.id) : Promise.resolve({ ok: true }),
+      forgetSceneNet(scene.id),
+    ]);
+    setForgetting(false);
+    if (!map.ok || !net.ok || !net.data) {
+      setError('Nie udało się wyczyścić pamięci sceny.');
+      return;
+    }
+    const { forgotten, liveRuns } = net.data;
+    const netPart =
+      forgotten > 0
+        ? 'Netrunnerzy zapomnieli, co osiągnęli tu w Sieci — wszystkie próby wracają.'
+        : 'W Sieci nie było tu nic do zapomnienia.';
+    const parts = withMap ? ['Drużyna zapomniała mapę tej sceny.', netPart] : [netPart];
+    if (liveRuns > 0) {
+      parts.push('Kto jest teraz w Sieci, zachowuje to, co odkrył w tym połączeniu.');
+    }
+    notifyInfo(parts.join(' '), { title: 'Zapomniano' });
+  }
+
   async function save() {
     if (!scene || !draft) {
       close();
@@ -422,6 +455,23 @@ function SceneConfigBody() {
       setError('Nie udało się zapisać sceny.');
     }
   }
+
+  const mapMemory = scene.visibility === 'dynamic';
+  const forgetButton = (
+    <button
+      type="button"
+      className="small-button small-button--danger"
+      title={
+        mapMemory
+          ? 'Drużyna zapomina wszystko, co zwiedziła na tej scenie, a netrunnerzy — co osiągnęli w jej Sieci.'
+          : 'Netrunnerzy zapominają, co osiągnęli w Sieci tej sceny; zużyte próby wracają.'
+      }
+      onClick={() => void forget()}
+      disabled={forgetting}
+    >
+      {forgetting ? 'Zapominam…' : 'Zapomnij'}
+    </button>
+  );
 
   const grid = scene.grid;
   const offsetMax = Math.max(1, Math.round(grid.sizePx) - 1);
@@ -880,23 +930,31 @@ function SceneConfigBody() {
                       />
                       <span>Pamięć eksploracji</span>
                     </label>
-                    <button
-                      type="button"
-                      className="small-button small-button--danger"
-                      title="Drużyna zapomina wszystko, co zwiedziła na tej scenie."
-                      onClick={() => void forgetExploration(scene.id)}
-                      disabled={!scene.explore}
-                    >
-                      Zapomnij
-                    </button>
+                    {forgetButton}
                   </div>
                   <p className="settings-hint">
                     Miejsca, które gracz już widział, zostają na mapie przyciemnione — jak plan
                     narysowany z pamięci, bez figur, które tam teraz są. Przy wspólnym widoku plan
-                    jest jeden dla całej drużyny. „Zapomnij” czyści go wszystkim.
+                    jest jeden dla całej drużyny. „Zapomnij” czyści go wszystkim, razem z tym, co
+                    netrunnerzy osiągnęli w Sieci tej sceny.
                   </p>
                 </section>
               </>
+            )}
+
+            {/* Netrunning nie zależy od trybu widoczności, więc „Zapomnij”
+                Sieci musi być pod ręką także bez pamięci mapy (14.11). */}
+            {scene.visibility !== 'dynamic' && (
+              <section className="settings-group">
+                <h3 className="settings-group-title">Pamięć Sieci</h3>
+                <div className="scene-editor-row">
+                  <p className="settings-hint scene-config-grow">
+                    Netrunnerzy pamiętają, co osiągnęli w Sieci tej sceny, i nie powtarzają
+                    nieudanych prób.
+                  </p>
+                  {forgetButton}
+                </div>
+              </section>
             )}
           </>
         )}

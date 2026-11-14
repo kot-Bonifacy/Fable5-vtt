@@ -11,6 +11,7 @@ import type {
   CpredNetPosition,
   NetAccessPointView,
   NetArchitectureView,
+  NetForgetSceneResult,
   NetRunAbilityResult,
   NetRunPayload,
   SceneView,
@@ -617,6 +618,21 @@ describe('run netrunnera na żywych gniazdach', () => {
     await emitAck(gm, 'netrun:hacks:reset', { runId });
     expect(floorOf((await runOf(player))!, 'f2')?.hackFailed).toBeUndefined();
 
+    // „Zapomnij” sceny (14.11) gives the try back too, and says the run is live.
+    data(
+      await emitAck<NetRunAbilityResult>(player, 'netrun:ability', { runId, ability: 'eyed' }),
+      'netrun:ability',
+    );
+    expect(floorOf((await runOf(player))!, 'f2')?.hackFailed).toBe(true);
+    expect(errorOf(await emitAck(player, 'net:forget-scene', { sceneId }))).toBe('FORBIDDEN');
+    const forgot = data(
+      await emitAck<NetForgetSceneResult>(gm, 'net:forget-scene', { sceneId }),
+      'net:forget-scene',
+    );
+    expect(forgot.forgotten).toBeGreaterThan(0);
+    expect(forgot.liveRuns).toBe(1);
+    expect(floorOf((await runOf(player))!, 'f2')?.hackFailed).toBeUndefined();
+
     // 70a (66e pkt 23): the netrunner's full line names the public one it
     // stands in for, so their chat shows one row for the copy, not two.
     const lines: { id: number; kind: string; action?: { note?: string; shadows?: number } }[] = [];
@@ -837,7 +853,11 @@ describe('run netrunnera na żywych gniazdach', () => {
       'netrun:scan',
     );
     expect(await luckLeft()).toBe(1);
-    expect((await card).message.roll?.breakdown).toContainEqual({ label: 'Szczęście (2 pkt)', value: 2, kind: 'luck' });
+    expect((await card).message.roll?.breakdown).toContainEqual({
+      label: 'Szczęście (2 pkt)',
+      value: 2,
+      kind: 'luck',
+    });
   });
 
   it('jacks out on purpose and forgets the shaft', async () => {

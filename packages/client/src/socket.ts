@@ -5,6 +5,7 @@ import { chatNotification, notifyGame, startsOwnTurn } from './game-notification
 import { loadOwedDeathSave } from './death-save.js';
 import type {
   AiAccessView,
+  NetForgetSceneResult,
   AiAskPayload,
   AiChunkBroadcast,
   AiDoneBroadcast,
@@ -3114,6 +3115,10 @@ export const removeNetAccessPoint = (id: number) => emitSceneAck('netpoint:remov
 /** Kosz warstwy gniazd (etap 27k). */
 export const clearNetAccessPoints = (sceneId: string) =>
   emitSceneAck('netpoint:clear', { sceneId });
+
+/** Sieciowa połowa „Zapomnij” sceny (14.11) — mapową niesie `forgetExploration`. */
+export const forgetSceneNet = (sceneId: string) =>
+  emitSceneAck<NetForgetSceneResult>('net:forget-scene', { sceneId });
 
 export const startNetRun = (tokenId: string, accessPointId: number) =>
   emitSceneAck<NetRunPayload>('netrun:start', { tokenId, accessPointId });
