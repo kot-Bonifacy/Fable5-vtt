@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import type { DefenseZoneView, NetDeviceView, NetRunPayload } from '@vtt/shared';
-import { zoneNetSwitch, zonesOnWalk } from './zone-ask.js';
+import type { CompendiumEntry, DefenseZoneView, NetDeviceView, NetRunPayload } from '@vtt/shared';
+import { zoneGuardNote, zoneNetSwitch, zonesOnWalk } from './zone-ask.js';
 
 const scene = { id: 's1', grid: { sizePx: 100 } } as Parameters<typeof zonesOnWalk>[0]['scene'];
 
@@ -107,5 +107,31 @@ describe('zoneNetSwitch (70d)', () => {
     );
     expect(zoneNetSwitch([run([device({ zoneId: 2 })])], 1)).toBe(null);
     expect(zoneNetSwitch([], 1)).toBe(null);
+  });
+});
+
+describe('zoneGuardNote (zaległość 14.11, pkt 3)', () => {
+  const entries = {
+    'defense.wiezyczka': {
+      id: 'defense.wiezyczka',
+      category: 'netDefense',
+      defenseKind: 'emplacement',
+    },
+    'defense.dron': { id: 'defense.dron', category: 'netDefense', defenseKind: 'drone' },
+    'defense.podloga-elektryczna': {
+      id: 'defense.podloga-elektryczna',
+      category: 'netDefense',
+      defenseKind: 'environment',
+    },
+  } as unknown as Record<string, CompendiumEntry>;
+
+  it('obszar straży wieżyczki i drona mówi, że tu się strzela', () => {
+    expect(zoneGuardNote({ entryId: 'defense.wiezyczka' }, entries)).toMatch(/wieżyczki.*strzela/);
+    expect(zoneGuardNote({ entryId: 'defense.dron' }, entries)).toMatch(/drona.*strzela/);
+  });
+
+  it('strefa środowiskowa i nieznany wpis — bez dopisku', () => {
+    expect(zoneGuardNote({ entryId: 'defense.podloga-elektryczna' }, entries)).toBeNull();
+    expect(zoneGuardNote({ entryId: 'defense.nie-ma' }, entries)).toBeNull();
   });
 });

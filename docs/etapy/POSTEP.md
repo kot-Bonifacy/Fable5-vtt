@@ -47,6 +47,11 @@ w Kevlarze, notatki MG o sterowaniu z mapy; wyłączone urządzenie da się prze
 w przeglądarce — znaleziska w `zaleglosci.md` (14.11). Rozstrzygnięcia i odstępstwa w pliku
 etapu i w `decyzje-i-uproszczenia.md`; umowy i pułapki na górze `siec` (wzorzec — `mapa`).
 
+**Zaległości 14.11 („wykonaj kilka zaległości”) — czekają na wdrożenie (bez migracji).** Belka
+przejętego urządzenia bez czerwonego „ODMOWA” po strzale, okienko strefy mówi o obszarze straży,
+łup z urządzenia „W urządzeniu”, czytelne przyciski karty i sekcja „Pojazdy”, „Dodaj za darmo”
+w otwartą kartę, „Wróg w zasięgu wzroku” jednym paskiem. Szczegóły w notatce sesji.
+
 **Lewa belka bez ramek (etap 69, zlecenie MG z 10.11) — czeka na wdrożenie (bez migracji)
 i oględziny MG przy stole.** Wariant A z makiety: portret 16:15 gasnący w papier, PW jako
 pociągnięcie pędzla, broń na dużych kaflach z obrażeniami, SS i przeładowaniem w rogu kafla,
@@ -786,7 +791,7 @@ a nie do tego pliku.
 | `mapa`      | figury, zaznaczanie, narzędzia, obiekty sceny, ściany, efekty, zamek drzwi, ukryta figura zauważona, ikony urządzeń, wspólny widok drużyny, okienko strefy przy marszu gracza, scena pościgu, jazda kierowcy i dryf, Manewr i taranowanie, przeszkody pościgu, sceny przykładowe, wzorzec zwykłej mapy, ulepszenia pojazdu, stojące auto na drodze, kreator pościgu i wbudowane drogi, załoga auta poza pościgiem, rama pościgu i pęd auta bez kierowcy, długa pętla drogi, ucieczka auta ręką MG, otarcie brył, wrak za autem, podpis w fotelu, furgon z wyglądu (`van-6`), przesadzanie foteli przy starcie, skręt z menu przed przeszkodą, wysiadka tylko przeciągnięciem, światła, zamki, strefy i pojemniki we wzorcu, obszar straży we wzorcu | 96   | 27      |
 | `czat`      | rodzaje wierszy, `visibleTo`, filtr, `seq`, `gmrecovery`, „to dotyczy mnie”, grupy kart, kolor gracza, czyszczenie, gęsta karta rzutu, przebieg ataku, `/jako` za NPC-a, karta rzutu bez konta | 17   | 3       |
 | `serwer`    | Prisma i migracje, zdarzenia gniazda, zapisy karty, uploady    | 26   | 21      |
-| `ui`        | okna pływające, `z-index`, motyw, skróty, dostępność, wejście, panel decyzji MG, kubek przestawiany i jego menu, lewa belka bez ramek i dymek `HudTip` | 40   | 16      |
+| `ui`        | okna pływające, `z-index`, motyw, skróty, dostępność, wejście, panel decyzji MG, kubek przestawiany i jego menu, lewa belka bez ramek i dymek `HudTip` | 41   | 16      |
 | `kosci`     | kubek, `rollFormula`, wezwania i prośby o Test, tabele losowe, PT od MG | 24   | 2       |
 | `tura`      | budżet Akcji i metrów, kolejka, trasa, ruch przez ściany, skok, walka z zauważenia, pytanie MG o przekroczenie, Percepcja w drodze (z linią wzroku), ukryte figury, skradanie, kropki ataków, kierowca bez Biegu, Test jazdy w Akcji Ruchu, darmowa ręka MG, napis wiersza Akcji, taran raz na turę, spóźniona inicjatywa rundy 1, krok planera w jednym oku, „Następna tura” z widzianą turą | 42   | 8       |
 | `atak`      | broń i dodatki, amunicja, obrażenia, pancerz, rany krytyczne, trucizna na ostrzu, auto-unik, strach z Konfrontacji, auto jako cel, broń pokładowa, wybór celu ze stosu, skutki amunicji po karcie ataku, ikona gołych rąk, broń dwuręczna w rękach przy tarczy | 57   | 8       |
@@ -795,7 +800,7 @@ a nie do tego pliku.
 | `postac`    | kreator, PD i awanse, koszyk i cofanie awansów, Role i Zdolności, cyborgizacje, chrom zmieniający liczby, ekonomia, Test montażu gracza, pojazdy i Tabor | 58   | 3       |
 | `ekwipunek` | wiersze wyposażenia, przekazanie, łup (także ciała graczy), handel, sklepy, asortyment handlarza z kompendium, zasięg, amunicja bez dna, egzoszkielet, latarka z ekwipunku, narkotyki i fiolki, siatka okna „Wymiana”, zgoda z góry, odświeżanie po naklejkach, znaczek „w użyciu”, zakup auta z modelu, warsztat (ulepszenia i naprawa auta), auto bokiem i „w garażu”, grafika auta to model i skala miniatur, postać na karcie przekazania, zasięg ręki do figury spoza siatki | 50   | 3       |
 | `czas`      | zegar świata, kalendarz, `statEffects`, leczenie po dobie, dawki i uzależnienia (`chems`) | 19   | 2       |
-| `siec`      | Programy, LOD, demony, piętra architektury, dek jako towar, strefy bronione, kamery (także w ciemności), rozbrajanie, Sieć ze sceny, jedna próba i pamięć sukcesów, strzał z urządzenia, strefa tylko z marszu gracza, widok runu z rundą, strefa rozbrojona w Sieci, okno jednego piętra i ładunek bez szybu, pełny wiersz czatu zamiast skrótu, przejęta figura urządzenia (`operatorOf`, `netDeviceUse`), marsz drona, oczy urządzeń, figury wyciszone (`net-off`), pasek „Oczy i urządzenia”, Sieć ze sceny wg rodzaju, strefy i drzwi w „Instalacjach”, obszar straży od figury, okienko strefy, automat obrony Sieci i hamulec MG, „Włącz / Wyłącz w Sieci” MG i przeszukanie wyłączonego | 25   | 12      |
+| `siec`      | Programy, LOD, demony, piętra architektury, dek jako towar, strefy bronione, kamery (także w ciemności), rozbrajanie, Sieć ze sceny, jedna próba i pamięć sukcesów, strzał z urządzenia, strefa tylko z marszu gracza, widok runu z rundą, strefa rozbrojona w Sieci, okno jednego piętra i ładunek bez szybu, pełny wiersz czatu zamiast skrótu, przejęta figura urządzenia (`operatorOf`, `netDeviceUse`), marsz drona, oczy urządzeń, figury wyciszone (`net-off`), pasek „Oczy i urządzenia”, Sieć ze sceny wg rodzaju, strefy i drzwi w „Instalacjach”, obszar straży od figury, okienko strefy, automat obrony Sieci i hamulec MG, „Włącz / Wyłącz w Sieci” MG i przeszukanie wyłączonego | 26   | 12      |
 | `boty`      | llama-server, RAG, reindeks, dziennik i baza wiedzy, brama AI  | 10   | 10      |
 | `dane`      | `parse-manual.py`, kompendium poza repo, tabele z podręcznika  | 9    | 12      |
 | `kopie`     | `snapshot`, `archive`, paczki ZIP, wczytanie kampanii, „czeka na gracza”, kopie kampanii i cofnięcie, sklep i bot w paczce, zgłoszenie karty gracza, pojazdy w paczce, auta na scenie pościgu, przeszkody poza paczką | 22   | 6       |
@@ -806,6 +811,28 @@ a nie do tego pliku.
 ## Notatki z dwóch ostatnich sesji
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
+
+### Sesja 14.11 — zaległości: belka urządzenia, łup z urządzenia, obszar straży, karta, Kompendium, „Wróg w zasięgu wzroku”
+
+**Zrobione (bez migracji, czeka na wdrożenie)** — sześć zaległości z `zaleglosci.md`, opisy
+naprawy w `archiwum/zamkniete-zaleglosci.md` („Zamknięte 2026-11-14”):
+
+- **70f pkt 2:** belka przejętego urządzenia nie pokazuje czerwonego „ODMOWA” po udanym
+  strzale — na pole idzie tylko odmowa tury (`operatedRailRefusal`), stan aktywacji mówi wiersz
+  „przez: …”. Test w `hud-refusal.test.ts`.
+- **70f pkt 3:** okienko strefy przy obszarze straży wieżyczki / drona dopisuje „strzela do
+  każdego, kto tu wejdzie” (`zoneGuardNote`, z `defenseKind` wpisu). Test w `zone-ask.test.ts`.
+- **70f pkt 5:** łup z figury-urządzenia — „W urządzeniu: …” zamiast „Przy ciele”
+  (`ExchangeCounterpartView.device`).
+- **66e pkt 7:** przyciski karty z czerwonym tłem przy najechaniu mają biały napis; napisy sekcji
+  „Pojazdy” na czerwonym panelu jasne (także podpisy galerii MG — znalezione przy oględzinach).
+- **66e pkt 8:** „Dodaj za darmo” w Kompendium bez wyboru celuje w kartę na wierzchu.
+- **66e pkt 25:** „Wróg w zasięgu wzroku” jednym bursztynowym paskiem (`noteCombatPending`).
+
+**Oglądane w Firefoksie** (Firefox z Playwright MCP nie wstał — `initializeServer` timeout —
+więc tymczasowy spec E2E na `po-T6`, MG w Firefoksie, skasowany): pkt 7 i 8. **Nie oglądane
+w przeglądarce:** pkt 2, 3, 5 i 25 (testy jednostkowe dla 2 i 3). Testy: shared 3053, klient 505
+(+4), serwer 1799 — zielone; lint i Prettier czyste. Umowy na górze `siec` i `ui`.
 
 ### Sesja 14.11 — etap 70f: wzorce „Fabryka dronów” i „Po zamknięciu” pod nowe reguły, rozegranie
 
@@ -842,36 +869,3 @@ uśpione drony szare od założenia, Sowa strzela sama w turze Kowala na lądowi
 z ochroną i marsz przez ciemną halę nie były grane (66b, 66e — etap 70 ich nie dotyka).
 Nieoglądane: Chrome MG, motyw dzienny. **Dalej:** wdrożenie etapu 70 (migracja z 70d) i stół MG.
 
-### Sesja 13–14.11 — etap 70e: automat Czarnego LOD-u i Demona z hamulcem MG
-
-**Dwie sesje** (pierwsza zrobiła kod, testy, oględziny i dokumenty, ale skończyła przed notatką
-i commitem; druga — „resume” — puściła testy od nowa, obejrzała poprawki zrobione po oględzinach
-i zacommitowała). **Zrobione (bez migracji, czeka na wdrożenie):** `shared` —
-`netDefenseAutoStep` (`NetDefenseCue`: `entered`, `controlled`, `turn` → lista `NetDefenseMove`)
-w `netdemons.ts`, `CpredNetRuntime.defensePaused` (odczyt w `netrun.ts`, tylko w kroju MG),
-`NetDefensePausePayload`, `CombatNextPayload` (`combat.ts`); serwer — nowy
-`realtime/net-defense.ts` (wykrycie po ruchu, Ślizgu i podłączeniu, przebudzenie Demona na jego
-piętrze i po Kontroli, Tura LOD-u i Demona w obsłudze „Następna tura”, `pointerPastGone`, ręka
-automatu to konto MG), wspólne kroki przycisków MG i automatu w `netcombat.ts` / `netdemons.ts`,
-`netrun:defense:pause`, `flushPresentation` (`presentation.ts`), odmowa `TURN_MOVED_ON`
-w `combat-actions.ts`; klient — checkbox „Wstrzymaj obronę” w belce stanu okna runu MG
-(`NetDefenseBrake`), `nextCombatTurn` z widzianą turą i zdaniem odmowy, kolor `--net-warn` (dług
-Akcji Sieciowych, hamulec, flaga LOD-u na karcie piętra — `--warn` motywu w dzień ciemniał na
-ekranie Sieci). Decyzja (cofnięcie decyzji z 15.08) w `decyzje-i-uproszczenia.md`, umowy na
-górze `siec` i `tura`, pułapki na górze `siec` i `tura`, odstępstwa w pliku etapu, pomysły
-w `POMYSLY.md`, T5b w `zaleglosci.md`. **Testy (14.11):** `shared` 3051/3051, serwer 1799/1799
-(nowy `net-defense.test.ts` 9; w pierwszym przebiegu 13.11 cztery błędy „no such table …
-Exploration” z `walls.test.ts` i `walk-approval.test.ts` — znana migotka z 29.08, drugi przebieg
-czysty), klient 501/501, `tsc` wszystkich pakietów, ESLint i Prettier czyste w zmienionych plikach
-kodu; E2E `47-siec` 39/39 (13.11 po ostatniej zmianie kodu; nowy `t70e-automat-lod` 5). T5b
-nie puszczone (gateway). **Oglądane w Chromium (MG) i Firefoksie (Ola)** zrzutami z tymczasowego
-specu `99-ogledziny-70e` na instancji E2E, 1920 × 1080, dzień i noc: wykrycie Kruka bez MG (karta
-kontem MG, Kruk na czele kolejki, „−1 Akcji” u Oli), Tura Kruka w trakcie i po, odmowa „Kolejka
-poszła już dalej” po kliku MG w Turę Kruka (Iskra nie przeskoczona), hamulec zaciągnięty
-(zbliżenie belki stanu w obu motywach) i ręczne wykrycie Sowy, przebudzenie Ifryta po Kontroli
-i jego Tura odbierająca węzeł. Nieoglądane: Chrome MG, Demon poza walką. **Z oględzin
-poprawione:** 13.11 — kolor ostrzeżeń w oknie Sieci (`--net-warn`) i wyścig „Następna tura” MG
-z kolejką za kośćmi (`TURN_MOVED_ON`); 14.11 — zdanie wykrycia „Sowa 70e wykrywa intruza — nie
-zdążył uderzyć.” (rodzaj męski przy żeńskiej nazwie; od 70e wychodzi samo) → „— bez darmowego
-ataku.” Dymki powiadomień u góry zasłaniają u MG nagłówek okna runu z hamulcem, póki ich nie
-zamknie — tak było przed etapem, nie ruszane. **Dalej:** 70f.

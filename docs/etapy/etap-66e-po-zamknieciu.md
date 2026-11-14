@@ -389,10 +389,10 @@ strzelbą za stołem), wieżyczka włączona; zamek gabinetu zamknięty; Sieci n
    strzela inaczej, niż widzi.
 6. **🟠 Znalezione Skanerem gniazdo nie ma znacznika na mapie gracza**, gdy leży poza wzrokiem
    (karta mówi „znalezione: Konsola monitoringu”, mapa nic). Gracz zna nazwę, nie miejsce.
-7. **🟠 Przyciski w karcie po najechaniu: tekst w kolorze tła** („Dobądź (Akcja)”, „+ Broń
+7. **✅ (naprawione 14.11) 🟠 Przyciski w karcie po najechaniu: tekst w kolorze tła** („Dobądź (Akcja)”, „+ Broń
    z katalogu” — `color` = `background` = `rgb(204, 35, 22)`). Podobnie nieczytelne „Postać nie
    ma pojazdu” w sekcji „Pojazdy” (czerwone na czerwonym).
-8. **🟡 „Dodaj za darmo” w Kompendium domyślnie celuje w pierwszą postać drużyny** (Kowal),
+8. **✅ (naprawione 14.11) 🟡 „Dodaj za darmo” w Kompendium domyślnie celuje w pierwszą postać drużyny** (Kowal),
    choć MG ma otwartą kartę Iskry — pancerz poszedł nie tam.
 9. **🟡 Zmiana Roli na kartę na Rolę poprzednią odmawia** („Ta Rola już jest na karcie”), bez
    drogi „zamień główną z poprzednią”; powrót przez PD wymaga Rangi 4 bieżącej Roli.
@@ -492,7 +492,7 @@ i **12** (marsz z biura w ciemny korytarz kończy się w x20/y9 pod ścianą, be
 23. **🟡 Każda akcja Sieci daje netrunnerowi dwa wiersze** (jawny i „POUFNE”) o tym samym.
 24. **🟡 Kontrast w oknie Sieci** — jasnoniebieskie podpisy na beżu (imię w nagłówku, typy
     programów „Obrońca”/„Atakujący…”, „PT 8” piętra) prawie nieczytelne.
-25. **🟡 Ta sama odmowa „Wróg w zasięgu wzroku” trzy razy naraz** (żółty pasek, czerwona odmowa,
+25. **✅ (naprawione 14.11) 🟡 Ta sama odmowa „Wróg w zasięgu wzroku” trzy razy naraz** (żółty pasek, czerwona odmowa,
     odmowa w panelu).
 26. **✅ (naprawione 07.11, ósma sesja) 🟡 Rzut obrażeń w osłonę opisany „(Korpus)”.**
 27. **✅ (naprawione 07.11, ósma sesja) 🟡 „Podłoga elektryczna” w Sieci oferuje „Wyłącz”, choć rozbrojona ręcznie** (dwa stany).

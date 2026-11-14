@@ -34,6 +34,8 @@ export function LootPane({
 
   const items = body.items ?? [];
   const purse = body.eddies ?? 0;
+  // Wyłączony dron albo zniszczona wieżyczka (70f) to nie ciało — zaległość 14.11, pkt 5.
+  const where = body.device ? 'W urządzeniu' : 'Przy ciele';
 
   async function take(refs: InventoryItemRefWire[], eddies: number) {
     if (!body.tokenId) return;
@@ -61,10 +63,12 @@ export function LootPane({
         <OwnInventoryColumn anchorId={anchorId} busy={busy} dropHover={hover === OWN_DROP_ZONE} />
 
         <div className="trade-zone">
-          <p className="trade-column-title">Przy ciele: {body.name}</p>
+          <p className="trade-column-title">
+            {where}: {body.name}
+          </p>
           <TakeGrid
             items={items}
-            label={`Przy ciele: ${body.name}`}
+            label={`${where}: ${body.name}`}
             busy={busy}
             {...(purse === 0 ? { emptyText: 'Nic tu już nie zostało.' } : {})}
             onTake={(refs) => void take(refs, 0)}
@@ -101,14 +105,20 @@ export function LootPane({
 
       <div className="trade-footer">
         <p className="inventory-hint">
-          Ciało przeszukuje się od ręki — nikt nie musi się na to zgadzać.
+          {body.device
+            ? 'Unieszkodliwione urządzenie przeszukuje się od ręki — nikt nie musi się na to zgadzać.'
+            : 'Ciało przeszukuje się od ręki — nikt nie musi się na to zgadzać.'}
         </p>
         <div className="inventory-actions">
           <button
             type="button"
             className="small-button small-button--primary"
             disabled={busy || (items.length === 0 && purse === 0)}
-            title="Zdejmij z ciała wszystko naraz, razem z gotówką"
+            title={
+              body.device
+                ? 'Zabierz z urządzenia wszystko naraz'
+                : 'Zdejmij z ciała wszystko naraz, razem z gotówką'
+            }
             onClick={() =>
               void take(
                 items.map((item) => refOf(item)),

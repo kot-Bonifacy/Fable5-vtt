@@ -1495,8 +1495,11 @@
   padding: 0.2rem 0.6rem;
 }
 
+/* Napis zostaje jasny: ogólne „czerwony napis przy najechaniu” niżej waży
+   tyle samo i stoi później, więc bez tego tekst znikał w czerwieni (66e pkt 7). */
 .sheet-window .cp-add:hover {
   background: var(--cp-red);
+  color: var(--cp-on-red);
 }
 
 .cp-mini-button--danger:hover:not(:disabled) {
@@ -1635,6 +1638,7 @@
 
 .cp-table .small-button:hover:not(:disabled) {
   background: var(--cp-red);
+  color: var(--cp-on-red);
 }
 
 .cp-table .small-button:disabled {

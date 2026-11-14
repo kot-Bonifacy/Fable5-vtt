@@ -758,6 +758,8 @@ export interface ExchangeCounterpartView {
   characterId?: string;
   /** Wyszarzone: widać, ale kliknąć się nie da. */
   unavailable?: ExchangeUnavailable;
+  /** Łup: figura jest urządzeniem Sieci (wieżyczka, dron) — okno mówi „w urządzeniu”, nie „przy ciele”. */
+  device?: boolean;
   /** Łup i otwarty pojemnik: ekwipunek i gotówka. Nieotwarty pojemnik — nic. */
   items?: CpredItemViewWire[];
   eddies?: number;

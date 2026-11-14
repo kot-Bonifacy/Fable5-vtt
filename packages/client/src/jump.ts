@@ -1,7 +1,7 @@
 import type { ScenePoint, TokenJumpOption } from '@vtt/shared';
 import { CPRED_DEATH_SAVE_PENDING_MESSAGE, NET_RUN_PROBLEM_MESSAGES } from '@vtt/shared';
 import { PLAYER_MOVE_STOP_NOTE } from './map/player-move.js';
-import { COMBAT_PENDING_NOTE } from './walk-halt.js';
+import { COMBAT_PENDING_NOTE, noteCombatPending } from './walk-halt.js';
 import { noteAck, notifyRefusal } from './notices.js';
 import { requestJumpOptions, sendTokenJump } from './socket.js';
 import { useHudStore, type HudJump } from './stores/hudStore.js';
@@ -41,12 +41,12 @@ export async function armJump(tokenId: string): Promise<void> {
   const ack = await requestJumpOptions(tokenId);
   if (ticket !== armTicket) return;
   if (!ack.ok || !ack.data) {
-    notifyRefusal('action', jumpErrorText(ack.ok ? 'NO_DATA' : ack.error));
+    noteJumpRefusal(jumpErrorText(ack.ok ? 'NO_DATA' : ack.error));
     return;
   }
   const { options, refusal } = ack.data;
   if (refusal) {
-    notifyRefusal('action', refusal);
+    noteJumpRefusal(refusal);
     return;
   }
   if (options.length === 0) {
@@ -138,4 +138,10 @@ export function jumpErrorText(code: string): string {
     default:
       return `Skok się nie udał: ${code}.`;
   }
+}
+
+/** „Wróg w zasięgu wzroku” idzie jednym paskiem z marszem (66e pkt 25). */
+function noteJumpRefusal(text: string): void {
+  if (text === COMBAT_PENDING_NOTE) noteCombatPending();
+  else notifyRefusal('action', text);
 }

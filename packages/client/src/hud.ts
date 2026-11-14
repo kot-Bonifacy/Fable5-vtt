@@ -58,6 +58,7 @@ import {
   myOperatedTokenIds,
   operatedFigureOf,
   operatedMoveSlot,
+  operatedRailRefusal,
   operatedTurnRefusal,
   operatedVerbSlots,
   useDeviceAimStore,
@@ -504,7 +505,8 @@ function operatedHudContext(
     acting: false,
     isGm: false,
     isActiveTurn: refusal === null,
-    refusal,
+    // Stan aktywacji mówi wiersz „przez: …” — na czerwone pole tylko cudza tura.
+    refusal: operatedRailRefusal(refusal),
     steering,
     sheetNotMine: false,
     injuries: [],

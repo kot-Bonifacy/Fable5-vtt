@@ -450,6 +450,7 @@ function EntryCard({
   const cardIcon = useEntryIcon()(entry);
   const characters = useCharacterStore((s) => s.characters);
   const order = useCharacterStore((s) => s.order);
+  const openSheets = useCharacterStore((s) => s.openSheets);
   const edit = useCompendiumStore((s) => s.edit);
   // Etap 46a: „Zakupy z katalogu: tylko u handlarzy” — gracz kupuje przy
   // ladzie. „Zainstaluj” i „Dodaj za darmo” MG działają bez zmian.
@@ -472,7 +473,10 @@ function EntryCard({
   );
 
   const targets = order.map((id) => characters[id]).filter((c) => c !== undefined);
-  const target = targetId || targets[0]?.id || '';
+  // Bez wyboru celuje w kartę na wierzchu, nie w pierwszą postać drużyny
+  // (66e pkt 8: MG z otwartą kartą Iskry dał pancerz Kowalowi).
+  const topSheet = openSheets.findLast((id) => targets.some((c) => c.id === id));
+  const target = targetId || topSheet || targets[0]?.id || '';
   // Etap 48c: „Znaleziony — montaż” tylko z wiersza Wyposażenia wybranej postaci.
   const foundInGear =
     entry.category === 'cyberware' &&

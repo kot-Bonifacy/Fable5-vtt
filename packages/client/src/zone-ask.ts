@@ -1,4 +1,5 @@
 import type {
+  CompendiumEntry,
   DefenseZoneView,
   NetDeviceView,
   NetRunPayload,
@@ -6,7 +7,7 @@ import type {
   SceneView,
   TokenView,
 } from '@vtt/shared';
-import { isPointInZone, tokenCentre, zoneTouchedByPath } from '@vtt/shared';
+import { isNetDefenseEntry, isPointInZone, tokenCentre, zoneTouchedByPath } from '@vtt/shared';
 import { heldNodes } from './components/netrun/NetEyesStrip.js';
 
 /**
@@ -65,6 +66,27 @@ export function zoneNetSwitch(
       if (!device.operations.includes(operation)) continue;
       return { runId: run.runId, floorId: node.id, device };
     }
+  }
+  return null;
+}
+
+/**
+ * Co okienko mówi pod nazwą strefy, gdy to obszar straży wieżyczki albo drona
+ * (zaległość 14.11, pkt 3): „Lądowisko Sowy — Wejdź mimo to” nie mówiło, że na
+ * tym prostokącie coś strzela. Rodzaj zna wpis katalogu (`defenseKind`), który
+ * gracz ma i tak — figura obszaru (`tokenId`) jest tylko u MG.
+ */
+export function zoneGuardNote(
+  zone: Pick<DefenseZoneView, 'entryId'>,
+  entries: Readonly<Record<string, CompendiumEntry>>,
+): string | null {
+  const entry = entries[zone.entryId];
+  if (!entry || !isNetDefenseEntry(entry)) return null;
+  if (entry.defenseKind === 'emplacement') {
+    return 'Obszar straży wieżyczki — strzela do każdego, kto tu wejdzie.';
+  }
+  if (entry.defenseKind === 'drone') {
+    return 'Obszar straży drona — strzela do każdego, kto tu wejdzie.';
   }
   return null;
 }

@@ -1,5 +1,39 @@
 # Dziennik sesji — archiwum
 
+### Sesja 13–14.11 — etap 70e: automat Czarnego LOD-u i Demona z hamulcem MG
+
+**Dwie sesje** (pierwsza zrobiła kod, testy, oględziny i dokumenty, ale skończyła przed notatką
+i commitem; druga — „resume” — puściła testy od nowa, obejrzała poprawki zrobione po oględzinach
+i zacommitowała). **Zrobione (bez migracji, czeka na wdrożenie):** `shared` —
+`netDefenseAutoStep` (`NetDefenseCue`: `entered`, `controlled`, `turn` → lista `NetDefenseMove`)
+w `netdemons.ts`, `CpredNetRuntime.defensePaused` (odczyt w `netrun.ts`, tylko w kroju MG),
+`NetDefensePausePayload`, `CombatNextPayload` (`combat.ts`); serwer — nowy
+`realtime/net-defense.ts` (wykrycie po ruchu, Ślizgu i podłączeniu, przebudzenie Demona na jego
+piętrze i po Kontroli, Tura LOD-u i Demona w obsłudze „Następna tura”, `pointerPastGone`, ręka
+automatu to konto MG), wspólne kroki przycisków MG i automatu w `netcombat.ts` / `netdemons.ts`,
+`netrun:defense:pause`, `flushPresentation` (`presentation.ts`), odmowa `TURN_MOVED_ON`
+w `combat-actions.ts`; klient — checkbox „Wstrzymaj obronę” w belce stanu okna runu MG
+(`NetDefenseBrake`), `nextCombatTurn` z widzianą turą i zdaniem odmowy, kolor `--net-warn` (dług
+Akcji Sieciowych, hamulec, flaga LOD-u na karcie piętra — `--warn` motywu w dzień ciemniał na
+ekranie Sieci). Decyzja (cofnięcie decyzji z 15.08) w `decyzje-i-uproszczenia.md`, umowy na
+górze `siec` i `tura`, pułapki na górze `siec` i `tura`, odstępstwa w pliku etapu, pomysły
+w `POMYSLY.md`, T5b w `zaleglosci.md`. **Testy (14.11):** `shared` 3051/3051, serwer 1799/1799
+(nowy `net-defense.test.ts` 9; w pierwszym przebiegu 13.11 cztery błędy „no such table …
+Exploration” z `walls.test.ts` i `walk-approval.test.ts` — znana migotka z 29.08, drugi przebieg
+czysty), klient 501/501, `tsc` wszystkich pakietów, ESLint i Prettier czyste w zmienionych plikach
+kodu; E2E `47-siec` 39/39 (13.11 po ostatniej zmianie kodu; nowy `t70e-automat-lod` 5). T5b
+nie puszczone (gateway). **Oglądane w Chromium (MG) i Firefoksie (Ola)** zrzutami z tymczasowego
+specu `99-ogledziny-70e` na instancji E2E, 1920 × 1080, dzień i noc: wykrycie Kruka bez MG (karta
+kontem MG, Kruk na czele kolejki, „−1 Akcji” u Oli), Tura Kruka w trakcie i po, odmowa „Kolejka
+poszła już dalej” po kliku MG w Turę Kruka (Iskra nie przeskoczona), hamulec zaciągnięty
+(zbliżenie belki stanu w obu motywach) i ręczne wykrycie Sowy, przebudzenie Ifryta po Kontroli
+i jego Tura odbierająca węzeł. Nieoglądane: Chrome MG, Demon poza walką. **Z oględzin
+poprawione:** 13.11 — kolor ostrzeżeń w oknie Sieci (`--net-warn`) i wyścig „Następna tura” MG
+z kolejką za kośćmi (`TURN_MOVED_ON`); 14.11 — zdanie wykrycia „Sowa 70e wykrywa intruza — nie
+zdążył uderzyć.” (rodzaj męski przy żeńskiej nazwie; od 70e wychodzi samo) → „— bez darmowego
+ataku.” Dymki powiadomień u góry zasłaniają u MG nagłówek okna runu z hamulcem, póki ich nie
+zamknie — tak było przed etapem, nie ruszane. **Dalej:** 70f.
+
 ### Sesja 13.11 — etap 70d: obszar straży, strefy i drzwi w Sieci ze sceny, okienko strefy
 
 **Zrobione (migracja `20261113180000_net_scene_installations`: `Wall.netControlled`,

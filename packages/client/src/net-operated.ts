@@ -103,6 +103,24 @@ export function operatedTurnRefusal(
 }
 
 /**
+ * Co z odmowy przejętej figury trafia na czerwone pole belki (`hud-refusal`).
+ * Tylko odmowa **tury** (cudza tura, walka przed rundą 1). „Czynność wykonana”
+ * i „węzeł użyty” to stan aktywacji, nie błąd: mówi go wiersz „przez: …”
+ * pod portretem, a kafle gasną same — czerwone „ODMOWA” zaraz po udanym
+ * strzale wyglądało na awarię (zaległość 14.11, pkt 2), a dron po strzale
+ * dalej może jechać.
+ */
+export function operatedRailRefusal(refusal: string | null): string | null {
+  if (
+    refusal === NET_DEVICE_MESSAGES.NET_DEVICE_SPENT ||
+    refusal === NET_DEVICE_MESSAGES.NET_NODE_USED
+  ) {
+    return null;
+  }
+  return refusal;
+}
+
+/**
  * Dlaczego przejęta figura nie pojedzie teraz klikiem w podłoże — albo null
  * (70c). Wieżyczka i kamera stoją; dron jedzie w turze netrunnera, z metrów
  * aktywacji, także po strzale, i nie wtedy, gdy węzeł zużyło inne urządzenie.

@@ -112,7 +112,7 @@ import { bindMapFx } from '../map-fx.js';
 import { bindMapPing } from '../map-ping.js';
 import { bindMapFrame } from '../map-frame.js';
 import { offerLockPick } from '../opening-lock.js';
-import { COMBAT_PENDING_NOTE, bindWalkHalt } from '../walk-halt.js';
+import { COMBAT_PENDING_NOTE, bindWalkHalt, noteCombatPending } from '../walk-halt.js';
 import { bindMapAim } from '../map-aim.js';
 import { preloadFxSounds } from '../sfx.js';
 import {
@@ -850,6 +850,10 @@ function notePlayerStop(): void {
 function noteMove(text: string, tone?: 'warn', fades?: boolean): void {
   if (text === PLAYER_MOVE_STOP_NOTE) {
     notePlayerStop();
+    return;
+  }
+  if (text === COMBAT_PENDING_NOTE) {
+    noteCombatPending();
     return;
   }
   notifyRefusal('move', text, { ...(tone ? { tone } : {}), ...(fades ? { fades } : {}) });

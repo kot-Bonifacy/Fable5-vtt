@@ -800,3 +800,12 @@
   margin-top: 0.15rem;
   color: var(--map-ink);
 }
+
+/* Obszar straży (zaległość 14.11, pkt 3): zdanie o tym, że tu się strzela. */
+.zone-ask-note {
+  margin: 0 0 0.2rem;
+  max-width: 15rem;
+  color: var(--map-warn);
+  font-size: 0.8rem;
+  line-height: 1.3;
+}

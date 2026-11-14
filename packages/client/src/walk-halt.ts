@@ -35,7 +35,18 @@ export function receiveWalkHalt(broadcast: TokenHaltBroadcast): void {
   if (broadcast.sceneId !== sceneId) return;
   halt?.(broadcast.tokenIds);
   if (broadcast.reason === 'notice') return;
-  notifyRefusal('player-move', COMBAT_PENDING_NOTE, { tone: 'warn', title: 'Walka' });
+  noteCombatPending();
+}
+
+/**
+ * „Wróg w zasięgu wzroku” zawsze jednym paskiem (66e pkt 25): zatrzymanie
+ * marszu, odmowa następnego kliku (`COMBAT_PENDING` z `token:walk` /
+ * `token:move`) i skoku mówią to samo zdanie, więc stoją w jednym temacie
+ * (`move`) i podmieniają się, zamiast piętrzyć żółty i dwa czerwone. To nie
+ * błąd gracza, tylko stan stołu — bursztyn, nie czerwień.
+ */
+export function noteCombatPending(): void {
+  notifyRefusal('move', COMBAT_PENDING_NOTE, { tone: 'warn', title: 'Walka' });
 }
 
 /** Udany rzut na Percepcję odsłonił coś właścicielowi figury (58a). */

@@ -4,12 +4,13 @@ import { NET_DEVICE_OPERATION_LABELS } from '@vtt/shared';
 import { operateNetDevice } from '../socket.js';
 import { netErrorText } from '../netErrors.js';
 import { notifyInfo, notifyRefusal } from '../notices.js';
+import { useCompendiumStore } from '../stores/compendiumStore.js';
 import { useNetRunStore } from '../stores/netRunStore.js';
 import { useSceneStore } from '../stores/sceneStore.js';
 import { useTokenStore } from '../stores/tokenStore.js';
 import { useZoneAskStore } from '../stores/zoneAskStore.js';
 import { useZoneStore } from '../stores/zoneStore.js';
-import { zoneNetSwitch } from '../zone-ask.js';
+import { zoneGuardNote, zoneNetSwitch } from '../zone-ask.js';
 import { startDisarm, zonesWithinReach } from '../zone-disarm.js';
 
 const OFFSET = 14;
@@ -32,6 +33,7 @@ export function ZoneAskMenu({ onProceed }: Props) {
   const close = useZoneAskStore((s) => s.close);
   const zones = useZoneStore((s) => s.zones);
   const runs = useNetRunStore((s) => s.runs);
+  const entries = useCompendiumStore((s) => s.entries);
   const token = useTokenStore((s) => (ask ? s.tokens[ask.tokenId] : undefined));
   const scene = useSceneStore((s) => s.effectiveScene);
   const ref = useRef<HTMLDivElement | null>(null);
@@ -66,7 +68,7 @@ export function ZoneAskMenu({ onProceed }: Props) {
 
   if (!ask || present.length === 0 || !token) return null;
 
-  const height = 60 + present.length * 64;
+  const height = 60 + present.length * 84;
   const left = Math.max(8, Math.min(ask.x + OFFSET, window.innerWidth - ESTIMATED_WIDTH));
   const top = Math.max(8, Math.min(ask.y + OFFSET, window.innerHeight - height - 8));
   const characterId = token.characterId;
@@ -98,9 +100,11 @@ export function ZoneAskMenu({ onProceed }: Props) {
     >
       {present.map((zone) => {
         const sw = zoneNetSwitch(runs, zone.id);
+        const guard = zoneGuardNote(zone, entries);
         return (
           <div key={zone.id} className="zone-ask-zone" data-zone-id={zone.id}>
             <div className="target-pick-title">{zone.name}</div>
+            {guard && <p className="zone-ask-note">{guard}</p>}
             {characterId && inReach.has(zone.id) && (
               <button
                 type="button"

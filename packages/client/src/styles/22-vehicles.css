@@ -308,6 +308,16 @@ input.vehicle-card-name {
   gap: 0.3rem;
 }
 
+/* Na karcie sekcja to czerwony panel — napisy wprost na nim jasne, nie
+   `--text-dim` z papieru (66e pkt 7: „Postać nie ma pojazdu” czerwone na czerwonym;
+   tak samo podpisy grup galerii MG, „Inne z katalogu” i zdanie przy „Dodaj pojazd”). */
+.vehicle-section > .vehicle-hint,
+.vehicle-section .vehicle-add-group-label,
+.vehicle-section .vehicle-add-others summary,
+.vehicle-section .vehicle-add-bar .vehicle-hint {
+  color: var(--cp-on-red-soft);
+}
+
 .vehicles-tab h3 {
   margin: 0.6rem 0 0.3rem;
 }

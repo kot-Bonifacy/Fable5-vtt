@@ -9,6 +9,42 @@ go czytać.
 albo gdy chcesz sprawdzić, czy pozycja, która wygląda na nową, nie jest wracającą starą.
 Treść wpisów jest niezmieniona — łącznie z datami i odsyłaczami do notatek sesji.
 
+## Zamknięte 2026-11-14 („wykonaj kilka zaległości”, bez migracji)
+
+- **14.11 pkt 2 — „ODMOWA” na belce przejętego urządzenia zaraz po udanym strzale.** Diagnoza:
+  `operatedTurnRefusal` łączy odmowę tury netrunnera ze stanem aktywacji (`spent`,
+  `node-used`), a całość szła do `HudContext.refusal`, czyli na czerwone pole `.hud-refusal`.
+  Naprawa: `operatedRailRefusal` (`net-operated.ts`) przepuszcza na pole tylko odmowę tury;
+  stan aktywacji mówi wiersz „przez: … · czynność wykonana” pod portretem, a kafle broni,
+  „Obróć”, „Wyłącz” i „Ruch” gasną dalej pełną odmową (dron po strzale jedzie). Test
+  `hud-refusal.test.ts`; w przeglądarce nie oglądane.
+- **14.11 pkt 3 — okienko strefy przy obszarze straży nie mówi, że tam się strzela.** Naprawa:
+  `zoneGuardNote` (`zone-ask.ts`) czyta `defenseKind` wpisu katalogu (`emplacement` / `drone`)
+  — gracz ma wpis i tak, figura obszaru (`tokenId`) zostaje u MG — i okienko pisze pod nazwą
+  „Obszar straży wieżyczki / drona — strzela do każdego, kto tu wejdzie.” (`.zone-ask-note`,
+  bursztyn). Test `zone-ask.test.ts`; w przeglądarce nie oglądane.
+- **14.11 pkt 5 — łup z wyłączonego drona „Przy ciele” i „Ciało przeszukuje się od ręki”.**
+  Naprawa: `exchange:counterparts` dopisuje do pozycji łupu `device: true`, gdy figura jest
+  urządzeniem którejś Architektury (`netDevicesOfToken` — także zniszczona wieżyczka), a
+  `LootPane` pisze „W urządzeniu: …” i „Unieszkodliwione urządzenie przeszukuje się od ręki”.
+  W przeglądarce nie oglądane.
+- **07.11 (piąta) pkt 7 — tekst przycisków karty po najechaniu w kolorze tła; „Postać nie ma
+  pojazdu” czerwone na czerwonym.** Diagnoza: ogólna reguła „czerwony napis przy najechaniu”
+  (`.sheet-window :where(button…):hover`) ustawia kolor, a `.cp-add:hover` i `.cp-table
+  .small-button:hover` dawały tylko czerwone tło. Naprawa: oba dostały `color: var(--cp-on-red)`;
+  napisy sekcji „Pojazdy” leżące wprost na czerwonym panelu (zdanie o braku pojazdu, podpisy grup
+  galerii MG, „Inne z podręcznika”, zdanie przy „Dodaj pojazd”) — `--cp-on-red-soft`. Oglądane
+  w **Firefoksie** (tymczasowy spec na `po-T6`, MG): „+ Broń z katalogu” biały na czerwonym.
+- **07.11 (piąta) pkt 8 — „Dodaj za darmo” w Kompendium celuje w pierwszą postać drużyny.**
+  Naprawa: bez ręcznego wyboru odbiorcą jest karta na wierzchu (`openSheets`, ostatnia otwarta
+  z listy), dopiero potem pierwsza postać. Oglądane w Firefoksie: otwarta Iskra → „Iskra”.
+- **07.11 (szósta) pkt 25 — ta sama „Wróg w zasięgu wzroku” trzy razy naraz.** Diagnoza:
+  zatrzymanie marszu szło w temacie `player-move` (żółte), odmowa następnego kliku (`token:walk`
+  / `token:move`) w `move` (czerwone), skoku — w `action`. Naprawa: `noteCombatPending`
+  (`walk-halt.ts`) — jedno zdanie, temat `move`, bursztyn, tytuł „Walka”; tak samo z
+  `noteMove` i odmowy skoku, więc kolejne podmieniają pasek. Stan na pasku HUD („Walka jeszcze
+  się nie zaczęła”) zostaje — to opis figury, nie komunikat. W przeglądarce nie oglądane.
+
 ## Zamknięte 2026-11-14, etap 70f (wzorce pod nowe reguły Sieci)
 
 - **07.11 (szósta) — projekt do decyzji MG: przejęte urządzenie jako figura netrunnera.** Ocena

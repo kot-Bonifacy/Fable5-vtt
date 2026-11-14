@@ -29,6 +29,7 @@ import {
   type PlacedToken,
 } from './inventory.js';
 import { merchantsOfCampaign } from './merchant.js';
+import { netDevicesOfToken } from './net-control.js';
 import { concealedFrom, concealmentFor, requireCampaignToken } from './tokens.js';
 import { teamCardsWhere } from './team-cards.js';
 
@@ -184,6 +185,10 @@ export const exchangeCounterpartsEvent = defineEvent<
           (container && (container.lock === 'open' || isGm))
             ? await itemsOf(data)
             : [];
+        // Wyłączony dron albo zniszczona wieżyczka to nie ciało (zaległość 14.11, pkt 5).
+        const device =
+          options.some((option) => option.kind === 'loot') &&
+          (await netDevicesOfToken(prisma, campaignId, token.id)).length > 0;
         const far = metres === null || metres > CPRED_MELEE_REACH_M;
         const tableName =
           card.ownerId !== null ? card.name : isGm ? token.name : tokenTableName(token, token.name);
@@ -212,7 +217,9 @@ export const exchangeCounterpartsEvent = defineEvent<
             ...(shop ? { merchantId: merchant.row.id } : {}),
             ...(isGm || card.ownerId !== null ? { characterId: card.id } : {}),
             ...(unavailable ? { unavailable } : {}),
-            ...(option.kind === 'loot' ? { items, eddies: data.eddies } : {}),
+            ...(option.kind === 'loot'
+              ? { items, eddies: data.eddies, ...(device ? { device: true } : {}) }
+              : {}),
             // Zawartość pojemnika jedzie wyłącznie otwartego (decyzja MG 14);
             // MG widzi ją zawsze — to jego skrzynia.
             ...(option.kind === 'container' && container

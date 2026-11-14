@@ -9,17 +9,15 @@ w `POMYSLY.md` („Do sprawdzenia przy stole”), decyzje MG — w `decyzje-i-up
 **14.11.2026 — rozegranie „Fabryki dronów” i „Po zamknięciu” po przebudowie Sieci (70f).**
 Tymczasowe specy oględzin (MG w Chromium, Ola i Marek w Firefoksie), oba wzorce do końca, konsole
 czyste. Dwie rzeczy poprawione od razu (pasek „Oczy i urządzenia” z nazwami w dwóch wierszach,
-jeden wiersz „wracają do obrony” po odłączeniu). **Zostało:** (1) 🟠 urządzenie przy prawej
+jeden wiersz „wracają do obrony” po odłączeniu). **Pkt 2, 3 i 5 zamknięte 14.11 (zaległości,
+czekają na wdrożenie)** — `archiwum/zamkniete-zaleglosci.md`. **Zostało:** (1) 🟠 urządzenie przy prawej
 krawędzi sceny ląduje pod oknem SIEĆ — kadr („▸”, miniatura paska) nie wyjeżdża poza scenę,
 a w „Fabryce” tak stoi Sowa, cel zlecenia: netrunner musi odsunąć okno, żeby nią polecieć
 (propozycja: kadr wolno przesunąć poza brzeg o szerokość okna albo okno samo przeskakuje na drugą
-stronę; pułapka `siec` z 13.11 opisuje to samo w specu `t70c`); (2) 🟡 belka przejętego
-urządzenia po udanym strzale pokazuje czerwone pole „ODMOWA — To urządzenie wykonało już czynność
-w tej Turze…”, choć nic nie odmówiło — wygląda na błąd zaraz po trafieniu; (3) ℹ️ okienko strefy
-przy jawnym obszarze straży („Lądowisko Sowy — Wejdź mimo to”) nie mówi, że to obszar, na którym
-coś strzela; (4) ℹ️ karta „Wykrycie — Kruk · Udane” (Iskra wygrała, Kruk bez darmowego ataku),
+stronę; pułapka `siec` z 13.11 opisuje to samo w specu `t70c`); ~~(2) „ODMOWA” na belce po
+udanym strzale~~; ~~(3) okienko strefy bez słowa o obszarze straży~~; (4) ℹ️ karta „Wykrycie — Kruk · Udane” (Iskra wygrała, Kruk bez darmowego ataku),
 a zaraz potem Kruk „ściga” — zgodne z s. 205, ale dla gracza „Udane” brzmi jak „nie wykrył”;
-(5) ℹ️ łup z wyłączonego drona mówi „Przy ciele” i „Ciało przeszukuje się od ręki”. Do oceny MG
+~~(5) łup z wyłączonego drona „Przy ciele”~~. Do oceny MG
 przy stole: balans wieżyczki z Kucharzem (karabin, Kevlar — notatka „Skalowanie”), alarm
 „Fabryki” z „⏻ Włącz w Sieci”, przeszukiwanie wyłączonych urządzeń (także wieżyczki z bronią).
 
@@ -39,8 +37,7 @@ ma własny spec `47-siec/t70e`; też niepuszczone.
 `etap-66e-po-zamknieciu.md` („Rozegranie — dokończenie”, pkt 15–29). **Pkt 15, 17 i 21
 zamknięte 07.11 (siódma sesja), 16, 20, 22, 26, 27 i 28 — 07.11 (ósma); czekają na
 wdrożenie** — `archiwum/zamkniete-zaleglosci.md`.
-**Pkt 23 i 24 zamknięte 12.11 etapem 70a** (`archiwum/zamkniete-zaleglosci.md`). (25) potrójna odmowa „Wróg
-w zasięgu wzroku”; (29) etykiety w biurze i gabinecie nachodzą na siebie, a po śmierci Kucharza licznik rund
+**Pkt 23 i 24 zamknięte 12.11 etapem 70a, pkt 25 — 14.11 (zaległości)** (`archiwum/zamkniete-zaleglosci.md`). (29) etykiety w biurze i gabinecie nachodzą na siebie, a po śmierci Kucharza licznik rund
 skoczył z 7 na 9. Punkty 18 (okno Sieci zasłania kubek) i 19 (atak poza walką bez trybu
 turowego) **nie są zaległościami — decyzja MG z 07.11**.
 ~~Balans wzorca~~ — zamknięte 14.11 w 70f (karabin, Wartość bojowa 14, Kucharz w Kevlarze).
@@ -49,9 +46,9 @@ turowego) **nie są zaległościami — decyzja MG z 07.11**.
 do wznowienia).** Pełny opis i stan: `etap-66e-po-zamknieciu.md` („Rozegranie w przeglądarce”).
 **Pkt 1, 2 i 4 zamknięte 07.11 (siódma sesja), 5 — 07.11 (ósma); czekają na wdrożenie** —
 `archiwum/zamkniete-zaleglosci.md`. ~~(3) 🔴 klik gracza w zauważoną strefę to marsz na nią bez
-pytania~~ — zamknięte 13.11 w 70d (okienko strefy), czeka na wdrożenie; (6) 🟠 gniazdo znalezione Skanerem poza wzrokiem nie ma znacznika u gracza; (7) 🟠
-przycisk karty po najechaniu ma tekst w kolorze tła, „Postać nie ma pojazdu” czerwone na
-czerwonym; (8) „Dodaj za darmo” w Kompendium celuje w pierwszą postać, nie w otwartą kartę;
+pytania~~ — zamknięte 13.11 w 70d (okienko strefy), czeka na wdrożenie; (6) 🟠 gniazdo znalezione Skanerem poza wzrokiem nie ma znacznika u gracza; ~~(7) tekst
+przycisków karty w kolorze tła~~ i ~~(8) „Dodaj za darmo” w pierwszą postać~~ — zamknięte 14.11
+(zaległości), czekają na wdrożenie;
 (9) brak zamiany Roli głównej z poprzednią na karcie; (10) kubek zasłania ostatnie akcje
 panelu; (11) zauważenie przez kamerę daje MG tylko poufny wiersz czatu; (12) planer gracza
 w ciemności kończy marsz pod ścianą bez komunikatu; (13) okno tokenu pokazuje pola statysty
