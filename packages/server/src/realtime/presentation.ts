@@ -18,6 +18,21 @@ export async function withPresentation<T>(
   }
 }
 
+/**
+ * Sends every view deferred so far, now, in order (etap 70e).
+ *
+ * For a handler that goes on to roll for somebody else — the Net's defence
+ * answering a netrunner's move, a Black ICE playing its seat in the queue. The
+ * rolls published so far are already on the wire, so their views may follow;
+ * what the next roll changes is deferred behind *it* again. Without this the
+ * table would see the move and the ICE's attack in the wrong order: the attack's
+ * dice first, the netrunner arriving on the floor after them.
+ */
+export async function flushPresentation(deps: RealtimeDeps): Promise<void> {
+  const due = deps.presentation?.splice(0) ?? [];
+  for (const emit of due) await emit();
+}
+
 export function deferView(
   deps: RealtimeDeps,
   emit: (ready: RealtimeDeps) => Promise<void> | void,

@@ -13,8 +13,9 @@ import { NET_DEMON_MODE_LABELS, NET_ICE_MODE_LABELS } from '@vtt/shared';
  *
  * Gracz widzi nazwę, ikonę i pasek REZ — walka toczy się o ten pasek. ATK, OBR,
  * PER i PRĘ zostają u MG: to liczby, których podręcznik każe się dowiedzieć
- * rzutem. Dwa przyciski MG („wykrywa intruza", „Tura LOD-a") to decyzja MG
- * z 15.08: LOD nigdy nie rusza się sam.
+ * rzutem. Od etapu 70e LOD wykrywa i gra swoją Turę w kolejce sam; dwa
+ * przyciski MG („wykrywa intruza", „Tura LOD-a") zostają na hamulec i na
+ * poprawki (przełącznik „Wstrzymaj obronę” w belce stanu).
  */
 function IceRow({
   ice,
@@ -152,8 +153,8 @@ function IceRow({
  * o wszystkim, więc nie ma plakietki „na tym piętrze".
  *
  * Gracz widzi Demona dopiero wtedy, gdy ten zacznie go ścigać — wcześniej nie
- * ma go w payloadzie. Dwa przyciski MG to ta sama decyzja co przy LOD-zie
- * z 26c: w Sieci nic nie rusza się samo.
+ * ma go w payloadzie. Od etapu 70e budzi się i gra Turę sam (wejście na jego
+ * piętro, przejęty węzeł, kolejka); dwa przyciski MG zostają jak przy LOD-zie.
  */
 function DemonRow({
   demon,

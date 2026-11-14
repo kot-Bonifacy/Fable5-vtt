@@ -287,6 +287,15 @@ export interface NetDemonActPayload {
   gesture?: RollGesture;
 }
 
+/**
+ * „Obrona Sieci: działa sama / wstrzymana” (etap 70e) — hamulec MG na automat
+ * Czarnego LOD-u i Demonów. Run wskazuje Architekturę; przełącznik trzyma ona.
+ */
+export interface NetDefensePausePayload {
+  runId: string;
+  paused: boolean;
+}
+
 // ─────────────────────── węzły kontrolne (etap 26d) ───────────────────────
 
 /**

@@ -2,7 +2,7 @@
 
 **Faza:** przed betą (zlecenie MG z 11.11 spoza planu) · **Wymaga etapów:** 26a–26f (Sieć),
 51 i 58 (strefy), 62 (Sieć ze sceny), 69 (lewa belka) · **Status:** 🟨 realizacja w sześciu
-sesjach (70a–70f); 70a ✅ 12.11, 70b ✅ 13.11, 70c ✅ 13.11, 70d ✅ 13.11
+sesjach (70a–70f); 70a ✅ 12.11, 70b ✅ 13.11, 70c ✅ 13.11, 70d ✅ 13.11, 70e ✅ 13.11
 
 ## Skąd ten etap
 
@@ -452,15 +452,46 @@ projektu:**
 
 ### 70e — Automat LOD-u i Demona
 
-- [ ] `shared`: `netDefenseAutoStep` (czy i co obrona robi po zdarzeniu) — czysta, z testami
-- [ ] Serwer: wykrycie po ruchu, tura w kolejce, `defensePaused`, `netrun:defense:pause`
-- [ ] Klient MG: przełącznik hamulca w oknie runu
-- [ ] Wpis w `decyzje-i-uproszczenia.md` (cofnięcie decyzji z 15.08)
-- [ ] Testy: `netcombat.test.ts`, `netdemons.test.ts` (shared i serwer), E2E `t70e-automat-lod`
+- [x] `shared`: `netDefenseAutoStep` (czy i co obrona robi po zdarzeniu) — czysta, z testami
+- [x] Serwer: wykrycie po ruchu, tura w kolejce, `defensePaused`, `netrun:defense:pause`
+- [x] Klient MG: przełącznik hamulca w oknie runu
+- [x] Wpis w `decyzje-i-uproszczenia.md` (cofnięcie decyzji z 15.08)
+- [x] Testy: `netcombat.test.ts`, `netdemons.test.ts` (shared i serwer), E2E `t70e-automat-lod`
 
 **Kryteria ukończenia:** wejście na piętro Kruka bez udziału MG daje test wykrycia i (po
 przegranej) darmowy atak; w następnej rundzie Kruk atakuje sam; z włączonym hamulcem nie dzieje
 się nic, dopóki MG nie kliknie.
+
+**Zrobione 13.11.2026 (bez migracji). Odstępstwa od projektu:**
+
+- **„Krótka pauza na kości” to kolejka prezentacji klienta, nie zegar serwera.** Tura LOD-u gra
+  się w obsłudze „Następna tura” od razu; przed nią serwer wysyła odłożone widoki i kolejkę ze
+  wskaźnikiem na LOD-zie (`flushPresentation`), a klient trzyma następny stan za kośćmi. Bez
+  zegara nie ma też wyścigu z „Następna tura” MG — wskaźnik nigdy nie stoi na grającym LOD-zie.
+- **Poza walką automat tylko wykrywa i budzi** — Tura bez rund nie istnieje, ścigający LOD poza
+  walką dalej rusza się na „Tura LOD-a”. LOD wykryty przed starciem nie wchodzi sam do kolejki
+  (pomysł w `POMYSLY.md`).
+- **Zdjęcie hamulca niczego nie nadrabia** (wskaźnik na LOD-zie czeka na „Następna tura” MG,
+  LOD pod stopami — na następne wejście). Hamulec stoi w belce stanu okna MG jako checkbox
+  „Wstrzymaj obronę”, nie w „Planie Architektury” (zwijanym), a zdarzenie bierze `runId` —
+  przełącznik trzyma Architektura runu.
+- **Wyścig z „Następna tura” MG przeniósł się do klienta** — serwer nie stoi na grającym LOD-zie,
+  ale kolejka MG pokazuje jego Turę jeszcze przez kości, a klik w nią przeskoczyłby następnego.
+  Dlatego `combat:next` MG niesie widzianą turę i dostaje `TURN_MOVED_ON`, gdy kolejka poszła
+  dalej (wypatrzone w oględzinach; dotyczy każdego kroku MG). Pomocnik E2E `nextTurn(mg)` czeka
+  przed klikiem, aż kolejka MG dogoni bazę.
+- **Wiersz, który nie ma czego zagrać, oddaje Turę bez słowa** (LOD zderezowany albo po Turze
+  w tej Rundzie, Demon bez Akcji, wiersz po zniknięciu runu) — projekt mówił tylko o grających.
+  Gdy własna Tura LOD-u zakończy run (awaryjne odłączenie zdejmuje jego wiersze), kolejka idzie
+  do następnego istniejącego miejsca w starej kolejności (`pointerPastGone`), nie od góry rundy.
+- **Testy:** automat i strażnik „Następna tura” na serwerze w nowym `net-defense.test.ts` (9);
+  `netcombat.test.ts` i `netdemons.test.ts` sprawdzają przyciski MG z hamulcem zaciągniętym po
+  `netrun:start`. Testy `shared` w `netdemons.test.ts` (10) i `netrun.test.ts` (odczyt
+  `defensePaused`, krój MG).
+- **E2E `t70e`:** obrona to wpisy MG z surowego gniazda (bez prywatnego kompendium), oba LOD-y
+  tylko kradną Akcję Sieciową, Demon ma jedną Akcję. Krok 4 sprawdza też, że zdjęty hamulec nie
+  rusza kolejki. **T5b:** MG w 5.4 zaznacza „Wstrzymaj obronę” — spec gra obroną ręką MG;
+  niepuszczony (gateway, zaległość z 12.11).
 
 ### 70f — Wzorce i rozegranie
 

@@ -548,6 +548,14 @@ export interface CpredNetRuntime {
    * „Odłączenie resetuje obronę” (s. 198) on purpose — a house rule.
    */
   memories?: CpredNetMemory[];
+  /**
+   * The GM's brake on the defence (stage 70e, decyzja MG nr 4 z 11.11). Absent
+   * = the Black ICE detects and the Demons wake and play their Turns by
+   * themselves (`netDefenseAutoStep`); true = nothing moves until the GM clicks,
+   * the way it was before the stage. Per Architecture and here rather than in
+   * the run, so a reconnection does not let go of it.
+   */
+  defensePaused?: boolean;
 }
 
 /** One character's achievements in one Architecture on one scene. */
@@ -828,6 +836,7 @@ export function readNetRuntime(raw: unknown): CpredNetRuntime {
     ...(devices.length > 0 ? { devices } : {}),
     ...(spentTries.length > 0 ? { spentTries } : {}),
     ...(memories.length > 0 ? { memories } : {}),
+    ...(input.defensePaused === true ? { defensePaused: true } : {}),
   };
 }
 
@@ -1072,6 +1081,11 @@ export interface NetRunView {
   spentAbilities: NetAbilityId[];
   /** How many tries this netrunner spent on this scene, for the GM's „Oddaj próby". */
   spentTries: number;
+  /**
+   * The GM's copy only (stage 70e): is the defence of this Architecture on the
+   * brake? A player is not told whether the building answers by itself.
+   */
+  defensePaused?: boolean;
 }
 
 /**
@@ -1286,6 +1300,7 @@ export function netRunView(
     demons: options.demons ?? [],
     spentAbilities,
     spentTries: tries.length,
+    ...(options.gm ? { defensePaused: options.runtime?.defensePaused === true } : {}),
   };
 }
 

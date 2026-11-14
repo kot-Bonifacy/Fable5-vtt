@@ -73,6 +73,7 @@ import {
   saveRunState,
 } from './netrun-io.js';
 import { applyIceEffect, emergencyJackOut, type FullRunState } from './netice.js';
+import { answerNetDefense } from './net-defense.js';
 
 /**
  * Walka w Sieci (stage 26c) — the events behind Programs, Paf, Ślizg and the
@@ -84,10 +85,12 @@ import { applyIceEffect, emergencyJackOut, type FullRunState } from './netice.js
  *     other side of a Net fight is a Program: there is nobody to hand a „Broń
  *     się" button to. The card therefore shows the exchange finished, and
  *     `opposed.won` is its verdict. „Większy od" (s. 201): a tie is a miss.
- *  2. **The Black ICE moves only when the GM says so** (decision of 15.08).
- *     RAW fires its free attack the moment you walk in; the VTT marks it as
- *     waiting and gives the GM two buttons — „LOD wykrywa intruza" and „Tura
- *     LOD-a". „LOD-y zawsze kontroluje MG" (s. 205) either way.
+ *  2. **The Black ICE moves by itself, with the GM's hand on the brake**
+ *     (stage 70e, decyzja MG nr 4 z 11.11 — until then only on the GM's click,
+ *     decision of 15.08). RAW fires its free attack the moment you walk in, and
+ *     so does the automat in `net-defense.ts`; the GM's two buttons — „LOD
+ *     wykrywa intruza" and „Tura LOD-a" — stay, and are all there is while the
+ *     brake is on. „LOD-y zawsze kontroluje MG" (s. 205) either way.
  *  3. **A fight in the Net needs no fight on the map.** The tracker is where a
  *     Black ICE goes when there *is* one, but a run happens as often without;
  *     everything here works either way, and the round-based rules (once per
@@ -123,6 +126,28 @@ export async function requireRun(
   const row = await loadRunRow(deps.ctx.prisma, campaignId, runId);
   if (!row) throw new RealtimeError('NET_NOT_JACKED');
   if (!controlsRun(row, user)) throw new RealtimeError('FORBIDDEN');
+  return loadedRunOf(deps, campaignId, row);
+}
+
+/**
+ * The same run with nobody's hand on it — the defence's automat (stage 70e)
+ * acts on a run because something happened in it, not because somebody asked.
+ * Null when the run is gone (an emergency jack-out a step earlier).
+ */
+export async function loadRun(
+  deps: RealtimeDeps,
+  campaignId: string,
+  runId: string,
+): Promise<LoadedRun | null> {
+  const row = await loadRunRow(deps.ctx.prisma, campaignId, runId);
+  return row ? loadedRunOf(deps, campaignId, row) : null;
+}
+
+async function loadedRunOf(
+  deps: RealtimeDeps,
+  campaignId: string,
+  row: LoadedRun['row'],
+): Promise<LoadedRun> {
   const architecture = architectureOf(row.architecture);
   const state = readFullRun(row.data);
   if (!architecture || !state) throw new RealtimeError('ARCHITECTURE_NOT_FOUND');
@@ -229,7 +254,8 @@ export async function spawnIceOnFloors(
           profile,
           rezCurrent: profile.rez,
           // „Zwykle gdzieś w Architekturze czyha na ciebie Czarny LOD" — it is
-          // waiting, not yet hunting. The GM's button turns that around.
+          // waiting, not yet hunting. The detection (the automat of stage 70e
+          // or the GM's button) turns that around.
           mode: 'lurking',
           detected: false,
         });
@@ -732,217 +758,260 @@ export const netSlideEvent = defineEvent<NetRunSlidePayload, NetRunAbilityResult
       exchange.won ? 'udany' : 'nieudany',
     );
     await emitRuns(deps, campaignId);
+    // Etap 70e: piętro, na które Ślizg uciekł, może mieć własnego LOD-a.
+    const landedOn = exchange.won ? netFloorAt(architecture, target)?.id : undefined;
+    if (landedOn) {
+      await answerNetDefense(deps, {
+        campaignId,
+        user,
+        runId: row.id,
+        cue: { kind: 'entered', floorIds: [landedOn] },
+      });
+    }
     return { messageId: message.id, total: exchange.attackTotal, success: exchange.won, summary };
   },
 });
 
-// ──────────────────────────── Czarny LOD (przyciski MG) ────────────────────────────
+// ──────────────────────────── Czarny LOD (przyciski MG i automat) ────────────────────────────
 
 /**
  * „Gdy się na niego natkniesz, rzucasz na Interfejs + suma aktywnych premii do
  * PRĘDKOŚCI + 1k10 przeciw PRĘDKOŚCI + 1k10 tego Czarnego LOD-u" (s. 205).
  *
- * On the GM's click rather than on the netrunner's step (decision of 15.08),
- * and it does three things at once: the contest, the free hit if it is lost,
- * and the jump to the head of the initiative queue.
+ * Three things at once: the contest, the free hit if it is lost, and the jump
+ * to the head of the initiative queue. Until stage 70e only the GM's click did
+ * it (decision of 15.08); now the defence's automat calls the very same thing
+ * when the netrunner steps onto the floor (`net-defense.ts`), and the button
+ * stays for the brake and for corrections. The refusals stay with the caller.
  */
+export async function iceDetects(
+  deps: RealtimeDeps,
+  input: {
+    campaignId: string;
+    user: SessionUser;
+    run: LoadedRun;
+    ice: CpredNetIce;
+    gesture?: RollGesture;
+  },
+): Promise<NetRunAbilityResult> {
+  const { campaignId, user, ice } = input;
+  const { row, state, scene } = input.run;
+  const { rank } = await netActionsForRun(deps.ctx.prisma, deps.ctx.cpred, row.characterId);
+  const actorName = tokenTableName(row.token, row.token.character?.name ?? row.token.name);
+  const plan = netDetectionPlan({
+    interfaceRank: rank,
+    speedBonuses: netSpeedBonuses(state),
+    ice,
+  });
+  const exchange = rollExchange(plan, {
+    ...(input.gesture ? { gesture: input.gesture } : {}),
+    attackerIsHuman: true,
+    detail: 'wykrycie — przegrana to darmowy atak LOD-u',
+    actor: actorName,
+  });
+
+  let next: FullRunState = {
+    ...state,
+    ice: state.ice.map((entry) =>
+      entry.id === ice.id ? { ...entry, detected: true, mode: 'hunting' } : entry,
+    ),
+  };
+  const tokenIds: string[] = [];
+  // Bez rodzaju: LOD nazywa się „Sowa” albo „Kruk” (oględziny 70e, 14.11).
+  let summary = `${ice.name} wykrywa intruza — bez darmowego ataku.`;
+  let ended = false;
+
+  if (!exchange.won) {
+    const effect = await applyIceEffect(deps, {
+      campaignId,
+      user,
+      ice,
+      state: next,
+      runId: row.id,
+      characterId: row.characterId,
+      token: row.token,
+      round: await roundOfScene(deps, scene.id),
+      rng: createMixedRng(),
+    });
+    next = effect.state;
+    tokenIds.push(...effect.tokenIds);
+    summary = `${ice.name} wyprowadza darmowy atak: ${effect.lines.join(' ')}`;
+    exchange.roll.opposed = {
+      ...exchange.roll.opposed!,
+      detail: `${exchange.roll.opposed!.detail} · ${effect.lines.join(' · ')}`,
+    };
+    ended = effect.endsRun;
+  }
+
+  if (!ended) {
+    const combatantId = await pushNetFoeIntoQueue(deps, campaignId, scene, {
+      runId: row.id,
+      foeId: ice.id,
+      label: ice.name,
+    });
+    if (combatantId) {
+      next = {
+        ...next,
+        ice: next.ice.map((entry) => (entry.id === ice.id ? { ...entry, combatantId } : entry)),
+      };
+    }
+    await saveRunState(deps.ctx.prisma, row.id, next);
+  }
+
+  const message = await postExchange(deps, {
+    campaignId,
+    user,
+    sceneId: scene.id,
+    roll: exchange.roll,
+    runnerOwnerId: row.token.character?.ownerId ?? row.token.ownerId,
+  });
+  await logNetLine(deps, campaignId, user, actorName, 'Czarny LOD', `${ice.name} — wykrycie`);
+  if (ended) {
+    await emergencyJackOut(deps, {
+      campaignId,
+      user,
+      runId: row.id,
+      reason: `${ice.name} wyrzucił netrunnera z Architektury`,
+      round: await roundOfScene(deps, scene.id),
+      except: ice.id,
+      rng: createMixedRng(),
+    });
+  }
+  if (tokenIds.length > 0) await emitTokensById(deps, campaignId, tokenIds);
+  await emitRuns(deps, campaignId);
+  return { messageId: message.id, total: exchange.attackTotal, success: exchange.won, summary };
+}
+
 export const netIceDetectEvent = defineEvent<NetIceActPayload, NetRunAbilityResult>({
   name: 'netrun:ice:detect',
   role: ROLE_GM,
   handler: async ({ deps, socket, user, payload }) => {
     const campaignId = requireCampaignId(socket.data);
-    const { row, state, scene } = await requireRun(deps, campaignId, user, payload?.runId);
-    const ice = requireIce(state, payload?.iceId);
+    const run = await requireRun(deps, campaignId, user, payload?.runId);
+    const ice = requireIce(run.state, payload?.iceId);
     if (ice.mode === 'derezzed' || ice.mode === 'destroyed') refuse('NET_ICE_DOWN');
     if (ice.detected) refuse('NET_ICE_ALREADY_DETECTED');
-
-    const { rank } = await netActionsForRun(deps.ctx.prisma, deps.ctx.cpred, row.characterId);
-    const actorName = tokenTableName(row.token, row.token.character?.name ?? row.token.name);
-    const plan = netDetectionPlan({
-      interfaceRank: rank,
-      speedBonuses: netSpeedBonuses(state),
-      ice,
-    });
-    const exchange = rollExchange(plan, {
-      ...(payload?.gesture ? { gesture: payload.gesture } : {}),
-      attackerIsHuman: true,
-      detail: 'wykrycie — przegrana to darmowy atak LOD-u',
-      actor: actorName,
-    });
-
-    let next: FullRunState = {
-      ...state,
-      ice: state.ice.map((entry) =>
-        entry.id === ice.id ? { ...entry, detected: true, mode: 'hunting' } : entry,
-      ),
-    };
-    const tokenIds: string[] = [];
-    let summary = `${ice.name} wykrywa intruza — nie zdążył uderzyć.`;
-    let ended = false;
-
-    if (!exchange.won) {
-      const effect = await applyIceEffect(deps, {
-        campaignId,
-        user,
-        ice,
-        state: next,
-        runId: row.id,
-        characterId: row.characterId,
-        token: row.token,
-        round: await roundOfScene(deps, scene.id),
-        rng: createMixedRng(),
-      });
-      next = effect.state;
-      tokenIds.push(...effect.tokenIds);
-      summary = `${ice.name} wyprowadza darmowy atak: ${effect.lines.join(' ')}`;
-      exchange.roll.opposed = {
-        ...exchange.roll.opposed!,
-        detail: `${exchange.roll.opposed!.detail} · ${effect.lines.join(' · ')}`,
-      };
-      ended = effect.endsRun;
-    }
-
-    if (!ended) {
-      const combatantId = await pushNetFoeIntoQueue(deps, campaignId, scene, {
-        runId: row.id,
-        foeId: ice.id,
-        label: ice.name,
-      });
-      if (combatantId) {
-        next = {
-          ...next,
-          ice: next.ice.map((entry) => (entry.id === ice.id ? { ...entry, combatantId } : entry)),
-        };
-      }
-      await saveRunState(deps.ctx.prisma, row.id, next);
-    }
-
-    const message = await postExchange(deps, {
+    return iceDetects(deps, {
       campaignId,
       user,
-      sceneId: scene.id,
-      roll: exchange.roll,
-      runnerOwnerId: row.token.character?.ownerId ?? row.token.ownerId,
+      run,
+      ice,
+      ...(payload?.gesture ? { gesture: payload.gesture } : {}),
     });
-    await logNetLine(deps, campaignId, user, actorName, 'Czarny LOD', `${ice.name} — wykrycie`);
-    if (ended) {
-      await emergencyJackOut(deps, {
-        campaignId,
-        user,
-        runId: row.id,
-        reason: `${ice.name} wyrzucił netrunnera z Architektury`,
-        round: await roundOfScene(deps, scene.id),
-        except: ice.id,
-        rng: createMixedRng(),
-      });
-    }
-    if (tokenIds.length > 0) await emitTokensById(deps, campaignId, tokenIds);
-    await emitRuns(deps, campaignId);
-    return { messageId: message.id, total: exchange.attackTotal, success: exchange.won, summary };
   },
 });
 
 /**
  * One Turn of a Black ICE: „w każdej swojej Turze LOD wykonuje jeden atak
  * wymierzony w Netrunnera (lub … jeden losowo określony, uruchomiony Program)"
- * (s. 205).
+ * (s. 205). The GM's „Tura LOD-a" and, since stage 70e, the initiative queue
+ * itself (`playNetFoeTurn`) both land here; the refusals stay with the caller.
  */
+export async function iceTakesTurn(
+  deps: RealtimeDeps,
+  input: { campaignId: string; user: SessionUser; run: LoadedRun; ice: CpredNetIce },
+): Promise<NetRunAbilityResult> {
+  const { campaignId, user, ice } = input;
+  const { row, state, scene } = input.run;
+  const round = await roundOfScene(deps, scene.id);
+  const { rank } = await netActionsForRun(deps.ctx.prisma, deps.ctx.cpred, row.characterId);
+  const actorName = tokenTableName(row.token, row.token.character?.name ?? row.token.name);
+  const victim =
+    ice.profile.target === 'antiProgram' ? netRandomRezzed(state, createMixedRng()) : null;
+  const plan = netIceAttackPlan({
+    ice,
+    defender: victim
+      ? { kind: 'program', name: victim.name, profile: victim.profile }
+      : { kind: 'brain', name: actorName, interfaceRank: rank },
+  });
+  const exchange = rollExchange(plan, {
+    attackerIsHuman: false,
+    detail: victim
+      ? `cel: ${victim.name} (LOD przeciwprogramowy)`
+      : `cel: ${actorName} — ${netProgramDamageDice(ice.profile, 'brain')}k6 w mózg`,
+    actor: ice.name,
+  });
+
+  let next: FullRunState = {
+    ...state,
+    ice: state.ice.map((entry) =>
+      entry.id === ice.id ? { ...entry, lastAttackRound: round ?? entry.lastAttackRound } : entry,
+    ),
+  };
+  const tokenIds: string[] = [];
+  let summary = `${ice.name} chybia.`;
+  let ended = false;
+
+  if (exchange.won) {
+    const effect = await applyIceEffect(deps, {
+      campaignId,
+      user,
+      ice,
+      state: next,
+      runId: row.id,
+      characterId: row.characterId,
+      token: row.token,
+      round,
+      rng: createMixedRng(),
+    });
+    next = effect.state;
+    tokenIds.push(...effect.tokenIds);
+    summary = `${ice.name} trafia: ${effect.lines.join(' ')}`;
+    exchange.roll.opposed = {
+      ...exchange.roll.opposed!,
+      detail: `${exchange.roll.opposed!.detail} · ${effect.lines.join(' · ')}`,
+    };
+    ended = effect.endsRun;
+  }
+
+  if (!ended) await saveRunState(deps.ctx.prisma, row.id, next);
+  const message = await postExchange(deps, {
+    campaignId,
+    user,
+    sceneId: scene.id,
+    roll: exchange.roll,
+    runnerOwnerId: row.token.character?.ownerId ?? row.token.ownerId,
+  });
+  await logNetLine(
+    deps,
+    campaignId,
+    user,
+    ice.name,
+    'Tura Czarnego LOD-u',
+    exchange.won ? 'trafienie' : 'pudło',
+  );
+  if (ended) {
+    await emergencyJackOut(deps, {
+      campaignId,
+      user,
+      runId: row.id,
+      reason: `${ice.name} wyrzucił netrunnera z Architektury`,
+      round,
+      except: ice.id,
+      rng: createMixedRng(),
+    });
+  }
+  if (tokenIds.length > 0) await emitTokensById(deps, campaignId, tokenIds);
+  await emitRuns(deps, campaignId);
+  return { messageId: message.id, total: exchange.attackTotal, success: exchange.won, summary };
+}
+
 export const netIceTurnEvent = defineEvent<NetIceActPayload, NetRunAbilityResult>({
   name: 'netrun:ice:turn',
   role: ROLE_GM,
   handler: async ({ deps, socket, user, payload }) => {
     const campaignId = requireCampaignId(socket.data);
-    const { row, state, scene } = await requireRun(deps, campaignId, user, payload?.runId);
-    const ice = requireIce(state, payload?.iceId);
+    const run = await requireRun(deps, campaignId, user, payload?.runId);
+    const ice = requireIce(run.state, payload?.iceId);
     if (ice.mode === 'derezzed' || ice.mode === 'destroyed') refuse('NET_ICE_DOWN');
     // A lurking ICE waits — it is only after it has caught somebody that it
     // gets Turns („ściga swój cel po całej Architekturze", s. 205). One shaken
     // off with a Ślizg goes back to waiting, which is what makes the ability
     // worth an Akcja Sieciowa.
     if (!ice.detected || ice.mode !== 'hunting') refuse('NET_ICE_NOT_DETECTED');
-    const round = await roundOfScene(deps, scene.id);
+    const round = await roundOfScene(deps, run.scene.id);
     if (round !== null && ice.lastAttackRound === round) refuse('NET_ICE_ALREADY_ACTED');
-
-    const { rank } = await netActionsForRun(deps.ctx.prisma, deps.ctx.cpred, row.characterId);
-    const actorName = tokenTableName(row.token, row.token.character?.name ?? row.token.name);
-    const victim =
-      ice.profile.target === 'antiProgram' ? netRandomRezzed(state, createMixedRng()) : null;
-    const plan = netIceAttackPlan({
-      ice,
-      defender: victim
-        ? { kind: 'program', name: victim.name, profile: victim.profile }
-        : { kind: 'brain', name: actorName, interfaceRank: rank },
-    });
-    const exchange = rollExchange(plan, {
-      attackerIsHuman: false,
-      detail: victim
-        ? `cel: ${victim.name} (LOD przeciwprogramowy)`
-        : `cel: ${actorName} — ${netProgramDamageDice(ice.profile, 'brain')}k6 w mózg`,
-      actor: ice.name,
-    });
-
-    let next: FullRunState = {
-      ...state,
-      ice: state.ice.map((entry) =>
-        entry.id === ice.id ? { ...entry, lastAttackRound: round ?? entry.lastAttackRound } : entry,
-      ),
-    };
-    const tokenIds: string[] = [];
-    let summary = `${ice.name} chybia.`;
-    let ended = false;
-
-    if (exchange.won) {
-      const effect = await applyIceEffect(deps, {
-        campaignId,
-        user,
-        ice,
-        state: next,
-        runId: row.id,
-        characterId: row.characterId,
-        token: row.token,
-        round,
-        rng: createMixedRng(),
-      });
-      next = effect.state;
-      tokenIds.push(...effect.tokenIds);
-      summary = `${ice.name} trafia: ${effect.lines.join(' ')}`;
-      exchange.roll.opposed = {
-        ...exchange.roll.opposed!,
-        detail: `${exchange.roll.opposed!.detail} · ${effect.lines.join(' · ')}`,
-      };
-      ended = effect.endsRun;
-    }
-
-    if (!ended) await saveRunState(deps.ctx.prisma, row.id, next);
-    const message = await postExchange(deps, {
-      campaignId,
-      user,
-      sceneId: scene.id,
-      roll: exchange.roll,
-      runnerOwnerId: row.token.character?.ownerId ?? row.token.ownerId,
-    });
-    await logNetLine(
-      deps,
-      campaignId,
-      user,
-      ice.name,
-      'Tura Czarnego LOD-u',
-      exchange.won ? 'trafienie' : 'pudło',
-    );
-    if (ended) {
-      await emergencyJackOut(deps, {
-        campaignId,
-        user,
-        runId: row.id,
-        reason: `${ice.name} wyrzucił netrunnera z Architektury`,
-        round,
-        except: ice.id,
-        rng: createMixedRng(),
-      });
-    }
-    if (tokenIds.length > 0) await emitTokensById(deps, campaignId, tokenIds);
-    await emitRuns(deps, campaignId);
-    return { messageId: message.id, total: exchange.attackTotal, success: exchange.won, summary };
+    return iceTakesTurn(deps, { campaignId, user, run, ice });
   },
 });
 

@@ -763,6 +763,8 @@ const CASES: Record<string, Case> = {
   // netdemons
   'netrun:demon:detect': foreign((a) => ({ runId: a.runId, demonId: 'x' })),
   'netrun:demon:turn': foreign((a) => ({ runId: a.runId, demonId: 'x' })),
+  // net-defense (etap 70e)
+  'netrun:defense:pause': foreign((a) => ({ runId: a.runId, paused: true })),
   'netrun:device': foreign((a) => ({
     runId: a.runId,
     deviceId: 'x',

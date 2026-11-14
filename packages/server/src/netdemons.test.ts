@@ -410,6 +410,10 @@ describe('Demony na żywych gniazdach', () => {
       'netrun:start',
     ).runId;
     expect(runId).toBeTruthy();
+    // Etap 70e: ten zestaw sprawdza przyciski MG („Demon wykrywa intruza”,
+    // „Tura Demona”), więc gra z hamulcem — inaczej Demon budziłby się po
+    // Kontroli i grał Turę w kolejce sam (`net-defense.test.ts`).
+    expect((await emitAck(gm, 'netrun:defense:pause', { runId, paused: true })).ok).toBe(true);
   });
 
   it('stawia Demony już przy podłączeniu, ale wyłącznie w oczach MG', async () => {

@@ -14,7 +14,9 @@ do Kruka i na węzeł wyjściem „Niżej”, F5 w Sieci, strzał i „Wyłącz�
 `tuckRunWindow(mg)` przy oknie MG z planem (680 px zwijane uchwytem do 280). `po-T5a` zapisany
 na nowo 12.11 przez zielone T5a. **13.11 (70c):** krok 5.5 przepięty z listy urządzeń na pasek
 „Oczy i urządzenia” (miniatura wieżyczki → „Wyłącz” na belce, kropka `[data-eye-state="off"]`)
-— też niepuszczony, z tego samego powodu.
+— też niepuszczony, z tego samego powodu. **13.11 (70e):** w 5.4 MG zaznacza „Wstrzymaj obronę”
+w oknie runu, zanim kliknie „Demon wykrywa intruza” — T5b gra obroną Sieci ręką MG, a automat
+ma własny spec `47-siec/t70e`; też niepuszczone.
 
 **07.11.2026 (szósta) — dokończenie rozegrania „Po zamknięciu”: nowe błędy.** Opis i diagnozy:
 `etap-66e-po-zamknieciu.md` („Rozegranie — dokończenie”, pkt 15–29). **Pkt 15, 17 i 21

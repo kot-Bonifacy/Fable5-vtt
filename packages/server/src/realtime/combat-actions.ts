@@ -5,11 +5,13 @@ import type {
   CombatOverspendPayload,
   CombatHoldPayload,
   CombatHoldReleasePayload,
+  CombatNextPayload,
   CombatResetTurnPayload,
   CombatTerrainPayload,
   CombatView,
   CombatantIdPayload,
   SessionUser,
+  TurnPointer,
 } from '@vtt/shared';
 import {
   COMBAT_ACTION_NOTE_MAX_LENGTH,
@@ -77,6 +79,7 @@ import { calmFoe, calmVisibleFoes } from './foe-sighting.js';
 import { endSneak } from './sneak.js';
 import { emitRunsOnRoundChange, resetNetLedgersOnScene } from './netrun-io.js';
 import { netSilencedTokenIds } from './net-control.js';
+import { playNetFoeTurn } from './net-defense.js';
 
 /**
  * The action economy (stage 14b).
@@ -577,14 +580,28 @@ export const combatRemoveEvent = defineEvent<CombatantIdPayload, CombatView>({
  * (stage 14e): fire burns, ribs re-open, „Przygwożdżony" lifts. All of that
  * writes token state, which sits below this module and above the tracker.
  */
-export const combatNextEvent = defineEvent<undefined, CombatView>({
+export const combatNextEvent = defineEvent<CombatNextPayload | undefined, CombatView>({
   name: 'combat:next',
-  handler: async ({ deps, socket, user }) => {
+  handler: async ({ deps, socket, user, payload }) => {
     const campaignId = requireCampaignId(socket.data);
     const sceneId = socket.data.viewedSceneId;
     const scene = await requireCampaignScene(deps.ctx.prisma, campaignId, sceneId);
     const combat = await loadCombat(deps.ctx.prisma, scene.id);
     if (!combat) throw new RealtimeError('COMBAT_NOT_FOUND');
+
+    // Etap 70e: MG klika to, co widzi, a widzi kolejkę za kośćmi — Tura LOD-u
+    // albo Demona może się u niego jeszcze toczyć, gdy wskaźnik stoi już dalej.
+    // Krok z innej tury niż bieżąca przeskoczyłby kogoś, kto nie zagrał.
+    if (user.role === ROLE_GM && payload && typeof payload === 'object') {
+      const seenActive = payload.activeCombatantId;
+      const seenRound = payload.round;
+      if (
+        (seenActive !== undefined && seenActive !== combat.activeCombatantId) ||
+        (typeof seenRound === 'number' && seenRound !== combat.round)
+      ) {
+        throw new RealtimeError('TURN_MOVED_ON');
+      }
+    }
 
     if (user.role !== ROLE_GM) {
       const active = combat.combatants.find((row) => row.id === combat.activeCombatantId);
@@ -659,6 +676,11 @@ async function stepTurn(
  * thrown — a player owing one keeps the turn until the cup lands, and the roll
  * calls this again (`passForfeitedTurnOf`).
  *
+ * Since stage 70e the same lap plays the seats of the Net's defence: a Black
+ * ICE or a Demon whose row comes up takes its Turn by itself
+ * (`playNetFoeTurn`), unless the GM holds the brake on its Architecture —
+ * then the pointer waits on it, as it did before.
+ *
  * One lap at most: a queue in which nobody can act stops on the first of them
  * and leaves the GM to end the fight.
  */
@@ -671,7 +693,15 @@ export async function passForfeitedTurns(
   for (let lap = await loadCombat(deps.ctx.prisma, scene.id), steps = 0; lap; steps++) {
     if (lap.round === 0 || steps >= lap.combatants.length) return;
     const active = lap.combatants.find((row) => row.id === lap!.activeCombatantId);
-    if (!active || !hasFigure(active) || turnOwesDeathSave(active.turnState)) return;
+    if (!active) return;
+    if (!hasFigure(active)) {
+      const outcome = await playNetFoeTurn(deps, { campaignId, scene, combatant: active, user });
+      if (outcome === 'wait') return;
+      await handNetSeatOn(deps, campaignId, scene, lap, active, user);
+      lap = await loadCombat(deps.ctx.prisma, scene.id);
+      continue;
+    }
+    if (turnOwesDeathSave(active.turnState)) return;
     // Figura urządzenia przejęta w Sieci (etap 70b) nie gra własnej tury —
     // prowadzi ją netrunner w swojej; wyłączona w Sieci (70c) stoi. Pytany jest
     // węzeł i stan urządzenia, nie naklejka.
@@ -684,6 +714,49 @@ export async function passForfeitedTurns(
     await stepTurn(deps, campaignId, scene, lap, user);
     lap = await loadCombat(deps.ctx.prisma, scene.id);
   }
+}
+
+/**
+ * The turn after a Net participant's seat (stage 70e). Normally just the next
+ * step of the queue; but its own Turn may have ended the run that carried it
+ * (an emergency jack-out sweeps the run's rows out of the queue), and counting
+ * on from a row that is gone would start the round again from the top.
+ */
+async function handNetSeatOn(
+  deps: RealtimeDeps,
+  campaignId: string,
+  scene: Scene,
+  before: CombatRow,
+  seat: CombatantRow,
+  user: SessionUser,
+): Promise<void> {
+  const after = await loadCombat(deps.ctx.prisma, scene.id);
+  if (!after) return;
+  if (after.combatants.some((row) => row.id === seat.id)) {
+    await stepTurn(deps, campaignId, scene, after, user);
+    return;
+  }
+  await advanceTurn(deps, campaignId, scene, after, pointerPastGone(before, after), user);
+}
+
+/** The first seat after the one being played that still exists, in the old order. */
+function pointerPastGone(before: CombatRow, after: CombatRow): TurnPointer {
+  const present = new Set(after.combatants.map((row) => row.id));
+  let probe: CombatRow = before;
+  for (let hop = 0; hop <= before.combatants.length; hop++) {
+    const pointer = upcomingTurn(probe);
+    if (pointer.activeCombatantId === null || present.has(pointer.activeCombatantId)) {
+      return pointer;
+    }
+    probe = {
+      ...probe,
+      round: pointer.round,
+      activeCombatantId: pointer.activeCombatantId,
+      resumeCombatantId: null,
+      resumeRound: null,
+    };
+  }
+  return nextTurn(toCombatView(after));
 }
 
 /**

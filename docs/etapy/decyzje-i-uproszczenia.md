@@ -9,6 +9,39 @@ czytany na starcie każdej sesji został listą zadań, a nie archiwum ustaleń.
 inaczej, niż mówi podręcznik, albo gdy dotykasz wymienionego tu kodu. Jeśli któraś z tych decyzji
 przestanie się bronić, przenieś ją stąd do `POMYSLY.md` jako zadanie — nie odwrotnie.
 
+## Obrona Sieci rusza się sama, MG trzyma hamulec (etap 70e, 13.11.2026, decyzja MG nr 4 z 11.11)
+
+Cofa decyzję z 15.08 („LOD nigdy nie rusza się sam”, powtórzoną 16.08 dla Demona).
+
+- **Wykrycie Czarnego LOD-u rzuca serwer sam**, gdy netrunner stanie na jego piętrze: ruch (każde
+  piętro trasy, tak jak liczy się spotkanie LOD-u), udany Ślizg, podłączenie na piętrze wejścia.
+  Ten sam test sporny i ten sam skutek co pod przyciskiem MG (s. 205): przegrana to darmowy atak
+  i miejsce na czele kolejki. LOD zgubiony Ślizgiem wykrywa znowu, gdy netrunner wróci na jego
+  piętro; zderezowany — nigdy.
+- **Demon zaczyna ścigać sam**, gdy netrunner wejdzie na jego piętro **albo przejmie dowolny
+  węzeł** jego Architektury (rozstrzygnięcie nr 8 etapu 70 — Demon broni węzłów).
+- **Tura w kolejce gra się sama.** Wskaźnik staje na wierszu LOD-u albo Demona → LOD atakuje (raz
+  na Rundę), Demon gra całą Turę → kolejka idzie dalej. Wiersz bez czego zagrać (LOD zderezowany,
+  już po Turze w tej Rundzie, Demon bez Akcji Sieciowych) oddaje Turę bez wiersza na czacie.
+  „Krótka pauza na kości” to kolejka prezentacji klienta, nie zegar serwera: stan kolejki ze
+  wskaźnikiem na LOD-zie wychodzi przed jego kośćmi, następny — dopiero za nimi.
+- **Poza walką automat tylko wykrywa i budzi.** Bez rund nie ma Tury, więc ścigający LOD poza
+  walką rusza się na „Tura LOD-a” jak dotąd. LOD wykryty poza walką nie wchodzi sam do kolejki,
+  gdy MG potem założy starcie (jak przed etapem — pomysł w `POMYSLY.md`).
+- **Ręka automatu to konto MG** (#39): karta, kości i wiersz dziennika idą kontem MG, także gdy
+  wywołał je ruch gracza. Kości widzą MG i netrunner, stół dostaje skrót jak dotąd.
+- **Hamulec „Wstrzymaj obronę”** w belce stanu okna runu MG, na Architekturę (zostaje po
+  odłączeniu). Wstrzymana obrona zachowuje się jak przed etapem; przyciski MG działają w obu
+  trybach. **Zdjęcie hamulca niczego nie nadrabia** — wskaźnik stojący na LOD-zie czeka na
+  „Następna tura” MG (inaczej jego klik przeskoczyłby następnego), a LOD czyhający pod stopami
+  netrunnera wykryje dopiero przy następnym wejściu na piętro albo na klik MG. Gracz nie wie, czy
+  obrona działa sama.
+- **„Następna tura” MG z kolejki sprzed kości jest odmową** („Kolejka poszła już dalej — poczekaj,
+  aż opadną kości…”). Klient pokazuje kolejkę za kośćmi, więc Tura LOD-u toczy się u MG jeszcze
+  kilka sekund po tym, jak wskaźnik stanął na następnym — klik w to, co MG widzi, przeskoczyłby
+  kogoś, kto nie zagrał. Dotyczy każdego kroku MG, nie tylko Sieci (tak samo chroni przed klikiem
+  po rzucie gracza, który zdążył skończyć turę).
+
 ## Sieć ze sceny wg rodzaju, urządzenia dopiero na węźle, obszar straży od figury (etap 70d, 13.11.2026)
 
 Decyzje MG z 11.11 (nr 2, 3, 5, 8) i rozstrzygnięcia bez pytań z sesji — do słowa MG.

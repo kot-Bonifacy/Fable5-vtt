@@ -198,6 +198,22 @@ export async function endPlayerTurn(actor: Actor) {
 }
 
 export async function nextTurn(mg: Actor) {
+  // Etap 70e: klient MG wysyła turę, którą widzi, a serwer odmawia kroku z tury,
+  // która już minęła (`TURN_MOVED_ON`) — kolejka MG ma najpierw dogonić bazę.
+  await expect
+    .poll(
+      async () => {
+        const seen = (
+          await mg.store<{ combat: { activeCombatantId: string | null; round: number } | null }>(
+            'combat',
+          )
+        )?.combat;
+        const now = combatRow();
+        return seen?.activeCombatantId === now?.activeCombatantId && seen?.round === now?.round;
+      },
+      { message: 'kolejka MG dogania bazę', timeout: 30_000 },
+    )
+    .toBe(true);
   const before = combatRow()?.activeCombatantId;
   // Od 16.10 na dole lewego panelu, nie na pasie inicjatywy.
   await mg.page.getByRole('button', { name: 'Następna tura', exact: true }).click();

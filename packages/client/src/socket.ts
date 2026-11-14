@@ -77,6 +77,7 @@ import type {
   CombatGrapplePayload,
   CombatGrappleResistPayload,
   CombatUpdateBroadcast,
+  CombatNextPayload,
   CombatView,
   CompendiumDeleteBroadcast,
   CompendiumEntry,
@@ -207,6 +208,7 @@ import type {
   NetArchitectureSavePayload,
   NetArchitectureView,
   NetDemonActPayload,
+  NetDefensePausePayload,
   NetIceActPayload,
   NetRunAbilityPayload,
   NetRunAbilityResult,
@@ -3170,6 +3172,13 @@ export const demonTakesTurn = (payload: NetDemonActPayload) =>
   emitSceneAck<NetRunAbilityResult>('netrun:demon:turn', payload);
 
 /**
+ * Hamulec MG na automat obrony Sieci (etap 70e): wstrzymana obrona rusza się
+ * tylko na przyciski MG. Przełącznik trzyma Architektura runu.
+ */
+export const setNetDefensePaused = (runId: string, paused: boolean) =>
+  emitSceneAck('netrun:defense:pause', { runId, paused } satisfies NetDefensePausePayload);
+
+/**
  * Dziennik kampanii. Wołane przy wejściu w zakładkę, nie w `state:sync`.
  *
  * Od 24b odpowiada też graczowi — samymi wpisami odsłoniętymi stołowi, bez
@@ -3696,8 +3705,14 @@ export const setCombatInitiative = (combatantId: string, initiative: number | nu
 export const reorderCombat = (combatantIds: string[]) =>
   emitSceneAck<CombatView>('combat:order', { combatantIds });
 
-export const nextCombatTurn = () =>
-  emitSceneAck<CombatView>('combat:next', {}).then((ack) => {
+export const nextCombatTurn = () => {
+  // Etap 70e: tura, którą ten ekran widzi — serwer odmawia MG kroku z tury,
+  // która już minęła (kolejka czeka u klienta za kośćmi obrony Sieci).
+  const seen = useCombatStore.getState().combat;
+  const payload: CombatNextPayload = seen
+    ? { activeCombatantId: seen.activeCombatantId, round: seen.round }
+    : {};
+  return emitSceneAck<CombatView>('combat:next', payload).then((ack) => {
     // Kończę turę bez Testu Przeżywalności (17.10): powód musi dojść do gracza,
     // bo przycisk sam z siebie tylko się odblokowuje. Kubek od razu trzyma
     // ten Test (24.10) — następnym krokiem jest rzut, nie szukanie przycisku.
@@ -3705,8 +3720,12 @@ export const nextCombatTurn = () =>
       notifyRefusal('action', combatErrorText(ack.error));
       loadOwedDeathSave();
     }
+    if (!ack.ok && ack.error === 'TURN_MOVED_ON') {
+      notifyRefusal('action', combatErrorText(ack.error));
+    }
     return ack;
   });
+};
 
 export const previousCombatTurn = () => emitSceneAck<CombatView>('combat:previous', {});
 
@@ -3944,6 +3963,8 @@ export function combatErrorText(code: string): string {
       return 'To pojemnik, a nie przeciwnik — nie walczy i nie da się go pochwycić.';
     case 'COMBAT_NOT_FOUND':
       return 'Nie ma trwającej walki na tej scenie.';
+    case 'TURN_MOVED_ON':
+      return 'Kolejka poszła już dalej — poczekaj, aż opadną kości, i spójrz, czyja teraz tura.';
     case 'COMBATANT_NOT_FOUND':
       return 'Nie znaleziono uczestnika walki — odśwież stronę.';
     case 'INITIATIVE_ALREADY_ROLLED':

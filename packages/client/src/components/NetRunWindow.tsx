@@ -5,6 +5,7 @@ import {
   attackInNet,
   clearNetGlue,
   resetNetHacks,
+  setNetDefensePaused,
   copyNetFile,
   demonDetects,
   demonTakesTurn,
@@ -146,6 +147,43 @@ function NetActionDots({ tokenId, max }: { tokenId: string; max: number }) {
         ))}
       </span>
     </span>
+  );
+}
+
+/**
+ * Hamulec MG na obronę Sieci (etap 70e, decyzja MG nr 4 z 11.11).
+ *
+ * Domyślnie Czarny LOD wykrywa intruza, a LOD i Demony grają swoje Tury
+ * w kolejce same; zaznaczony — stoją, dopóki MG nie kliknie przycisku
+ * w „Zagrożeniach”. Pole trzyma Architektura, nie run, więc zostaje po
+ * odłączeniu. Gracz go nie ma: `defensePaused` przychodzi tylko do MG.
+ */
+function NetDefenseBrake({
+  paused,
+  busy,
+  onChange,
+}: {
+  paused: boolean;
+  busy: boolean;
+  onChange: (paused: boolean) => void;
+}) {
+  return (
+    <label
+      className="net-defense-brake"
+      title={
+        paused
+          ? 'Obrona tej Architektury stoi: Czarny LOD i Demony ruszają się tylko na przyciski MG w „Zagrożeniach”.'
+          : 'Czarny LOD sam wykrywa intruza, a LOD i Demony grają swoje Tury w kolejce. Zaznacz, żeby ruszały się tylko na przyciski MG.'
+      }
+    >
+      <input
+        type="checkbox"
+        checked={paused}
+        disabled={busy}
+        onChange={(event) => onChange(event.target.checked)}
+      />
+      Wstrzymaj obronę
+    </label>
   );
 }
 
@@ -318,6 +356,13 @@ function NetRunWindowBody() {
           <div className="net-run-status">
             <NetActionDots tokenId={run.tokenId} max={view.netActionsMax} />
             <span>Interfejs {run.interfaceRank}</span>
+            {isGm && view.defensePaused !== undefined && (
+              <NetDefenseBrake
+                paused={view.defensePaused}
+                busy={busy}
+                onChange={(paused) => void guard(setNetDefensePaused(run.runId, paused))}
+              />
+            )}
             {fightState.netActionDebt > 0 && (
               <span className="net-run-debt">
                 W kolejnej Turze −{fightState.netActionDebt} Akcji Sieciowej

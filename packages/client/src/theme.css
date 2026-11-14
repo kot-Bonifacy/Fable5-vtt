@@ -488,6 +488,10 @@
   --net-ice-down: #333333;
   /* Panel MG nad LODem i strefa broniona — bursztyn właściciela systemu. */
   --net-gm-line: #7a3d18;
+  /* Ostrzeżenie na ekranie (70e): dług Akcji Sieciowych i zaciągnięty hamulec
+     obrony w belce stanu — ten sam bursztyn w dzień i w nocy; `--warn` motywu
+     jest kolorem na papier i w dzień ciemniał na ekranie. */
+  --net-warn: #f5b041;
   --net-zone-line: #7a5312;
 }
 

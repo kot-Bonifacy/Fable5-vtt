@@ -689,8 +689,8 @@
 }
 
 .net-run-floor-flag--ice {
-  border-color: var(--warn);
-  color: var(--warn);
+  border-color: var(--net-warn);
+  color: var(--net-warn);
 }
 
 .net-run-floor-notes {
@@ -849,7 +849,7 @@
 }
 
 .net-run-debt {
-  color: var(--warn);
+  color: var(--net-warn);
 }
 
 .net-run-notice--glue .notice-text {
@@ -1096,4 +1096,22 @@ button.net-eye-take:focus-visible .net-eye-name {
 
 .creator-window input.creator-skill-specialty--missing {
   border-color: var(--warn);
+}
+
+/* Hamulec MG na obronę Sieci (etap 70e): przełącznik w belce stanu, tylko MG. */
+.net-defense-brake {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  color: var(--net-text-dim);
+  cursor: pointer;
+}
+
+.net-defense-brake:has(input:checked) {
+  color: var(--net-warn);
+}
+
+.net-defense-brake input {
+  margin: 0;
+  accent-color: var(--net-ink);
 }

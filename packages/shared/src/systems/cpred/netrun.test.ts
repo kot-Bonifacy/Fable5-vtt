@@ -724,6 +724,26 @@ describe('odczyt stanu z bazy', () => {
     expect(runtime.viruses).toHaveLength(1);
     expect(runtime.viruses[0]?.dv).toBe(15);
   });
+
+  it('keeps the GM’s brake on the defence, and only a real true counts (stage 70e)', () => {
+    expect(readNetRuntime(JSON.stringify({ defensePaused: true })).defensePaused).toBe(true);
+    expect('defensePaused' in readNetRuntime(JSON.stringify({ defensePaused: 'tak' }))).toBe(false);
+    expect('defensePaused' in readNetRuntime('{}')).toBe(false);
+  });
+
+  it('tells the GM whether the defence is on the brake, and the player nothing', () => {
+    const state = runAt(TOP);
+    const runtime = { viruses: [], defensePaused: true };
+    const options = { netActionsMax: 3, combat: NO_FIGHT, runtime };
+    expect(netRunView(ARCHITECTURE, state, { ...options, gm: true }).defensePaused).toBe(true);
+    expect(
+      netRunView(ARCHITECTURE, state, { ...options, gm: true, runtime: { viruses: [] } })
+        .defensePaused,
+    ).toBe(false);
+    expect('defensePaused' in netRunView(ARCHITECTURE, state, { ...options, gm: false })).toBe(
+      false,
+    );
+  });
 });
 
 describe('jedna próba na zdolność i pamięć sukcesów (zlecenia MG z 02.11)', () => {

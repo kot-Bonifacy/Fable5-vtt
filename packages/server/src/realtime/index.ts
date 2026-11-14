@@ -297,6 +297,7 @@ import {
 } from './netcombat.js';
 import { netDeviceEvent } from './netdevices.js';
 import { netDemonDetectEvent, netDemonTurnEvent } from './netdemons.js';
+import { netDefensePauseEvent } from './net-defense.js';
 import {
   journalDeleteEvent,
   journalListEvent,
@@ -628,6 +629,7 @@ export const EVENTS: RealtimeEvent<never, unknown>[] = [
   netDeviceEvent,
   netDemonDetectEvent,
   netDemonTurnEvent,
+  netDefensePauseEvent,
   journalListEvent,
   journalUpsertEvent,
   journalDeleteEvent,

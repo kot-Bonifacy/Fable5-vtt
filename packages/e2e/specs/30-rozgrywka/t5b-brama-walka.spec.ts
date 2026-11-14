@@ -467,6 +467,12 @@ test.describe.serial('T5b: „Brama” — walka druga, Sieć, wieżyczka, pad A
     expect(pendingDice()).toBe('');
     expect(combatantOf('Strażnik').initiative).toBeLessThan(iskra.total);
 
+    // Etap 70e: obrona Sieci gra sama, a T5b rozgrywa ją ręką MG („wykrywa”,
+    // „Tura Demona”, „Tura LOD-a”) — automat ma własny spec (`47-siec/t70e`),
+    // więc MG zaciąga hamulec, zanim Demon wejdzie do kolejki.
+    const brake = runWindow(mg).getByRole('checkbox', { name: 'Wstrzymaj obronę' });
+    await brake.click();
+    await expect(brake).toBeChecked();
     // Demon czuwa od podłączenia; MG klika „wykrywa” — bez testu, Demon staje na czele.
     await runWindow(mg).getByRole('button', { name: 'Demon wykrywa intruza' }).click();
     await expect.poll(() => combatants().length).toBe(4);

@@ -602,6 +602,21 @@ export interface CombatHoldReleasePayload {
   combatantId: string;
 }
 
+/**
+ * „Następna tura” with the turn the sender is looking at (stage 70e).
+ *
+ * A client presents the queue behind the dice, so while a Black ICE's or a
+ * Demon's Turn is still rolling on the GM's screen, the server's pointer has
+ * long moved on to the next participant. A GM's click on what they see would
+ * then skip somebody who has not played. The server refuses a GM's step whose
+ * `activeCombatantId` / `round` no longer match (`TURN_MOVED_ON`); without the
+ * fields (raw sockets, tests) nothing is compared.
+ */
+export interface CombatNextPayload {
+  activeCombatantId?: string | null;
+  round?: number;
+}
+
 /** GM hands a participant their whole turn back (the escape hatch). */
 export interface CombatResetTurnPayload {
   combatantId: string;

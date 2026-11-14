@@ -3,7 +3,9 @@ import type {
   CpredNetArchitecture,
   CpredNetDefenseProfile,
   CpredNetDemonState,
+  CpredNetIce,
   CpredNetProgramProfile,
+  NetDefenseState,
   NetDemonNodeView,
 } from './index.js';
 import { netDemonBudgetAdvice, netDemonFloors } from './netrunning.js';
@@ -17,6 +19,7 @@ import {
   netDemonTakesNode,
   netDemonViews,
   netDemonZapPlan,
+  netDefenseAutoStep,
   netLiveDemons,
   nextDemonStep,
   readNetDemonState,
@@ -289,5 +292,145 @@ describe('budżet Demonów w edytorze', () => {
 
   it('wskazuje piętra, na których naprawdę siedzą Demony', () => {
     expect(netDemonFloors(architecture(4, 2)).map((floor) => floor.id)).toEqual(['f0', 'f1']);
+  });
+});
+
+/**
+ * Automat obrony (etap 70e, decyzja MG nr 4 z 11.11): Czarny LOD wykrywa
+ * i gra swoją Turę sam, Demon budzi się sam — chyba że MG trzyma hamulec.
+ */
+describe('netDefenseAutoStep — obrona Sieci działa sama', () => {
+  const KRUK: CpredNetProgramProfile = {
+    programClass: 'attacker',
+    target: 'antiPersonnel',
+    blackIce: true,
+    atk: 4,
+    def: 2,
+    rez: 15,
+    per: 4,
+    speed: 4,
+  };
+
+  function ice(overrides: Partial<CpredNetIce> = {}): CpredNetIce {
+    return {
+      id: 'ice-f1-0',
+      floorId: 'f1',
+      programId: 'program.kruk',
+      name: 'Kruk',
+      profile: KRUK,
+      rezCurrent: 15,
+      mode: 'lurking',
+      detected: false,
+      ...overrides,
+    };
+  }
+
+  function defence(overrides: Partial<NetDefenseState> = {}): NetDefenseState {
+    return { ice: [ice()], ...demonState(), ...overrides };
+  }
+
+  const running = { paused: false };
+
+  it('wykrywa intruza, gdy netrunner stanie na piętrze czyhającego LOD-u', () => {
+    expect(netDefenseAutoStep(defence(), { kind: 'entered', floorIds: ['f1'] }, running)).toEqual([
+      { kind: 'detect-ice', iceId: 'ice-f1-0' },
+    ]);
+  });
+
+  it('wykrywa też LOD-a z piętra, przez które ruch tylko przeszedł', () => {
+    const moves = netDefenseAutoStep(
+      defence(),
+      { kind: 'entered', floorIds: ['f1', 'f2'] },
+      running,
+    );
+    expect(moves[0]).toEqual({ kind: 'detect-ice', iceId: 'ice-f1-0' });
+  });
+
+  it('nie rusza LOD-a z innego piętra, wykrytego ani zderezowanego', () => {
+    const entered = { kind: 'entered', floorIds: ['f0'] } as const;
+    expect(netDefenseAutoStep(defence(), entered, running)).toEqual([]);
+    const onIce = { kind: 'entered', floorIds: ['f1'] } as const;
+    const hunting = defence({ ice: [ice({ mode: 'hunting', detected: true })] });
+    expect(netDefenseAutoStep(hunting, onIce, running)).toEqual([]);
+    const derezzed = defence({ ice: [ice({ mode: 'derezzed', rezCurrent: 0 })] });
+    expect(netDefenseAutoStep(derezzed, onIce, running)).toEqual([]);
+    const destroyed = defence({ ice: [ice({ mode: 'destroyed', rezCurrent: 0 })] });
+    expect(netDefenseAutoStep(destroyed, onIce, running)).toEqual([]);
+  });
+
+  it('LOD zgubiony Ślizgiem wykrywa znowu, gdy netrunner wróci na jego piętro', () => {
+    const shaken = defence({ ice: [ice({ mode: 'lurking', detected: false })] });
+    expect(netDefenseAutoStep(shaken, { kind: 'entered', floorIds: ['f1'] }, running)).toHaveLength(
+      1,
+    );
+  });
+
+  it('budzi Demona na jego piętrze — Demon z piętra f2', () => {
+    expect(netDefenseAutoStep(defence(), { kind: 'entered', floorIds: ['f2'] }, running)).toEqual([
+      { kind: 'wake-demon', demonId: demonState().demons[0]!.id },
+    ]);
+  });
+
+  it('budzi Demona po udanej Kontroli dowolnego węzła jego Architektury', () => {
+    const demonId = demonState().demons[0]!.id;
+    expect(netDefenseAutoStep(defence(), { kind: 'controlled', floorId: 'f3' }, running)).toEqual([
+      { kind: 'wake-demon', demonId },
+    ]);
+    const awake = defence({
+      demons: demonState().demons.map((demon) => ({ ...demon, mode: 'hunting' as const })),
+    });
+    expect(netDefenseAutoStep(awake, { kind: 'controlled', floorId: 'f3' }, running)).toEqual([]);
+  });
+
+  it('gra Turę ścigającego LOD-u raz na Rundę, a nieścigający oddaje Turę', () => {
+    const hunting = defence({ ice: [ice({ mode: 'hunting', detected: true })] });
+    const turn = { kind: 'turn', foeId: 'ice-f1-0', round: 2 } as const;
+    expect(netDefenseAutoStep(hunting, turn, running)).toEqual([
+      { kind: 'ice-turn', iceId: 'ice-f1-0' },
+    ]);
+    const acted = defence({
+      ice: [ice({ mode: 'hunting', detected: true, lastAttackRound: 2 })],
+    });
+    expect(netDefenseAutoStep(acted, turn, running)).toEqual([{ kind: 'pass', foeId: 'ice-f1-0' }]);
+    const derezzed = defence({ ice: [ice({ mode: 'derezzed', detected: true })] });
+    expect(netDefenseAutoStep(derezzed, turn, running)).toEqual([
+      { kind: 'pass', foeId: 'ice-f1-0' },
+    ]);
+  });
+
+  it('gra Turę ścigającego Demona, a Demon bez Akcji Sieciowych oddaje Turę', () => {
+    const demonId = demonState().demons[0]!.id;
+    const turn = { kind: 'turn', foeId: demonId, round: 1 } as const;
+    const awake = (profile: CpredNetDefenseProfile) => ({
+      ice: [],
+      demons: demonState(profile).demons.map((demon) => ({ ...demon, mode: 'hunting' as const })),
+      demonHolds: [],
+    });
+    expect(netDefenseAutoStep(awake(DIABLIK), turn, running)).toEqual([
+      { kind: 'demon-turn', demonId },
+    ]);
+    expect(netDefenseAutoStep(awake({ ...DIABLIK, netActions: 0 }), turn, running)).toEqual([
+      { kind: 'pass', foeId: demonId },
+    ]);
+  });
+
+  it('oddaje Turę wiersza, którego run już nie zna', () => {
+    expect(
+      netDefenseAutoStep(defence(), { kind: 'turn', foeId: 'ktos', round: 1 }, running),
+    ).toEqual([{ kind: 'pass', foeId: 'ktos' }]);
+  });
+
+  it('z hamulcem MG nie robi nic — ani wykrycia, ani budzenia, ani Tury', () => {
+    const paused = { paused: true };
+    const hunting = defence({ ice: [ice({ mode: 'hunting', detected: true })] });
+    expect(
+      netDefenseAutoStep(defence(), { kind: 'entered', floorIds: ['f1', 'f2'] }, paused),
+    ).toEqual([]);
+    expect(netDefenseAutoStep(defence(), { kind: 'controlled', floorId: 'f3' }, paused)).toEqual(
+      [],
+    );
+    expect(
+      netDefenseAutoStep(hunting, { kind: 'turn', foeId: 'ice-f1-0', round: 1 }, paused),
+    ).toEqual([]);
   });
 });

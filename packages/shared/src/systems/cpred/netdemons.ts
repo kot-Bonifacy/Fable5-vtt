@@ -38,7 +38,13 @@ import type { CpredNetDefenseProfile, NetDeviceKind } from './netrunning.js';
 // Type-only on purpose: `netrun.ts` describes the run this state rides on and
 // imports the view built here, so a value import back would close a cycle.
 import type { CpredNetHold } from './netrun.js';
-import type { NetAttackPlan, NetBonus, NetIceMode, NetRezOutcome } from './netcombat.js';
+import type {
+  CpredNetIce,
+  NetAttackPlan,
+  NetBonus,
+  NetIceMode,
+  NetRezOutcome,
+} from './netcombat.js';
 import { NET_ICE_MODES, NET_ZAP_DAMAGE_DICE, netApplyRez } from './netcombat.js';
 import { netProgramDamageDice } from './netrunning.js';
 import type { CpredNetProgramProfile } from './netrunning.js';
@@ -359,6 +365,105 @@ export function nextDemonStep(input: {
   }
 
   return input.canPaf ? { kind: 'paf' } : null;
+}
+
+// ──────────────────────────── automat obrony (etap 70e) ────────────────────────────
+
+/**
+ * What happened in a run that the Architecture's defence may answer by itself
+ * (decyzja MG nr 4 z 11.11 — cofa decyzję z 15.08, „LOD nigdy nie rusza się sam").
+ *
+ *  - `entered` — the netrunner stood on these floors: a move (every floor of the
+ *    path, the way `spawnIceOnFloors` counts them), a Ślizg, the jack-in floor.
+ *  - `controlled` — a Kontrola took this node off the defence.
+ *  - `turn` — the initiative pointer has just reached this Net participant's row.
+ */
+export type NetDefenseCue =
+  | { kind: 'entered'; floorIds: readonly string[] }
+  | { kind: 'controlled'; floorId: string }
+  | { kind: 'turn'; foeId: string; round: number | null };
+
+/**
+ * One thing the defence does in answer. `pass` hands a turn on without playing
+ * it — a row whose ICE or Demon has nothing left to do must not stall the queue.
+ */
+export type NetDefenseMove =
+  | { kind: 'detect-ice'; iceId: string }
+  | { kind: 'wake-demon'; demonId: string }
+  | { kind: 'ice-turn'; iceId: string }
+  | { kind: 'demon-turn'; demonId: string }
+  | { kind: 'pass'; foeId: string };
+
+/** The two halves of a run the defence reads — the Black ICE and the Demons. */
+export interface NetDefenseState extends CpredNetDemonState {
+  ice: readonly CpredNetIce[];
+}
+
+/**
+ * What the defence does, by itself, after an event of the run (stage 70e).
+ *
+ * A pure answer, the server only executes it. **Nothing at all while the GM has
+ * the brake on** (`CpredNetRuntime.defensePaused`): that is the behaviour before
+ * the stage, the GM's two buttons per foe — and those buttons work either way.
+ *
+ * - **Black ICE:** „gdy się na niego natkniesz" (s. 205) — one standing on an
+ *   entered floor that is still lurking and has not found anybody is detected.
+ *   A derezzed one never is; one shaken off by a Ślizg went back to lurking
+ *   with `detected: false`, so walking into it again is a fresh encounter.
+ * - **Demon:** „wie o wszystkim, co dzieje się w jego Architekturze” (s. 212),
+ *   so it starts hunting when the netrunner reaches its floor **or** takes any
+ *   control node — the Demon defends the nodes (rozstrzygnięcie nr 8 etapu 70).
+ * - **Turn:** a hunting ICE attacks once per Round, a hunting Demon plays its
+ *   Turn; anything else in that seat passes.
+ */
+export function netDefenseAutoStep(
+  state: NetDefenseState,
+  cue: NetDefenseCue,
+  options: { paused: boolean },
+): NetDefenseMove[] {
+  if (options.paused) return [];
+
+  if (cue.kind === 'entered') {
+    const floors = new Set(cue.floorIds);
+    const moves: NetDefenseMove[] = [];
+    // In the order of the path: the ICE met first is the one that strikes first.
+    for (const floorId of cue.floorIds) {
+      for (const ice of state.ice) {
+        if (ice.floorId === floorId && ice.mode === 'lurking' && !ice.detected) {
+          moves.push({ kind: 'detect-ice', iceId: ice.id });
+        }
+      }
+    }
+    for (const demon of state.demons) {
+      if (demon.mode === 'lurking' && floors.has(demon.floorId)) {
+        moves.push({ kind: 'wake-demon', demonId: demon.id });
+      }
+    }
+    return moves;
+  }
+
+  if (cue.kind === 'controlled') {
+    return state.demons
+      .filter((demon) => demon.mode === 'lurking')
+      .map((demon) => ({ kind: 'wake-demon' as const, demonId: demon.id }));
+  }
+
+  const ice = state.ice.find((entry) => entry.id === cue.foeId);
+  if (ice) {
+    const acted = cue.round !== null && ice.lastAttackRound === cue.round;
+    return ice.mode === 'hunting' && ice.detected && !acted
+      ? [{ kind: 'ice-turn', iceId: ice.id }]
+      : [{ kind: 'pass', foeId: ice.id }];
+  }
+  const demon = state.demons.find((entry) => entry.id === cue.foeId);
+  if (demon) {
+    const acted = cue.round !== null && demon.lastTurnRound === cue.round;
+    return demon.mode === 'hunting' && !acted && netDemonActions(demon.profile) > 0
+      ? [{ kind: 'demon-turn', demonId: demon.id }]
+      : [{ kind: 'pass', foeId: demon.id }];
+  }
+  // A row whose foe the run no longer knows (a stale tracker row): hand it on.
+  return [{ kind: 'pass', foeId: cue.foeId }];
 }
 
 // ──────────────────────────── widok dla klienta ────────────────────────────

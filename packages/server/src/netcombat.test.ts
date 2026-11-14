@@ -254,6 +254,15 @@ describe('walka w Sieci na żywych gniazdach', () => {
     return last!;
   }
 
+  /**
+   * Hamulec MG na obronę tej Architektury (etap 70e). Ten zestaw sprawdza
+   * przyciski MG — „LOD wykrywa intruza” i „Tura LOD-a” — więc gra tak, jak
+   * przed automatem; automat ma własny zestaw w `net-defense.test.ts`.
+   */
+  async function holdDefence(): Promise<void> {
+    expect((await emitAck(gm, 'netrun:defense:pause', { runId, paused: true })).ok).toBe(true);
+  }
+
   /** Zjeżdża na piętro z LOD-em i zwraca świeży run. */
   async function goToIceFloor(): Promise<NetRunPayload> {
     return data(
@@ -434,6 +443,7 @@ describe('walka w Sieci na żywych gniazdach', () => {
       'netrun:start',
     ).runId;
     expect(runId).toBeTruthy();
+    await holdDefence();
   });
 
   it('puts the deck in the payload without anybody asking', async () => {
@@ -569,6 +579,7 @@ describe('walka w Sieci na żywych gniazdach', () => {
       await emitAck<NetRunPayload>(player, 'netrun:start', { tokenId, accessPointId: pointId }),
       'netrun:start',
     ).runId;
+    await holdDefence();
     await goToIceFloor();
     expect((await runOf(player))!.run.combat.ice[0]!.name).toBe('Zawsze trafia');
   });
@@ -715,6 +726,7 @@ describe('walka w Sieci na żywych gniazdach', () => {
       await emitAck<NetRunPayload>(player, 'netrun:start', { tokenId, accessPointId: pointId }),
       'netrun:start',
     ).runId;
+    await holdDefence();
     await goToIceFloor();
 
     const iceId = (await runOf(gm))!.run.combat.ice[0]!.id;

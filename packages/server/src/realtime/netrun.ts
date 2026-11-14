@@ -94,6 +94,7 @@ import {
 import { dropRunFromQueue, emergencyJackOut, type FullRunState } from './netice.js';
 import { roundOfScene, spawnIceOnFloors } from './netcombat.js';
 import { netrunnerControlDv, releaseDemonHold, spawnDemons } from './netdemons.js';
+import { answerNetDefense } from './net-defense.js';
 
 /**
  * The run (stage 26b) — jacking in, walking the shaft and the seven Interface
@@ -381,7 +382,7 @@ export const netRunStartEvent = defineEvent<NetRunStartPayload, NetRunPayload>({
     );
     state = restored.state;
     for (const floorId of restored.restoredHolds) state = releaseDemonHold(state, floorId);
-    await deps.ctx.prisma.netRun.create({
+    const created = await deps.ctx.prisma.netRun.create({
       data: {
         campaignId,
         architectureId: architecture.id,
@@ -403,7 +404,16 @@ export const netRunStartEvent = defineEvent<NetRunStartPayload, NetRunPayload>({
     await emitRuns(deps, campaignId);
     const mine = await myRun(deps, campaignId, token.id, user);
     if (!mine) throw new RealtimeError('NET_NOT_JACKED');
-    return mine;
+    // Etap 70e: piętro wejścia to pierwsze piętro, na którym netrunner staje —
+    // czyhający tam LOD wykrywa, a Demon z tego piętra zaczyna ścigać.
+    if (!entryFloor?.id) return mine;
+    const answered = await answerNetDefense(deps, {
+      campaignId,
+      user,
+      runId: created.id,
+      cue: { kind: 'entered', floorIds: [entryFloor.id] },
+    });
+    return answered ? ((await myRun(deps, campaignId, token.id, user)) ?? mine) : mine;
   },
 });
 
@@ -485,13 +495,22 @@ export const netRunMoveEvent = defineEvent<NetRunMovePayload, NetRunPayload>({
       .map((step) => netFloorAt(architecture, step)?.id)
       .filter((id): id is string => typeof id === 'string');
     let next: FullRunState = { ...state, ...netMove(state, verdict.path, floorIds) };
-    // Opening a door is what puts a Black ICE in the shaft (stage 26c); what it
-    // does about the intruder waits for the GM's own click.
+    // Opening a door is what puts a Black ICE in the shaft (stage 26c); since
+    // stage 70e the defence answers it by itself, unless the GM holds the brake.
     next = await spawnIceOnFloors(deps, campaignId, architecture, next, floorIds);
     next = { ...next, ...rememberIce(next, architecture, floorIds) };
     await saveRunState(deps.ctx.prisma, row.id, next);
     await emitRuns(deps, campaignId);
-    return requireMyRun(deps, campaignId, row.tokenId, user);
+    const moved = await requireMyRun(deps, campaignId, row.tokenId, user);
+    const answered = await answerNetDefense(deps, {
+      campaignId,
+      user,
+      runId: row.id,
+      cue: { kind: 'entered', floorIds },
+    });
+    // A free hit may have thrown the netrunner out: the reply then stays the
+    // one from before it, and the closed window follows from `netrun:sync`.
+    return answered ? ((await myRun(deps, campaignId, row.tokenId, user)) ?? moved) : moved;
   },
 });
 
@@ -697,6 +716,15 @@ export const netRunAbilityEvent = defineEvent<NetRunAbilityPayload, NetRunAbilit
       success ? 'udane' : 'nieudane',
     );
     await emitRuns(deps, campaignId);
+    // Etap 70e: Demon broni węzłów — przejęcie któregokolwiek go budzi.
+    if (ability.id === 'control' && success && floor) {
+      await answerNetDefense(deps, {
+        campaignId,
+        user,
+        runId: row.id,
+        cue: { kind: 'controlled', floorId: floor.id },
+      });
+    }
     return { messageId: view.id, total: roll.total, success, summary: outcome.summary };
   },
 });

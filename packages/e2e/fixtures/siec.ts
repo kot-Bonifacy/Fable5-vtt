@@ -77,11 +77,17 @@ export async function jackIn(actor: Actor, socketAt: WorldPoint): Promise<void> 
 
 export interface NetFloorSpec {
   id: string;
-  kind: 'empty' | 'password' | 'file' | 'controlNode' | 'ice';
+  kind: 'empty' | 'password' | 'file' | 'controlNode' | 'ice' | 'demon';
   label: string;
   dv?: number;
   notes?: string;
+  /** Czarny LOD albo Demon na piętrze — id wpisów kompendium (etap 70e). */
+  programIds?: string[];
 }
+
+/** Hamulec MG na obronę Sieci w oknie runu MG (etap 70e). */
+export const defenseBrake = (actor: Actor): Locator =>
+  runWindow(actor).getByRole('checkbox', { name: 'Wstrzymaj obronę' });
 export interface NetBranchSpec {
   id: string;
   name?: string;

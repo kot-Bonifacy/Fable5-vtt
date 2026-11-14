@@ -6,6 +6,7 @@ import type {
   NetDemonNodeView,
   NetRunAbilityResult,
   RollResult,
+  SessionUser,
 } from '@vtt/shared';
 import {
   ROLE_GM,
@@ -47,6 +48,7 @@ import {
   rollExchange,
   rollSide,
   roundOfScene,
+  type LoadedRun,
 } from './netcombat.js';
 import { damageBrain, type FullRunState } from './netice.js';
 import { deviceShotBlockedText, fireDevice, publicDeviceName } from './netdevices.js';
@@ -63,10 +65,12 @@ import {
  *
  * Cztery decyzje niosą cały plik:
  *
- *  1. **Demon rusza się wyłącznie na klik MG** — tak samo jak Czarny LOD z 26c
- *     (decyzja MG z 15.08, powtórzona 16.08). Dwa przyciski: „Demon wykrywa
- *     intruza" i „Tura Demona". Pierwszy nie ma za sobą żadnego testu, bo Demon
- *     nie ma PRĘDKOŚCI — wykrycie jest faktem, nie rzutem.
+ *  1. **Demon rusza się sam, a MG trzyma hamulec** (etap 70e, decyzja MG nr 4
+ *     z 11.11; wcześniej wyłącznie na klik MG — decyzja z 15.08, powtórzona
+ *     16.08). Automat z `net-defense.ts` budzi go, gdy netrunner stanie na jego
+ *     piętrze albo przejmie węzeł, i gra jego Turę w kolejce. Dwa przyciski MG
+ *     — „Demon wykrywa intruza" i „Tura Demona" — zostają. Wykrycie nie ma za
+ *     sobą żadnego testu, bo Demon nie ma PRĘDKOŚCI — to fakt, nie rzut.
  *  2. **Tura idzie jednym klikiem, z celami wybranymi przez silnik**
  *     (decyzja MG z 16.08). Karta obrażeń ma „Cofnij", więc wybór, który MG się
  *     nie spodoba, kosztuje jedno kliknięcie.
@@ -255,262 +259,273 @@ async function pickTurretTarget(
  * is left of the encounter is the half that matters at the table: the Demon
  * starts hunting and takes the head of the initiative queue.
  */
+export async function demonDetects(
+  deps: RealtimeDeps,
+  input: { campaignId: string; user: SessionUser; run: LoadedRun; demon: CpredNetDemon },
+): Promise<NetRunAbilityResult> {
+  const { campaignId, user, demon } = input;
+  const { row, state, scene } = input.run;
+  let next: FullRunState = {
+    ...state,
+    demons: state.demons.map((entry) =>
+      entry.id === demon.id ? { ...entry, mode: 'hunting' as const } : entry,
+    ),
+  };
+  const combatantId = await pushNetFoeIntoQueue(deps, campaignId, scene, {
+    runId: row.id,
+    foeId: demon.id,
+    label: demon.name,
+  });
+  if (combatantId) {
+    next = {
+      ...next,
+      demons: next.demons.map((entry) =>
+        entry.id === demon.id ? { ...entry, combatantId } : entry,
+      ),
+    };
+  }
+  await saveRunState(deps.ctx.prisma, row.id, next);
+
+  const summary = `${demon.name} wie już o intruzie — Architektura zaczyna się bronić.`;
+  const message = await logNetLine(
+    deps,
+    campaignId,
+    user,
+    tokenTableName(row.token, row.token.character?.name ?? row.token.name),
+    'Demon',
+    `${demon.name} — wykrycie intruza`,
+  );
+  await emitRuns(deps, campaignId);
+  return { messageId: message.id, total: 0, success: true, summary };
+}
+
 export const netDemonDetectEvent = defineEvent<NetDemonActPayload, NetRunAbilityResult>({
   name: 'netrun:demon:detect',
   role: ROLE_GM,
   handler: async ({ deps, socket, user, payload }) => {
     const campaignId = requireCampaignId(socket.data);
-    const { row, state, scene } = await requireRun(deps, campaignId, user, payload?.runId);
-    const demon = requireDemon(state, payload?.demonId);
+    const run = await requireRun(deps, campaignId, user, payload?.runId);
+    const demon = requireDemon(run.state, payload?.demonId);
     if (demon.mode === 'hunting') throw new RealtimeError('NET_DEMON_ALREADY_DETECTED');
-
-    let next: FullRunState = {
-      ...state,
-      demons: state.demons.map((entry) =>
-        entry.id === demon.id ? { ...entry, mode: 'hunting' as const } : entry,
-      ),
-    };
-    const combatantId = await pushNetFoeIntoQueue(deps, campaignId, scene, {
-      runId: row.id,
-      foeId: demon.id,
-      label: demon.name,
-    });
-    if (combatantId) {
-      next = {
-        ...next,
-        demons: next.demons.map((entry) =>
-          entry.id === demon.id ? { ...entry, combatantId } : entry,
-        ),
-      };
-    }
-    await saveRunState(deps.ctx.prisma, row.id, next);
-
-    const summary = `${demon.name} wie już o intruzie — Architektura zaczyna się bronić.`;
-    const message = await logNetLine(
-      deps,
-      campaignId,
-      user,
-      tokenTableName(row.token, row.token.character?.name ?? row.token.name),
-      'Demon',
-      `${demon.name} — wykrycie intruza`,
-    );
-    await emitRuns(deps, campaignId);
-    return { messageId: message.id, total: 0, success: true, summary };
+    return demonDetects(deps, { campaignId, user, run, demon });
   },
 });
 
 // ─────────────────────────────── „Tura Demona" ───────────────────────────────
 
-/**
- * One whole Turn of a Demon, in one click.
- *
- * „Demon używa Akcji Sieciowych przede wszystkim na obsługę węzłów kontrolnych,
- * a Pafa dopiero z tego, co mu zostanie" (s. 212). The order comes out of
- * `nextDemonStep`; everything here is the doing of it.
- */
 export const netDemonTurnEvent = defineEvent<NetDemonActPayload, NetRunAbilityResult>({
   name: 'netrun:demon:turn',
   role: ROLE_GM,
   handler: async ({ deps, socket, user, payload }) => {
     const campaignId = requireCampaignId(socket.data);
-    const { row, architecture, state, scene } = await requireRun(
-      deps,
-      campaignId,
-      user,
-      payload?.runId,
-    );
-    const demon = requireDemon(state, payload?.demonId);
+    const run = await requireRun(deps, campaignId, user, payload?.runId);
+    const demon = requireDemon(run.state, payload?.demonId);
     if (demon.mode !== 'hunting') throw new RealtimeError('NET_DEMON_NOT_DETECTED');
-    const round = await roundOfScene(deps, scene.id);
+    const round = await roundOfScene(deps, run.scene.id);
     if (round !== null && demon.lastTurnRound === round) {
       throw new RealtimeError('NET_DEMON_ALREADY_ACTED');
     }
-    let actionsLeft = netDemonActions(demon.profile);
-    if (actionsLeft <= 0) throw new RealtimeError('NET_DEMON_NO_ACTIONS');
+    if (netDemonActions(demon.profile) <= 0) throw new RealtimeError('NET_DEMON_NO_ACTIONS');
+    return demonTakesTurn(deps, { campaignId, user, run, demon });
+  },
+});
 
-    const runtime = readNetRuntime(row.architecture.runtime);
-    const devices = deviceTokenIds(architecture);
-    const runnerName = tokenTableName(row.token, row.token.character?.name ?? row.token.name);
-    const runnerOwnerId = row.token.character?.ownerId ?? row.token.ownerId;
-    const { rank } = await netActionsForRun(deps.ctx.prisma, deps.ctx.cpred, row.characterId);
+/**
+ * One whole Turn of a Demon, in one go — the GM's „Tura Demona" and, since
+ * stage 70e, the initiative queue (`playNetFoeTurn`). Refusals stay with the
+ * caller.
+ *
+ * „Demon używa Akcji Sieciowych przede wszystkim na obsługę węzłów kontrolnych,
+ * a Pafa dopiero z tego, co mu zostanie" (s. 212). The order comes out of
+ * `nextDemonStep`; everything here is the doing of it.
+ */
+export async function demonTakesTurn(
+  deps: RealtimeDeps,
+  input: { campaignId: string; user: SessionUser; run: LoadedRun; demon: CpredNetDemon },
+): Promise<NetRunAbilityResult> {
+  const { campaignId, user, demon } = input;
+  const { row, architecture, state, scene } = input.run;
+  const round = await roundOfScene(deps, scene.id);
+  let actionsLeft = netDemonActions(demon.profile);
+  const runtime = readNetRuntime(row.architecture.runtime);
+  const devices = deviceTokenIds(architecture);
+  const runnerName = tokenTableName(row.token, row.token.character?.name ?? row.token.name);
+  const runnerOwnerId = row.token.character?.ownerId ?? row.token.ownerId;
+  const { rank } = await netActionsForRun(deps.ctx.prisma, deps.ctx.cpred, row.characterId);
 
-    let next: FullRunState = {
-      ...state,
-      demons: state.demons.map((entry) =>
-        entry.id === demon.id ? { ...entry, lastTurnRound: round ?? entry.lastTurnRound } : entry,
-      ),
-    };
-    /** Nodes this Turn is done with: fired from, or failed to take back. */
-    const spent = new Set<string>();
-    const lines: string[] = [];
-    /** To samo dla reszty stołu: bez etykiet pięter i nazw z edytora Architektury (#37). */
-    const publicLines: string[] = [];
-    const note = (line: string, shown = line) => {
-      lines.push(line);
-      publicLines.push(shown);
-    };
-    const tokenIds: string[] = [];
+  let next: FullRunState = {
+    ...state,
+    demons: state.demons.map((entry) =>
+      entry.id === demon.id ? { ...entry, lastTurnRound: round ?? entry.lastTurnRound } : entry,
+    ),
+  };
+  /** Nodes this Turn is done with: fired from, or failed to take back. */
+  const spent = new Set<string>();
+  const lines: string[] = [];
+  /** To samo dla reszty stołu: bez etykiet pięter i nazw z edytora Architektury (#37). */
+  const publicLines: string[] = [];
+  const note = (line: string, shown = line) => {
+    lines.push(line);
+    publicLines.push(shown);
+  };
+  const tokenIds: string[] = [];
 
-    while (actionsLeft > 0) {
-      const step = nextDemonStep({
-        nodes: nodeViews(architecture, next, runtime, round, spent),
-        actionsLeft,
-        canPaf: true,
-      });
-      if (!step) break;
+  while (actionsLeft > 0) {
+    const step = nextDemonStep({
+      nodes: nodeViews(architecture, next, runtime, round, spent),
+      actionsLeft,
+      canPaf: true,
+    });
+    if (!step) break;
 
-      // ── odebranie węzła netrunnerowi ──
-      if (step.kind === 'reclaim' && step.floorId) {
-        const floorId = step.floorId;
-        const floor = floorOfId(architecture, floorId);
-        const runnerHold = next.controlled.find((hold) => hold.floorId === floorId);
-        const dv = netControlDv(floor?.dv, runnerHold?.dv) ?? 0;
-        const nodeName = floor?.label || 'Węzeł kontrolny';
-        const check = rollDemonCheck(demon, `Kontrola — ${nodeName}`, dv);
-        check.roll.outcome = {
-          success: check.success,
-          label: check.success ? `${nodeName} — odebrany` : `${nodeName} — został u netrunnera`,
-          detail: check.success
-            ? `PT odebrania go Demonowi: ${check.total}`
-            : `PT ${dv} — węzeł nie ustąpił`,
+    // ── odebranie węzła netrunnerowi ──
+    if (step.kind === 'reclaim' && step.floorId) {
+      const floorId = step.floorId;
+      const floor = floorOfId(architecture, floorId);
+      const runnerHold = next.controlled.find((hold) => hold.floorId === floorId);
+      const dv = netControlDv(floor?.dv, runnerHold?.dv) ?? 0;
+      const nodeName = floor?.label || 'Węzeł kontrolny';
+      const check = rollDemonCheck(demon, `Kontrola — ${nodeName}`, dv);
+      check.roll.outcome = {
+        success: check.success,
+        label: check.success ? `${nodeName} — odebrany` : `${nodeName} — został u netrunnera`,
+        detail: check.success
+          ? `PT odebrania go Demonowi: ${check.total}`
+          : `PT ${dv} — węzeł nie ustąpił`,
+      };
+      if (check.success) {
+        const stripped: FullRunState = {
+          ...next,
+          controlled: next.controlled.filter((hold) => hold.floorId !== floorId),
         };
-        if (check.success) {
-          const stripped: FullRunState = {
-            ...next,
-            controlled: next.controlled.filter((hold) => hold.floorId !== floorId),
-          };
-          next = { ...stripped, ...netDemonTakesNode(stripped, floorId, check.total) };
-          note(
-            `${nodeName} odebrany — PT odebrania go Demonowi: ${check.total}.`,
-            `Węzeł kontrolny odebrany — PT odebrania go Demonowi: ${check.total}.`,
-          );
-        } else {
-          // One Test Kontroli per node per Turn: without this the Demon would
-          // spend every remaining Action re-rolling the same lock.
-          spent.add(floorId);
-          note(
-            `${nodeName} — Test Kontroli nieudany (PT ${dv}).`,
-            `Węzeł kontrolny — Test Kontroli nieudany (PT ${dv}).`,
-          );
-        }
-        await postExchange(deps, {
-          campaignId,
-          user,
-          sceneId: scene.id,
-          roll: check.roll,
-          runnerOwnerId,
-        });
-        actionsLeft -= 1;
-        continue;
-      }
-
-      // ── strzał z wieżyczki albo drona ──
-      if (step.kind === 'fire' && step.floorId && step.deviceId) {
-        const floorId = step.floorId;
-        const device = floorOfId(architecture, floorId)?.devices?.find(
-          (entry) => entry.id === step.deviceId,
-        );
-        if (!device?.tokenId) {
-          spent.add(floorId);
-          continue;
-        }
-        const target = await pickTurretTarget(deps, campaignId, {
-          turretTokenId: device.tokenId,
-          runnerTokenId: row.tokenId,
-          devices,
-        });
-        const shownAs = await publicDeviceName(deps, device);
-        if (!target) {
-          // Nothing in sight from this barrel, so nothing is spent on it.
-          spent.add(floorId);
-          note(
-            `${device.name} — nie ma do kogo strzelić.`,
-            `${shownAs} — nie ma do kogo strzelić.`,
-          );
-          continue;
-        }
-        const shot = await fireDevice(deps, {
-          campaignId,
-          user,
-          device,
-          hands: { combatValue: netDemonCombatValue(demon.profile) },
-          targetTokenId: target.id,
-          summary: `${device.name} → ${tokenTableName(target, target.name)}`,
-        });
-        const firedAt = (name: string) =>
-          shot.blocked
-            ? `${deviceShotBlockedText(name, shot.blocked.code, shot.blocked.blockerName)}.`
-            : `${name} strzela do: ${tokenTableName(target, target.name)} (Wartość bojowa ${netDemonCombatValue(demon.profile)}).`;
-        note(firedAt(device.name), firedAt(shownAs));
-        next = { ...next, nodeUse: netMarkNodeUse(next.nodeUse, floorId, round) };
-        spent.add(floorId);
-        actionsLeft -= 1;
-        continue;
-      }
-
-      // ── Paf, „z resztek" ──
-      const plan = netDemonPafPlan({ demon, netrunner: { name: runnerName, interfaceRank: rank } });
-      const exchange = rollExchange(plan, {
-        attackerIsHuman: false,
-        detail: `cel: ${runnerName} — ${plan.dice}k6 w mózg`,
-        actor: demon.name,
-      });
-      if (exchange.won) {
-        const rolled = rollFormula(
-          { terms: [{ kind: 'dice', sign: 1, count: plan.dice, sides: 6 }] },
-          createMixedRng(),
-        ).total;
-        const armour = netBonusTotal(netBrainArmour(next));
-        const through = Math.max(0, rolled - armour);
-        const card = await damageBrain(deps, {
-          campaignId,
-          user,
-          characterId: row.characterId,
-          token: row.token,
-          damage: through,
-          note:
-            armour > 0
-              ? `${demon.name}: Paf ${plan.dice}k6 = ${rolled} · Pancerz (Program) −${armour}`
-              : `${demon.name}: Paf ${plan.dice}k6 = ${rolled} — bezpośrednio w mózg`,
-        });
-        if (card) tokenIds.push(row.tokenId);
+        next = { ...stripped, ...netDemonTakesNode(stripped, floorId, check.total) };
         note(
-          armour > 0
-            ? `Paf: ${plan.dice}k6 = ${rolled}, Pancerz zdjął ${armour} — ${through} w mózg.`
-            : `Paf: ${plan.dice}k6 = ${rolled} bezpośrednio w mózg.`,
+          `${nodeName} odebrany — PT odebrania go Demonowi: ${check.total}.`,
+          `Węzeł kontrolny odebrany — PT odebrania go Demonowi: ${check.total}.`,
         );
-        exchange.roll.opposed = {
-          ...exchange.roll.opposed!,
-          detail: `${exchange.roll.opposed!.detail} · ${through} w mózg`,
-        };
       } else {
-        note('Paf chybia.');
+        // One Test Kontroli per node per Turn: without this the Demon would
+        // spend every remaining Action re-rolling the same lock.
+        spent.add(floorId);
+        note(
+          `${nodeName} — Test Kontroli nieudany (PT ${dv}).`,
+          `Węzeł kontrolny — Test Kontroli nieudany (PT ${dv}).`,
+        );
       }
       await postExchange(deps, {
         campaignId,
         user,
         sceneId: scene.id,
-        roll: exchange.roll,
+        roll: check.roll,
         runnerOwnerId,
       });
       actionsLeft -= 1;
+      continue;
     }
 
-    await saveRunState(deps.ctx.prisma, row.id, next);
-    const idle = `${demon.name} nie ma czym zagrać Tury.`;
-    const summary = lines.length === 0 ? idle : lines.join(' · ');
-    const message = await logNetLineWithSecret(deps, campaignId, user, {
-      actorName: demon.name,
-      actionName: 'Tura Demona',
-      publicNote: publicLines.length === 0 ? idle : publicLines.join(' · '),
-      secretNote: summary,
+    // ── strzał z wieżyczki albo drona ──
+    if (step.kind === 'fire' && step.floorId && step.deviceId) {
+      const floorId = step.floorId;
+      const device = floorOfId(architecture, floorId)?.devices?.find(
+        (entry) => entry.id === step.deviceId,
+      );
+      if (!device?.tokenId) {
+        spent.add(floorId);
+        continue;
+      }
+      const target = await pickTurretTarget(deps, campaignId, {
+        turretTokenId: device.tokenId,
+        runnerTokenId: row.tokenId,
+        devices,
+      });
+      const shownAs = await publicDeviceName(deps, device);
+      if (!target) {
+        // Nothing in sight from this barrel, so nothing is spent on it.
+        spent.add(floorId);
+        note(`${device.name} — nie ma do kogo strzelić.`, `${shownAs} — nie ma do kogo strzelić.`);
+        continue;
+      }
+      const shot = await fireDevice(deps, {
+        campaignId,
+        user,
+        device,
+        hands: { combatValue: netDemonCombatValue(demon.profile) },
+        targetTokenId: target.id,
+        summary: `${device.name} → ${tokenTableName(target, target.name)}`,
+      });
+      const firedAt = (name: string) =>
+        shot.blocked
+          ? `${deviceShotBlockedText(name, shot.blocked.code, shot.blocked.blockerName)}.`
+          : `${name} strzela do: ${tokenTableName(target, target.name)} (Wartość bojowa ${netDemonCombatValue(demon.profile)}).`;
+      note(firedAt(device.name), firedAt(shownAs));
+      next = { ...next, nodeUse: netMarkNodeUse(next.nodeUse, floorId, round) };
+      spent.add(floorId);
+      actionsLeft -= 1;
+      continue;
+    }
+
+    // ── Paf, „z resztek" ──
+    const plan = netDemonPafPlan({ demon, netrunner: { name: runnerName, interfaceRank: rank } });
+    const exchange = rollExchange(plan, {
+      attackerIsHuman: false,
+      detail: `cel: ${runnerName} — ${plan.dice}k6 w mózg`,
+      actor: demon.name,
+    });
+    if (exchange.won) {
+      const rolled = rollFormula(
+        { terms: [{ kind: 'dice', sign: 1, count: plan.dice, sides: 6 }] },
+        createMixedRng(),
+      ).total;
+      const armour = netBonusTotal(netBrainArmour(next));
+      const through = Math.max(0, rolled - armour);
+      const card = await damageBrain(deps, {
+        campaignId,
+        user,
+        characterId: row.characterId,
+        token: row.token,
+        damage: through,
+        note:
+          armour > 0
+            ? `${demon.name}: Paf ${plan.dice}k6 = ${rolled} · Pancerz (Program) −${armour}`
+            : `${demon.name}: Paf ${plan.dice}k6 = ${rolled} — bezpośrednio w mózg`,
+      });
+      if (card) tokenIds.push(row.tokenId);
+      note(
+        armour > 0
+          ? `Paf: ${plan.dice}k6 = ${rolled}, Pancerz zdjął ${armour} — ${through} w mózg.`
+          : `Paf: ${plan.dice}k6 = ${rolled} bezpośrednio w mózg.`,
+      );
+      exchange.roll.opposed = {
+        ...exchange.roll.opposed!,
+        detail: `${exchange.roll.opposed!.detail} · ${through} w mózg`,
+      };
+    } else {
+      note('Paf chybia.');
+    }
+    await postExchange(deps, {
+      campaignId,
+      user,
+      sceneId: scene.id,
+      roll: exchange.roll,
       runnerOwnerId,
     });
-    if (tokenIds.length > 0) await emitTokensById(deps, campaignId, [...new Set(tokenIds)]);
-    await emitRuns(deps, campaignId);
-    return { messageId: message.id, total: 0, success: true, summary };
-  },
-});
+    actionsLeft -= 1;
+  }
+
+  await saveRunState(deps.ctx.prisma, row.id, next);
+  const idle = `${demon.name} nie ma czym zagrać Tury.`;
+  const summary = lines.length === 0 ? idle : lines.join(' · ');
+  const message = await logNetLineWithSecret(deps, campaignId, user, {
+    actorName: demon.name,
+    actionName: 'Tura Demona',
+    publicNote: publicLines.length === 0 ? idle : publicLines.join(' · '),
+    secretNote: summary,
+    runnerOwnerId,
+  });
+  if (tokenIds.length > 0) await emitTokensById(deps, campaignId, [...new Set(tokenIds)]);
+  await emitRuns(deps, campaignId);
+  return { messageId: message.id, total: 0, success: true, summary };
+}
 
 // ─────────────────────────── węzły w rękach obrony ───────────────────────────
 

@@ -1,5 +1,33 @@
 # Dziennik sesji — archiwum
 
+### Sesja 13.11 — etap 70c: dron w ruchu, oczy urządzeń, pasek
+
+**Zrobione (bez migracji, czeka na wdrożenie):** `shared` — oczy wg rodzaju
+(`NET_DEVICE_FIGURE_PROFILES.sight`: kamera stożek, wieżyczka i dron koło), ruch w `netDeviceUse`
+(`NET_DEVICE_NO_MOVE_LEFT`, luz 5 cm), `netOperatedMoveLeft`, `netDeviceMoveSlot`,
+`NetOperatedFigure.moveM` / `moveLeftM`, naklejka `net-off` („Wyłączony”, pole rejestru `dims`);
+serwer — marsz przejętego drona (`operatedMoveFor` → `intent.operated` w `validateTokenMove`:
+Akcja Sieciowa przy aktywacji, metry z RUCH-u `netDeviceMoveMetres`), oczy wieżyczki i drona
+(`loadNetDeviceSights`), bariery z oczu drona w planerze, klatki ukrytego drona u operatora,
+`netSilencedTokenIds` (przejęte i wyłączone: kolejka, straż, skradanie, walka z 56), `net-off`
+w `syncSeizedFigures`; **naprawiony błąd z 70b** — księga „węzeł raz na Turę” przeżywała koniec
+walki i odmawiała w rundzie 1 następnej (`resetNetLedgersOnScene` w `combat:start` / `combat:end`);
+klient — pasek `NetEyesStrip` („◂ ▸”, „⌂”, kropki stanu, „Włącz”) zamiast `NetNodeDevices*`
+i „Przejętych węzłów”, kafel „Ruch” drona, zasięg i odmowa marszu drona w `MapArea`, szara
+figura wyłączona. Decyzje w `decyzje-i-uproszczenia.md`, umowa i pułapka na górze `siec`,
+odstępstwa w pliku etapu, pomysły w `POMYSLY.md`. **Testy:** `shared` 3029/3029, serwer
+1782/1782 (nowy `net-drone.test.ts` 10), klient 492/492, `tsc` wszystkich pakietów, ESLint
+i Prettier czyste w zmienionych plikach kodu; E2E `47-siec` 29/29 (`t62` 6 — po Kontroli dwie
+pary oczu, `t70a` 9, `t70b` 8, nowy `t70c-dron-oczy` 6). T5b 5.5 przepięty na pasek, nie
+puszczony (gateway, zaległość z 12.11). **Oglądane w Firefoksie (Ola i Marek) i Chromium (MG)**
+zrzutami z tymczasowej kopii `t70c` na instancji E2E, 1920 × 1080, dzień i noc: pasek po
+Kontroli, belka drona z „Ruch 8 m”, po marszu i strzale („0 m”, kropka bursztynowa), kadr na
+wieżyczce, „Wyłączony” u Oli, Marka i MG, stan po F5. Nieoglądane: Chrome MG, w pasku kamera bez
+figury i drzwi, bariera widziana tylko okiem drona. Z oględzin poprawione: zdanie obsługi
+mówiło „Dron 70c — wyłączona.” (rodzaj żeński z 26d) — teraz rodzaj idzie za urządzeniem.
+Pliki `specs/99-kubek/` (tymczasowe oględziny kubka z 10.11) zacommitowane osobno na prośbę MG.
+**Dalej:** 70d.
+
 ### Sesja 12–13.11 — etap 70b: przejęta wieżyczka i kamera na mapie
 
 **Dwie sesje** (pierwsza przerwana przed commitem i notatką, druga — „resume” — sprawdziła
