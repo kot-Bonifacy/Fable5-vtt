@@ -1,5 +1,30 @@
 # Dziennik sesji — archiwum
 
+### Sesja 14.11 — zaległości: belka urządzenia, łup z urządzenia, obszar straży, karta, Kompendium, „Wróg w zasięgu wzroku”
+
+**Zrobione (bez migracji, czeka na wdrożenie)** — sześć zaległości z `zaleglosci.md`, opisy
+naprawy w `archiwum/zamkniete-zaleglosci.md` („Zamknięte 2026-11-14”):
+
+- **70f pkt 2:** belka przejętego urządzenia nie pokazuje czerwonego „ODMOWA” po udanym
+  strzale — na pole idzie tylko odmowa tury (`operatedRailRefusal`), stan aktywacji mówi wiersz
+  „przez: …”. Test w `hud-refusal.test.ts`.
+- **70f pkt 3:** okienko strefy przy obszarze straży wieżyczki / drona dopisuje „strzela do
+  każdego, kto tu wejdzie” (`zoneGuardNote`, z `defenseKind` wpisu). Test w `zone-ask.test.ts`.
+- **70f pkt 5:** łup z figury-urządzenia — „W urządzeniu: …” zamiast „Przy ciele”
+  (`ExchangeCounterpartView.device`).
+- **66e pkt 7:** przyciski karty z czerwonym tłem przy najechaniu mają biały napis; napisy sekcji
+  „Pojazdy” na czerwonym panelu jasne (także podpisy galerii MG — znalezione przy oględzinach).
+- **66e pkt 8:** „Dodaj za darmo” w Kompendium bez wyboru celuje w kartę na wierzchu.
+- **66e pkt 25:** „Wróg w zasięgu wzroku” jednym bursztynowym paskiem (`noteCombatPending`).
+
+**Oglądane w Firefoksie:** pkt 7 i 8 — najpierw tymczasowym specem E2E na `po-T6` (skasowany),
+bo Firefox z Playwright MCP nie wstał, potem w Firefoksie z MCP na `dev.db` (MG, karta Szew:
+„+ Broń z katalogu” i „Dobądź (Akcja)” białe na czerwonym, „Pojazdy” jasne, Kompendium celuje
+w Szew, konsola bez błędów). **Przyczyna awarii MCP:** MG używał w tym czasie własnego
+Firefoksa — po jego zamknięciu MCP wstał od razu; pułapka na górze `ogledziny`. **Nie oglądane
+w przeglądarce:** pkt 2, 3, 5 i 25 (testy jednostkowe dla 2 i 3). Testy: shared 3053, klient 505
+(+4), serwer 1799 — zielone; lint i Prettier czyste. Umowy na górze `siec` i `ui`.
+
 ### Sesja 14.11 — etap 70f: wzorce „Fabryka dronów” i „Po zamknięciu” pod nowe reguły, rozegranie
 
 **Zrobione (bez migracji, czeka na wdrożenie):** format wzorca — `zones[].figure` (obszar straży

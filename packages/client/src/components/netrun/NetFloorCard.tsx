@@ -187,7 +187,9 @@ export function NetFloorCard({
         <p className="net-floor-card-flags">
           {here.broken && <span className="net-run-floor-flag">złamane</span>}
           {here.controlledDv !== undefined && (
-            <span className="net-run-floor-flag">przejęty · PT {here.controlledDv}</span>
+            <span className="net-run-floor-flag net-run-floor-flag--held">
+              przejęty · PT {here.controlledDv}
+            </span>
           )}
           {here.identified && <span className="net-run-floor-flag">rozpoznany</span>}
           {here.copied && <span className="net-run-floor-flag">kopia na deku</span>}

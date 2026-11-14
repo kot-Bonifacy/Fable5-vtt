@@ -477,6 +477,10 @@
      i urządzenia, które czynność już wykonało. */
   --net-eye-active: #4ade80;
   --net-eye-spent: #f5b041;
+  /* Przejęty węzeł (Kontrola): zieleń urządzeń gotowych do poleceń, nie cyjan
+     „tu jesteś” — w śladzie oba stały obok siebie nie do odróżnienia (14.11). */
+  --net-held: #4ade80;
+  --net-held-bg: rgb(74 222 128 / 12%);
 
   /* LÓD: druga rodzina barw tego okna — wroga, więc czerwona. */
   --net-ice-line: #5d2233;

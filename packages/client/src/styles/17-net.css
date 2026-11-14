@@ -433,17 +433,52 @@
 }
 
 .net-trail-step--held {
-  border-color: var(--net-rezzed);
-  background: var(--net-rezzed-bg);
+  border-color: var(--net-held);
+  background: var(--net-held-bg);
 }
 
-/* Piętro pod stopami: wyłączone (nie ma dokąd jechać), ale nie blednie. */
+/* Piętro pod stopami: wyłączone (nie ma dokąd jechać), ale nie blednie. Większe od
+   reszty śladu i jako jedyne pulsuje — ma być widać z daleka, gdzie stoi postać,
+   także między dwoma takimi samymi ikonami (14.11, zlecenie MG). Cyjan należy tylko
+   do niego; przejęty węzeł pod stopami i tak mówi o sobie chipem na karcie. */
 .net-trail-step--here,
 .net-trail-step--here:disabled {
+  min-width: 2.4rem;
+  height: 2.4rem;
+  font-size: 1.3rem;
+  border-width: 2px;
   border-color: var(--net-here);
-  box-shadow: 0 0 0 1px var(--net-here-glow) inset;
+  background: var(--net-floor-bg);
+  color: var(--net-here);
+  box-shadow:
+    0 0 0 1px var(--net-here-glow) inset,
+    0 0 6px 1px var(--net-here-glow);
   opacity: 1;
   cursor: default;
+  animation: net-trail-here-pulse 1.8s ease-in-out infinite;
+}
+
+@keyframes net-trail-here-pulse {
+  0%,
+  100% {
+    box-shadow:
+      0 0 0 1px var(--net-here-glow) inset,
+      0 0 4px 0 var(--net-here-glow);
+  }
+
+  50% {
+    box-shadow:
+      0 0 0 1px var(--net-here-glow) inset,
+      0 0 14px 3px var(--net-here-glow),
+      0 0 5px 0 var(--net-here);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .net-trail-step--here,
+  .net-trail-step--here:disabled {
+    animation: none;
+  }
 }
 
 /* Karta piętra — jedyny element okna świecący obwódką. */
@@ -686,6 +721,11 @@
   border-color: var(--net-here);
   color: var(--net-here);
   font-weight: 700;
+}
+
+.net-run-floor-flag--held {
+  border-color: var(--net-held);
+  color: var(--net-held);
 }
 
 .net-run-floor-flag--ice {

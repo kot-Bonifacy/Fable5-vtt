@@ -53,7 +53,8 @@ o obszarze straży, łup z urządzenia „W urządzeniu”, czytelne przyciski k
 „Dodaj za darmo” w otwartą kartę, „Wróg w zasięgu wzroku” jednym paskiem; w drugiej sesji kadr
 urządzenia wyjeżdża spod okna SIEĆ, karta „Wykrycie — …: ucieczka przed darmowym atakiem”,
 bursztynowy alarm MG przy zauważeniu skradającego się, zdanie po marszu w ciemność, „Edycja
-tokenu” bez pól statysty przy pełnej karcie, jeden pasek po ✕ walki. Szczegóły w notatkach sesji.
+tokenu” bez pól statysty przy pełnej karcie, jeden pasek po ✕ walki; w trzeciej — w śladzie okna SIEĆ piętro pod stopami jest większe
+i pulsuje, a przejęte węzły są zielone. Szczegóły w notatkach sesji.
 
 **Lewa belka bez ramek (etap 69, zlecenie MG z 10.11) — czeka na wdrożenie (bez migracji)
 i oględziny MG przy stole.** Wariant A z makiety: portret 16:15 gasnący w papier, PW jako
@@ -815,6 +816,23 @@ a nie do tego pliku.
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
 
+### Sesja 14.11 (trzecia) — ślad Sieci: wyraźne piętro „tu jesteś”, przejęte na zielono
+
+**Zrobione (bez migracji, czeka na wdrożenie)** — zlecenie MG ze zrzutem okna SIEĆ: w śladzie
+nie było widać, na którym piętrze stoi netrunner. „Tu jesteś” i „przejęty” były dwoma odcieniami
+cyjanu (`--net-here` / `--net-rezzed`) z tym samym tłem i rozmiarem, więc dwa ⚙ obok siebie
+wyglądały tak samo. Decyzje MG (pytania przed pracą): **bieżące piętro większe i z pulsującą
+poświatą** (bez podpisu i bez strzałki), **bez podświetleń po najechaniu**, **przejęte węzły na
+zielono**. Teraz `.net-trail-step--here` ma 2,4 rem, ramkę 2 px i puls `net-trail-here-pulse`
+(1,8 s, wyłączony przy `prefers-reduced-motion`), a przejęte piętro w śladzie i chip „przejęty ·
+PT” na karcie piętra oraz w szybie MG (`net-run-floor-flag--held`) są zielone (nowe tokeny
+`--net-held` / `--net-held-bg` w `theme.css`). Umowa na górze `siec`.
+
+**Oglądane w Firefoksie i Chromium** (biblioteka `playwright`, bo Firefox MG był otwarty, więc
+MCP by nie wstał): sam `NetTrail` wyrenderowany na żywym Vite z danymi jak na zrzucie MG,
+klatki minimum i szczytu pulsu. Pełnego runu na `dev.db` nie odtwarzałem. `tsc` klienta, ESLint
+i Prettier czyste; testów nie dotyczyło (sam CSS i klasa chipu).
+
 ### Sesja 14.11 (druga) — zaległości: kadr obok okna SIEĆ, karta wykrycia, alarm skradania, marsz w ciemność, pełna karta NPC-a, koniec walki
 
 **Zrobione (bez migracji, czeka na wdrożenie)** — sześć zaległości z `zaleglosci.md`, opisy
@@ -839,28 +857,3 @@ runu — na `dev.db` nie odtwarzałem, żeby nie ruszać sceny MG). Testy: share
 508 (+3), serwer 1799 — zielone; `tsc` wszystkich pakietów, ESLint i Prettier czyste; E2E `47-siec` 39/39.
 Umowy na górze `siec` i `statysta`. Pkt 10 (kubek zasłania akcje) — do sprawdzenia, czy jeszcze
 aktualny po lewej belce z etapu 69.
-
-### Sesja 14.11 — zaległości: belka urządzenia, łup z urządzenia, obszar straży, karta, Kompendium, „Wróg w zasięgu wzroku”
-
-**Zrobione (bez migracji, czeka na wdrożenie)** — sześć zaległości z `zaleglosci.md`, opisy
-naprawy w `archiwum/zamkniete-zaleglosci.md` („Zamknięte 2026-11-14”):
-
-- **70f pkt 2:** belka przejętego urządzenia nie pokazuje czerwonego „ODMOWA” po udanym
-  strzale — na pole idzie tylko odmowa tury (`operatedRailRefusal`), stan aktywacji mówi wiersz
-  „przez: …”. Test w `hud-refusal.test.ts`.
-- **70f pkt 3:** okienko strefy przy obszarze straży wieżyczki / drona dopisuje „strzela do
-  każdego, kto tu wejdzie” (`zoneGuardNote`, z `defenseKind` wpisu). Test w `zone-ask.test.ts`.
-- **70f pkt 5:** łup z figury-urządzenia — „W urządzeniu: …” zamiast „Przy ciele”
-  (`ExchangeCounterpartView.device`).
-- **66e pkt 7:** przyciski karty z czerwonym tłem przy najechaniu mają biały napis; napisy sekcji
-  „Pojazdy” na czerwonym panelu jasne (także podpisy galerii MG — znalezione przy oględzinach).
-- **66e pkt 8:** „Dodaj za darmo” w Kompendium bez wyboru celuje w kartę na wierzchu.
-- **66e pkt 25:** „Wróg w zasięgu wzroku” jednym bursztynowym paskiem (`noteCombatPending`).
-
-**Oglądane w Firefoksie:** pkt 7 i 8 — najpierw tymczasowym specem E2E na `po-T6` (skasowany),
-bo Firefox z Playwright MCP nie wstał, potem w Firefoksie z MCP na `dev.db` (MG, karta Szew:
-„+ Broń z katalogu” i „Dobądź (Akcja)” białe na czerwonym, „Pojazdy” jasne, Kompendium celuje
-w Szew, konsola bez błędów). **Przyczyna awarii MCP:** MG używał w tym czasie własnego
-Firefoksa — po jego zamknięciu MCP wstał od razu; pułapka na górze `ogledziny`. **Nie oglądane
-w przeglądarce:** pkt 2, 3, 5 i 25 (testy jednostkowe dla 2 i 3). Testy: shared 3053, klient 505
-(+4), serwer 1799 — zielone; lint i Prettier czyste. Umowy na górze `siec` i `ui`.

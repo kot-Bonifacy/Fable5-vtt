@@ -36,7 +36,9 @@ function PlanFloor({
         {floor.dv !== undefined && <span className="net-run-floor-dv">PT {floor.dv}</span>}
         {floor.broken && <span className="net-run-floor-flag">złamane</span>}
         {floor.controlledDv !== undefined && (
-          <span className="net-run-floor-flag">przejęty · PT {floor.controlledDv}</span>
+          <span className="net-run-floor-flag net-run-floor-flag--held">
+            przejęty · PT {floor.controlledDv}
+          </span>
         )}
         {floor.identified && <span className="net-run-floor-flag">rozpoznany</span>}
         {floor.hackFailed && <span className="net-run-floor-flag">próba zużyta</span>}
