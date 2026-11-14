@@ -61,6 +61,15 @@ export const WALK_FOG_CONFIRM_NOTE =
   'Drogi do celu nie widać — kliknij jeszcze raz, a postać pójdzie w tę stronę, dokąd zdoła. Esc — odwołaj.';
 
 /**
+ * Koniec marszu w stronę celu, do którego drogi nie było widać (66e pkt 12):
+ * w ciemności planer zna tylko to, co figura widzi, więc cel za drzwiami pod
+ * kątem kończy marsz pod ścianą. Z nowego miejsca figura widzi więcej. Zdanie
+ * pasuje też do kliku w ścianę albo zamknięty pokój — tam drogi też nie ma.
+ */
+export const WALK_BLIND_STOP_NOTE =
+  'Postać nie widzi drogi do samego celu — staje najbliżej, jak się dało. Kliknij jeszcze raz, gdy zobaczy więcej.';
+
+/**
  * Pierwszy klik w bursztyn: zdanie o koszcie. `hint` przychodzi z systemu
  * (CP RED: „Bieg zużyje Akcję"), bo mapa nie zna nazwy tego handlu.
  */

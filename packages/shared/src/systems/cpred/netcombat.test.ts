@@ -280,6 +280,8 @@ describe('wymiana ciosów', () => {
     });
     expect(netBonusTotal(plan.attack)).toBe(9);
     expect(plan.defence).toEqual([{ label: 'PRĘ Kraken', value: 2 }]);
+    // „Udane” na karcie to ucieczka przed ciosem, nie brak wykrycia (70f pkt 4).
+    expect(plan.label).toBe('Wykrycie — Kraken: ucieczka przed darmowym atakiem');
   });
 
   it('charges the Ślizg two points for every Skunks that marked the runner', () => {

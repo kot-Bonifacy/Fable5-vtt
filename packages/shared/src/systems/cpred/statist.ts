@@ -493,6 +493,23 @@ export function statistQuick(data: CpredCharacterData): CpredStatistQuick {
 }
 
 /**
+ * Czy sześć pól menu figury opisuje tę kartę (66e pkt 13, 14.11).
+ *
+ * Nie — gdy broń albo pancerz siedzą w wierszach, których szybki edytor nie
+ * pisze: NPC z wzorca sceny, z okna „Nowa postać” albo dopisany na pełnej
+ * karcie. Edytor pokazałby wtedy „Umiejętność 0” (poziom broni stoi w wierszu
+ * Umiejętności, nie w bloku statystyk), a zmiana broni czy OB dopisałaby
+ * wiersze statysty obok prawdziwych, zamiast je zmienić. Taką figurę zmienia
+ * się na karcie.
+ */
+export function cpredStatistQuickFits(data: CpredCharacterData): boolean {
+  const statistArmor = new Set<string>(Object.values(STATIST_ARMOR_ROW_IDS));
+  if (data.armor.some((row) => !statistArmor.has(row.id))) return false;
+  if (data.weapons.some((row) => row.id === STATIST_WEAPON_ROW_ID)) return true;
+  return data.weapons.every((row) => cpredIsBareHandsRow(row));
+}
+
+/**
  * Karta przygotowana do **jednego** rzutu (etap 38a, dawniej
  * `combatProfileSheetForSkill`).
  *

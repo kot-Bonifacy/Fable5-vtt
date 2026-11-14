@@ -1696,7 +1696,8 @@ export function MapArea() {
       return;
     }
     bindMapFrame(scene.id, {
-      framePoint: (x, y, offset) => rendererRef.current?.framePoint(x, y, offset),
+      framePoint: (x, y, offset, insets) => rendererRef.current?.framePoint(x, y, offset, insets),
+      releaseInsets: () => rendererRef.current?.setSideInsets({ left: 0, right: 0 }),
       tokenCentre: (tokenId) => rendererRef.current?.tokenCentre(tokenId) ?? null,
       viewCentre: () => rendererRef.current?.viewCentre() ?? null,
       mark: (x, y, label) => rendererRef.current?.addPing(x, y, label),

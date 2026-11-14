@@ -398,7 +398,9 @@ export function netDetectionPlan(input: {
         ? [{ label: `PRĘ ${input.ice.name}`, value: input.ice.profile.speed }]
         : [],
     dice: 0,
-    label: `Wykrycie — ${input.ice.name}`,
+    // Werdykt karty mówi o rzucie netrunnera: „Udane” to „uciekł przed
+    // ciosem”, nie „LOD go nie wykrył” — tytuł musi to powiedzieć (70f pkt 4).
+    label: `Wykrycie — ${input.ice.name}: ucieczka przed darmowym atakiem`,
   };
 }
 

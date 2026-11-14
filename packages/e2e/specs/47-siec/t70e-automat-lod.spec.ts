@@ -73,6 +73,8 @@ const queue = () =>
 const activeName = () => queue().find((row) => row.id === combat()?.activeCombatantId)?.name;
 const lastMessageId = () =>
   queryOne<{ id: number }>('SELECT COALESCE(MAX(id), 0) AS id FROM ChatMessage')!.id;
+/** Dopisek tytułu karty wykrycia: „Udane” to ucieczka przed ciosem (70f pkt 4). */
+const DETECTION = ': ucieczka przed darmowym atakiem';
 /** Karta rzutu po `since` z tym tytułem, z rolą konta, które ją podpisało. */
 const rollCard = (since: number, title: string) =>
   queryOne<{ id: number; payload: string; role: string }>(
@@ -225,10 +227,10 @@ test.describe.serial('@szybkie T70e automat Czarnego LOD-u i Demona', () => {
     scriptDice([2, 9]);
     await takeExit(ola, 'Iskra');
     await expect
-      .poll(() => rollCard(since, `Wykrycie — ${KRUK}`)?.id ?? 0, { timeout: 20_000 })
+      .poll(() => rollCard(since, `Wykrycie — ${KRUK}${DETECTION}`)?.id ?? 0, { timeout: 20_000 })
       .toBeGreaterThan(0);
     expect(pendingDice()).toBe('');
-    const card = rollCard(since, `Wykrycie — ${KRUK}`)!;
+    const card = rollCard(since, `Wykrycie — ${KRUK}${DETECTION}`)!;
     // Obrona należy do MG (#39): karta idzie jego kontem, nie kontem Oli.
     expect(card.role).toBe('GM');
     expect((JSON.parse(card.payload) as { opposed?: { won: boolean } }).opposed?.won).toBe(false);
@@ -282,14 +284,14 @@ test.describe.serial('@szybkie T70e automat Czarnego LOD-u i Demona', () => {
     await takeExit(ola, 'Iskra');
     await expect(floorCard(ola)).toContainText('Gniazdo Sowy');
     await ola.page.waitForTimeout(1_500);
-    expect(rollCard(since, `Wykrycie — ${SOWA}`)).toBeUndefined();
+    expect(rollCard(since, `Wykrycie — ${SOWA}${DETECTION}`)).toBeUndefined();
     expect(queue().map((row) => row.name)).toEqual([KRUK, 'Iskra']);
 
     // Ręczne „LOD wykrywa intruza” działa z hamulcem: Iskra 4 + 9 przeciw 2 + 1.
     scriptDice([9, 1]);
     await threat(mg, SOWA).getByRole('button', { name: 'LOD wykrywa intruza' }).click();
     await expect
-      .poll(() => rollCard(since, `Wykrycie — ${SOWA}`)?.id ?? 0, { timeout: 20_000 })
+      .poll(() => rollCard(since, `Wykrycie — ${SOWA}${DETECTION}`)?.id ?? 0, { timeout: 20_000 })
       .toBeGreaterThan(0);
     expect(pendingDice()).toBe('');
     expect(queue().map((row) => row.name)).toEqual([SOWA, KRUK, 'Iskra']);

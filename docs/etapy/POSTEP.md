@@ -47,10 +47,13 @@ w Kevlarze, notatki MG o sterowaniu z mapy; wyłączone urządzenie da się prze
 w przeglądarce — znaleziska w `zaleglosci.md` (14.11). Rozstrzygnięcia i odstępstwa w pliku
 etapu i w `decyzje-i-uproszczenia.md`; umowy i pułapki na górze `siec` (wzorzec — `mapa`).
 
-**Zaległości 14.11 („wykonaj kilka zaległości”) — czekają na wdrożenie (bez migracji).** Belka
-przejętego urządzenia bez czerwonego „ODMOWA” po strzale, okienko strefy mówi o obszarze straży,
-łup z urządzenia „W urządzeniu”, czytelne przyciski karty i sekcja „Pojazdy”, „Dodaj za darmo”
-w otwartą kartę, „Wróg w zasięgu wzroku” jednym paskiem. Szczegóły w notatce sesji.
+**Zaległości 14.11 (dwie sesje „wykonaj kilka zaległości”) — czekają na wdrożenie (bez
+migracji).** Belka przejętego urządzenia bez czerwonego „ODMOWA” po strzale, okienko strefy mówi
+o obszarze straży, łup z urządzenia „W urządzeniu”, czytelne przyciski karty i sekcja „Pojazdy”,
+„Dodaj za darmo” w otwartą kartę, „Wróg w zasięgu wzroku” jednym paskiem; w drugiej sesji kadr
+urządzenia wyjeżdża spod okna SIEĆ, karta „Wykrycie — …: ucieczka przed darmowym atakiem”,
+bursztynowy alarm MG przy zauważeniu skradającego się, zdanie po marszu w ciemność, „Edycja
+tokenu” bez pól statysty przy pełnej karcie, jeden pasek po ✕ walki. Szczegóły w notatkach sesji.
 
 **Lewa belka bez ramek (etap 69, zlecenie MG z 10.11) — czeka na wdrożenie (bez migracji)
 i oględziny MG przy stole.** Wariant A z makiety: portret 16:15 gasnący w papier, PW jako
@@ -795,12 +798,12 @@ a nie do tego pliku.
 | `kosci`     | kubek, `rollFormula`, wezwania i prośby o Test, tabele losowe, PT od MG | 24   | 2       |
 | `tura`      | budżet Akcji i metrów, kolejka, trasa, ruch przez ściany, skok, walka z zauważenia, pytanie MG o przekroczenie, Percepcja w drodze (z linią wzroku), ukryte figury, skradanie, kropki ataków, kierowca bez Biegu, Test jazdy w Akcji Ruchu, darmowa ręka MG, napis wiersza Akcji, taran raz na turę, spóźniona inicjatywa rundy 1, krok planera w jednym oku, „Następna tura” z widzianą turą | 42   | 8       |
 | `atak`      | broń i dodatki, amunicja, obrażenia, pancerz, rany krytyczne, trucizna na ostrzu, auto-unik, strach z Konfrontacji, auto jako cel, broń pokładowa, wybór celu ze stosu, skutki amunicji po karcie ataku, ikona gołych rąk, broń dwuręczna w rękach przy tarczy | 57   | 8       |
-| `statysta`  | figura z kartą, `statBlock`, Wartość bojowa, `token:stat` (tylko zmienione grupy), wzorce | 18   | 3       |
+| `statysta`  | figura z kartą, `statBlock`, Wartość bojowa, `token:stat` (tylko zmienione grupy), wzorce, pełna karta bez sześciu pól | 19   | 3       |
 | `karta`     | strony i zakładki, panele, `sheet.css`, walidacja list, usuwanie przedmiotu, „Używane” i „Plecak” | 12   | 12      |
 | `postac`    | kreator, PD i awanse, koszyk i cofanie awansów, Role i Zdolności, cyborgizacje, chrom zmieniający liczby, ekonomia, Test montażu gracza, pojazdy i Tabor | 58   | 3       |
 | `ekwipunek` | wiersze wyposażenia, przekazanie, łup (także ciała graczy), handel, sklepy, asortyment handlarza z kompendium, zasięg, amunicja bez dna, egzoszkielet, latarka z ekwipunku, narkotyki i fiolki, siatka okna „Wymiana”, zgoda z góry, odświeżanie po naklejkach, znaczek „w użyciu”, zakup auta z modelu, warsztat (ulepszenia i naprawa auta), auto bokiem i „w garażu”, grafika auta to model i skala miniatur, postać na karcie przekazania, zasięg ręki do figury spoza siatki | 50   | 3       |
 | `czas`      | zegar świata, kalendarz, `statEffects`, leczenie po dobie, dawki i uzależnienia (`chems`) | 19   | 2       |
-| `siec`      | Programy, LOD, demony, piętra architektury, dek jako towar, strefy bronione, kamery (także w ciemności), rozbrajanie, Sieć ze sceny, jedna próba i pamięć sukcesów, strzał z urządzenia, strefa tylko z marszu gracza, widok runu z rundą, strefa rozbrojona w Sieci, okno jednego piętra i ładunek bez szybu, pełny wiersz czatu zamiast skrótu, przejęta figura urządzenia (`operatorOf`, `netDeviceUse`), marsz drona, oczy urządzeń, figury wyciszone (`net-off`), pasek „Oczy i urządzenia”, Sieć ze sceny wg rodzaju, strefy i drzwi w „Instalacjach”, obszar straży od figury, okienko strefy, automat obrony Sieci i hamulec MG, „Włącz / Wyłącz w Sieci” MG i przeszukanie wyłączonego | 26   | 12      |
+| `siec`      | Programy, LOD, demony, piętra architektury, dek jako towar, strefy bronione, kamery (także w ciemności), rozbrajanie, Sieć ze sceny, jedna próba i pamięć sukcesów, strzał z urządzenia, strefa tylko z marszu gracza, widok runu z rundą, strefa rozbrojona w Sieci, okno jednego piętra i ładunek bez szybu, pełny wiersz czatu zamiast skrótu, przejęta figura urządzenia (`operatorOf`, `netDeviceUse`), marsz drona, oczy urządzeń, figury wyciszone (`net-off`), pasek „Oczy i urządzenia”, Sieć ze sceny wg rodzaju, strefy i drzwi w „Instalacjach”, obszar straży od figury, okienko strefy, automat obrony Sieci i hamulec MG, „Włącz / Wyłącz w Sieci” MG i przeszukanie wyłączonego | 27   | 12      |
 | `boty`      | llama-server, RAG, reindeks, dziennik i baza wiedzy, brama AI  | 10   | 10      |
 | `dane`      | `parse-manual.py`, kompendium poza repo, tabele z podręcznika  | 9    | 12      |
 | `kopie`     | `snapshot`, `archive`, paczki ZIP, wczytanie kampanii, „czeka na gracza”, kopie kampanii i cofnięcie, sklep i bot w paczce, zgłoszenie karty gracza, pojazdy w paczce, auta na scenie pościgu, przeszkody poza paczką | 22   | 6       |
@@ -811,6 +814,31 @@ a nie do tego pliku.
 ## Notatki z dwóch ostatnich sesji
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
+
+### Sesja 14.11 (druga) — zaległości: kadr obok okna SIEĆ, karta wykrycia, alarm skradania, marsz w ciemność, pełna karta NPC-a, koniec walki
+
+**Zrobione (bez migracji, czeka na wdrożenie)** — sześć zaległości z `zaleglosci.md`, opisy
+naprawy w `archiwum/zamkniete-zaleglosci.md` („Zamknięte 2026-11-14, druga sesja”):
+
+- **70f pkt 1:** kadr urządzenia przy brzegu sceny wyjeżdża spod okna SIEĆ — `clearOfRunWindow`
+  zwraca zapas po stronie okna, `MapRenderer.setSideInsets` poszerza o niego granicę kamery,
+  zamknięcie okna go zdejmuje. Test `map-frame.test.ts`.
+- **70f pkt 4:** karta „Wykrycie — Kruk: ucieczka przed darmowym atakiem” (`netDetectionPlan`).
+- **66e pkt 11:** zauważenie skradającego się przez Neutralnego (kamera) — bursztynowy pasek MG
+  z dzwonkiem do „Rozumiem” zamiast znikającej informacji.
+- **66e pkt 12:** marsz ucięty, bo dalej drogi nie widać, kończy się zdaniem
+  `WALK_BLIND_STOP_NOTE` (`MarchState.blind`).
+- **66e pkt 13:** „Edycja tokenu” NPC-a z pełną kartą (`cpredStatistQuickFits`) — zdanie
+  i „📄 Otwórz kartę” zamiast pól statysty; PW z paska zapisują się jak dotąd.
+- **66e pkt 14:** „Przeciwnicy pokonani” ustępuje, póki wisi pytanie „Koniec walki”.
+
+**Oglądane w Firefoksie** (Playwright MCP, `dev.db`, MG): pkt 13 — „Edycja tokenu” Haka ze
+„Zastawu” pokazuje zdanie i „Otwórz kartę”, przycisk otwiera kartę i zamyka okno, konsola bez
+błędów. **Nie oglądane w przeglądarce:** pkt 1, 4, 11, 12, 14 (wymagają walki, skradania albo
+runu — na `dev.db` nie odtwarzałem, żeby nie ruszać sceny MG). Testy: shared 3056 (+3), klient
+508 (+3), serwer 1799 — zielone; `tsc` wszystkich pakietów, ESLint i Prettier czyste; E2E `47-siec` 39/39.
+Umowy na górze `siec` i `statysta`. Pkt 10 (kubek zasłania akcje) — do sprawdzenia, czy jeszcze
+aktualny po lewej belce z etapu 69.
 
 ### Sesja 14.11 — zaległości: belka urządzenia, łup z urządzenia, obszar straży, karta, Kompendium, „Wróg w zasięgu wzroku”
 
@@ -836,39 +864,3 @@ w Szew, konsola bez błędów). **Przyczyna awarii MCP:** MG używał w tym czas
 Firefoksa — po jego zamknięciu MCP wstał od razu; pułapka na górze `ogledziny`. **Nie oglądane
 w przeglądarce:** pkt 2, 3, 5 i 25 (testy jednostkowe dla 2 i 3). Testy: shared 3053, klient 505
 (+4), serwer 1799 — zielone; lint i Prettier czyste. Umowy na górze `siec` i `ui`.
-
-### Sesja 14.11 — etap 70f: wzorce „Fabryka dronów” i „Po zamknięciu” pod nowe reguły, rozegranie
-
-**Zrobione (bez migracji, czeka na wdrożenie):** format wzorca — `zones[].figure` (obszar straży
-figury, `DefenseZone.tokenId`), `zones[].netExcluded`, `walls[].netControlled` (`shared`
-`scene-templates.ts`, `cpredTemplateProblems`, serwer `instantiateSceneTemplate`); **„Po
-zamknięciu”** — Sieć hasło → Monitoring → Obrona (wieżyczka) → Instalacje (podłoga, zamek
-gabinetu „Sterowany z Sieci”) → plik, obszar straży „Straż wieżyczki” na cały gabinet, wieżyczka
-z karabinem szturmowym i Wartością bojową 14, Kucharz w Kevlarze (balans z symulacji — plik
-etapu), notatki MG o sterowaniu z mapy; **„Fabryka dronów”** — węzły „Monitoring”, „Obrona:
-patrol / lądowiska północ / lądowiska boczne”, obszar straży „Lądowisko Sowy” (jawny), notatki
-o automacie LOD-u, hamulcu, przejętych dronach i alarmie. Poza zakresem, ale potrzebne wzorcom:
-**„⏻ Włącz / Wyłącz w Sieci” w menu MG figury** (`net:device:switch`, `netDevicesOfToken`,
-`NetDeviceSwitchItem`; od 70c MG nie miał czym obudzić uśpionego drona), naklejka „Wyłączony” od
-założenia sceny ze wzorca, **wyłączone urządzenie da się przeszukać** (`searchable` stanu
-`net-off`), `effects.fires` przy „Grzechocie” w próbce. Z rozegrania poprawione: pasek „Oczy
-i urządzenia” w dwóch kolumnach z nazwą w dwóch wierszach (pięć kamer czytało się „Kamera…”),
-jeden wiersz „wracają do obrony: … i 5 ukrytych urządzeń” zamiast sześciu. Decyzje
-w `decyzje-i-uproszczenia.md`, umowy na górze `siec` i `mapa`, pułapki na górze `ogledziny` i `testy`,
-`testy.md` (wiersz i sekcja T70), zamknięte zaległości z 07.11 (przejęte urządzenie jako
-figura, balans wieżyczki, seria, znacznik wyłączonego drona) w `archiwum/zamkniete-zaleglosci.md`,
-nowe znaleziska w `zaleglosci.md` (14.11). **Testy:** `shared` 3053/3053, serwer 1799/1799 (w dwóch
-wcześniejszych pełnych przebiegach migotał `net-scene.test.ts` — Kontrola rzucała prawdziwą kością;
-teraz skrypt kości, pułapka na górze `testy`), klient 501/501, `tsc` wszystkich pakietów, ESLint
-i Prettier czyste w zmienionych plikach; E2E `47-siec` 39/39 po ostatniej zmianie kodu. **Rozegrane w przeglądarce** tymczasowymi specami
-`99-ogledziny/t99-70f-*` (nie w repo) na instancji E2E od `po-T6`, 1920 × 1080: MG w Chromium,
-Ola (Iskra) i Marek (Kowal) w **Firefoksie**. „Po zamknięciu” 8/8 — wzorzec z „Przykładowych”
-bez braków, Backdoor, Monitoring i kadr przez kamerę gabinetu, Kontrola Obrony i Instalacji,
-w walce zamek z paska i dwa strzały przejętą wieżyczką (Kucharz −14 i −25 PW), odłączenie,
-wejście Iskry do gabinetu i strzał ze straży, „⏻ Wyłącz w Sieci” MG. „Fabryka dronów” 8/8 —
-uśpione drony szare od założenia, Sowa strzela sama w turze Kowala na lądowisku, automat Kruka
-(wykrycie bez MG, Kruk ściga), Kontrola patrolu i lądowisk, lot przejętej Sowy do Kowala,
-„Wyłącz”, łup drzazgi bez „Unieruchomiony”, MG budzi Szerszenia Z1 z menu, odłączenie. Walki
-z ochroną i marsz przez ciemną halę nie były grane (66b, 66e — etap 70 ich nie dotyka).
-Nieoglądane: Chrome MG, motyw dzienny. **Dalej:** wdrożenie etapu 70 (migracja z 70d) i stół MG.
-

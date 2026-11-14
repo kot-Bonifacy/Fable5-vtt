@@ -1457,8 +1457,13 @@ export function connectSocket(userId: string): Socket {
   onPresented('sneak:ended', (ended: SneakEndedBroadcast) =>
     notifyInfo(ended.text, { title: 'Skradanie', topic: 'sneak' }),
   );
+  // Zauważenie u MG to alarm (kamera, strażnik), nie informacja: czarny pasek
+  // gasł po kilku sekundach i przy kilku kamerach zostawał tylko poufny wiersz
+  // czatu (66e pkt 11, 14.11). Bursztyn z dzwonkiem stoi do „Rozumiem”.
   onPresented('sneak:noticed', (noticed: SneakNoticedBroadcast) =>
-    notifyInfo(noticed.text, { title: 'Skradanie', topic: 'sneak' }),
+    notifyChoice('sneak', noticed.text, [{ label: 'Rozumiem', run: () => undefined }], {
+      title: 'Skradanie — zauważony',
+    }),
   );
   // Etap 56: wróg zauważony w trwającej walce dołączył sam (tylko MG).
   // Wydatek MG poza budżetem tury czeka na potwierdzenie (19.10.2026).

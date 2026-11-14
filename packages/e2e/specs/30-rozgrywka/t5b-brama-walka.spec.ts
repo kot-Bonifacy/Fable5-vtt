@@ -686,7 +686,11 @@ test.describe.serial('T5b: „Brama” — walka druga, Sieć, wieżyczka, pad A
     await expect.poll(() => hp('Iskra')).toBe(iskraHp - 4);
     // Karta wymiany zapisuje się po obrażeniach w mózg — czekamy, a nie sprawdzamy raz.
     await expect
-      .poll(() => messageAfter(since, 'Wykrycie — Kruk', 'gmroll')?.id ?? 0)
+      .poll(
+        () =>
+          messageAfter(since, 'Wykrycie — Kruk: ucieczka przed darmowym atakiem', 'gmroll')?.id ??
+          0,
+      )
       .toBeGreaterThan(0);
     await expect
       .poll(() => queueOf(mg), { timeout: 30_000 })

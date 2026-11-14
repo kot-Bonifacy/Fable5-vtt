@@ -127,6 +127,7 @@ import { reportsSelection, type SelectionChange } from './selection-change.js';
 import {
   WALK_CONFIRM_NOTE,
   WALK_FOG_CONFIRM_NOTE,
+  WALK_BLIND_STOP_NOTE,
   walkClickBand,
   walkClickNeedsConfirm,
   walkExtraConfirmNote,
@@ -844,6 +845,12 @@ interface MarchState {
   /** The plan was cut by the turn budget — say so when the figure stops. */
   clipped: boolean;
   /**
+   * Trasa nie doszła do celu, bo dalej drogi nie widać (`WalkPlan.truncated`:
+   * ciemność, mgła, skraj szukania) — figura staje pod ścianą, więc mówi
+   * dlaczego (66e pkt 12, 14.11). Bez tego cisza wyglądała jak zepsuty klik.
+   */
+  blind: boolean;
+  /**
    * Budget as it stood when the march started, for the landing arithmetic —
    * with the second band added when the march takes it (etap 54).
    */
@@ -1199,6 +1206,13 @@ export class MapRenderer {
   private chaseBandEdit = false;
   /** Szerokość mapy zasłonięta oknem z prawej (`frameScene`), w pikselach ekranu. */
   private frameInsetPx = 0;
+  /**
+   * Część mapy zasłonięta oknem Sieci (70f pkt 1, 14.11), w pikselach ekranu —
+   * granica kamery z tej strony rośnie o tyle, żeby kadr urządzenia przy
+   * krawędzi sceny wyjechał spod okna. W odróżnieniu od `frameInsetPx` nie
+   * rusza `worldWidth`: mała scena ma zostać na środku, jak stała.
+   */
+  private sideInsetPx = { left: 0, right: 0 };
   private bandGrab: { edge: 'from' | 'to' } | null = null;
   private readonly grid = new Graphics();
   /** Kontrastowa siatka przy otwartym edytorze sceny (12.09) — patrz `map/grid-style.ts`. */
@@ -3452,9 +3466,15 @@ export class MapRenderer {
    * okno Sieci podaje punkt, a nie figurę. `screenOffset` (px ekranu) stawia
    * punkt obok środka — tam, gdzie mapy nie zasłania okno.
    */
-  framePoint(x: number, y: number, screenOffset?: { x: number; y: number }): void {
+  framePoint(
+    x: number,
+    y: number,
+    screenOffset?: { x: number; y: number },
+    sideInsets?: { left: number; right: number },
+  ): void {
     const viewport = this.viewport;
     if (this.destroyed || !viewport) return;
+    if (sideInsets) this.setSideInsets(sideInsets);
     const scale = viewport.scale.x || 1;
     viewport.animate({
       position: {
@@ -3465,6 +3485,18 @@ export class MapRenderer {
       ease: 'easeInOutSine',
       removeOnInterrupt: true,
     });
+  }
+
+  /**
+   * Zasłonięte brzegi mapy (okno Sieci, 70f pkt 1): o tyle granica kamery
+   * wychodzi poza scenę z każdej strony. Zera oddają zwykłą granicę.
+   */
+  setSideInsets(insets: { left: number; right: number }): void {
+    const left = Math.max(0, insets.left);
+    const right = Math.max(0, insets.right);
+    if (left === this.sideInsetPx.left && right === this.sideInsetPx.right) return;
+    this.sideInsetPx = { left, right };
+    this.applyCameraBounds();
   }
 
   /** Środek widoku w punktach sceny — `map-frame.ts` po nim poznaje rękę na mapie. */
@@ -3562,10 +3594,11 @@ export class MapRenderer {
     // rośnie jedno i drugie — scena mniejsza od ekranu staje na lewo od okna.
     const inset = this.frameInsetPx / Math.max(1e-3, viewport.scale.x);
     viewport.worldWidth = scene.width + inset;
+    const scale = Math.max(1e-3, viewport.scale.x);
     viewport.clamp({
-      left: -scene.width * margin,
+      left: -scene.width * margin - this.sideInsetPx.left / scale,
       top: -scene.height * margin,
-      right: scene.width * (1 + margin) + inset,
+      right: scene.width * (1 + margin) + inset + this.sideInsetPx.right / scale,
       bottom: scene.height * (1 + margin),
       underflow: 'center',
     });
@@ -5902,7 +5935,7 @@ export class MapRenderer {
     // (`IN_VEHICLE`, „przeciągnij ją na jezdnię”) zamiast wyprowadzić ją z auta.
     const approve = this.viewerIsGm && !node.token.vehicleSeat ? null : this.onWalkApprove;
     if (!approve) {
-      this.beginMarch(node, start, route, clipped, budget, extra, previewed);
+      this.beginMarch(node, start, route, clipped, budget, extra, previewed, plan.truncated);
       return;
     }
     this.walkPending = true;
@@ -5916,7 +5949,16 @@ export class MapRenderer {
         // MG, ktoś zaczął inny marsz. Wtedy ta trasa nie jest już tą trasą.
         if (this.march || node.destroyed || this.selectedTokenId !== node.tokenId) return;
         if (Math.abs(node.x - start.x) >= 1 || Math.abs(node.y - start.y) >= 1) return;
-        this.beginMarch(node, start, route, clipped, this.walkBudget(), extra, previewed);
+        this.beginMarch(
+          node,
+          start,
+          route,
+          clipped,
+          this.walkBudget(),
+          extra,
+          previewed,
+          plan.truncated,
+        );
       })
       .finally(() => {
         this.walkPending = false;
@@ -5932,6 +5974,7 @@ export class MapRenderer {
     budget: ReturnType<MapRenderer['walkBudget']>,
     extra = false,
     previewed = false,
+    blind = false,
   ): void {
     const scene = this.scene;
     if (!scene || route.length === 0) return;
@@ -5964,6 +6007,7 @@ export class MapRenderer {
       walked: [],
       speedPx: perPixel > 0 ? WALK_SPEED_M_PER_S / perPixel : node.token.size * scene.grid.sizePx,
       clipped,
+      blind,
       // Only an enforced budget can refuse a landing, so only an enforced one
       // has any say in where an interrupted march is allowed to stop.
       budget: reach?.enforced ? reach : null,
@@ -6076,7 +6120,13 @@ export class MapRenderer {
     this.refreshFogPeepholes();
     this.onTokenMove?.(march.node.token.id, march.x, march.y, false);
     if (done) {
-      this.finishMarch(march.clipped ? 'Koniec ruchu w tej turze — postać zatrzymuje się.' : null);
+      this.finishMarch(
+        march.clipped
+          ? 'Koniec ruchu w tej turze — postać zatrzymuje się.'
+          : march.blind
+            ? WALK_BLIND_STOP_NOTE
+            : null,
+      );
     }
   };
 

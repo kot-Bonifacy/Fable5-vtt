@@ -10,14 +10,9 @@ w `POMYSLY.md` („Do sprawdzenia przy stole”), decyzje MG — w `decyzje-i-up
 Tymczasowe specy oględzin (MG w Chromium, Ola i Marek w Firefoksie), oba wzorce do końca, konsole
 czyste. Dwie rzeczy poprawione od razu (pasek „Oczy i urządzenia” z nazwami w dwóch wierszach,
 jeden wiersz „wracają do obrony” po odłączeniu). **Pkt 2, 3 i 5 zamknięte 14.11 (zaległości,
-czekają na wdrożenie)** — `archiwum/zamkniete-zaleglosci.md`. **Zostało:** (1) 🟠 urządzenie przy prawej
-krawędzi sceny ląduje pod oknem SIEĆ — kadr („▸”, miniatura paska) nie wyjeżdża poza scenę,
-a w „Fabryce” tak stoi Sowa, cel zlecenia: netrunner musi odsunąć okno, żeby nią polecieć
-(propozycja: kadr wolno przesunąć poza brzeg o szerokość okna albo okno samo przeskakuje na drugą
-stronę; pułapka `siec` z 13.11 opisuje to samo w specu `t70c`); ~~(2) „ODMOWA” na belce po
-udanym strzale~~; ~~(3) okienko strefy bez słowa o obszarze straży~~; (4) ℹ️ karta „Wykrycie — Kruk · Udane” (Iskra wygrała, Kruk bez darmowego ataku),
-a zaraz potem Kruk „ściga” — zgodne z s. 205, ale dla gracza „Udane” brzmi jak „nie wykrył”;
-~~(5) łup z wyłączonego drona „Przy ciele”~~. Do oceny MG
+czekają na wdrożenie)** — `archiwum/zamkniete-zaleglosci.md`. **Pkt 1 i 4 zamknięte 14.11
+(druga sesja zaległości, czekają na wdrożenie)**: kadr urządzenia wyjeżdża spod okna SIEĆ,
+karta wykrycia nazywa się „Wykrycie — Kruk: ucieczka przed darmowym atakiem”. Do oceny MG
 przy stole: balans wieżyczki z Kucharzem (karabin, Kevlar — notatka „Skalowanie”), alarm
 „Fabryki” z „⏻ Włącz w Sieci”, przeszukiwanie wyłączonych urządzeń (także wieżyczki z bronią).
 
@@ -50,9 +45,10 @@ pytania~~ — zamknięte 13.11 w 70d (okienko strefy), czeka na wdrożenie; (6) 
 przycisków karty w kolorze tła~~ i ~~(8) „Dodaj za darmo” w pierwszą postać~~ — zamknięte 14.11
 (zaległości), czekają na wdrożenie;
 (9) brak zamiany Roli głównej z poprzednią na karcie; (10) kubek zasłania ostatnie akcje
-panelu; (11) zauważenie przez kamerę daje MG tylko poufny wiersz czatu; (12) planer gracza
-w ciemności kończy marsz pod ścianą bez komunikatu; (13) okno tokenu pokazuje pola statysty
-przy pełnej karcie; (14) dwa paski naraz po ✕ walki.
+panelu (do sprawdzenia, czy jeszcze aktualne po lewej belce z etapu 69); ~~(11) zauważenie
+przez kamerę tylko poufnym wierszem~~, ~~(12) marsz w ciemności bez komunikatu~~, ~~(13) pola
+statysty przy pełnej karcie~~ i ~~(14) dwa paski po ✕ walki~~ — zamknięte 14.11 (druga sesja
+zaległości), czekają na wdrożenie.
 
 **07.11.2026 — „Po zamknięciu” (66e): wdrożenie (bez migracji), porównanie z VPS i pytanie do
 MG.** (1) Geometria wzorca pochodzi z lokalnej `dev.db`; automat odmówił odczytu bazy VPS

@@ -34,6 +34,7 @@ import {
   TOKEN_SPOT_DV_MAX,
   TOKEN_SIZE_MIN,
   VISION_RANGE_MAX_METRES,
+  cpredStatistQuickFits,
   createDefaultStatistQuick,
   isContainerCard,
   isWeaponEntry,
@@ -580,6 +581,11 @@ function TokenEditDialog({ token, onClose }: { token: TokenView; onClose: () => 
     figureCard ? statistQuick(figureCard.data) : createDefaultStatistQuick(),
   );
   const linked = characterId !== '' && characters[characterId]?.ownerId != null;
+  // Pełna karta NPC-a (wzorzec, „Nowa postać”): broń i pancerz w jej wierszach,
+  // więc sześć pól kłamałoby („Umiejętność 0”) i dopisywało wiersze statysty
+  // obok prawdziwych (66e pkt 13). Zapis dalej idzie przez `token:stat` —
+  // z liczbami odczytanymi z karty pisze tylko PW z paska.
+  const fullCard = !!figureCard && !cpredStatistQuickFits(figureCard.data);
 
   useEffect(() => {
     apiGet<CampaignDetail[]>('/api/campaigns')
@@ -947,7 +953,24 @@ function TokenEditDialog({ token, onClose }: { token: TokenView; onClose: () => 
               />{' '}
               Statystyki bojowe (figura dostaje własną kartę)
             </label>
-            {hasProfile && (
+            {hasProfile && fullCard && figureCard && (
+              <div className="scene-editor-row">
+                <span className="auth-hint">
+                  Figura ma pełną kartę — broń, pancerz i Umiejętności zmieniasz na niej.
+                </span>
+                <button
+                  type="button"
+                  className="small-button"
+                  onClick={() => {
+                    useCharacterStore.getState().openSheet(figureCard.id);
+                    onClose();
+                  }}
+                >
+                  📄 Otwórz kartę
+                </button>
+              </div>
+            )}
+            {hasProfile && !fullCard && (
               <StatistProfileFields profile={profile} onChange={setProfile} hpFromBar={hasHp} />
             )}
           </>

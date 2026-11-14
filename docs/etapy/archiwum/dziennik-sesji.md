@@ -1,5 +1,40 @@
 # Dziennik sesji — archiwum
 
+### Sesja 14.11 — etap 70f: wzorce „Fabryka dronów” i „Po zamknięciu” pod nowe reguły, rozegranie
+
+**Zrobione (bez migracji, czeka na wdrożenie):** format wzorca — `zones[].figure` (obszar straży
+figury, `DefenseZone.tokenId`), `zones[].netExcluded`, `walls[].netControlled` (`shared`
+`scene-templates.ts`, `cpredTemplateProblems`, serwer `instantiateSceneTemplate`); **„Po
+zamknięciu”** — Sieć hasło → Monitoring → Obrona (wieżyczka) → Instalacje (podłoga, zamek
+gabinetu „Sterowany z Sieci”) → plik, obszar straży „Straż wieżyczki” na cały gabinet, wieżyczka
+z karabinem szturmowym i Wartością bojową 14, Kucharz w Kevlarze (balans z symulacji — plik
+etapu), notatki MG o sterowaniu z mapy; **„Fabryka dronów”** — węzły „Monitoring”, „Obrona:
+patrol / lądowiska północ / lądowiska boczne”, obszar straży „Lądowisko Sowy” (jawny), notatki
+o automacie LOD-u, hamulcu, przejętych dronach i alarmie. Poza zakresem, ale potrzebne wzorcom:
+**„⏻ Włącz / Wyłącz w Sieci” w menu MG figury** (`net:device:switch`, `netDevicesOfToken`,
+`NetDeviceSwitchItem`; od 70c MG nie miał czym obudzić uśpionego drona), naklejka „Wyłączony” od
+założenia sceny ze wzorca, **wyłączone urządzenie da się przeszukać** (`searchable` stanu
+`net-off`), `effects.fires` przy „Grzechocie” w próbce. Z rozegrania poprawione: pasek „Oczy
+i urządzenia” w dwóch kolumnach z nazwą w dwóch wierszach (pięć kamer czytało się „Kamera…”),
+jeden wiersz „wracają do obrony: … i 5 ukrytych urządzeń” zamiast sześciu. Decyzje
+w `decyzje-i-uproszczenia.md`, umowy na górze `siec` i `mapa`, pułapki na górze `ogledziny` i `testy`,
+`testy.md` (wiersz i sekcja T70), zamknięte zaległości z 07.11 (przejęte urządzenie jako
+figura, balans wieżyczki, seria, znacznik wyłączonego drona) w `archiwum/zamkniete-zaleglosci.md`,
+nowe znaleziska w `zaleglosci.md` (14.11). **Testy:** `shared` 3053/3053, serwer 1799/1799 (w dwóch
+wcześniejszych pełnych przebiegach migotał `net-scene.test.ts` — Kontrola rzucała prawdziwą kością;
+teraz skrypt kości, pułapka na górze `testy`), klient 501/501, `tsc` wszystkich pakietów, ESLint
+i Prettier czyste w zmienionych plikach; E2E `47-siec` 39/39 po ostatniej zmianie kodu. **Rozegrane w przeglądarce** tymczasowymi specami
+`99-ogledziny/t99-70f-*` (nie w repo) na instancji E2E od `po-T6`, 1920 × 1080: MG w Chromium,
+Ola (Iskra) i Marek (Kowal) w **Firefoksie**. „Po zamknięciu” 8/8 — wzorzec z „Przykładowych”
+bez braków, Backdoor, Monitoring i kadr przez kamerę gabinetu, Kontrola Obrony i Instalacji,
+w walce zamek z paska i dwa strzały przejętą wieżyczką (Kucharz −14 i −25 PW), odłączenie,
+wejście Iskry do gabinetu i strzał ze straży, „⏻ Wyłącz w Sieci” MG. „Fabryka dronów” 8/8 —
+uśpione drony szare od założenia, Sowa strzela sama w turze Kowala na lądowisku, automat Kruka
+(wykrycie bez MG, Kruk ściga), Kontrola patrolu i lądowisk, lot przejętej Sowy do Kowala,
+„Wyłącz”, łup drzazgi bez „Unieruchomiony”, MG budzi Szerszenia Z1 z menu, odłączenie. Walki
+z ochroną i marsz przez ciemną halę nie były grane (66b, 66e — etap 70 ich nie dotyka).
+Nieoglądane: Chrome MG, motyw dzienny. **Dalej:** wdrożenie etapu 70 (migracja z 70d) i stół MG.
+
 ### Sesja 13–14.11 — etap 70e: automat Czarnego LOD-u i Demona z hamulcem MG
 
 **Dwie sesje** (pierwsza zrobiła kod, testy, oględziny i dokumenty, ale skończyła przed notatką

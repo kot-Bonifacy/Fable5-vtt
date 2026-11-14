@@ -5,6 +5,7 @@ import {
   STATIST_SKILL_LEVEL_MAX,
   STATIST_WEAPON_ROW_ID,
   applyStatistQuick,
+  cpredStatistQuickFits,
   cpredSheetOperatedBy,
   cpredSheetRollSheet,
   cpredSheetWithCombatValue,
@@ -457,5 +458,40 @@ describe('applyStatistQuick — szybkie pole nie zjada reszty karty', () => {
     };
     const after = applyStatistQuick(worn, { ...statistQuick(worn), armorSp: 11 });
     expect(after.armor.find((row) => row.id === STATIST_ARMOR_ROW_IDS.body)?.spCurrent).toBe(6);
+  });
+});
+
+describe('cpredStatistQuickFits — czy menu figury opisuje kartę (66e pkt 13)', () => {
+  const kevlar = {
+    id: 'kevlar',
+    name: 'Kevlar',
+    notes: '',
+    location: 'body' as const,
+    sp: 7,
+    spCurrent: 7,
+  };
+
+  it('karta z szybkiego edytora — tak, także z dopisaną drugą bronią', () => {
+    const sheet = ganger();
+    expect(cpredStatistQuickFits(sheet)).toBe(true);
+    const withKnife = {
+      ...sheet,
+      weapons: [...sheet.weapons, { ...sheet.weapons[0]!, id: 'w2', name: 'Nóż' }],
+    };
+    expect(cpredStatistQuickFits(withKnife)).toBe(true);
+  });
+
+  it('pancerz z wiersza karty — nie', () => {
+    expect(cpredStatistQuickFits({ ...ganger(), armor: [kevlar] })).toBe(false);
+  });
+
+  it('broń tylko w wierszach karty — nie; same pięści — tak', () => {
+    const sheet = ganger();
+    const npc = {
+      ...sheet,
+      weapons: sheet.weapons.map((row) => ({ ...row, id: 'pistol-row' })),
+    };
+    expect(cpredStatistQuickFits(npc)).toBe(false);
+    expect(cpredStatistQuickFits({ ...sheet, weapons: [] })).toBe(true);
   });
 });

@@ -21,7 +21,7 @@ import {
 import { useAuthStore } from '../stores/authStore.js';
 import { useCombatStore } from '../stores/combatStore.js';
 import { useSceneStore } from '../stores/sceneStore.js';
-import { showNetDevices } from '../map-frame.js';
+import { releaseRunWindowInsets, showNetDevices } from '../map-frame.js';
 import { currentRun, useNetRunStore } from '../stores/netRunStore.js';
 import { netErrorText } from '../netErrors.js';
 import { clearNotices, notifyInfo, notifyRefusal } from '../notices.js';
@@ -194,6 +194,12 @@ function NetDefenseBrake({
  */
 export function NetRunWindow() {
   const run = useNetRunStore(currentRun);
+  const open = run !== null && run !== undefined;
+  // Kadr urządzenia poszerzył granicę kamery o zasłoniętą część mapy (70f
+  // pkt 1) — bez okna nic już nie zasłania, więc granica wraca na scenę.
+  useEffect(() => {
+    if (!open) releaseRunWindowInsets();
+  }, [open]);
   return run ? <NetRunWindowBody /> : null;
 }
 

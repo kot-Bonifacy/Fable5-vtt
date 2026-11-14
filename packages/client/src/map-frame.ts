@@ -23,8 +23,18 @@ export const GLANCE_MS = 2500;
 /** Kiedy przejazd na pewno stoi (`FRAME_TOKEN_MS` renderera to 350 ms). */
 const SETTLED_MS = 500;
 
+/** Ile px ekranu okno Sieci zasłania przy lewym i prawym brzegu mapy. */
+export interface SideInsets {
+  left: number;
+  right: number;
+}
+
+const NO_INSETS: SideInsets = { left: 0, right: 0 };
+
 interface MapFramer {
-  framePoint: (x: number, y: number, screenOffset?: ScenePoint) => void;
+  framePoint: (x: number, y: number, screenOffset?: ScenePoint, sideInsets?: SideInsets) => void;
+  /** Granica kamery wraca do brzegów sceny (okno Sieci zamknięte). */
+  releaseInsets: () => void;
   tokenCentre: (tokenId: string) => ScenePoint | null;
   /** Środek widoku w punktach sceny; null, gdy mapy jeszcze nie ma. */
   viewCentre: () => ScenePoint | null;
@@ -59,25 +69,48 @@ function onThisMap(device: NetDeviceView): device is PlacedDevice {
 /**
  * O ile (px ekranu) przesunąć punkt od środka mapy, żeby wylądował na środku
  * pasa, którego nie zasłania okno Sieci — szerszego z dwóch po jego bokach.
+ *
+ * Do tego, o ile kamera ma wolno wyjechać poza brzeg sceny po stronie okna
+ * (70f pkt 1, 14.11): bez tego urządzenie przy krawędzi sceny — Sowa
+ * w „Fabryce dronów” — zostawało pod oknem, bo kadr nie wyjeżdżał poza scenę.
+ * Zapas to zasłonięta szerokość i pół wolnego pasa: urządzenie przy samym
+ * brzegu staje na środku pasa, jak każde inne.
  */
-function clearOfRunWindow(): ScenePoint {
-  const map = document.querySelector('.map-area')?.getBoundingClientRect();
-  const panel = document.querySelector('.net-run-window')?.getBoundingClientRect();
-  if (!map || !panel || panel.width === 0) return { x: 0, y: 0 };
+export function clearOfRunWindow(
+  map: Pick<DOMRect, 'left' | 'right' | 'top' | 'bottom' | 'width'> | undefined,
+  panel: Pick<DOMRect, 'left' | 'right' | 'top' | 'bottom' | 'width'> | undefined,
+): { offset: ScenePoint; insets: SideInsets } {
+  const none = { offset: { x: 0, y: 0 }, insets: NO_INSETS };
+  if (!map || !panel || panel.width === 0) return none;
   const overlaps =
     panel.left < map.right &&
     panel.right > map.left &&
     panel.top < map.bottom &&
     panel.bottom > map.top;
-  if (!overlaps) return { x: 0, y: 0 };
+  if (!overlaps) return none;
   const left = Math.max(0, panel.left - map.left);
   const right = Math.max(0, map.right - panel.right);
-  const target = left >= right ? map.left + left / 2 : panel.right + right / 2;
-  return { x: target - (map.left + map.width / 2), y: 0 };
+  const freeOnLeft = left >= right;
+  const target = freeOnLeft ? map.left + left / 2 : panel.right + right / 2;
+  const covered = freeOnLeft ? map.right - panel.left : panel.right - map.left;
+  const slack = Math.max(0, covered) + (freeOnLeft ? left : right) / 2;
+  return {
+    offset: { x: target - (map.left + map.width / 2), y: 0 },
+    insets: freeOnLeft ? { left: 0, right: slack } : { left: slack, right: 0 },
+  };
 }
 
 function frame(point: ScenePoint): void {
-  framer?.framePoint(point.x, point.y, clearOfRunWindow());
+  const { offset, insets } = clearOfRunWindow(
+    document.querySelector('.map-area')?.getBoundingClientRect(),
+    document.querySelector('.net-run-window')?.getBoundingClientRect(),
+  );
+  framer?.framePoint(point.x, point.y, offset, insets);
+}
+
+/** Okno Sieci się zamknęło: kamera znów kończy się na brzegu sceny. */
+export function releaseRunWindowInsets(): void {
+  framer?.releaseInsets();
 }
 
 function show(device: PlacedDevice): void {

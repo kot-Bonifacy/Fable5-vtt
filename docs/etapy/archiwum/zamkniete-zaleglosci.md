@@ -9,6 +9,37 @@ go czytać.
 albo gdy chcesz sprawdzić, czy pozycja, która wygląda na nową, nie jest wracającą starą.
 Treść wpisów jest niezmieniona — łącznie z datami i odsyłaczami do notatek sesji.
 
+## Zamknięte 2026-11-14, druga sesja („wykonaj kilka zaległości”, bez migracji)
+
+- **14.11 pkt 1 — urządzenie przy krawędzi sceny ląduje pod oknem SIEĆ.** Diagnoza: kadr
+  (`framePoint` z przesunięciem na wolny pas) przycinał `clamp` kamery do brzegów sceny, więc
+  Sowa przy prawej krawędzi „Fabryki” zostawała pod oknem. Naprawa: `clearOfRunWindow`
+  (`map-frame.ts`) zwraca też zapas po stronie okna (zasłonięta szerokość + pół wolnego pasa),
+  `MapRenderer.setSideInsets` dokłada go do granicy kamery, a zamknięcie okna Sieci go zdejmuje
+  (`releaseRunWindowInsets`). Test `map-frame.test.ts`; w przeglądarce nie oglądane.
+- **14.11 pkt 4 — „Wykrycie — Kruk · Udane” brzmi jak „nie wykrył”.** Werdykt karty dotyczy
+  rzutu netrunnera (wygrana = bez darmowego ataku). Naprawa: tytuł z `netDetectionPlan`
+  „Wykrycie — Kruk: ucieczka przed darmowym atakiem”; testy `shared`, serwera i specy E2E
+  (`t70e`, `t5b`) szukają nowego tytułu.
+- **07.11 (piąta) pkt 11 — zauważenie przez kamerę daje MG tylko poufny wiersz czatu.**
+  Diagnoza: `sneak:noticed` szedł u MG czarną informacją, która gaśnie po kilku sekundach.
+  Naprawa: bursztynowy pasek z dzwonkiem „Skradanie — zauważony” stoi do „Rozumiem”
+  (`notifyChoice` w `socket.ts`). W przeglądarce nie oglądane.
+- **07.11 (piąta) pkt 12 — marsz w ciemności kończy się pod ścianą bez komunikatu.** Planer zna
+  tylko to, co figura widzi, więc trasa jest ucięta (`WalkPlan.truncated`); poza turą figura
+  ruszała bez słowa. Naprawa: `MarchState.blind`, a koniec takiego marszu mówi
+  `WALK_BLIND_STOP_NOTE` („Postać nie widzi drogi do samego celu — staje najbliżej, jak się
+  dało…”). W przeglądarce nie oglądane.
+- **07.11 (piąta) pkt 13 — okno „Edycja tokenu” NPC-a z pełną kartą pokazuje „Umiejętność 0”
+  i pancerz statysty.** Diagnoza: `statistQuick` czyta poziom broni z `statBlock.weaponSkill`
+  (pełna karta ma go w wierszu Umiejętności), a zmiana broni czy OB dopisałaby wiersze statysty
+  obok prawdziwych. Naprawa: `cpredStatistQuickFits` (`shared`); przy pełnej karcie okno
+  pokazuje zdanie i „📄 Otwórz kartę”, PW z paska zapisują się jak dotąd. Test w
+  `statist.test.ts`; oglądane w **Firefoksie** (Playwright MCP, `dev.db`, MG, Hak ze „Zastawu”).
+- **07.11 (piąta) pkt 14 — „Przeciwnicy pokonani” i „Koniec walki” naraz po ✕.** Naprawa: póki
+  wisi pytanie „Koniec walki”, pasek „Przeciwnicy pokonani” ustępuje (`useFoesDefeatedNotice`).
+  W przeglądarce nie oglądane.
+
 ## Zamknięte 2026-11-14 („wykonaj kilka zaległości”, bez migracji)
 
 - **14.11 pkt 2 — „ODMOWA” na belce przejętego urządzenia zaraz po udanym strzale.** Diagnoza:

@@ -13,6 +13,8 @@ import { useCombatStore } from './stores/combatStore.js';
  * samej skórze co „Przeciwnicy pokonani” (zlecenie MG z 21.10). Walka
  * skończona inną drogą zdejmuje pytanie, które straciło przedmiot.
  */
+const END_COMBAT_TITLE = 'Koniec walki';
+
 export function askEndCombat(text: string, confirmLabel: string): void {
   const noticeId = notifyChoice(
     'action',
@@ -24,7 +26,7 @@ export function askEndCombat(text: string, confirmLabel: string): void {
       },
       { label: 'Anuluj', run: () => undefined },
     ],
-    { title: 'Koniec walki', silent: true },
+    { title: END_COMBAT_TITLE, silent: true },
   );
   const stop = useCombatStore.subscribe((state) => {
     if (state.combat !== null) return;
@@ -38,18 +40,20 @@ export function askEndCombat(text: string, confirmLabel: string): void {
  * cała strona MG ma stan Martwy, MG dostaje nad mapą bursztynowy pasek
  * z „Zakończ walkę”. Walka nie kończy się sama — za rogiem może czekać druga
  * fala — więc „Jeszcze nie” chowa pasek do następnego takiego stanu. Gracze
- * nie widzą nic.
+ * nie widzą nic. Póki wisi pytanie „Koniec walki” (✕ w pasku tury), pasek
+ * ustępuje — dwa paski o tym samym naraz to szum (66e pkt 14, 14.11).
  */
 export function useFoesDefeatedNotice(): PinnedNotice | null {
   const isGm = useAuthStore((s) => s.user?.role === ROLE_GM);
   const defeated = useCombatStore((s) => s.combat !== null && foesDefeated(s.combat));
   const [declined, setDeclined] = useState(false);
+  const asking = useNoticeStore((s) => s.notices.some((n) => n.title === END_COMBAT_TITLE));
 
   useEffect(() => {
     if (!defeated) setDeclined(false);
   }, [defeated]);
 
-  if (!isGm || !defeated || declined) return null;
+  if (!isGm || !defeated || declined || asking) return null;
   return {
     key: 'foes-defeated',
     tone: 'warn',

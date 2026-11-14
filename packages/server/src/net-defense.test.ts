@@ -420,7 +420,10 @@ describe('obrona Sieci działa sama (etap 70e)', () => {
     const card = heard
       .filter((entry) => entry.event === 'chat:message')
       .map((entry) => (entry.payload as ChatMessageBroadcast).message)
-      .find((message) => message.roll?.title === 'Wykrycie — Zawsze trafia');
+      .find(
+        (message) =>
+          message.roll?.title === 'Wykrycie — Zawsze trafia: ucieczka przed darmowym atakiem',
+      );
     expect(card).toBeDefined();
     expect(card!.authorId).toBe(gmUserId);
     expect(card!.roll?.opposed?.won).toBe(false);
