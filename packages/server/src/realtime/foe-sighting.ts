@@ -173,6 +173,7 @@ async function sightOnce(
     // a drużyna staje także wtedy, gdy starcie założył MG ręką.
     const before = readCombatSighting(combat.sighting);
     const sighting: CombatSightingView = {
+      ...before,
       spotterIds: [...new Set([...(before?.spotterIds ?? []), ...spotterIds])],
       foeIds: [...new Set([...(before?.foeIds ?? []), ...fresh])],
     };
@@ -366,6 +367,32 @@ async function haltParty(
       tokenIds,
     } satisfies TokenHaltBroadcast);
   }
+}
+
+/**
+ * Starcie założone bez oczu drużyny (wykrycie w Sieci, 14.11) zatrzymuje marsze
+ * tak samo jak zauważenie: każda figura staje tam, dokąd doszły jej klatki.
+ */
+export async function haltPartyMarches(
+  deps: RealtimeDeps,
+  campaignId: string,
+  scene: Scene,
+): Promise<void> {
+  await haltParty(deps, campaignId, scene, undefined, new Map(), []);
+}
+
+/** Czy na tej scenie coś może samo założyć starcie: aktywna scena trwającej sesji. */
+export async function encounterCanStart(
+  deps: RealtimeDeps,
+  campaignId: string,
+  scene: Scene,
+): Promise<boolean> {
+  if (!scene.active) return false;
+  const session = await deps.ctx.prisma.campaign.findUnique({
+    where: { id: campaignId },
+    select: { sessionStartedAt: true },
+  });
+  return Boolean(session?.sessionStartedAt);
 }
 
 function snapPoint(point: ScenePoint, token: Token, snapScene: TokenSnapScene): ScenePoint {

@@ -1,5 +1,27 @@
 # Dziennik sesji — archiwum
 
+### Sesja 14.11 (szósta) — „Zapomnij” w edycji sceny czyści też Sieć i mówi, co zrobił
+
+**Zrobione (bez migracji, czeka na wdrożenie)** — zlecenie MG:
+
+- **„Zapomnij” (Edycja sceny → Widoczność) czyści też netrunning tej sceny**: to, co netrunnerzy
+  na niej osiągnęli (złamane, rozpoznane, przejęte, zwiad), zużyte próby i Maskowanie — we
+  wszystkich Architekturach kampanii, tylko wpisy tej sceny. Wirusy i stany urządzeń zostają.
+  Trwające połączenie nie jest cofane (komunikat o tym mówi).
+- **Potwierdzenie**: po kliku komunikat „Zapomniano” (np. „Drużyna zapomniała mapę tej sceny.
+  Netrunnerzy zapomnieli, co osiągnęli tu w Sieci — wszystkie próby wracają.” albo „W Sieci nie
+  było tu nic do zapomnienia.”), w trakcie przycisk „Zapominam…”, błąd w stopce okna.
+- Przycisk był tylko w trybie „Pole widzenia”; w pozostałych trybach stoi teraz w sekcji
+  „Pamięć Sieci” i czyści wyłącznie Sieć (ukrytej pamięci mapy nie rusza). W „Polu widzenia” już
+  nie jest wyszarzony przy wyłączonej „Pamięci eksploracji”.
+
+Umowa na górze `siec`. **Oglądane w Firefoksie** (Playwright MCP na żywym Vite, scena „Zastaw”
+w trybie „Cała mapa odkryta”): sekcja „Pamięć Sieci”, komunikat „Zapomniano”. Wariantu „Pole
+widzenia” i sceny z prawdziwą pamięcią Sieci nie klikałem na `dev.db` (żeby nie wyczyścić MG
+„Fabryki dronów”) — pokrywa go test serwera. Testy: shared 3069 (+2), klient 508, serwer
+`netrun.test.ts` + `exploration.test.ts` 48 (nowy krok `net:forget-scene`) — zielone; `tsc`
+shared/serwer/klient, ESLint i Prettier czyste. Pełnych suit i E2E nie puszczałem.
+
 ### Sesja 14.11 (piąta) — rzut Sieci na kubek, Szczęście w Sieci, nowe menu kubka
 
 **Zrobione (bez migracji, czeka na wdrożenie)** — zlecenie MG:

@@ -1,7 +1,9 @@
 # Pomysły poza zakresem etapów
 
 **13.11.2026 (etap 70e, automat obrony Sieci) — czego automat jeszcze nie robi.** (1) **LOD
-i Demon ścigający poza walką wchodzą do kolejki, gdy MG założy starcie** — dziś wiersz w kolejce
+i Demon ścigający poza walką wchodzą do kolejki, gdy MG założy starcie** (od 14.11 wykrycie samo
+zakłada starcie z LOD-em — zostaje tylko przypadek „Odwołaj” albo hamulca, potem „⚔ Do starcia”
+ręką MG) — dziś wiersz w kolejce
 dostaje tylko ten, kogo wykryto w trakcie walki, więc obrona wykryta przed starciem gra na
 przyciski MG. Miejsce: `combat:start` / „Rozpocznij walkę” → `pushNetFoeIntoQueue` dla runów na
 scenie. (2) **Zdjęcie hamulca z LOD-em czyhającym pod stopami** — mogłoby od razu rzucić
@@ -9,7 +11,8 @@ wykrycie (dziś dopiero przy następnym wejściu na piętro albo na klik MG). (3
 w edytorze Architektury** — dziś przełącznik stoi tylko w oknie runu, więc obronę Architektury
 wstrzymuje się dopiero, gdy ktoś jest podłączony. (4) **Dymki powiadomień nie zasłaniają okna
 runu** — kolumna `NoticeColumn` stoi u góry na środku i u MG leży na nagłówku okna Sieci razem
-z „Wstrzymaj obronę”, dopóki dymków nie zamknie (oględziny 14.11; tak było przed etapem).
+z „Wstrzymaj obronę”, dopóki dymków nie zamknie (oględziny 14.11; tak było przed etapem). Od
+14.11 przypięty pasek „Wykrycie w Sieci” leży tam samo, aż MG zdecyduje (zrzut w E2E `T70g`).
 
 **13.11.2026 (etap 70d, obszar straży i okienko strefy) — czego jeszcze nie ma.** (1) **Broń
 z wpisu systemu obronnego** — tabela s. 213–214 opisuje lufę zdaniem („zwykle jedną

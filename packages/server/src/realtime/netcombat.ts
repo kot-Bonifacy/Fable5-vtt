@@ -49,8 +49,6 @@ import {
   rollFormula,
   netSamePosition,
   netFloorAt,
-  netLeaveCloaks,
-  netRememberVisited,
   tokenTableName,
 } from '@vtt/shared';
 import type { Scene, Token } from '../generated/prisma/client.js';
@@ -74,11 +72,12 @@ import {
   logNetLine,
   netActionsForRun,
   readFullRun,
+  netLeaveFloors,
   saveRunState,
-  updateRuntime,
 } from './netrun-io.js';
 import { applyIceEffect, emergencyJackOut, type FullRunState } from './netice.js';
 import { answerNetDefense } from './net-defense.js';
+import { bringNetIntoFight, netDefensePausedOf, raiseTracesAlarm } from './net-encounter.js';
 
 /**
  * Walka w Sieci (stage 26c) — the events behind Programs, Paf, Ślizg and the
@@ -766,14 +765,16 @@ export const netSlideEvent = defineEvent<NetRunSlidePayload, NetRunAbilityResult
     }
 
     await saveRunState(deps.ctx.prisma, row.id, next);
+    let fledCloaks: string[] = [];
     if (exchange.won) {
       // Maskowanie (14.11): the floor fled from loses its Turn of tries, and
       // both floors go to the memory for the red traces mark.
       const landed = netFloorAt(architecture, target)?.id ?? null;
-      const who = { characterId: row.characterId, sceneId: scene.id };
-      await updateRuntime(deps.ctx.prisma, row.architectureId, (runtime) =>
-        netRememberVisited(netLeaveCloaks(runtime, who, landed), who, next.entered),
-      );
+      fledCloaks = await netLeaveFloors(deps, row, {
+        sceneId: scene.id,
+        stayingOn: landed,
+        entered: next.entered,
+      });
     }
     const message = await postExchange(deps, {
       campaignId,
@@ -790,6 +791,8 @@ export const netSlideEvent = defineEvent<NetRunSlidePayload, NetRunAbilityResult
       'Ślizg',
       exchange.won ? 'udany' : 'nieudany',
     );
+    // Piętro porzucone Ślizgiem w połowie Maskowania — ślady zostały (14.11).
+    await raiseTracesAlarm(deps, { campaignId, runId: row.id, floorIds: fledCloaks });
     await emitRuns(deps, campaignId);
     // Etap 70e: piętro, na które Ślizg uciekł, może mieć własnego LOD-a.
     const landedOn = exchange.won ? netFloorAt(architecture, target)?.id : undefined;
@@ -876,12 +879,18 @@ export async function iceDetects(
     ended = effect.endsRun;
   }
 
+  // Wykrycie zaczyna walkę (decyzja MG z 14.11) — także gdy darmowy atak
+  // wyrzucił netrunnera z Sieci: alarm już poszedł, tylko LOD nie ma kogo ścigać.
+  const seats = await bringNetIntoFight(deps, {
+    campaignId,
+    scene,
+    runnerTokenId: row.tokenId,
+    foes: [{ runId: row.id, foeId: ice.id, label: ice.name }],
+    queue: !ended,
+    paused: netDefensePausedOf(row.architecture.runtime),
+  });
   if (!ended) {
-    const combatantId = await pushNetFoeIntoQueue(deps, campaignId, scene, {
-      runId: row.id,
-      foeId: ice.id,
-      label: ice.name,
-    });
+    const combatantId = seats.get(ice.id);
     if (combatantId) {
       next = {
         ...next,
@@ -1047,46 +1056,6 @@ export const netIceTurnEvent = defineEvent<NetIceActPayload, NetRunAbilityResult
     return iceTakesTurn(deps, { campaignId, user, run, ice });
   },
 });
-
-/**
- * „Następnie LOD zajmuje pierwsze miejsce w Kolejce Inicjatywy, o jeden punkt
- * wyżej niż Netrunner lub Program, który do tej pory zajmował to miejsce"
- * (s. 205).
- *
- * Not a reroll — an insertion, which is why the tracker had to learn to carry a
- * participant with no figure at all (stage 26c's one schema change). Without a
- * running fight there is nothing to insert into, and the GM's „Tura LOD-a"
- * button drives it instead.
- *
- * Stage 26e sends Demons through the same door, so `netIceId` carries the id of
- * whichever **Net participant** the row stands for — a Black ICE or a Demon.
- * They live in the same run and their ids never collide, so one column is
- * enough; renaming it would be a migration that changes nothing.
- */
-export async function pushNetFoeIntoQueue(
-  deps: RealtimeDeps,
-  campaignId: string,
-  scene: Scene,
-  input: { runId: string; foeId: string; label: string },
-): Promise<string | null> {
-  const combat = await loadCombat(deps.ctx.prisma, scene.id);
-  if (!combat) return null;
-  const existing = combat.combatants.find((entry) => entry.netIceId === input.foeId);
-  if (existing) return existing.id;
-  const top = combat.combatants.reduce((best, entry) => Math.max(best, entry.initiative ?? 0), 0);
-  const created = await deps.ctx.prisma.combatant.create({
-    data: {
-      combatId: combat.id,
-      label: input.label,
-      netRunId: input.runId,
-      netIceId: input.foeId,
-      initiative: top + 1,
-      order: -1,
-    },
-  });
-  await emitCombatOfScene(deps, campaignId, scene);
-  return created.id;
-}
 
 // ──────────────────────────────── Superklej ────────────────────────────────
 

@@ -9,6 +9,35 @@ czytany na starcie każdej sesji został listą zadań, a nie archiwum ustaleń.
 inaczej, niż mówi podręcznik, albo gdy dotykasz wymienionego tu kodu. Jeśli któraś z tych decyzji
 przestanie się bronić, przenieś ją stąd do `POMYSLY.md` jako zadanie — nie odwrotnie.
 
+## Wykrycie w Sieci zaczyna walkę (14.11.2026, zlecenie i decyzje MG)
+
+Zmienia akapit „Poza walką automat tylko wykrywa i budzi” z 70e niżej.
+
+- **Co zakłada starcie:** Czarny LOD, który wykrył netrunnera (automat albo „LOD wykrywa
+  intruza” MG), Demon, który zaczyna ścigać (wejście na jego piętro albo przejęcie węzła),
+  i **ostatecznie** nieudane Maskowanie — ostatnia próba Tury bez sukcesu albo zejście z piętra
+  (ruchem lub Ślizgiem) w połowie prób. Pojedyncza pechowa próba, gdy zostały następne, jeszcze
+  nie. Zejście z piętra **bez żadnej** próby (czerwone „bez maskowania”) nie zakłada niczego.
+- **Jak zauważenie wroga (etap 56):** runda 0 „Przed walką”, drużyna staje (marsze i ruch po
+  Sieci — gracz dostaje „Zaraz walka — czekaj, aż MG ją rozpocznie.”), MG ma pasek „Wykrycie
+  w Sieci” z „⚔ Rozpocznij walkę / Odwołaj”. Runda 1 dopiero po kliknięciu MG.
+- **Kto w starciu:** drużyna (figury graczy na scenie) i LOD albo Demon, który wykrył. Po
+  nieudanym Maskowaniu **tylko drużyna** — plus to, co na tym piętrze już ściga netrunnera;
+  nikogo nie budzi, wrogów z mapy nie dokłada (MG ręką w „Walce”).
+- **LOD na czele kolejki także po starcie z rundy 0** (s. 205: „wchodzi do walki na pierwszym
+  miejscu Kolejki Inicjatywy, nawet jeśli byłeś szybszy”): „Rozpocznij walkę” po rzutach NPC-ów
+  stawia LOD-y i Demony z rundy 0 nad najwyższą inicjatywą. Gracz, który rzuci inicjatywę dopiero
+  w rundzie 1 wyżej, wyprzedzi LOD-a (spóźniony rzut z 06.11) — uproszczenie.
+- **W trwającej walce** bez zmian: LOD i Demon wchodzą na czoło kolejki; netrunner spoza walki
+  dołącza (rzuca kubkiem).
+- **Tylko w trwającej sesji na aktywnej scenie** (jak zauważenie); poza nią — jak przed 14.11.
+- **Hamulec „Wstrzymaj obronę” wraca do stanu sprzed 14.11** — żadnego starcia z Sieci, także
+  po ręcznym „LOD wykrywa intruza” MG (LOD wchodzi wtedy tylko do trwającej walki), a nieudane
+  Maskowanie zostawia sam znacznik. Rozstrzygnięcie bez pytania: hamulec to sposób MG na
+  prowadzenie obrony ręką.
+- **„Odwołaj”** kończy starcie; LOD dalej ściga poza walką (na „Tura LOD-a”), a wykrycie się
+  nie powtarza — nowe starcie założy dopiero następne nieudane Maskowanie albo inny LOD / Demon.
+
 ## Maskowanie piętro po piętrze, próby w jednej Turze (14.11.2026, decyzje MG)
 
 Zastępuje „Maskowanie — raz na Architekturę” z 02.11 (sekcja o jednej próbie niżej).
@@ -93,8 +122,9 @@ Cofa decyzję z 15.08 („LOD nigdy nie rusza się sam”, powtórzoną 16.08 dl
   „Krótka pauza na kości” to kolejka prezentacji klienta, nie zegar serwera: stan kolejki ze
   wskaźnikiem na LOD-zie wychodzi przed jego kośćmi, następny — dopiero za nimi.
 - **Poza walką automat tylko wykrywa i budzi.** Bez rund nie ma Tury, więc ścigający LOD poza
-  walką rusza się na „Tura LOD-a” jak dotąd. LOD wykryty poza walką nie wchodzi sam do kolejki,
-  gdy MG potem założy starcie (jak przed etapem — pomysł w `POMYSLY.md`).
+  walką rusza się na „Tura LOD-a” jak dotąd. ~~LOD wykryty poza walką nie wchodzi sam do kolejki,
+  gdy MG potem założy starcie~~ — **od 14.11 wykrycie samo zakłada starcie z LOD-em w kolejce**
+  (sekcja „Wykrycie w Sieci zaczyna walkę” wyżej).
 - **Ręka automatu to konto MG** (#39): karta, kości i wiersz dziennika idą kontem MG, także gdy
   wywołał je ruch gracza. Kości widzą MG i netrunner, stół dostaje skrót jak dotąd.
 - **Hamulec „Wstrzymaj obronę”** w belce stanu okna runu MG, na Architekturę (zostaje po

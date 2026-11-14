@@ -16,6 +16,9 @@ import type {
   SessionUser,
 } from '@vtt/shared';
 import {
+  netLeaveCloaks,
+  netNewlyFailedCloaks,
+  netRememberVisited,
   CPRED_ACTION_NET,
   NET_ACCESS_RANGE_M,
   NET_DEVICE_KIND_LABELS,
@@ -857,6 +860,31 @@ export async function updateRuntime(
   });
   if (!fresh) return;
   await saveRuntime(prisma, architectureId, change(readNetRuntime(fresh.runtime)));
+}
+
+/**
+ * The netrunner left the floors behind (a move, a successful Ślizg): a
+ * half-tried Maskowanie there fails (`netLeaveCloaks`), and the floors stood on
+ * go to the memory for the red traces mark (`netRememberVisited`). Returns the
+ * floors whose Maskowanie failed just now — the cue for a fight (14.11).
+ */
+export async function netLeaveFloors(
+  deps: RealtimeDeps,
+  row: { characterId: string; architectureId: string },
+  input: { sceneId: string; stayingOn: string | null; entered: readonly string[] },
+): Promise<string[]> {
+  const who = { characterId: row.characterId, sceneId: input.sceneId };
+  let failed: string[] = [];
+  await updateRuntime(deps.ctx.prisma, row.architectureId, (runtime) => {
+    const next = netRememberVisited(
+      netLeaveCloaks(runtime, who, input.stayingOn),
+      who,
+      input.entered,
+    );
+    failed = netNewlyFailedCloaks(runtime, next, who);
+    return next;
+  });
+  return failed;
 }
 
 /** Who a run's tries and memory belong to: its character, on its figure's scene. */

@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { ROLE_GM } from '@vtt/shared';
+import { ROLE_GM, type CombatNetSighting } from '@vtt/shared';
 import type { PinnedNotice } from './components/NoticeColumn.js';
 import { noteAck } from './notices.js';
 import { combatErrorText, endCombat, nextCombatTurn } from './socket.js';
@@ -31,6 +31,25 @@ export function sightingText(spotters: readonly string[], foes: readonly string[
   return `${who} ${sees} ${whom}: ${foes.join(', ')}. Drużyna stoi, dopóki nie zdecydujesz.`;
 }
 
+/**
+ * „Kolec wykryty w Sieci: Sowa.” / „Kolec nie zatarł śladów w Sieci.” — starcie
+ * założyła obrona Sieci (decyzja MG z 14.11), `spotters` to wykryci netrunnerzy.
+ */
+export function netSightingText(spotters: readonly string[], net: CombatNetSighting): string {
+  const who = spotters.length === 0 ? 'Netrunner' : spotters.join(', ');
+  const parts: string[] = [];
+  if (net.foes.length > 0) parts.push(`${who} — wykrycie w Sieci: ${net.foes.join(', ')}.`);
+  if (net.traces) {
+    parts.push(
+      net.foes.length > 0
+        ? 'Maskowanie też nieudane.'
+        : `${who} — Maskowanie nieudane, ślady zostały w Sieci.`,
+    );
+  }
+  if (parts.length === 0) parts.push(`${who} — wykrycie w Sieci.`);
+  return `${parts.join(' ')} Drużyna stoi, dopóki nie zdecydujesz.`;
+}
+
 /** Wezwanie nad mapą, dopóki starcie z zauważenia czeka w rundzie 0. */
 export function useSightingNotice(): PinnedNotice | null {
   const isGm = useAuthStore((s) => s.user?.role === ROLE_GM);
@@ -47,11 +66,18 @@ export function useSightingNotice(): PinnedNotice | null {
     .filter((id) => inFight.has(id))
     .map(nameOf)
     .filter((name): name is string => Boolean(name));
+  const net = combat.sighting.net;
+  const text =
+    foes.length > 0
+      ? sightingText(spotters, foes)
+      : net
+        ? netSightingText(spotters, net)
+        : 'Drużyna stoi, dopóki nie zdecydujesz.';
   return {
     key: 'foe-sighting',
     tone: 'warn',
-    title: 'Wróg w zasięgu wzroku',
-    text: foes.length > 0 ? sightingText(spotters, foes) : 'Drużyna stoi, dopóki nie zdecydujesz.',
+    title: foes.length === 0 && net ? 'Wykrycie w Sieci' : 'Wróg w zasięgu wzroku',
+    text,
     actions: [
       {
         label: '⚔ Rozpocznij walkę',

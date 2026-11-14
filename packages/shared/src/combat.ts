@@ -263,6 +263,20 @@ export interface CombatView {
 export interface CombatSightingView {
   spotterIds: string[];
   foeIds: string[];
+  /**
+   * Wykrycie w Sieci (decyzja MG z 14.11): starcie założyła obrona Sieci, nie
+   * czyjeś oczy. `spotterIds` to wtedy figury wykrytych netrunnerów, `foeIds`
+   * zostaje puste (LOD i Demon nie mają figur).
+   */
+  net?: CombatNetSighting;
+}
+
+/** Co w Sieci zaczęło starcie — tylko w widoku MG, jak całe `sighting`. */
+export interface CombatNetSighting {
+  /** Nazwy LOD-ów i Demonów, które wykryły netrunnera. */
+  foes: string[];
+  /** Maskowanie się nie udało — ślady zostały na piętrze. */
+  traces: boolean;
 }
 
 /**

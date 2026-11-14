@@ -80,6 +80,7 @@ import { endSneak } from './sneak.js';
 import { emitRunsOnRoundChange, resetNetLedgersOnScene } from './netrun-io.js';
 import { netSilencedTokenIds } from './net-control.js';
 import { playNetFoeTurn } from './net-defense.js';
+import { liftNetFoesToTop } from './net-encounter.js';
 
 /**
  * The action economy (stage 14b).
@@ -631,10 +632,15 @@ async function stepTurn(
 ): Promise<void> {
   // „Rozpocznij walkę” (etap 50a): NPC-e bez inicjatywy dostają ją od serwera,
   // zanim wskaźnik pójdzie — kolejność rundy 1 liczy się już z ich wynikami.
-  const fight =
+  // LOD-y i Demony z wykrycia w rundzie 0 (14.11) idą potem na czoło kolejki.
+  const rolled =
     combat.round === 0 && (await rollNpcInitiative(deps, combat))
       ? await loadCombatById(deps.ctx.prisma, combat.id)
       : combat;
+  const fight =
+    combat.round === 0 && (await liftNetFoesToTop(deps, rolled))
+      ? await loadCombatById(deps.ctx.prisma, combat.id)
+      : rolled;
   const pointer = upcomingTurn(fight);
   // A held Action that is due goes in before the next participant. The turn
   // being played did end, so its end-of-turn hooks run (fire burns whoever

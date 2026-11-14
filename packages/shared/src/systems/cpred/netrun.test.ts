@@ -26,6 +26,7 @@ import {
   netCloakState,
   netCloaksOf,
   netLeaveCloaks,
+  netNewlyFailedCloaks,
   netRecordCloak,
   netForgetHold,
   netRememberRun,
@@ -835,6 +836,23 @@ describe('Maskowanie piętro po piętrze, próby w jednej Turze (zasada domowa M
     // Somebody else's tries are theirs.
     const other = netLeaveCloaks(runtime, { ...kolec, characterId: 'c-inny' }, 'f3');
     expect(netCloakState(other, kolec, 'f1', null, 3)).toBe('trying');
+  });
+
+  it('names the floors whose failure just became final — the cue for a fight (14.11)', () => {
+    const first = tryOnce(empty(), 'f1', null, false);
+    // One bad roll of three is not a failure yet.
+    expect(netNewlyFailedCloaks(empty(), first, kolec)).toEqual([]);
+    const second = tryOnce(first, 'f1', null, false);
+    const third = tryOnce(second, 'f1', null, false);
+    expect(netNewlyFailedCloaks(second, third, kolec)).toEqual(['f1']);
+    // Already failed before — not news.
+    expect(netNewlyFailedCloaks(third, netLeaveCloaks(third, kolec, 'f2'), kolec)).toEqual([]);
+    // A half-tried floor walked off fails now; a masked one never does.
+    const half = tryOnce(tryOnce(empty(), 'f2', null, true), 'f3', null, false);
+    expect(netNewlyFailedCloaks(half, netLeaveCloaks(half, kolec, 'f4'), kolec)).toEqual(['f3']);
+    // Somebody else's failure is not this netrunner's.
+    const other = { ...kolec, characterId: 'c-inny' };
+    expect(netNewlyFailedCloaks(second, third, other)).toEqual([]);
   });
 
   it('gives a failed floor back on „Oddaj próby” and keeps a masked one', () => {

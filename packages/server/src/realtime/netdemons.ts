@@ -43,7 +43,6 @@ import { toSceneView } from './scenes.js';
 import { hasLineOfFire, loadVisionContext } from './vision.js';
 import {
   postExchange,
-  pushNetFoeIntoQueue,
   requireRun,
   rollExchange,
   rollSide,
@@ -51,6 +50,7 @@ import {
   type LoadedRun,
 } from './netcombat.js';
 import { damageBrain, type FullRunState } from './netice.js';
+import { bringNetIntoFight, netDefensePausedOf } from './net-encounter.js';
 import { deviceShotBlockedText, fireDevice, publicDeviceName } from './netdevices.js';
 import {
   emitRuns,
@@ -271,11 +271,15 @@ export async function demonDetects(
       entry.id === demon.id ? { ...entry, mode: 'hunting' as const } : entry,
     ),
   };
-  const combatantId = await pushNetFoeIntoQueue(deps, campaignId, scene, {
-    runId: row.id,
-    foeId: demon.id,
-    label: demon.name,
+  // Demon, który zaczyna ścigać, zaczyna walkę (decyzja MG z 14.11).
+  const seats = await bringNetIntoFight(deps, {
+    campaignId,
+    scene,
+    runnerTokenId: row.tokenId,
+    foes: [{ runId: row.id, foeId: demon.id, label: demon.name }],
+    paused: netDefensePausedOf(row.architecture.runtime),
   });
+  const combatantId = seats.get(demon.id);
   if (combatantId) {
     next = {
       ...next,

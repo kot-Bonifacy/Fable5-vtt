@@ -9,6 +9,7 @@ import type {
   CombatRerollTiePayload,
   CombatRollAllPayload,
   CombatRollPayload,
+  CombatNetSighting,
   CombatSightingView,
   CombatStartPayload,
   CombatUpdateBroadcast,
@@ -294,10 +295,26 @@ export function readCombatSighting(raw: string | null): CombatSightingView | nul
     const parsed = JSON.parse(raw) as Partial<CombatSightingView>;
     const ids = (value: unknown): string[] =>
       Array.isArray(value) ? value.filter((id): id is string => typeof id === 'string') : [];
-    return { spotterIds: ids(parsed.spotterIds), foeIds: ids(parsed.foeIds) };
+    const net = readNetSighting(parsed.net);
+    return {
+      spotterIds: ids(parsed.spotterIds),
+      foeIds: ids(parsed.foeIds),
+      ...(net ? { net } : {}),
+    };
   } catch {
     return null;
   }
+}
+
+function readNetSighting(raw: unknown): CombatNetSighting | null {
+  if (!raw || typeof raw !== 'object') return null;
+  const entry = raw as Partial<CombatNetSighting>;
+  return {
+    foes: Array.isArray(entry.foes)
+      ? entry.foes.filter((name): name is string => typeof name === 'string')
+      : [],
+    traces: entry.traces === true,
+  };
 }
 
 /**

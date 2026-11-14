@@ -1017,6 +1017,26 @@ export function netLeaveCloaks(
   return changed ? { ...runtime, cloaks } : runtime;
 }
 
+/**
+ * Floors whose Maskowanie closed as failed between `before` and `after` — the
+ * moment a failure becomes final (the Turn's last try, or a half-tried floor
+ * walked off), which starts a fight like a detection (decyzja MG z 14.11).
+ */
+export function netNewlyFailedCloaks(
+  before: CpredNetRuntime,
+  after: CpredNetRuntime,
+  who: NetCloakWho,
+): string[] {
+  const failedBefore = new Set(
+    netCloaksOf(before, who)
+      .filter((entry) => entry.outcome === 'failed')
+      .map((entry) => entry.floorId),
+  );
+  return netCloaksOf(after, who)
+    .filter((entry) => entry.outcome === 'failed' && !failedBefore.has(entry.floorId))
+    .map((entry) => entry.floorId);
+}
+
 /** Every floor this character has tried to mask on this scene — for the view. */
 export function netCloaksOf(runtime: CpredNetRuntime, who: NetCloakWho): CpredNetCloak[] {
   return (runtime.cloaks ?? []).filter(

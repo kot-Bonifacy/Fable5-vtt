@@ -47,6 +47,12 @@ w Kevlarze, notatki MG o sterowaniu z mapy; wyłączone urządzenie da się prze
 w przeglądarce — znaleziska w `zaleglosci.md` (14.11). Rozstrzygnięcia i odstępstwa w pliku
 etapu i w `decyzje-i-uproszczenia.md`; umowy i pułapki na górze `siec` (wzorzec — `mapa`).
 
+**Wykrycie w Sieci zaczyna walkę (zlecenie MG z 14.11, ósma sesja) — czeka na wdrożenie (bez
+migracji) i stół MG.** LOD, który wykrył netrunnera, Demon, który zaczyna ścigać, i ostatecznie
+nieudane Maskowanie zakładają starcie „Przed walką” jak zauważenie wroga (pasek MG „Wykrycie
+w Sieci”), a po „Rozpocznij walkę” LOD stoi na czele kolejki. Hamulec MG to wyłącza. Decyzje
+w `decyzje-i-uproszczenia.md`, umowa na górze `siec`, E2E `47-siec/t70g`.
+
 **Rzut Sieci na kubek (zlecenie MG z 14.11) — czeka na wdrożenie (bez migracji) i stół MG.**
 Zdolność, atak, Ślizg i Skaner ładują kubek zamiast rzucać; gracz rzuca gestem i może dorzucić
 Szczęście z menu kubka (serwer je przyjmuje i zdejmuje z puli). Menu kubka ma Szczęście jako
@@ -814,7 +820,7 @@ a nie do tego pliku.
 | `postac`    | kreator, PD i awanse, koszyk i cofanie awansów, Role i Zdolności, cyborgizacje, chrom zmieniający liczby, ekonomia, Test montażu gracza, pojazdy i Tabor | 58   | 3       |
 | `ekwipunek` | wiersze wyposażenia, przekazanie, łup (także ciała graczy), handel, sklepy, asortyment handlarza z kompendium, zasięg, amunicja bez dna, egzoszkielet, latarka z ekwipunku, narkotyki i fiolki, siatka okna „Wymiana”, zgoda z góry, odświeżanie po naklejkach, znaczek „w użyciu”, zakup auta z modelu, warsztat (ulepszenia i naprawa auta), auto bokiem i „w garażu”, grafika auta to model i skala miniatur, postać na karcie przekazania, zasięg ręki do figury spoza siatki | 50   | 3       |
 | `czas`      | zegar świata, kalendarz, `statEffects`, leczenie po dobie, dawki i uzależnienia (`chems`) | 19   | 2       |
-| `siec`      | Programy, LOD, demony, piętra architektury, dek jako towar, strefy bronione, kamery (także w ciemności), rozbrajanie, Sieć ze sceny, jedna próba i pamięć sukcesów, strzał z urządzenia, strefa tylko z marszu gracza, widok runu z rundą, strefa rozbrojona w Sieci, okno jednego piętra i ładunek bez szybu, pełny wiersz czatu zamiast skrótu, przejęta figura urządzenia (`operatorOf`, `netDeviceUse`), marsz drona, oczy urządzeń, figury wyciszone (`net-off`), pasek „Oczy i urządzenia”, Sieć ze sceny wg rodzaju, strefy i drzwi w „Instalacjach”, obszar straży od figury, okienko strefy, automat obrony Sieci i hamulec MG, „Włącz / Wyłącz w Sieci” MG i przeszukanie wyłączonego, Maskowanie piętro po piętrze, czerwone ślady bez Maskowania, Programy za wyjściem, rzut Sieci na kubek ze Szczęściem, „Zapomnij” sceny czyści Sieć | 32   | 12      |
+| `siec`      | Programy, LOD, demony, piętra architektury, dek jako towar, strefy bronione, kamery (także w ciemności), rozbrajanie, Sieć ze sceny, jedna próba i pamięć sukcesów, strzał z urządzenia, strefa tylko z marszu gracza, widok runu z rundą, strefa rozbrojona w Sieci, okno jednego piętra i ładunek bez szybu, pełny wiersz czatu zamiast skrótu, przejęta figura urządzenia (`operatorOf`, `netDeviceUse`), marsz drona, oczy urządzeń, figury wyciszone (`net-off`), pasek „Oczy i urządzenia”, Sieć ze sceny wg rodzaju, strefy i drzwi w „Instalacjach”, obszar straży od figury, okienko strefy, automat obrony Sieci i hamulec MG, „Włącz / Wyłącz w Sieci” MG i przeszukanie wyłączonego, Maskowanie piętro po piętrze, czerwone ślady bez Maskowania, Programy za wyjściem, rzut Sieci na kubek ze Szczęściem, „Zapomnij” sceny czyści Sieć, wykrycie w Sieci zakłada starcie | 33   | 12      |
 | `boty`      | llama-server, RAG, reindeks, dziennik i baza wiedzy, brama AI  | 10   | 10      |
 | `dane`      | `parse-manual.py`, kompendium poza repo, tabele z podręcznika  | 9    | 12      |
 | `kopie`     | `snapshot`, `archive`, paczki ZIP, wczytanie kampanii, „czeka na gracza”, kopie kampanii i cofnięcie, sklep i bot w paczce, zgłoszenie karty gracza, pojazdy w paczce, auta na scenie pościgu, przeszkody poza paczką | 22   | 6       |
@@ -825,6 +831,33 @@ a nie do tego pliku.
 ## Notatki z dwóch ostatnich sesji
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
+
+### Sesja 14.11 (ósma) — wykrycie w Sieci zaczyna walkę
+
+**Zrobione (bez migracji, czeka na wdrożenie)** — zlecenie MG, decyzje z pytań w sesji:
+
+- **LOD, który wykrył netrunnera, Demon, który zaczyna ścigać, i ostatecznie nieudane
+  Maskowanie zakładają starcie jak zauważenie wroga**: runda 0 „Przed walką”, drużyna stoi
+  (gracz nie zjedzie też po Sieci — „Zaraz walka — czekaj, aż MG ją rozpocznie.”), MG ma pasek
+  „Wykrycie w Sieci” z „⚔ Rozpocznij walkę / Odwołaj” („Iskra — wykrycie w Sieci: Strażnik.”,
+  „Iskra — Maskowanie nieudane, ślady zostały w Sieci.”).
+- **Maskowanie**: liczy się porażka ostateczna (ostatnia próba Tury albo zejście z piętra
+  w połowie prób), nie każdy pechowy rzut; w starciu tylko drużyna i to, co na piętrze już ściga.
+- **„Rozpocznij walkę” stawia LOD-a / Demona na czele kolejki** (s. 205), także gdy reszta
+  rzuciła wyżej.
+- **Hamulec „Wstrzymaj obronę” wyłącza to wszystko** (rozstrzygnięcie bez pytania — inaczej
+  ręczne „LOD wykrywa intruza” z T5b/`netcombat.test.ts` zakładało starcie wbrew hamulcowi).
+- Przy okazji: macierz izolacji kampanii dostała brakujący przypadek `net:forget-scene` (test
+  padał od szóstej sesji).
+
+Decyzje w `decyzje-i-uproszczenia.md` (akapit 70e o LOD-zie poza walką skreślony), umowa na
+górze `siec`, pomysł (1) i (4) z 13.11 w `POMYSLY.md` uzupełnione. **Oglądane w Firefoksie**
+(MG w Firefoksie, Ola w Chromium — nowy E2E `47-siec/t70g`, zrzuty paska MG po Maskowaniu i po
+wykryciu). Uwaga z oględzin: przypięty pasek leży na nagłówku okna SIEĆ MG, aż MG zdecyduje
+(to samo co dymki — pomysł (4)). Testy: shared 3074, klient 511, serwer 1806 (pełne suity, nowy
+`net-encounter.test.ts`), E2E `T70g` 3/3 i `T70e` 5/5 — zielone (T70e krok 1 padł raz
+w pierwszym przebiegu, w dwóch następnych przeszedł — migotanie bez diagnozy); `tsc`,
+ESLint i Prettier czyste. `T5b`, `T62`, `T70a–d` nie puszczone.
 
 ### Sesja 14.11 (siódma) — czerwone ślady na piętrach bez Maskowania
 
@@ -844,25 +877,3 @@ w E2E `T70a`, zrzuty planu MG i okna gracza w kroku 8; MG w tym speku też jedzi
 Testy: shared 3073 (+4), klient 508, serwer `netrun.test.ts` 25, E2E `T70a` 10/10
 (krok 8 sprawdza czerwień u MG i jej brak w oknie i podsłuchu Oli) — zielone; `tsc` trzech pakietów i ESLint
 czyste. Pełnych suit nie puszczałem; `T70b–e` i `T62` nie puszczone.
-
-### Sesja 14.11 (szósta) — „Zapomnij” w edycji sceny czyści też Sieć i mówi, co zrobił
-
-**Zrobione (bez migracji, czeka na wdrożenie)** — zlecenie MG:
-
-- **„Zapomnij” (Edycja sceny → Widoczność) czyści też netrunning tej sceny**: to, co netrunnerzy
-  na niej osiągnęli (złamane, rozpoznane, przejęte, zwiad), zużyte próby i Maskowanie — we
-  wszystkich Architekturach kampanii, tylko wpisy tej sceny. Wirusy i stany urządzeń zostają.
-  Trwające połączenie nie jest cofane (komunikat o tym mówi).
-- **Potwierdzenie**: po kliku komunikat „Zapomniano” (np. „Drużyna zapomniała mapę tej sceny.
-  Netrunnerzy zapomnieli, co osiągnęli tu w Sieci — wszystkie próby wracają.” albo „W Sieci nie
-  było tu nic do zapomnienia.”), w trakcie przycisk „Zapominam…”, błąd w stopce okna.
-- Przycisk był tylko w trybie „Pole widzenia”; w pozostałych trybach stoi teraz w sekcji
-  „Pamięć Sieci” i czyści wyłącznie Sieć (ukrytej pamięci mapy nie rusza). W „Polu widzenia” już
-  nie jest wyszarzony przy wyłączonej „Pamięci eksploracji”.
-
-Umowa na górze `siec`. **Oglądane w Firefoksie** (Playwright MCP na żywym Vite, scena „Zastaw”
-w trybie „Cała mapa odkryta”): sekcja „Pamięć Sieci”, komunikat „Zapomniano”. Wariantu „Pole
-widzenia” i sceny z prawdziwą pamięcią Sieci nie klikałem na `dev.db` (żeby nie wyczyścić MG
-„Fabryki dronów”) — pokrywa go test serwera. Testy: shared 3069 (+2), klient 508, serwer
-`netrun.test.ts` + `exploration.test.ts` 48 (nowy krok `net:forget-scene`) — zielone; `tsc`
-shared/serwer/klient, ESLint i Prettier czyste. Pełnych suit i E2E nie puszczałem.

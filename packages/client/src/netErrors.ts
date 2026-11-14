@@ -41,6 +41,8 @@ export function netErrorText(code: string | undefined): string {
       return 'Na tej scenie jest już maksymalna liczba punktów dostępu.';
     case 'NOT_YOUR_TURN':
       return 'To nie jest twoja tura.';
+    case 'COMBAT_PENDING':
+      return 'Zaraz walka — czekaj, aż MG ją rozpocznie.';
     case 'NO_ACTION_LEFT':
       return 'Akcja tej tury już poszła na coś innego — Akcje Sieciowe biorą całą Akcję.';
     case 'NO_NET_ACTIONS_LEFT':

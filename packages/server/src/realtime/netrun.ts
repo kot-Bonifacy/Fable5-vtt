@@ -55,8 +55,6 @@ import {
   netRecordTry,
   netCloakState,
   netRecordCloak,
-  netLeaveCloaks,
-  netRememberVisited,
   netCloakWatcher,
   netCloakPlan,
   netDifficultyDv,
@@ -103,6 +101,7 @@ import {
   saveRunState,
   saveRuntime,
   updateRuntime,
+  netLeaveFloors,
   runOwnerOf,
   rememberRun,
   toAccessPointView,
@@ -111,6 +110,8 @@ import { dropRunFromQueue, emergencyJackOut, type FullRunState } from './netice.
 import { postExchange, rollExchange, roundOfScene, spawnIceOnFloors } from './netcombat.js';
 import { netrunnerControlDv, releaseDemonHold, spawnDemons } from './netdemons.js';
 import { answerNetDefense } from './net-defense.js';
+import { raiseTracesAlarm } from './net-encounter.js';
+import { refuseMoveBeforeSightedFight } from './foe-sighting.js';
 
 /**
  * The run (stage 26b) — jacking in, walking the shaft and the seven Interface
@@ -500,6 +501,8 @@ export const netRunMoveEvent = defineEvent<NetRunMovePayload, NetRunPayload>({
     // Architektury" (s. 204, stage 26c). Only downwards: the glue holds you in
     // place going deeper, it does not stop you climbing out.
     const { scene } = await requireCampaignToken(deps.ctx.prisma, campaignId, row.tokenId);
+    // Starcie z wykrycia czeka na MG (14.11): drużyna stoi — w Sieci też.
+    await refuseMoveBeforeSightedFight(deps, scene.id, user);
     const round = await roundOfScene(deps, scene.id);
     if (netGlueHolds(state, round) && netMoveGoesDeeper(architecture, state.position, to)) {
       throw new RealtimeError('NET_GLUED');
@@ -516,7 +519,7 @@ export const netRunMoveEvent = defineEvent<NetRunMovePayload, NetRunPayload>({
     next = await spawnIceOnFloors(deps, campaignId, architecture, next, floorIds);
     next = { ...next, ...rememberIce(next, architecture, floorIds) };
     await saveRunState(deps.ctx.prisma, row.id, next);
-    await leaveCloaks(deps, row, scene.id, floorIds.at(-1) ?? null, next.entered);
+    await leaveCloaks(deps, campaignId, row, scene.id, floorIds.at(-1) ?? null, next.entered);
     await emitRuns(deps, campaignId);
     const moved = await requireMyRun(deps, campaignId, row.tokenId, user);
     const answered = await answerNetDefense(deps, {
@@ -1181,26 +1184,30 @@ async function cloakFloor(
     'Maskowanie',
     success ? 'udane' : 'nieudane',
   );
+  // Ostatnia próba bez sukcesu — Sieć wie o intruzie, zaczyna się walka (14.11).
+  if (record?.outcome === 'failed') {
+    await raiseTracesAlarm(deps, { campaignId, runId: row.id, floorIds: [floorId] });
+  }
   await emitRuns(deps, campaignId);
   return { messageId: message.id, total, success, summary };
 }
 
 /**
- * A move off a floor ends that floor's Turn of Maskowanie (`netLeaveCloaks`),
- * and the floors stood on go to the memory, so the ones left without
- * Maskowanie stay red after a reconnection (`netRememberVisited`, 14.11).
+ * A move off a floor ends that floor's Turn of Maskowanie, and the floors
+ * stood on go to the memory, so the ones left without Maskowanie stay red
+ * after a reconnection (`netLeaveFloors`, 14.11).
  */
 async function leaveCloaks(
   deps: RealtimeDeps,
-  row: { characterId: string; architectureId: string },
+  campaignId: string,
+  row: { id: string; characterId: string; architectureId: string },
   sceneId: string,
   stayingOn: string | null,
   entered: readonly string[],
 ): Promise<void> {
-  const who = { characterId: row.characterId, sceneId };
-  await updateRuntime(deps.ctx.prisma, row.architectureId, (runtime) =>
-    netRememberVisited(netLeaveCloaks(runtime, who, stayingOn), who, entered),
-  );
+  const failed = await netLeaveFloors(deps, row, { sceneId, stayingOn, entered });
+  // Piętro porzucone w połowie prób to porażka ostateczna — jak ostatnia próba.
+  await raiseTracesAlarm(deps, { campaignId, runId: row.id, floorIds: failed });
 }
 
 /**

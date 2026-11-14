@@ -794,6 +794,7 @@ const CASES: Record<string, Case> = {
   'netrun:ability': foreign((a) => ({ runId: a.runId, ability: 'backdoor' })),
   'netrun:scan': foreign((a) => ({ runId: a.runId, tokenId: a.tokenId })),
   // netrunning
+  'net:forget-scene': foreign((a) => ({ sceneId: a.sceneId })),
   'net:list': own('architektury kampanii gniazda'),
   'net:get': foreign((a) => ({ id: a.architectureId })),
   'net:save': foreign((a) => ({ id: a.architectureId, architecture: sampleArchitecture() })),
