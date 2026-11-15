@@ -421,6 +421,11 @@ describe('naturalne leczenie i farmaceutyki', () => {
       ).doses;
     }
     expect(doses).toBe(3);
+    // Etap 71d1: „3 dawki”, nie „3 dawek” (G40), a godzina pracy to
+    // propozycja zegara dla MG (G18) — nie automat.
+    const card = (await sync()).messages.filter((m) => m.roll).at(-1)!.roll!;
+    expect(card.outcome?.label).toBe('Wytworzone: 3 dawki');
+    expect(card.clock).toEqual({ minutes: 60, label: 'Wytwarzanie: Antybiotyk' });
     const row = (await sheetOf(medicId)).gear.find(
       (entry) => entry.consumable === 'pharma.antybiotyk',
     );
@@ -511,6 +516,29 @@ describe('naturalne leczenie i farmaceutyki', () => {
     // BC 7 + SW 6 = 13.
     expect(result.healed).toBe(13);
     expect((await sheetOf(patientId)).hpCurrent).toBe(18);
+
+    // „Skuteczny tylko raz dziennie” (s. 150; MED-12, etap 71d1 — egzekwowane
+    // od 59b): druga dawka tej doby nie leczy, a fiolka i tak pustoszeje.
+    await emitAck(gm, 'character:update', {
+      characterId: patientId,
+      patch: { data: { hpCurrent: 5 } },
+    });
+    const again = waitFor<ChatMessageBroadcast>(gm, 'chat:message');
+    const second = data(
+      await emitAck<{ healed: number }>(gm, 'character:use-dose', {
+        characterId: medicId,
+        gearRowId: row.id,
+        targetTokenId: patientTokenId,
+      }),
+      'character:use-dose',
+    );
+    expect(second.healed).toBe(0);
+    expect((await again).message.recovery?.note).toContain('raz dziennie');
+    expect((await sheetOf(patientId)).hpCurrent).toBe(5);
+    await emitAck(gm, 'character:update', {
+      characterId: patientId,
+      patch: { data: { hpCurrent: 18 } },
+    });
   });
 
   it('dawka podana sobie też schodzi z ekwipunku (błąd z oględzin 03.09)', async () => {

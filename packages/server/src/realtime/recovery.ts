@@ -31,6 +31,7 @@ import {
   CPRED_MELEE_REACH_M,
   CPRED_PHARMA_BATCH_COST,
   CPRED_PHARMA_BATCH_HOURS,
+  cpredDosesLabel,
   CPRED_PHARMA_CRAFT_DV,
   CPRED_POISONED_STATUS_ID,
   CPRED_REST_REFUSALS,
@@ -271,10 +272,16 @@ export const characterCraftPharmaEvent = defineEvent<
     const doses = success ? medicine.medtechSkill : 0;
     roll.outcome = {
       success,
-      label: success ? `Wytworzone: ${doses} dawek` : 'Surowce przepadły',
+      label: success ? `Wytworzone: ${cpredDosesLabel(doses)}` : 'Surowce przepadły',
       detail: success
         ? `${roll.total} vs PT ${CPRED_PHARMA_CRAFT_DV} · ${CPRED_PHARMA_BATCH_HOURS} h pracy · −${CPRED_PHARMA_BATCH_COST} ed`
         : `${roll.total} vs PT ${CPRED_PHARMA_CRAFT_DV} · −${CPRED_PHARMA_BATCH_COST} ed i nic z tego`,
+    };
+    // Etap 71d1: „w ciągu godziny” (s. 150) — propozycja zegara dla MG, jak
+    // przy naprawie i zabiegu; porażka też zjada godzinę pracy.
+    roll.clock = {
+      minutes: CPRED_PHARMA_BATCH_HOURS * 60,
+      label: `Wytwarzanie: ${drug.name}`,
     };
     if (gesture && gesture.strength > 0) roll.tossStrength = gesture.strength;
     if (gesture?.toss) roll.toss = gesture.toss;

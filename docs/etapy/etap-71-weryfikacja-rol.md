@@ -272,6 +272,20 @@ uszkodzenia — naprawy broni nie ma (`POMYSLY.md`). Bez migracji. Rozstrzygnię
 `decyzje-i-uproszczenia.md` („Naprawa i montaż Technikiem”), umowy na górze `postac` i `czas`,
 E2E `t71-technik` (+3), `t71-nomada` (+1).
 
+**Wynik 71d1 (15.11.2026) ✅.** G12 (TEC-05): łata Prowizorki niesie terminy rundy i zegara
+świata, puszcza w przemiataniach efektów („Prowizorka puściła: …”), koniec łaty to OB sprzed
+niej albo niższe (`cpredFieldRepairEnded`). G14–G16 (TEC-12, TEC-13, TEC-14, TEC-16, TEC-17):
+nowy moduł `itemupgrade.ts` — czwarte gniazdo broni, gniazdo deku i opcji wszczepu bazowego,
+gniazdo w broni egzotycznej, jakość Doskonała (+1 w ataku), broń do ukrycia, UC znalezionego
+wszczepu niższa o 1k6 przy montażu; stempel wpisuje MG menu „Ulepszenie…” przy przedmiocie
+(`ItemUpgrade.tsx`), Test Technika stempluje tą samą funkcją w 71d2. G17 (MED-12, MED-13):
+limit „raz dziennie” był egzekwowany od 59b — dopisany test Turbo uzdrawiacza. G18 (MED-16):
+Łatanie (1 min), Leczenie (4 h) i partia farmaceutyków (1 h) proponują MG zegar na karcie
+rzutu. G40 (MED-09): „Wytwórz” czeka na zapis punktów (`characterSaved`), „2 dawki”. G41
+(SOL-05, SOL-11): „−1 obrażeń” przy Redukcji, kubek „… +2 Wykrycie słabości”. Bez migracji.
+Rozstrzygnięcia — `decyzje-i-uproszczenia.md` („Walka i leczenie po weryfikacji Ról”), umowy na
+górze `postac`, `czas`, `karta`; E2E `t71-technik` (+2), `t71-medyk` (+1), `t71-solo` (G41).
+
 Poza etapem 71: **G24 Nocny Targ — osobny etap** (`POMYSLY.md`), NOM-02 / NOM-03 — etap 72,
 STR-12 — po etapie 72, KOR-04 — tylko z abonamentem Trauma Team.
 

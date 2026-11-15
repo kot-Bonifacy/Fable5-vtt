@@ -27,6 +27,8 @@ import { pendingDice, scriptDice } from '../../instance/instance.ts';
  * Od 71c2: zwykła naprawa Testem (TEC-19, G11) z czasem dla zegara MG, montaż
  * ulepszenia auta Technikiem (TEC-18, G10) i bieżące OB gracza tylko w dół (P5).
  * Ulepszanie przedmiotów, Wytwarzanie i Wynajdywanie nie mają rzutu (TEC-07, 71d2).
+ * Od 71d1: Prowizorka puszcza sama z zegarem świata (TEC-05, G12), a skutki
+ * Ulepszania stempluje MG przy przedmiocie (TEC-12, TEC-13, G14, G15).
  */
 
 const TECH = ROLES.tech;
@@ -263,6 +265,94 @@ test.describe.serial('@szybkie T71 Technik — Twórca', () => {
     expect(forged).toEqual({ ok: false, error: 'TECH_UPGRADE_USED' });
     await shop.getByRole('button', { name: 'Odśwież listę' }).click();
     await expect(row.locator('option[value="nitro"]')).toBeDisabled();
+    await closeSheet(bartek.page);
+    for (const actor of [mg, bartek]) expect(actor.unexpectedErrors(), actor.name).toEqual([]);
+  });
+
+  // ───────────── 71d1: Prowizorka z zegarem, skutki Ulepszania (G12, G14, G15) ─────────────
+
+  test('TEC-05 G12 Prowizorka puszcza sama, gdy MG przesunie zegar świata', async () => {
+    // Kurtka po 71c2 jest cała — MG ją obija, żeby było co łatać.
+    const ablated = cardData<{ armor: Armor[] }>(TECH.card).armor.map((entry) =>
+      entry.id === 'r71-kurtka' ? { ...entry, spCurrent: 7 } : entry,
+    );
+    dataOf(
+      await emitAck(gm, 'character:update', {
+        characterId: characterId(TECH.card),
+        patch: { data: { armor: ablated } },
+      }),
+      'character:update kurtka 7',
+    );
+    card = await openSheet(bartek, TECH.card);
+    await card.getByRole('button', { name: 'Ekwipunek', exact: true }).click();
+    const since = lastMessageId();
+    scriptDice([5]);
+    await card.getByRole('button', { name: 'Prowizorka', exact: true }).click();
+    await shakeCup(bartek.page);
+    await rollAfter(since, 'Prowizorka', 'roll');
+    await expect.poll(() => armor().spCurrent).toBe(armor().sp);
+    // Naprawa 4 → 40 minut zegara świata.
+    const patch = armor().fieldRepair as { minutes: number; expiresAtMinute?: number };
+    expect(patch.minutes).toBe(40);
+    expect(patch.expiresAtMinute).toBe(gameTime() + 40);
+    await expect(
+      card.getByRole('button', { name: 'Koniec prowizorki', exact: true }),
+    ).toHaveAttribute('title', /puści sama/);
+
+    dataOf(await emitAck(gm, 'time:set', { step: 'hour' }), 'time:set +1 h');
+    await expect.poll(() => armor().fieldRepair ?? null).toBeNull();
+    expect(armor().spCurrent).toBe(7);
+    expect(armor().fieldRepairSpent).toBe(true);
+    await closeSheet(bartek.page);
+    await bartek.page.getByRole('button', { name: /^Czat/ }).first().click();
+    await expect(
+      bartek.page.getByText(/Prowizorka puściła: Lekka kurtka kuloodporna/).last(),
+    ).toBeVisible();
+  });
+
+  test('TEC-12 TEC-13 G14 G15 MG stempluje Ulepszenie przy broni — gracz widzi plakietkę, sam go nie wpisze', async () => {
+    type Weapon = { id: string; upgrade?: string };
+    const pistol = () =>
+      cardData<{ weapons: Weapon[] }>(TECH.card).weapons.find((row) => row.id === 'r71-pistolet')!;
+    const forged = await emitAck(await bartek.socket(), 'character:update', {
+      characterId: characterId(TECH.card),
+      patch: {
+        data: {
+          weapons: cardData<{ weapons: Weapon[] }>(TECH.card).weapons.map((row) =>
+            row.id === 'r71-pistolet' ? { ...row, upgrade: 'excellent' } : row,
+          ),
+        },
+      },
+    });
+    expect(forged).toEqual({ ok: false, error: 'ITEM_LOCKED' });
+
+    card = await openSheet(bartek, TECH.card);
+    await card.getByRole('button', { name: 'Ekwipunek', exact: true }).click();
+    // Gracz menu nie ma — stempel wpisuje MG (Test Technika to 71d2).
+    await expect(
+      card.getByRole('combobox', { name: /Ulepszenie Technika: Ciężki pistolet/ }),
+    ).toHaveCount(0);
+    await closeSheet(bartek.page);
+
+    const gmCard = await openSheet(mg, TECH.card);
+    await gmCard.getByRole('button', { name: 'Ekwipunek', exact: true }).click();
+    const menu = gmCard.getByRole('combobox', { name: /Ulepszenie Technika: Ciężki pistolet/ });
+    // Pistolet z gniazdami: gniazdo i jakość tak, egzotyka nie.
+    await expect(menu.locator('option[value="slot"]')).toHaveCount(1);
+    await expect(menu.locator('option[value="exoticSlot"]')).toHaveCount(0);
+    await menu.selectOption('excellent');
+    await expect.poll(() => pistol().upgrade).toBe('excellent');
+    await expect(menu).toHaveCount(0);
+    await expect(
+      gmCard.locator('.item-upgrade-chip', { hasText: 'Jakość Doskonała' }),
+    ).toBeVisible();
+    await closeSheet(mg.page);
+
+    card = await openSheet(bartek, TECH.card);
+    await card.getByRole('button', { name: 'Ekwipunek', exact: true }).click();
+    await expect(
+      card.locator('.item-upgrade-chip', { hasText: 'Jakość Doskonała' }),
+    ).toHaveAttribute('title', /\+1 do Testów ataku/);
     await closeSheet(bartek.page);
     for (const actor of [mg, bartek]) expect(actor.unexpectedErrors(), actor.name).toEqual([]);
   });

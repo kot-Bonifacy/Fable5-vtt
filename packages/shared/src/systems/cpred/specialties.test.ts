@@ -162,8 +162,11 @@ describe('Ulepszanie i Prowizorka', () => {
   it('podręcznik drukuje dziesięć skutków Ulepszania', () => {
     // Dziesięć punktorów, policzonych na stronie — opis etapu mówił jedenaście.
     expect(CPRED_ITEM_UPGRADES).toHaveLength(10);
-    // Dokładnie jeden z nich VTT liczy sam; reszta jest zapisem dla stołu.
-    expect(CPRED_ITEM_UPGRADES.filter((entry) => entry.effect !== undefined)).toHaveLength(1);
+    // Od 71d1 VTT liczy siedem z nich sam (`vtt`); Ulepszenie pojazdu jedzie
+    // montażem w aucie (71c2), amunicja egzotyczna i wynalazek zostają prozą.
+    expect(
+      CPRED_ITEM_UPGRADES.filter((entry) => entry.vtt === undefined).map((entry) => entry.id),
+    ).toEqual(['exoticAmmo', 'vehicleMod', 'invention']);
   });
 
   it('każdy skutek trafia tylko na pasujące wiersze karty', () => {

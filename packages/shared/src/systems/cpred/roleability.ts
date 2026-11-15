@@ -1015,13 +1015,12 @@ export interface CpredItemUpgradeDefinition {
   /** Rows this may be put on; `vehicle` has nowhere to land yet (no vehicles). */
   targets: readonly CpredUpgradeTarget[];
   /**
-   * The one arithmetic effect the VTT can honour by itself: +1 OB. Everything
-   * else on this list needs machinery the VTT does not have — attachment slots
-   * (stage 31), weapon quality (which nothing reads), repair times, vehicles —
-   * so it is recorded on the row and played at the table. Written down in
-   * `decyzje-i-uproszczenia.md`, not left as a silent gap.
+   * Co VTT liczy samo, gdy wiersz niesie ten stempel — zdanie do panelu
+   * Twórcy. Do etapu 71d1 liczyło się tylko +1 OB; od 71d1 (G14–G16) także
+   * gniazdo, jakość Doskonała, broń do ukrycia i UC wszczepu
+   * (`itemupgrade.ts`), od 71c2 szybsza naprawa. Bez pola — skutek prozą.
    */
-  effect?: 'armorSp';
+  vtt?: string;
 }
 
 /**
@@ -1044,6 +1043,7 @@ export const CPRED_ITEM_UPGRADES: readonly CpredItemUpgradeDefinition[] = [
       'Obniżasz Utratę Człowieczeństwa za cyborgizacje niebędące borgizacjami o 1k6, jeśli UC ' +
       'tej cyborgizacji wynosi 2k6 lub więcej.',
     targets: ['cyberware'],
+    vtt: 'UC przy montażu znalezionego wszczepu niższa o 1k6',
   },
   {
     id: 'slot',
@@ -1052,30 +1052,35 @@ export const CPRED_ITEM_UPGRADES: readonly CpredItemUpgradeDefinition[] = [
       'Zwiększasz o 1 liczbę gniazd przedmiotu na Dodatki, Programy/Ulepszenia sprzętowe, ' +
       'modyfikacje itp. Nowe gniazdo musi być tego samego rodzaju, co gniazda już posiadane.',
     targets: ['weapon', 'gear', 'cyberware'],
+    vtt: 'czwarte gniazdo broni, gniazdo deku, opcja wszczepu bazowego',
   },
   {
     id: 'fastRepair',
     name: 'Szybsza naprawa',
     text: 'Przeprojektowujesz przedmiot, dzięki czemu w przyszłości można go naprawić dwa razy szybciej.',
     targets: ['weapon', 'armor', 'gear'],
+    vtt: 'połowa czasu zwykłej naprawy',
   },
   {
     id: 'concealable',
     name: 'Broń do ukrycia',
     text: 'Przebudowujesz jednoręczną broń, której standardowo nie da się ukryć, tak, że można ją ukryć.',
     targets: ['weapon'],
+    vtt: 'broń „do ukrycia” na karcie',
   },
   {
     id: 'excellent',
     name: 'Jakość Doskonała',
     text: 'Podnosisz jakość broni ze Zwykłej na Doskonałą.',
     targets: ['weapon'],
+    vtt: '+1 do Testów ataku',
   },
   {
     id: 'exoticSlot',
     name: 'Gniazdo w broni egzotycznej',
     text: 'Dodajesz gniazdo dodatku do broni egzotycznej.',
     targets: ['weapon'],
+    vtt: 'jedno gniazdo dodatku',
   },
   {
     id: 'exoticAmmo',
@@ -1090,7 +1095,7 @@ export const CPRED_ITEM_UPGRADES: readonly CpredItemUpgradeDefinition[] = [
     name: '+1 OB',
     text: 'Zwiększasz OB przedmiotu o 1, ale tylko jeśli przedmiot ma jakąś OB.',
     targets: ['armor'],
-    effect: 'armorSp',
+    vtt: '+1 OB na wierszu pancerza',
   },
   {
     id: 'vehicleMod',

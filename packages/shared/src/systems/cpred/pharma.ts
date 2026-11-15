@@ -17,6 +17,7 @@
  * to samo rozstrzygnięcie co przy zdaniach leczenia w `treatment.ts`.
  */
 
+import { polishPlural } from '../../plural.js';
 import { CPRED_PRICE_SCALE_CONSUMABLE } from './pricing.js';
 
 /** Id jednego z pięciu środków — to, co siedzi w `CpredGearRow.consumable`. */
@@ -186,8 +187,13 @@ export const CPRED_PHARMA_CRAFT_DV = 13;
  */
 export const CPRED_PHARMA_BATCH_COST = 200 * CPRED_PRICE_SCALE_CONSUMABLE;
 
-/** Ile godzin zajmuje partia — na kartę czatu, bo zegara świata nie ma. */
+/** Ile godzin zajmuje partia — od 71d1 propozycja zegara dla MG na karcie rzutu. */
 export const CPRED_PHARMA_BATCH_HOURS = 1;
+
+/** „1 dawka”, „2 dawki”, „5 dawek” — napis partii (etap 71d1, G40). */
+export function cpredDosesLabel(count: number): string {
+  return `${count} ${polishPlural(count, 'dawka', 'dawki', 'dawek')}`;
+}
 
 /**
  * Do których środków sięga Medyk z tyloma punktami Farmaceutyków (s. 150).

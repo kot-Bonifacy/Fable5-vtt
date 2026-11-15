@@ -34,6 +34,10 @@ import {
   cpredCarePermanent,
   cpredCheckOutcome,
   cpredFieldRepairMinutes,
+  cpredStatEffectDeadlines,
+  CPRED_CARE_MODE_LABELS,
+  CPRED_QUICK_FIX_MINUTES,
+  CPRED_TREATMENT_MINUTES,
   cpredRepairDv,
   cpredSneakOutcome,
   createDefaultCharacterData,
@@ -80,6 +84,7 @@ import { activeRoundOfScene } from './timed-effects.js';
 import { characterFigure, passForfeitedTurnOf, requireTurnSpend } from './combat-actions.js';
 import { campaignEntry } from './compendium.js';
 import { emitCharacterUpsert, toCharacterView, refuseAwaitingGm } from './character-io.js';
+import { effectClockForCharacter } from './stat-effects.js';
 import {
   emitTokensById,
   emitTokensOfCharacter,
@@ -779,6 +784,10 @@ async function applyFieldRepair(
   const row = data.armor.find((entry) => entry.id === armorRowId);
   if (!row || row.fieldRepair || row.spCurrent >= row.sp) return null;
   const minutes = cpredFieldRepairMinutes(repairLevel);
+  // Etap 71d1 (G12): łata puszcza sama — terminy jak efekt czasowy (runda
+  // trwającej walki i minuta zegara świata), zdejmują ją te same przemiatania.
+  const clock = await effectClockForCharacter(deps, campaignId, characterId, null);
+  const deadlines = cpredStatEffectDeadlines(clock, minutes * 60);
   const saved = await deps.ctx.prisma.character.update({
     where: { id: character.id },
     data: {
@@ -789,7 +798,7 @@ async function applyFieldRepair(
               ? {
                   ...entry,
                   spCurrent: entry.sp,
-                  fieldRepair: { restoredFrom: entry.spCurrent, minutes },
+                  fieldRepair: { restoredFrom: entry.spCurrent, minutes, ...deadlines },
                 }
               : entry,
           ),
@@ -1495,6 +1504,12 @@ async function performScopedRoll(
               : ` · efekt rany „${plan.treatInjury.injuryName}" milczy do końca dnia`
             : '') +
           (quickFix && !success ? ' · można próbować dalej, każda próba to minuta' : ''),
+      };
+      // Etap 71d1 (G18): „każda próba zajmuje minutę” / „cztery godziny”
+      // (s. 223) — propozycja przesunięcia zegara dla MG, nie automat.
+      result.clock = {
+        minutes: quickFix ? CPRED_QUICK_FIX_MINUTES : CPRED_TREATMENT_MINUTES,
+        label: `${CPRED_CARE_MODE_LABELS[plan.treatInjury.mode]}: ${plan.treatInjury.injuryName} → ${plan.treatInjury.targetName}`,
       };
     }
 

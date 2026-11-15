@@ -143,9 +143,10 @@ export function CombatAwarenessPanel({
                   ? '—'
                   : entry.shape === 'flat'
                     ? 'włączone'
-                    : entry.shape === 'perPoint'
-                      ? `+${value}`
-                      : `${value}. próg`}
+                    : entry.id === 'damageReduction'
+                      ? // G41 (71d1): liczba, którą tarcza zdejmuje, nie numer progu.
+                        `−${value} obrażeń`
+                      : `+${value}`}
               </span>
               <span className="awareness-cost">{points > 0 ? `${points} pkt` : ''}</span>
               <span className="awareness-steps">

@@ -1112,3 +1112,25 @@
   text-align: center;
   pointer-events: none;
 }
+
+/* --- Ulepszanie Technika na wierszu (etap 71d1) ------------------------ */
+
+/* Plakietka jak „pod ręką”: druk karty, nie guzik — mówi, czym rzecz jest. */
+.item-upgrade-chip {
+  display: inline-block;
+  margin: 0.1rem 0.25rem 0 0;
+  padding: 0.05rem 0.3rem;
+  font-size: 0.8rem;
+  color: var(--cp-ink-dim, var(--text-dim));
+  border: 1px solid currentColor;
+  border-radius: 3px;
+  white-space: nowrap;
+}
+
+/* Menu MG: małe, pod nazwą — nie rozpycha wiersza tabeli. */
+.item-upgrade-select {
+  display: block;
+  max-width: 12rem;
+  margin-top: 0.15rem;
+  font-size: 0.8rem;
+}

@@ -120,6 +120,15 @@ test.describe.serial('@szybkie T71 Solo — Zmysł Walki', () => {
     );
     card = await openSheet(ada, SOLO.card);
     await expect(panel()).toContainText('Wolne punkty: 4 z 8');
+    // G41 (71d1): przy progach stoi liczba, a nie numer progu („1. próg”).
+    const row = (name: string) => panel().locator('.awareness-row', { hasText: name });
+    await expect(row('Precyzyjny atak').locator('.awareness-value')).toHaveText('+1');
+    await plus(panel(), 'Redukcja obrażeń').click();
+    await expect(row('Redukcja obrażeń').locator('.awareness-value')).toHaveText('−1 obrażeń');
+    await panel()
+      .getByRole('button', { name: 'Zdejmij punkty: Redukcja obrażeń', exact: true })
+      .click();
+    await expect(panel()).toContainText('Wolne punkty: 4 z 8');
     await plus(panel(), 'Wyjście z opresji').click();
     await expect(panel()).toContainText('Wszystkie punkty rozdzielone');
     await panel().getByRole('button', { name: 'Zapisz przydział' }).click();

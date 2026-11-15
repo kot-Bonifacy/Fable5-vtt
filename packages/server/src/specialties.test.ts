@@ -507,7 +507,9 @@ describe('Specjalizacje Medycyny i Twórcy na karcie', () => {
     const bodged = (await sheetOf(patientId)).armor[0]!;
     expect(bodged.spCurrent).toBe(11);
     // 10 minut na poziom Specjalizacji — trzy poziomy to pół godziny.
-    expect(bodged.fieldRepair).toEqual({ restoredFrom: 6, minutes: 30 });
+    expect(bodged.fieldRepair).toMatchObject({ restoredFrom: 6, minutes: 30 });
+    // Etap 71d1 (G12): łata niesie termin zegara świata — puści sama.
+    expect(bodged.fieldRepair?.expiresAtMinute).toBeGreaterThan(0);
 
     const again = await bodge();
     expect(again.ok === false && again.error).toBe('ALREADY_PATCHED');
@@ -534,6 +536,76 @@ describe('Specjalizacje Medycyny i Twórcy na karcie', () => {
       patch: { data: { armor: [{ ...restored, spCurrent: 11 }] } },
     });
     expect((await sheetOf(patientId)).armor[0]!.fieldRepairSpent).toBeUndefined();
+  });
+
+  it('Prowizorka puszcza sama, gdy zegar świata minie jej czas (G12, 71d1)', async () => {
+    const vest = {
+      id: 'a1',
+      name: 'Kurtka',
+      notes: '',
+      sp: 11,
+      spCurrent: 6,
+      location: 'body' as const,
+    };
+    await emitAck(gm, 'character:update', {
+      characterId: patientId,
+      patch: { data: { armor: [vest] } },
+    });
+    for (let attempt = 0; attempt < 12; attempt += 1) {
+      await emitAck(gm, 'character:roll', {
+        characterId: patientId,
+        request: { kind: 'fieldRepair', fieldRepairArmorRowId: 'a1' },
+        visibility: 'public',
+      });
+      if ((await sheetOf(patientId)).armor[0]!.fieldRepair) break;
+    }
+    expect((await sheetOf(patientId)).armor[0]!.spCurrent).toBe(11);
+
+    // Trzy poziomy Naprawy to pół godziny — dziesięć minut to za mało…
+    expect((await emitAck(gm, 'time:set', { step: 'min10' })).ok).toBe(true);
+    expect((await sheetOf(patientId)).armor[0]!.fieldRepair).toBeDefined();
+
+    // …a godzina później kurtka wraca do OB sprzed łaty, ze śladem.
+    expect((await emitAck(gm, 'time:set', { step: 'hour' })).ok).toBe(true);
+    const after = await sync();
+    const row = (after.characters.find((c) => c.id === patientId)!.data as CpredCharacterData)
+      .armor[0]!;
+    expect(row.fieldRepair).toBeUndefined();
+    expect(row.spCurrent).toBe(6);
+    expect(row.fieldRepairSpent).toBe(true);
+    // Stół dowiaduje się z wiersza „Efekty wygasły”.
+    const swept = after.messages.filter((m) => m.text === 'Efekty wygasły').at(-1);
+    expect(JSON.stringify(swept?.payload ?? swept)).toContain('Prowizorka puściła: Kurtka');
+  });
+
+  it('Łatanie i Leczenie proponują MG przesunięcie zegara (G18, 71d1)', async () => {
+    await emitAck(gm, 'character:update', {
+      characterId: patientId,
+      patch: { data: { criticalInjuries: [brokenRibs] } },
+    });
+    const roll = async (treatMode: 'quickFix' | 'treatment') => {
+      const ack = await emitAck(gm, 'character:roll', {
+        characterId: medicId,
+        request: {
+          kind: 'treatInjury',
+          treatTokenId: patientTokenId,
+          treatInjuryId: brokenRibs.id,
+          treatMode,
+          treatSkillId: treatMode === 'quickFix' ? 'paramedic' : 'medicine.surgery',
+          // Każda próba kosztuje czas, także nieudana (s. 223).
+          modifier: -20,
+        },
+        visibility: 'public',
+      });
+      expect(ack, JSON.stringify(ack)).toMatchObject({ ok: true });
+      return (await sync()).messages.filter((m) => m.roll).at(-1)!.roll!;
+    };
+    const patch = await roll('quickFix');
+    expect(patch.clock).toMatchObject({ minutes: 1, label: expect.stringContaining('Łatanie') });
+    const cure = await roll('treatment');
+    expect(cure.clock).toMatchObject({ minutes: 240, label: expect.stringContaining('Leczenie') });
+    // Zegara nie rusza sam rzut — dopiero przycisk MG (`roll:clock`).
+    expect(cure.clock?.applied).toBeUndefined();
   });
 
   /**

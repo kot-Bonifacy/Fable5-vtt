@@ -83,6 +83,20 @@ describe('openDamageCallFor', () => {
     expect(found?.pending.title).toBe('Pistolet — obrażenia 3d6');
   });
 
+  it('kubek mówi o premii Wykrycia słabości, gdy Atak ją zarobił (G41, 71d1)', () => {
+    const solo = attackCard(7, {
+      system: {
+        weaponRowId: 'pistol',
+        weaponName: 'Pistolet',
+        attackerTokenId: 'tok-vex',
+        weakSpot: 2,
+      },
+    });
+    expect(call([solo], player)?.pending.title).toBe(
+      'Pistolet — obrażenia 3d6 +2 Wykrycie słabości',
+    );
+  });
+
   it('milczy, gdy cel jeszcze decyduje o Uniku, obrażenia rzucono albo nie trafiono', () => {
     expect(call([attackCard(7, { evasionPending: ['tok-ganger'] })], player)).toBeNull();
     expect(call([attackCard(7, { damageRollId: 9 })], player)).toBeNull();

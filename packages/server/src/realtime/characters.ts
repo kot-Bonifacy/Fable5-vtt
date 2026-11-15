@@ -13,6 +13,7 @@ import type {
 } from '@vtt/shared';
 import {
   CPRED_ACTION_BACKUP,
+  cpredFieldRepairEnded,
   CPRED_ACTION_COMBAT_AWARENESS,
   CPRED_BACKUP_ABILITY,
   CPRED_COMBAT_AWARENESS_ABILITY,
@@ -787,8 +788,8 @@ export const characterCombatAwarenessEvent = defineEvent<
  * tymczasowo naprawić, dopóki nie zostanie zupełnie naprawiony w zwykły
  * sposób”. Ślad schodzi sam przy pełnym OB (`cpredSettledArmorRow`).
  *
- * Odliczania nie ma (dziesięć minut na poziom to sześćdziesiąt rund na poziom);
- * zegar świata dostanie je w 71d1 (G12).
+ * Od 71d1 (G12) łata puszcza też sama — z terminami rundy i zegara świata
+ * (przemiatania `stat-effects.ts`); guzik zostaje na „puściło wcześniej”.
  */
 export const characterFieldRepairEvent = defineEvent<CharacterFieldRepairPayload, CharacterView>({
   name: 'character:field-repair',
@@ -809,12 +810,10 @@ export const characterFieldRepairEvent = defineEvent<CharacterFieldRepairPayload
     const row = data.armor.find((entry) => entry.id === payload?.armorRowId);
     if (!row) throw new RealtimeError('UNKNOWN_ARMOR');
     if (!row.fieldRepair) throw new RealtimeError('NOT_PATCHED');
-    const restored = Math.min(row.fieldRepair.restoredFrom, row.sp);
-    const armor = data.armor.map((entry) => {
-      if (entry.id !== row.id) return entry;
-      const { fieldRepair: _gone, ...rest } = entry;
-      return { ...rest, spCurrent: restored, fieldRepairSpent: true as const };
-    });
+    // Ta sama funkcja, którą zegar zdejmuje łatę (71d1) — OB sprzed łaty.
+    const armor = data.armor.map((entry) =>
+      entry.id === row.id ? cpredFieldRepairEnded(entry) : entry,
+    );
 
     const saved = await deps.ctx.prisma.character.update({
       where: { id: character.id },

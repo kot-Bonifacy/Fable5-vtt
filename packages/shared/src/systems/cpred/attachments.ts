@@ -55,6 +55,14 @@ export const CPRED_MAGAZINE_KIND_LABELS: Record<CpredMagazineKind, string> = {
 /** Slots the rulebook gives a non-exotic ranged weapon, and this module's cap. */
 export const CPRED_ATTACHMENT_SLOTS_MAX = 3;
 
+/**
+ * Ile gniazd broń może mieć w ogóle: trzy z druku i jedno z Ulepszania
+ * Technika („Dodatkowe gniazdo”, s. 148, etap 71d1). Osobno od
+ * `CPRED_ATTACHMENT_SLOTS_MAX`, które jest też sufitem tego, ile gniazd zjada
+ * jeden dodatek — wpis MG nie dostaje dodatku na cztery gniazda.
+ */
+export const CPRED_WEAPON_SLOTS_CEILING = 4;
+
 /** Slots one attachment takes when its row does not say otherwise. */
 export const CPRED_ATTACHMENT_SLOTS_DEFAULT = 1;
 
@@ -205,7 +213,7 @@ export function attachmentSlotsFree(
   resolved: Pick<ResolvedWeapon, 'attachmentSlots'> | null | undefined,
   fitted: readonly Pick<CpredAttachmentEffect, 'slots'>[],
 ): number {
-  const total = Math.max(0, Math.min(resolved?.attachmentSlots ?? 0, CPRED_ATTACHMENT_SLOTS_MAX));
+  const total = Math.max(0, Math.min(resolved?.attachmentSlots ?? 0, CPRED_WEAPON_SLOTS_CEILING));
   return Math.max(0, total - attachmentSlotsUsed(fitted));
 }
 

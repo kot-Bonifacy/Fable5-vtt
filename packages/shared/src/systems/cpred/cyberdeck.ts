@@ -35,6 +35,7 @@ import {
 import { isGearEntry, isProgramEntry, type CompendiumEntry } from './compendium.js';
 import { cpredLandInGear as landInGear, cpredTakeOneGear as takeOne } from './inventory.js';
 import { netProgramProfileOf, netProgramSlots } from './netrunning.js';
+import { cpredUpgradedDeckSlots } from './itemupgrade.js';
 
 export type CpredDeckLookup = (compendiumId: string) => CompendiumEntry | undefined;
 
@@ -115,6 +116,7 @@ export function cpredUnplugDeck(data: CpredCharacterData, makeId: () => string):
     name: deck.name,
     notes: '',
     ...(deck.compendiumId ? { compendiumId: deck.compendiumId } : {}),
+    ...(deck.upgrade ? { upgrade: deck.upgrade } : {}),
     qty: 1,
   };
   const landed = landInGear(
@@ -151,8 +153,10 @@ export function cpredPlugDeck(
   const deck: CpredCyberdeck = {
     ...(row.compendiumId ? { compendiumId: row.compendiumId } : {}),
     name: row.name,
-    slots: Math.min(slots, CYBERDECK_SLOTS_MAX),
+    // Etap 71d1: „Dodatkowe gniazdo” Technika na wierszu deku (s. 148).
+    slots: Math.min(cpredUpgradedDeckSlots(slots, row.upgrade), CYBERDECK_SLOTS_MAX),
     installed: [],
+    ...(row.upgrade ? { upgrade: row.upgrade } : {}),
   };
   return { ok: true, data: { ...next, cyberdeck: deck } };
 }

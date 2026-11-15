@@ -1,5 +1,31 @@
 # Dziennik sesji — archiwum
 
+### Sesja 15.11 (trzecia) — etap 71c1: Tabor Rodziny jako stan gry
+
+**Zrobione (czeka na wdrożenie, bez migracji — pola w JSON-ie `Vehicle.system` i karty):**
+
+- Dokończona praca przerwanej sesji (kod 71c1 leżał niezacommitowany po commicie 71c0; sesja 71c0
+  nie zostawiła notatki — jej wynik jest w pliku etapu). Reguły w `systems/cpred/fleet.ts`
+  (`fleet.test.ts`), zdarzenia w `realtime/fleet.ts`, UI `FleetVehicleControls` na karcie auta
+  i prezent w `MotoPanel`.
+- **G6** „Biorę to auto” / „Zostaję przy nim” — jedno auto Taboru w użyciu, wymiana o najbliższej
+  6:00; **G7** „Oddaj Rodzinie do naprawy” — tylko wrak, 500 ed, 7 dni „U Rodziny”; **G8** Moto 10
+  — „Do Taboru Rodziny” (`fleetJoined`), „Rodzina montuje” za 10 000 ed (cennik domowy), cały
+  Tabor w użyciu; **G9** broń od Rodziny przy pierwszym Stanowisku bardzo ciężkiej broni, raz
+  (`fleetGift`); **G38** wiersz „Pojazd” tylko z wpisów z progiem Moto (`NOT_FLEET_VEHICLE`).
+- Poprawki w tej sesji: prezent nie otwierał się dla auta dołożonego przez Głowę Rodziny
+  (`MotoPanel` liczył tylko `fleetRowId`); warsztat 68 przyjmował auto `fleetJoined` mimo decyzji
+  „auto Rodziny ulepsza się za Moto” (`cpredVehicleUpgradeBuyProblem`); zdanie odmowy
+  `NOT_FLEET_VEHICLE` w `CPRED_FLEET_PROBLEMS`; CSS `.fleet-controls`.
+- Macierz: NOM-06, NOM-08, NOM-09, NOM-11, NOM-14 → ✅; rozstrzygnięcia bez pytań w
+  `decyzje-i-uproszczenia.md` („Tabor Rodziny jako stan gry”), umowa na górze `postac`.
+
+Testy: `shared` 3100+ i serwer 1812 zielone, `tsc` trzech pakietów i e2e czyste, lint zmienionych
+plików czysty; `pnpm test:e2e t71-nomada` — 9/9 (pięć nowych testów G38, G6–G9 z odmowami
+podrobionych zdarzeń). **Oglądano w Firefoksie** (gracz z przebiegu E2E, zrzuty karty auta
+w trzech stanach i panelu Moto z prezentem). `specs/99-zapomnij/` to cudze tymczasowe oględziny
+z 14.11 — nie wchodzi do commita.
+
 ### Sesja 15.11 (druga) — etap 71b: Role w przeglądarce i bramka MG
 
 **Zrobione (testy E2E i dokumenty — kodu aplikacji nie ruszano, nic do wdrożenia):**

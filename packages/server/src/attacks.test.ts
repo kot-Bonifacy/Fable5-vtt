@@ -2422,6 +2422,74 @@ describe('ranged combat from the map', () => {
       await emitAck(gm, 'character:update', { characterId, patch: { data: { cyberware: [] } } });
       data(await mount(LINK, 'unmount'), 'weapon:attachment');
     });
+
+    /**
+     * Etap 71d1 (G14, G15): skutki Ulepszania Technika czyta serwer z wiersza
+     * — czwarte gniazdo przy montażu i +1 jakości Doskonałej w ataku.
+     */
+    it('Ulepszanie: czwarte gniazdo karabinu i jakość Doskonała pistoletu', async () => {
+      const base = (await sheetOf(characterId)).weapons;
+      const stamped = (id: string, upgrade: string) =>
+        base.map((row) => (row.id === id ? { ...row, upgrade } : row));
+      // Stempel to mechanika wiersza — gracz go sobie nie wpisze (48c).
+      expect(
+        await emitAck(player, 'character:update', {
+          characterId,
+          patch: { data: { weapons: stamped('w-rifle', 'slot') } },
+        }),
+      ).toEqual({ ok: false, error: 'ITEM_LOCKED' });
+      await emitAck(gm, 'character:update', {
+        characterId,
+        patch: {
+          data: {
+            weapons: base.map((row) =>
+              row.id === 'w-rifle'
+                ? { ...row, upgrade: 'slot' }
+                : row.id === 'w-pistol'
+                  ? { ...row, upgrade: 'excellent' }
+                  : row,
+            ),
+          },
+        },
+      });
+
+      // 2 + 1 + 1 = cztery gniazda: bez Ulepszania bęben już by nie wszedł.
+      expect(data(await mount(UNDERBARREL), 'weapon:attachment').slotsFree).toBe(2);
+      expect(data(await mount(BAYONET), 'weapon:attachment').slotsFree).toBe(1);
+      expect(data(await mount(DRUM), 'weapon:attachment').slotsFree).toBe(0);
+      expect((await rifleRow())?.attachmentIds).toHaveLength(3);
+      for (const id of [DRUM, BAYONET, UNDERBARREL]) {
+        data(await mount(id, 'unmount'), 'weapon:attachment');
+      }
+
+      await placeTargetAt(4);
+      const card = waitFor<ChatMessageBroadcast>(gm, 'chat:message');
+      await emitAck(player, 'attack:roll', {
+        characterId,
+        targetTokenId,
+        attackerTokenId: shooterTokenId,
+        request: { weaponRowId: 'w-pistol', mode: 'single' },
+      });
+      expect((await card).message.roll?.breakdown).toContainEqual({
+        label: 'Broń doskonałej jakości',
+        value: 1,
+        kind: 'situational',
+      });
+
+      // Sprzątanie: reszta pliku strzela bronią bez stempli.
+      const now = (await sheetOf(characterId)).weapons;
+      await emitAck(gm, 'character:update', {
+        characterId,
+        patch: {
+          data: {
+            weapons: now.map((row) => {
+              const { upgrade: _stamp, ...rest } = row;
+              return rest;
+            }),
+          },
+        },
+      });
+    });
   });
 
   describe('jakość broni (s. 244)', () => {

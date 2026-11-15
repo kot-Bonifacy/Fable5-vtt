@@ -42,6 +42,7 @@ import {
   metresPerPixel,
   planCpredAttack,
   resolveWeapon,
+  cpredUpgradedWeapon,
   segmentCrossingDistance,
   snapToSquareCentre,
   standingBarriers,
@@ -210,11 +211,15 @@ export function planAttackPreview(
 
   const compendium = useCompendiumStore.getState();
   const entry = row.compendiumId ? compendium.entries[row.compendiumId] : undefined;
+  // Etap 71d1: broń po Ulepszaniu Technika — ta sama, którą liczy serwer.
   const resolved =
     entry && isWeaponEntry(entry)
-      ? resolveWeapon(entry, {
-          weaponTypeById: new Map(Object.entries(compendium.weaponTypeById)),
-        })
+      ? cpredUpgradedWeapon(
+          resolveWeapon(entry, {
+            weaponTypeById: new Map(Object.entries(compendium.weaponTypeById)),
+          }),
+          row.upgrade,
+        )
       : null;
 
   const request: CpredAttackRequest = {

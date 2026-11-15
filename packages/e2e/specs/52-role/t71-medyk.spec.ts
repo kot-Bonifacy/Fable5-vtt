@@ -17,6 +17,8 @@ import { pendingDice, scriptDice } from '../../instance/instance.ts';
  * MED-01, MED-02, MED-07, MED-08, MED-09, MED-10, MED-15.
  * Chirurgia na ranie krytycznej i wszczepy (MED-05, MED-06) mają testy serwera
  * i scenariusz T5b (Iskra) — tu Medyk z kreatora i jego Farmaceutyki.
+ * Od 71d1: „Wytwórz” czeka na zapis punktów (G40), partia proponuje MG godzinę
+ * zegara (G18); limit „raz dziennie” (G17) — `recovery.test.ts`.
  */
 
 const MED = ROLES.medtech;
@@ -98,6 +100,36 @@ test.describe.serial('@szybkie T71 Medyk — Medycyna', () => {
       pharmaId: 'pharma.turbo-uzdrawiacz',
     });
     expect(refused).toMatchObject({ ok: false });
+  });
+
+  test('G40 G18 „Wytwórz” zaraz po dołożeniu punktu czeka na zapis; „2 dawki” i godzina dla zegara MG', async () => {
+    const pharma = panel().locator('details', { hasText: 'Farmaceutyki — dostęp do' });
+    await panel()
+      .getByRole('button', {
+        name: 'Zdejmij punkt: Technologia Medyczna (Farmaceutyki)',
+        exact: true,
+      })
+      .click();
+    await expect.poll(() => sheet().medicine.pharma).toBe(1);
+    await expect(pharma.getByRole('button', { name: /^Wytwórz/ })).toHaveCount(1);
+
+    // Klik „Wytwórz” przy drugim środku tuż po „+”, zanim minie zwłoka
+    // autozapisu — do 71d1 serwer czytał kartę sprzed punktu i odmawiał.
+    await plus('Technologia Medyczna (Farmaceutyki)').click();
+    const since = lastMessageId();
+    scriptDice([8]);
+    await pharma
+      .locator('li')
+      .nth(1)
+      .getByRole('button', { name: /^Wytwórz/ })
+      .click();
+    const roll = await rollAfter(since, 'Technologia Medyczna');
+    expect(roll.outcome?.label, JSON.stringify(roll.outcome)).toBe('Wytworzone: 2 dawki');
+    // „W ciągu godziny” (s. 150) — propozycja zegara, nie automat.
+    expect(roll.clock).toMatchObject({ minutes: 60 });
+    expect(sheet().medicine.pharma).toBe(2);
+    expect(pendingDice()).toBe('');
+    expect(celina.unexpectedErrors()).toEqual([]);
   });
 
   test('MED-10 MED-15 dawka Antybiotyku podana sobie: tydzień leczenia, jedna dawka mniej', async () => {

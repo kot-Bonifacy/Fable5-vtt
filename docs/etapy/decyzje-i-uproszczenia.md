@@ -9,6 +9,51 @@ czytany na starcie każdej sesji został listą zadań, a nie archiwum ustaleń.
 inaczej, niż mówi podręcznik, albo gdy dotykasz wymienionego tu kodu. Jeśli któraś z tych decyzji
 przestanie się bronić, przenieś ją stąd do `POMYSLY.md` jako zadanie — nie odwrotnie.
 
+## Walka i leczenie po weryfikacji Ról (etap 71d1, 15.11.2026)
+
+Bramka MG z 15.11 (G12, G14–G18, G40, G41) — rozstrzygnięcia bez pytań:
+
+- **Prowizorka puszcza sama (G12, TEC-05)** — łata niesie terminy jak efekt czasowy
+  (`cpredStatEffectDeadlines`: runda trwającej walki i minuta zegara świata, wygasa
+  alternatywa) i zdejmują ją te same dwa przemiatania. Koniec łaty: OB sprzed niej, **a jeśli
+  pod łatą sztuka oberwała jeszcze niżej — niższe** („wraca do stanu, w którym był” nie oddaje
+  OB straconego po drodze); ten sam rachunek ma guzik „Koniec prowizorki”. Wiersz „Efekty
+  wygasły” mówi „Prowizorka puściła: …”. Łata sprzed 71d1 terminów nie ma i puszcza guzikiem.
+- **Skutki Ulepszania czyta VTT, stempel wpisuje dziś MG (G14–G16).** Test Technika
+  (Ulepszanie z PT, czasem i surowcami) to G13 w 71d2; do tego czasu stempel na przedmiocie
+  stawia MG menu „Ulepszenie…” przy wierszu (broń, Wyposażenie, wszczep bazowy) — jak „+1 OB”
+  przy pancerzu od 48c. Gracz go sobie nie wpisze (`ITEM_LOCKED`). Lista sposobów w menu to
+  `cpredUpgradesForTarget` — ta sama, którą zapyta Test w 71d2.
+- **Dodatkowe gniazdo** — broń dystansowa z gniazdami dostaje czwarte (sufit gniazd broni 4,
+  `CPRED_WEAPON_SLOTS_CEILING`; dodatek dalej zjada najwyżej 3), dek z wiersza Wyposażenia
+  podpina się z jednym więcej (stempel jedzie z dekiem przez podpięcie i odpięcie), wszczep
+  bazowy (cyberręka, cyberoko) dostaje gniazdo opcji raz, przy stemplu. „Nowe gniazdo musi być
+  tego samego rodzaju” — broń biała i egzotyczna nie dostają go tą drogą.
+- **Broń egzotyczna to dla VTT broń dystansowa, nie rzucana, z zerem gniazd w katalogu**
+  (miotacz ognia) — podręcznik nie ma znacznika „egzotyczna”, a s. 342 mówi, że tylko zwykła
+  broń ma trzy gniazda. „Gniazdo w broni egzotycznej” daje jej jedno. **Amunicja
+  niestandardowa w broni egzotycznej zostaje prozą** (stempel jest, rachunku nie ma — VTT nie
+  ma tabeli niestandardowych naboi do broni egzotycznej).
+- **Jakość Doskonała tylko ze Zwykłej** („ze Zwykłej na Doskonałą”) — broń Niskiej jakości
+  w menu jej nie ma. FAQ „także cyberbroń” — menu stoi przy wierszach broni z wpisem
+  Kompendium broni; cyberbroń, która takiego wiersza nie ma, ulepsza się przy stole.
+- **Broń do ukrycia** — jednoręczna, nieukrywalna staje się ukrywalna na karcie (s. 148); VTT
+  nie ma mechaniki ukrywania broni, więc to napis, nie reguła.
+- **UC wszczepu niższa o 1k6 (G16)** — stempel idzie na **znaleziony wszczep w Wyposażeniu**
+  (montaż „Znaleziony”, 48c), bo UC rzuca się raz, przy wszczepieniu. Tylko wpisy z UC w k6
+  od 2k6 wzwyż i nie borgizacje; 2k6 → 1k6, 4k6 → 3k6. Montaż bierze ulepszoną sztukę przed
+  zwykłą z tego samego wpisu. Wszczep kupowany „w pakiecie” u ripperdoka stempla nie ma —
+  Technik ulepsza rzecz, którą trzyma w ręku.
+- **„Raz dziennie” Turbo uzdrawiacza i Stymu (G17) było egzekwowane od 59b** — audyt 71a tego
+  nie zauważył; 71d1 dołożył test Turbo i asercję. Dawka ponad limit pustoszeje fiolkę bez
+  skutku (jak u Śmiertelnie Rannego).
+- **Czas zabiegu to propozycja zegara dla MG (G18)** — Łatanie minuta, Leczenie cztery godziny
+  na każdej karcie próby (także nieudanej: „każda próba zajmuje…”), partia farmaceutyków
+  godzina. Ta sama maszyna co naprawa w 71c2 (`RollResult.clock`, „⏩ Przesuń zegar o …”).
+  Łata rany „do końca dnia” dalej schodzi guzikiem — zegar jej nie zdejmuje (poza zakresem G18).
+- **„Wytwórz” czeka na zapis punktów (G40)** — klient wysyła zbuforowany zapis karty
+  i czeka na jego potwierdzenie (`characterSaved`, najwyżej 5 s), zanim poprosi o partię.
+
 ## Naprawa i montaż Technikiem (etap 71c2, 15.11.2026)
 
 Bramka MG z 15.11 (G10, G11, P5) — rozstrzygnięcia bez pytań:
@@ -774,6 +819,9 @@ Rozstrzygnięcia bez pytań z projektu etapu (nr 3, 5 i 6) i drobniejsze z sesji
   jako procedury. Menu z jednym skutkiem po cichu przepisałoby Rolę, więc lista jest pełna.
   *(Od 71c2, 15.11: także montaż ulepszenia auta z progu Moto 1 — Test Technika, wpis wyżej;
   czasy naprawy są — „Szybsza naprawa” połowi czas zwykłej naprawy.)*
+  *Dopisek 15.11.2026 (etap 71d1):* nieaktualne — VTT liczy siedem z dziesięciu (gniazdo,
+  gniazdo w broni egzotycznej, jakość Doskonała, do ukrycia, UC wszczepu, +1 OB, szybsza
+  naprawa); sekcja „Walka i leczenie po weryfikacji Ról” na górze pliku.
 
 - **Prowizorka nie ma odliczania (29.08, czwarta).** „Działa przez 10 minut na poziom" to sześćdziesiąt
   rund na poziom — dłużej, niż trwała którakolwiek walka w tym projekcie. Zegar, który nigdy nie
@@ -781,6 +829,8 @@ Rozstrzygnięcia bez pytań z projektu etapu (nr 3, 5 i 6) i drobniejsze z sesji
   gdy MG uzna, że prowizorka puściła. Ta sama umowa, którą 16h zawarła z efektami poza walką.
   *Dopisek 15.11.2026 (etap 71c0):* powód nieaktualny — zegar świata jest od etapu 37; odliczanie
   wchodzi w 71d1 (G12). Od 71c0 łata zakłada się Testem (sekcja „Błędy Ról z audytu”).
+  *Dopisek 15.11.2026 (etap 71d1):* odliczanie jest — łata puszcza sama z zegarem świata
+  i rundą walki (sekcja „Walka i leczenie po weryfikacji Ról”).
 
 - **Farmaceutyki i kriosystemy zostają prozą (29.08, czwarta).** Obie Specjalizacje dają liczbę do
   Umiejętności Technologia Medyczna i **listę rzeczy, których VTT nie modeluje**: dawek leków
@@ -913,6 +963,8 @@ to jest ten akapit do przeczytania na nowo.
   Rund w walce (16h), więc czas jedzie **prozą na karcie rzutu** — po nieudanym łataniu kafel mówi
   „można próbować dalej, każda próba to minuta", a resztę rozstrzyga stół. To samo dotyczy końca
   dnia, po którym łata puszcza: zdejmuje ją ⌫ przy chipie „załatana", nie zegar.
+  *Dopisek 15.11.2026 (etap 71d1, G18):* czas ma już kartę — każda próba proponuje MG
+  przesunięcie zegara (minuta / cztery godziny). Łatę „do końca dnia” dalej zdejmuje ⌫.
 
 - **Rana załatana zostaje na karcie (30.08).** „Łatanie niweluje efekt rany do końca dnia"
   (s. 223) — więc milkną **skutki**, nie wiersz: karta dalej mówi „Złamana noga", tylko jej efekt
@@ -1008,6 +1060,8 @@ to jest ten akapit do przeczytania na nowo.
   a wymyślanie doby na potrzeby jednego licznika byłoby zgadywaniem, którego przy stole nikt nie
   sprawdzi. Dzień odpoczynku jest **zdarzeniem**, nie punktem na osi czasu — i licznik antybiotyku
   odlicza właśnie dni odpoczynku, czyli te, w których miałby cokolwiek do roboty.
+  *Dopisek 15.11.2026 (etap 71d1):* nieaktualne od 59b — limit mierzy zegar świata (wpis
+  w sekcji „Narkotyki…”); 71d1 dołożył test Turbo uzdrawiacza.
 
 - **Który środek Medyk „wybrał" za dany punkt Farmaceutyków, VTT bierze z kolejności tabeli.**
   „Zawsze, gdy przydzielasz punkt do Farmaceutyków, zyskujesz dostęp do jednego z poniższych

@@ -4401,6 +4401,9 @@ export async function craftPharmaceutical(
   pharmaId: string,
   gesture?: RollGesture,
 ): Promise<void> {
+  // G40: punkt Farmaceutyków dołożony przed chwilą musi być w bazie, zanim
+  // serwer zapyta, do których środków Medyk sięga.
+  await characterSaved(characterId);
   const ack = await emitSceneAck<{ doses: number; balance: number }>('character:craft-pharma', {
     characterId,
     pharmaId,
@@ -4730,6 +4733,9 @@ export function queueCharacterSave(characterId: string, patch: CharacterPatch): 
   characterSaveBuffers.set(characterId, buffer);
 }
 
+/** Zapisy karty w drodze do serwera — `characterSaved` na nie czeka (etap 71d1, G40). */
+const characterSavesInFlight = new Map<string, Promise<void>>();
+
 /** Sends the buffered patch now (sheet close, tab switch, page hide). */
 export function flushCharacterSave(characterId: string): void {
   const buffer = characterSaveBuffers.get(characterId);
@@ -4743,21 +4749,53 @@ export function flushCharacterSave(characterId: string): void {
     store.endSave(characterId, null, false, 'OFFLINE');
     return;
   }
-  socket.emit(
-    'character:update',
-    { characterId, patch: buffer.patch },
-    (ack: SocketAck<CharacterView>) => {
-      useCharacterStore
-        .getState()
-        .endSave(
-          characterId,
-          ack.ok ? (ack.data ?? null) : null,
-          ack.ok,
-          ack.ok ? undefined : ack.error,
-        );
-    },
-  );
+  const current = socket;
+  const previous = characterSavesInFlight.get(characterId) ?? Promise.resolve();
+  const saved = new Promise<void>((resolve) => {
+    current.emit(
+      'character:update',
+      { characterId, patch: buffer.patch },
+      (ack: SocketAck<CharacterView>) => {
+        useCharacterStore
+          .getState()
+          .endSave(
+            characterId,
+            ack.ok ? (ack.data ?? null) : null,
+            ack.ok,
+            ack.ok ? undefined : ack.error,
+          );
+        resolve();
+      },
+    );
+  });
+  const chained = Promise.all([previous, saved]).then(() => undefined);
+  characterSavesInFlight.set(characterId, chained);
+  void chained.then(() => {
+    if (characterSavesInFlight.get(characterId) === chained) {
+      characterSavesInFlight.delete(characterId);
+    }
+  });
 }
+
+/**
+ * Wysyła zbuforowany zapis karty i czeka, aż serwer go potwierdzi (etap 71d1,
+ * G40). Dla czynności, które serwer rozstrzyga z karty **zapisanej** —
+ * „Wytwórz” tuż po dołożeniu punktu Farmaceutyków dostawał odmowę, bo
+ * zdarzenie wyprzedzało `character:update` (dwa handlery serwera nie czekają
+ * na siebie). Potwierdzenie, które nie przyjdzie (rozłączenie), nie trzyma
+ * czynności dłużej niż `CHARACTER_SAVE_WAIT_MS` — serwer i tak odpowie odmową.
+ */
+export async function characterSaved(characterId: string): Promise<void> {
+  flushCharacterSave(characterId);
+  const pending = characterSavesInFlight.get(characterId);
+  if (!pending) return;
+  await Promise.race([
+    pending,
+    new Promise<void>((resolve) => window.setTimeout(resolve, CHARACTER_SAVE_WAIT_MS)),
+  ]);
+}
+
+const CHARACTER_SAVE_WAIT_MS = 5000;
 
 let lastMoveSentAt = 0;
 

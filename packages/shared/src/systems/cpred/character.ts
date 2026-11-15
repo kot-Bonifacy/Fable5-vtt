@@ -582,8 +582,11 @@ export interface CpredWeaponRow extends CpredItemRow {
 /** Rounds a magazine may hold on the sheet — the compendium's own cap. */
 export const WEAPON_AMMO_MAX = 500;
 
-/** Attachments one weapon row may carry — the rulebook's three slots. */
-export const WEAPON_ATTACHMENTS_MAX = 3;
+/**
+ * Attachments one weapon row may carry — the rulebook's three slots, plus the
+ * one a Technik's Ulepszanie adds (etap 71d1, `CPRED_WEAPON_SLOTS_CEILING`).
+ */
+export const WEAPON_ATTACHMENTS_MAX = 4;
 
 /**
  * Ile rąk ma postać (etap 41) — dwie, i to jest cały model.
@@ -612,8 +615,17 @@ export interface CpredArmorRow extends CpredItemRow {
    * „Prowizorka" holding this piece together (s. 147, stage 30b): what its
    * ablated SP was before the Technik patched it, so the button that ends the
    * bodge knows where to put it back. Absent on every piece nobody bodged.
+   *
+   * Od etapu 71d1 (G12) łata niesie terminy jak efekt czasowy — rundę
+   * trwającej walki i minutę zegara świata — i puszcza sama
+   * (`cpredFieldRepairExpired`). Łata sprzed 71d1 ich nie ma.
    */
-  fieldRepair?: { restoredFrom: number; minutes: number };
+  fieldRepair?: {
+    restoredFrom: number;
+    minutes: number;
+    expiresAtRound?: number;
+    expiresAtMinute?: number;
+  };
   /**
    * Prowizorka już raz puściła (etap 71c0, TEC-06): „nie można go ponownie
    * tymczasowo naprawić, dopóki nie zostanie zupełnie naprawiony w zwykły
@@ -767,6 +779,13 @@ export interface CpredCriticalInjuryRow {
  * evaluation time. `treatment.ts` re-exports both for its own readers.
  */
 export type CpredCareMode = 'quickFix' | 'treatment';
+
+/**
+ * „Każda próba Łatania zajmuje minutę”, „każda próba Leczenia zajmuje cztery
+ * godziny” (s. 223) — od etapu 71d1 (G18) propozycja zegara na karcie rzutu.
+ */
+export const CPRED_QUICK_FIX_MINUTES = 1;
+export const CPRED_TREATMENT_MINUTES = 4 * 60;
 
 export const CPRED_CARE_MODE_LABELS: Record<CpredCareMode, string> = {
   quickFix: 'Łatanie',
@@ -1343,6 +1362,12 @@ export interface CpredCyberdeck {
   name: string;
   slots: number;
   installed: CpredNetInstallRow[];
+  /**
+   * Ulepszanie Technika, które dek niesie z wiersza Wyposażenia (etap 71d1) —
+   * jedzie z nim przez podpięcie i odpięcie; „Dodatkowe gniazdo” jest już
+   * policzone w `slots`.
+   */
+  upgrade?: string;
 }
 
 /** What kind of thing occupies a deck slot. */
@@ -2228,7 +2253,14 @@ function collectCharacterDataPatch(
           return undefined;
         }
       }
-      const bodge = row.fieldRepair as { restoredFrom?: unknown; minutes?: unknown } | undefined;
+      const bodge = row.fieldRepair as
+        | {
+            restoredFrom?: unknown;
+            minutes?: unknown;
+            expiresAtRound?: unknown;
+            expiresAtMinute?: unknown;
+          }
+        | undefined;
       return {
         ...base,
         sp,
@@ -2239,7 +2271,18 @@ function collectCharacterDataPatch(
         bodge.restoredFrom <= ARMOR_SP_MAX &&
         isInteger(bodge.minutes) &&
         bodge.minutes > 0
-          ? { fieldRepair: { restoredFrom: bodge.restoredFrom, minutes: bodge.minutes } }
+          ? {
+              fieldRepair: {
+                restoredFrom: bodge.restoredFrom,
+                minutes: bodge.minutes,
+                ...(isInteger(bodge.expiresAtRound) && bodge.expiresAtRound >= 0
+                  ? { expiresAtRound: bodge.expiresAtRound }
+                  : {}),
+                ...(isInteger(bodge.expiresAtMinute) && bodge.expiresAtMinute >= 0
+                  ? { expiresAtMinute: bodge.expiresAtMinute }
+                  : {}),
+              },
+            }
           : {}),
         ...(row.fieldRepairSpent === true ? { fieldRepairSpent: true as const } : {}),
         location,
@@ -2601,6 +2644,9 @@ function validateCyberdeck(
     name,
     slots,
     installed,
+    ...(typeof input.upgrade === 'string' && cpredItemUpgrade(input.upgrade)
+      ? { upgrade: input.upgrade }
+      : {}),
   };
   // The one hard rule of the deck: „dek nie pomieści wszystkiego" (s. 208).
   if (cyberdeckSlotsUsed(deck) > slots) {

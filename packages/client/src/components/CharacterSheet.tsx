@@ -158,6 +158,7 @@ import {
   monthlyCostOf,
   purchasedSheetRow,
   resolveWeapon,
+  cpredUpgradedWeapon,
   cpredDrawnWeapons,
   cpredGrenadesOutsideHands,
   cpredWeaponOutsideHands,
@@ -245,6 +246,7 @@ import { PortraitPicker } from './PortraitPicker.js';
 import { PortraitCropButton } from './PortraitCropEditor.js';
 import { useAttackStore } from '../stores/attackStore.js';
 import { useCompendiumStore } from '../stores/compendiumStore.js';
+import { ItemUpgrade } from './ItemUpgrade.js';
 import { MerchantSection } from './exchange/MerchantSection.js';
 import { openExchangeForCard } from './exchange/open.js';
 import { MapDropHandle } from './exchange/map-drop-item.js';
@@ -2027,7 +2029,11 @@ function WeaponStrip({
   function resolvedOf(row: CpredWeaponRow): ResolvedWeapon | null {
     const entry = row.compendiumId ? entries[row.compendiumId] : undefined;
     if (!entry || !isWeaponEntry(entry)) return null;
-    return resolveWeapon(entry, { weaponTypeById: new Map(Object.entries(weaponTypeById)) });
+    // Etap 71d1: gniazdo i jakość z Ulepszania Technika — tak, jak liczy serwer.
+    return cpredUpgradedWeapon(
+      resolveWeapon(entry, { weaponTypeById: new Map(Object.entries(weaponTypeById)) }),
+      row.upgrade,
+    );
   }
 
   /**
@@ -2313,6 +2319,22 @@ function WeaponStrip({
                         row={row}
                         resolved={resolved}
                         gear={data.gear}
+                      />
+                    )}
+                    {/* Etap 71d1: Ulepszanie Technika — plakietka, u MG menu. */}
+                    {!innate && (
+                      <ItemUpgrade<CpredWeaponRow>
+                        subject={{ kind: 'weapon', row, resolved }}
+                        onStamp={(next) =>
+                          saveData(
+                            {
+                              weapons: latestData(character.id, data).weapons.map((entry) =>
+                                entry.id === next.id ? next : entry,
+                              ),
+                            },
+                            'weapons',
+                          )
+                        }
                       />
                     )}
                   </td>
@@ -2885,7 +2907,12 @@ function ArmorStrip({
                         <button
                           type="button"
                           className="small-button"
-                          title={`Prowizorka na ${row.fieldRepair.minutes} min — kliknij, gdy puści (OB wraca do ${row.fieldRepair.restoredFrom})`}
+                          title={
+                            row.fieldRepair.expiresAtMinute !== undefined
+                              ? // Etap 71d1 (G12): łata puszcza sama z zegarem.
+                                `Prowizorka na ${row.fieldRepair.minutes} min — puści sama, gdy minie ten czas (OB wraca do ${row.fieldRepair.restoredFrom}). Kliknij, jeśli puściła wcześniej.`
+                              : `Prowizorka na ${row.fieldRepair.minutes} min — kliknij, gdy puści (OB wraca do ${row.fieldRepair.restoredFrom})`
+                          }
                           onClick={() => void endFieldRepair(character.id, row.id)}
                         >
                           Koniec prowizorki
@@ -3909,6 +3936,7 @@ function GearTab({ character, data, saveData }: TabProps & { character: Characte
   const isGm = useAuthStore((s) => s.user?.role === ROLE_GM);
   const { startRoll } = useStartRoll(character, data);
   const rowIcon = useRowIcon();
+  const compendiumEntries = useCompendiumStore((s) => s.entries);
   return (
     <div className="sheet-gear">
       {/* Bez osobnej belki tytułowej — na wydruku tytułem tego bloku jest sam
@@ -4017,7 +4045,32 @@ function GearTab({ character, data, saveData }: TabProps & { character: Characte
             );
           }}
           below={(row) => (
-            <GearLightHands row={row} data={data} saveData={saveData} characterId={character.id} />
+            <>
+              <GearLightHands
+                row={row}
+                data={data}
+                saveData={saveData}
+                characterId={character.id}
+              />
+              {/* Etap 71d1: dek (gniazdo) i znaleziony wszczep (UC −1k6). */}
+              <ItemUpgrade<CpredGearRow>
+                subject={{
+                  kind: 'gear',
+                  row,
+                  entry: row.compendiumId ? compendiumEntries[row.compendiumId] : undefined,
+                }}
+                onStamp={(next) =>
+                  saveData(
+                    {
+                      gear: latestData(character.id, data).gear.map((entry) =>
+                        entry.id === next.id ? next : entry,
+                      ),
+                    },
+                    'gear',
+                  )
+                }
+              />
+            </>
           )}
         />
 
@@ -5179,6 +5232,20 @@ function CyberwareSection({
                         canNameChip={isGm || row.skillId === undefined}
                         skills={registry.skills}
                         onChipSkill={(skillId) => updateChipSkill(row.id, skillId)}
+                      />
+                      {/* Etap 71d1: „Dodatkowe gniazdo” wszczepu bazowego (s. 148). */}
+                      <ItemUpgrade<CpredCyberwareRow>
+                        subject={{ kind: 'cyberware', row }}
+                        onStamp={(next) =>
+                          saveData(
+                            {
+                              cyberware: latestData(characterId, data).cyberware.map((entry) =>
+                                entry.id === next.id ? next : entry,
+                              ),
+                            },
+                            'cyberware',
+                          )
+                        }
                       />
                     </td>
                     <td className="cyberware-family">

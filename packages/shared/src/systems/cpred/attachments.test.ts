@@ -139,8 +139,9 @@ describe('slots', () => {
     expect(attachmentMountProblem(SMARTGUN, rifle(), [BAYONET, SCOPE])).toBe('ATTACHMENT_NO_SLOTS');
   });
 
-  it('never lets a weapon claim more than the rulebook’s three', () => {
-    expect(attachmentSlotsFree(rifle({ attachmentSlots: 9 }), [])).toBe(3);
+  it('never lets a weapon claim more than three slots and the Technik’s fourth', () => {
+    // Etap 71d1: „Dodatkowe gniazdo” z Ulepszania (s. 148) to czwarte gniazdo.
+    expect(attachmentSlotsFree(rifle({ attachmentSlots: 9 }), [])).toBe(4);
   });
 });
 

@@ -15,6 +15,7 @@ import type {
 import {
   cpredEffectiveStats,
   cpredGearRowOfEntry,
+  cpredUpgradedHumanityLoss,
   cpredTakeOneGear,
   CYBERWARE_INSTALL_COST,
   CYBERWARE_INSTALL_DV,
@@ -90,8 +91,11 @@ function nextRowId(): string {
 function rollHumanityLoss(
   entry: CyberwareEntry,
   entropy: string | undefined,
-): { loss: number; result: RollResult; notation: string } {
-  const notation = entry.humanityLoss ?? String(entry.humanityLossFixed ?? 0);
+  upgrade?: string,
+): { loss: number; result: RollResult; notation: string; reduced: boolean } {
+  // Etap 71d1 (G16): „Łagodniejsza cyborgizacja” Technika zdejmuje 1k6 (s. 148).
+  const upgraded = cpredUpgradedHumanityLoss(entry, upgrade);
+  const notation = upgraded.notation ?? String(entry.humanityLossFixed ?? 0);
   const parsed = parseRollNotation(notation);
   if (!parsed.ok) throw new RealtimeError('BAD_NOTATION');
   const formula: RollFormula = parsed.formula;
@@ -100,6 +104,7 @@ function rollHumanityLoss(
     loss: resolveHumanityLoss(result.total, entry.humanityLossHalved === true),
     result,
     notation,
+    reduced: upgraded.reduced,
   };
 }
 
@@ -494,11 +499,18 @@ export async function performInstall(
   },
 ): Promise<{ messageId: number; failed: boolean }> {
   const { entry, surgeon, bill, gesture, refusal } = input;
+  /** Stempel Ulepszania ze znalezionej sztuki (etap 71d1) — czytany przy UC. */
+  let upgrade: string | undefined;
   if (input.fromGear) {
-    const found = cpredGearRowOfEntry(data.gear, entry.id);
+    // Ulepszona sztuka idzie pierwsza: gracz, który zapłacił Technikowi,
+    // nie wszczepia przez pomyłkę drugiej, zwykłej z tego samego stosu.
+    const found =
+      data.gear.find((row) => row.compendiumId === entry.id && row.upgrade === 'humanity') ??
+      cpredGearRowOfEntry(data.gear, entry.id);
     const taken = found ? cpredTakeOneGear(data, found.id) : null;
     if (!taken) throw new RealtimeError('CYBERWARE_NOT_IN_GEAR');
     data = taken.data;
+    upgrade = found?.upgrade;
   }
   if (surgeon) {
     const failed = await rollSurgery(deps, campaignId, user, character, data, {
@@ -515,7 +527,7 @@ export async function performInstall(
     }
   }
 
-  const { loss, result, notation } = rollHumanityLoss(entry, gesture?.entropy);
+  const { loss, result, notation, reduced } = rollHumanityLoss(entry, gesture?.entropy, upgrade);
   const row: CpredCyberwareRow = {
     id: nextRowId(),
     name: entry.name,
@@ -550,6 +562,7 @@ export async function performInstall(
     label: loss > 0 ? `−${loss} Człowieczeństwa` : 'Bez utraty Człowieczeństwa',
     detail:
       (entry.type ? `${CYBERWARE_TYPE_LABELS[entry.type]} · ` : '') +
+      (reduced ? `Łagodniejsza cyborgizacja: ${entry.humanityLoss} → ${notation} · ` : '') +
       (entry.humanityLossHalved === true ? `${notation} / 2 w górę · ` : '') +
       (bill.cost > 0 ? `${formatEddies(bill.cost)} ed · ` : '') +
       // Odmowa, przez którą MG przeszedł, zostaje na karcie — inaczej jedynym

@@ -42,6 +42,8 @@ import {
   cpredSheetLight,
   cpredExpireStatEffects,
   cpredStatEffectExpired,
+  cpredFieldRepairEnded,
+  cpredFieldRepairExpired,
   cpredEffectiveStats,
   cpredSheetCombatAwareness,
   cpredSheetInitiative,
@@ -895,6 +897,8 @@ export function expireSheetStatEffects(
   doses: CpredActiveDose[];
   /** Ostrza, z których zeszła trucizna (etap 59b). */
   coatings: CpredBladeCoating[];
+  /** Nazwy sztuk pancerza, z których puściła Prowizorka (etap 71d1, G12). */
+  patches: string[];
 } | null {
   const data = parseCharacterData(character.data, registry);
   // Stym (12.09.2026) schodzi tym samym przemiataniem i tą samą funkcją terminu
@@ -907,11 +911,26 @@ export function expireSheetStatEffects(
   const doses = data.chems.doses.filter((dose) => cpredStatEffectExpired(dose, clock));
   const coatings = data.chems.coatings.filter((row) => cpredStatEffectExpired(row, clock));
   const { kept, expired } = cpredExpireStatEffects(data.statEffects, clock);
-  if (expired.length === 0 && suspension === null && doses.length === 0 && coatings.length === 0) {
+  // Etap 71d1 (G12): Prowizorka puszcza sama — te same dwa zegary.
+  const patched = data.armor.filter((row) => cpredFieldRepairExpired(row, clock));
+  if (
+    expired.length === 0 &&
+    suspension === null &&
+    doses.length === 0 &&
+    coatings.length === 0 &&
+    patched.length === 0
+  ) {
     return null;
   }
   const merged = mergeCharacterData(data, {
     statEffects: kept,
+    ...(patched.length > 0
+      ? {
+          armor: data.armor.map((row) =>
+            patched.includes(row) ? cpredFieldRepairEnded(row) : row,
+          ),
+        }
+      : {}),
     ...(suspension !== null ? { woundSuspension: null } : {}),
     ...(doses.length > 0 || coatings.length > 0
       ? {
@@ -923,7 +942,14 @@ export function expireSheetStatEffects(
         }
       : {}),
   });
-  return { data: JSON.stringify(merged), expired, suspension, doses, coatings };
+  return {
+    data: JSON.stringify(merged),
+    expired,
+    suspension,
+    doses,
+    coatings,
+    patches: patched.map((row) => row.name),
+  };
 }
 
 /**

@@ -370,6 +370,60 @@ describe('cyborgizacje i człowieczeństwo', () => {
     });
   });
 
+  it('etap 71d1: „Łagodniejsza cyborgizacja” Technika zdejmuje 1k6 z UC przy montażu', async () => {
+    const before = await sheetOf(gm, characterId);
+    const plain = {
+      id: 'eye-plain',
+      name: 'Cyberoko',
+      notes: '',
+      compendiumId: 'cyberware.oko-przykladowe',
+      qty: 1,
+    };
+    // Stempel jest mechaniką wiersza — gracz go sobie nie dopisze (48c).
+    expect(
+      await emitAck(vex, 'character:update', {
+        characterId,
+        patch: { data: { gear: [...before.gear, { ...plain, upgrade: 'humanity' }] } },
+      }),
+    ).toEqual({ ok: false, error: 'ITEM_LOCKED' });
+    // MG: zwykłe oko i ulepszone obok siebie — dwa osobne wiersze, nie stos.
+    await emitAck(gm, 'character:update', {
+      characterId,
+      patch: {
+        data: {
+          gear: [...before.gear, plain, { ...plain, id: 'eye-soft', upgrade: 'humanity' }],
+        },
+      },
+    });
+    const card = waitFor<ChatMessageBroadcast>(gm, 'chat:message');
+    const ack = await emitAck<{ messageId: number }>(gm, 'character:cyberware', {
+      characterId,
+      action: 'install',
+      entryId: 'cyberware.oko-przykladowe',
+      payment: 'installOnly',
+    });
+    expect(ack.ok).toBe(true);
+    const roll = (await card).message.roll;
+    // 2k6 → 1k6: jedna kość, a montaż wziął ulepszoną sztukę, nie pierwszą z brzegu.
+    expect(roll?.notation).toBe('1d6');
+    expect(roll?.outcome?.detail).toContain('Łagodniejsza cyborgizacja: 2k6 → 1k6');
+    const after = await sheetOf(gm, characterId);
+    expect(after.gear.some((row) => row.id === 'eye-soft')).toBe(false);
+    expect(after.gear.some((row) => row.id === 'eye-plain')).toBe(true);
+    // Sprzątanie: dalsze testy liczą wszczepy i saldo od stanu sprzed.
+    await emitAck(gm, 'character:update', {
+      characterId,
+      patch: {
+        data: {
+          gear: before.gear,
+          cyberware: before.cyberware,
+          eddies: before.eddies,
+          humanityCurrent: before.humanityCurrent,
+        },
+      },
+    });
+  });
+
   it('borgizacja kosztuje sufit podwójnie', async () => {
     const before = await sheetOf(vex, characterId);
     const beforeCeiling =

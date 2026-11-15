@@ -139,6 +139,45 @@ export function cpredArmorRepairTask(
   };
 }
 
+/**
+ * Czy łata Prowizorki puściła (etap 71d1, G12): „Prowizorka działa przez 10
+ * minut na poziom tej Specjalizacji” (s. 147). Terminy stawia serwer przy
+ * udanym Teście tą samą `cpredStatEffectDeadlines`, co efektom na Cechach —
+ * rundowy w trwającej walce i światowy zawsze — i wygasa **alternatywa**, jak
+ * tam. Łata sprzed 71d1 terminów nie ma i puszcza tylko guzikiem.
+ */
+export function cpredFieldRepairExpired(
+  row: Pick<CpredArmorRow, 'fieldRepair'>,
+  clock: { round: number | null; minutes: number | null },
+): boolean {
+  const patch = row.fieldRepair;
+  if (!patch) return false;
+  if (patch.expiresAtRound !== undefined && clock.round !== null) {
+    if (clock.round >= patch.expiresAtRound) return true;
+  }
+  return (
+    patch.expiresAtMinute !== undefined &&
+    clock.minutes !== null &&
+    clock.minutes >= patch.expiresAtMinute
+  );
+}
+
+/**
+ * Koniec Prowizorki: „przedmiot wraca do stanu, w którym był” (s. 147) — OB
+ * sprzed łaty, a jeśli pod łatą sztuka oberwała jeszcze niżej, to niższe;
+ * ślad zużytej łaty (`fieldRepairSpent`, #86) czeka na pełną naprawę. Ta sama
+ * funkcja dla guzika „Koniec prowizorki” i dla zegara.
+ */
+export function cpredFieldRepairEnded(row: CpredArmorRow): CpredArmorRow {
+  if (!row.fieldRepair) return row;
+  const { fieldRepair, ...rest } = row;
+  return {
+    ...rest,
+    spCurrent: Math.min(fieldRepair.restoredFrom, row.spCurrent, row.sp),
+    fieldRepairSpent: true as const,
+  };
+}
+
 /** Sztuka po zwykłej naprawie: pełne OB, bez łaty (ślad zużytej łaty zdejmuje czytnik karty). */
 export function cpredArmorRepaired(row: CpredArmorRow): CpredArmorRow {
   const { fieldRepair: _patch, fieldRepairSpent: _spent, ...rest } = row;

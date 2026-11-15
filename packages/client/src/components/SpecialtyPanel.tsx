@@ -259,14 +259,12 @@ function MedicineExtras({
 }
 
 /**
- * To, czego Twórca nie liczy sam: dziesięć skutków Ulepszania z s. 148 i
- * tabela PT/czasu z tej samej strony.
+ * Dziesięć skutków Ulepszania z s. 148 i tabela PT/czasu z tej samej strony.
  *
- * Wypisujemy **wszystkie dziesięć**, choć VTT umie policzyć jeden (+1 OB, guzik
- * ⊕ przy pancerzu). Technik wybiera z dziesięciu, więc menu z jednym po cichu
- * przepisałoby Rolę — a każdy z pozostałych dziewięciu stoi na maszynerii,
- * której projekt nie ma (gniazda dodatków to etap 31, jakości broni nic nie
- * czyta, pojazdów nie ma). Zapisane w `decyzje-i-uproszczenia.md`.
+ * Wypisujemy **wszystkie dziesięć**; przy tych, które VTT liczy samo (od 71d1:
+ * gniazdo, jakość, do ukrycia, UC, +1 OB, szybsza naprawa), stoi dopisek
+ * `vtt`. Stempel na przedmiocie wpisuje dziś MG („Ulepszenie…” przy wierszu);
+ * Test Technika dochodzi w 71d2. Zapisane w `decyzje-i-uproszczenia.md`.
  *
  * Od etapu 71c2 nad listą stoją roboty drużyny: zwykła naprawa pancerza i auta
  * oraz montaż ulepszenia auta z progu Moto 1 — oba Testem przez kubek.
@@ -282,7 +280,7 @@ function FabricationExtras({ characterId }: { characterId: string }) {
           {CPRED_ITEM_UPGRADES.map((upgrade) => (
             <li key={upgrade.id}>
               <b>{upgrade.name}</b> — {upgrade.text}
-              {upgrade.effect ? ' (VTT liczy to samo: MG klika ⊕ przy pancerzu)' : ''}
+              {upgrade.vtt ? ` (VTT: ${upgrade.vtt})` : ''}
               {upgrade.id === 'vehicleMod' ? ' (VTT: „Zamontuj” w robotach drużyny wyżej)' : ''}
             </li>
           ))}

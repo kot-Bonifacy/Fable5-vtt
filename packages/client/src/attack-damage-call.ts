@@ -24,6 +24,8 @@ interface AttackSystem {
   weaponName?: string;
   attackerTokenId?: string;
   operatorUserId?: string;
+  /** Wykrycie słabości Solo, gdy ten Atak je zarobił (pierwszy udany w Rundzie). */
+  weakSpot?: number;
 }
 
 /**
@@ -122,7 +124,11 @@ export function damageRollFor(
     // to id jest całym żądaniem.
     request: { kind: 'damage', weaponRowId: system.weaponRowId, attackMessageId: messageId },
     visibility: 'public',
-    title: `${system.weaponName ?? 'Broń'} — obrażenia ${dice}`,
+    // G41 (71d1): premia Wykrycia słabości stoi na kubku, a nie tylko na
+    // karcie po rzucie — gracz ma wiedzieć, czym rzuca.
+    title: `${system.weaponName ?? 'Broń'} — obrażenia ${dice}${
+      system.weakSpot ? ` +${system.weakSpot} Wykrycie słabości` : ''
+    }`,
     modifierTotal: 0,
   };
 }

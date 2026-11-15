@@ -250,12 +250,17 @@ async function expireOne(
   // Etap 59c: koniec dawki to rzut na uzależnienie — prywatnie, nie w wierszu
   // „Efekty wygasły”, który czyta cały stół.
   saved = await settleExpiredChems(deps, campaignId, saved, result.doses, result.coatings);
-  return { character: saved, expired: result.expired, suspension: result.suspension };
+  return {
+    character: saved,
+    expired: result.expired,
+    suspension: result.suspension,
+    patches: result.patches,
+  };
 }
 
-/** Czy przemiatanie zdjęło coś, o czym mówi publiczny wiersz (efekt albo Stym). */
+/** Czy przemiatanie zdjęło coś, o czym mówi publiczny wiersz (efekt, Stym, łata). */
 function isPublicSweep(row: SweptSheet): boolean {
-  return row.expired.length > 0 || row.suspension !== null;
+  return row.expired.length > 0 || row.suspension !== null || row.patches.length > 0;
 }
 
 /** Karta, z której przemiatanie coś zdjęło. */
@@ -264,6 +269,8 @@ interface SweptSheet {
   expired: CpredStatEffect[];
   /** Stym, któremu minął termin (12.09.2026); `null`, gdy trwa albo go nie było. */
   suspension: CpredWoundSuspension | null;
+  /** Pancerz, z którego puściła Prowizorka (etap 71d1) — OB wraca do stanu sprzed łaty. */
+  patches: string[];
 }
 
 /**
@@ -291,6 +298,7 @@ async function logStatEffects(
       .map((row) => {
         const parts = row.expired.map(describeCpredStatEffect);
         if (row.suspension) parts.push(describeCpredWoundSuspension(row.suspension));
+        for (const name of row.patches) parts.push(`Prowizorka puściła: ${name}`);
         return `${row.character.name} — ${parts.join(', ')}`;
       })
       .join(' · '),

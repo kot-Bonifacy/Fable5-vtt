@@ -58,6 +58,7 @@ import {
   ammoOffersSecondRoll,
   ammoProfilesOf,
   attachmentMountProblem,
+  cpredUpgradedWeapon,
   attachmentProfilesOf,
   attachmentSlotsFree,
   barrierArmorAlong,
@@ -289,7 +290,8 @@ async function resolveWeaponRow(
   const entry = compendium.entries.find((candidate) => candidate.id === row.compendiumId);
   if (!entry || !isWeaponEntry(entry)) return bare;
   const weaponTypeById = new Map(compendium.weaponTypes.map((type) => [type.id, type]));
-  const resolved = resolveWeapon(entry, { weaponTypeById });
+  // Etap 71d1: gniazdo, jakość Doskonała i „do ukrycia” z Ulepszania Technika.
+  const resolved = cpredUpgradedWeapon(resolveWeapon(entry, { weaponTypeById }), row.upgrade);
   const attachments = fittedAttachmentsFor(
     row.attachmentIds,
     attachmentProfilesOf(compendium.entries),
@@ -2781,7 +2783,8 @@ export const weaponAttachmentEvent = defineEvent<WeaponAttachmentPayload, Weapon
     // The same refusal a hand-typed row gets when it tries to shoot: without a
     // catalogue entry there is no weapon to bolt anything to.
     if (!entry || !isWeaponEntry(entry)) throw new RealtimeError('UNKNOWN_WEAPON');
-    const resolved = resolveWeapon(entry, { weaponTypeById });
+    // Etap 71d1: „Dodatkowe gniazdo” Technika to czwarte gniazdo tej broni.
+    const resolved = cpredUpgradedWeapon(resolveWeapon(entry, { weaponTypeById }), row.upgrade);
     const catalogue = attachmentProfilesOf(compendium.entries);
     const fitted = fittedAttachmentsFor(row.attachmentIds, catalogue, resolved);
 
