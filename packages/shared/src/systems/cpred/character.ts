@@ -614,6 +614,14 @@ export interface CpredArmorRow extends CpredItemRow {
    * bodge knows where to put it back. Absent on every piece nobody bodged.
    */
   fieldRepair?: { restoredFrom: number; minutes: number };
+  /**
+   * Prowizorka już raz puściła (etap 71c0, TEC-06): „nie można go ponownie
+   * tymczasowo naprawić, dopóki nie zostanie zupełnie naprawiony w zwykły
+   * sposób” (s. 147). Znacznik znika sam, gdy bieżące OB wróci do pełnego —
+   * to jest „zupełna naprawa” (↻ MG, a od 71c2 Test naprawy) — w czytniku
+   * karty, więc żadna ścieżka zapisu nie musi o nim pamiętać.
+   */
+  fieldRepairSpent?: true;
   /** Where it is worn — decides which hit it stops (stage 15). */
   location: ArmorLocation;
   /** Carried but not worn armor protects nothing; absent means worn. */
@@ -2217,6 +2225,7 @@ function collectCharacterDataPatch(
         bodge.minutes > 0
           ? { fieldRepair: { restoredFrom: bodge.restoredFrom, minutes: bodge.minutes } }
           : {}),
+        ...(row.fieldRepairSpent === true ? { fieldRepairSpent: true as const } : {}),
         location,
         ...(row.equipped === false ? { equipped: false } : {}),
         ...(isInteger(penalty) && penalty < 0 ? { penalty } : {}),
@@ -2617,6 +2626,19 @@ export function validateCharacterDataPatch(
 }
 
 /**
+ * Wiersz pancerza po zapisie: OB bieżące nie ponad pełne, a ślad zużytej
+ * Prowizorki (`fieldRepairSpent`) schodzi, gdy sztuka znów ma pełne OB i nie
+ * trzyma jej łata — to jest pełna naprawa z s. 147 (etap 71c0).
+ */
+export function cpredSettledArmorRow(row: CpredArmorRow): CpredArmorRow {
+  const spCurrent = Math.min(row.spCurrent, row.sp);
+  const repaired = row.fieldRepairSpent === true && !row.fieldRepair && spCurrent >= row.sp;
+  if (spCurrent === row.spCurrent && !repaired) return row;
+  const { fieldRepairSpent: _spent, ...rest } = row;
+  return { ...(repaired ? rest : row), spCurrent };
+}
+
+/**
  * Clamps stat-dependent pools after a merge: changing BC/SW/SZ/EMP must never
  * leave current HP, luck or humanity above their recomputed maximums.
  */
@@ -2640,7 +2662,9 @@ export function normalizeCharacterData(data: CpredCharacterData): CpredCharacter
     // Etap 47b: Bijatyka (i Sztuki walki z Umiejętnością) z urzędu, na końcu listy.
     ...cpredWithBareHands(data),
     // Ablation can never leave a piece of armor above its undamaged SP.
-    armor: data.armor.map((row) => (row.spCurrent > row.sp ? { ...row, spCurrent: row.sp } : row)),
+    // Etap 71c0: pełne OB bez trwającej łaty to „zupełna naprawa” (s. 147) —
+    // ślad zużytej Prowizorki schodzi tu, przy każdym zapisie i odczycie.
+    armor: data.armor.map((row) => cpredSettledArmorRow(row)),
     // Zasada domowa MG z 23.10.2026: kule, śrut i strzały się nie kończą, więc
     // ich pudełek nie ma w ekwipunku — te sprzed zmiany znikają przy odczycie
     // (także z kopii i półek handlarzy, bo półka to ekwipunek karty).

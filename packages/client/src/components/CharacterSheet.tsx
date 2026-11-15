@@ -214,7 +214,6 @@ import {
   endFieldRepair,
   fetchLedger,
   flushCharacterSave,
-  makeFieldRepair,
   queueCharacterSave,
   restForADay,
   useDose,
@@ -257,6 +256,7 @@ import {
 } from '../stores/characterStore.js';
 import {
   loadDeathSaveCup,
+  loadFieldRepairCup,
   quickLoadCup,
   useRollStore,
   type RollTarget,
@@ -2757,11 +2757,9 @@ function ArmorStrip({
   const registry = useCharacterStore((s) => s.registry);
   const rowIcon = useRowIcon();
   const askRemoval = useAskRemoval();
-  const tokens = useTokenStore((s) => s.tokens);
   // Poziom Specjalizacji Naprawa decyduje, czy „Prowizorka" ma się w ogóle
-  // pokazać; figura na scenie — kto płaci za nią Akcję, gdy trwa walka.
+  // pokazać. Akcję w walce bierze serwer od figury tej karty (71c0, #84).
   const repair = cpredSheetFabrication(data, registry).repair;
-  const ownToken = Object.values(tokens).find((token) => token.characterId === character.id);
 
   function write(rows: CpredArmorRow[]) {
     saveData({ armor: rows }, 'armor');
@@ -2880,7 +2878,8 @@ function ArmorStrip({
                     <td className="armor-actions">
                       {/* Etap 30b — Prowizorka Technika (s. 147). Guzik pojawia
                         się tylko przy starciu OB i tylko Technikowi z punktem
-                        w Naprawie; drugi klik oddaje sztuce jej starte OB. */}
+                        w Naprawie; od 71c0 ładuje Test do kubka, a raz zużyta
+                        łata blokuje następną do pełnej naprawy. */}
                       {row.fieldRepair ? (
                         <button
                           type="button"
@@ -2890,12 +2889,28 @@ function ArmorStrip({
                         >
                           Koniec prowizorki
                         </button>
+                      ) : repair > 0 && row.spCurrent < row.sp && row.fieldRepairSpent ? (
+                        <button
+                          type="button"
+                          className="small-button"
+                          disabled
+                          title="Prowizorka tej sztuki już raz puściła — kolejna dopiero po pełnej naprawie (s. 147)."
+                        >
+                          Prowizorka
+                        </button>
                       ) : repair > 0 && row.spCurrent < row.sp ? (
                         <button
                           type="button"
                           className="small-button"
-                          title={`Prowizorka: pełne OB na ${cpredFieldRepairMinutes(repair)} min. Kosztuje Akcję, gdy trwa walka.`}
-                          onClick={() => void makeFieldRepair(character.id, row.id, ownToken?.id)}
+                          title={`Prowizorka: Test TECH + Podstawowe naprawy + Naprawa ${repair} przeciw PT naprawy tej rzeczy — kubek. Udana daje pełne OB na ${cpredFieldRepairMinutes(repair)} min. W walce kosztuje Akcję.`}
+                          onClick={() =>
+                            loadFieldRepairCup(
+                              { characterId: character.id, characterName: character.name },
+                              row.id,
+                              data,
+                              registry,
+                            )
+                          }
                         >
                           Prowizorka
                         </button>

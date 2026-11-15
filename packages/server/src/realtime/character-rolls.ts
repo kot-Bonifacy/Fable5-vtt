@@ -17,6 +17,7 @@ import type {
 } from '@vtt/shared';
 import {
   tokenHiddenFrom,
+  CPRED_ACTION_FIELD_REPAIR,
   CPRED_ACTION_STABILIZE,
   CPRED_CHARISMA_AUDIENCE_LABELS,
   CPRED_CHARISMA_REFUSAL_DAYS,
@@ -32,6 +33,8 @@ import {
   cpredCareOptions,
   cpredCarePermanent,
   cpredCheckOutcome,
+  cpredFieldRepairMinutes,
+  cpredRepairDv,
   cpredSneakOutcome,
   createDefaultCharacterData,
   hitLocationLabel,
@@ -74,7 +77,8 @@ import {
 } from './combat.js';
 import { addTokenStatus } from './grapple-state.js';
 import { activeRoundOfScene } from './timed-effects.js';
-import { passForfeitedTurnOf, requireTurnSpend } from './combat-actions.js';
+import { characterFigure, passForfeitedTurnOf, requireTurnSpend } from './combat-actions.js';
+import { campaignEntry } from './compendium.js';
 import { emitCharacterUpsert, toCharacterView, refuseAwaitingGm } from './character-io.js';
 import {
   emitTokensById,
@@ -498,6 +502,10 @@ async function resolveRollRequest(
   delete request.treatPermanent;
   delete request.treatInjuryName;
   delete request.treatTargetName;
+  delete request.fieldRepairDv;
+  if (request.kind === 'fieldRepair') {
+    return resolveFieldRepairRequest(deps, campaignId, request, payload?.characterId);
+  }
   if (request.kind === 'stabilize') {
     return resolveStabilizeRequest(deps, campaignId, user, request);
   }
@@ -720,6 +728,74 @@ async function requireStabilizeReach(
     ),
   );
   if (metres > CPRED_MELEE_REACH_M) throw new RealtimeError('STABILIZE_OUT_OF_REACH');
+}
+
+/**
+ * PT Prowizorki (etap 71c0): „tyle, co PT typowej naprawy takiej rzeczy”
+ * (s. 147), a to stoi przy paśmie ceny (s. 140). Pasmo czyta się z wpisu
+ * Kompendium, z którego wiersz pochodzi — klient go nie podaje, jak PT
+ * Ustabilizowania. Wiersz wpisany ręką dostaje Codzienny szczebel.
+ */
+async function resolveFieldRepairRequest(
+  deps: RealtimeDeps,
+  campaignId: string,
+  request: CpredRollRequest,
+  characterId: string | undefined,
+): Promise<CpredRollRequest> {
+  if (typeof characterId !== 'string') throw new RealtimeError('BAD_REQUEST');
+  const character = await deps.ctx.prisma.character.findUnique({ where: { id: characterId } });
+  if (!character || character.campaignId !== campaignId) {
+    throw new RealtimeError('CHARACTER_NOT_FOUND');
+  }
+  const row = parseCharacterData(character.data, deps.ctx.cpred).armor.find(
+    (entry) => entry.id === request.fieldRepairArmorRowId,
+  );
+  if (!row) throw new RealtimeError('UNKNOWN_ARMOR');
+  const entry = row.compendiumId
+    ? await campaignEntry(deps, campaignId, row.compendiumId)
+    : undefined;
+  return { ...request, fieldRepairDv: cpredRepairDv(entry?.costCategory ?? null) };
+}
+
+/**
+ * Udana Prowizorka (etap 71c0): pełne OB na 10 minut za poziom Naprawy,
+ * z zapamiętanym stanem sprzed łaty — to, co do 71c0 robił sam guzik.
+ */
+async function applyFieldRepair(
+  deps: RealtimeDeps,
+  campaignId: string,
+  characterId: string,
+  armorRowId: string,
+  repairLevel: number,
+): Promise<{ from: number; to: number; minutes: number } | null> {
+  const character = await deps.ctx.prisma.character.findUnique({ where: { id: characterId } });
+  if (!character) return null;
+  const data = parseCharacterData(character.data, deps.ctx.cpred);
+  const row = data.armor.find((entry) => entry.id === armorRowId);
+  if (!row || row.fieldRepair || row.spCurrent >= row.sp) return null;
+  const minutes = cpredFieldRepairMinutes(repairLevel);
+  const saved = await deps.ctx.prisma.character.update({
+    where: { id: character.id },
+    data: {
+      data: JSON.stringify(
+        mergeCharacterData(data, {
+          armor: data.armor.map((entry) =>
+            entry.id === row.id
+              ? {
+                  ...entry,
+                  spCurrent: entry.sp,
+                  fieldRepair: { restoredFrom: entry.spCurrent, minutes },
+                }
+              : entry,
+          ),
+        }),
+      ),
+    },
+  });
+  await emitCharacterUpsert(deps, campaignId, toCharacterView(saved, deps.ctx.cpred));
+  // Pasek pancerza na karcie figury czyta kartę.
+  await emitTokensOfCharacter(deps, campaignId, saved);
+  return { from: row.spCurrent, to: row.sp, minutes };
 }
 
 /**
@@ -1236,6 +1312,33 @@ async function performScopedRoll(
     if (call && typeof sneakTokenId === 'string') {
       await requireSneakStart(deps, campaignId, user, sneakTokenId);
     }
+    // Prowizorka to Akcja (s. 147) — przed kośćmi, jak Ustabilizowanie. Figurę
+    // w walce szuka serwer (#84), a PT musiał wpisać `resolveFieldRepairRequest`.
+    if (plan.fieldRepair) {
+      if (source.kind !== 'character' || plan.fieldRepair.dv === null) {
+        throw new RealtimeError('BAD_REQUEST');
+      }
+      const figure = await characterFigure(
+        deps,
+        campaignId,
+        source.character.id,
+        undefined,
+        sceneId,
+      );
+      if (figure) {
+        await requireTurnSpend(
+          deps,
+          campaignId,
+          figure.scene,
+          figure.token.id,
+          { kind: 'action', actionId: CPRED_ACTION_FIELD_REPAIR },
+          user,
+          CPRED_ACTION_FIELD_REPAIR,
+          // Karta rzutu niżej mówi „Prowizorka: Kurtka” sama.
+          { silent: true },
+        );
+      }
+    }
     const deathSaveTurn =
       plan.deathSave && source.kind === 'character'
         ? await requireDeathSaveDue(deps, user, source.character, data)
@@ -1270,6 +1373,7 @@ async function performScopedRoll(
         weaponName: plan.damage.weaponName,
         ...(plan.damage.ignoreArmor ? { ignoreArmor: true } : {}),
         ...(plan.damage.multiplier ? { multiplier: plan.damage.multiplier } : {}),
+        ...(plan.damage.afterMultiplier ? { afterMultiplier: plan.damage.afterMultiplier } : {}),
         ...(plan.damage.targetTokenId ? { targetTokenId: plan.damage.targetTokenId } : {}),
         ...(plan.damage.targetCoverId !== undefined
           ? { targetCoverId: plan.damage.targetCoverId }
@@ -1410,6 +1514,23 @@ async function performScopedRoll(
                 ? ` — o tę samą przysługę nie poprosisz ich przez ${CPRED_CHARISMA_REFUSAL_DAYS} dni`
                 : ''
             }`,
+      };
+    }
+    // Prowizorka (etap 71c0): ta sama ostra nierówność co Ustabilizowanie.
+    if (plan.fieldRepair && plan.fieldRepair.dv !== null && source.kind === 'character') {
+      const { dv, armorName, armorRowId, repairLevel } = plan.fieldRepair;
+      const success = result.total > dv;
+      const applied = success
+        ? await applyFieldRepair(deps, campaignId, source.character.id, armorRowId, repairLevel)
+        : null;
+      result.outcome = {
+        success,
+        label: success ? 'Załatane' : 'Nie trzyma',
+        detail: applied
+          ? `${result.total} > PT ${dv} · ${armorName}: OB ${applied.from} → ${applied.to} na ${applied.minutes} min`
+          : success
+            ? `${result.total} > PT ${dv} · ${armorName} nie potrzebuje już łaty`
+            : `${result.total} ≤ PT ${dv} · ${armorName} bez zmian — można spróbować w kolejnej Akcji`,
       };
     }
     if (plan.reliability) {

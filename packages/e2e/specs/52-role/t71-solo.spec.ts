@@ -28,9 +28,9 @@ import { closeSheet, nextTurn, openSheet } from '../../fixtures/walka.ts';
 import { pendingDice, scriptDice } from '../../instance/instance.ts';
 
 /**
- * Etap 71b — Solo, Zmysł Walki (s. 146), stan dzisiejszy. Wiersze macierzy:
- * SOL-01, SOL-02, SOL-03 (#84), SOL-07, SOL-08, SOL-09, SOL-13, SOL-14.
- * SOL-10 (#83, Ogień ciągły) zostaje w `role-matrix.test.ts` jako `it.fails`.
+ * Etap 71b — Solo, Zmysł Walki (s. 146). Wiersze macierzy: SOL-01, SOL-02
+ * (#87), SOL-03 (#84), SOL-07, SOL-08, SOL-09, SOL-13, SOL-14. Błędy #84 i #87
+ * naprawione w 71c0. SOL-10 (#83, Ogień ciągły) sprawdza `role-matrix.test.ts`.
  */
 
 const SOLO = ROLES.solo;
@@ -138,7 +138,7 @@ test.describe.serial('@szybkie T71 Solo — Zmysł Walki', () => {
       'combat:start',
     );
     await expect(ada.page.locator('.dice-cup')).toHaveAttribute('title', /inicjatyw/i);
-    // Runda 0: belka odmawia (#87, test niżej), więc przydział zmienia się z karty.
+    // Runda 0 z karty; z belki — test niżej (#87).
     card = await openSheet(ada, SOLO.card);
     await minus(panel(), 'Wyczucie zagrożenia').click();
     await plus(panel(), 'Błyskawiczna reakcja').click();
@@ -160,10 +160,12 @@ test.describe.serial('@szybkie T71 Solo — Zmysł Walki', () => {
     expect(initiative.total).toBe(14);
   });
 
-  test('#87 SOL-02 „Przed walką” kafel Zmysłu Walki w belce otwiera przydział (dziś: odmowa)', async () => {
-    test.fail(true, '#87 — belka odmawia w rundzie 0: „Walka jeszcze się nie zaczęła”');
+  test('#87 SOL-02 „Przed walką” kafel Zmysłu Walki w belce otwiera przydział', async () => {
     await hud().locator('.hud-slot', { hasText: 'Zmysł Walki' }).click();
-    await expect(hud().locator('.hud-form')).toBeVisible({ timeout: 3_000 });
+    const form = hud().locator('.hud-form');
+    await expect(form).toBeVisible({ timeout: 3_000 });
+    await form.getByRole('button', { name: 'Zamknij', exact: true }).click();
+    await expect(form).toHaveCount(0);
   });
 
   test('SOL-03 w trakcie walki zapis z belki kosztuje Akcję', async () => {
@@ -188,19 +190,18 @@ test.describe.serial('@szybkie T71 Solo — Zmysł Walki', () => {
     await expect.poll(() => turnStateOf(SOLO.card)?.action ?? null).not.toBeNull();
   });
 
-  test('#84 SOL-03 zdarzenie bez figury w ładunku też płaci Akcję (dziś: za darmo)', async () => {
-    test.fail(true, '#84 — Akcja liczona tylko przy `tokenId` z klienta (naprawa po bramce)');
+  test('#84 SOL-03 zdarzenie bez figury w ładunku też płaci Akcję', async () => {
     // Akcja tej Tury już wydana: drugi zapis musi dostać odmowę, a nie przejść.
     const ack = await emitAck(await ada.socket(), 'character:combat-awareness', {
       characterId: characterId(SOLO.card),
       allocation: { preciseAttack: 3, fastReflexes: 1, luckyEscape: 4 },
     });
-    expect(ack).toMatchObject({ ok: false });
+    expect(ack).toMatchObject({ ok: false, error: 'NO_ACTION_LEFT' });
+    expect(awareness()).toEqual({ preciseAttack: 3, threatSense: 1, luckyEscape: 4 });
   });
 
   test('SOL-07 SOL-09 runda 2: jedynka nie odejmuje (Wyjście z opresji), Precyzyjny atak +1 w rozbiciu', async () => {
     test.setTimeout(3 * 60_000);
-    // Ewentualny powrót przydziału z #84 nie zmienia tego testu: Precyzyjny atak i Wyjście zostają.
     await nextTurn(mg);
     await nextTurn(mg);
     await expect.poll(() => queryOne<{ round: number }>('SELECT round FROM Combat')?.round).toBe(2);

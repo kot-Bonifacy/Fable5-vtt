@@ -38,6 +38,12 @@ import { hpMax } from './derived.js';
 import { cpredSheetHpMax, type CpredStatBlockCarrier } from './statblock.js';
 import { cpredWoundSuspensionSource, type CpredWoundSuspensionSheet } from './woundsuspension.js';
 import {
+  cpredFieldRepairProblem,
+  CPRED_ARMOR_REPAIR_SKILL,
+  CPRED_ARMOR_REPAIR_SKILL_ID,
+  type CpredFieldRepairProblem,
+} from './repair.js';
+import {
   CPRED_HIT_LOCATION_LABELS,
   type CpredAimPoint,
   type CpredHitLocation,
@@ -214,7 +220,9 @@ export type CpredRollKind =
   /** Test Rzetelności — sama 1k10 pod szansę „N na 10" (stage 30d). */
   | 'reliability'
   /** Potajemny Test Pogłosek MG — Wiarygodność + 1k10 (stage 30d). */
-  | 'rumour';
+  | 'rumour'
+  /** Prowizorka Technika — Test naprawy z poziomem Naprawy (etap 71c0, s. 147). */
+  | 'fieldRepair';
 
 /** Skills the rules name for Stabilizing (s. 222). Either one may be rolled. */
 export const CPRED_FIRST_AID_SKILL_ID = 'first-aid';
@@ -416,6 +424,17 @@ export interface CpredRollRequest {
    */
   stabilizeTokenId?: string;
   /**
+   * `kind: 'fieldRepair'` (etap 71c0) — wiersz pancerza **tej karty**, który
+   * Technik łata. Wybór klienta; czy wolno, mówi `cpredFieldRepairProblem`.
+   */
+  fieldRepairArmorRowId?: string;
+  /**
+   * Server-filled: PT „typowej naprawy takiej rzeczy” (s. 147) z pasma ceny
+   * wpisu Kompendium (s. 140). Klient go nie zna — podgląd kubka pokazuje
+   * tylko, co Technik wnosi, jak przy Ustabilizowaniu.
+   */
+  fieldRepairDv?: number;
+  /**
    * Etap 41 — figura, którą ten Test ma **obejrzeć**, jeśli zostanie zdany.
    *
    * Nie jest to nowy rodzaj rzutu i nie ma być: oględziny to zwykły Test
@@ -530,7 +549,9 @@ export type CpredRollProblem =
   /** A Role's own roll asked for by a sheet whose Role is a different one. */
   | 'NO_ABILITY'
   /** „To żart, prawda? Jeszcze nie masz dużych grup fanów" (s. 144). */
-  | 'NO_CROWD';
+  | 'NO_CROWD'
+  /** Prowizorka, której ta sztuka pancerza teraz nie przyjmie (etap 71c0). */
+  | CpredFieldRepairProblem;
 
 /**
  * Where the line through a barrier starts (stage 42b), for measuring it again.
@@ -552,6 +573,11 @@ export interface CpredDamagePlan {
   ignoreArmor?: boolean;
   /** Autofire's factor on the rolled total; absent means ×1 (stage 16). */
   multiplier?: number;
+  /**
+   * Premia doliczana po mnożniku serii (etap 71c0, #83): Wykrycie słabości
+   * „po pomnożeniu kości, przed pancerzem” (FAQ). Tylko przy `multiplier`.
+   */
+  afterMultiplier?: number;
   /** Token the damage is aimed at, preselected by „Zastosuj" (stage 16). */
   targetTokenId?: string;
   /** Cover the damage is aimed at instead (stage 16c) — a car, not a person. */
@@ -631,6 +657,16 @@ export interface CpredRumourPlan {
   rank: number;
 }
 
+/** Co Prowizorka (etap 71c0) wie o sobie, zanim padną kości. */
+export interface CpredFieldRepairPlan {
+  /** PT do przebicia; `null` w podglądzie klienta, zanim serwer go wpisze. */
+  dv: number | null;
+  armorRowId: string;
+  armorName: string;
+  /** Poziom Naprawy — czas łaty to 10 minut na poziom. */
+  repairLevel: number;
+}
+
 /** What „Ustabilizowanie" needs to judge itself and explain the verdict. */
 export interface CpredStabilizePlan {
   /** Beat this to stabilize (RAW: the roll has to be strictly higher). */
@@ -688,6 +724,8 @@ export interface CpredRollPlan {
   reliability?: CpredReliabilityPlan;
   /** Present for `kind: 'rumour'` (stage 30d). */
   rumour?: CpredRumourPlan;
+  /** Present for `kind: 'fieldRepair'` (etap 71c0). */
+  fieldRepair?: CpredFieldRepairPlan;
 }
 
 /**
@@ -770,6 +808,9 @@ export function planCpredRoll(
   }
   if (request.kind === 'reliability') {
     return planReliabilityRoll(data, registry, request);
+  }
+  if (request.kind === 'fieldRepair') {
+    return planFieldRepairRoll(data, registry, request, modifier, luckSpent, wound, context);
   }
 
   const breakdown: RollBreakdownEntry[] = [];
@@ -921,7 +962,10 @@ function finishCheck(
   wound: CpredWoundCondition,
   modifier: number,
   luckSpent: number,
-  extra: Pick<CpredRollPlan, 'stabilize' | 'treatInjury' | 'charisma' | 'rumour'> = {},
+  extra: Pick<
+    CpredRollPlan,
+    'stabilize' | 'treatInjury' | 'charisma' | 'rumour' | 'fieldRepair'
+  > = {},
   context: CpredRollContext = {},
 ): { ok: true; plan: CpredRollPlan } {
   breakdown.push(...cpredWoundPenaltyRows(wound));
@@ -958,6 +1002,56 @@ function finishCheck(
       ...extra,
     },
   };
+}
+
+/**
+ * Prowizorka Technika (s. 147, etap 71c0): Akcja i Test — TECH + Podstawowe
+ * naprawy (pancerz naprawia się nimi, FAQ) + poziom Naprawy — przeciw PT
+ * „typowej naprawy takiej rzeczy”. Do 71c0 łata zawsze się udawała (#85).
+ *
+ * Naprawa wchodzi tym samym wierszem co w każdym Teście naprawczym
+ * (`CPRED_REPAIR_SKILL_IDS` niżej), bo Podstawowe naprawy są na tej liście —
+ * podręcznik mówi „do tego Testu dodajesz poziom Specjalizacji Naprawy”, nie
+ * „dodajesz drugi raz”.
+ */
+function planFieldRepairRoll(
+  data: CpredCharacterData,
+  registry: CpredRegistry,
+  request: CpredRollRequest,
+  modifier: number,
+  luckSpent: number,
+  wound: CpredWoundCondition,
+  context: CpredRollContext,
+): { ok: true; plan: CpredRollPlan } | { ok: false; error: CpredRollProblem } {
+  const repairLevel = cpredSheetFabrication(data, registry).repair;
+  const row = data.armor.find((entry) => entry.id === request.fieldRepairArmorRowId);
+  const problem = cpredFieldRepairProblem(row, repairLevel);
+  if (problem !== null) return { ok: false, error: problem };
+  if (!row) return { ok: false, error: 'UNKNOWN_ARMOR' };
+  const skill =
+    registry.skills.find((entry) => entry.id === CPRED_ARMOR_REPAIR_SKILL_ID) ??
+    CPRED_ARMOR_REPAIR_SKILL;
+  const dv = request.fieldRepairDv;
+  if (dv !== undefined && !isInteger(dv)) return { ok: false, error: 'BAD_REQUEST' };
+  return finishCheck(
+    `Prowizorka: ${row.name}`,
+    [
+      ...skillBreakdown(data, skill),
+      { label: `Naprawa ${repairLevel}`, value: repairLevel, kind: 'situational' },
+    ],
+    wound,
+    modifier,
+    luckSpent,
+    {
+      fieldRepair: {
+        dv: dv ?? null,
+        armorRowId: row.id,
+        armorName: row.name,
+        repairLevel,
+      },
+    },
+    context,
+  );
 }
 
 /**
@@ -1282,6 +1376,10 @@ function planDamageRoll(
         location,
         weaponName: weapon.name,
         ...(multiplier > 1 ? { multiplier } : {}),
+        // FAQ: Wykrycie słabości przy Ogniu ciągłym dochodzi po pomnożeniu
+        // kości, a przed pancerzem — term rzutu zostaje (karta pokazuje sumę),
+        // a `damageTotal` odejmuje go przed mnożeniem i dodaje po nim.
+        ...(multiplier > 1 && weakSpot > 0 ? { afterMultiplier: weakSpot } : {}),
         ...(request.targetTokenId ? { targetTokenId: request.targetTokenId } : {}),
         ...(request.targetCoverId !== undefined ? { targetCoverId: request.targetCoverId } : {}),
         ...(request.targetVehicleId !== undefined

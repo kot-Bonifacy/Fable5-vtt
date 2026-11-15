@@ -236,6 +236,15 @@ to pozycje „Listy bramki” w `role-macierz.md`.
 | **71g1** | kreator, PD, wieloklasowość | G33 pakiet Krawędziarza, G34 listy Rockera i Medyka, G35 + D3 zamiana Roli za PD jak nowa Rola, G36, D2 wybór środka, P4 dane Ulicznika Fixera      |
 | **71g2** | licencja                    | G37 parafraza zdań podręcznika w `roleability.ts` (L)                                                                                               |
 
+**Wynik 71c0 (15.11.2026) ✅.** G1 (#84): `characterFigure` (`combat-actions.ts`) — Zmysł Walki,
+Wsparcie i Prowizorka płacą Akcję figurą karty w walce także bez `tokenId` (panel Wsparcia na
+karcie przestał być darmowy). G2 (#83): Wykrycie słabości jako `afterMultiplier` — dochodzi po
+mnożniku Ognia ciągłego. G3 (#85): Prowizorka to rzut `fieldRepair` przez kubek — TECH +
+Podstawowe naprawy (FAQ) + Naprawa przeciw PT naprawy z pasma ceny wpisu (s. 140, nowy moduł
+`repair.ts`), Akcja przed kośćmi. G4 (#86): „Koniec prowizorki” zostawia `fieldRepairSpent`,
+zdejmowany przy pełnym OB. G5 (#87): kafel Zmysłu Walki czynny w rundzie 0. Rozstrzygnięcia bez
+pytań — `decyzje-i-uproszczenia.md` („Błędy Ról z audytu”); umowy na górze `postac`.
+
 Poza etapem 71: **G24 Nocny Targ — osobny etap** (`POMYSLY.md`), NOM-02 / NOM-03 — etap 72,
 STR-12 — po etapie 72, KOR-04 — tylko z abonamentem Trauma Team.
 

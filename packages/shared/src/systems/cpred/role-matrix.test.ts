@@ -89,7 +89,7 @@ describe('Solo — styk Zmysłu Walki z FAQ', () => {
     expect(planned.plan.damage?.multiplier).toBe(3);
   });
 
-  it.fails('SOL-10 Wykrycie słabości przy Ogniu ciągłym nie mnoży się razem z kośćmi', () => {
+  it('SOL-10 Wykrycie słabości przy Ogniu ciągłym nie mnoży się razem z kośćmi (#83, 71c0)', () => {
     const planned = planCpredRoll(armed, registry, {
       kind: 'damage',
       weaponRowId: 'w1',

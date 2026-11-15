@@ -197,6 +197,12 @@ export interface RollDamageMeta {
    * also keeps „two sixes = Critical Injury" reading the same two dice.
    */
   multiplier?: number;
+  /**
+   * Część sumy dodana **po** mnożniku (etap 71c0, #83): premia, którą zasady
+   * dokładają do wyniku serii, a nie do każdej kości. CP RED — Wykrycie
+   * słabości przy Ogniu ciągłym (FAQ). Nieobecne znaczy 0: mnożnik bierze całość.
+   */
+  afterMultiplier?: number;
   /** Token this damage is meant for, so „Zastosuj" preselects it (stage 16). */
   targetTokenId?: string;
   /**
@@ -305,7 +311,8 @@ export interface RollAreaMeta {
 
 /** Rolled total after the damage multiplier — what actually hits the target. */
 export function damageTotal(roll: Pick<RollResult, 'total' | 'damage'>): number {
-  return roll.total * (roll.damage?.multiplier ?? 1);
+  const after = roll.damage?.afterMultiplier ?? 0;
+  return (roll.total - after) * (roll.damage?.multiplier ?? 1) + after;
 }
 
 /**

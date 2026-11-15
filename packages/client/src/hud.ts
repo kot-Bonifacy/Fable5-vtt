@@ -417,9 +417,10 @@ export function hudContextFor(tokenId: string | null): HudContext {
     (slot) =>
       slot.kind !== 'weapon' || slot.mode === 'autofire' || !mountAutofireOnly(slot.weaponRowId),
   );
-  const shown = refusal
-    ? fireable.map((slot) => (isSneakStop(slot, token) ? slot : { ...slot, disabled: refusal }))
-    : fireable;
+  const shown = hudSlotsUnderRefusal(fireable, refusal, {
+    roundZero: combat?.round === 0,
+    sneaking: token.sneaking === true,
+  });
 
   // 02.11.2026 (MG): na pasku tylko broń dobyta — schowane to bałagan.
   const inHand = cpredHotbarInHand(shown);
@@ -539,8 +540,24 @@ function standingTargetOf(token: TokenView): HudContext['target'] {
 }
 
 /** Slot „Przestań się skradać” — tryb trwa, więc ten sam przycisk go kończy. */
-function isSneakStop(slot: CpredHotbarSlot, token: TokenView): boolean {
-  return slot.kind === 'action' && slot.actionId === CPRED_ACTION_SNEAK && token.sneaking === true;
+/**
+ * Kafle pod odmową tury: każdy dostaje jej zdanie, poza dwoma wyjątkami.
+ * Wyjście ze skradania jest darmowe zawsze (etap 61), a przydział Zmysłu Walki
+ * „gdy rozpoczyna się walka” (s. 146) — w rundzie 0 kafel otwiera panel,
+ * zamiast odmawiać jak reszta (#87, etap 71c0). Akcję i tak liczy serwer.
+ */
+export function hudSlotsUnderRefusal<T extends CpredHotbarSlot>(
+  slots: readonly T[],
+  refusal: string | null,
+  state: { roundZero: boolean; sneaking: boolean },
+): T[] {
+  if (!refusal) return [...slots];
+  return slots.map((slot) => {
+    if (slot.kind !== 'action') return { ...slot, disabled: refusal };
+    if (slot.actionId === CPRED_ACTION_SNEAK && state.sneaking) return slot;
+    if (slot.actionId === CPRED_ACTION_COMBAT_AWARENESS && state.roundZero) return slot;
+    return { ...slot, disabled: refusal };
+  });
 }
 
 /**

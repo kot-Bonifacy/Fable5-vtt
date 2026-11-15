@@ -26,7 +26,7 @@ import {
   lateRoundOneTurn,
   previousTurn,
 } from '@vtt/shared';
-import type { Scene } from '../generated/prisma/client.js';
+import type { Scene, Token } from '../generated/prisma/client.js';
 import {
   SHEET_ON_FIRE_STATUS_ID,
   SHEET_PRONE_STATUS_ID,
@@ -70,7 +70,7 @@ import {
 import { INCLUDE_CHAT_NAMES, deliverChatMessageTo, toChatMessageView } from './chat-io.js';
 import type { SheetTurnSpend } from '../sheets.js';
 import { actionEntry, logRefusedAction, logSpentAction, turnRefusalMessage } from './combat-log.js';
-import { emitTokenUpsert } from './tokens.js';
+import { emitTokenUpsert, requireCampaignToken } from './tokens.js';
 import { clearGrapplesOf } from './grapple-state.js';
 import { advanceTurn, runTurnEnd } from './turn-effects.js';
 import { requireCampaignScene } from './scenes.js';
@@ -140,6 +140,45 @@ export async function requireTurnSpend(
     options.note ?? null,
     options,
   );
+}
+
+/**
+ * Figura, przez którą karta działa na stole (etap 71c0, #84).
+ *
+ * Zdolności wołane z karty postaci (Zmysł Walki, Prowizorka, Wsparcie) płacą
+ * Akcję figurą w trwającej walce. Dotąd płaciły tylko wtedy, gdy klient sam
+ * podał `tokenId` — panel karty go nie wysyłał, a podrobione zdarzenie bez
+ * niego szło za darmo. Teraz serwer szuka sam: najpierw figura tej karty
+ * grająca w walce od rundy 1, potem figura na scenie, którą gniazdo ogląda.
+ * `tokenId` z ładunku dalej wskazuje figurę wprost (musi należeć do karty).
+ *
+ * `null` = karta nie stoi na żadnej scenie, którą da się wskazać — działa
+ * „w fikcji”, bez Akcji (poza walką i tak nic nie kosztuje).
+ */
+export async function characterFigure(
+  deps: RealtimeDeps,
+  campaignId: string,
+  characterId: string,
+  tokenId: unknown,
+  viewedSceneId: string | null | undefined,
+): Promise<{ token: Token; scene: Scene } | null> {
+  if (tokenId !== undefined) {
+    const found = await requireCampaignToken(deps.ctx.prisma, campaignId, tokenId);
+    if (found.token.characterId !== characterId) throw new RealtimeError('BAD_REQUEST');
+    return found;
+  }
+  const tokens = await deps.ctx.prisma.token.findMany({
+    where: { characterId, scene: { campaignId } },
+    include: { scene: true },
+    orderBy: { id: 'asc' },
+  });
+  const split = tokens.map(({ scene, ...token }) => ({ token: token as Token, scene }));
+  for (const candidate of split) {
+    if (await findCombatantForToken(deps.ctx.prisma, candidate.scene.id, candidate.token.id)) {
+      return candidate;
+    }
+  }
+  return split.find((candidate) => candidate.scene.id === viewedSceneId) ?? null;
 }
 
 /**

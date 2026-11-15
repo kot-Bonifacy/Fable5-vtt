@@ -451,7 +451,12 @@ describe('Specjalizacje Medycyny i Twórcy na karcie', () => {
     expect(ack.ok === false && ack.error).toBe('INJURY_NOT_FOUND');
   });
 
-  it('Prowizorka wymaga punktu w Naprawie i oddaje starte OB', async () => {
+  /**
+   * Prowizorka od etapu 71c0 to Test przez kubek (#85): TECH + Podstawowe
+   * naprawy + Naprawa przeciw PT naprawy rzeczy (wiersz bez wpisu Kompendium —
+   * Codzienne 13). Raz zużyta łata blokuje następną do pełnej naprawy (#86).
+   */
+  it('Prowizorka to Test, łata puszcza ze śladem, pełne OB go zdejmuje', async () => {
     const armor = [
       { id: 'a1', name: 'Kurtka', notes: '', sp: 11, spCurrent: 6, location: 'body' as const },
     ];
@@ -459,35 +464,52 @@ describe('Specjalizacje Medycyny i Twórcy na karcie', () => {
       characterId: patientId,
       patch: { data: { armor } },
     });
+    const bodge = (modifier = 0) =>
+      emitAck<{ messageId: number }>(gm, 'character:roll', {
+        characterId: patientId,
+        request: { kind: 'fieldRepair', fieldRepairArmorRowId: 'a1', modifier },
+        visibility: 'public',
+      });
     // Pacjent nie jest Technikiem — nie ma czym prowizorki zrobić.
-    const refused = await emitAck(gm, 'character:field-repair', {
-      characterId: patientId,
-      armorRowId: 'a1',
-    });
+    const refused = await bodge();
     expect(refused.ok === false && refused.error).toBe('NO_REPAIR_SPECIALTY');
 
     await emitAck(gm, 'character:update', {
       characterId: patientId,
       patch: {
-        data: { roleId: 'tech', roleAbilityRank: 3, fabrication: { repair: 3, invent: 3 } },
+        data: {
+          roleId: 'tech',
+          roleAbilityRank: 3,
+          fabrication: { repair: 3, invent: 3 },
+          stats: { ...(await sheetOf(patientId)).stats, tech: 8 },
+        },
       },
     });
-    const patched = await emitAck(gm, 'character:field-repair', {
+    // Ścieżka bez rzutu już nie istnieje.
+    const direct = await emitAck(gm, 'character:field-repair', {
       characterId: patientId,
       armorRowId: 'a1',
     });
-    expect(patched.ok).toBe(true);
+    expect(direct.ok === false && direct.error).toBe('FIELD_REPAIR_NEEDS_ROLL');
+
+    // Zestaw Easy Mode z `data/public` nie zna Podstawowych napraw — rzuca się
+    // TECH 8 + Naprawa 3 (zapasowa definicja Umiejętności, poziom 0).
+    // −20: 11 − 20 + k10 (najwyżej 20) nie przebije PT 13 — kurtka bez zmian.
+    const failed = await bodge(-20);
+    expect(failed, JSON.stringify(failed)).toMatchObject({ ok: true });
+    expect((await sheetOf(patientId)).armor[0]!.spCurrent).toBe(6);
+
+    // 11 + k10 przebija PT 13 od trójki na kości — powtarzane jak Chirurgia.
+    for (let attempt = 0; attempt < 12; attempt += 1) {
+      expect((await bodge()).ok).toBe(true);
+      if ((await sheetOf(patientId)).armor[0]!.fieldRepair) break;
+    }
     const bodged = (await sheetOf(patientId)).armor[0]!;
     expect(bodged.spCurrent).toBe(11);
     // 10 minut na poziom Specjalizacji — trzy poziomy to pół godziny.
     expect(bodged.fieldRepair).toEqual({ restoredFrom: 6, minutes: 30 });
 
-    // „Nie można go ponownie tymczasowo naprawić, dopóki nie zostanie
-    // zupełnie naprawiony w zwykły sposób" (s. 147).
-    const again = await emitAck(gm, 'character:field-repair', {
-      characterId: patientId,
-      armorRowId: 'a1',
-    });
+    const again = await bodge();
     expect(again.ok === false && again.error).toBe('ALREADY_PATCHED');
 
     const undone = await emitAck(gm, 'character:field-repair', {
@@ -499,6 +521,19 @@ describe('Specjalizacje Medycyny i Twórcy na karcie', () => {
     const restored = (await sheetOf(patientId)).armor[0]!;
     expect(restored.spCurrent).toBe(6);
     expect(restored.fieldRepair).toBeUndefined();
+    expect(restored.fieldRepairSpent).toBe(true);
+
+    // „Nie można go ponownie tymczasowo naprawić, dopóki nie zostanie
+    // zupełnie naprawiony w zwykły sposób" (s. 147).
+    const spent = await bodge();
+    expect(spent.ok === false && spent.error).toBe('PATCH_SPENT');
+
+    // ↻ MG: pełne OB to pełna naprawa — ślad schodzi, łatać wolno znowu.
+    await emitAck(gm, 'character:update', {
+      characterId: patientId,
+      patch: { data: { armor: [{ ...restored, spCurrent: 11 }] } },
+    });
+    expect((await sheetOf(patientId)).armor[0]!.fieldRepairSpent).toBeUndefined();
   });
 
   /**

@@ -59,6 +59,7 @@ export * from './hotbar.js';
 export * from './itemicons.js';
 export * from './pharma.js';
 export * from './roleability.js';
+export * from './repair.js';
 export * from './initiative.js';
 export * from './treatment.js';
 export * from './recovery.js';

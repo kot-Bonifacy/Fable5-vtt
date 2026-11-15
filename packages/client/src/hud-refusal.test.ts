@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { NET_DEVICE_MESSAGES, type CombatView } from '@vtt/shared';
-import { hudTurnRefusal } from './hud.js';
+import {
+  CPRED_ACTION_COMBAT_AWARENESS,
+  CPRED_ACTION_SNEAK,
+  NET_DEVICE_MESSAGES,
+  type CombatView,
+  type CpredHotbarSlot,
+} from '@vtt/shared';
+import { hudSlotsUnderRefusal, hudTurnRefusal } from './hud.js';
 import { operatedRailRefusal } from './net-operated.js';
 
 /** #63 (T8b): przed pierwszą rundą panel mówił „to nie jest tura tej postaci”. */
@@ -42,5 +48,40 @@ describe('operatedRailRefusal', () => {
     const turn = 'Urządzeniem działasz w turze swojego netrunnera — poczekaj na nią.';
     expect(operatedRailRefusal(turn)).toBe(turn);
     expect(operatedRailRefusal(null)).toBeNull();
+  });
+});
+
+/** #87 (71c0): „Przed walką” kafel Zmysłu Walki otwiera przydział (s. 146). */
+describe('hudSlotsUnderRefusal', () => {
+  const action = (actionId: string) =>
+    ({
+      kind: 'action',
+      id: actionId,
+      actionId,
+      label: actionId,
+      disabled: null,
+    }) as unknown as CpredHotbarSlot;
+  const slots = [
+    action(CPRED_ACTION_COMBAT_AWARENESS),
+    action('dodge'),
+    action(CPRED_ACTION_SNEAK),
+  ];
+  const refusal = 'Walka jeszcze się nie zaczęła';
+
+  it('w rundzie 0 Zmysł Walki zostaje czynny, reszta dostaje odmowę', () => {
+    const shown = hudSlotsUnderRefusal(slots, refusal, { roundZero: true, sneaking: false });
+    expect(shown.map((slot) => slot.disabled)).toEqual([null, refusal, refusal]);
+  });
+
+  it('w cudzej turze rundy 1 Zmysł Walki też czeka — zmiana kosztuje Akcję', () => {
+    const shown = hudSlotsUnderRefusal(slots, 'nie twoja tura', {
+      roundZero: false,
+      sneaking: true,
+    });
+    expect(shown.map((slot) => slot.disabled)).toEqual(['nie twoja tura', 'nie twoja tura', null]);
+  });
+
+  it('bez odmowy niczego nie rusza', () => {
+    expect(hudSlotsUnderRefusal(slots, null, { roundZero: true, sneaking: false })).toEqual(slots);
   });
 });

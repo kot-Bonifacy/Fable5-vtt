@@ -485,4 +485,25 @@ describe('Zmysł Walki: przydział punktów i Redukcja obrażeń', () => {
     expect(again.ok).toBe(true);
     expect(await actionUsed(soloTokenId)).toBe(1);
   });
+
+  it('ładunek bez figury też płaci Akcję — figurę w walce znajduje serwer (#84, 71c0)', async () => {
+    // Akcja tej tury już poszła: podrobione zdarzenie bez `tokenId` dostaje odmowę.
+    const forged = await emitAck(player, 'character:combat-awareness', {
+      characterId: soloCharacterId,
+      allocation: { weakSpot: 4 },
+    });
+    expect(forged.ok === false && forged.error).toBe('NO_ACTION_LEFT');
+    expect((await sheetOf(soloCharacterId)).combatAwareness).toEqual({ weakSpot: 6 });
+
+    // Ze świeżą turą ten sam ładunek przechodzi i bierze Akcję.
+    const row = rowOf((await sync()).combat as CombatView, soloTokenId);
+    await emitAck(gm, 'combat:reset-turn', { combatantId: row.id });
+    expect(await actionUsed(soloTokenId)).toBe(0);
+    const paid = await emitAck(player, 'character:combat-awareness', {
+      characterId: soloCharacterId,
+      allocation: { weakSpot: 4 },
+    });
+    expect(paid.ok).toBe(true);
+    expect(await actionUsed(soloTokenId)).toBe(1);
+  });
 });

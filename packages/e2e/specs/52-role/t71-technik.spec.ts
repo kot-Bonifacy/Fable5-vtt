@@ -9,17 +9,19 @@ import {
   cardData,
   gmSocket,
   lastMessageId,
-  messagesAfter,
+  rollAfter,
   seatRole,
   startFromRoleStart,
 } from '../../fixtures/role.ts';
 import { emitAck } from '../../fixtures/socket.ts';
+import { shakeCup } from '../../fixtures/table.ts';
 import { closeSheet, openSheet } from '../../fixtures/walka.ts';
-import { pendingDice } from '../../instance/instance.ts';
+import { pendingDice, scriptDice } from '../../instance/instance.ts';
 
 /**
- * Etap 71b — Technik, Twórca (s. 147–149), stan dzisiejszy. Wiersze macierzy:
- * TEC-01, TEC-02, TEC-04 (#85), TEC-06 (#86), TEC-10, TEC-11.
+ * Etap 71b — Technik, Twórca (s. 147–149). Wiersze macierzy: TEC-01, TEC-02,
+ * TEC-04 (#85), TEC-06 (#86), TEC-10, TEC-11. Od 71c0 Prowizorka to Test przez
+ * kubek, a zużyta łata blokuje następną do pełnej naprawy.
  * Ulepszanie, Wytwarzanie i Wynajdywanie nie mają rzutu (TEC-07 ❌) — nie ma czego klikać.
  */
 
@@ -29,6 +31,7 @@ type Armor = {
   sp: number;
   spCurrent: number;
   fieldRepair?: unknown;
+  fieldRepairSpent?: boolean;
   upgrade?: unknown;
 };
 const armor = () =>
@@ -40,7 +43,6 @@ test.describe.serial('@szybkie T71 Technik — Twórca', () => {
   let bartek: Actor;
   let card: Locator;
   let gm: Socket;
-  let patchMark = 0;
   const panel = () => card.locator('[data-sheet-panel="fabrication"]');
   const plus = (name: string) =>
     panel().getByRole('button', { name: `Dołóż punkt: ${name}`, exact: true });
@@ -90,42 +92,45 @@ test.describe.serial('@szybkie T71 Technik — Twórca', () => {
     expect(pendingDice()).toBe('');
   });
 
-  test('TEC-04 Prowizorka oddaje kurtce pełne OB; „Koniec prowizorki” przywraca stan sprzed', async () => {
+  test('#85 TEC-04 Prowizorka to Test przez kubek: PT naprawy kurtki (Premium 17), Naprawa w rozbiciu', async () => {
     card = await openSheet(bartek, TECH.card);
     await card.getByRole('button', { name: 'Ekwipunek', exact: true }).click();
-    patchMark = lastMessageId();
+    const since = lastMessageId();
+    scriptDice([5]);
     await card.getByRole('button', { name: 'Prowizorka', exact: true }).click();
+    await shakeCup(bartek.page);
+    const roll = await rollAfter(since, 'Prowizorka', 'roll');
+    expect(breakdownRow(roll, 'Naprawa')?.value, JSON.stringify(roll.breakdown)).toBe(4);
+    // TECH 8 + Podstawowe naprawy 6 + Naprawa 4 + kość 5 = 23 > PT 17 (Premium, s. 140).
+    expect(roll.total).toBe(23);
+    expect(roll.outcome?.success, JSON.stringify(roll.outcome)).toBe(true);
+    expect(roll.outcome?.detail).toContain('PT 17');
+    expect(pendingDice()).toBe('');
     await expect.poll(() => armor().spCurrent).toBe(11);
     expect(armor().fieldRepair).toBeTruthy();
+  });
+
+  test('#86 TEC-06 „Koniec prowizorki” zostawia ślad — drugiej łaty nie ma do pełnej naprawy', async () => {
     await card.getByRole('button', { name: 'Koniec prowizorki', exact: true }).click();
     await expect.poll(() => armor().spCurrent).toBe(7);
     expect(armor().fieldRepair ?? null).toBeNull();
-  });
-
-  test('#85 TEC-04 Prowizorka to Test (PT naprawy, z poziomem Naprawy) — dziś bez rzutu', async () => {
-    test.fail(true, '#85 — Prowizorka zawsze się udaje, karty rzutu nie ma');
-    const rolls = messagesAfter(patchMark).filter((row) => row.kind === 'roll');
-    expect(rolls.length).toBeGreaterThan(0);
-  });
-
-  test('#86 TEC-06 raz załatanej rzeczy nie łata się drugi raz przed pełną naprawą — dziś wolno', async () => {
-    test.fail(true, '#86 — po „Koniec prowizorki” znacznik znika i kurtkę da się załatać znowu');
-    const ack = await emitAck(await bartek.socket(), 'character:field-repair', {
+    expect(armor().fieldRepairSpent).toBe(true);
+    await expect(card.getByRole('button', { name: 'Prowizorka', exact: true })).toBeDisabled();
+    const ack = await emitAck(await bartek.socket(), 'character:roll', {
+      characterId: characterId(TECH.card),
+      request: { kind: 'fieldRepair', fieldRepairArmorRowId: 'r71-kurtka' },
+      visibility: 'public',
+    });
+    expect(ack).toEqual({ ok: false, error: 'PATCH_SPENT' });
+    // Stara droga bez rzutu też odmawia.
+    const direct = await emitAck(await bartek.socket(), 'character:field-repair', {
       characterId: characterId(TECH.card),
       armorRowId: 'r71-kurtka',
     });
-    expect(ack).toMatchObject({ ok: false });
+    expect(direct).toEqual({ ok: false, error: 'FIELD_REPAIR_NEEDS_ROLL' });
   });
 
   test('TEC-10 TEC-11 Ulepszanie +1 OB klika MG, raz na przedmiot', async () => {
-    // Stan po #86 bywa różny (łata albo nie) — MG zaczyna od czystej kurtki.
-    if (armor().fieldRepair) {
-      await emitAck(gm, 'character:field-repair', {
-        characterId: characterId(TECH.card),
-        armorRowId: 'r71-kurtka',
-        undo: true,
-      });
-    }
     await expect(card.locator('.armor-actions')).toBeVisible();
     await expect(card.getByRole('button', { name: 'Ulepsz: +1 OB' })).toHaveCount(0);
     await closeSheet(bartek.page);

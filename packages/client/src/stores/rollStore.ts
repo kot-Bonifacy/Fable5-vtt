@@ -604,6 +604,41 @@ export function loadCharismaCup(
 }
 
 /**
+ * Ładuje Prowizorkę Technika do kubka (etap 71c0, s. 147).
+ *
+ * Planowana przez `planCpredRoll`, jak Charyzma: TECH + Podstawowe naprawy
+ * + Naprawa stoją na karcie. PT („typowej naprawy takiej rzeczy”) zna tylko
+ * serwer — z pasma ceny wpisu Kompendium — więc kubek pokazuje, co Technik
+ * wnosi, a karta na czacie, przeciw czemu rzucał. Rzut jest jawny: łatę widać
+ * na kurtce, a MG musi wiedzieć, że pancerz trzyma się na taśmie.
+ */
+export function loadFieldRepairCup(
+  technik: { characterId: string; characterName: string },
+  armorRowId: string,
+  data: CpredCharacterData,
+  registry: CpredRegistry,
+): void {
+  const store = useRollStore.getState();
+  const request: CpredRollRequest = {
+    kind: 'fieldRepair',
+    fieldRepairArmorRowId: armorRowId,
+    modifier: 0,
+    luckSpent: 0,
+  };
+  const planned = planCpredRoll(data, registry, request);
+  if (!planned.ok) return;
+  store.loadCup({
+    characterId: technik.characterId,
+    characterName: technik.characterName,
+    kind: 'fieldRepair',
+    request,
+    visibility: 'public',
+    title: planned.plan.title,
+    modifierTotal: planned.plan.modifierTotal,
+  });
+}
+
+/**
  * Ładuje Test Rzetelności do kubka (etap 30d, s. 151).
  *
  * Kubek pokazuje `0`, bo tu naprawdę nie ma czego dodać: ranga kupuje

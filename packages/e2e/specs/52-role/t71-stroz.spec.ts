@@ -10,6 +10,7 @@ import {
   dataOf,
   gmSocket,
   lastMessageId,
+  messagesAfter,
   rollAfter,
   seatRole,
   startFromRoleStart,
@@ -24,8 +25,8 @@ import { closeSheet } from '../../fixtures/walka.ts';
 import { pendingDice, scriptDice } from '../../instance/instance.ts';
 
 /**
- * Etap 71b — Stróż Prawa, Wsparcie (s. 158–159), stan dzisiejszy. Wiersze
- * macierzy: STR-01, STR-02, STR-03 (#84), STR-04, STR-07, STR-15.
+ * Etap 71b — Stróż Prawa, Wsparcie (s. 158–159). Wiersze macierzy: STR-01,
+ * STR-02, STR-03 (#84, naprawiony w 71c0), STR-04, STR-07, STR-15.
  * Pojazdy Wsparcia (STR-12) — po etapie 72.
  */
 
@@ -138,15 +139,17 @@ test.describe.serial('@szybkie T71 Stróż Prawa — Wsparcie', () => {
     scriptDice([]);
   });
 
-  test('#84 STR-03 wezwanie bez figury w ładunku po wydanej Akcji — dziś przechodzi', async () => {
-    test.fail(true, '#84 — Akcję liczy tylko ładunek z `tokenId` (karta postaci go nie wysyła)');
+  test('#84 STR-03 wezwanie bez figury w ładunku po wydanej Akcji dostaje odmowę', async () => {
+    const before = lastMessageId();
     scriptDice([9, 1]);
     const ack = await emitAck(await gosia.socket(), 'character:backup-call', {
       characterId: characterId(LAW.card),
       level: 1,
     });
     scriptDice([]);
-    expect(ack).toMatchObject({ ok: false });
+    expect(ack).toMatchObject({ ok: false, error: 'NO_ACTION_LEFT' });
+    // Odmowa przed kośćmi: żadnej karty „Wezwanie Wsparcia”.
+    expect(messagesAfter(before).filter((row) => row.kind === 'roll')).toEqual([]);
   });
 
   test('porządek: brak błędów konsoli', async () => {

@@ -9,6 +9,30 @@ czytany na starcie każdej sesji został listą zadań, a nie archiwum ustaleń.
 inaczej, niż mówi podręcznik, albo gdy dotykasz wymienionego tu kodu. Jeśli któraś z tych decyzji
 przestanie się bronić, przenieś ją stąd do `POMYSLY.md` jako zadanie — nie odwrotnie.
 
+## Błędy Ról z audytu: Prowizorka jako Test i Akcja bez `tokenId` (etap 71c0, 15.11.2026)
+
+Bramka MG z 15.11 (G1–G5) — rozstrzygnięcia bez pytań, które naprawa musiała przyjąć:
+
+- **Prowizorka rzuca Podstawowymi naprawami** (pancerz naprawia się nimi wg FAQ), z poziomem
+  Naprawy jednym wierszem — Podstawowe naprawy są na liście Testów naprawczych, ale Naprawa nie
+  dolicza się drugi raz. PT to „typowa naprawa takiej rzeczy”: pasmo ceny **wpisu Kompendium**,
+  z którego wiersz pochodzi (s. 140). **Wiersz wpisany ręką, bez wpisu, dostaje PT 13**
+  (Codzienny szczebel drabinki, s. 129) — zasada domowa; MG widzi PT na karcie rzutu.
+- **Nieudana Prowizorka nic nie psuje** — Akcja przepada, sztuka zostaje, jak była; kolejna
+  próba w następnej Akcji. Podręcznik nie mówi o skutku porażki tej Akcji.
+- **Rejestr bez Podstawowych napraw** (zestaw Easy Mode z `data/public`, świeży klon) rzuca
+  zapasową definicją Umiejętności z poziomem 0 — sama TECH + Naprawa.
+- **„Pełna naprawa” zdejmująca ślad zużytej łaty to pełne OB bez trwającej łaty** — dziś ↻ MG,
+  od 71c2 Test naprawy Technikiem. Łata zakłada się wyłącznie Testem: `character:field-repair`
+  bez `undo` odmawia (`FIELD_REPAIR_NEEDS_ROLL`). Odliczania 10 minut na poziom dalej nie ma
+  (wpis z 29.08 niżej) — przychodzi w 71d1 (G12).
+- **Figurę, która płaci Akcję Zdolności z karty, wybiera serwer** — najpierw figura tej karty
+  grająca w walce od rundy 1, potem figura na oglądanej scenie. Wsparcie wezwane z karty poza
+  walką stawia więc funkcjonariuszy przy figurze na oglądanej scenie (do 71c0 z karty nie stawiało
+  nikogo).
+- **Modyfikator obrażeń MG przy serii dalej mnoży się z kośćmi** — po mnożniku dochodzi tylko
+  Wykrycie słabości (FAQ mówi o nim, o modyfikatorze sytuacyjnym nie mówi nic).
+
 ## Wykrycie w Sieci zaczyna walkę (14.11.2026, zlecenie i decyzje MG)
 
 Zmienia akapit „Poza walką automat tylko wykrywa i budzi” z 70e niżej.
@@ -687,6 +711,8 @@ Rozstrzygnięcia bez pytań z projektu etapu (nr 3, 5 i 6) i drobniejsze z sesji
   rund na poziom — dłużej, niż trwała którakolwiek walka w tym projekcie. Zegar, który nigdy nie
   bije, to zegar, którego nikt nie czyta; wiersz pancerza pamięta starte OB, a guzik oddaje je,
   gdy MG uzna, że prowizorka puściła. Ta sama umowa, którą 16h zawarła z efektami poza walką.
+  *Dopisek 15.11.2026 (etap 71c0):* powód nieaktualny — zegar świata jest od etapu 37; odliczanie
+  wchodzi w 71d1 (G12). Od 71c0 łata zakłada się Testem (sekcja „Błędy Ról z audytu”).
 
 - **Farmaceutyki i kriosystemy zostają prozą (29.08, czwarta).** Obie Specjalizacje dają liczbę do
   Umiejętności Technologia Medyczna i **listę rzeczy, których VTT nie modeluje**: dawek leków

@@ -14,7 +14,6 @@ import type {
 import {
   CPRED_ACTION_BACKUP,
   CPRED_ACTION_COMBAT_AWARENESS,
-  CPRED_ACTION_FIELD_REPAIR,
   CPRED_BACKUP_ABILITY,
   CPRED_COMBAT_AWARENESS_ABILITY,
   ROLE_GM,
@@ -24,8 +23,6 @@ import {
   cpredCombatAwarenessProblem,
   cpredAmmoPatchRaises,
   cpredDropOrphanedRolePurses,
-  cpredFieldRepairMinutes,
-  cpredSheetFabrication,
   cpredRoleAbilityRank,
   cpredFleetRowLevel,
   cpredFleetSheetProblem,
@@ -71,9 +68,8 @@ import {
   emitTokensOfCharacter,
   moveCharacterTokensToOwner,
   removeCharacterFigures,
-  requireCampaignToken,
 } from './tokens.js';
-import { requireTurnSpend } from './combat-actions.js';
+import { characterFigure, requireTurnSpend } from './combat-actions.js';
 import { scheduleBackup } from './backup.js';
 import { dropFromTeams, syncTeamMemberName } from './team.js';
 import { placeApprovedCreationToken } from './creation.js';
@@ -726,13 +722,18 @@ export const characterCombatAwarenessEvent = defineEvent<
     const unchanged =
       JSON.stringify(readCpredCombatAwareness(data.combatAwareness)) === JSON.stringify(allocation);
 
-    if (!unchanged && payload?.tokenId !== undefined) {
-      const { token, scene } = await requireCampaignToken(
-        deps.ctx.prisma,
-        campaignId,
-        payload.tokenId,
-      );
-      if (token.characterId !== character.id) throw new RealtimeError('BAD_REQUEST');
+    // Figurę w walce znajduje serwer (#84): ładunek bez `tokenId` nie omija Akcji.
+    const figure = unchanged
+      ? null
+      : await characterFigure(
+          deps,
+          campaignId,
+          character.id,
+          payload?.tokenId,
+          socket.data.viewedSceneId,
+        );
+    if (figure) {
+      const { token, scene } = figure;
       await requireTurnSpend(
         deps,
         campaignId,
@@ -761,22 +762,17 @@ export const characterCombatAwarenessEvent = defineEvent<
 });
 
 /**
- * „Prowizorka" — a Technik's field repair (stage 30b, s. 147).
+ * Koniec Prowizorki Technika (stage 30b, s. 147; od 71c0 tylko koniec).
  *
- * „Zamiast podejmować próbę długiej naprawy, możesz w ramach Akcji tymczasowo
- * doprowadzić jakiś przedmiot do idealnego stanu […] Tak naprawiony przedmiot
- * ma pełne OB i PW". In this VTT the only thing that carries an SP that wears
- * down is a piece of armour, so that is what a bodge puts back — and the row
- * remembers what it was worth, because „potem przedmiot wraca do stanu, w
- * którym był".
+ * Łatę zakłada od etapu 71c0 Test przez kubek (`character:roll`, rodzaj
+ * `fieldRepair`, #85) — to zdarzenie już jej nie robi. Zostało „Koniec
+ * prowizorki”: przedmiot „wraca do stanu, w którym był”, a wiersz zapamiętuje,
+ * że łata już raz puściła (`fieldRepairSpent`, #86) — „nie można go ponownie
+ * tymczasowo naprawić, dopóki nie zostanie zupełnie naprawiony w zwykły
+ * sposób”. Ślad schodzi sam przy pełnym OB (`cpredSettledArmorRow`).
  *
- * It carries no countdown. Ten minutes a level is sixty rounds a level, longer
- * than any fight this project has ever run, so a round timer would be a clock
- * that never strikes; the piece stays patched until somebody presses the button
- * — the same bargain stage 16h struck with effects that outlive a combat.
- *
- * „Nie można go ponownie tymczasowo naprawić, dopóki nie zostanie zupełnie
- * naprawiony w zwykły sposób" is why a row already bodged refuses a second one.
+ * Odliczania nie ma (dziesięć minut na poziom to sześćdziesiąt rund na poziom);
+ * zegar świata dostanie je w 71d1 (G12).
  */
 export const characterFieldRepairEvent = defineEvent<CharacterFieldRepairPayload, CharacterView>({
   name: 'character:field-repair',
@@ -790,58 +786,19 @@ export const characterFieldRepairEvent = defineEvent<CharacterFieldRepairPayload
     const isGm = user.role === ROLE_GM;
     if (!isGm && character.ownerId !== user.id) throw new RealtimeError('CHARACTER_NOT_FOUND');
     refuseAwaitingGm(character, user);
+    // Łatę zakłada Test (71c0) — ścieżka bez rzutu nie istnieje.
+    if (payload?.undo !== true) throw new RealtimeError('FIELD_REPAIR_NEEDS_ROLL');
 
     const data = parseCharacterData(character.data, deps.ctx.cpred);
     const row = data.armor.find((entry) => entry.id === payload?.armorRowId);
     if (!row) throw new RealtimeError('UNKNOWN_ARMOR');
-
-    let armor: typeof data.armor;
-    let note: string;
-    if (payload?.undo === true) {
-      if (!row.fieldRepair) throw new RealtimeError('NOT_PATCHED');
-      const restored = Math.min(row.fieldRepair.restoredFrom, row.sp);
-      armor = data.armor.map((entry) =>
-        entry.id === row.id ? { ...entry, spCurrent: restored, fieldRepair: undefined } : entry,
-      );
-      note = `${row.name}: prowizorka puszcza, OB wraca do ${restored}.`;
-    } else {
-      if (row.fieldRepair) throw new RealtimeError('ALREADY_PATCHED');
-      if (row.spCurrent >= row.sp) throw new RealtimeError('ARMOR_INTACT');
-      // The Technik doing the bodging is the sheet that owns the row: RAW lets
-      // a Technik patch anybody's gear, but the SP that changes is this sheet's,
-      // and „who turned the screwdriver" is the table's business, not a column.
-      const repair = cpredSheetFabrication(data, deps.ctx.cpred).repair;
-      if (repair < 1) throw new RealtimeError('NO_REPAIR_SPECIALTY');
-      const minutes = cpredFieldRepairMinutes(repair);
-      armor = data.armor.map((entry) =>
-        entry.id === row.id
-          ? {
-              ...entry,
-              spCurrent: entry.sp,
-              fieldRepair: { restoredFrom: entry.spCurrent, minutes },
-            }
-          : entry,
-      );
-      note = `${row.name}: prowizorka na ${minutes} min — OB ${row.spCurrent} → ${row.sp}.`;
-      if (payload?.tokenId !== undefined) {
-        const { token, scene } = await requireCampaignToken(
-          deps.ctx.prisma,
-          campaignId,
-          payload.tokenId,
-        );
-        if (token.characterId !== character.id) throw new RealtimeError('BAD_REQUEST');
-        await requireTurnSpend(
-          deps,
-          campaignId,
-          scene,
-          token.id,
-          { kind: 'action', actionId: CPRED_ACTION_FIELD_REPAIR },
-          user,
-          CPRED_ACTION_FIELD_REPAIR,
-          { silent: false, note },
-        );
-      }
-    }
+    if (!row.fieldRepair) throw new RealtimeError('NOT_PATCHED');
+    const restored = Math.min(row.fieldRepair.restoredFrom, row.sp);
+    const armor = data.armor.map((entry) => {
+      if (entry.id !== row.id) return entry;
+      const { fieldRepair: _gone, ...rest } = entry;
+      return { ...rest, spCurrent: restored, fieldRepairSpent: true as const };
+    });
 
     const saved = await deps.ctx.prisma.character.update({
       where: { id: character.id },
@@ -896,15 +853,33 @@ export const characterBackupCallEvent = defineEvent<
 
     // The figure standing on the map: it pays the Action and the officers turn
     // up beside it. A sheet on no scene calls for help in the fiction alone.
+    // Panel karty nie zna figury — serwer szuka jej sam (#84).
     let scene: Scene | null = null;
     let callerTokenId: string | null = null;
     let callerAt: { x: number; y: number } | null = null;
-    if (payload?.tokenId !== undefined) {
-      const found = await requireCampaignToken(deps.ctx.prisma, campaignId, payload.tokenId);
-      if (found.token.characterId !== character.id) throw new RealtimeError('BAD_REQUEST');
+    const found = await characterFigure(
+      deps,
+      campaignId,
+      character.id,
+      payload?.tokenId,
+      socket.data.viewedSceneId,
+    );
+    if (found) {
       scene = found.scene;
       callerTokenId = found.token.id;
       callerAt = { x: found.token.x, y: found.token.y };
+      // The Action first, so a refusal costs no dice. `requireTurnSpend` waves
+      // through a token that is not in a running fight — exactly „poza walką".
+      await requireTurnSpend(
+        deps,
+        campaignId,
+        found.scene,
+        found.token.id,
+        { kind: 'action', actionId: CPRED_ACTION_BACKUP },
+        user,
+        CPRED_ACTION_BACKUP,
+        { silent: false, note: `poziom ${level}: ${tier.name}` },
+      );
     }
 
     const gesture = sanitizeGesture(payload?.gesture);
@@ -934,22 +909,6 @@ export const characterBackupCallEvent = defineEvent<
     };
     if (gesture && gesture.strength > 0) call.tossStrength = gesture.strength;
     if (gesture?.toss) call.toss = gesture.toss;
-
-    // The Action first, so a refusal costs no dice — and only when the caller
-    // has a figure in a running fight. `requireTurnSpend` waves through a token
-    // that is not in one, which is exactly „poza walką".
-    if (scene && callerTokenId) {
-      await requireTurnSpend(
-        deps,
-        campaignId,
-        scene,
-        callerTokenId,
-        { kind: 'action', actionId: CPRED_ACTION_BACKUP },
-        user,
-        CPRED_ACTION_BACKUP,
-        { silent: false, note: `poziom ${level}: ${tier.name}` },
-      );
-    }
 
     const stored = await deps.ctx.prisma.chatMessage.create({
       data: {

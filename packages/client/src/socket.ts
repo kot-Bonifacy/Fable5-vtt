@@ -1774,6 +1774,18 @@ function rollAckErrorText(code: string): string {
       return 'Za daleko — Ustabilizowanie wymaga zasięgu ramienia (2 m).';
     case 'STABILIZE_NOT_ON_SCENE':
       return 'Ta postać nie ma figury na scenie pacjenta — nie ma jak go dosięgnąć.';
+    // Etap 71c0 — Prowizorka jako Test przez kubek.
+    case 'UNKNOWN_ARMOR':
+    case 'NO_REPAIR_SPECIALTY':
+    case 'ARMOR_INTACT':
+    case 'ALREADY_PATCHED':
+    case 'PATCH_SPENT':
+      return fieldRepairErrorText(code);
+    // Akcja Prowizorki i Ustabilizowania — odmowy budżetu tury mówią po swojemu.
+    case 'NO_ACTION_LEFT':
+    case 'NOT_YOUR_TURN':
+    case 'STATUS_BLOCKED':
+      return combatErrorText(code);
     default:
       return `Błąd rzutu: ${code}`;
   }
@@ -4315,25 +4327,6 @@ export const saveCombatAwareness = (
     ...(tokenId ? { tokenId } : {}),
   });
 
-/**
- * „Prowizorka" Technika (etap 30b) — Akcja, gdy trwa walka.
- *
- * `tokenId` to figura, która płaci; poza walką serwer nie liczy nic. Odmowa
- * wraca kodem silnika i tłumaczy ją `fieldRepairErrorText` niżej.
- */
-export async function makeFieldRepair(
-  characterId: string,
-  armorRowId: string,
-  tokenId?: string,
-): Promise<void> {
-  const ack = await emitSceneAck<CharacterView>('character:field-repair', {
-    characterId,
-    armorRowId,
-    ...(tokenId ? { tokenId } : {}),
-  });
-  noteAck('character', ack, fieldRepairErrorText);
-}
-
 /** Koniec prowizorki — starte OB wraca na wiersz. Nie kosztuje nic. */
 export async function endFieldRepair(characterId: string, armorRowId: string): Promise<void> {
   const ack = await emitSceneAck<CharacterView>('character:field-repair', {
@@ -4355,7 +4348,11 @@ export function fieldRepairErrorText(code: string): string {
     case 'ARMOR_INTACT':
       return 'Ta sztuka ma pełne OB — nie ma czego prowizorycznie naprawiać.';
     case 'ALREADY_PATCHED':
-      return 'Ta sztuka jest już na prowizorce — najpierw napraw ją zwyczajnie.';
+      return 'Ta sztuka jest już na prowizorce.';
+    case 'PATCH_SPENT':
+      return 'Prowizorka tej sztuki już raz puściła — kolejna dopiero po pełnej naprawie (s. 147).';
+    case 'FIELD_REPAIR_NEEDS_ROLL':
+      return 'Prowizorkę zakłada Test — kliknij „Prowizorka” na karcie i rzuć kubkiem.';
     case 'NOT_PATCHED':
       return 'Ta sztuka nie jest na prowizorce.';
     default:
