@@ -1,5 +1,32 @@
 # Dziennik sesji — archiwum
 
+### Sesja 14.11 (ósma) — wykrycie w Sieci zaczyna walkę
+
+**Zrobione (bez migracji, czeka na wdrożenie)** — zlecenie MG, decyzje z pytań w sesji:
+
+- **LOD, który wykrył netrunnera, Demon, który zaczyna ścigać, i ostatecznie nieudane
+  Maskowanie zakładają starcie jak zauważenie wroga**: runda 0 „Przed walką”, drużyna stoi
+  (gracz nie zjedzie też po Sieci — „Zaraz walka — czekaj, aż MG ją rozpocznie.”), MG ma pasek
+  „Wykrycie w Sieci” z „⚔ Rozpocznij walkę / Odwołaj” („Iskra — wykrycie w Sieci: Strażnik.”,
+  „Iskra — Maskowanie nieudane, ślady zostały w Sieci.”).
+- **Maskowanie**: liczy się porażka ostateczna (ostatnia próba Tury albo zejście z piętra
+  w połowie prób), nie każdy pechowy rzut; w starciu tylko drużyna i to, co na piętrze już ściga.
+- **„Rozpocznij walkę” stawia LOD-a / Demona na czele kolejki** (s. 205), także gdy reszta
+  rzuciła wyżej.
+- **Hamulec „Wstrzymaj obronę” wyłącza to wszystko** (rozstrzygnięcie bez pytania — inaczej
+  ręczne „LOD wykrywa intruza” z T5b/`netcombat.test.ts` zakładało starcie wbrew hamulcowi).
+- Przy okazji: macierz izolacji kampanii dostała brakujący przypadek `net:forget-scene` (test
+  padał od szóstej sesji).
+
+Decyzje w `decyzje-i-uproszczenia.md` (akapit 70e o LOD-zie poza walką skreślony), umowa na
+górze `siec`, pomysł (1) i (4) z 13.11 w `POMYSLY.md` uzupełnione. **Oglądane w Firefoksie**
+(MG w Firefoksie, Ola w Chromium — nowy E2E `47-siec/t70g`, zrzuty paska MG po Maskowaniu i po
+wykryciu). Uwaga z oględzin: przypięty pasek leży na nagłówku okna SIEĆ MG, aż MG zdecyduje
+(to samo co dymki — pomysł (4)). Testy: shared 3074, klient 511, serwer 1806 (pełne suity, nowy
+`net-encounter.test.ts`), E2E `T70g` 3/3 i `T70e` 5/5 — zielone (T70e krok 1 padł raz
+w pierwszym przebiegu, w dwóch następnych przeszedł — migotanie bez diagnozy); `tsc`,
+ESLint i Prettier czyste. `T5b`, `T62`, `T70a–d` nie puszczone.
+
 ### Sesja 14.11 (siódma) — czerwone ślady na piętrach bez Maskowania
 
 **Zrobione (bez migracji, czeka na wdrożenie)** — zlecenie MG, rozstrzygnięcia z pytań w sesji:

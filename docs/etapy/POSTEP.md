@@ -21,13 +21,25 @@ w plikach obok — czytaj je **na żądanie, nigdy rutynowo**:
 
 | stan         | etapy                                                                                          |
 | ------------ | ---------------------------------------------------------------------------------------------- |
-| ⬜ otwarty   | **71** Weryfikacja Ról bez Netrunnera (🟨 `etap-71-weryfikacja-rol.md`: **71a ✅ 14.11** audyt i `role-macierz.md`; następny **71b** stan w przeglądarce i **bramka MG**, potem 71c–71g doróbki wg maszynerii, 71h zamknięcie); **70** Przebudowa netrunningu: okno jednego piętra i przejęte urządzenia na mapie (🟨 zrobione 12–14.11, `etap-70-siec-przebudowa.md`: **70a** okno jednego piętra, **70b** przejęta wieżyczka i kamera, **70c** dron, oczy, pasek, **70d** obszar straży, Sieć ze sceny wg rodzaju, okienko strefy, **70e** automat LOD-u i Demona z hamulcem, **70f ✅ 14.11** wzorce 66b/66e pod nowe reguły i rozegranie; czeka na wdrożenie (70d z migracją `20261113180000_net_scene_installations`) i stół MG); **69** Lewa belka bez ramek (🟨 zrobione 11.11, czeka na wdrożenie i oględziny MG przy stole); **68** Warsztat: ulepszenia auta za ed i naprawa (🟨 zrobione 06.11, czeka na wdrożenie i oględziny MG przy stole); **67** Zakup pojazdu (🟨 zrobione 06.11, czeka na wdrożenie i oględziny MG przy stole); **66e** Scena przykładowa „Po zamknięciu” (🟨 zrobione 07.11, obejrzane w Firefoksie; rozegrana w przeglądarce do końca 07.11 — znaleziska w `zaleglosci.md` (27; pkt 18 i 19 nie, decyzja MG; 13 naprawionych 07.11); czeka na naprawę reszty, stół MG i wdrożenie); **66d** Scena przykładowa „Zastaw” (🟨 wzorzec zrobiony i rozegrany w przeglądarce 06.11; od 06.11 jeden taran na turę (decyzja MG); czeka na stół MG i wdrożenie); **66** Sceny przykładowe (🟨 zrobione 31.10, czeka na oględziny MG przy stole i wdrożenie; **66b** „Fabryka dronów” 🟨 zrobione 31.10, tak samo (netrunner obejrzany w przeglądarce 07.11, poprawki czekają na wdrożenie); **66c** „Ostatni zjazd” 🟨 wzorzec zrobiony, rozegrany w przeglądarce 04.11 i ponownie 05.11 po rebalansie (porażka o włos, balans zatwierdzony przez MG) — zaległości z przebiegów zamknięte 05.11, Esc na kubku MG 07.11 — czeka na stół MG i wdrożenie); **65** Scena pościgu i walka pojazdów (🟨 65a–65e ✅ 30–31.10, czeka na oględziny MG przy stole); **62** Sieć ze sceny (🟨 zrobione, czeka na oględziny MG na VPS po wdrożeniu); **61** Skradanie się (🟨 zrobione, czeka na słowo MG o rozstrzygnięciach); **28** Wdrożenie na VPS (🟨 działa na `https://vtt.tatanga.eu` z botami od 18.10; zostały off-site, utwardzenie, monitoring); **43b**, **43c** (UI walki); **60** Czytelny czat (zlecenie MG z 24.10; 🟨 60a–60c ✅, czeka na oględziny MG z pierwszego kryterium); T10; refaktoryzacja odłożona (MG 18.10) |
+| ⬜ otwarty   | **72** Przebudowa pościgu: prędkość, pasy ruchu i kokpit kierowcy (⬜ projekt 15.11, `etap-72-poscig-kokpit.md`; kodu nie ruszano, następny **72a** rdzeń modelu w `shared`, potem 72b–72g); **71** Weryfikacja Ról bez Netrunnera (🟨 `etap-71-weryfikacja-rol.md`: **71a ✅ 14.11** audyt i `role-macierz.md`; następny **71b** stan w przeglądarce i **bramka MG**, potem 71c–71g doróbki wg maszynerii, 71h zamknięcie); **70** Przebudowa netrunningu: okno jednego piętra i przejęte urządzenia na mapie (🟨 zrobione 12–14.11, `etap-70-siec-przebudowa.md`: **70a** okno jednego piętra, **70b** przejęta wieżyczka i kamera, **70c** dron, oczy, pasek, **70d** obszar straży, Sieć ze sceny wg rodzaju, okienko strefy, **70e** automat LOD-u i Demona z hamulcem, **70f ✅ 14.11** wzorce 66b/66e pod nowe reguły i rozegranie; czeka na wdrożenie (70d z migracją `20261113180000_net_scene_installations`) i stół MG); **69** Lewa belka bez ramek (🟨 zrobione 11.11, czeka na wdrożenie i oględziny MG przy stole); **68** Warsztat: ulepszenia auta za ed i naprawa (🟨 zrobione 06.11, czeka na wdrożenie i oględziny MG przy stole); **67** Zakup pojazdu (🟨 zrobione 06.11, czeka na wdrożenie i oględziny MG przy stole); **66e** Scena przykładowa „Po zamknięciu” (🟨 zrobione 07.11, obejrzane w Firefoksie; rozegrana w przeglądarce do końca 07.11 — znaleziska w `zaleglosci.md` (27; pkt 18 i 19 nie, decyzja MG; 13 naprawionych 07.11); czeka na naprawę reszty, stół MG i wdrożenie); **66d** Scena przykładowa „Zastaw” (🟨 wzorzec zrobiony i rozegrany w przeglądarce 06.11; od 06.11 jeden taran na turę (decyzja MG); czeka na stół MG i wdrożenie); **66** Sceny przykładowe (🟨 zrobione 31.10, czeka na oględziny MG przy stole i wdrożenie; **66b** „Fabryka dronów” 🟨 zrobione 31.10, tak samo (netrunner obejrzany w przeglądarce 07.11, poprawki czekają na wdrożenie); **66c** „Ostatni zjazd” 🟨 wzorzec zrobiony, rozegrany w przeglądarce 04.11 i ponownie 05.11 po rebalansie (porażka o włos, balans zatwierdzony przez MG) — zaległości z przebiegów zamknięte 05.11, Esc na kubku MG 07.11 — czeka na stół MG i wdrożenie); **65** Scena pościgu i walka pojazdów (🟨 65a–65e ✅ 30–31.10, czeka na oględziny MG przy stole); **62** Sieć ze sceny (🟨 zrobione, czeka na oględziny MG na VPS po wdrożeniu); **61** Skradanie się (🟨 zrobione, czeka na słowo MG o rozstrzygnięciach); **28** Wdrożenie na VPS (🟨 działa na `https://vtt.tatanga.eu` z botami od 18.10; zostały off-site, utwardzenie, monitoring); **43b**, **43c** (UI walki); **60** Czytelny czat (zlecenie MG z 24.10; 🟨 60a–60c ✅, czeka na oględziny MG z pierwszego kryterium); T10; refaktoryzacja odłożona (MG 18.10) |
 | ✅ ukończone | 01–11, 13–20b, 23a–27f, 27h–27l, 29a–30d, 31–35, 37–42c, 43a, 44a–44d, 45, 46a1, 46a2, 46c1, 46c2, 46b1, 46b2, 47a, 47b, 48a, 48b, 48c, 49a, 49b, 50a, 50b, 50c, 51, 52, 53, 54, 55, 56, 57 (57a–57c), 58 (58a–58d), 59 (59a–59c), 63 (63a–63b; 63c wycofane 29.10), 64 (64a–64c) (ostatni zamknięty: 64, 2026-10-30) |
 | ⛔ wycofane  | 12, 21, 22 (głos), 27g (wydajność), 36 (makra); 27, 29, 30, 38 rozdzielone na etapy literowane |
 
 Pełna tabela z nazwami i datami: `archiwum/tabela-etapow.md`.
 
 ## Od czego zacząć
+
+**Przebudowa pościgu (etap 72, zlecenie MG z 15.11) — projekt gotowy, kodu nie ruszano; następny
+72a.** Plik `etap-72-poscig-kokpit.md`: budżet `Ruch / 4`, tempo i dryf z 65c znikają, auto ma
+**prędkość trwającą między turami** (na ekranie w mil/h = Ruch × 5; gaz +50, hamulec −100)
+i **pas ruchu**, rusza się tylko w turze swojego kierowcy, a kadr co rundę dogania auto drużyny
+sztywnym przesunięciem. Na początku rundy **„Wyścig”** — Test przeciwstawny Prowadzenia (gracz
+kubkiem), różnica daje kratki zrywu. Kierowca prowadzi z **grupy „Pojazd” w lewej belce**
+(wariant B makiety, z kafli etapu 69; krzyżak ułożony jak na ekranie, bez klawiatury), auta
+NPC-ów mają **zamiar i autopilota**, MG dostaje **panel „Pościg” z planem rund**. Podetapy:
+72a rdzeń `shared`, 72b serwer i surowy kokpit, 72c Wyścig, 72d pełny kokpit, 72e auta NPC-ów,
+72f panel i kreator, 72g wzorce 66c/66d i rozegranie. Jedenaście rozstrzygnięć „bez pytań”
+czeka w pliku na potwierdzenie w trakcie. Makieta: link w pliku etapu.
 
 **Weryfikacja Ról (etap 71, zlecenie MG z 14.11) — 71a zrobione, następny 71b.** Audyt dziewięciu
 Ról (bez Netrunnera) stoi w `role-macierz.md`: 194 reguły z identyfikatorem (`SOL-10`,
@@ -841,6 +853,31 @@ a nie do tego pliku.
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
 
+### Sesja 15.11 — projekt etapu 72: przebudowa pościgu
+
+**Zrobione (sam projekt — kodu aplikacji nie ruszano, nic do wdrożenia):**
+
+- **`etap-72-poscig-kokpit.md`**: co dziś nie gra (sześć punktów z odpowiedzi MG i rozegrań
+  66c / 66d), jedenaście decyzji MG, model „prędkość i pasy”, kadr zamiast tempa, Wyścig,
+  zderzenia / przeszkody / automat utraty kontroli, kokpit w lewej belce, zamiar i autopilot
+  aut NPC-ów, panel „Pościg” z planem rund, zmiany w danych i protokole, siedem podetapów
+  (72a–72g) z checklistami, kryteria i rozstrzygnięcia bez pytań.
+- **Decyzje MG z pytań w sesji** (trzy rundy + makieta): model „prędkość i pasy” w turach
+  CP RED; strzałki jak na ekranie; krok po kroku (gaz +1 krok, hamulec −2); **prędkość liczbą
+  w mil/h zamiast biegów**; Test przeciwstawny Prowadzenia co rundę, **gracz rzuca kubkiem**;
+  bez klawiatury; **wariant B makiety („Pojazd” w lewej belce), stylistycznie jak belka
+  głównego UI**; zamiar + autopilot z kokpitem do ręki; panel „Pościg” + plan rund. Ból MG:
+  tempo / dryf / budżet, prowadzenie aut NPC-ów, przeszkody i reżyseria; ból graczy: jazda
+  przeciąganiem, dryf zjada ruch, ukryte akcje auta. Rozstawienie aut i kadr gracza — poza
+  zakresem.
+- **Makieta kokpitu** (trzy warianty, płótno projektowe, prywatne, konto MG):
+  https://claude.ai/artifact/NxwwTTvFgC1peFnxcwTsAX — artboard B przerysowany po wyborze MG na
+  części prawdziwej belki (duży kafel, średnie kafle, ikony, znaczki kosztu).
+- Pomysły spoza zakresu na górze `POMYSLY.md`, wiersz 72 w `archiwum/tabela-etapow.md`.
+
+Testów nie puszczano (brak zmian w kodzie). **Przeglądarki nie otwierano** — makieta jest
+osobnym płótnem, nie widokiem aplikacji; oględziny w Firefoksie zaczynają się w 72b.
+
 ### Sesja 14.11 (dziewiąta) — etap 71a: audyt Ról i macierz zgodności
 
 **Zrobione (bez zmian mechaniki, nic do wdrożenia):**
@@ -867,30 +904,3 @@ klient 511, serwer 1806 zielone (pierwszy przebieg serwera skończył się kodem
 zamknięciu `walls.test.ts`, drugi czysty — pułapka na górze `testy`, zaległość w
 `zaleglosci.md`); `tsc` shared i ESLint nowego pliku czyste. E2E nie puszczane (brak zmian
 w kodzie aplikacji). **Przeglądarki nie otwierano** — podetap nie dotyka UI.
-
-### Sesja 14.11 (ósma) — wykrycie w Sieci zaczyna walkę
-
-**Zrobione (bez migracji, czeka na wdrożenie)** — zlecenie MG, decyzje z pytań w sesji:
-
-- **LOD, który wykrył netrunnera, Demon, który zaczyna ścigać, i ostatecznie nieudane
-  Maskowanie zakładają starcie jak zauważenie wroga**: runda 0 „Przed walką”, drużyna stoi
-  (gracz nie zjedzie też po Sieci — „Zaraz walka — czekaj, aż MG ją rozpocznie.”), MG ma pasek
-  „Wykrycie w Sieci” z „⚔ Rozpocznij walkę / Odwołaj” („Iskra — wykrycie w Sieci: Strażnik.”,
-  „Iskra — Maskowanie nieudane, ślady zostały w Sieci.”).
-- **Maskowanie**: liczy się porażka ostateczna (ostatnia próba Tury albo zejście z piętra
-  w połowie prób), nie każdy pechowy rzut; w starciu tylko drużyna i to, co na piętrze już ściga.
-- **„Rozpocznij walkę” stawia LOD-a / Demona na czele kolejki** (s. 205), także gdy reszta
-  rzuciła wyżej.
-- **Hamulec „Wstrzymaj obronę” wyłącza to wszystko** (rozstrzygnięcie bez pytania — inaczej
-  ręczne „LOD wykrywa intruza” z T5b/`netcombat.test.ts` zakładało starcie wbrew hamulcowi).
-- Przy okazji: macierz izolacji kampanii dostała brakujący przypadek `net:forget-scene` (test
-  padał od szóstej sesji).
-
-Decyzje w `decyzje-i-uproszczenia.md` (akapit 70e o LOD-zie poza walką skreślony), umowa na
-górze `siec`, pomysł (1) i (4) z 13.11 w `POMYSLY.md` uzupełnione. **Oglądane w Firefoksie**
-(MG w Firefoksie, Ola w Chromium — nowy E2E `47-siec/t70g`, zrzuty paska MG po Maskowaniu i po
-wykryciu). Uwaga z oględzin: przypięty pasek leży na nagłówku okna SIEĆ MG, aż MG zdecyduje
-(to samo co dymki — pomysł (4)). Testy: shared 3074, klient 511, serwer 1806 (pełne suity, nowy
-`net-encounter.test.ts`), E2E `T70g` 3/3 i `T70e` 5/5 — zielone (T70e krok 1 padł raz
-w pierwszym przebiegu, w dwóch następnych przeszedł — migotanie bez diagnozy); `tsc`,
-ESLint i Prettier czyste. `T5b`, `T62`, `T70a–d` nie puszczone.

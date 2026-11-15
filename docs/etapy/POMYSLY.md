@@ -1,5 +1,16 @@
 # Pomysły poza zakresem etapów
 
+**15.11.2026 (projekt etapu 72, przebudowa pościgu) — co zostało poza projektem.** (1) **Jazda
+poza walką kokpitem** (swobodne ustawianie się kierowców przed startem; dziś i w projekcie szyk
+ustawia MG ręką). (2) **Grupa „Pojazd” tylko do odczytu dla pasażera** (prędkość, PUK, dystans
+do celu) — w projekcie pasażer widzi prędkości aut na mapie. (3) **Przyspieszenie zależne od
+modelu** (motocykl szybciej nabiera prędkości niż furgon) — w projekcie każdy pojazd ma krok
++50 / −100 mil/h. (4) **Spadek prędkości po taranowaniu** obu aut. (5) **„Jazda na limicie”** —
+Test za jeden krok ponad maksimum (MG wybrał w zamian Wyścig co rundę). (6) **Sterowanie
+z klawiatury i mapa obrócona pod kierowcę** (MG: przyciski na ekranie, strzałki jak na ekranie).
+(7) **Autopilot odpowiadający na przeszkodę przed zderzakiem** (MG wybrał „zamiar + autopilot”,
+nie pełny automat).
+
 **13.11.2026 (etap 70e, automat obrony Sieci) — czego automat jeszcze nie robi.** (1) **LOD
 i Demon ścigający poza walką wchodzą do kolejki, gdy MG założy starcie** (od 14.11 wykrycie samo
 zakłada starcie z LOD-em — zostaje tylko przypadek „Odwołaj” albo hamulca, potem „⚔ Do starcia”
