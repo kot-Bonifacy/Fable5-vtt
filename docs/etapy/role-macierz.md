@@ -70,6 +70,8 @@ katalogiem VTT).
 | Pościg w etapie 71                      | **71 nie dotyka sceny pościgu** — asercje i jazda Nomadą przechodzą do 72c / 72g                                |
 | NOM-03: Moto a próg „słabego kierowcy”  | **Moto się liczy** (próg = REF + Umiejętność + Moto); wchodzi z nowym modelem jazdy w 72a / 72c, wiersz ❓ → ❌ |
 | STR-12: Wsparcie autem w scenie pościgu | **po etapie 72, osobna pozycja** — zdjęte z 71f; etap 71 zamyka się bez niej                                    |
+| Wyścig kierowcy bez Umiejętności        | **bez premii na siłę**: sama Cecha + 1k10; funkcjonariusz Wsparcia — czyste 1k10, bez Wartości bojowej          |
+| „Słaby kierowca” bez pełnej karty       | **reguła tylko dla postaci z kartą** — statysta i funkcjonariusz nie tracą kontroli od samego rzutu Wyścigu     |
 
 ## Wspólne: kreator, rozwój, wieloklasowość
 
@@ -393,5 +395,5 @@ Lista bramki powstaje po rozegraniach 71b. To, co audyt już wie (wiersze klasy 
 | 71e handel i pieniądze            | FIX-01, FIX-04, FIX-05, FIX-06, FIX-14, FIX-10 (L — może osobny etap), KOR-12–KOR-15                                           |
 | 71f czas i zasoby narracyjne      | ROC-08, ROC-09, ROC-04 (❓), MDA-04, MDA-05, MDA-10, STR-13, STR-14                                                            |
 | **w etapie 72** (nie w 71)        | NOM-03 (próg z Moto, 72a / 72c), asercja E2E NOM-02 (72c / 72g)                                                                |
-| **po etapie 72**, osobna pozycja  | STR-12 (Wsparcie jako posiłki panelu „Pościg”; do ustalenia, czym funkcjonariusz-kierowca rzuca Wyścig)                        |
+| **po etapie 72**, osobna pozycja  | STR-12 (Wsparcie jako posiłki panelu „Pościg”; funkcjonariusz-kierowca rzuca Wyścig czystym 1k10 — decyzja MG 15.11)           |
 | 71g kreator, PD, wieloklasowość   | WSP-08, WSP-18, FIX-12, MED-08, ROC-K1 i MED-K1 (⚠️ dane, zatwierdzone 14.11), WSP-22 i WSP-23 (❓ dane), WSP-19 (❓ licencja) |

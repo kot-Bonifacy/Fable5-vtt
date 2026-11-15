@@ -135,6 +135,11 @@ stałej prędkości stoi w kadrze, a furgon traci 2,5 kratki na turę.
 - **Kiedy:** na początku każdej rundy walki (także pierwszej), przed turą pierwszej figury.
 - **Kto:** kierowca każdego auta w kadrze z kontrolą `driver`. Rzut: REF + Umiejętność
   prowadzenia właściwa dla pojazdu + 1k10, z karami jak każdy Test (rany, pancerz).
+  **Nikt nie dostaje premii „na siłę” (decyzja MG 15.11):** do rzutu wchodzi wyłącznie
+  Umiejętność prowadzenia nazwana wprost (i to, co planer dolicza do niej z karty, np. Moto).
+  Kto jej nie ma — statysta, funkcjonariusz Wsparcia — rzuca **samą Cechę + 1k10**; ogólna
+  wartość statysty ani Wartość bojowa Wsparcia do Wyścigu nie wchodzą. Funkcjonariusz nie ma
+  REF w tabeli, więc rzuca **czyste 1k10** (jak w inicjatywie, decyzja z 30c).
 - **Jak:** za NPC-ów rzuca serwer od razu. Kierowca-gracz dostaje **wezwanie na kubek**
   (`createCheckCall` wystawione przez serwer, adres skutku z białej listy — umowa `kosci` z 46b1)
   i może dorzucić Szczęście z menu kubka. **Runda czeka** z paskiem „Wyścig — czekam na: Rdza”;
@@ -144,7 +149,9 @@ stałej prędkości stoi w kadrze, a furgon traci 2,5 kratki na turę.
   z końcem rundy. Jedno auto z kierowcą w kadrze — Wyścigu nie ma.
 - **Słaby kierowca** (REF + Umiejętność ≤ 9, s. 192): rzut Wyścigu jest jego Testem zwykłej jazdy —
   wynik poniżej 10 to utrata kontroli na tę rundę. Osobny Test przy pierwszym ruchu w turze
-  (65c, `drivingTested`) znika.
+  (65c, `drivingTested`) znika. Próg liczy Moto (NOM-03). **Reguła dotyczy tylko postaci
+  z pełną kartą** (decyzja MG 15.11, jak dziś w `requireDrivingTest`): kierowca bez karty rzuca
+  Wyścig na zryw, ale od samego rzutu kontroli nie traci — tylko po nieudanym Manewrze.
 - **Czat:** jedna karta „Wyścig — runda N” (Test przeciwstawny Prowadzenia) z wynikami i zrywem
   każdego kierowcy; rzuty graczy dopisują się do niej, gdy padną.
 
@@ -309,8 +316,8 @@ przejmuje ten etap (`etap-71-weryfikacja-rol.md`, „Styk z etapem 72”):
   ocena w tych samych trzech punktach (czy gracz znajdzie, czy rozumie kartę na czacie, ile
   kliknięć).
 - **Wsparcie Stróża Prawa autem w pościgu (STR-12) — po tym etapie, osobna pozycja**, nie zakres
-  72: grupa jako posiłki panelu „Pościg” z zamiarem „Goń”. Do ustalenia wtedy: czym
-  funkcjonariusz-kierowca rzuca Wyścig (Wartość bojowa?). Panel i posiłki z 72f mają tylko nie
+  72: grupa jako posiłki panelu „Pościg” z zamiarem „Goń”. Funkcjonariusz-kierowca
+  rzuca Wyścig czystym 1k10 i nie podlega regule słabego kierowcy (punkt 3). Panel i posiłki z 72f mają tylko nie
   zakładać, że posiłki to wyłącznie auta z rezerwy sceny.
 
 ## Podział na podetapy
@@ -356,6 +363,8 @@ Każdy podetap to jedna sesja; po każdym aplikacja działa i testy przechodzą.
 - [ ] Zryw doliczany do ruchu; słaby kierowca traci kontrolę przy wyniku poniżej 10; stary Test
       zwykłej jazdy usunięty.
 - [ ] Karta czatu „Wyścig — runda N” (grupa kart, umowa `czat`), pasek „czekam na…”.
+- [ ] Kierowca bez karty: sama Cecha + 1k10 (funkcjonariusz Wsparcia — czyste 1k10), bez
+      utraty kontroli z reguły słabego kierowcy; test serwera na statystę i profil Wsparcia.
 - [ ] Testy serwera (`chase-race.test.ts`), E2E ze skryptem kości (`VTT_DICE_SCRIPT`).
 - [ ] Moto Nomady w Wyścigu i w progu słabego kierowcy: test serwera, `role-matrix.test.ts`
       „NOM-03” przepisany, wiersze NOM-02 / NOM-03 w `role-macierz.md` (punkt 9).
