@@ -48,7 +48,10 @@ wpisów decyzji z etapu 30 i szkic listy bramki. Mechanika **nie była zmieniana
 czekają w `testy-rejestr.md` (#83–#85) na bramkę MG po 71b. 71b: fikstura dziewięciu postaci,
 punkt kontrolny `role-start`, specyfikacje `52-role/t71-*` w wersji „stan dzisiejszy”, pierwsze
 rozegrania i **lista bramki do zatwierdzenia przez MG** — uwagi dla 71b w pliku etapu pod
-kryteriami 71a.
+kryteriami 71a. **Od 15.11 etap 71 nie dotyka sceny pościgu** (sekcja „Styk z etapem 72”
+w pliku etapu): asercje Moto w jeździe, próg słabego kierowcy z Moto (NOM-03, decyzja MG)
+i jazda Nomadą idą do 72a / 72c / 72g, Wsparcie autem w pościgu (STR-12) — po etapie 72.
+Kolejność sesji 71 i 72 jest przez to dowolna.
 
 **Przebudowa netrunningu (etap 70, zlecenie MG z 11.11) — 70a–70f zrobione (12–14.11), czeka
 na wdrożenie (70d z migracją `20261113180000_net_scene_installations`) i stół MG.** Okno SIEĆ

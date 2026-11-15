@@ -293,6 +293,26 @@ paleta przenosi się do panelu):
 przyciągają się do najbliższego pasa (obok `reseatChasePassengers`), liczba pasów idzie z drogi
 albo z szerokości jezdni, prędkości są zerowe do startu walki. Bez ręcznej migracji danych.
 
+### 9. Styk z etapem 71 — Role (ustalenia z 15.11)
+
+Etap 71 (weryfikacja Ról) od 15.11 **nie dotyka sceny pościgu**; to, co w nim dotyczyło jazdy,
+przejmuje ten etap (`etap-71-weryfikacja-rol.md`, „Styk z etapem 72”):
+
+- **Moto w rzutach jazdy (NOM-01, NOM-02).** Wyścig i Manewry rzuca się planerem z karty
+  (`rollServerSkillTest`), więc Moto Nomady dolicza się samo — nowy rzut Wyścigu nie może liczyć
+  sumy ręką. Test serwera w 72c i asercja E2E w `t72-*` z kierowcą-Nomadą.
+- **Próg „słabego kierowcy” liczy Moto (NOM-03, decyzja MG 15.11):** REF + Umiejętność
+  prowadzenia + Moto ≤ 9. Nowy model czyta próg już z Moto (72a), stara ścieżka `chase:move`
+  zostaje bez zmian do usunięcia w 72c; test charakteryzujący `role-matrix.test.ts` „NOM-03”
+  przepisać, wiersz macierzy na ✅, wpis w `decyzje-i-uproszczenia.md`.
+- **Rozegranie 72g z Nomadą za kierownicą** zastępuje pościgową część scenki Nomady z etapu 71:
+  ocena w tych samych trzech punktach (czy gracz znajdzie, czy rozumie kartę na czacie, ile
+  kliknięć).
+- **Wsparcie Stróża Prawa autem w pościgu (STR-12) — po tym etapie, osobna pozycja**, nie zakres
+  72: grupa jako posiłki panelu „Pościg” z zamiarem „Goń”. Do ustalenia wtedy: czym
+  funkcjonariusz-kierowca rzuca Wyścig (Wartość bojowa?). Panel i posiłki z 72f mają tylko nie
+  zakładać, że posiłki to wyłącznie auta z rezerwy sceny.
+
 ## Podział na podetapy
 
 Każdy podetap to jedna sesja; po każdym aplikacja działa i testy przechodzą.
@@ -307,6 +327,7 @@ Każdy podetap to jedna sesja; po każdym aplikacja działa i testy przechodzą.
       `cpredSpeedMph`, `cpredDriveAdvance` (różnica prędkości + zryw + Nitro),
       `cpredRaceBonuses` (zryw z wyników, sufit 5, słaby kierowca), `cpredLostControlMove`
       (spadek prędkości, 1k6 → pas), `cpredCanSlowBehind`.
+- [ ] Próg „słabego kierowcy” w nowym modelu liczy Moto (NOM-03, punkt 9).
 - [ ] `CHASE_ROADS[].lanes` sprawdzone z `tools/art/chase-roads.py` i `chase-neon-street.py`;
       mil/h = Ruch × 5 sprawdzone na katalogu z `data/private` (bez wnoszenia treści do repo).
 - [ ] Testy `shared` do każdej funkcji (deterministyczny RNG). Zachowanie aplikacji bez zmian.
@@ -336,6 +357,8 @@ Każdy podetap to jedna sesja; po każdym aplikacja działa i testy przechodzą.
       zwykłej jazdy usunięty.
 - [ ] Karta czatu „Wyścig — runda N” (grupa kart, umowa `czat`), pasek „czekam na…”.
 - [ ] Testy serwera (`chase-race.test.ts`), E2E ze skryptem kości (`VTT_DICE_SCRIPT`).
+- [ ] Moto Nomady w Wyścigu i w progu słabego kierowcy: test serwera, `role-matrix.test.ts`
+      „NOM-03” przepisany, wiersze NOM-02 / NOM-03 w `role-macierz.md` (punkt 9).
 
 ### 72d — kokpit w pełnym kształcie (wariant B)
 
@@ -369,7 +392,10 @@ Każdy podetap to jedna sesja; po każdym aplikacja działa i testy przechodzą.
       z notatek ⚠️ (kolczatka, posiłki, roboty drogowe, barykada), notatki MG pod nowe UI.
 - [ ] Rozegranie obu wzorców w przeglądarce (MG + gracze w dwóch silnikach), wnioski z balansu
       do decyzji MG: skala zrywu, kroki gazu i hamulca, automat utraty kontroli.
-- [ ] Stały E2E `48-poscig/t72-*` (jazda, Wyścig, przeszkoda z prognozą, autopilot, plan rund).
+- [ ] W jednym z rozegrań kierowcą drużyny jest **Nomada z Moto** (zastępuje pościgową część
+      scenki Nomady z etapu 71, punkt 9).
+- [ ] Stały E2E `48-poscig/t72-*` (jazda, Wyścig, przeszkoda z prognozą, autopilot, plan rund;
+      kierowca-Nomada — Moto w Wyścigu i Manewrze, NOM-02).
 - [ ] Sprzątanie starego kodu i wpisów (`umowy-kodu.md`, `pulapki-dev.md`, `zaleglosci.md`).
 
 ## Kryteria ukończenia

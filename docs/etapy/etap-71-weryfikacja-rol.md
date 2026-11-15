@@ -23,16 +23,39 @@ szczęśliwej ścieżce i jednej odmowie. Nie mówi, czy Rolą da się **grać**
 
 ## Decyzje MG z 14.11 (pytania na starcie projektu)
 
-| pytanie                         | decyzja                                                                                                                                              |
-| ------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Wynik etapu                     | **Audyt + pełne doróbki** — co audyt uzna za możliwe do odwzorowania, jest implementowane                                                            |
-| Bramka                          | **Jedna bramka MG po audycie** — lista doróbek z wyceną, MG odpowiada tak / nie / inaczej; dopiero potem sesje doróbek                               |
-| Forma testów w przeglądarce     | **Hybryda jak T8c** — stałe specyfikacje E2E + rozegranie scenki każdą Rolą przez Playwright MCP                                                     |
-| Co znaczy „oddanie Roli”        | Cztery warstwy: **Zdolność Specjalna**, **kreator**, **rozwój i wieloklasowość**, **styk z mechanikami po etapie 30**                                |
-| Stara „proza dla stołu”         | **Rewizja wszystkich wpisów, także decyzji MG** — każda dostaje pytanie „czy dalej tak?”; bez odpowiedzi MG decyzja zostaje w mocy                   |
-| Kolejność doróbek               | **Według maszynerii** (jak etap 30), nie według Ról                                                                                                  |
-| Mechaniki narracyjne            | **Liczby, liczniki i zasoby** stają się stanem gry (czas w kalendarzu, limity, wpisy na karcie); treść fabularną pisze MG; **bez treści od LLM**     |
-| Boty i NPC-e                    | **Poza zakresem** — tylko postacie prowadzone przez ludzi                                                                                            |
+| pytanie                     | decyzja                                                                                                                                          |
+| --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Wynik etapu                 | **Audyt + pełne doróbki** — co audyt uzna za możliwe do odwzorowania, jest implementowane                                                        |
+| Bramka                      | **Jedna bramka MG po audycie** — lista doróbek z wyceną, MG odpowiada tak / nie / inaczej; dopiero potem sesje doróbek                           |
+| Forma testów w przeglądarce | **Hybryda jak T8c** — stałe specyfikacje E2E + rozegranie scenki każdą Rolą przez Playwright MCP                                                 |
+| Co znaczy „oddanie Roli”    | Cztery warstwy: **Zdolność Specjalna**, **kreator**, **rozwój i wieloklasowość**, **styk z mechanikami po etapie 30**                            |
+| Stara „proza dla stołu”     | **Rewizja wszystkich wpisów, także decyzji MG** — każda dostaje pytanie „czy dalej tak?”; bez odpowiedzi MG decyzja zostaje w mocy               |
+| Kolejność doróbek           | **Według maszynerii** (jak etap 30), nie według Ról                                                                                              |
+| Mechaniki narracyjne        | **Liczby, liczniki i zasoby** stają się stanem gry (czas w kalendarzu, limity, wpisy na karcie); treść fabularną pisze MG; **bez treści od LLM** |
+| Boty i NPC-e                | **Poza zakresem** — tylko postacie prowadzone przez ludzi                                                                                        |
+
+## Styk z etapem 72 — przebudowa pościgu (weryfikacja z 15.11, decyzje MG)
+
+Etap 72 (`etap-72-poscig-kokpit.md`) wyrzuca dzisiejszą jazdę: przeciąganie auta, budżet
+`Ruch / 4`, Test zwykłej jazdy w `chase:move` (`drivingTested`) i akcje auta w menu pod prawym
+klikiem. **Etap 71 nie dotyka więc sceny pościgu** — nic w nim nie jest sprawdzane, rozgrywane
+ani dorabiane na modelu, który znika.
+
+| co było w planie 71                                                 | co się z tym dzieje                                                                                                                                                         |
+| ------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| asercja E2E „Moto w Manewrze na scenie pościgu” (NOM-02, 71b)       | **do etapu 72**: Wyścig i Manewr kierowcy-Nomady w `t72-*` (72c / 72g). W 71 dowodem zostaje test serwera `roles30d.test.ts`                                                |
+| scenka Nomady: „wyprowadzenie auta na scenę pościgu, Manewr z Moto” | **część pościgowa do 72g** (kierowcą w rozegraniu wzorca jest Nomada z Moto, ocena w tych samych trzech punktach). W 71 scenka kończy się na Taborze, ulepszeniu i naprawie |
+| NOM-03 — czy Moto liczy się do progu „słabego kierowcy”             | **decyzja MG 15.11: tak**. Zmiana wchodzi z nowym modelem (72a / 72c — próg decyduje o utracie kontroli w Wyścigu), nie w 71c                                               |
+| „Moto w Testach pościgu” w 71c                                      | wypada z 71c (NOM-02 jest ✅, reszta to etap 72)                                                                                                                            |
+| STR-12 — Wsparcie wjeżdża autem w scenie pościgu (71f)              | **po etapie 72, osobna pozycja** (posiłki panelu „Pościg”, zamiar „Goń”); etap 71 zamyka się bez niej                                                                       |
+| scenka Technika: „naprawa auta po pościgu”                          | zostaje, ale **bez rozgrywania pościgu** — auto uszkadza MG (PUK na karcie pojazdu)                                                                                         |
+| punkt kontrolny `role-start` z „pojazdem”                           | pojazd na karcie postaci, **bez sceny pościgu** (migracja 72b nie rusza punktu kontrolnego)                                                                                 |
+
+**Co etap 72 zostawia i co w 71 jest bezpieczne:** `Vehicle` na karcie, Tabor, PUK, ulepszenia
+i warsztat (NOM-04…NOM-14, TEC-18, TEC-19, FIX-S1), broń pokładowa przez planer ataku (SOL-16),
+inicjatywa (SOL-08, STR-16). Doróbki 71c pracują na karcie i w Kompendium, nie w `chase-*`.
+Jedyny wspólny plik to kreator pościgu (krok „Auta”, 72f) — znacznik „pojazd Taboru w użyciu”
+(NOM-08) ma go nie przebudowywać.
 
 ## Cel
 
@@ -46,16 +69,16 @@ innej niż Chrome MG.
 Sercem etapu jest plik **`docs/etapy/role-macierz.md`** — jedna tabela na Rolę, jeden wiersz
 na **regułę** podręcznika (nie na akapit: zdanie z dwiema liczbami to dwa wiersze).
 
-| kolumna        | treść                                                                                              |
-| -------------- | -------------------------------------------------------------------------------------------------- |
-| nr             | `SOL-07`, `FIX-12` — stały identyfikator, którym posługują się testy, commity i lista bramki       |
-| strona         | numer strony polskiego wydania                                                                     |
-| reguła         | **parafraza własnymi słowami** (patrz „Licencja” niżej)                                            |
-| warstwa        | Zdolność / kreator / rozwój / styk                                                                 |
-| stan           | jeden z sześciu znaczników niżej                                                                   |
+| kolumna        | treść                                                                                                |
+| -------------- | ---------------------------------------------------------------------------------------------------- |
+| nr             | `SOL-07`, `FIX-12` — stały identyfikator, którym posługują się testy, commity i lista bramki         |
+| strona         | numer strony polskiego wydania                                                                       |
+| reguła         | **parafraza własnymi słowami** (patrz „Licencja” niżej)                                              |
+| warstwa        | Zdolność / kreator / rozwój / styk                                                                   |
+| stan           | jeden z sześciu znaczników niżej                                                                     |
 | dowód          | `plik:funkcja`, nazwa testu vitest albo id testu E2E; dla prozy — wpis w `decyzje-i-uproszczenia.md` |
-| odwzorowalność | klasa A–D niżej                                                                                    |
-| doróbka        | co zrobić + wycena **S / M / L** (do godziny / pół sesji / sesja lub więcej)                       |
+| odwzorowalność | klasa A–D niżej                                                                                      |
+| doróbka        | co zrobić + wycena **S / M / L** (do godziny / pół sesji / sesja lub więcej)                         |
 
 **Stany:** ✅ działa zgodnie z podręcznikiem · 🟡 działa, świadomie uproszczone (jest wpis
 decyzji) · 📜 proza dla stołu · ❌ brak · ⚠️ błąd (jest, ale liczy źle albo UI nie pozwala
@@ -64,12 +87,12 @@ użyć) · ❓ podręcznik niejednoznaczny, potrzebna decyzja MG.
 **Klasy odwzorowalności** — to jest kryterium „możliwości odwzorowania w systemie
 komputerowym”, stosowane jednakowo do każdego wiersza:
 
-| klasa | co to za reguła                                                         | co robi VTT                                                              |
-| ----- | ----------------------------------------------------------------------- | ------------------------------------------------------------------------ |
-| **A** | liczba, rzut, próg, modyfikator                                         | liczy serwer, czysta funkcja w `shared`, test jednostkowy                |
-| **B** | czas, limit, zasób („raz na tydzień”, „po jednym na poziom”, „10 min”)  | stan na karcie albo w kampanii, odliczany kalendarzem z etapu 37         |
-| **C** | uznanie MG z policzalnym skutkiem („MG może ukarać”, „jeśli uzasadnione”) | narzędzie MG: przycisk, przypomnienie w kolejce decyzji, nigdy automat   |
-| **D** | czysta fabuła (kto jest fanem, co mówi pogłoska, jak wygląda McPosiadłość) | proza na karcie; wpis w `decyzje-i-uproszczenia.md` z uzasadnieniem      |
+| klasa | co to za reguła                                                            | co robi VTT                                                            |
+| ----- | -------------------------------------------------------------------------- | ---------------------------------------------------------------------- |
+| **A** | liczba, rzut, próg, modyfikator                                            | liczy serwer, czysta funkcja w `shared`, test jednostkowy              |
+| **B** | czas, limit, zasób („raz na tydzień”, „po jednym na poziom”, „10 min”)     | stan na karcie albo w kampanii, odliczany kalendarzem z etapu 37       |
+| **C** | uznanie MG z policzalnym skutkiem („MG może ukarać”, „jeśli uzasadnione”)  | narzędzie MG: przycisk, przypomnienie w kolejce decyzji, nigdy automat |
+| **D** | czysta fabuła (kto jest fanem, co mówi pogłoska, jak wygląda McPosiadłość) | proza na karcie; wpis w `decyzje-i-uproszczenia.md` z uzasadnieniem    |
 
 Reguła klasy A lub B w stanie 📜 albo ❌ to **kandydat na doróbkę**. Reguła klasy D w stanie
 📜 jest w porządku i dostaje tylko potwierdzenie wpisu decyzji.
@@ -91,17 +114,17 @@ Sprawdzone przy projektowaniu: cała mechanika Zdolności mieszka w
 
 Punkty, od których audyt zaczyna (hipotezy, nie ustalenia):
 
-| Rola        | co dziś stoi prozą albo uproszczeniem                                                                                           | maszyneria, która doszła po etapie 30                    |
-| ----------- | ------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------- |
-| Solo        | sześć zdolności Zmysłu Walki liczonych; nieznany styk z kubkiem, auto-unikiem (63b), pościgiem, skradaniem, bronią pokładową    | kubek, 61, 63b, 65                                       |
-| Technik     | z dziesięciu skutków Ulepszania liczony jeden (+1 OB); Prowizorka bez zegara; Wytwarzanie i Wynajdywanie jako modyfikator       | 31 (gniazda dodatków), 37 (czas), 65/68 (pojazdy, PUK)   |
-| Medyk       | Farmaceutyki jako zapas dawek i Łatanie — odłożone w etapie 30b; kriosystemy prozą                                              | 59 (farmaceutyki, narkotyki), 37, zawieszenie ran        |
-| Nomada      | Tabor Rodziny (od 65a prawdziwe pojazdy); wpis decyzji „Tabor to lista” oznaczony jako nieaktualny, reszta nieprzejrzana        | 65, 67, 68                                               |
-| Fixer       | Zasięg nie przebija poziomu sklepu (decyzja MG 30.08); z sześciu targów liczone dwa; Nocny Targ poza zakresem                   | 46, asortyment handlarza z 02.11, 47                     |
-| Korpo       | przywileje (mieszkanie, Trauma Team) prozą; cyborgizacje zespołu prozą; Lojalność „między sesjami” ręcznie                      | 23b rozliczenie miesiąca, 37, 44c (sesje), 59a           |
-| Stróż Prawa | pojazdy Wsparcia poziomu 10 prozą; nadużycie tylko jako przypomnienie; inicjatywa na samą kość; nieznany styk z pościgiem       | 65 (pojazdy i scena pościgu)                             |
-| Rocker      | blokada prośby „na tydzień” bez odliczania; „ci fani” nie istnieją jako wpis                                                    | 37                                                       |
-| Media       | limit Pogłosek na tydzień jako stała bez licznika (`CPRED_RUMOUR_ROLLS_PER_WEEK` czytają tylko panele); skutek publikacji prozą | 37, 24b (dziennik), 24c (screamsheets)                   |
+| Rola        | co dziś stoi prozą albo uproszczeniem                                                                                           | maszyneria, która doszła po etapie 30                  |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------ |
+| Solo        | sześć zdolności Zmysłu Walki liczonych; nieznany styk z kubkiem, auto-unikiem (63b), pościgiem, skradaniem, bronią pokładową    | kubek, 61, 63b, 65                                     |
+| Technik     | z dziesięciu skutków Ulepszania liczony jeden (+1 OB); Prowizorka bez zegara; Wytwarzanie i Wynajdywanie jako modyfikator       | 31 (gniazda dodatków), 37 (czas), 65/68 (pojazdy, PUK) |
+| Medyk       | Farmaceutyki jako zapas dawek i Łatanie — odłożone w etapie 30b; kriosystemy prozą                                              | 59 (farmaceutyki, narkotyki), 37, zawieszenie ran      |
+| Nomada      | Tabor Rodziny (od 65a prawdziwe pojazdy); wpis decyzji „Tabor to lista” oznaczony jako nieaktualny, reszta nieprzejrzana        | 65, 67, 68                                             |
+| Fixer       | Zasięg nie przebija poziomu sklepu (decyzja MG 30.08); z sześciu targów liczone dwa; Nocny Targ poza zakresem                   | 46, asortyment handlarza z 02.11, 47                   |
+| Korpo       | przywileje (mieszkanie, Trauma Team) prozą; cyborgizacje zespołu prozą; Lojalność „między sesjami” ręcznie                      | 23b rozliczenie miesiąca, 37, 44c (sesje), 59a         |
+| Stróż Prawa | pojazdy Wsparcia poziomu 10 prozą; nadużycie tylko jako przypomnienie; inicjatywa na samą kość; nieznany styk z pościgiem       | 65 (pojazdy i scena pościgu)                           |
+| Rocker      | blokada prośby „na tydzień” bez odliczania; „ci fani” nie istnieją jako wpis                                                    | 37                                                     |
+| Media       | limit Pogłosek na tydzień jako stała bez licznika (`CPRED_RUMOUR_ROLLS_PER_WEEK` czytają tylko panele); skutek publikacji prozą | 37, 24b (dziennik), 24c (screamsheets)                 |
 
 Stałe `CPRED_CHARISMA_REFUSAL_DAYS`, `CPRED_RUMOUR_ROLLS_PER_WEEK`
 i `CPRED_FIELD_REPAIR_MINUTES_PER_LEVEL` są dziś używane tylko jako tekst w panelach — to
@@ -150,15 +173,18 @@ podręcznika w kodzie na listę bramki.
 **Uwagi dla 71b:** (1) Krawędziarz nie dostaje pakietu Roli (WSP-08) — fikstura `role.ts` zakłada
 postacie gniazdem MG, więc to jej nie blokuje; (2) specyfikacje oznaczają #83–#85 przez
 `test.fail`; (3) do sprawdzenia asercją: Zmysł Walki w rundzie 0 (SOL-02), Wyczucie zagrożenia
-w Percepcji rzucanej przez serwer (SOL-15), Moto w Manewrze na scenie pościgu (NOM-02).
+w Percepcji rzucanej przez serwer (SOL-15). ~~Moto w Manewrze na scenie pościgu (NOM-02)~~ —
+od 15.11 w etapie 72 („Styk z etapem 72”).
 
 ### 71b — Stan dzisiejszy w przeglądarce, potem bramka MG
 
 - [ ] Fikstura `packages/e2e/fixtures/role.ts`: dziewięć postaci, **każda z jedną Rolą**
       (nie wieloklasowy „Wielorak”), zakładanych gniazdem MG; ranga 4 (start z kreatora) oraz
       wariant wysokiej rangi tam, gdzie reguła ma próg powyżej 4
-- [ ] Punkt kontrolny E2E `role-start` (kampania, scena z mapą, handlarz, pojazd, statysta-cel,
-      kalendarz ustawiony) — wspólny start specyfikacji i rozegrań
+- [ ] Punkt kontrolny E2E `role-start` (kampania, scena z mapą, handlarz, pojazd **na karcie —
+      bez sceny pościgu**, statysta-cel, kalendarz ustawiony) — wspólny start specyfikacji
+      i rozegrań
+- [ ] Specyfikacje i scenki **nie wchodzą na scenę pościgu** („Styk z etapem 72”)
 - [ ] Specyfikacje `packages/e2e/specs/52-role/t71-<rola>.spec.ts` w wersji „stan dzisiejszy”:
       każdy wiersz macierzy w stanie ✅ / 🟡 klasy A–B, który ma UI, dostaje asercję w przeglądarce
       (kość ze `scriptDice`, wynik czytany z bazy, nie z ekranu)
@@ -187,13 +213,13 @@ Każdy podetap: mechanika w `shared` z testami vitest → serwer (walidacja, odm
 UI → **asercja w specyfikacji E2E Roli** → aktualizacja wierszy macierzy i wpisów
 w `decyzje-i-uproszczenia.md` (wpis nieaktualny dostaje dopisek z datą, nie znika).
 
-| podetap | maszyneria                    | Role                    | kandydaci (hipotezy z „Stanu wyjściowego”)                                                                                                                                    |
-| ------- | ----------------------------- | ----------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **71c** | pojazdy i warsztat            | Nomada, Technik         | Tabor wobec `Vehicle` i ulepszeń z 68; Moto w Testach pościgu; Ulepszanie: pozostałe skutki wobec gniazd dodatków, jakości broni, PUK pojazdu; Naprawa przedmiotów i pojazdów |
-| **71d** | walka, leczenie, czas zabiegu | Solo, Medyk, Technik    | Zmysł Walki na styku z kubkiem, auto-unikiem, pościgiem i skradaniem; Farmaceutyki jako dawki w ekwipunku; kriosystemy; Prowizorka i Wytwarzanie z zegarem kalendarza         |
-| **71e** | handel i pieniądze            | Fixer, Korpo            | Zasięg wobec asortymentu handlarza; pozostałe targi; Nocny Targ; przywileje Korpo w rozliczeniu miesiąca; Lojalność po zamknięciu sesji                                       |
-| **71f** | czas i zasoby narracyjne      | Rocker, Media, Stróż Prawa | grupy fanów jako wpisy z blokadą tygodniową; limit Pogłosek i rejestr publikacji; licznik nadużyć Wsparcia jako narzędzie MG; Wsparcie z pojazdem i w scenie pościgu        |
-| **71g** | kreator, PD, wieloklasowość   | wszystkie               | poprawki danych pakietów i wyposażenia startowego, Specjalizacje przy awansie, UI zmiany Roli                                                                                 |
+| podetap | maszyneria                    | Role                       | kandydaci (hipotezy z „Stanu wyjściowego”)                                                                                                                                          |
+| ------- | ----------------------------- | -------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **71c** | pojazdy i warsztat            | Nomada, Technik            | Tabor wobec `Vehicle` i ulepszeń z 68 (bez sceny pościgu — etap 72); Ulepszanie: pozostałe skutki wobec gniazd dodatków, jakości broni, PUK pojazdu; Naprawa przedmiotów i pojazdów |
+| **71d** | walka, leczenie, czas zabiegu | Solo, Medyk, Technik       | Zmysł Walki na styku z kubkiem, auto-unikiem, bronią pokładową i skradaniem; Farmaceutyki jako dawki w ekwipunku; kriosystemy; Prowizorka i Wytwarzanie z zegarem kalendarza        |
+| **71e** | handel i pieniądze            | Fixer, Korpo               | Zasięg wobec asortymentu handlarza; pozostałe targi; Nocny Targ; przywileje Korpo w rozliczeniu miesiąca; Lojalność po zamknięciu sesji                                             |
+| **71f** | czas i zasoby narracyjne      | Rocker, Media, Stróż Prawa | grupy fanów jako wpisy z blokadą tygodniową; limit Pogłosek i rejestr publikacji; licznik nadużyć Wsparcia jako narzędzie MG (Wsparcie autem w pościgu — po etapie 72)              |
+| **71g** | kreator, PD, wieloklasowość   | wszystkie                  | poprawki danych pakietów i wyposażenia startowego, Specjalizacje przy awansie, UI zmiany Roli                                                                                       |
 
 Jeśli po bramce któryś podetap przekracza jedną sesję, dzieli się go literą (71c1, 71c2) przed
 pierwszą linijką kodu, tak jak etap 30.
@@ -215,13 +241,15 @@ pierwszą linijką kodu, tak jak etap 30.
 - [ ] **Drugie rozegranie** tych samych dziewięciu scenek w Firefoksie; porównanie z pierwszym
       (te same trzy punkty oceny)
 - [ ] Macierz bez wierszy ❌ i ⚠️ poza odrzuconymi przez MG na bramce (te mają wpis decyzji)
+      i przekazanymi etapowi 72 (NOM-03, STR-12 — wiersz wskazuje, gdzie czeka)
 - [ ] `decyzje-i-uproszczenia.md`: nowa sekcja „Role po weryfikacji (etap 71)” z tym, co
       świadomie zostało prozą, i odsyłaczem do macierzy
 - [ ] `umowy-kodu.md` (`postac`), `POSTEP.md`, `archiwum/tabela-etapow.md` zaktualizowane
 
 **Kryteria ukończenia etapu 71**
 
-- [ ] Każda reguła klasy A i B dziewięciu Ról jest ✅ albo 🟡 z decyzją MG
+- [ ] Każda reguła klasy A i B dziewięciu Ról jest ✅ albo 🟡 z decyzją MG (poza NOM-03
+      i STR-12, które czekają na etap 72)
 - [ ] Każda Rola ma zieloną specyfikację E2E i dwie rozegrane scenki
 - [ ] Postać świeżo z kreatora w każdej z dziewięciu Ról zgadza się z podręcznikiem (pakiety,
       wyposażenie, ranga startowa)
@@ -234,7 +262,7 @@ pierwszą linijką kodu, tak jak etap 30.
 - Jeden plik na Rolę, `test.describe.serial`, start z punktu kontrolnego `role-start`,
   gateway martwy (`DEAD_GATEWAY`) — Role nie potrzebują LLM
 - Nazwa testu zaczyna się identyfikatorami wierszy macierzy: `SOL-03 SOL-04 Redukcja obrażeń
-  tylko od pierwszych obrażeń w Rundzie`
+tylko od pierwszych obrażeń w Rundzie`
 - Każda mechanika: **szczęśliwa ścieżka kliknięta w UI** + **skutek w liczbach** (baza, księga,
   karta czatu) + **odmowa** (zdarzenie z gniazda gracza ponad uprawnienie albo ponad rangę)
 - Kości wyłącznie ze `scriptDice`; rzuty idą przez kubek (`shakeCup`), bo tak gra gracz
@@ -244,17 +272,17 @@ pierwszą linijką kodu, tak jak etap 30.
 
 ### Scenki rozegrań (Playwright MCP, instancja E2E, nie `dev.db`)
 
-| Rola        | scenka (5–10 minut gry)                                                                                                   | co ma wyjść na jaw                                         |
-| ----------- | ------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------- |
-| Solo        | walka 1 na 2: przydział przed walką, zmiana w walce za Akcję, dwa trafienia w jednej Rundzie, przyjęcie dwóch ciosów      | „pierwsze w Rundzie”, widoczność premii na karcie rzutu    |
-| Technik     | naprawa uszkodzonej broni, Prowizorka pancerza w walce, ulepszenie przedmiotu, naprawa auta po pościgu                    | czy Technik ma co robić poza panelem                       |
-| Medyk       | stabilizacja, zdjęcie rany krytycznej Chirurgią, podanie farmaceutyku, pacjent w stanie Śmiertelnie ranny                 | spójność Medycyny z leczeniem z etapów 59 i 03.09          |
-| Nomada      | wyprowadzenie auta z Taboru na scenę pościgu, Manewr z Moto, ulepszenie przy awansie, naprawa                             | Tabor jako prawdziwe pojazdy, Moto w rzutach               |
-| Fixer       | zakup u handlarza z targiem, towar ponad poziom sklepu, sprzedaż                                                          | Zasięg i Targowanie wobec okna „Wymiana”                   |
-| Korpo       | zatrudnienie, pracownik na mapie w walce, Test Lojalności, rozliczenie miesiąca                                           | zespół jako figury, przywileje w pieniądzach               |
-| Stróż Prawa | wezwanie w walce, odliczanie Rund, przyjazd, próba Uniku funkcjonariusza, drugie wezwanie tego samego dnia                | kolejka „w drodze”, nadużycie                              |
-| Rocker      | zrobienie fanów, prośba, nieudana prośba, przestawienie kalendarza o tydzień                                              | blokada czasowa, czytelność „czego wolno żądać”            |
-| Media       | publikacja z dowodami i bez, Pogłoski u MG dwa i trzy razy w tygodniu                                                     | limit tygodniowy, co gracz widzi z potajemnego rzutu MG    |
+| Rola        | scenka (5–10 minut gry)                                                                                                | co ma wyjść na jaw                                      |
+| ----------- | ---------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------- |
+| Solo        | walka 1 na 2: przydział przed walką, zmiana w walce za Akcję, dwa trafienia w jednej Rundzie, przyjęcie dwóch ciosów   | „pierwsze w Rundzie”, widoczność premii na karcie rzutu |
+| Technik     | naprawa uszkodzonej broni, Prowizorka pancerza w walce, ulepszenie przedmiotu, naprawa uszkodzonego auta (bez pościgu) | czy Technik ma co robić poza panelem                    |
+| Medyk       | stabilizacja, zdjęcie rany krytycznej Chirurgią, podanie farmaceutyku, pacjent w stanie Śmiertelnie ranny              | spójność Medycyny z leczeniem z etapów 59 i 03.09       |
+| Nomada      | wybór Taboru, auto z Taboru na karcie i w Kompendium, ulepszenie przy awansie, naprawa; **jazda z Moto — w 72g**       | Tabor jako prawdziwe pojazdy                            |
+| Fixer       | zakup u handlarza z targiem, towar ponad poziom sklepu, sprzedaż                                                       | Zasięg i Targowanie wobec okna „Wymiana”                |
+| Korpo       | zatrudnienie, pracownik na mapie w walce, Test Lojalności, rozliczenie miesiąca                                        | zespół jako figury, przywileje w pieniądzach            |
+| Stróż Prawa | wezwanie w walce, odliczanie Rund, przyjazd, próba Uniku funkcjonariusza, drugie wezwanie tego samego dnia             | kolejka „w drodze”, nadużycie                           |
+| Rocker      | zrobienie fanów, prośba, nieudana prośba, przestawienie kalendarza o tydzień                                           | blokada czasowa, czytelność „czego wolno żądać”         |
+| Media       | publikacja z dowodami i bez, Pogłoski u MG dwa i trzy razy w tygodniu                                                  | limit tygodniowy, co gracz widzi z potajemnego rzutu MG |
 
 Każda scenka: zrzut ekranu kluczowego momentu do scratchpada, znaleziska do macierzy; błędy
 do `testy-rejestr.md`. Jeśli MG klika w oknie Playwrighta w trakcie — pytać, zanim coś zostanie
