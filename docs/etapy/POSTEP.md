@@ -21,7 +21,7 @@ w plikach obok — czytaj je **na żądanie, nigdy rutynowo**:
 
 | stan         | etapy                                                                                          |
 | ------------ | ---------------------------------------------------------------------------------------------- |
-| ⬜ otwarty   | **72** Przebudowa pościgu: prędkość, pasy ruchu i kokpit kierowcy (⬜ projekt 15.11, `etap-72-poscig-kokpit.md`; kodu nie ruszano, następny **72a** rdzeń modelu w `shared`, potem 72b–72g); **71** Weryfikacja Ról bez Netrunnera (🟨 `etap-71-weryfikacja-rol.md`: **71a ✅ 14.11** audyt, **71b ✅ 15.11** specyfikacje `52-role`, rozegrania i **bramka MG przeszła**; **71c0 ✅ 15.11** pięć błędów #83–#87, **71c1 ✅ 15.11** Tabor Rodziny jako stan (oba czekają na wdrożenie, bez migracji); następny **71c2** naprawa i montaż Technikiem, potem 71d1–71g2 wg „Decyzji bramki”, 71h zamknięcie); **70** Przebudowa netrunningu: okno jednego piętra i przejęte urządzenia na mapie (🟨 zrobione 12–14.11, `etap-70-siec-przebudowa.md`: **70a** okno jednego piętra, **70b** przejęta wieżyczka i kamera, **70c** dron, oczy, pasek, **70d** obszar straży, Sieć ze sceny wg rodzaju, okienko strefy, **70e** automat LOD-u i Demona z hamulcem, **70f ✅ 14.11** wzorce 66b/66e pod nowe reguły i rozegranie; czeka na wdrożenie (70d z migracją `20261113180000_net_scene_installations`) i stół MG); **69** Lewa belka bez ramek (🟨 zrobione 11.11, czeka na wdrożenie i oględziny MG przy stole); **68** Warsztat: ulepszenia auta za ed i naprawa (🟨 zrobione 06.11, czeka na wdrożenie i oględziny MG przy stole); **67** Zakup pojazdu (🟨 zrobione 06.11, czeka na wdrożenie i oględziny MG przy stole); **66e** Scena przykładowa „Po zamknięciu” (🟨 zrobione 07.11, obejrzane w Firefoksie; rozegrana w przeglądarce do końca 07.11 — znaleziska w `zaleglosci.md` (27; pkt 18 i 19 nie, decyzja MG; 13 naprawionych 07.11); czeka na naprawę reszty, stół MG i wdrożenie); **66d** Scena przykładowa „Zastaw” (🟨 wzorzec zrobiony i rozegrany w przeglądarce 06.11; od 06.11 jeden taran na turę (decyzja MG); czeka na stół MG i wdrożenie); **66** Sceny przykładowe (🟨 zrobione 31.10, czeka na oględziny MG przy stole i wdrożenie; **66b** „Fabryka dronów” 🟨 zrobione 31.10, tak samo (netrunner obejrzany w przeglądarce 07.11, poprawki czekają na wdrożenie); **66c** „Ostatni zjazd” 🟨 wzorzec zrobiony, rozegrany w przeglądarce 04.11 i ponownie 05.11 po rebalansie (porażka o włos, balans zatwierdzony przez MG) — zaległości z przebiegów zamknięte 05.11, Esc na kubku MG 07.11 — czeka na stół MG i wdrożenie); **65** Scena pościgu i walka pojazdów (🟨 65a–65e ✅ 30–31.10, czeka na oględziny MG przy stole); **62** Sieć ze sceny (🟨 zrobione, czeka na oględziny MG na VPS po wdrożeniu); **61** Skradanie się (🟨 zrobione, czeka na słowo MG o rozstrzygnięciach); **28** Wdrożenie na VPS (🟨 działa na `https://vtt.tatanga.eu` z botami od 18.10; zostały off-site, utwardzenie, monitoring); **43b**, **43c** (UI walki); **60** Czytelny czat (zlecenie MG z 24.10; 🟨 60a–60c ✅, czeka na oględziny MG z pierwszego kryterium); T10; refaktoryzacja odłożona (MG 18.10) |
+| ⬜ otwarty   | **72** Przebudowa pościgu: prędkość, pasy ruchu i kokpit kierowcy (⬜ projekt 15.11, `etap-72-poscig-kokpit.md`; kodu nie ruszano, następny **72a** rdzeń modelu w `shared`, potem 72b–72g); **71** Weryfikacja Ról bez Netrunnera (🟨 `etap-71-weryfikacja-rol.md`: **71a ✅ 14.11** audyt, **71b ✅ 15.11** specyfikacje `52-role`, rozegrania i **bramka MG przeszła**; **71c0 ✅ 15.11** pięć błędów #83–#87, **71c1 ✅ 15.11** Tabor Rodziny jako stan, **71c2 ✅ 15.11** naprawa i montaż Technikiem (trzy czekają na wdrożenie, bez migracji); następny **71d1** walka i leczenie, potem 71d2–71g2 wg „Decyzji bramki”, 71h zamknięcie); **70** Przebudowa netrunningu: okno jednego piętra i przejęte urządzenia na mapie (🟨 zrobione 12–14.11, `etap-70-siec-przebudowa.md`: **70a** okno jednego piętra, **70b** przejęta wieżyczka i kamera, **70c** dron, oczy, pasek, **70d** obszar straży, Sieć ze sceny wg rodzaju, okienko strefy, **70e** automat LOD-u i Demona z hamulcem, **70f ✅ 14.11** wzorce 66b/66e pod nowe reguły i rozegranie; czeka na wdrożenie (70d z migracją `20261113180000_net_scene_installations`) i stół MG); **69** Lewa belka bez ramek (🟨 zrobione 11.11, czeka na wdrożenie i oględziny MG przy stole); **68** Warsztat: ulepszenia auta za ed i naprawa (🟨 zrobione 06.11, czeka na wdrożenie i oględziny MG przy stole); **67** Zakup pojazdu (🟨 zrobione 06.11, czeka na wdrożenie i oględziny MG przy stole); **66e** Scena przykładowa „Po zamknięciu” (🟨 zrobione 07.11, obejrzane w Firefoksie; rozegrana w przeglądarce do końca 07.11 — znaleziska w `zaleglosci.md` (27; pkt 18 i 19 nie, decyzja MG; 13 naprawionych 07.11); czeka na naprawę reszty, stół MG i wdrożenie); **66d** Scena przykładowa „Zastaw” (🟨 wzorzec zrobiony i rozegrany w przeglądarce 06.11; od 06.11 jeden taran na turę (decyzja MG); czeka na stół MG i wdrożenie); **66** Sceny przykładowe (🟨 zrobione 31.10, czeka na oględziny MG przy stole i wdrożenie; **66b** „Fabryka dronów” 🟨 zrobione 31.10, tak samo (netrunner obejrzany w przeglądarce 07.11, poprawki czekają na wdrożenie); **66c** „Ostatni zjazd” 🟨 wzorzec zrobiony, rozegrany w przeglądarce 04.11 i ponownie 05.11 po rebalansie (porażka o włos, balans zatwierdzony przez MG) — zaległości z przebiegów zamknięte 05.11, Esc na kubku MG 07.11 — czeka na stół MG i wdrożenie); **65** Scena pościgu i walka pojazdów (🟨 65a–65e ✅ 30–31.10, czeka na oględziny MG przy stole); **62** Sieć ze sceny (🟨 zrobione, czeka na oględziny MG na VPS po wdrożeniu); **61** Skradanie się (🟨 zrobione, czeka na słowo MG o rozstrzygnięciach); **28** Wdrożenie na VPS (🟨 działa na `https://vtt.tatanga.eu` z botami od 18.10; zostały off-site, utwardzenie, monitoring); **43b**, **43c** (UI walki); **60** Czytelny czat (zlecenie MG z 24.10; 🟨 60a–60c ✅, czeka na oględziny MG z pierwszego kryterium); T10; refaktoryzacja odłożona (MG 18.10) |
 | ✅ ukończone | 01–11, 13–20b, 23a–27f, 27h–27l, 29a–30d, 31–35, 37–42c, 43a, 44a–44d, 45, 46a1, 46a2, 46c1, 46c2, 46b1, 46b2, 47a, 47b, 48a, 48b, 48c, 49a, 49b, 50a, 50b, 50c, 51, 52, 53, 54, 55, 56, 57 (57a–57c), 58 (58a–58d), 59 (59a–59c), 63 (63a–63b; 63c wycofane 29.10), 64 (64a–64c) (ostatni zamknięty: 64, 2026-10-30) |
 | ⛔ wycofane  | 12, 21, 22 (głos), 27g (wydajność), 36 (makra); 27, 29, 30, 38 rozdzielone na etapy literowane |
 
@@ -41,8 +41,8 @@ NPC-ów mają **zamiar i autopilota**, MG dostaje **panel „Pościg” z planem
 72f panel i kreator, 72g wzorce 66c/66d i rozegranie. Jedenaście rozstrzygnięć „bez pytań”
 czeka w pliku na potwierdzenie w trakcie. Makieta: link w pliku etapu.
 
-**Weryfikacja Ról (etap 71, zlecenie MG z 14.11) — 71a, 71b, 71c0 i 71c1 zrobione (15.11);
-następny 71c2 (naprawa i montaż Technikiem: G10, G11, P5).** Macierz `role-macierz.md` (194 reguły z dowodami, rozegrania 71b, „Lista
+**Weryfikacja Ról (etap 71, zlecenie MG z 14.11) — 71a, 71b, 71c0, 71c1 i 71c2 zrobione
+(15.11); następny 71d1 (walka i leczenie: G12, G14–G18, G40, G41).** Macierz `role-macierz.md` (194 reguły z dowodami, rozegrania 71b, „Lista
 bramki”) i plan w `etap-71-weryfikacja-rol.md` („Decyzje bramki”, tabela 71c0–71g2). **71c0 czeka
 na wdrożenie (bez migracji):** Zdolności z karty płacą Akcję figurą, którą znajduje serwer
 (`characterFigure`), Wykrycie słabości po mnożniku serii, **Prowizorka to Test przez kubek** (PT
@@ -50,7 +50,11 @@ z pasma ceny wpisu, moduł `repair.ts`), zużyta łata czeka na pełną naprawę
 czynny w rundzie 0. **71c1 też czeka na wdrożenie (bez migracji):** Tabor Rodziny jako stan na
 aucie — „Biorę to auto” (wymiana przyjeżdża o 6:00), „Oddaj Rodzinie do naprawy” (wrak, 500 ed,
 tydzień), Głowa Rodziny na Moto 10 („Do Taboru Rodziny”, „Rodzina montuje” za 10 000 ed), broń od
-Rodziny przy pierwszym Stanowisku, Tabor tylko z tabeli s. 162 (moduły `fleet.ts`). Specyfikacje startują z punktu `role-start` (fikstura `fixtures/role.ts`). **Etap 71 nie dotyka sceny pościgu** (styk z 72
+Rodziny przy pierwszym Stanowisku, Tabor tylko z tabeli s. 162 (moduły `fleet.ts`). **71c2 też
+czeka na wdrożenie (bez migracji):** „Napraw” przy pancerzu i „Napraw (Test)” przy aucie dla
+każdej postaci, roboty drużyny i „Zamontuj” ulepszenie z progu Moto 1 w panelu Twórcy — Testy
+przez kubek; czas pracy to przycisk zegara MG na karcie rzutu (`roll:clock`), nie automat
+(moduły `repair.ts`, `vehiclework.ts`, `realtime/repair-work.ts`). Specyfikacje startują z punktu `role-start` (fikstura `fixtures/role.ts`). **Etap 71 nie dotyka sceny pościgu** (styk z 72
 w pliku etapu); Nocny Targ — osobny etap (`POMYSLY.md`).
 
 **Przebudowa netrunningu (etap 70, zlecenie MG z 11.11) — 70a–70f zrobione (12–14.11), czeka
@@ -841,20 +845,57 @@ a nie do tego pliku.
 | `atak`      | broń i dodatki, amunicja, obrażenia, pancerz, rany krytyczne, trucizna na ostrzu, auto-unik, strach z Konfrontacji, auto jako cel, broń pokładowa, wybór celu ze stosu, skutki amunicji po karcie ataku, ikona gołych rąk, broń dwuręczna w rękach przy tarczy | 57   | 8       |
 | `statysta`  | figura z kartą, `statBlock`, Wartość bojowa, `token:stat` (tylko zmienione grupy), wzorce, pełna karta bez sześciu pól | 19   | 3       |
 | `karta`     | strony i zakładki, panele, `sheet.css`, walidacja list, usuwanie przedmiotu, „Używane” i „Plecak” | 12   | 12      |
-| `postac`    | kreator, PD i awanse, koszyk i cofanie awansów, Role i Zdolności, cyborgizacje, chrom zmieniający liczby, ekonomia, Test montażu gracza, pojazdy i Tabor, Tabor jako stan auta (`fleet.ts`) | 59   | 3       |
+| `postac`    | kreator, PD i awanse, koszyk i cofanie awansów, Role i Zdolności, cyborgizacje, chrom zmieniający liczby, ekonomia, Test montażu gracza, pojazdy i Tabor, Tabor jako stan auta (`fleet.ts`), naprawa i montaż Technikiem (`repair-work.ts`) | 60   | 3       |
 | `ekwipunek` | wiersze wyposażenia, przekazanie, łup (także ciała graczy), handel, sklepy, asortyment handlarza z kompendium, zasięg, amunicja bez dna, egzoszkielet, latarka z ekwipunku, narkotyki i fiolki, siatka okna „Wymiana”, zgoda z góry, odświeżanie po naklejkach, znaczek „w użyciu”, zakup auta z modelu, warsztat (ulepszenia i naprawa auta), auto bokiem i „w garażu”, grafika auta to model i skala miniatur, postać na karcie przekazania, zasięg ręki do figury spoza siatki | 50   | 3       |
-| `czas`      | zegar świata, kalendarz, `statEffects`, leczenie po dobie, dawki i uzależnienia (`chems`) | 19   | 2       |
+| `czas`      | zegar świata, kalendarz, `statEffects`, leczenie po dobie, dawki i uzależnienia (`chems`), czas pracy z karty rzutu (`roll:clock`) | 20   | 2       |
 | `siec`      | Programy, LOD, demony, piętra architektury, dek jako towar, strefy bronione, kamery (także w ciemności), rozbrajanie, Sieć ze sceny, jedna próba i pamięć sukcesów, strzał z urządzenia, strefa tylko z marszu gracza, widok runu z rundą, strefa rozbrojona w Sieci, okno jednego piętra i ładunek bez szybu, pełny wiersz czatu zamiast skrótu, przejęta figura urządzenia (`operatorOf`, `netDeviceUse`), marsz drona, oczy urządzeń, figury wyciszone (`net-off`), pasek „Oczy i urządzenia”, Sieć ze sceny wg rodzaju, strefy i drzwi w „Instalacjach”, obszar straży od figury, okienko strefy, automat obrony Sieci i hamulec MG, „Włącz / Wyłącz w Sieci” MG i przeszukanie wyłączonego, Maskowanie piętro po piętrze, czerwone ślady bez Maskowania, Programy za wyjściem, rzut Sieci na kubek ze Szczęściem, „Zapomnij” sceny czyści Sieć, wykrycie w Sieci zakłada starcie | 33   | 12      |
 | `boty`      | llama-server, RAG, reindeks, dziennik i baza wiedzy, brama AI  | 10   | 10      |
 | `dane`      | `parse-manual.py`, kompendium poza repo, tabele z podręcznika  | 9    | 12      |
 | `kopie`     | `snapshot`, `archive`, paczki ZIP, wczytanie kampanii, „czeka na gracza”, kopie kampanii i cofnięcie, sklep i bot w paczce, zgłoszenie karty gracza, pojazdy w paczce, auta na scenie pościgu, przeszkody poza paczką | 22   | 6       |
 | `ogledziny` | CDP i Playwright MCP, zrzuty, dwie sesje, `window.confirm`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            | 0    | 126     |
-| `testy`     | vitest, migotanie, `tsc --noEmit`, środowisko dev                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     | 0    | 163     |
+| `testy`     | vitest, migotanie, `tsc --noEmit`, środowisko dev                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     | 0    | 164     |
 
 
 ## Notatki z dwóch ostatnich sesji
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
+
+### Sesja 15.11 (czwarta) — etap 71c2: naprawa i montaż Technikiem
+
+**Zrobione (czeka na wdrożenie, bez migracji — nowe pola w JSON-ie karty, auta i karty rzutu):**
+
+- **G11 (TEC-19, TEC-15, TEC-S1, NOM-10) — zwykła naprawa to Test przez kubek** (rodzaj rzutu
+  `repair`): „Napraw” przy pancerzu (Podstawowe naprawy, PT i czas z pasma ceny wpisu, bez wpisu
+  PT 13 / 6 h, „Szybsza naprawa” połowi czas) i „Napraw (Test)” przy aucie (Naprawa pojazdów wg
+  rodzaju, PT i czas ze stopnia uszkodzeń) — dla każdej postaci, Naprawa i Moto dochodzą same.
+  Technik naprawia rzeczy drużyny z panelu Twórcy („Naprawa i montaż — rzeczy drużyny”,
+  `repair:targets`). Poza walką; warsztat 68 obok; porażka — pół czasu, od nowa.
+- **Czas pracy to propozycja zegara dla MG** (jak decyzja bramki dla 71d): karta rzutu niesie
+  `RollResult.clock`, MG klika „⏩ Przesuń zegar o …” (`roll:clock`, raz na kartę, karta „Czas”
+  z tytułem pracy — `moveGameClock`). Gracz czyta „Praca zajmuje … — zegar przesuwa MG.”
+- **G10 (TEC-18)** — „Zamontuj” ulepszenie z progu Moto 1 (rodzaj `vehicleUpgrade`): TECH +
+  Naprawa pojazdów + Ulepszanie (bez Naprawy) przeciw PT 24, dwa tygodnie, surowce = cena wpisu
+  ulepszenia (3000 ed z etapu 68) sprawdzane przed kośćmi i płatne przy sukcesie, raz na auto
+  (`techUpgrade` na wierszu ulepszenia), także w aucie Taboru.
+- **P5** — bieżące OB gracz tylko obniża: egzekwowane od 48c, dopisane testy (serwer, E2E).
+- **Broń nie ma w VTT stanu uszkodzenia** — naprawy broni nie ma czego robić; pomysł w `POMYSLY.md`.
+- Moduły: `systems/cpred/repair.ts` (bez pojazdów — czyta go planer) i nowy `vehiclework.ts`,
+  `realtime/repair-work.ts`, `RepairWork.tsx`, `loadWorkCup`. **Cykl importów** `repair.ts` →
+  warsztat → planer wywracał serwer w `tsx` (E2E padało na `restore.ts`), choć vitest i `tsc`
+  były zielone — pułapka na górze `testy`.
+- Macierz: TEC-19, TEC-18, TEC-S1, NOM-10 → ✅, TEC-15 → 🟡 (wybór skutku Ulepszania — 71d2);
+  rozstrzygnięcia w `decyzje-i-uproszczenia.md` („Naprawa i montaż Technikiem”), umowy na górze
+  `postac` i `czas`.
+
+Testy: `shared` 3111 i nowe `repair-work.test.ts` zielone; serwer 1820/1821 — jeden czerwony
+`net-encounter.test.ts` (Maskowanie pod okiem Strażnika) pod pełną suitą, osobno 3/3 zielony
+(migotanie, nie ruszane); nowy `repair-work.test.ts` 9/9, `campaign-isolation` z dwoma nowymi
+zdarzeniami zielony; `tsc` czterech pakietów i lint zmienionych plików czyste;
+`pnpm test:e2e t71-technik t71-nomada` — 18/18 (+3 Technik, +1 Nomada). **Oglądano w Firefoksie**
+(gracz z przebiegu E2E: wiersz pancerza z „Napraw”, karta rzutu z czasem, roboty drużyny
+w panelu Twórcy, karta auta z „Napraw (Test)”) i **w Chromium** (MG: przycisk zegara i karta
+po przesunięciu). Po oględzinach „Napraw (Test)” na karcie auta stanął w rzędzie z przyciskami Taboru
+(wisiał wyśrodkowany). `specs/99-zapomnij/` to dalej cudze tymczasowe oględziny z 14.11 — poza commitem.
 
 ### Sesja 15.11 (trzecia) — etap 71c1: Tabor Rodziny jako stan gry
 
@@ -881,30 +922,3 @@ plików czysty; `pnpm test:e2e t71-nomada` — 9/9 (pięć nowych testów G38, G
 podrobionych zdarzeń). **Oglądano w Firefoksie** (gracz z przebiegu E2E, zrzuty karty auta
 w trzech stanach i panelu Moto z prezentem). `specs/99-zapomnij/` to cudze tymczasowe oględziny
 z 14.11 — nie wchodzi do commita.
-
-### Sesja 15.11 (druga) — etap 71b: Role w przeglądarce i bramka MG
-
-**Zrobione (testy E2E i dokumenty — kodu aplikacji nie ruszano, nic do wdrożenia):**
-
-- **Fikstura `packages/e2e/fixtures/role.ts`** i punkt **`role-start`** (budowany z `po-T6` przez
-  `52-role/t71-00-start.spec.ts`): dziewięciu graczy (Ada…Iga), po jednej karcie z jedną Rolą
-  (ranga 4), scena „Poligon Ról” (kratka 100 px), Manekin, handlarz „Lada 71”, auto Technika na
-  karcie. Brak punktu = `startFromRoleStart` buduje go sam.
-- **Dziewięć specyfikacji `52-role/t71-<rola>.spec.ts`** (`@szybkie`, 40 testów, 7 `test.fail`):
-  przydziały, rzuty z wezwań MG (`calledTest`), belka w walce, Tabor, targ i zakup, zespół,
-  Wsparcie, Charyzma, Rzetelność i Pogłoski — skutek czytany z bazy, odmowy gniazdem gracza.
-- **Nowe błędy:** #86 (druga Prowizorka przed pełną naprawą), #87 (kafel Zmysłu Walki odmawia
-  „Przed walką”); #84 rozszerzony o Wsparcie (panel na karcie nie wysyła `tokenId`). SOL-15
-  rozstrzygnięte kodem (✅).
-- **Rozegrania dziewięciu scenek** (tabela „Rozegrania 71b” w `role-macierz.md`): gracz targuje
-  się z sumą drugiej strony wpisaną przez siebie (0), Tabor podsuwa Karetkę i Radiowóz, świeży
-  Technik nie widzi Prowizorki bez punktów Twórcy, gracz sam podnosi bieżące OB, karta Pogłosek
-  pisze „≥”. Drobiazgi spoza Ról — `zaleglosci.md`; `t8c-zdolnosci` klika nieistniejące
-  „Dołóż wpis” — też tam.
-- **Bramka MG przeszła** (paczki pytań w sesji): błędy G1–G5 jako **71c0**, wszystkie doróbki
-  poza Nocnym Targiem (osobny etap, `POMYSLY.md`); zmienione decyzje: powrót do Roli kosztuje jak
-  nowa Rola (D3), wybór środka Farmaceutyków (D2), zdania podręcznika w kodzie — parafraza (G37).
-  Pełna tabela: „Decyzje bramki” w `etap-71-weryfikacja-rol.md`; plan 71c0–71g2 przepisany.
-
-Testy: `pnpm test:e2e t71-` — 40/40 (z buildem), lint i `tsc` e2e czyste. **Oglądano w Firefoksie
-(gracz, Playwright MCP) i czystym Chromium (MG)** na instancji E2E z `role-start`.

@@ -1,12 +1,14 @@
 import type { Locator } from '@playwright/test';
 import type { Socket } from 'socket.io-client';
 import { expect, test, type Actor } from '../../fixtures/actors.ts';
+import { queryOne } from '../../fixtures/db.ts';
 import { characterId } from '../../fixtures/nocna-zmiana.ts';
 import {
   ROLES,
   breakdownRow,
   calledTest,
   cardData,
+  dataOf,
   gmSocket,
   lastMessageId,
   rollAfter,
@@ -22,7 +24,9 @@ import { pendingDice, scriptDice } from '../../instance/instance.ts';
  * Etap 71b — Technik, Twórca (s. 147–149). Wiersze macierzy: TEC-01, TEC-02,
  * TEC-04 (#85), TEC-06 (#86), TEC-10, TEC-11. Od 71c0 Prowizorka to Test przez
  * kubek, a zużyta łata blokuje następną do pełnej naprawy.
- * Ulepszanie, Wytwarzanie i Wynajdywanie nie mają rzutu (TEC-07 ❌) — nie ma czego klikać.
+ * Od 71c2: zwykła naprawa Testem (TEC-19, G11) z czasem dla zegara MG, montaż
+ * ulepszenia auta Technikiem (TEC-18, G10) i bieżące OB gracza tylko w dół (P5).
+ * Ulepszanie przedmiotów, Wytwarzanie i Wynajdywanie nie mają rzutu (TEC-07, 71d2).
  */
 
 const TECH = ROLES.tech;
@@ -37,6 +41,22 @@ type Armor = {
 const armor = () =>
   cardData<{ armor: Armor[] }>(TECH.card).armor.find((row) => row.id === 'r71-kurtka')!;
 const fabrication = () => cardData<{ fabrication: Record<string, number> }>(TECH.card).fabrication;
+const eddies = () => cardData<{ eddies: number }>(TECH.card).eddies;
+const gameTime = () =>
+  queryOne<{ gameTime: number }>(
+    'SELECT c.gameTime FROM Campaign c JOIN Character ch ON ch.campaignId = c.id WHERE ch.id = ?',
+    characterId(TECH.card),
+  )!.gameTime;
+const techCar = () => {
+  const row = queryOne<{ id: string; name: string; system: string }>(
+    'SELECT id, name, system FROM Vehicle WHERE ownerCharacterId = ?',
+    characterId(TECH.card),
+  )!;
+  return {
+    ...row,
+    stats: JSON.parse(row.system) as { upgrades: { upgradeId: string; techUpgrade?: true }[] },
+  };
+};
 
 test.describe.serial('@szybkie T71 Technik — Twórca', () => {
   let mg: Actor;
@@ -141,6 +161,109 @@ test.describe.serial('@szybkie T71 Technik — Twórca', () => {
     expect(armor().upgrade).toBeTruthy();
     await expect(gmCard.getByRole('button', { name: 'Ulepsz: +1 OB' })).toHaveCount(0);
     await closeSheet(mg.page);
+    for (const actor of [mg, bartek]) expect(actor.unexpectedErrors(), actor.name).toEqual([]);
+  });
+
+  // ───────────── 71c2: naprawa i montaż Technikiem (G11, G10, P5) ─────────────
+
+  test('P5 gracz bieżące OB własnego pancerza tylko obniża', async () => {
+    const row = armor();
+    const refused = await emitAck(await bartek.socket(), 'character:update', {
+      characterId: characterId(TECH.card),
+      patch: {
+        data: {
+          armor: cardData<{ armor: Armor[] }>(TECH.card).armor.map((entry) =>
+            entry.id === row.id ? { ...entry, spCurrent: entry.spCurrent + 1 } : entry,
+          ),
+        },
+      },
+    });
+    expect(refused).toEqual({ ok: false, error: 'ITEM_LOCKED' });
+    expect(armor().spCurrent).toBe(row.spCurrent);
+  });
+
+  test('TEC-19 G11 „Napraw” przy pancerzu: Test przez kubek, pełne OB, ślad łaty schodzi, MG przesuwa zegar', async () => {
+    card = await openSheet(bartek, TECH.card);
+    await card.getByRole('button', { name: 'Ekwipunek', exact: true }).click();
+    const since = lastMessageId();
+    scriptDice([5]);
+    await card.getByRole('button', { name: 'Napraw', exact: true }).click();
+    await shakeCup(bartek.page);
+    const roll = await rollAfter(since, 'Naprawa', 'roll');
+    // TECH 8 + Podstawowe naprawy 6 + Naprawa 4 + kość 5 = 23 > PT 17 (Premium, s. 140).
+    expect(roll.total).toBe(23);
+    expect(breakdownRow(roll, 'Naprawa 4')?.value).toBe(4);
+    expect(roll.outcome?.success, JSON.stringify(roll.outcome)).toBe(true);
+    expect(roll.outcome?.detail).toContain('PT 17');
+    expect(roll.clock).toMatchObject({ minutes: 24 * 60 });
+    expect(pendingDice()).toBe('');
+    await expect.poll(() => armor().spCurrent).toBe(armor().sp);
+    expect(armor().fieldRepairSpent ?? false).toBe(false);
+    await expect(card.getByRole('button', { name: 'Napraw', exact: true })).toHaveCount(0);
+    await closeSheet(bartek.page);
+    await bartek.page.getByRole('button', { name: /^Czat/ }).first().click();
+    await expect(
+      bartek.page.getByText('Praca zajmuje 1 dzień — zegar przesuwa MG.').last(),
+    ).toBeVisible();
+
+    const before = gameTime();
+    await mg.page.getByRole('button', { name: /^Czat/ }).first().click();
+    await mg.page.getByRole('button', { name: /Przesuń zegar o 1 dzień/ }).click();
+    await expect.poll(gameTime).toBe(before + 24 * 60);
+    await expect(mg.page.getByText('Zegar przesunięty o 1 dzień.').last()).toBeVisible();
+    expect(await emitAck(gm, 'roll:clock', { messageId: roll.id })).toEqual({
+      ok: false,
+      error: 'CLOCK_ALREADY_MOVED',
+    });
+    expect(gameTime()).toBe(before + 24 * 60);
+  });
+
+  test('TEC-18 G10 Technik montuje kolczatkę w aucie: Test PT 24, surowce przy sukcesie, raz na auto', async () => {
+    dataOf(
+      await emitAck(gm, 'character:update', {
+        characterId: characterId(TECH.card),
+        patch: { data: { eddies: 20_000 } },
+      }),
+      'character:update 20 000 ed',
+    );
+    card = await openSheet(bartek, TECH.card);
+    const car = techCar();
+    const shop = panel().locator('details.team-workshop');
+    await shop.locator('summary').click();
+    const row = shop.locator(`[data-repair-target="${car.id}"]`);
+    await row.getByRole('combobox', { name: /Ulepszenie Technika/ }).selectOption('spikes');
+    const since = lastMessageId();
+    scriptDice([9]);
+    await row.getByRole('button', { name: 'Zamontuj', exact: true }).click();
+    await shakeCup(bartek.page);
+    const roll = await rollAfter(since, 'Ulepszanie', 'roll');
+    // TECH 8 + Naprawa pojazdów lądowych 4 + Ulepszanie 4 + kość 9 = 25 > PT 24 (s. 148).
+    expect(roll.total).toBe(25);
+    expect(breakdownRow(roll, 'Ulepszanie')?.value).toBe(4);
+    expect(breakdownRow(roll, 'Naprawa 4')).toBeUndefined();
+    expect(roll.outcome?.label, JSON.stringify(roll.outcome)).toBe('Zamontowane');
+    expect(roll.clock).toMatchObject({ minutes: 14 * 24 * 60 });
+    expect(pendingDice()).toBe('');
+    await expect
+      .poll(() => techCar().stats.upgrades.map((entry) => entry.upgradeId))
+      .toContain('spikes');
+    expect(
+      techCar().stats.upgrades.find((entry) => entry.upgradeId === 'spikes')?.techUpgrade,
+    ).toBe(true);
+    expect(eddies()).toBeLessThan(20_000);
+    const forged = await emitAck(await bartek.socket(), 'character:roll', {
+      characterId: characterId(TECH.card),
+      request: {
+        kind: 'vehicleUpgrade',
+        repairTarget: { kind: 'vehicle', vehicleId: car.id },
+        vehicleUpgradeId: 'nitro',
+      },
+      visibility: 'public',
+    });
+    expect(forged).toEqual({ ok: false, error: 'TECH_UPGRADE_USED' });
+    await shop.getByRole('button', { name: 'Odśwież listę' }).click();
+    await expect(row.locator('option[value="nitro"]')).toBeDisabled();
+    await closeSheet(bartek.page);
     for (const actor of [mg, bartek]) expect(actor.unexpectedErrors(), actor.name).toEqual([]);
   });
 });

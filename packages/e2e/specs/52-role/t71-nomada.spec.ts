@@ -10,17 +10,21 @@ import {
   cardData,
   dataOf,
   gmSocket,
+  lastMessageId,
+  rollAfter,
   seatRole,
   startFromRoleStart,
 } from '../../fixtures/role.ts';
 import { emitAck } from '../../fixtures/socket.ts';
+import { shakeCup } from '../../fixtures/table.ts';
 import { openSheet } from '../../fixtures/walka.ts';
+import { pendingDice, scriptDice } from '../../instance/instance.ts';
 
 /**
  * Etap 71b — Nomada, Moto (s. 161–165), stan dzisiejszy, **bez sceny pościgu**
  * (Manewr i Wyścig z Moto — etap 72). Wiersze macierzy: NOM-01, NOM-04, NOM-05,
  * NOM-07, NOM-12, NOM-K2; od 71c1 Tabor po bramce: NOM-06 (G38), NOM-08 (G6),
- * NOM-09 (G7), NOM-11 (G8), NOM-14 (G9).
+ * NOM-09 (G7), NOM-11 (G8), NOM-14 (G9); od 71c2 NOM-10 (naprawa auta Testem z Moto).
  */
 
 const NOMAD = ROLES.nomad;
@@ -313,6 +317,33 @@ test.describe.serial('@szybkie T71 Nomada — Moto', () => {
         patch: { data: { fleetGift: null } },
       }),
     ).toEqual({ ok: false, error: 'FORBIDDEN' });
+    expect(damian.unexpectedErrors()).toEqual([]);
+  });
+
+  test('NOM-10 TEC-S1 G11 Nomada naprawia auto Testem: Naprawa pojazdów + Moto, PT ze stopnia uszkodzeń', async () => {
+    const full = systemOf(bought).hp;
+    dataOf(
+      await emitAck(gm, 'vehicle:update', {
+        vehicleId: bought,
+        patch: { system: { hp: Math.floor(full / 2) } },
+      }),
+      'vehicle:update pół PUK',
+    );
+    await tab('Ekwipunek');
+    const car = vehicleCard(bought);
+    const since = lastMessageId();
+    scriptDice([5]);
+    await car.getByRole('button', { name: 'Napraw (Test)' }).click();
+    await shakeCup(damian.page);
+    const roll = await rollAfter(since, 'Naprawa', 'roll');
+    expect(breakdownRow(roll, 'Moto')?.value, JSON.stringify(roll.breakdown)).toBe(10);
+    expect(roll.outcome?.success, JSON.stringify(roll.outcome)).toBe(true);
+    // Połowa PUK albo mniej — „Poważne uszkodzenia”: PT 13 i dzień (s. 147).
+    expect(roll.outcome?.detail).toContain('PT 13');
+    expect(roll.clock).toMatchObject({ minutes: 24 * 60 });
+    expect(pendingDice()).toBe('');
+    await expect.poll(() => systemOf(bought).hp).toBe(full);
+    await expect(car.getByRole('button', { name: 'Napraw (Test)' })).toHaveCount(0);
     expect(damian.unexpectedErrors()).toEqual([]);
   });
 });

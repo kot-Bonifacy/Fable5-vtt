@@ -101,6 +101,7 @@ import { requireSneakStart, settleSneakTest } from './sneak.js';
 import { settleDisarmTest } from './zones.js';
 import { sanitizeGesture } from './chat.js';
 import { rewriteAttackCard, settleDamageRoll } from './damage.js';
+import { requireWorkStart, resolveWorkRequest, settleWork } from './repair-work.js';
 
 /**
  * Sheet-driven checks (stage 08). The client only sends an intention — which
@@ -503,6 +504,10 @@ async function resolveRollRequest(
   delete request.treatInjuryName;
   delete request.treatTargetName;
   delete request.fieldRepairDv;
+  delete request.work;
+  if (request.kind === 'repair' || request.kind === 'vehicleUpgrade') {
+    return resolveWorkRequest(deps, campaignId, user, request);
+  }
   if (request.kind === 'fieldRepair') {
     return resolveFieldRepairRequest(deps, campaignId, request, payload?.characterId);
   }
@@ -1312,6 +1317,12 @@ async function performScopedRoll(
     if (call && typeof sneakTokenId === 'string') {
       await requireSneakStart(deps, campaignId, user, sneakTokenId);
     }
+    // Etap 71c2: zwykła naprawa i montaż Technikiem — nie w walce, surowce
+    // w portfelu przed kośćmi (płaci się przy sukcesie).
+    if (plan.work) {
+      if (source.kind !== 'character') throw new RealtimeError('BAD_REQUEST');
+      await requireWorkStart(deps, campaignId, user, plan, source.character);
+    }
     // Prowizorka to Akcja (s. 147) — przed kośćmi, jak Ustabilizowanie. Figurę
     // w walce szuka serwer (#84), a PT musiał wpisać `resolveFieldRepairRequest`.
     if (plan.fieldRepair) {
@@ -1532,6 +1543,9 @@ async function performScopedRoll(
             ? `${result.total} > PT ${dv} · ${armorName} nie potrzebuje już łaty`
             : `${result.total} ≤ PT ${dv} · ${armorName} bez zmian — można spróbować w kolejnej Akcji`,
       };
+    }
+    if (plan.work && source.kind === 'character') {
+      await settleWork(deps, campaignId, user, plan, result, source.character);
     }
     if (plan.reliability) {
       const believed = cpredAudienceBelieves(result.total, plan.reliability.chance);

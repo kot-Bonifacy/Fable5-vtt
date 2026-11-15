@@ -257,6 +257,21 @@ pierwszym Stanowisku (`character:fleet-gift`, `fleetGift` na karcie). G38 (NOM-0
 `Vehicle.system` i karty). Rozstrzygnięcia — `decyzje-i-uproszczenia.md` („Tabor Rodziny jako
 stan gry”), umowa na górze `postac`, E2E `t71-nomada` (9 testów).
 
+**Wynik 71c2 (15.11.2026) ✅.** Zwykła naprawa i montaż Technikiem jako Testy przez kubek
+(rodzaje rzutu `repair` i `vehicleUpgrade`, moduły `repair.ts` + `vehiclework.ts`,
+`realtime/repair-work.ts`, `RepairWork.tsx`). G11 (TEC-19, TEC-15, TEC-S1, NOM-10): „Napraw”
+przy pancerzu (Podstawowe naprawy, PT i czas z pasma ceny wpisu, „Szybsza naprawa” połowi czas)
+i „Napraw (Test)” przy aucie (Naprawa pojazdów wg rodzaju, PT i czas ze stopnia uszkodzeń) dla
+każdej postaci — Naprawa Technika i Moto dochodzą same; Technik naprawia rzeczy drużyny
+z panelu Twórcy („Naprawa i montaż — rzeczy drużyny”, `repair:targets`); warsztat 68 obok;
+poza walką. Czas pracy to **propozycja zegara dla MG** — przycisk na karcie rzutu (`roll:clock`,
+raz), porażka — pół czasu. G10 (TEC-18): „Zamontuj” ulepszenie z progu Moto 1 — PT 24, dwa
+tygodnie, surowce = cena wpisu (płatne przy sukcesie), raz na auto (`techUpgrade`). P5:
+bieżące OB gracz tylko obniża — egzekwowane od 48c, dopisany test. Broń nie ma stanu
+uszkodzenia — naprawy broni nie ma (`POMYSLY.md`). Bez migracji. Rozstrzygnięcia —
+`decyzje-i-uproszczenia.md` („Naprawa i montaż Technikiem”), umowy na górze `postac` i `czas`,
+E2E `t71-technik` (+3), `t71-nomada` (+1).
+
 Poza etapem 71: **G24 Nocny Targ — osobny etap** (`POMYSLY.md`), NOM-02 / NOM-03 — etap 72,
 STR-12 — po etapie 72, KOR-04 — tylko z abonamentem Trauma Team.
 

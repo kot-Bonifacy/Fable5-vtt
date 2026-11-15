@@ -1870,6 +1870,27 @@ body:has(.dice-cup--moved) .hud-foot {
   margin: 0.2rem 0 0;
 }
 
+/* Etap 71c2: roboty drużyny w panelu Twórcy — wiersz rzeczy, „Napraw”,
+   wybór ulepszenia auta i „Zamontuj”; wąski panel zawija przyciski pod nazwę. */
+.team-workshop-list {
+  list-style: none;
+  padding-left: 0 !important;
+}
+
+.team-workshop-list li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.15rem 0;
+}
+
+.team-workshop-name {
+  flex: 1 1 12rem;
+  min-width: 0;
+  color: var(--text);
+}
+
 /* Farmaceutyki: środki jeszcze nieodblokowane zostają na liście wyszarzone —
    Medyk ma widzieć, co kupi za następny punkt Specjalizacji. */
 .pharma-list button {

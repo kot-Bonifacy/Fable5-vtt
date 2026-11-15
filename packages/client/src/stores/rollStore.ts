@@ -6,6 +6,7 @@ import type {
   CpredCharacterData,
   CpredHitLocation,
   CpredRegistry,
+  CpredRepairTarget,
   CpredRollRequest,
   CpredCharismaAudience,
   CpredCharismaPurpose,
@@ -636,6 +637,48 @@ export function loadFieldRepairCup(
     title: planned.plan.title,
     modifierTotal: planned.plan.modifierTotal,
   });
+}
+
+/**
+ * Ładuje zwykłą naprawę albo montaż ulepszenia auta do kubka (etap 71c2).
+ * Kubek pokazuje, co wnosi karta (Umiejętność, Naprawa albo Ulepszanie,
+ * Moto); PT, czas i cenę surowców wpisuje serwer z celu — karta rzutu mówi,
+ * przeciw czemu rzucano, a MG dostaje na niej przycisk zegara.
+ */
+export function loadWorkCup(
+  repairer: { characterId: string; characterName: string },
+  work: {
+    kind: 'repair' | 'vehicleUpgrade';
+    target: CpredRepairTarget;
+    skillId: string;
+    /** „Kurtka (Kord)”, „Osa — Kolczatka” — tytuł kubka; serwer i tak pisze własny. */
+    targetName: string;
+    vehicleUpgradeId?: string;
+  },
+  data: CpredCharacterData,
+  registry: CpredRegistry,
+): boolean {
+  const store = useRollStore.getState();
+  const request: CpredRollRequest = {
+    kind: work.kind,
+    repairTarget: work.target,
+    repairSkillId: work.skillId,
+    ...(work.vehicleUpgradeId ? { vehicleUpgradeId: work.vehicleUpgradeId } : {}),
+    modifier: 0,
+    luckSpent: 0,
+  };
+  const planned = planCpredRoll(data, registry, request);
+  if (!planned.ok) return false;
+  store.loadCup({
+    characterId: repairer.characterId,
+    characterName: repairer.characterName,
+    kind: work.kind,
+    request,
+    visibility: 'public',
+    title: `${work.kind === 'repair' ? 'Naprawa' : 'Ulepszanie'}: ${work.targetName}`,
+    modifierTotal: planned.plan.modifierTotal,
+  });
+  return true;
 }
 
 /**

@@ -135,11 +135,11 @@ export type CpredVehicleDamage = 'light' | 'serious' | 'wrecked';
 
 export const CPRED_VEHICLE_DAMAGE: Record<
   CpredVehicleDamage,
-  { label: string; dv: number; time: string }
+  { label: string; dv: number; time: string; minutes: number }
 > = {
-  light: { label: 'Lekkie uszkodzenia', dv: 9, time: '3 godziny' },
-  serious: { label: 'Poważne uszkodzenia', dv: 13, time: '1 dzień' },
-  wrecked: { label: 'Zniszczony', dv: 17, time: '1 tydzień' },
+  light: { label: 'Lekkie uszkodzenia', dv: 9, time: '3 godziny', minutes: 3 * 60 },
+  serious: { label: 'Poważne uszkodzenia', dv: 13, time: '1 dzień', minutes: 24 * 60 },
+  wrecked: { label: 'Zniszczony', dv: 17, time: '1 tydzień', minutes: 7 * 24 * 60 },
 };
 
 /**

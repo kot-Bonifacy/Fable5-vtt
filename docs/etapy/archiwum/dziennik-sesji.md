@@ -1,5 +1,32 @@
 # Dziennik sesji — archiwum
 
+### Sesja 15.11 (druga) — etap 71b: Role w przeglądarce i bramka MG
+
+**Zrobione (testy E2E i dokumenty — kodu aplikacji nie ruszano, nic do wdrożenia):**
+
+- **Fikstura `packages/e2e/fixtures/role.ts`** i punkt **`role-start`** (budowany z `po-T6` przez
+  `52-role/t71-00-start.spec.ts`): dziewięciu graczy (Ada…Iga), po jednej karcie z jedną Rolą
+  (ranga 4), scena „Poligon Ról” (kratka 100 px), Manekin, handlarz „Lada 71”, auto Technika na
+  karcie. Brak punktu = `startFromRoleStart` buduje go sam.
+- **Dziewięć specyfikacji `52-role/t71-<rola>.spec.ts`** (`@szybkie`, 40 testów, 7 `test.fail`):
+  przydziały, rzuty z wezwań MG (`calledTest`), belka w walce, Tabor, targ i zakup, zespół,
+  Wsparcie, Charyzma, Rzetelność i Pogłoski — skutek czytany z bazy, odmowy gniazdem gracza.
+- **Nowe błędy:** #86 (druga Prowizorka przed pełną naprawą), #87 (kafel Zmysłu Walki odmawia
+  „Przed walką”); #84 rozszerzony o Wsparcie (panel na karcie nie wysyła `tokenId`). SOL-15
+  rozstrzygnięte kodem (✅).
+- **Rozegrania dziewięciu scenek** (tabela „Rozegrania 71b” w `role-macierz.md`): gracz targuje
+  się z sumą drugiej strony wpisaną przez siebie (0), Tabor podsuwa Karetkę i Radiowóz, świeży
+  Technik nie widzi Prowizorki bez punktów Twórcy, gracz sam podnosi bieżące OB, karta Pogłosek
+  pisze „≥”. Drobiazgi spoza Ról — `zaleglosci.md`; `t8c-zdolnosci` klika nieistniejące
+  „Dołóż wpis” — też tam.
+- **Bramka MG przeszła** (paczki pytań w sesji): błędy G1–G5 jako **71c0**, wszystkie doróbki
+  poza Nocnym Targiem (osobny etap, `POMYSLY.md`); zmienione decyzje: powrót do Roli kosztuje jak
+  nowa Rola (D3), wybór środka Farmaceutyków (D2), zdania podręcznika w kodzie — parafraza (G37).
+  Pełna tabela: „Decyzje bramki” w `etap-71-weryfikacja-rol.md`; plan 71c0–71g2 przepisany.
+
+Testy: `pnpm test:e2e t71-` — 40/40 (z buildem), lint i `tsc` e2e czyste. **Oglądano w Firefoksie
+(gracz, Playwright MCP) i czystym Chromium (MG)** na instancji E2E z `role-start`.
+
 ### Sesja 15.11 — projekt etapu 72: przebudowa pościgu
 
 **Zrobione (sam projekt — kodu aplikacji nie ruszano, nic do wdrożenia):**

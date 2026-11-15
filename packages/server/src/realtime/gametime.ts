@@ -23,7 +23,13 @@
  * odklikania po każdym skoku o dobę.
  */
 
-import type { GameTimeAck, GameTimeBroadcast, GameTimeSetPayload, TimeLogEntry } from '@vtt/shared';
+import type {
+  GameTimeAck,
+  GameTimeBroadcast,
+  GameTimeSetPayload,
+  SessionUser,
+  TimeLogEntry,
+} from '@vtt/shared';
 import {
   GAME_TIME_DEFAULT,
   ROLE_GM,
@@ -112,6 +118,47 @@ export async function advanceGameTime(
   await deps.ctx.prisma.campaign.update({ where: { id: campaignId }, data: { gameTime: next } });
   broadcastGameTime(deps, campaignId, { ...before, minutes: next });
   await sweepStatEffects(deps, campaignId, { round: null, minutes: next });
+}
+
+/**
+ * MG przesuwa zegar o czas pracy z karty rzutu (etap 71c2, `roll:clock`) —
+ * jak skok z okna zegara: karta „Czas” na czacie i zdjęcie efektów, którym
+ * minął termin. Tytuł karty mówi, czego dotyczył skok („Minęło 6 godzin —
+ * Naprawa: Kurtka”).
+ */
+export async function moveGameClock(
+  deps: RealtimeDeps,
+  campaignId: string,
+  user: SessionUser,
+  sceneId: string | null,
+  move: { by: number; title: string },
+): Promise<GameTimeState> {
+  const before = await campaignGameTime(deps.ctx.prisma, campaignId);
+  const minutes = before.minutes + Math.max(0, Math.round(move.by));
+  if (minutes === before.minutes || !isGameTime(minutes)) return before;
+  await deps.ctx.prisma.campaign.update({ where: { id: campaignId }, data: { gameTime: minutes } });
+  const after: GameTimeState = { ...before, minutes };
+  broadcastGameTime(deps, campaignId, after);
+  const entry: TimeLogEntry = {
+    title: move.title,
+    from: formatGameDayTime(before.minutes),
+    to: formatGameDayTime(minutes),
+    days: gameDaysBetween(before.minutes, minutes),
+  };
+  const stored = await deps.ctx.prisma.chatMessage.create({
+    data: {
+      campaignId,
+      authorId: user.id,
+      kind: 'time',
+      text: entry.title,
+      payload: JSON.stringify(entry),
+      ...(sceneId ? { sceneId } : {}),
+    },
+    include: INCLUDE_CHAT_NAMES,
+  });
+  broadcastChatMessage(deps, campaignId, toChatMessageView(stored));
+  await sweepStatEffects(deps, campaignId, { round: null, minutes });
+  return after;
 }
 
 /**

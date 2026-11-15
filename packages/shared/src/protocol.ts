@@ -246,6 +246,11 @@ export interface StateSyncPayload {
  * naraz. Serwer liczy skok sam, bo klient wysyłający gotową liczbę minut
  * mógłby wysłać dowolną: „+1 h" jest **intencją**, a nie arytmetyką.
  */
+/** MG przesuwa zegar o czas pracy z karty rzutu (`roll:clock`, etap 71c2). */
+export interface RollClockPayload {
+  messageId: number;
+}
+
 export interface GameTimeSetPayload {
   step?: GameTimeStepId;
   minutes?: number;

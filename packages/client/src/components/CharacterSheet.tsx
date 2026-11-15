@@ -196,6 +196,7 @@ import {
 import { fileRejectionText, uploadErrorText } from '../uploads.js';
 import { PendingOwnerStrip } from './PendingOwnerStrip.js';
 import { CombatAwarenessPanel } from './CombatAwarenessPanel.js';
+import { ArmorRepairButton } from './RepairWork.js';
 import { SpecialtyPanel } from './SpecialtyPanel.js';
 import { BackupPanel } from './BackupPanel.js';
 import { TeamPanel } from './TeamPanel.js';
@@ -2915,6 +2916,8 @@ function ArmorStrip({
                           Prowizorka
                         </button>
                       ) : null}
+                      {/* Etap 71c2: zwykła naprawa Testem — każda postać, poza walką. */}
+                      <ArmorRepairButton character={character} data={data} row={row} />
                       {/* Etap 48c: OB zmienia MG — także po Ulepszaniu Technika. */}
                       {!row.upgrade && isGm && (
                         <button
@@ -3049,6 +3052,7 @@ function ArmorStrip({
                     />
                   </td>
                   <td className="armor-actions">
+                    <ArmorRepairButton character={character} data={data} row={row} />
                     <RemoveItemButton
                       label={`Usuń: ${row.name}`}
                       onClick={() =>
@@ -3097,7 +3101,7 @@ function ArmorSp({
         title={
           isGm
             ? 'Ablacja: każde przebicie obniża OB o 1. Naprawa przywraca pełną wartość.'
-            : 'Ablacja: każde przebicie obniża OB o 1. Naprawia MG albo Technik (Prowizorka).'
+            : 'Ablacja: każde przebicie obniża OB o 1. W górę tylko naprawa: „Napraw” (Test), Prowizorka Technika albo MG.'
         }
       />
       <span className="cp-of">z</span>

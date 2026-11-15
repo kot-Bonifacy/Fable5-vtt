@@ -179,6 +179,19 @@ export interface RollOutcome {
 }
 
 /**
+ * Czas, który zajmuje to, co rzut rozstrzygnął (etap 71c2: naprawa, montaż) —
+ * **propozycja** przesunięcia zegara świata dla MG, nie automat („zegar
+ * podpowiada, nie rządzi”). Karta rzutu daje MG przycisk; `applied` stawia
+ * serwer, gdy MG go użył, więc drugi klik niczego nie przesunie.
+ */
+export interface RollClockProposal {
+  minutes: number;
+  /** Czego dotyczy — „Naprawa: Lekka kurtka” — na karcie „Czas”. */
+  label: string;
+  applied?: boolean;
+}
+
+/**
  * Damage a roll produced, so the chat card can offer „Zastosuj na celu".
  * Locations are opaque strings here: the core engine must not learn what a
  * head is (stage 15: CP RED fills them in).
@@ -518,6 +531,8 @@ export interface RollResult {
   criticalDamage: boolean;
   /** Verdict, when the rules judge this roll (Death Saves). */
   outcome?: RollOutcome;
+  /** Czas pracy do przesunięcia zegara przez MG (etap 71c2). */
+  clock?: RollClockProposal;
   /** Applicable damage, when the roll was a weapon's damage (stage 15). */
   damage?: RollDamageMeta;
   /** Attack verdict, when the roll was an attack (stage 16). */

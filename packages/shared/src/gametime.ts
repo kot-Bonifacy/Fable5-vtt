@@ -337,6 +337,29 @@ export function gameDaysLabel(days: number): string {
   return `${abs} ${polishPlural(abs, 'doba', 'doby', 'dób')}`;
 }
 
+/**
+ * Czas pracy dla ludzi (etap 71c2): „30 minut”, „6 godzin”, „3 dni”,
+ * „2 tygodnie”. Tygodnie tylko przy pełnych, dni tylko przy pełnych — inaczej
+ * godziny, inaczej minuty. Napis na karcie rzutu i na przycisku zegara MG.
+ */
+export function formatWorkDuration(minutes: number): string {
+  const total = Math.max(0, Math.round(minutes));
+  const week = 7 * MINUTES_PER_DAY;
+  if (total >= week && total % week === 0) {
+    const n = total / week;
+    return `${n} ${polishPlural(n, 'tydzień', 'tygodnie', 'tygodni')}`;
+  }
+  if (total >= MINUTES_PER_DAY && total % MINUTES_PER_DAY === 0) {
+    const n = total / MINUTES_PER_DAY;
+    return n === 1 ? '1 dzień' : `${n} dni`;
+  }
+  if (total >= MINUTES_PER_HOUR && total % MINUTES_PER_HOUR === 0) {
+    const n = total / MINUTES_PER_HOUR;
+    return `${n} ${polishPlural(n, 'godzina', 'godziny', 'godzin')}`;
+  }
+  return `${total} ${polishPlural(total, 'minuta', 'minuty', 'minut')}`;
+}
+
 /** „Minęła doba", „Minęły trzy doby", „Minęło 30 dób" — czasownik idzie za liczbą. */
 export function gameDaysPassed(days: number): string {
   const abs = Math.abs(days);

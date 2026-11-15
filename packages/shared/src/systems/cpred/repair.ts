@@ -5,9 +5,11 @@ import type { CpredArmorRow } from './character.js';
  * Naprawa przedmiotów (s. 140) i Prowizorka Technika (s. 147) — etap 71c0.
  *
  * Moduł obok `roleability.ts`, nie w nim (umowa etapu 71: doróbki klasy A–B
- * idą do osobnych plików). Etap 71c2 dołoży tu zwykłą naprawę Technikiem
- * z czasem w kalendarzu; dziś mieszka tu to, czego potrzebuje Prowizorka:
- * PT „typowej naprawy takiej rzeczy” i stan łaty na wierszu pancerza.
+ * idą do osobnych plików). Mieszka tu to, czego potrzebuje Prowizorka (PT
+ * „typowej naprawy takiej rzeczy” i stan łaty na wierszu pancerza), a od
+ * etapu 71c2 także zwykła naprawa pancerza i auta Testem oraz montaż
+ * ulepszenia auta przez Technika — z czasem pracy, który MG dostaje jako
+ * propozycję przesunięcia zegara.
  */
 
 /**
@@ -82,4 +84,108 @@ export function cpredFieldRepairProblem(
   if (row.fieldRepairSpent) return 'PATCH_SPENT';
   if (row.spCurrent >= row.sp) return 'ARMOR_INTACT';
   return null;
+}
+
+// ─────────────── Zwykła naprawa i montaż Technikiem (etap 71c2) ───────────────
+
+/** Co da się naprawić Testem: wiersz pancerza karty drużyny albo pojazd. */
+export type CpredRepairTarget =
+  | { kind: 'armor'; characterId: string; armorRowId: string }
+  | { kind: 'vehicle'; vehicleId: string };
+
+export function isCpredRepairTarget(value: unknown): value is CpredRepairTarget {
+  if (typeof value !== 'object' || value === null) return false;
+  const target = value as Record<string, unknown>;
+  const id = (key: string) => typeof target[key] === 'string' && (target[key] as string).length > 0;
+  if (target.kind === 'armor') return id('characterId') && id('armorRowId');
+  if (target.kind === 'vehicle') return id('vehicleId');
+  return false;
+}
+
+/** PT i czas pracy w minutach zegara świata. */
+export interface CpredWorkTask {
+  dv: number;
+  minutes: number;
+}
+
+/**
+ * „Szybsza naprawa” z Ulepszania (s. 148, TEC-15): rzecz przeprojektowana tak,
+ * że „można ją w pełni naprawić dwa razy szybciej”. Czyta pole `upgrade`
+ * wiersza — stempel Ulepszania, który i tak trzyma „tylko raz”.
+ */
+export const CPRED_FAST_REPAIR_UPGRADE = 'fastRepair';
+
+/**
+ * Czy sztuka pancerza potrzebuje zwykłej naprawy: starte OB albo trwająca
+ * łata (pod Prowizorką OB jest pełne tylko na chwilę — s. 147).
+ */
+export function cpredArmorNeedsRepair(row: CpredArmorRow): boolean {
+  return row.spCurrent < row.sp || row.fieldRepair !== undefined;
+}
+
+/**
+ * PT i czas zwykłej naprawy sztuki pancerza (s. 140): pasmo ceny wpisu
+ * Kompendium, a bez wpisu — PT 13 jak Prowizorka i czas Drogiego szczebla
+ * (6 godzin). „Szybsza naprawa” połowi czas.
+ */
+export function cpredArmorRepairTask(
+  category: CostCategory | null | undefined,
+  upgrade?: string,
+): CpredWorkTask {
+  const minutes = category ? CPRED_REPAIR_TASK[category].minutes : CPRED_REPAIR_TASK.costly.minutes;
+  return {
+    dv: cpredRepairDv(category),
+    minutes: upgrade === CPRED_FAST_REPAIR_UPGRADE ? Math.round(minutes / 2) : minutes,
+  };
+}
+
+/** Sztuka po zwykłej naprawie: pełne OB, bez łaty (ślad zużytej łaty zdejmuje czytnik karty). */
+export function cpredArmorRepaired(row: CpredArmorRow): CpredArmorRow {
+  const { fieldRepair: _patch, fieldRepairSpent: _spent, ...rest } = row;
+  return { ...rest, spCurrent: row.sp };
+}
+
+/**
+ * Montaż ulepszenia auta Technikiem: „ulepszenia pojazdu … są traktowane jako
+ * 1000 ed (Bardzo kosztowne)” (s. 148) — PT 24 i dwa tygodnie z tabeli
+ * Ulepszania (`CPRED_FABRICATION_TASK.veryExpensive`).
+ */
+export const CPRED_TECH_VEHICLE_UPGRADE_TASK: CpredWorkTask = {
+  dv: 24,
+  minutes: 14 * 24 * 60,
+};
+
+/**
+ * „Jeśli Test się nie powiedzie, w połowie prac orientujesz się, że musisz
+ * zaczynać od początku” (s. 140, s. 148) — porażka kosztuje połowę czasu.
+ */
+export function cpredFailedWorkMinutes(minutes: number): number {
+  return Math.round(minutes / 2);
+}
+
+/** Dlaczego zwykłej naprawy nie da się zacząć. */
+export type CpredRepairProblem = 'UNKNOWN_ARMOR' | 'NOTHING_TO_REPAIR';
+
+export const CPRED_REPAIR_PROBLEMS: Record<CpredRepairProblem, string> = {
+  UNKNOWN_ARMOR: 'Nie ma takiej sztuki pancerza na karcie.',
+  NOTHING_TO_REPAIR: 'Ta rzecz jest cała — nie ma czego naprawiać.',
+};
+
+/**
+ * Zapasowe nazwy Umiejętności naprawczych dla rejestru bez nich (Easy Mode
+ * z `data/public`) — Test idzie wtedy na samą TECH + Specjalizację, jak
+ * Prowizorka z `CPRED_ARMOR_REPAIR_SKILL`.
+ */
+export const CPRED_REPAIR_SKILL_FALLBACK_NAMES: Record<string, string> = {
+  'basic-tech': 'Podstawowe naprawy',
+  'land-vehicle-tech': 'Naprawa pojazdów lądowych',
+  'sea-vehicle-tech': 'Naprawa pojazdów wodnych',
+  'air-vehicle-tech': 'Naprawa statków powietrznych',
+};
+
+// ─────────────── Lista robót dla drużyny (`repair:targets`, 71c2) ───────────────
+
+/** O czyją listę pyta klient — karta, która będzie naprawiać. */
+export interface CpredRepairTargetsPayload {
+  characterId: string;
 }

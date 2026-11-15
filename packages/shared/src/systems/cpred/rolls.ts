@@ -39,9 +39,12 @@ import { cpredSheetHpMax, type CpredStatBlockCarrier } from './statblock.js';
 import { cpredWoundSuspensionSource, type CpredWoundSuspensionSheet } from './woundsuspension.js';
 import {
   cpredFieldRepairProblem,
+  isCpredRepairTarget,
   CPRED_ARMOR_REPAIR_SKILL,
   CPRED_ARMOR_REPAIR_SKILL_ID,
+  CPRED_REPAIR_SKILL_FALLBACK_NAMES,
   type CpredFieldRepairProblem,
+  type CpredRepairTarget,
 } from './repair.js';
 import {
   CPRED_HIT_LOCATION_LABELS,
@@ -222,7 +225,11 @@ export type CpredRollKind =
   /** Potajemny Test Pogłosek MG — Wiarygodność + 1k10 (stage 30d). */
   | 'rumour'
   /** Prowizorka Technika — Test naprawy z poziomem Naprawy (etap 71c0, s. 147). */
-  | 'fieldRepair';
+  | 'fieldRepair'
+  /** Zwykła naprawa pancerza albo auta — Test z PT i czasem (etap 71c2, s. 140, s. 147). */
+  | 'repair'
+  /** Technik montuje ulepszenie auta z progu Moto 1 (etap 71c2, s. 148). */
+  | 'vehicleUpgrade';
 
 /** Skills the rules name for Stabilizing (s. 222). Either one may be rolled. */
 export const CPRED_FIRST_AID_SKILL_ID = 'first-aid';
@@ -435,6 +442,26 @@ export interface CpredRollRequest {
    */
   fieldRepairDv?: number;
   /**
+   * `kind: 'repair'` i `'vehicleUpgrade'` (etap 71c2) — co jest naprawiane albo
+   * ulepszane: wiersz pancerza karty drużyny albo pojazd. Wybór klienta; prawo
+   * do celu sprawdza serwer (`resolveWorkRequest`).
+   */
+  repairTarget?: CpredRepairTarget;
+  /**
+   * Umiejętność, którą naprawia się cel (Podstawowe naprawy, Naprawa pojazdów
+   * wg rodzaju). Klient podaje ją do podglądu kubka; serwer i tak wpisuje
+   * własną, wyliczoną z celu.
+   */
+  repairSkillId?: string;
+  /** `kind: 'vehicleUpgrade'` — które ulepszenie z s. 163–165 Technik montuje. */
+  vehicleUpgradeId?: string;
+  /**
+   * Server-filled (etap 71c2): PT i czas pracy z celu (pasmo ceny, stopień
+   * uszkodzeń, s. 148 dla ulepszenia), nazwa celu na karcie i — przy
+   * ulepszeniu — cena surowców. Wycinane z żądania klienta.
+   */
+  work?: CpredWorkTerms;
+  /**
    * Etap 41 — figura, którą ten Test ma **obejrzeć**, jeśli zostanie zdany.
    *
    * Nie jest to nowy rodzaj rzutu i nie ma być: oględziny to zwykły Test
@@ -551,7 +578,9 @@ export type CpredRollProblem =
   /** „To żart, prawda? Jeszcze nie masz dużych grup fanów" (s. 144). */
   | 'NO_CROWD'
   /** Prowizorka, której ta sztuka pancerza teraz nie przyjmie (etap 71c0). */
-  | CpredFieldRepairProblem;
+  | CpredFieldRepairProblem
+  /** Montaż ulepszenia auta bez punktu w Ulepszaniu (etap 71c2). */
+  | 'NO_UPGRADE_SPECIALTY';
 
 /**
  * Where the line through a barrier starts (stage 42b), for measuring it again.
@@ -667,6 +696,26 @@ export interface CpredFieldRepairPlan {
   repairLevel: number;
 }
 
+/** Co serwer wpisuje do żądania zwykłej naprawy i montażu (etap 71c2). */
+export interface CpredWorkTerms {
+  dv: number;
+  /** Czas udanej pracy w minutach zegara świata. */
+  minutes: number;
+  /** „Lekka kurtka kuloodporna (Śrubka)”, „Osa”. */
+  targetName: string;
+  /** Surowce na ulepszenie w ed — płatne przy sukcesie (s. 148). */
+  cost?: number;
+}
+
+/** Co zwykła naprawa albo montaż Technikiem (etap 71c2) wie o sobie przed kośćmi. */
+export interface CpredWorkPlan {
+  task: 'repair' | 'vehicleUpgrade';
+  target: CpredRepairTarget;
+  /** `null` w podglądzie klienta, zanim serwer wpisze warunki pracy. */
+  terms: CpredWorkTerms | null;
+  vehicleUpgradeId?: string;
+}
+
 /** What „Ustabilizowanie" needs to judge itself and explain the verdict. */
 export interface CpredStabilizePlan {
   /** Beat this to stabilize (RAW: the roll has to be strictly higher). */
@@ -726,6 +775,8 @@ export interface CpredRollPlan {
   rumour?: CpredRumourPlan;
   /** Present for `kind: 'fieldRepair'` (etap 71c0). */
   fieldRepair?: CpredFieldRepairPlan;
+  /** Present for `kind: 'repair'` and `'vehicleUpgrade'` (etap 71c2). */
+  work?: CpredWorkPlan;
 }
 
 /**
@@ -811,6 +862,9 @@ export function planCpredRoll(
   }
   if (request.kind === 'fieldRepair') {
     return planFieldRepairRoll(data, registry, request, modifier, luckSpent, wound, context);
+  }
+  if (request.kind === 'repair' || request.kind === 'vehicleUpgrade') {
+    return planWorkRoll(data, registry, request, modifier, luckSpent, wound, context);
   }
 
   const breakdown: RollBreakdownEntry[] = [];
@@ -964,7 +1018,7 @@ function finishCheck(
   luckSpent: number,
   extra: Pick<
     CpredRollPlan,
-    'stabilize' | 'treatInjury' | 'charisma' | 'rumour' | 'fieldRepair'
+    'stabilize' | 'treatInjury' | 'charisma' | 'rumour' | 'fieldRepair' | 'work'
   > = {},
   context: CpredRollContext = {},
 ): { ok: true; plan: CpredRollPlan } {
@@ -1048,6 +1102,79 @@ function planFieldRepairRoll(
         armorRowId: row.id,
         armorName: row.name,
         repairLevel,
+      },
+    },
+    context,
+  );
+}
+
+/**
+ * Zwykła naprawa (s. 140, s. 147) i montaż ulepszenia auta przez Technika
+ * (s. 148) — etap 71c2. Test TECH + Umiejętność, którą zwykle naprawia się
+ * cel, + 1k10 przeciw PT z celu (wpisuje serwer).
+ *
+ * Naprawa dodaje poziom Specjalizacji Naprawa (s. 147); montaż — Ulepszanie,
+ * a Naprawy **nie** („chyba że dany Test wiąże się z inną Specjalizacją
+ * Twórcy”). Moto dokłada się w obu, bo to Test Naprawy pojazdów (s. 161).
+ */
+function planWorkRoll(
+  data: CpredCharacterData,
+  registry: CpredRegistry,
+  request: CpredRollRequest,
+  modifier: number,
+  luckSpent: number,
+  wound: CpredWoundCondition,
+  context: CpredRollContext,
+): { ok: true; plan: CpredRollPlan } | { ok: false; error: CpredRollProblem } {
+  const target = request.repairTarget;
+  if (!isCpredRepairTarget(target)) return { ok: false, error: 'BAD_REQUEST' };
+  const skillId = request.repairSkillId ?? CPRED_ARMOR_REPAIR_SKILL_ID;
+  if (!CPRED_REPAIR_SKILL_IDS.includes(skillId)) return { ok: false, error: 'UNKNOWN_SKILL' };
+  const fallbackName = CPRED_REPAIR_SKILL_FALLBACK_NAMES[skillId];
+  const skill =
+    registry.skills.find((entry) => entry.id === skillId) ??
+    (fallbackName ? { id: skillId, name: fallbackName, stat: 'tech' as const } : undefined);
+  if (!skill) return { ok: false, error: 'UNKNOWN_SKILL' };
+  const fabrication = cpredSheetFabrication(data, registry);
+  const upgrade = request.kind === 'vehicleUpgrade';
+  if (upgrade && fabrication.upgrade < 1) return { ok: false, error: 'NO_UPGRADE_SPECIALTY' };
+  if (upgrade && typeof request.vehicleUpgradeId !== 'string') {
+    return { ok: false, error: 'BAD_REQUEST' };
+  }
+  const terms = request.work;
+  if (
+    terms !== undefined &&
+    (!isInteger(terms.dv) || !isInteger(terms.minutes) || typeof terms.targetName !== 'string')
+  ) {
+    return { ok: false, error: 'BAD_REQUEST' };
+  }
+  const specialty = upgrade ? fabrication.upgrade : fabrication.repair;
+  const moto = CPRED_MOTO_SKILL_IDS.includes(skill.id) ? cpredSheetMoto(data, registry) : 0;
+  const name = terms?.targetName;
+  return finishCheck(
+    upgrade ? `Ulepszanie${name ? `: ${name}` : ''}` : `Naprawa${name ? `: ${name}` : ''}`,
+    [
+      ...skillBreakdown(data, skill),
+      ...(specialty > 0
+        ? [
+            {
+              label: `${upgrade ? 'Ulepszanie' : 'Naprawa'} ${specialty}`,
+              value: specialty,
+              kind: 'situational' as const,
+            },
+          ]
+        : []),
+      ...(moto > 0 ? [{ label: `Moto ${moto}`, value: moto, kind: 'situational' as const }] : []),
+    ],
+    wound,
+    modifier,
+    luckSpent,
+    {
+      work: {
+        task: upgrade ? 'vehicleUpgrade' : 'repair',
+        target,
+        terms: terms ?? null,
+        ...(upgrade ? { vehicleUpgradeId: request.vehicleUpgradeId } : {}),
       },
     },
     context,

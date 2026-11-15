@@ -858,6 +858,13 @@ body:has(.creator-window) .dice-overlay {
   margin-top: 0.35rem;
 }
 
+/* Etap 71c2: czas naprawy i montażu — propozycja zegara dla MG. */
+.chat-roll-clock {
+  margin-top: 0.3rem;
+  font-size: 0.78rem;
+  color: var(--text-dim);
+}
+
 /* Karta obrażeń rysuje wiersz plakietek zawsze — pusty nie dokłada szczeliny. */
 .chat-roll-badges:empty {
   display: none;

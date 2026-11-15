@@ -64,6 +64,17 @@ export function cpredVehicleSkillId(kind: CpredVehicleKind): string {
   return 'driving';
 }
 
+/**
+ * Umiejętność, którą naprawia się i ulepsza pojazd (s. 147, etap 71c2): Naprawa
+ * pojazdów lądowych, wodnych albo powietrznych — trzy z sześciu, do których
+ * Nomada dodaje Moto, i trzy z listy Naprawy Technika.
+ */
+export function cpredVehicleTechSkillId(kind: CpredVehicleKind): string {
+  if (WATER.includes(kind)) return 'sea-vehicle-tech';
+  if (AIR.includes(kind)) return 'air-vehicle-tech';
+  return 'land-vehicle-tech';
+}
+
 /** Bryła rdzenia dla rodzaju i liczby foteli; `van` — furgon z modelu (06.11). */
 export function cpredVehicleBody(kind: CpredVehicleKind, seats: number, van = false): VehicleBody {
   return vehicleBodyFor(kind === 'motorcycle' || kind === 'jetski', seats, van);
@@ -336,6 +347,12 @@ export interface CpredVehicleUpgradeRow {
   upgradeId: CpredVehicleUpgradeId;
   /** Wiersz Taboru Rodziny, z którego to ulepszenie przyszło — zmienia go karta, nie MG. */
   fleetRowId?: string;
+  /**
+   * Etap 71c2 (TEC-18): ulepszenie zamontował Technik Specjalizacją Ulepszanie.
+   * „Za pomocą tej specjalizacji dany przedmiot można ulepszyć tylko raz”
+   * (s. 148) — drugi montaż Technikiem w tym aucie odmawia (`TECH_UPGRADE_USED`).
+   */
+  techUpgrade?: true;
   notes: string;
 }
 
@@ -419,6 +436,7 @@ function readUpgradeRows(raw: unknown): CpredVehicleUpgradeRow[] {
       ...(typeof row.fleetRowId === 'string' && row.fleetRowId.length > 0
         ? { fleetRowId: row.fleetRowId }
         : {}),
+      ...(row.techUpgrade === true ? { techUpgrade: true as const } : {}),
       notes: typeof row.notes === 'string' ? row.notes.slice(0, CPRED_VEHICLE_NOTES_MAX) : '',
     });
   }

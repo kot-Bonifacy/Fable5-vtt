@@ -53,6 +53,7 @@ import { useVehicleStore, vehiclesOf } from '../stores/vehicleStore.js';
 import { EmptyState } from './EmptyState.js';
 import { VehicleArt } from './VehicleArt.js';
 import { FleetVehicleControls } from './FleetVehicleControls.js';
+import { VehicleRepairButton } from './RepairWork.js';
 
 /**
  * Pojazdy (etap 65a): karta pojazdu, sekcja „Pojazdy” na karcie postaci,
@@ -280,6 +281,7 @@ export function VehicleCard({
           </ul>
         ) : null}
         {canRename ? <FleetVehicleControls vehicle={vehicle} stats={stats} /> : null}
+        {canRename ? <VehicleRepairButton vehicle={vehicle} stats={stats} /> : null}
         {stats.notes ? <p className="vehicle-card-notes">{stats.notes}</p> : null}
       </div>
     </li>

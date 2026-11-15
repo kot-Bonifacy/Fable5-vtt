@@ -910,6 +910,8 @@ const CASES: Record<string, Case> = {
   'vehicle:family-repair': foreign((a) => ({ vehicleId: a.vehicleId })),
   'vehicle:fleet-join': foreign((a) => ({ vehicleId: a.vehicleId })),
   'vehicle:family-upgrade': foreign((a) => ({ vehicleId: a.vehicleId, upgradeId: 'nitro' })),
+  'repair:targets': foreign((a) => ({ characterId: a.characterId })),
+  'roll:clock': foreign((a) => ({ messageId: a.messageId })),
   'character:fleet-gift': foreign((a) => ({
     characterId: a.characterId,
     entryId: 'weapon.tsunami-arms-helix',

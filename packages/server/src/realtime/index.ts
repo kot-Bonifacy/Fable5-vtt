@@ -233,6 +233,7 @@ import {
   vehicleFleetJoinEvent,
   vehicleFleetUseEvent,
 } from './fleet.js';
+import { repairTargetsEvent, rollClockEvent } from './repair-work.js';
 import {
   chaseMoveEvent,
   chaseRestoreEvent,
@@ -451,6 +452,8 @@ export const EVENTS: RealtimeEvent<never, unknown>[] = [
   vehicleFleetJoinEvent,
   vehicleFamilyUpgradeEvent,
   characterFleetGiftEvent,
+  repairTargetsEvent,
+  rollClockEvent,
   chasePlaceEvent,
   chaseMoveEvent,
   chaseRestoreEvent,

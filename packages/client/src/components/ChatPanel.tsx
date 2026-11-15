@@ -20,6 +20,7 @@ import type {
   RecoveryLogEntry,
   HandoutLogEntry,
   JournalLogEntry,
+  RollClockProposal,
   RollResult,
   TimeLogEntry,
 } from '@vtt/shared';
@@ -28,6 +29,7 @@ import {
   chatCategoryOf,
   chatInvolvement,
   displayDiceNotation,
+  formatWorkDuration,
   gameDaysLabel,
   isCheckCallOpen,
   isCheckRequestOpen,
@@ -41,6 +43,7 @@ import {
   clearChat,
   fetchHandouts,
   loadOlderHistory,
+  moveClockFromRoll,
   resolveBotProposal,
   sendChatInput,
   stopBots,
@@ -285,7 +288,44 @@ function RollRow({ message, isGm }: { message: ChatMessageView; isGm: boolean })
         )}
         {/* Damage is applied by the GM only — players never see the button. */}
         {isGm && roll.damage && <DamageApplyControls message={message} roll={roll} />}
+        {/* Etap 71c2: czas naprawy i montażu to propozycja dla MG, nie automat. */}
+        {roll.clock && <RollClockRow message={message} clock={roll.clock} isGm={isGm} />}
       </div>
+    </div>
+  );
+}
+
+/**
+ * Czas pracy z karty rzutu (etap 71c2). Gracz czyta, ile to trwa; MG dostaje
+ * przycisk, który przesuwa zegar świata o ten czas — raz, bo serwer stempluje
+ * kartę (`clock.applied`).
+ */
+function RollClockRow({
+  message,
+  clock,
+  isGm,
+}: {
+  message: ChatMessageView;
+  clock: RollClockProposal;
+  isGm: boolean;
+}) {
+  const duration = formatWorkDuration(clock.minutes);
+  return (
+    <div className="chat-roll-clock">
+      {clock.applied ? (
+        <span>Zegar przesunięty o {duration}.</span>
+      ) : isGm ? (
+        <button
+          type="button"
+          className="small-button"
+          title={`Przesuwa zegar świata o ${duration} — ${clock.label}`}
+          onClick={() => void moveClockFromRoll(message.id)}
+        >
+          ⏩ Przesuń zegar o {duration}
+        </button>
+      ) : (
+        <span>Praca zajmuje {duration} — zegar przesuwa MG.</span>
+      )}
     </div>
   );
 }

@@ -29,6 +29,7 @@ import {
   cpredPharmaAccess,
 } from '@vtt/shared';
 import { craftPharmaceutical, queueCharacterSave } from '../socket.js';
+import { TeamWorkshop } from './RepairWork.js';
 import { plural } from '../plural.js';
 import { useCharacterStore } from '../stores/characterStore.js';
 import { COMBAT_LOCKED_HINT, useCombatLocked } from '../stores/combatStore.js';
@@ -175,7 +176,7 @@ export function SpecialtyPanel({
       {ability === 'medicine' && (
         <MedicineExtras allocation={allocation} rank={rank} characterId={characterId} />
       )}
-      {ability === 'fabrication' && <FabricationExtras />}
+      {ability === 'fabrication' && <FabricationExtras characterId={characterId} />}
       <p className="awareness-hint">{shape.hint}</p>
     </div>
   );
@@ -266,10 +267,15 @@ function MedicineExtras({
  * przepisałoby Rolę — a każdy z pozostałych dziewięciu stoi na maszynerii,
  * której projekt nie ma (gniazda dodatków to etap 31, jakości broni nic nie
  * czyta, pojazdów nie ma). Zapisane w `decyzje-i-uproszczenia.md`.
+ *
+ * Od etapu 71c2 nad listą stoją roboty drużyny: zwykła naprawa pancerza i auta
+ * oraz montaż ulepszenia auta z progu Moto 1 — oba Testem przez kubek.
  */
-function FabricationExtras() {
+function FabricationExtras({ characterId }: { characterId: string }) {
   return (
     <div className="awareness-extras">
+      {/* Etap 71c2: zwykła naprawa i montaż ulepszenia auta Testem. */}
+      <TeamWorkshop characterId={characterId} />
       <details>
         <summary>Ulepszanie — dziesięć sposobów (s. 148)</summary>
         <ul>
@@ -277,6 +283,7 @@ function FabricationExtras() {
             <li key={upgrade.id}>
               <b>{upgrade.name}</b> — {upgrade.text}
               {upgrade.effect ? ' (VTT liczy to samo: MG klika ⊕ przy pancerzu)' : ''}
+              {upgrade.id === 'vehicleMod' ? ' (VTT: „Zamontuj” w robotach drużyny wyżej)' : ''}
             </li>
           ))}
         </ul>

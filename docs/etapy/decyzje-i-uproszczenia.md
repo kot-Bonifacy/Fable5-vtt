@@ -9,6 +9,45 @@ czytany na starcie każdej sesji został listą zadań, a nie archiwum ustaleń.
 inaczej, niż mówi podręcznik, albo gdy dotykasz wymienionego tu kodu. Jeśli któraś z tych decyzji
 przestanie się bronić, przenieś ją stąd do `POMYSLY.md` jako zadanie — nie odwrotnie.
 
+## Naprawa i montaż Technikiem (etap 71c2, 15.11.2026)
+
+Bramka MG z 15.11 (G10, G11, P5) — rozstrzygnięcia bez pytań:
+
+- **Zwykła naprawa to Test przez kubek dla każdej postaci** (s. 140: „za pomocą odpowiedniej
+  Umiejętności technicznej”), nie tylko dla Technika — Naprawa Technika i Moto Nomady dochodzą
+  same, bo to Testy z ich list. Pancerz rzuca Podstawowymi naprawami (FAQ), auto — Naprawą
+  pojazdów lądowych, wodnych albo powietrznych wg rodzaju. Warsztat z etapu 68 (za ed, od razu)
+  **zostaje obok** (decyzja bramki).
+- **PT i czas:** pancerz — pasmo ceny wpisu Kompendium (s. 140), wiersz bez wpisu PT 13 i 6
+  godzin (Drogi szczebel, jak Prowizorka z 71c0); auto — stopień uszkodzeń (s. 147: 9/3 h,
+  13/dzień, 17/tydzień) wg zasady domowej z etapu 68 (PUK 0 — zniszczony, połowa albo mniej —
+  poważne). „Szybsza naprawa” z Ulepszania (stempel `fastRepair` na wierszu) połowi czas.
+- **Czas pracy to propozycja dla MG, nie automat** — ta sama zasada, którą bramka przyjęła dla
+  czasu zabiegu i Pracy Twórcy (71d). Skutek udanego Testu wpisuje się **od razu**; karta rzutu
+  niesie czas, a MG ma na niej „⏩ Przesuń zegar o …” (raz na kartę, karta „Czas” na czacie).
+  Stanu „w naprawie do…” nie ma.
+- **Porażka: pół czasu, rzecz bez zmian, od nowa** („w połowie prac orientujesz się, że musisz
+  zaczynać od początku”). Kolejna próba od razu — MG przesuwa zegar o tę połowę.
+- **Nie w walce** (`COMBAT_LOCKED`) — w walce jest Prowizorka.
+- **Cudze rzeczy tylko drużyny**: karty graczy i towarzyszy-botów (`teamCardsWhere`), ich
+  pancerze i auta. NPC-a MG nie naprawia się z karty gracza. Lista robót przychodzi z serwera
+  (`repair:targets`) — w panelu Twórcy, bo to Technik naprawia cudze rzeczy; każda postać ma
+  „Napraw” przy własnym pancerzu i „Napraw (Test)” przy własnym aucie.
+- **Broń nie ma w VTT stanu uszkodzenia** — podręcznik nie daje reguły, która by ją psuła
+  (zacięcie broni Niskiej jakości usuwa Akcja, s. 244), więc Naprawa broni nie ma czego
+  naprawiać. Pomysł na stan „uszkodzona” od MG — `POMYSLY.md` (15.11).
+- **Montaż ulepszenia auta przez Technika (TEC-18):** tylko ulepszenia z progu Moto 1;
+  Test TECH + Naprawa pojazdów + Ulepszanie (Naprawa nie — „chyba że Test wiąże się z inną
+  Specjalizacją”; Moto tak — to Test Naprawy pojazdów), PT 24 i dwa tygodnie („traktowane jako
+  1000 ed, Bardzo kosztowne”). **Surowce = cena wpisu ulepszenia w Kompendium kampanii**
+  (z etapu 68: 3000 ed) — trzeba je mieć przed kośćmi, schodzą z portfela Technika przy
+  sukcesie, a przy porażce zostają (s. 148: „nie odnoszą żadnych uszkodzeń”).
+- **Jedno auto Technik ulepsza raz** („dany przedmiot można ulepszyć tylko raz”) — stempel
+  `techUpgrade` na wierszu ulepszenia. **Także auto z Taboru** — to Zdolność Technika, a nie
+  zakup w warsztacie, którego decyzja z 06.11 dotyczy.
+- **P5 — bieżące OB gracz tylko obniża** — tak było od 48c (`ITEM_LOCKED`, wyszarzona ▲);
+  bramka to potwierdziła, 71c2 dopisało test.
+
 ## Tabor Rodziny jako stan gry (etap 71c1, 15.11.2026)
 
 Bramka MG z 15.11 (G6–G9, G38) — rozstrzygnięcia bez pytań:
@@ -326,7 +365,7 @@ Rozstrzygnięcia bez pytań z projektu etapu (nr 3, 5 i 6) i drobniejsze z sesji
   brakujący PUK** kadłuba, szyby w cenie, same szyby — jak 1 PUK, wrak też. Auto wraca od razu;
   PT i czas z „Naprawy pojazdów” (s. 147) stoją tylko na karcie czatu. Podręcznik ceny naprawy nie
   podaje. Stopień uszkodzeń (zasada domowa): PUK 0 — zniszczony, połowa PUK albo mniej — poważne,
-  reszta — lekkie.
+  reszta — lekkie. *(Od 71c2, 15.11: obok warsztatu naprawa Testem — „Napraw (Test)” na karcie auta.)*
 - **Demontażu przez gracza i odkupu ulepszeń nie ma** — zdejmuje MG w oknie pojazdu, bez zwrotu.
 
 ## Ręka MG, „Cofnij” obrażeń i karty NPC-ów kopii sceny (05.11.2026, decyzje MG)
@@ -733,6 +772,8 @@ Rozstrzygnięcia bez pytań z projektu etapu (nr 3, 5 i 6) i drobniejsze z sesji
   (`quality` siedzi w kompendium i nie wchodzi do żadnego rachunku), czasów naprawy nie ma,
   pojazdów nie ma, a Utrata Człowieczeństwa liczy się przy wszczepieniu, którego VTT nie prowadzi
   jako procedury. Menu z jednym skutkiem po cichu przepisałoby Rolę, więc lista jest pełna.
+  *(Od 71c2, 15.11: także montaż ulepszenia auta z progu Moto 1 — Test Technika, wpis wyżej;
+  czasy naprawy są — „Szybsza naprawa” połowi czas zwykłej naprawy.)*
 
 - **Prowizorka nie ma odliczania (29.08, czwarta).** „Działa przez 10 minut na poziom" to sześćdziesiąt
   rund na poziom — dłużej, niż trwała którakolwiek walka w tym projekcie. Zegar, który nigdy nie

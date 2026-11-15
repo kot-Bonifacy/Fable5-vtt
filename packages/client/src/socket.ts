@@ -93,6 +93,7 @@ import type {
   CpredHaggleProblem,
   CpredNetPosition,
   CpredRoleChangeProblem,
+  CpredRepairTargetsAck,
   CpredRollRequest,
   CpredStatId,
   CpredTeamProblem,
@@ -342,6 +343,8 @@ import {
   CPRED_FLEET_USE_PROBLEMS,
   CPRED_FAMILY_REPAIR_PROBLEMS,
   CPRED_FLEET_GIFT_PROBLEMS,
+  CPRED_REPAIR_PROBLEMS,
+  CPRED_TECH_UPGRADE_PROBLEMS,
   ADVANCEMENT_UNDO_PROBLEMS,
   CPRED_ROLE_CHANGE_PROBLEMS,
   CPRED_ATTACHMENT_PROBLEM_MESSAGES,
@@ -1785,6 +1788,19 @@ function rollAckErrorText(code: string): string {
     case 'ALREADY_PATCHED':
     case 'PATCH_SPENT':
       return fieldRepairErrorText(code);
+    // Etap 71c2 — zwykła naprawa i montaż ulepszenia auta Technikiem.
+    case 'NOTHING_TO_REPAIR':
+    case 'NO_UPGRADE_SPECIALTY':
+    case 'NOT_MOTO_ONE':
+    case 'TECH_UPGRADE_USED':
+    case 'UNKNOWN_UPGRADE':
+    case 'UPGRADE_NOT_FOR_KIND':
+    case 'UPGRADE_ONCE':
+    case 'UPGRADE_NEEDS_REINFORCED':
+    case 'VEHICLE_NOT_FOUND':
+    case 'NOT_ENOUGH_EDDIES':
+    case 'COMBAT_LOCKED':
+      return repairWorkErrorText(code);
     // Akcja Prowizorki i Ustabilizowania — odmowy budżetu tury mówią po swojemu.
     case 'NO_ACTION_LEFT':
     case 'NOT_YOUR_TURN':
@@ -5225,6 +5241,40 @@ export const familyUpgradeVehicle = (vehicleId: string, upgradeId: string) =>
 export function takeFleetGift(characterId: string, entryId: string) {
   flushCharacterSave(characterId);
   return emitEconomy<CharacterView>('character:fleet-gift', { characterId, entryId });
+}
+
+/** Lista robót drużyny dla karty, która naprawia (etap 71c2). */
+export function fetchRepairTargets(characterId: string) {
+  return emitEconomy<CpredRepairTargetsAck>('repair:targets', { characterId });
+}
+
+/** MG przesuwa zegar o czas pracy z karty rzutu (etap 71c2). */
+export async function moveClockFromRoll(messageId: number): Promise<void> {
+  const ack = await emitEconomy<{ minutes: number }>('roll:clock', { messageId });
+  noteAck('clock', ack, (code) =>
+    code === 'CLOCK_ALREADY_MOVED'
+      ? 'Zegar przesunięto już o tę pracę.'
+      : `Serwer nie przesunął zegara (${code}).`,
+  );
+}
+
+/** Odmowy zwykłej naprawy i montażu Technikiem (etap 71c2). */
+export function repairWorkErrorText(code: string | undefined): string {
+  if (code === undefined) return 'Serwer nie przyjął tej naprawy.';
+  const tables: Record<string, string>[] = [CPRED_REPAIR_PROBLEMS, CPRED_TECH_UPGRADE_PROBLEMS];
+  for (const table of tables) if (code in table) return table[code]!;
+  switch (code) {
+    case 'NOT_ENOUGH_EDDIES':
+      return 'Za mało eurodolarów na surowce — płaci się przy udanym montażu, ale trzeba je mieć na start.';
+    case 'VEHICLE_NOT_FOUND':
+      return 'Tego pojazdu już nie ma.';
+    case 'CHARACTER_NOT_FOUND':
+      return 'Nie możesz naprawiać tą postacią.';
+    case 'COMBAT_LOCKED':
+      return 'Zwykła naprawa trwa godziny — w walce zostaje Prowizorka Technika.';
+    default:
+      return `Serwer nie przyjął tej naprawy (${code}).`;
+  }
 }
 
 /** Odmowy Taboru (etap 71c1) — zdania z modułu reguł, reszta po swojemu. */

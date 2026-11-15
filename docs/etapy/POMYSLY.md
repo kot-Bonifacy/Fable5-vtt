@@ -1,5 +1,11 @@
 # Pomysły poza zakresem etapów
 
+**15.11.2026 (etap 71c2) — uszkodzona broń jako stan.** Naprawa broni (s. 140) nie ma dziś
+czego naprawiać: żadna reguła VTT broni nie psuje. Gdyby MG chciał niszczyć broń fabularnie
+(granat, kwas, upadek) — znacznik „uszkodzona” na wierszu broni stawiany przez MG, broń bez
+ataku do naprawy, a „Napraw” w robotach drużyny z Naprawą broni i PT z pasma ceny
+(`cpredArmorRepairTask` liczy to samo dla pancerza). Wycena S–M.
+
 **15.11.2026 (bramka etapu 71) — Nocny Targ Fixera jako osobny etap (decyzja MG).** Od Znajomości 5
 raz w miesiącu kalendarza handlarz z towarem każdej kategorii, od 9 także Nocny Północny (s. 160,
 338, FAQ; wiersz FIX-10 w `role-macierz.md`, wycena L). Stoi na asortymencie handlarza z 02.11 i
