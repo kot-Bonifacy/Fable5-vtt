@@ -6,6 +6,7 @@ import {
   cpredVehicleDerived,
   cpredVehicleRepairQuote,
   cpredVehicleUpgrade,
+  cpredIsFleetVehicle,
   cpredVehicleUpgradeBuyProblem,
   readCpredVehicle,
   type CharacterView,
@@ -100,7 +101,7 @@ export function VehicleChoice({
       {vehicles.map((vehicle) => (
         <option key={vehicle.id} value={vehicle.id}>
           {vehicle.name}
-          {readCpredVehicle(vehicle.system).fleetRowId ? ' (Tabor)' : ''}
+          {cpredIsFleetVehicle(readCpredVehicle(vehicle.system)) ? ' (Tabor)' : ''}
         </option>
       ))}
     </select>
@@ -110,7 +111,7 @@ export function VehicleChoice({
 /** Pierwsze auto spoza Taboru — tam zwykle idzie ulepszenie. */
 export function defaultWorkshopVehicle(vehicles: readonly VehicleView[]): string {
   return (
-    vehicles.find((vehicle) => !readCpredVehicle(vehicle.system).fleetRowId)?.id ??
+    vehicles.find((vehicle) => !cpredIsFleetVehicle(readCpredVehicle(vehicle.system)))?.id ??
     vehicles[0]?.id ??
     ''
   );

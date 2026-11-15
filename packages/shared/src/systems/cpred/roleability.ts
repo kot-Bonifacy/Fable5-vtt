@@ -2889,12 +2889,18 @@ export interface CpredFleetRow {
 export const CPRED_FLEET_NAME_MAX = 80;
 export const CPRED_FLEET_NOTES_MAX = 240;
 
-export type CpredFleetProblem = 'NO_ABILITY' | 'TOO_MANY' | 'LEVEL_ABOVE_RANK';
+export type CpredFleetProblem =
+  | 'NO_ABILITY'
+  | 'TOO_MANY'
+  | 'LEVEL_ABOVE_RANK'
+  // Etap 71c1 (G38): wybór spoza tabeli s. 162 — odmawia `character:update`.
+  | 'NOT_FLEET_VEHICLE';
 
 export const CPRED_FLEET_PROBLEMS: Record<CpredFleetProblem, string> = {
   NO_ABILITY: 'Ta postać nie ma Zdolności Specjalnej Moto.',
   TOO_MANY: 'Tabor ma tyle wpisów, ile masz poziomów Moto — każdy awans to jeden.',
   LEVEL_ABOVE_RANK: 'Ten wpis jest z kategorii wyższej niż twój poziom Moto.',
+  NOT_FLEET_VEHICLE: 'Tabor Rodziny to tylko pojazdy z tabeli s. 162 (z progiem Moto).',
 };
 
 export function readCpredFleet(raw: unknown): CpredFleetRow[] {

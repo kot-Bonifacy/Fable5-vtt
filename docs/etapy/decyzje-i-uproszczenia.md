@@ -9,6 +9,32 @@ czytany na starcie każdej sesji został listą zadań, a nie archiwum ustaleń.
 inaczej, niż mówi podręcznik, albo gdy dotykasz wymienionego tu kodu. Jeśli któraś z tych decyzji
 przestanie się bronić, przenieś ją stąd do `POMYSLY.md` jako zadanie — nie odwrotnie.
 
+## Tabor Rodziny jako stan gry (etap 71c1, 15.11.2026)
+
+Bramka MG z 15.11 (G6–G9, G38) — rozstrzygnięcia bez pytań:
+
+- **„Następny ranek” to najbliższa 6:00 zegara świata** (ten sam krok co skok zegara „do rana”).
+  Pierwsze auto Taboru jest w użyciu od razu; przy wymianie stare zostaje przy Nomadzie do
+  przyjazdu nowego, a wybranie starego z powrotem odwołuje wymianę. Wymiana w walce jest
+  dozwolona — i tak przyjedzie rano.
+- **Znacznik „w użyciu” informuje, nie blokuje.** VTT nie zabrania jechać autem Taboru, które
+  „stoi u Rodziny” — scena pościgu przechodzi przebudowę w etapie 72; pilnuje tego MG.
+- **Rodzina naprawia tylko wrak (PUK 0)** — „zwykłe naprawy należą do obowiązków Nomady”
+  (s. 162): warsztat z etapu 68, od 71c2 Technik. 500 ed to usługa — bez cennika domowego.
+  Auto dostaje pełne PUK od razu w danych, ale przez 7 dni kalendarza stoi „U Rodziny” i nie
+  da się go wziąć; oddanie zdejmuje znacznik „w użyciu”. W walce — odmowa.
+- **Głowa Rodziny (Moto 10) używa całego Taboru naraz** — guzików wymiany nie ma. „Dokupuje po
+  cenie rynkowej” = zwykły zakup auta (etap 67) i „Do Taboru Rodziny” na karcie auta
+  (`fleetJoined`, bez wiersza awansu). Takie auto ulepsza Rodzina („Rodzina montuje”, 1000 ed
+  × cennik domowy sprzętu = 10 000 ed, stała z etapu 30d, bez Testu i czasu), a nie warsztat 68
+  — jak każde auto Taboru (decyzja MG z 06.11). Wiersze ulepszeń z awansu Moto dalej trafiają
+  tylko do aut z wierszem „Pojazd”.
+- **Prezent od Rodziny raz na kartę** (`fleetGift`): wybór jednej z trzech broni s. 164 otwiera
+  się, gdy w dowolnym aucie Taboru stoi Stanowisko bardzo ciężkiej broni. Broń trafia do
+  Wyposażenia z notatką „Prezent od Rodziny”; zdjęcie Stanowiska jej nie zabiera.
+- **Tabor tylko z tabeli s. 162 (G38)** — stary wybór spoza tabeli (Karetka itp.) zostaje na
+  karcie, dopóki nikt go nie zmieni; lista pokazuje go z dopiskiem „spoza tabeli s. 162”.
+
 ## Błędy Ról z audytu: Prowizorka jako Test i Akcja bez `tokenId` (etap 71c0, 15.11.2026)
 
 Bramka MG z 15.11 (G1–G5) — rozstrzygnięcia bez pytań, które naprawa musiała przyjąć:
@@ -294,7 +320,8 @@ Rozstrzygnięcia bez pytań z projektu etapu (nr 3, 5 i 6) i drobniejsze z sesji
   pojawiają się w sprzedaży”. MG przestawia pojedynczy wpis w Kompendium.
 - **Montaż od razu po zapłacie**, bez Testu i bez czasu; reguły montażu jak w oknie MG.
 - **Tylko do własnych aut spoza Taboru Rodziny** — auto Rodziny ulepsza się za Moto. Naprawa auta
-  z Taboru jest dozwolona („zwykłe naprawy należą do obowiązków Nomady”, s. 162).
+  z Taboru jest dozwolona („zwykłe naprawy należą do obowiązków Nomady”, s. 162). *(Od 71c1,
+  15.11: także auto dołożone do Taboru przez Głowę Rodziny — ono ma „Rodzina montuje”.)*
 - **Naprawa tylko w warsztacie** (handlarz z kategorią „Ulepszenia pojazdów”): **50 ed za
   brakujący PUK** kadłuba, szyby w cenie, same szyby — jak 1 PUK, wrak też. Auto wraca od razu;
   PT i czas z „Naprawy pojazdów” (s. 147) stoją tylko na karcie czatu. Podręcznik ceny naprawy nie

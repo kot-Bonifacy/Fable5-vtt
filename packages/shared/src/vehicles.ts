@@ -215,6 +215,31 @@ export interface VehicleRepairPayload {
   expectPrice: number;
 }
 
+/**
+ * Etap 71c1 — Tabor Rodziny (s. 162–164). Każde zdarzenie nazywa auto; płaci
+ * i jest sprawdzana karta jego właściciela (Nomada), a kto ją prowadzi —
+ * gracz albo MG — mówi zwykła reguła portfela.
+ *
+ *  - `vehicle:fleet-use` — to auto ma być przy Nomadzie (wymiana przyjeżdża rano),
+ *  - `vehicle:family-repair` — wrak do Rodziny: 500 ed, tydzień,
+ *  - `vehicle:fleet-join` — Głowa Rodziny (Moto 10) dokłada własne auto do Taboru,
+ *  - `vehicle:family-upgrade` — Głowa Rodziny: ulepszenie za stałą opłatę.
+ */
+export interface VehicleFleetPayload {
+  vehicleId: string;
+}
+
+export interface VehicleFamilyUpgradePayload {
+  vehicleId: string;
+  upgradeId: string;
+}
+
+/** Etap 71c1 (NOM-14): broń od Rodziny przy pierwszym Stanowisku — `character:fleet-gift`. */
+export interface CharacterFleetGiftPayload {
+  characterId: string;
+  entryId: string;
+}
+
 /** Ulepszenie w warsztacie handlarza (`MerchantView.vehicleUpgrades`) — cena z mnożnikiem. */
 export interface MerchantVehicleUpgradeOfferView {
   entryId: string;

@@ -106,6 +106,10 @@ describe('montaż kupionego ulepszenia', () => {
     expect(cpredVehicleUpgradeBuyProblem({ ...car, fleetRowId: 'tabor' }, 'nitro')).toBe(
       'VEHICLE_IN_FLEET',
     );
+    // 71c1 (G8): auto dołożone przez Głowę Rodziny też ulepsza Rodzina, nie warsztat.
+    expect(cpredVehicleUpgradeBuyProblem({ ...car, fleetJoined: true }, 'nitro')).toBe(
+      'VEHICLE_IN_FLEET',
+    );
   });
 });
 

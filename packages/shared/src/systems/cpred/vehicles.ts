@@ -366,6 +366,21 @@ export interface CpredVehicleStats {
   upgrades: CpredVehicleUpgradeRow[];
   /** Wiersz Taboru Rodziny, którym ten pojazd jest; `null` — pojazd spoza Taboru. */
   fleetRowId: string | null;
+  /**
+   * Etap 71c1 (NOM-11): auto dokupione do Taboru przez Głowę Rodziny (Moto 10)
+   * — w Taborze bez wiersza awansu. Rodzina je naprawia i ulepsza jak resztę.
+   */
+  fleetJoined?: true;
+  /**
+   * Etap 71c1 (NOM-08): Nomada używa jednego auta Taboru naraz. Od tej minuty
+   * zegara świata auto jest „w użyciu”; minuta w przyszłości znaczy „przyjedzie
+   * rano” po wymianie. `inUseUntil` — do kiedy stare auto zostaje przy Nomadzie,
+   * zanim przyjedzie wymiana.
+   */
+  inUseFrom?: number;
+  inUseUntil?: number;
+  /** Etap 71c1 (NOM-09): do tej minuty zegara auto stoi u Rodziny w naprawie. */
+  familyRepairUntil?: number;
   notes: string;
   /**
    * Bieżące PW szyb kuloodpornych na każdej burcie (65d) — tylko te, które
@@ -431,6 +446,10 @@ export function readCpredVehicle(raw: unknown): CpredVehicleStats {
     move: clampInt(input.move, 0, CPRED_VEHICLE_MOVE_MAX, CPRED_VEHICLE_FALLBACK.move),
     upgrades: readUpgradeRows(input.upgrades),
     fleetRowId: typeof input.fleetRowId === 'string' && input.fleetRowId ? input.fleetRowId : null,
+    ...(input.fleetJoined === true ? { fleetJoined: true as const } : {}),
+    ...gameMinute('inUseFrom', input.inUseFrom),
+    ...gameMinute('inUseUntil', input.inUseUntil),
+    ...gameMinute('familyRepairUntil', input.familyRepairUntil),
     notes: typeof input.notes === 'string' ? input.notes.slice(0, CPRED_VEHICLE_NOTES_MAX) : '',
     windows: {},
     mountAmmo: {},
@@ -441,6 +460,13 @@ export function readCpredVehicle(raw: unknown): CpredVehicleStats {
   stats.windows = readWindows(input.windows, derived.windowHp);
   stats.mountAmmo = readMountAmmo(input.mountAmmo, stats.upgrades);
   return stats;
+}
+
+/** Minuta zegara świata z zapisu albo nic (etap 71c1). */
+function gameMinute<K extends string>(key: K, raw: unknown): Partial<Record<K, number>> {
+  return typeof raw === 'number' && Number.isInteger(raw) && raw >= 0
+    ? ({ [key]: raw } as Partial<Record<K, number>>)
+    : {};
 }
 
 function readMountAmmo(

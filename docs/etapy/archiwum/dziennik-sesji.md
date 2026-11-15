@@ -1,5 +1,30 @@
 # Dziennik sesji — archiwum
 
+### Sesja 15.11 — projekt etapu 72: przebudowa pościgu
+
+**Zrobione (sam projekt — kodu aplikacji nie ruszano, nic do wdrożenia):**
+
+- **`etap-72-poscig-kokpit.md`**: co dziś nie gra (sześć punktów z odpowiedzi MG i rozegrań
+  66c / 66d), jedenaście decyzji MG, model „prędkość i pasy”, kadr zamiast tempa, Wyścig,
+  zderzenia / przeszkody / automat utraty kontroli, kokpit w lewej belce, zamiar i autopilot
+  aut NPC-ów, panel „Pościg” z planem rund, zmiany w danych i protokole, siedem podetapów
+  (72a–72g) z checklistami, kryteria i rozstrzygnięcia bez pytań.
+- **Decyzje MG z pytań w sesji** (trzy rundy + makieta): model „prędkość i pasy” w turach
+  CP RED; strzałki jak na ekranie; krok po kroku (gaz +1 krok, hamulec −2); **prędkość liczbą
+  w mil/h zamiast biegów**; Test przeciwstawny Prowadzenia co rundę, **gracz rzuca kubkiem**;
+  bez klawiatury; **wariant B makiety („Pojazd” w lewej belce), stylistycznie jak belka
+  głównego UI**; zamiar + autopilot z kokpitem do ręki; panel „Pościg” + plan rund. Ból MG:
+  tempo / dryf / budżet, prowadzenie aut NPC-ów, przeszkody i reżyseria; ból graczy: jazda
+  przeciąganiem, dryf zjada ruch, ukryte akcje auta. Rozstawienie aut i kadr gracza — poza
+  zakresem.
+- **Makieta kokpitu** (trzy warianty, płótno projektowe, prywatne, konto MG):
+  https://claude.ai/artifact/NxwwTTvFgC1peFnxcwTsAX — artboard B przerysowany po wyborze MG na
+  części prawdziwej belki (duży kafel, średnie kafle, ikony, znaczki kosztu).
+- Pomysły spoza zakresu na górze `POMYSLY.md`, wiersz 72 w `archiwum/tabela-etapow.md`.
+
+Testów nie puszczano (brak zmian w kodzie). **Przeglądarki nie otwierano** — makieta jest
+osobnym płótnem, nie widokiem aplikacji; oględziny w Firefoksie zaczynają się w 72b.
+
 ### Sesja 14.11 (dziewiąta) — etap 71a: audyt Ról i macierz zgodności
 
 **Zrobione (bez zmian mechaniki, nic do wdrożenia):**

@@ -10,9 +10,12 @@ import type {
   ChatMessageBroadcast,
   CharacterView,
   CpredCharacterData,
+  CompendiumEntry,
   SocketAck,
   StateSyncPayload,
+  VehicleView,
 } from '@vtt/shared';
+import { CPRED_FLEET_GIFT_WEAPON_IDS, CPRED_MOTO_UPGRADE_FEE, readCpredVehicle } from '@vtt/shared';
 import type { ServerConfig } from './config.js';
 import { buildApp, type BuiltApp } from './app.js';
 import { joinUrl } from './test-join.js';
@@ -502,5 +505,152 @@ describe('etap 30d: Znajomości, Moto, Efekt Charyzmy i Wiarygodność', () => {
       ).ok,
     ).toBe(true);
     expect((await card).message.roll?.breakdown?.map((entry) => entry.label)).toContain('Moto 3');
+  });
+
+  /** Etap 71c1 — Tabor Rodziny po bramce: G38, G6, G7, G8, G9. */
+  describe('Tabor Rodziny (71c1)', () => {
+    let first: string;
+    let second: string;
+
+    async function vehicles(): Promise<VehicleView[]> {
+      const sync = waitFor<StateSyncPayload>(gm, 'state:sync');
+      gm.emit('state:request');
+      return (await sync).vehicles.filter((row) => row.ownerCharacterId === nomadId);
+    }
+    const statsOf = async (id: string) =>
+      readCpredVehicle((await vehicles()).find((row) => row.id === id)!.system);
+    const row = (id: string, compendiumId: string) => ({
+      id,
+      kind: 'vehicle',
+      name: id,
+      level: 1,
+      compendiumId,
+    });
+
+    it('G38 wiersz „Pojazd” nie przyjmie pojazdu spoza tabeli s. 162', async () => {
+      const ambulance = data(
+        await emitAck<CompendiumEntry>(gm, 'compendium:upsert', {
+          entry: {
+            category: 'vehicle',
+            name: 'Karetka testowa',
+            description: '',
+            vehicleKind: 'car',
+            hp: 50,
+            seats: 4,
+            move: 20,
+          },
+        }),
+        'compendium:upsert',
+      );
+      expect(
+        await emitAck(player, 'character:update', {
+          characterId: nomadId,
+          patch: { data: { fleet: [row('f1', ambulance.id)] } },
+        }),
+      ).toEqual({ ok: false, error: 'NOT_FLEET_VEHICLE' });
+      expect(
+        (
+          await emitAck(player, 'character:update', {
+            characterId: nomadId,
+            patch: {
+              data: {
+                fleet: [row('f1', 'vehicle.sample-kompakt'), row('f2', 'vehicle.sample-kompakt')],
+              },
+            },
+          })
+        ).ok,
+      ).toBe(true);
+      const owned = await vehicles();
+      expect(owned).toHaveLength(2);
+      [first, second] = owned.map((entry) => entry.id) as [string, string];
+    });
+
+    it('G6 pierwsze auto w użyciu od razu, wymiana przyjeżdża rano', async () => {
+      expect((await emitAck(player, 'vehicle:fleet-use', { vehicleId: first })).ok).toBe(true);
+      expect((await statsOf(first)).inUseFrom).toBeTypeOf('number');
+      expect((await emitAck(player, 'vehicle:fleet-use', { vehicleId: second })).ok).toBe(true);
+      const old = await statsOf(first);
+      const next = await statsOf(second);
+      expect(next.inUseFrom).toBeGreaterThan(old.inUseFrom!);
+      expect(old.inUseUntil).toBe(next.inUseFrom);
+      // Wybór tego, które jedzie, drugi raz nic nie zmienia.
+      expect(await emitAck(player, 'vehicle:fleet-use', { vehicleId: second })).toEqual({
+        ok: false,
+        error: 'ALREADY_IN_USE',
+      });
+    });
+
+    it('G7 Rodzina naprawia tylko wrak, za 500 ed, i trzyma go tydzień', async () => {
+      expect(await emitAck(player, 'vehicle:family-repair', { vehicleId: first })).toEqual({
+        ok: false,
+        error: 'NOT_WRECKED',
+      });
+      const wreck = { ...(await statsOf(first)), hp: 0 };
+      expect(
+        (
+          await emitAck(gm, 'vehicle:update', {
+            vehicleId: first,
+            patch: { system: wreck },
+          })
+        ).ok,
+      ).toBe(true);
+      await emitAck(gm, 'character:update', {
+        characterId: nomadId,
+        patch: { data: { eddies: 600 } },
+      });
+      expect((await emitAck(player, 'vehicle:family-repair', { vehicleId: first })).ok).toBe(true);
+      const back = await statsOf(first);
+      expect(back.hp).toBe(back.hpMax);
+      expect(back.familyRepairUntil).toBeTypeOf('number');
+      expect(back.inUseFrom).toBeUndefined();
+      expect((await sheetOf(player, nomadId)).eddies).toBe(100);
+      expect(await emitAck(player, 'vehicle:fleet-use', { vehicleId: first })).toEqual({
+        ok: false,
+        error: 'AT_FAMILY',
+      });
+    });
+
+    it('G8 przywileje Głowy Rodziny tylko na Moto 10', async () => {
+      expect(await emitAck(player, 'vehicle:fleet-join', { vehicleId: first })).toEqual({
+        ok: false,
+        error: 'NOT_FAMILY_ELDER',
+      });
+      await emitAck(gm, 'character:update', {
+        characterId: nomadId,
+        patch: { data: { roleAbilityRank: 10, eddies: 20_000 } },
+      });
+      expect(
+        (
+          await emitAck(player, 'vehicle:family-upgrade', {
+            vehicleId: second,
+            upgradeId: 'armoredHull',
+          })
+        ).ok,
+      ).toBe(true);
+      expect((await statsOf(second)).upgrades.map((entry) => entry.upgradeId)).toContain(
+        'armoredHull',
+      );
+      expect((await sheetOf(player, nomadId)).eddies).toBe(20_000 - CPRED_MOTO_UPGRADE_FEE);
+      // Na Moto 10 cały Tabor jest w użyciu — wymiany nie ma.
+      expect(await emitAck(player, 'vehicle:fleet-use', { vehicleId: second })).toEqual({
+        ok: false,
+        error: 'ELDER_USES_ALL',
+      });
+    });
+
+    it('G9 prezent od Rodziny dopiero ze Stanowiskiem i nie łatą karty', async () => {
+      expect(
+        await emitAck(player, 'character:fleet-gift', {
+          characterId: nomadId,
+          entryId: CPRED_FLEET_GIFT_WEAPON_IDS[0],
+        }),
+      ).toEqual({ ok: false, error: 'NO_HEAVY_MOUNT' });
+      expect(
+        await emitAck(player, 'character:update', {
+          characterId: nomadId,
+          patch: { data: { fleetGift: CPRED_FLEET_GIFT_WEAPON_IDS[0] } },
+        }),
+      ).toEqual({ ok: false, error: 'FORBIDDEN' });
+    });
   });
 });

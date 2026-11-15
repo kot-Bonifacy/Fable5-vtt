@@ -905,6 +905,15 @@ const CASES: Record<string, Case> = {
     merchantId: a.merchantId,
     expectPrice: 1,
   })),
+  // Tabor Rodziny (etap 71c1): cudze auto albo cudza karta
+  'vehicle:fleet-use': foreign((a) => ({ vehicleId: a.vehicleId })),
+  'vehicle:family-repair': foreign((a) => ({ vehicleId: a.vehicleId })),
+  'vehicle:fleet-join': foreign((a) => ({ vehicleId: a.vehicleId })),
+  'vehicle:family-upgrade': foreign((a) => ({ vehicleId: a.vehicleId, upgradeId: 'nitro' })),
+  'character:fleet-gift': foreign((a) => ({
+    characterId: a.characterId,
+    entryId: 'weapon.tsunami-arms-helix',
+  })),
   // chase (etap 65b)
   'chase:place': foreign((a) => ({ sceneId: a.sceneId, vehicleId: a.vehicleId, x: 1, y: 1 })),
   'chase:move': foreign((a) => ({ sceneVehicleId: a.sceneVehicleId, x: 1, y: 1 })),

@@ -338,6 +338,10 @@ import {
   describeXpAwardNotice,
   CPRED_ADVANCE_PROBLEMS,
   CPRED_VEHICLE_UPGRADE_BUY_PROBLEMS,
+  CPRED_VEHICLE_UPGRADE_PROBLEMS,
+  CPRED_FLEET_USE_PROBLEMS,
+  CPRED_FAMILY_REPAIR_PROBLEMS,
+  CPRED_FLEET_GIFT_PROBLEMS,
   ADVANCEMENT_UNDO_PROBLEMS,
   CPRED_ROLE_CHANGE_PROBLEMS,
   CPRED_ATTACHMENT_PROBLEM_MESSAGES,
@@ -5203,6 +5207,52 @@ export function buyVehicleUpgrade(
 export function repairVehicle(payload: VehicleRepairPayload): Promise<SocketAck<VehicleBuyResult>> {
   flushCharacterSave(payload.characterId);
   return emitEconomy('vehicle:repair', payload);
+}
+
+/**
+ * Etap 71c1 — Tabor Rodziny (s. 162–164): auto w użyciu (wymiana rano),
+ * naprawa wraku u Rodziny, Głowa Rodziny (Moto 10) i broń od Rodziny.
+ * Płaci i jest sprawdzana karta właściciela auta — serwer czyta ją sam.
+ */
+export const chooseFleetVehicle = (vehicleId: string) =>
+  emitEconomy<VehicleView>('vehicle:fleet-use', { vehicleId });
+export const familyRepairVehicle = (vehicleId: string) =>
+  emitEconomy<VehicleView>('vehicle:family-repair', { vehicleId });
+export const joinFleetVehicle = (vehicleId: string) =>
+  emitEconomy<VehicleView>('vehicle:fleet-join', { vehicleId });
+export const familyUpgradeVehicle = (vehicleId: string, upgradeId: string) =>
+  emitEconomy<VehicleView>('vehicle:family-upgrade', { vehicleId, upgradeId });
+export function takeFleetGift(characterId: string, entryId: string) {
+  flushCharacterSave(characterId);
+  return emitEconomy<CharacterView>('character:fleet-gift', { characterId, entryId });
+}
+
+/** Odmowy Taboru (etap 71c1) — zdania z modułu reguł, reszta po swojemu. */
+export function fleetErrorText(code: string | undefined): string {
+  if (code === undefined) return 'Serwer nie przyjął tej zmiany Taboru.';
+  const tables: Record<string, string>[] = [
+    CPRED_FLEET_USE_PROBLEMS,
+    CPRED_FAMILY_REPAIR_PROBLEMS,
+    CPRED_FLEET_GIFT_PROBLEMS,
+    CPRED_VEHICLE_UPGRADE_PROBLEMS,
+  ];
+  for (const table of tables) if (code in table) return table[code]!;
+  switch (code) {
+    case 'NOT_ENOUGH_EDDIES':
+      return 'Za mało eurodolarów na karcie.';
+    case 'NOT_FAMILY_ELDER':
+      return 'To przywilej Głowy Rodziny — Moto 10 (s. 162).';
+    case 'ALREADY_IN_FLEET':
+      return 'To auto już jest w Taborze Rodziny.';
+    case 'NO_ABILITY':
+      return 'Tabor Rodziny ma tylko Nomada z Moto.';
+    case 'VEHICLE_NOT_FOUND':
+      return 'Tego pojazdu już nie ma.';
+    case 'COMBAT_LOCKED':
+      return COMBAT_LOCKED_TEXT;
+    default:
+      return `Serwer nie przyjął tej zmiany Taboru (${code}).`;
+  }
 }
 
 /** Odmowy warsztatu (etap 68) — reguły montażu po swojemu, reszta jak zakup auta. */

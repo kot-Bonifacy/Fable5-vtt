@@ -1098,6 +1098,13 @@ export interface CpredCharacterData {
    * is not a discount. Same bargain `eddies` made in 23b.
    */
   haggle: CpredHaggleStruck | null;
+  /**
+   * Etap 71c1 (NOM-14): broń, którą Rodzina podarowała przy pierwszym
+   * Stanowisku bardzo ciężkiej broni (id wpisu Kompendium). Pisze ją wyłącznie
+   * `character:fleet-gift`; raz wzięta — „kolejne bronie Nomada musi zdobyć
+   * samodzielnie” (s. 164).
+   */
+  fleetGift: string | null;
   /** skillId → level 1–10; untrained skills are simply absent. */
   skills: Record<string, number>;
   /**
@@ -1387,6 +1394,7 @@ export function createDefaultCharacterData(): CpredCharacterData {
     team: [],
     fleet: [],
     haggle: null,
+    fleetGift: null,
     skills: {},
     skillSpecialties: {},
     weapons: [],
@@ -2102,6 +2110,14 @@ function collectCharacterDataPatch(
   // A struck bargain never arrives by patch — `character:update` refuses one
   // that carries it — but an old sheet read back from the database does.
   if ('haggle' in input) patch.haggle = readCpredHaggle(input.haggle);
+  if ('fleetGift' in input) {
+    patch.fleetGift =
+      typeof input.fleetGift === 'string' &&
+      input.fleetGift.length > 0 &&
+      input.fleetGift.length <= 120
+        ? input.fleetGift
+        : null;
+  }
   if ('skills' in input) {
     const skills = validateSkills(input.skills, registry, issues);
     if (skills) patch.skills = skills;

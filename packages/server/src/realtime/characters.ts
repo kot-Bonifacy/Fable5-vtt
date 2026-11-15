@@ -25,6 +25,7 @@ import {
   cpredDropOrphanedRolePurses,
   cpredRoleAbilityRank,
   cpredFleetRowLevel,
+  cpredFleetVehicleEntry,
   cpredFleetSheetProblem,
   cpredDevelopmentChanged,
   cpredRolesProblem,
@@ -366,6 +367,9 @@ export const characterUpdateEvent = defineEvent<CharacterUpdatePayload, Characte
       // gracza z `cyberdeck` byłaby darmowym katalogiem z 26a. MG zostaje
       // furtka sędziego na naprawę karty (jego UI też idzie przez Wyposażenie).
       if (!isGm && sheet.cyberdeck !== undefined) throw new RealtimeError('FORBIDDEN');
+      // Etap 71c1 (G9): prezent Rodziny wpisuje `character:fleet-gift` — łata
+      // gracza z `fleetGift: null` oddałaby mu drugą broń za darmo.
+      if (!isGm && sheet.fleetGift !== undefined) throw new RealtimeError('FORBIDDEN');
       const current = parseCharacterData(character.data, deps.ctx.cpred);
       // Etap 48c (decyzje MG z 10.10): rzeczy z mechaniką przybywają graczowi
       // tylko z zakupu, wymiany, łupu, kreatora i od MG — łatą karty nie
@@ -461,6 +465,18 @@ export const characterUpdateEvent = defineEvent<CharacterUpdatePayload, Characte
         JSON.stringify(merged.fleet) !== JSON.stringify(current.fleet)
       ) {
         fleetCatalog ??= await vehicleCatalog(deps.ctx.prisma, deps.ctx.compendium, campaignId);
+        // Etap 71c1 (G38, NOM-06): nowy wybór wiersza „Pojazd” tylko z tabeli
+        // s. 162 — wpisy z progiem Moto. Stary wpis zostaje, dopóki nikt go nie rusza.
+        const before = new Map(current.fleet.map((row) => [row.id, row.compendiumId] as const));
+        const catalogById = new Map(fleetCatalog.map((entry) => [entry.id, entry] as const));
+        for (const row of readCpredFleet(merged.fleet)) {
+          if (row.kind !== 'vehicle' || !row.compendiumId) continue;
+          if (before.get(row.id) === row.compendiumId) continue;
+          const entry = catalogById.get(row.compendiumId);
+          if (entry && !cpredFleetVehicleEntry(entry)) {
+            throw new RealtimeError('NOT_FLEET_VEHICLE');
+          }
+        }
         fleetPrepared = await prepareFleet(
           deps.ctx.prisma,
           fleetCatalog,

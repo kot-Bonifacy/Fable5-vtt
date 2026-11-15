@@ -245,6 +245,18 @@ Podstawowe naprawy (FAQ) + Naprawa przeciw PT naprawy z pasma ceny wpisu (s. 140
 zdejmowany przy pełnym OB. G5 (#87): kafel Zmysłu Walki czynny w rundzie 0. Rozstrzygnięcia bez
 pytań — `decyzje-i-uproszczenia.md` („Błędy Ról z audytu”); umowy na górze `postac`.
 
+**Wynik 71c1 (15.11.2026) ✅.** Tabor Rodziny jako stan na pojeździe (nowe moduły
+`systems/cpred/fleet.ts`, `realtime/fleet.ts`, `FleetVehicleControls`). G6 (NOM-08): „Biorę to
+auto” na karcie auta — pierwsze w użyciu od razu, wymiana przyjeżdża o najbliższej 6:00 zegara
+świata (`vehicle:fleet-use`). G7 (NOM-09): „Oddaj Rodzinie do naprawy” tylko przy wraku — 500 ed,
+auto „U Rodziny” 7 dni kalendarza (`vehicle:family-repair`). G8 (NOM-11): Moto 10 — cały Tabor
+w użyciu, „Do Taboru Rodziny” (`fleetJoined`), „Rodzina montuje” za 10 000 ed; auto Taboru
+(także dołożone) nie idzie do warsztatu 68. G9 (NOM-14): prezent jednej z trzech broni przy
+pierwszym Stanowisku (`character:fleet-gift`, `fleetGift` na karcie). G38 (NOM-06): wiersz
+„Pojazd” tylko z wpisów z progiem Moto, odmowa `NOT_FLEET_VEHICLE`. Bez migracji (pola w JSON-ie
+`Vehicle.system` i karty). Rozstrzygnięcia — `decyzje-i-uproszczenia.md` („Tabor Rodziny jako
+stan gry”), umowa na górze `postac`, E2E `t71-nomada` (9 testów).
+
 Poza etapem 71: **G24 Nocny Targ — osobny etap** (`POMYSLY.md`), NOM-02 / NOM-03 — etap 72,
 STR-12 — po etapie 72, KOR-04 — tylko z abonamentem Trauma Team.
 

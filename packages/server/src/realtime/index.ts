@@ -227,6 +227,13 @@ import {
 } from './vehicles.js';
 import { vehicleBuyEvent, vehicleRepairEvent, vehicleUpgradeBuyEvent } from './vehicle-shop.js';
 import {
+  characterFleetGiftEvent,
+  vehicleFamilyRepairEvent,
+  vehicleFamilyUpgradeEvent,
+  vehicleFleetJoinEvent,
+  vehicleFleetUseEvent,
+} from './fleet.js';
+import {
   chaseMoveEvent,
   chaseRestoreEvent,
   chaseEscapeEvent,
@@ -439,6 +446,11 @@ export const EVENTS: RealtimeEvent<never, unknown>[] = [
   vehicleBuyEvent,
   vehicleUpgradeBuyEvent,
   vehicleRepairEvent,
+  vehicleFleetUseEvent,
+  vehicleFamilyRepairEvent,
+  vehicleFleetJoinEvent,
+  vehicleFamilyUpgradeEvent,
+  characterFleetGiftEvent,
   chasePlaceEvent,
   chaseMoveEvent,
   chaseRestoreEvent,

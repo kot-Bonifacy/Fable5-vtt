@@ -1,5 +1,6 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import {
+  CPRED_FLEET_GIFT_WEAPON_IDS,
   CPRED_FLEET_KIND_LABELS,
   CPRED_MOTO_ABILITY,
   CPRED_MOTO_ELDER_LEVEL,
@@ -8,7 +9,9 @@ import {
   CPRED_MOTO_SKILL_IDS,
   CPRED_MOTO_UPGRADE_FEE,
   CPRED_VEHICLE_UPGRADE_PROBLEMS,
+  cpredFleetGiftProblem,
   cpredFleetProblem,
+  cpredFleetVehicleEntry,
   cpredFleetRowLevel,
   cpredFleetTierAt,
   cpredRoleAbilityRank,
@@ -23,7 +26,8 @@ import {
   type VehicleEntry,
   type VehicleView,
 } from '@vtt/shared';
-import { queueCharacterSave } from '../socket.js';
+import { noteAck } from '../notices.js';
+import { fleetErrorText, queueCharacterSave, takeFleetGift } from '../socket.js';
 import { useCharacterStore } from '../stores/characterStore.js';
 import { COMBAT_LOCKED_HINT, useCombatLocked } from '../stores/combatStore.js';
 import { useCompendiumStore } from '../stores/compendiumStore.js';
@@ -52,6 +56,7 @@ export function MotoPanel({ characterId }: { characterId: string }) {
   const order = useCompendiumStore((s) => s.order);
   const vehicles = useVehicleStore((s) => s.vehicles);
   const locked = useCombatLocked();
+  const [gift, setGift] = useState('');
 
   const catalog = useMemo(
     () =>
@@ -72,8 +77,25 @@ export function MotoPanel({ characterId }: { characterId: string }) {
     (vehicle) =>
       vehicle.ownerCharacterId === characterId && readCpredVehicle(vehicle.system).fleetRowId,
   );
-  // Z Taboru tylko to, co stoi w zasięgu poziomu (s. 162).
-  const reachable = catalog.filter((entry) => (entry.motoLevel ?? 1) <= rank);
+  // Z Taboru tylko pojazdy z tabeli s. 162 (wpisy z progiem Moto — 71c1, G38)
+  // i tylko to, co stoi w zasięgu poziomu.
+  const fleetCatalog = catalog.filter(cpredFleetVehicleEntry);
+  const reachable = fleetCatalog.filter((entry) => (entry.motoLevel ?? 1) <= rank);
+  // G9 (s. 164): broń od Rodziny przy pierwszym Stanowisku bardzo ciężkiej broni.
+  const giftTaken = character.data.fleetGift;
+  // Wszystkie auta karty — Stanowisko liczy się też w aucie dołożonym przez
+  // Głowę Rodziny (`fleetJoined`, bez wiersza awansu); filtr Taboru robi reguła.
+  const giftOpen =
+    cpredFleetGiftProblem(
+      Object.values(vehicles)
+        .filter((vehicle) => vehicle.ownerCharacterId === characterId)
+        .map((vehicle) => readCpredVehicle(vehicle.system)),
+      giftTaken,
+      CPRED_FLEET_GIFT_WEAPON_IDS[0]!,
+    ) === null;
+  const giftChoices = CPRED_FLEET_GIFT_WEAPON_IDS.map((id) => entries[id]).filter(
+    (entry) => entry !== undefined,
+  );
   const fleet = readCpredFleet(character.data.fleet).map((row) => ({
     ...row,
     level: cpredFleetRowLevel(row, lookup),
@@ -188,7 +210,10 @@ export function MotoPanel({ characterId }: { characterId: string }) {
                   }}
                 >
                   {row.compendiumId ? null : <option value="">{row.name} (stary wpis)</option>}
-                  {(reachable.length > 0 ? reachable : catalog).map((entry) => (
+                  {row.compendiumId && !reachable.some((entry) => entry.id === row.compendiumId) ? (
+                    <option value={row.compendiumId}>{row.name} (spoza tabeli s. 162)</option>
+                  ) : null}
+                  {reachable.map((entry) => (
                     <option key={entry.id} value={entry.id}>
                       {entry.name}
                       {entry.motoLevel ? ` (od Moto ${entry.motoLevel})` : ''}
@@ -293,6 +318,39 @@ export function MotoPanel({ characterId }: { characterId: string }) {
           Dołóż ulepszenie
         </button>
       </div>
+
+      {giftTaken ? (
+        <p className="awareness-derived">
+          Prezent od Rodziny: {entries[giftTaken]?.name ?? giftTaken}
+        </p>
+      ) : giftOpen && giftChoices.length > 0 ? (
+        <div className="awareness-buttons fleet-gift">
+          <select
+            value={gift}
+            aria-label="Prezent od Rodziny"
+            onChange={(event) => setGift(event.target.value)}
+          >
+            <option value="">— broń od Rodziny (s. 164) —</option>
+            {giftChoices.map((entry) => (
+              <option key={entry.id} value={entry.id}>
+                {entry.name}
+              </option>
+            ))}
+          </select>
+          <button
+            type="button"
+            disabled={!gift}
+            title="Przy pierwszym Stanowisku bardzo ciężkiej broni Rodzina daruje jedną z trzech broni; kolejne zdobywasz sam (s. 164)."
+            onClick={() =>
+              void takeFleetGift(characterId, gift).then((ack) => {
+                if (noteAck('character', ack, fleetErrorText)) setGift('');
+              })
+            }
+          >
+            Weź od Rodziny
+          </button>
+        </div>
+      ) : null}
 
       <div className="awareness-extras">
         <details>

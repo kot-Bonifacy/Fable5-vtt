@@ -94,7 +94,7 @@ describe('TEC-04 Prowizorka to Test (#85)', () => {
   it('odmawia bez Naprawy, przy pełnym OB, przy trwającej i przy zużytej łacie', () => {
     const ask = (data: ReturnType<typeof technik>) =>
       planCpredRoll(data, registry, { kind: 'fieldRepair', fieldRepairArmorRowId: 'a1' });
-    expect(ask({ ...technik(jacket()), fabrication: { upgrade: 8 } })).toEqual({
+    expect(ask({ ...technik(jacket()), fabrication: { repair: 0, upgrade: 8 } })).toEqual({
       ok: false,
       error: 'NO_REPAIR_SPECIALTY',
     });

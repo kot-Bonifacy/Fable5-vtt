@@ -116,10 +116,12 @@ export const CPRED_VEHICLE_UPGRADE_BUY_PROBLEMS: Record<CpredVehicleUpgradeBuyPr
  * (rodzaj pojazdu, „tylko raz”, Wzmocniona konstrukcja).
  */
 export function cpredVehicleUpgradeBuyProblem(
-  stats: Pick<CpredVehicleStats, 'kind' | 'upgrades' | 'fleetRowId'>,
+  stats: Pick<CpredVehicleStats, 'kind' | 'upgrades' | 'fleetRowId' | 'fleetJoined'>,
   upgradeId: CpredVehicleUpgradeId,
 ): CpredVehicleUpgradeBuyProblem | null {
-  if (stats.fleetRowId) return 'VEHICLE_IN_FLEET';
+  // Od 71c1 także auto dołożone do Taboru przez Głowę Rodziny — ono ma
+  // „Rodzina montuje” (`vehicle:family-upgrade`).
+  if (stats.fleetRowId || stats.fleetJoined) return 'VEHICLE_IN_FLEET';
   return cpredVehicleUpgradeProblem(stats.kind, stats.upgrades, upgradeId);
 }
 

@@ -408,6 +408,31 @@ input.vehicle-card-name {
   color: var(--text-dim);
 }
 
+/* Etap 71c1: Tabor na karcie auta — gdzie auto jest, wymiana, naprawa
+   u Rodziny, przywileje Głowy Rodziny. Zawija się na wąskiej karcie. */
+.fleet-controls,
+.fleet-upgrade {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.fleet-upgrade select {
+  flex: 1 1 10rem;
+  min-width: 0;
+}
+
+.vehicle-card-tag[data-fleet-state='inUse'] {
+  border-color: var(--accent);
+  color: var(--text);
+}
+
+.vehicle-card-tag[data-fleet-state='family'],
+.vehicle-card-tag[data-fleet-state='arriving'] {
+  border-style: dashed;
+}
+
 /* Etap 65b: wbudowana grafika pojazdu na karcie. */
 .vehicle-card-art {
   display: flex;
