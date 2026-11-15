@@ -1,5 +1,11 @@
 # Pomysły poza zakresem etapów
 
+**15.11.2026 (bramka etapu 71) — Nocny Targ Fixera jako osobny etap (decyzja MG).** Od Znajomości 5
+raz w miesiącu kalendarza handlarz z towarem każdej kategorii, od 9 także Nocny Północny (s. 160,
+338, FAQ; wiersz FIX-10 w `role-macierz.md`, wycena L). Stoi na asortymencie handlarza z 02.11 i
+kalendarzu z etapu 37; poziom sklepu kampanii dalej obowiązuje (decyzja MG 15.11: nikt nie sięga
+ponad poziom kampanii).
+
 **15.11.2026 (projekt etapu 72, przebudowa pościgu) — co zostało poza projektem.** (1) **Jazda
 poza walką kokpitem** (swobodne ustawianie się kierowców przed startem; dziś i w projekcie szyk
 ustawia MG ręką). (2) **Grupa „Pojazd” tylko do odczytu dla pasażera** (prędkość, PUK, dystans

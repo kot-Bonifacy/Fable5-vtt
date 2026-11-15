@@ -178,22 +178,22 @@ od 15.11 w etapie 72 („Styk z etapem 72”).
 
 ### 71b — Stan dzisiejszy w przeglądarce, potem bramka MG
 
-- [ ] Fikstura `packages/e2e/fixtures/role.ts`: dziewięć postaci, **każda z jedną Rolą**
+- [x] Fikstura `packages/e2e/fixtures/role.ts`: dziewięć postaci, **każda z jedną Rolą**
       (nie wieloklasowy „Wielorak”), zakładanych gniazdem MG; ranga 4 (start z kreatora) oraz
       wariant wysokiej rangi tam, gdzie reguła ma próg powyżej 4
-- [ ] Punkt kontrolny E2E `role-start` (kampania, scena z mapą, handlarz, pojazd **na karcie —
+- [x] Punkt kontrolny E2E `role-start` (kampania, scena z mapą, handlarz, pojazd **na karcie —
       bez sceny pościgu**, statysta-cel, kalendarz ustawiony) — wspólny start specyfikacji
       i rozegrań
-- [ ] Specyfikacje i scenki **nie wchodzą na scenę pościgu** („Styk z etapem 72”)
-- [ ] Specyfikacje `packages/e2e/specs/52-role/t71-<rola>.spec.ts` w wersji „stan dzisiejszy”:
+- [x] Specyfikacje i scenki **nie wchodzą na scenę pościgu** („Styk z etapem 72”)
+- [x] Specyfikacje `packages/e2e/specs/52-role/t71-<rola>.spec.ts` w wersji „stan dzisiejszy”:
       każdy wiersz macierzy w stanie ✅ / 🟡 klasy A–B, który ma UI, dostaje asercję w przeglądarce
       (kość ze `scriptDice`, wynik czytany z bazy, nie z ekranu)
-- [ ] **Pierwsze rozegranie**: krótka scenka każdą Rolą (tabela „Scenki” niżej), gracz
+- [x] **Pierwsze rozegranie**: krótka scenka każdą Rolą (tabela „Scenki” niżej), gracz
       w Firefoksie (Playwright MCP), MG w czystym Chromium; ocena w trzech punktach: czy gracz
       **znajdzie** Zdolność bez instrukcji, czy rozumie wynik z karty na czacie, ile kliknięć
       kosztuje typowe użycie
-- [ ] Znaleziska rozegrań dopisane do macierzy (⚠️ błąd UI także jest wierszem)
-- [ ] **Lista bramki** na końcu `role-macierz.md`: każda proponowana doróbka z identyfikatorami
+- [x] Znaleziska rozegrań dopisane do macierzy (⚠️ błąd UI także jest wierszem)
+- [x] **Lista bramki** na końcu `role-macierz.md`: każda proponowana doróbka z identyfikatorami
       wierszy, wyceną S/M/L, proponowanym podetapem i — gdzie trzeba — pytaniem do MG
       z wariantami. Decyzje MG z etapu 30 stoją na liście osobno jako „czy dalej tak?”
 
@@ -203,26 +203,41 @@ zatwierdzony zakres (rule 7 z `CLAUDE.md`: korekta planu po akceptacji).
 
 **Kryteria ukończenia 71b**
 
-- [ ] Dziewięć specyfikacji przechodzi na obecnym kodzie (`pnpm test:e2e t71-`)
-- [ ] Dziewięć scenek rozegranych, notatka mówi, w czym oglądano
-- [ ] Lista bramki kompletna i **zatwierdzona przez MG**
+- [x] Dziewięć specyfikacji przechodzi na obecnym kodzie (`pnpm test:e2e t71-`)
+- [x] Dziewięć scenek rozegranych, notatka mówi, w czym oglądano
+- [x] Lista bramki kompletna i **zatwierdzona przez MG**
 
-### 71c–71g — Doróbki według maszynerii (zakres wstępny, do przepisania po bramce)
+**Wynik 71b (15.11.2026).** Fikstura `packages/e2e/fixtures/role.ts`, punkt `role-start` budowany
+przez `52-role/t71-00-start.spec.ts` z `po-T6` (dziewięciu graczy, scena „Poligon Ról”, Manekin,
+handlarz „Lada 71”, auto Technika na karcie). Dziewięć specyfikacji `52-role/t71-<rola>.spec.ts`
+(40 testów, 7 `test.fail` na #84–#87) — `pnpm test:e2e t71-` zielone. Nowe błędy w
+`testy-rejestr.md`: #86 (druga Prowizorka przed pełną naprawą), #87 (belka w rundzie 0), #84
+rozszerzony o Wsparcie. #83 (SOL-10) zostaje w `role-matrix.test.ts` (`it.fails`) — Ogień ciągły
+w E2E wymagałby osobnego przygotowania. Dziewięć scenek rozegranych w Firefoksie (gracz) i Chromium
+(MG) — tabela „Rozegrania 71b” w `role-macierz.md`. SOL-15 rozstrzygnięte kodem (✅). Lista
+bramki w macierzy, **zatwierdzona przez MG 15.11** — niżej „Decyzje bramki”.
+
+### 71c–71g — Doróbki według maszynerii (przepisane po bramce 15.11)
 
 Każdy podetap: mechanika w `shared` z testami vitest → serwer (walidacja, odmowy po polsku) →
 UI → **asercja w specyfikacji E2E Roli** → aktualizacja wierszy macierzy i wpisów
-w `decyzje-i-uproszczenia.md` (wpis nieaktualny dostaje dopisek z datą, nie znika).
+w `decyzje-i-uproszczenia.md` (wpis nieaktualny dostaje dopisek z datą, nie znika). Numery G/D/P
+to pozycje „Listy bramki” w `role-macierz.md`.
 
-| podetap | maszyneria                    | Role                       | kandydaci (hipotezy z „Stanu wyjściowego”)                                                                                                                                          |
-| ------- | ----------------------------- | -------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **71c** | pojazdy i warsztat            | Nomada, Technik            | Tabor wobec `Vehicle` i ulepszeń z 68 (bez sceny pościgu — etap 72); Ulepszanie: pozostałe skutki wobec gniazd dodatków, jakości broni, PUK pojazdu; Naprawa przedmiotów i pojazdów |
-| **71d** | walka, leczenie, czas zabiegu | Solo, Medyk, Technik       | Zmysł Walki na styku z kubkiem, auto-unikiem, bronią pokładową i skradaniem; Farmaceutyki jako dawki w ekwipunku; kriosystemy; Prowizorka i Wytwarzanie z zegarem kalendarza        |
-| **71e** | handel i pieniądze            | Fixer, Korpo               | Zasięg wobec asortymentu handlarza; pozostałe targi; Nocny Targ; przywileje Korpo w rozliczeniu miesiąca; Lojalność po zamknięciu sesji                                             |
-| **71f** | czas i zasoby narracyjne      | Rocker, Media, Stróż Prawa | grupy fanów jako wpisy z blokadą tygodniową; limit Pogłosek i rejestr publikacji; licznik nadużyć Wsparcia jako narzędzie MG (Wsparcie autem w pościgu — po etapie 72)              |
-| **71g** | kreator, PD, wieloklasowość   | wszystkie                  | poprawki danych pakietów i wyposażenia startowego, Specjalizacje przy awansie, UI zmiany Roli                                                                                       |
+| podetap  | maszyneria                  | pozycje                                                                                                                                             |
+| -------- | --------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **71c0** | błędy z audytu i rozegrań   | G1 (#84), G2 (#83), G3 (#85 Prowizorka jako Test), G4 (#86), G5 (#87) — `test.fail` w `t71-*` przechodzą na `test`                                  |
+| **71c1** | pojazdy Taboru              | G6 auto „w użyciu”, G7 naprawa u Rodziny, G8 ranga 10, G9 broń od Rodziny, G38 Tabor tylko z tabeli s. 162                                          |
+| **71c2** | naprawa i montaż Technikiem | G11 zwykła naprawa pancerza / broni / auta z Testem i czasem (warsztat zostaje obok), G10 montaż ulepszenia, P5 OB gracza tylko w dół               |
+| **71d1** | walka i leczenie            | G12 Prowizorka puszcza sama, G14 gniazda, G15 jakość Doskonała, G16 UC wszczepu, G17 limity dzienne, G18 czas zabiegu (propozycja dla MG), G40, G41 |
+| **71d2** | Praca Twórcy i kriosystemy  | G13 Ulepszanie / Wytwarzanie z PT, czasem (propozycja dla MG) i surowcami w ed, G19 kriopompa                                                       |
+| **71e**  | handel i pieniądze          | G20 targ sporny (karta handlarza, inaczej MG), G21, G22, G23, G25, G26, P6 pracownik obok Korpo                                                     |
+| **71f**  | czas i zasoby narracyjne    | G27 fani i blokada 7 dni, P2 fani tylko poza walką, G28, G29, G30, G31, G32, G39                                                                    |
+| **71g1** | kreator, PD, wieloklasowość | G33 pakiet Krawędziarza, G34 listy Rockera i Medyka, G35 + D3 zamiana Roli za PD jak nowa Rola, G36, D2 wybór środka, P4 dane Ulicznika Fixera      |
+| **71g2** | licencja                    | G37 parafraza zdań podręcznika w `roleability.ts` (L)                                                                                               |
 
-Jeśli po bramce któryś podetap przekracza jedną sesję, dzieli się go literą (71c1, 71c2) przed
-pierwszą linijką kodu, tak jak etap 30.
+Poza etapem 71: **G24 Nocny Targ — osobny etap** (`POMYSLY.md`), NOM-02 / NOM-03 — etap 72,
+STR-12 — po etapie 72, KOR-04 — tylko z abonamentem Trauma Team.
 
 **Kryteria ukończenia każdego z 71c–71g**
 
@@ -323,4 +338,27 @@ nazwane błędem. Firefox MCP zajęty przez prywatnego Firefoksa MG → poprosi�
 
 ## Decyzje bramki
 
-_(wypełnia się po 71b)_
+Bramka 15.11.2026 (MG odpowiadał paczkami w sesji 71b; pełna lista z wycenami — „Lista bramki”
+w `role-macierz.md`).
+
+| pozycja                 | decyzja MG                                                                                             |
+| ----------------------- | ------------------------------------------------------------------------------------------------------ |
+| G1–G5 (błędy)           | wszystkie, jako pierwszy podetap **71c0**                                                              |
+| 71c (G6–G11, G38)       | wszystko; naprawa auta Technikiem **obok** warsztatu z etapu 68                                        |
+| P5                      | gracz zmienia bieżące OB własnego pancerza **tylko w dół** (ablacja); w górę — MG, Prowizorka, naprawa |
+| 71d (G12–G19, G40, G41) | wszystko; czas pracy i zabiegu to **propozycja przesunięcia zegara dla MG**, nie automat               |
+| P1 (SOL-16)             | Precyzyjny atak **jak dziś** — każdy Atak bronią (także pokładową), bez Pochwycenia i Duszenia         |
+| D2 (MED-08)             | **wybór środka** przy każdym punkcie Farmaceutyków (zmiana decyzji z 03.09)                            |
+| 71e (G20–G23, G25, G26) | wszystko; sumę drugiej strony targu daje **karta handlarza, a bez niej MG**                            |
+| G24                     | Nocny Targ — **osobny etap**                                                                           |
+| D1 (FIX-08)             | **dalej tak** — żadna postać nie sięga ponad poziom sklepu kampanii                                    |
+| 71f (G27–G32, G39)      | wszystko                                                                                               |
+| P2 (ROC-04)             | nowych fanów nie robi się w walce — **odmowa serwera**                                                 |
+| 71g (G33–G36)           | wszystko                                                                                               |
+| G37 (WSP-19)            | **parafraza w kodzie** (osobny podetap 71g2, L)                                                        |
+| D3 (WSP-18)             | powrót do Roli, którą karta niesie, **kosztuje jak nowa Rola** (zmiana decyzji z 30.08)                |
+| D4 (WSP-20)             | „nieco czasu między awansami” **dalej przy stole**                                                     |
+| D5, D6                  | **dalej tak** (inicjatywa funkcjonariusza na samą kość, chrom pracownika prozą)                        |
+| P3 (WSP-22)             | Ulicznik Korpo — **6, jak oryginał** (druk polski to literówka)                                        |
+| P4 (WSP-23)             | Ulicznik Fixera — **pistolet i lekka broń biała** (druk); poprawka danych w 71g1                       |
+| P6 (KOR-S1)             | zatrudniony pracownik **staje na mapie obok Korpo** (71e)                                              |

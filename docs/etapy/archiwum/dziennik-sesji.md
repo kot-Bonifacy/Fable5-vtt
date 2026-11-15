@@ -1,5 +1,32 @@
 # Dziennik sesji — archiwum
 
+### Sesja 14.11 (dziewiąta) — etap 71a: audyt Ról i macierz zgodności
+
+**Zrobione (bez zmian mechaniki, nic do wdrożenia):**
+
+- **`role-macierz.md`**: dziesięć tabel (dziewięć Ról + „wspólne”), 194 wiersze — 101 ✅, 28 🟡,
+  31 📜, 21 ❌, 5 ⚠️, 8 ❓. Źródła: podręcznik (s. 43–106, 142–165, 189–192, 411), FAQ i DLC
+  (DLC bez errat do Ról). Dane kreatora porównane skryptem: szablony Cech 10 Ról bez różnic,
+  każdy pakiet Ulicznika sumuje się do 86.
+- **Trzy błędy do `testy-rejestr.md`** (naprawa po bramce — decyzja MG): #83 Wykrycie słabości
+  mnoży się z Ogniem ciągłym (FAQ: po mnożeniu), #84 zmiana Zmysłu Walki i Prowizorka w walce
+  są darmowe, gdy zdarzenie nie niesie `tokenId`, #85 Prowizorka bez Testu.
+- **Najgrubsze braki**: Krawędziarz nie dostaje pakietu Roli (WSP-08), targ Fixera nie działa przy
+  sprzedaży (FIX-04), Testów Twórcy nie ma (TEC-07), liczniki tygodniowe Rockera i Media oraz
+  wymiana i naprawa Taboru to same zdania w panelach.
+- **Dziewięć wpisów decyzji z etapu 30 ma nieaktualny powód** („nie ma maszynerii”) — tabela
+  w macierzy; wpisy w `decyzje-i-uproszczenia.md` dostaną dopiski w 71h, decyzje zostają w mocy
+  do bramki.
+- **Decyzje MG z pytań w sesji**: listy Umiejętności Rockera i Medyka wg oryginału (druk polski
+  ma je zamienione; poprawka danych w 71g), dosłowne zdania podręcznika w `roleability.ts` — na
+  listę bramki (WSP-19), błędy — po bramce.
+
+Testy: nowy `role-matrix.test.ts` (8, jeden `it.fails` na #83); `pnpm test` — shared 3082,
+klient 511, serwer 1806 zielone (pierwszy przebieg serwera skończył się kodem 1 przez błąd po
+zamknięciu `walls.test.ts`, drugi czysty — pułapka na górze `testy`, zaległość w
+`zaleglosci.md`); `tsc` shared i ESLint nowego pliku czyste. E2E nie puszczane (brak zmian
+w kodzie aplikacji). **Przeglądarki nie otwierano** — podetap nie dotyka UI.
+
 ### Sesja 14.11 (ósma) — wykrycie w Sieci zaczyna walkę
 
 **Zrobione (bez migracji, czeka na wdrożenie)** — zlecenie MG, decyzje z pytań w sesji:

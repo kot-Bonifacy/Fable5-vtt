@@ -6,6 +6,18 @@ w `POMYSLY.md` („Do sprawdzenia przy stole”), decyzje MG — w `decyzje-i-up
 
 ## Otwarte
 
+**15.11.2026 — drobiazgi UI z rozegrań Ról (71b), spoza listy bramki.** (1) Kubek pisze
+„Inicjatywa +0” zaraz po wejściu gracza do gry, zanim dojdzie karta — serwer rzuca dobrze
+(1k10+7). (2) Klik w wiersz listy „Ustabilizuj” potrafi przełączyć belkę gracza na cudzą figurę;
+odmowa mówi wtedy „Ten uczestnik nie ma karty postaci”, choć ma (zła figura, nie brak karty).
+(3) Ustabilizowanie wolno rzucić na figurę „bez ran” — rzut na nic. Oglądane w Firefoksie
+(gracz) i Chromium (MG), instancja E2E z `role-start`.
+
+**15.11.2026 — `t8c-zdolnosci` klika „Dołóż wpis” w panelu Moto, a przycisk od 65a nazywa się
+„Dołóż pojazd” / „Dołóż ulepszenie”.** Wyszło przy pisaniu `52-role/t71-nomada` (71b): w kliencie
+nie ma już „Dołóż wpis”, więc test Moto w T8c nie przejdzie. Nie poprawiane w 71b — plan etapu 71
+przepina T8c na test wieloklasowości w 71h; wtedy też tę etykietę.
+
 **14.11.2026 — `walls.test.ts` zostawia zapis pamięci eksploracji po zamknięciu testu.** Pełna
 suita serwera raz skończyła się kodem 1 przy 1806/1806 zielonych: `persistMemory`
 (`realtime/exploration.ts`) zapisał `playerExploration` po zwinięciu bazy (`P2021`), vitest
