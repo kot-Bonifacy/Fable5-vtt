@@ -899,6 +899,8 @@ export function expireSheetStatEffects(
   coatings: CpredBladeCoating[];
   /** Nazwy sztuk pancerza, z których puściła Prowizorka (etap 71d1, G12). */
   patches: string[];
+  /** Tydzień w kriośnie minął (etap 71d2, G19). */
+  cryo: boolean;
 } | null {
   const data = parseCharacterData(character.data, registry);
   // Stym (12.09.2026) schodzi tym samym przemiataniem i tą samą funkcją terminu
@@ -913,17 +915,23 @@ export function expireSheetStatEffects(
   const { kept, expired } = cpredExpireStatEffects(data.statEffects, clock);
   // Etap 71d1 (G12): Prowizorka puszcza sama — te same dwa zegary.
   const patched = data.armor.filter((row) => cpredFieldRepairExpired(row, clock));
+  // Etap 71d2 (G19): tydzień w worku kriopompy minął — znów rzuty przeciw
+  // śmierci. Status „Nieprzytomny” zostaje (pacjent dalej leży w worku);
+  // zdejmuje go „Rozmroź”.
+  const cryo = data.cryo !== null && cpredStatEffectExpired(data.cryo, clock) ? data.cryo : null;
   if (
     expired.length === 0 &&
     suspension === null &&
     doses.length === 0 &&
     coatings.length === 0 &&
-    patched.length === 0
+    patched.length === 0 &&
+    cryo === null
   ) {
     return null;
   }
   const merged = mergeCharacterData(data, {
     statEffects: kept,
+    ...(cryo !== null ? { cryo: null } : {}),
     ...(patched.length > 0
       ? {
           armor: data.armor.map((row) =>
@@ -949,6 +957,7 @@ export function expireSheetStatEffects(
     doses,
     coatings,
     patches: patched.map((row) => row.name),
+    cryo: cryo !== null,
   };
 }
 
@@ -1520,7 +1529,11 @@ export function sheetOwesDeathSave(
   statuses: readonly string[],
 ): boolean {
   if (statuses.includes(SHEET_DEAD_STATUS_ID)) return false;
-  return cpredSheetWoundState(parseCharacterData(character.data, registry)) === 'mortal';
+  const data = parseCharacterData(character.data, registry);
+  // Etap 71d2 (G19): pacjent w worku kriopompy „nie musi wykonywać rzutów
+  // obronnych przeciw śmierci” (s. 353), dopóki stan trwa.
+  if (data.cryo) return false;
+  return cpredSheetWoundState(data) === 'mortal';
 }
 
 /**

@@ -26,9 +26,11 @@ import { pendingDice, scriptDice } from '../../instance/instance.ts';
  * kubek, a zużyta łata blokuje następną do pełnej naprawy.
  * Od 71c2: zwykła naprawa Testem (TEC-19, G11) z czasem dla zegara MG, montaż
  * ulepszenia auta Technikiem (TEC-18, G10) i bieżące OB gracza tylko w dół (P5).
- * Ulepszanie przedmiotów, Wytwarzanie i Wynajdywanie nie mają rzutu (TEC-07, 71d2).
  * Od 71d1: Prowizorka puszcza sama z zegarem świata (TEC-05, G12), a skutki
  * Ulepszania stempluje MG przy przedmiocie (TEC-12, TEC-13, G14, G15).
+ * Od 71d2: Ulepszanie przedmiotu drużyny i Wytwarzanie z Kompendium to Testy
+ * przez kubek w robotach drużyny (TEC-03, TEC-07–TEC-09, G13); Wynajdywanie
+ * zostaje u MG (TEC-20).
  */
 
 const TECH = ROLES.tech;
@@ -328,7 +330,7 @@ test.describe.serial('@szybkie T71 Technik — Twórca', () => {
 
     card = await openSheet(bartek, TECH.card);
     await card.getByRole('button', { name: 'Ekwipunek', exact: true }).click();
-    // Gracz menu nie ma — stempel wpisuje MG (Test Technika to 71d2).
+    // Gracz menu nie ma — stempel wpisuje MG; Test Technika (71d2) idzie robotami drużyny.
     await expect(
       card.getByRole('combobox', { name: /Ulepszenie Technika: Ciężki pistolet/ }),
     ).toHaveCount(0);
@@ -353,6 +355,114 @@ test.describe.serial('@szybkie T71 Technik — Twórca', () => {
     await expect(
       card.locator('.item-upgrade-chip', { hasText: 'Jakość Doskonała' }),
     ).toHaveAttribute('title', /\+1 do Testów ataku/);
+    await closeSheet(bartek.page);
+    for (const actor of [mg, bartek]) expect(actor.unexpectedErrors(), actor.name).toEqual([]);
+  });
+
+  // ───────────── 71d2: Praca Twórcy — Ulepszanie i Wytwarzanie Testem (G13) ─────────────
+
+  test('TEC-03 TEC-07 TEC-09 G13 Ulepszanie Testem: cudzy pistolet, PT z pasma, surowce przy sukcesie, stempel', async () => {
+    type Weapon = { id: string; upgrade?: string };
+    const solo = ROLES.solo.card;
+    const soloPistol = () =>
+      cardData<{ weapons: Weapon[] }>(solo).weapons.find((row) => row.id === 'r71-pistolet')!;
+    expect(soloPistol().upgrade).toBeUndefined();
+    const before = eddies();
+    card = await openSheet(bartek, TECH.card);
+    const shop = panel().locator('details.team-workshop');
+    await shop.locator('summary').click();
+    const row = shop.locator(`[data-upgrade-target="${characterId(solo)}:weapons:r71-pistolet"]`);
+    await row
+      .getByRole('combobox', { name: `Sposób Ulepszania: Ciężki pistolet (${solo})` })
+      .selectOption('slot');
+    const since = lastMessageId();
+    scriptDice([7]);
+    await row.getByRole('button', { name: `Ulepsz: Ciężki pistolet (${solo})` }).click();
+    await shakeCup(bartek.page);
+    const roll = await rollAfter(since, 'Ulepszanie', 'roll');
+    // TECH 8 + Naprawa broni 4 + Ulepszanie 4 + kość 7 = 23 > PT 17 (Premium, s. 148);
+    // Naprawa Technika do Ulepszania nie dochodzi (TEC-03).
+    expect(roll.total).toBe(23);
+    expect(breakdownRow(roll, 'Ulepszanie 4')?.value).toBe(4);
+    expect(breakdownRow(roll, 'Naprawa 4')).toBeUndefined();
+    expect(roll.outcome?.label, JSON.stringify(roll.outcome)).toBe('Ulepszone');
+    expect(roll.outcome?.detail).toContain('PT 17');
+    // Premium: dzień pracy, surowce z tego samego pasma (100 ed × cennik broni).
+    expect(roll.clock).toMatchObject({ minutes: 24 * 60 });
+    expect(pendingDice()).toBe('');
+    await expect.poll(() => soloPistol().upgrade).toBe('slot');
+    expect(eddies()).toBe(before - 1000);
+
+    // Raz ulepszona rzecz znika z listy, a podrobione zdarzenie odmawia.
+    await shop.getByRole('button', { name: 'Odśwież listę' }).click();
+    await expect(row).toHaveCount(0);
+    const forged = await emitAck(await bartek.socket(), 'character:roll', {
+      characterId: characterId(TECH.card),
+      request: {
+        kind: 'itemUpgrade',
+        repairTarget: {
+          kind: 'item',
+          characterId: characterId(solo),
+          list: 'weapons',
+          rowId: 'r71-pistolet',
+        },
+        itemUpgradeId: 'excellent',
+      },
+      visibility: 'public',
+    });
+    expect(forged).toEqual({ ok: false, error: 'ALREADY_UPGRADED' });
+    for (const actor of [mg, bartek]) expect(actor.unexpectedErrors(), actor.name).toEqual([]);
+  });
+
+  test('TEC-07 TEC-08 TEC-09 G13 Wytwarzanie z Kompendium: latarka na kartę Technika, surowce o pasmo niżej', async () => {
+    type Gear = { name: string; compendiumId?: string };
+    const lamps = () =>
+      cardData<{ gear: Gear[] }>(TECH.card).gear.filter(
+        (row) => row.compendiumId === 'gear.latarka',
+      ).length;
+    const refused = await emitAck(await bartek.socket(), 'character:roll', {
+      characterId: characterId(TECH.card),
+      request: { kind: 'fabricate', repairTarget: { kind: 'entry', entryId: 'gear.latarka' } },
+      visibility: 'public',
+    });
+    expect(refused).toEqual({ ok: false, error: 'NO_FABRICATE_SPECIALTY' });
+    dataOf(
+      await emitAck(gm, 'character:update', {
+        characterId: characterId(TECH.card),
+        patch: { data: { fabrication: { repair: 4, upgrade: 2, fabricate: 2 } } },
+      }),
+      'character:update Wytwarzanie 2',
+    );
+    const shop = panel().locator('details.team-workshop');
+    const search = shop.getByRole('searchbox', { name: 'Wytwarzanie: szukaj w Kompendium' });
+    await search.fill('latarka');
+    const row = shop.locator('[data-fabricate-entry="gear.latarka"]');
+    await expect(row).toContainText('PT 9');
+    const before = { eddies: eddies(), lamps: lamps() };
+    const since = lastMessageId();
+    scriptDice([5]);
+    await row.getByRole('button', { name: 'Wytwórz: Latarka', exact: true }).click();
+    await shakeCup(bartek.page);
+    const roll = await rollAfter(since, 'Wytwarzanie', 'roll');
+    // TECH 8 + Podstawowe naprawy 6 + Wytwarzanie 2 + kość 5 = 21 > PT 9 (Codzienne).
+    expect(roll.total).toBe(21);
+    expect(breakdownRow(roll, 'Wytwarzanie 2')?.value).toBe(2);
+    expect(roll.outcome?.label, JSON.stringify(roll.outcome)).toBe('Wytworzone');
+    expect(roll.clock).toMatchObject({ minutes: 60 });
+    expect(pendingDice()).toBe('');
+    await expect.poll(lamps).toBe(before.lamps + 1);
+    // Codzienne → surowce z pasma Tanie: 10 ed × 3 (cennik drobnego sprzętu).
+    expect(eddies()).toBe(before.eddies - 30);
+    // Amunicji Technik nie wytwarza (zasada domowa 71d2).
+    const ammo = await emitAck(await bartek.socket(), 'character:roll', {
+      characterId: characterId(TECH.card),
+      request: {
+        kind: 'fabricate',
+        repairTarget: { kind: 'entry', entryId: 'ammo.standard' },
+      },
+      visibility: 'public',
+    });
+    expect(ammo).toEqual({ ok: false, error: 'NOT_FABRICABLE' });
     await closeSheet(bartek.page);
     for (const actor of [mg, bartek]) expect(actor.unexpectedErrors(), actor.name).toEqual([]);
   });

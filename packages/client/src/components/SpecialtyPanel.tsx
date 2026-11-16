@@ -15,6 +15,7 @@ import {
   readCpredMedicine,
   COST_CATEGORY_LABELS,
   CPRED_CRYO_LEVELS,
+  cpredCryopumpCapacity,
   CPRED_FABRICATION,
   CPRED_FABRICATION_TASK,
   CPRED_ITEM_UPGRADES,
@@ -30,6 +31,7 @@ import {
 } from '@vtt/shared';
 import { craftPharmaceutical, queueCharacterSave } from '../socket.js';
 import { TeamWorkshop } from './RepairWork.js';
+import { CryoGrantButton } from './CryoPump.js';
 import { plural } from '../plural.js';
 import { useCharacterStore } from '../stores/characterStore.js';
 import { COMBAT_LOCKED_HINT, useCombatLocked } from '../stores/combatStore.js';
@@ -200,6 +202,7 @@ function MedicineExtras({
   const pharma = allocation.pharma ?? 0;
   const cryo = allocation.cryo ?? 0;
   const effects = cpredMedicineEffects(allocation, rank);
+  const sheet = useCharacterStore((s) => s.characters[characterId]?.data ?? null);
   return (
     <div className="awareness-extras">
       {/* Dwie Umiejętności, których nie ma w tabeli Umiejętności karty i mieć
@@ -252,6 +255,14 @@ function MedicineExtras({
               </li>
             ))}
           </ul>
+          {/* Etap 71d2 (G19): pompa jest wierszem Wyposażenia z ładunkami;
+              „Zamroź” i płyn — pod Wyposażeniem. Kriozbiorniki zostają prozą. */}
+          <p>
+            Kriopompa leży w Wyposażeniu: ładunków {cpredCryopumpCapacity(cryo)}, „Zamroź” to Akcja
+            i jeden ładunek, płyn uzupełnia się pod Wyposażeniem. Kriozbiorniki to miejsca przy
+            stole — VTT ich nie liczy.
+          </p>
+          {sheet ? <CryoGrantButton characterId={characterId} data={sheet} /> : null}
         </details>
       )}
     </div>

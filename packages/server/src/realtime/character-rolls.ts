@@ -55,6 +55,7 @@ import {
   tokenTableName,
   woundStateFromHp,
   cpredWithMountWeapons,
+  isCpredWorkRollKind,
 } from '@vtt/shared';
 import type { Character, Token } from '../generated/prisma/client.js';
 import { emitMapFx, fxCentre } from './fx.js';
@@ -510,7 +511,7 @@ async function resolveRollRequest(
   delete request.treatTargetName;
   delete request.fieldRepairDv;
   delete request.work;
-  if (request.kind === 'repair' || request.kind === 'vehicleUpgrade') {
+  if (isCpredWorkRollKind(request.kind)) {
     return resolveWorkRequest(deps, campaignId, user, request);
   }
   if (request.kind === 'fieldRepair') {
@@ -1359,6 +1360,8 @@ async function performScopedRoll(
         );
       }
     }
+    // Etap 71d2 (G19): w worku kriopompy nie rzuca się przeciw śmierci (s. 353).
+    if (plan.deathSave && data.cryo) throw new RealtimeError('IN_CRYO');
     const deathSaveTurn =
       plan.deathSave && source.kind === 'character'
         ? await requireDeathSaveDue(deps, user, source.character, data)

@@ -229,7 +229,24 @@ export type CpredRollKind =
   /** Zwykła naprawa pancerza albo auta — Test z PT i czasem (etap 71c2, s. 140, s. 147). */
   | 'repair'
   /** Technik montuje ulepszenie auta z progu Moto 1 (etap 71c2, s. 148). */
-  | 'vehicleUpgrade';
+  | 'vehicleUpgrade'
+  /** Technik ulepsza przedmiot z karty drużyny — Praca Twórcy (etap 71d2, s. 148). */
+  | 'itemUpgrade'
+  /** Technik wytwarza przedmiot z wpisu Kompendium — Praca Twórcy (etap 71d2, s. 148). */
+  | 'fabricate';
+
+/** Rodzaje rzutu, które są pracą Technika z czasem i surowcami (71c2, 71d2). */
+export const CPRED_WORK_ROLL_KINDS = [
+  'repair',
+  'vehicleUpgrade',
+  'itemUpgrade',
+  'fabricate',
+] as const;
+export type CpredWorkRollKind = (typeof CPRED_WORK_ROLL_KINDS)[number];
+
+export function isCpredWorkRollKind(kind: unknown): kind is CpredWorkRollKind {
+  return (CPRED_WORK_ROLL_KINDS as readonly unknown[]).includes(kind);
+}
 
 /** Skills the rules name for Stabilizing (s. 222). Either one may be rolled. */
 export const CPRED_FIRST_AID_SKILL_ID = 'first-aid';
@@ -455,6 +472,8 @@ export interface CpredRollRequest {
   repairSkillId?: string;
   /** `kind: 'vehicleUpgrade'` — które ulepszenie z s. 163–165 Technik montuje. */
   vehicleUpgradeId?: string;
+  /** `kind: 'itemUpgrade'` (etap 71d2) — który z dziesięciu sposobów Ulepszania (s. 148). */
+  itemUpgradeId?: string;
   /**
    * Server-filled (etap 71c2): PT i czas pracy z celu (pasmo ceny, stopień
    * uszkodzeń, s. 148 dla ulepszenia), nazwa celu na karcie i — przy
@@ -580,7 +599,9 @@ export type CpredRollProblem =
   /** Prowizorka, której ta sztuka pancerza teraz nie przyjmie (etap 71c0). */
   | CpredFieldRepairProblem
   /** Montaż ulepszenia auta bez punktu w Ulepszaniu (etap 71c2). */
-  | 'NO_UPGRADE_SPECIALTY';
+  | 'NO_UPGRADE_SPECIALTY'
+  /** Wytwarzanie bez punktu w tej Specjalizacji (etap 71d2). */
+  | 'NO_FABRICATE_SPECIALTY';
 
 /**
  * Where the line through a barrier starts (stage 42b), for measuring it again.
@@ -703,17 +724,21 @@ export interface CpredWorkTerms {
   minutes: number;
   /** „Lekka kurtka kuloodporna (Śrubka)”, „Osa”. */
   targetName: string;
-  /** Surowce na ulepszenie w ed — płatne przy sukcesie (s. 148). */
+  /** Surowce w ed (ulepszenie, Wytwarzanie) — płatne przy sukcesie (s. 148). */
   cost?: number;
 }
 
-/** Co zwykła naprawa albo montaż Technikiem (etap 71c2) wie o sobie przed kośćmi. */
+/**
+ * Co praca Technika wie o sobie przed kośćmi: zwykła naprawa i montaż w aucie
+ * (etap 71c2), Ulepszanie przedmiotu i Wytwarzanie (etap 71d2).
+ */
 export interface CpredWorkPlan {
-  task: 'repair' | 'vehicleUpgrade';
+  task: CpredWorkRollKind;
   target: CpredRepairTarget;
   /** `null` w podglądzie klienta, zanim serwer wpisze warunki pracy. */
   terms: CpredWorkTerms | null;
   vehicleUpgradeId?: string;
+  itemUpgradeId?: string;
 }
 
 /** What „Ustabilizowanie" needs to judge itself and explain the verdict. */
@@ -775,7 +800,7 @@ export interface CpredRollPlan {
   rumour?: CpredRumourPlan;
   /** Present for `kind: 'fieldRepair'` (etap 71c0). */
   fieldRepair?: CpredFieldRepairPlan;
-  /** Present for `kind: 'repair'` and `'vehicleUpgrade'` (etap 71c2). */
+  /** Present for the work kinds — `CPRED_WORK_ROLL_KINDS` (etap 71c2, 71d2). */
   work?: CpredWorkPlan;
 }
 
@@ -863,7 +888,7 @@ export function planCpredRoll(
   if (request.kind === 'fieldRepair') {
     return planFieldRepairRoll(data, registry, request, modifier, luckSpent, wound, context);
   }
-  if (request.kind === 'repair' || request.kind === 'vehicleUpgrade') {
+  if (isCpredWorkRollKind(request.kind)) {
     return planWorkRoll(data, registry, request, modifier, luckSpent, wound, context);
   }
 
@@ -1108,14 +1133,32 @@ function planFieldRepairRoll(
   );
 }
 
+/** Który rodzaj celu pasuje do której pracy — inny to podrobione żądanie. */
+const WORK_TARGET_KINDS: Record<CpredWorkRollKind, readonly CpredRepairTarget['kind'][]> = {
+  repair: ['armor', 'vehicle'],
+  vehicleUpgrade: ['vehicle'],
+  itemUpgrade: ['item'],
+  fabricate: ['entry'],
+};
+
+/** Nazwa pracy na karcie rzutu i Specjalizacja, którą się ją robi. */
+const WORK_TITLES: Record<CpredWorkRollKind, string> = {
+  repair: 'Naprawa',
+  vehicleUpgrade: 'Ulepszanie',
+  itemUpgrade: 'Ulepszanie',
+  fabricate: 'Wytwarzanie',
+};
+
 /**
- * Zwykła naprawa (s. 140, s. 147) i montaż ulepszenia auta przez Technika
- * (s. 148) — etap 71c2. Test TECH + Umiejętność, którą zwykle naprawia się
- * cel, + 1k10 przeciw PT z celu (wpisuje serwer).
+ * Praca Technika z czasem i surowcami — Test TECH + Umiejętność, którą zwykle
+ * naprawia się cel, + poziom Specjalizacji + 1k10 przeciw PT z celu (wpisuje
+ * serwer). Zwykła naprawa (s. 140, s. 147) i montaż ulepszenia auta (s. 148)
+ * od etapu 71c2, Ulepszanie przedmiotu i Wytwarzanie (s. 148) od 71d2.
  *
- * Naprawa dodaje poziom Specjalizacji Naprawa (s. 147); montaż — Ulepszanie,
- * a Naprawy **nie** („chyba że dany Test wiąże się z inną Specjalizacją
- * Twórcy”). Moto dokłada się w obu, bo to Test Naprawy pojazdów (s. 161).
+ * Naprawa dodaje poziom Specjalizacji Naprawa (s. 147); Ulepszanie
+ * i Wytwarzanie — własną, a Naprawy **nie** („chyba że dany Test wiąże się
+ * z inną Specjalizacją Twórcy”, TEC-03). Moto dokłada się przy Naprawie
+ * pojazdów (s. 161).
  */
 function planWorkRoll(
   data: CpredCharacterData,
@@ -1126,8 +1169,11 @@ function planWorkRoll(
   wound: CpredWoundCondition,
   context: CpredRollContext,
 ): { ok: true; plan: CpredRollPlan } | { ok: false; error: CpredRollProblem } {
+  const task = request.kind as CpredWorkRollKind;
   const target = request.repairTarget;
-  if (!isCpredRepairTarget(target)) return { ok: false, error: 'BAD_REQUEST' };
+  if (!isCpredRepairTarget(target) || !WORK_TARGET_KINDS[task].includes(target.kind)) {
+    return { ok: false, error: 'BAD_REQUEST' };
+  }
   const skillId = request.repairSkillId ?? CPRED_ARMOR_REPAIR_SKILL_ID;
   if (!CPRED_REPAIR_SKILL_IDS.includes(skillId)) return { ok: false, error: 'UNKNOWN_SKILL' };
   const fallbackName = CPRED_REPAIR_SKILL_FALLBACK_NAMES[skillId];
@@ -1136,9 +1182,15 @@ function planWorkRoll(
     (fallbackName ? { id: skillId, name: fallbackName, stat: 'tech' as const } : undefined);
   if (!skill) return { ok: false, error: 'UNKNOWN_SKILL' };
   const fabrication = cpredSheetFabrication(data, registry);
-  const upgrade = request.kind === 'vehicleUpgrade';
+  const upgrade = task === 'vehicleUpgrade' || task === 'itemUpgrade';
   if (upgrade && fabrication.upgrade < 1) return { ok: false, error: 'NO_UPGRADE_SPECIALTY' };
-  if (upgrade && typeof request.vehicleUpgradeId !== 'string') {
+  if (task === 'fabricate' && fabrication.fabricate < 1) {
+    return { ok: false, error: 'NO_FABRICATE_SPECIALTY' };
+  }
+  if (task === 'vehicleUpgrade' && typeof request.vehicleUpgradeId !== 'string') {
+    return { ok: false, error: 'BAD_REQUEST' };
+  }
+  if (task === 'itemUpgrade' && typeof request.itemUpgradeId !== 'string') {
     return { ok: false, error: 'BAD_REQUEST' };
   }
   const terms = request.work;
@@ -1148,21 +1200,20 @@ function planWorkRoll(
   ) {
     return { ok: false, error: 'BAD_REQUEST' };
   }
-  const specialty = upgrade ? fabrication.upgrade : fabrication.repair;
+  const specialty = upgrade
+    ? fabrication.upgrade
+    : task === 'fabricate'
+      ? fabrication.fabricate
+      : fabrication.repair;
   const moto = CPRED_MOTO_SKILL_IDS.includes(skill.id) ? cpredSheetMoto(data, registry) : 0;
   const name = terms?.targetName;
+  const label = WORK_TITLES[task];
   return finishCheck(
-    upgrade ? `Ulepszanie${name ? `: ${name}` : ''}` : `Naprawa${name ? `: ${name}` : ''}`,
+    `${label}${name ? `: ${name}` : ''}`,
     [
       ...skillBreakdown(data, skill),
       ...(specialty > 0
-        ? [
-            {
-              label: `${upgrade ? 'Ulepszanie' : 'Naprawa'} ${specialty}`,
-              value: specialty,
-              kind: 'situational' as const,
-            },
-          ]
+        ? [{ label: `${label} ${specialty}`, value: specialty, kind: 'situational' as const }]
         : []),
       ...(moto > 0 ? [{ label: `Moto ${moto}`, value: moto, kind: 'situational' as const }] : []),
     ],
@@ -1171,10 +1222,11 @@ function planWorkRoll(
     luckSpent,
     {
       work: {
-        task: upgrade ? 'vehicleUpgrade' : 'repair',
+        task,
         target,
         terms: terms ?? null,
-        ...(upgrade ? { vehicleUpgradeId: request.vehicleUpgradeId } : {}),
+        ...(task === 'vehicleUpgrade' ? { vehicleUpgradeId: request.vehicleUpgradeId } : {}),
+        ...(task === 'itemUpgrade' ? { itemUpgradeId: request.itemUpgradeId } : {}),
       },
     },
     context,

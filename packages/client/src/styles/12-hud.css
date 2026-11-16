@@ -1891,6 +1891,31 @@ body:has(.dice-cup--moved) .hud-foot {
   color: var(--text);
 }
 
+/* Etap 71d2: Ulepszanie przedmiotów i Wytwarzanie pod robotami drużyny. */
+.team-workshop-heading {
+  margin: 0.5rem 0 0.15rem;
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+/* Wybór sposobu i „Ulepsz” w jednym rzędzie — bez tego span kurczył się
+   do szerokości listy rozwijanej i guzik spadał pod nią (oględziny 16.11). */
+.team-workshop-list .fleet-upgrade {
+  flex: 0 1 17rem;
+  flex-wrap: nowrap;
+}
+
+.team-workshop-list .fleet-upgrade select {
+  flex: 1 1 8rem;
+}
+
+.team-workshop-fabricate input[type='search'] {
+  width: 100%;
+  max-width: 18rem;
+}
+
 /* Farmaceutyki: środki jeszcze nieodblokowane zostają na liście wyszarzone —
    Medyk ma widzieć, co kupi za następny punkt Specjalizacji. */
 .pharma-list button {

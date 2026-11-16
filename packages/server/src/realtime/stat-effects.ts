@@ -255,12 +255,13 @@ async function expireOne(
     expired: result.expired,
     suspension: result.suspension,
     patches: result.patches,
+    cryo: result.cryo,
   };
 }
 
 /** Czy przemiatanie zdjęło coś, o czym mówi publiczny wiersz (efekt, Stym, łata). */
 function isPublicSweep(row: SweptSheet): boolean {
-  return row.expired.length > 0 || row.suspension !== null || row.patches.length > 0;
+  return row.expired.length > 0 || row.suspension !== null || row.patches.length > 0 || row.cryo;
 }
 
 /** Karta, z której przemiatanie coś zdjęło. */
@@ -271,6 +272,8 @@ interface SweptSheet {
   suspension: CpredWoundSuspension | null;
   /** Pancerz, z którego puściła Prowizorka (etap 71d1) — OB wraca do stanu sprzed łaty. */
   patches: string[];
+  /** Tydzień w kriośnie minął (etap 71d2) — znów rzuty przeciw śmierci. */
+  cryo: boolean;
 }
 
 /**
@@ -299,6 +302,7 @@ async function logStatEffects(
         const parts = row.expired.map(describeCpredStatEffect);
         if (row.suspension) parts.push(describeCpredWoundSuspension(row.suspension));
         for (const name of row.patches) parts.push(`Prowizorka puściła: ${name}`);
+        if (row.cryo) parts.push('kriostaza minęła — znów rzuty przeciw śmierci');
         return `${row.character.name} — ${parts.join(', ')}`;
       })
       .join(' · '),

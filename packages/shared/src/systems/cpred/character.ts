@@ -19,6 +19,7 @@ import { isHousingOption, isLifestyleLevel, type CpredLifestyle } from './econom
 import { isPharmaceuticalId } from './pharma.js';
 import { CPRED_AMMO_PATTERNS, cpredAmmoPatternCounted, type CpredAmmoPattern } from './ammo.js';
 import { readCpredWoundSuspension, type CpredWoundSuspension } from './woundsuspension.js';
+import { readCpredCryo, readCpredCryoUsed, type CpredCryoState } from './cryo.js';
 import { cpredEmptyChems, isCpredDrugId, readCpredChems, type CpredChems } from './drugs.js';
 // Type-only the other way round: `roleability.ts` reads this file's sheet type,
 // so only its values travel here — the same bargain `creation.ts` makes above.
@@ -439,6 +440,13 @@ export interface CpredGearRow extends CpredItemRow {
    * podłączenie egzoszkieletu, a serwer niesie go na światło figur karty.
    */
   lit?: boolean;
+  /**
+   * Zużyte ładunki kriopompy (etap 71d2, G19) — liczy się wyłącznie na
+   * wierszu, który `cpredIsCryopump` zna jako pompę; na każdym innym odpada
+   * przy zapisie. Ładunków zostaje `cpredCryopumpCharges` (pojemność zależy
+   * od Obsługi kriosystemów Medyka). Pisze go silnik (`character:cryo`).
+   */
+  cryoUsed?: number;
 }
 
 /**
@@ -1124,6 +1132,17 @@ export interface CpredCharacterData {
    * samodzielnie” (s. 164).
    */
   fleetGift: string | null;
+  /**
+   * Etap 71d2 (G19, MED-17): kriopompa z pierwszego punktu Obsługi
+   * kriosystemów już odebrana. Pisze ją wyłącznie `character:cryo` (`grant`).
+   */
+  cryoPumpGranted: boolean;
+  /**
+   * Etap 71d2 (G19): ta postać leży w kriośnie — nie rzuca przeciw śmierci,
+   * dopóki stan trwa (s. 353). Pisany wyłącznie przez silnik, jak
+   * `woundSuspension`: `character:cryo` i przemiatanie zegara świata.
+   */
+  cryo: CpredCryoState | null;
   /** skillId → level 1–10; untrained skills are simply absent. */
   skills: Record<string, number>;
   /**
@@ -1420,6 +1439,8 @@ export function createDefaultCharacterData(): CpredCharacterData {
     fleet: [],
     haggle: null,
     fleetGift: null,
+    cryoPumpGranted: false,
+    cryo: null,
     skills: {},
     skillSpecialties: {},
     weapons: [],
@@ -2143,6 +2164,10 @@ function collectCharacterDataPatch(
         ? input.fleetGift
         : null;
   }
+  // Etap 71d2: oba pola pisze wyłącznie `character:cryo` — `character:update`
+  // odmawia łaty z nimi; tu tylko czytnik, który przyjmie starą kartę.
+  if ('cryoPumpGranted' in input) patch.cryoPumpGranted = input.cryoPumpGranted === true;
+  if ('cryo' in input) patch.cryo = readCpredCryo(input.cryo);
   if ('skills' in input) {
     const skills = validateSkills(input.skills, registry, issues);
     if (skills) patch.skills = skills;
@@ -2372,9 +2397,12 @@ function collectCharacterDataPatch(
         row.connected === true && cpredChromeModOf(base, 'gear')?.needsConnected === true;
       // „Zapalona” ma sens tylko przy czymś, co świeci.
       const lit = row.lit === true && cpredGearLightProfile(base) !== null;
+      // Etap 71d2: zużyte ładunki — tylko przy kriopompie.
+      const cryoUsed = readCpredCryoUsed(base, row.cryoUsed);
       return {
         ...base,
         qty,
+        ...(cryoUsed !== undefined ? { cryoUsed } : {}),
         ...(consumable ? { consumable } : {}),
         ...(ammo ? { ammo } : {}),
         ...(key ? { key } : {}),

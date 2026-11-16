@@ -351,6 +351,12 @@ export const characterUpdateEvent = defineEvent<CharacterUpdatePayload, Characte
       // ostrzu) z tego samego powodu — narkotyk wpisany łatą nie miałby terminu
       // ani rzutu na uzależnienie. MG ma na to `character:chems`.
       if (sheet.chems !== undefined) throw new RealtimeError('FORBIDDEN');
+      // Etap 71d2 (G19): stan „w kriośnie” pisze `character:cryo` i zegar —
+      // wpisany łatą nie miałby terminu ani statusu „Nieprzytomny”; MG
+      // rozmraża tym samym zdarzeniem. Odebraną pompę też — łata gracza
+      // z `cryoPumpGranted: false` dałaby mu drugą za darmo.
+      if (sheet.cryo !== undefined) throw new RealtimeError('FORBIDDEN');
+      if (!isGm && sheet.cryoPumpGranted !== undefined) throw new RealtimeError('FORBIDDEN');
       // Etap 41: co postać trzyma w rękach, zmienia wyłącznie `weapon:draw`.
       // Schowanie broni kosztuje Akcję (s. 168), a łata karty nie ma czym jej
       // zapłacić — ta sama umowa, co przy Zmyśle Walki. Odmowa jest **dla

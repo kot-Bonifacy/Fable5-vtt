@@ -113,6 +113,7 @@ import {
   characterRestEvent,
   characterUseDoseEvent,
 } from './recovery.js';
+import { characterCryoEvent } from './cryo.js';
 import {
   checkCallEvent,
   checkCancelEvent,
@@ -508,6 +509,7 @@ export const EVENTS: RealtimeEvent<never, unknown>[] = [
   characterRestEvent,
   characterCraftPharmaEvent,
   characterUseDoseEvent,
+  characterCryoEvent,
   checkCallEvent,
   checkCancelEvent,
   checkRequestEvent,

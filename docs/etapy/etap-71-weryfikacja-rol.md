@@ -286,6 +286,21 @@ rzutu. G40 (MED-09): „Wytwórz” czeka na zapis punktów (`characterSaved`), 
 Rozstrzygnięcia — `decyzje-i-uproszczenia.md` („Walka i leczenie po weryfikacji Ról”), umowy na
 górze `postac`, `czas`, `karta`; E2E `t71-technik` (+2), `t71-medyk` (+1), `t71-solo` (G41).
 
+**Wynik 71d2 (16.11.2026) ✅.** G13 (TEC-03, TEC-07, TEC-08, TEC-09, TEC-11, TEC-15): Praca
+Twórcy jako rodzaje rzutu `itemUpgrade` i `fabricate` na rurze naprawy z 71c2 (nowy moduł
+`systems/cpred/fabrication.ts`). **Ulepszanie** rzeczy kart drużyny w robotach drużyny panelu
+Twórcy (lista z `repair:targets`, pole `items`): sposób z s. 148 (bez wynalazku i ulepszenia
+auta), Test TECH + Umiejętność rzeczy + Ulepszanie przeciw PT z pasma, surowce = cena pasma
+w cenniku domowym, płatne przy sukcesie, stempel tą samą `cpredApplyItemUpgrade` co menu MG.
+**Wytwarzanie** z Kompendium (wyszukiwarka): broń, dodatki, pancerz, sprzęt, wszczepy — surowce
+o pasmo niżej, rzecz na kartę Technika, poziom sklepu jak przy zakupie. Czas — propozycja
+zegara dla MG. G19 (MED-17): kriopompa jako wiersz Wyposażenia z ładunkami (1 / 2 / 3), odbiór
+z pierwszego punktu Obsługi kriosystemów, „Zamroź” (Akcja, zasięg ramienia) — stan `cryo` na
+karcie pacjenta z tygodniem zegara, „Nieprzytomny”, bez rzutów przeciw śmierci; „Rozmroź”,
+płyn 150 ed za ładunek (moduły `cryo.ts`, `realtime/cryo.ts`, `CryoPump.tsx`). Kriozbiorniki
+prozą. Bez migracji. Rozstrzygnięcia — `decyzje-i-uproszczenia.md` („Praca Twórcy
+i kriopompa”), umowy na górze `postac` i `czas`; E2E `t71-technik` (+2), `t71-medyk` (+1).
+
 Poza etapem 71: **G24 Nocny Targ — osobny etap** (`POMYSLY.md`), NOM-02 / NOM-03 — etap 72,
 STR-12 — po etapie 72, KOR-04 — tylko z abonamentem Trauma Team.
 

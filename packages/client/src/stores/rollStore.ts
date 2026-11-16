@@ -7,6 +7,7 @@ import type {
   CpredHitLocation,
   CpredRegistry,
   CpredRepairTarget,
+  CpredWorkRollKind,
   CpredRollRequest,
   CpredCharismaAudience,
   CpredCharismaPurpose,
@@ -639,8 +640,16 @@ export function loadFieldRepairCup(
   });
 }
 
+const WORK_CUP_TITLES: Record<CpredWorkRollKind, string> = {
+  repair: 'Naprawa',
+  vehicleUpgrade: 'Ulepszanie',
+  itemUpgrade: 'Ulepszanie',
+  fabricate: 'Wytwarzanie',
+};
+
 /**
- * Ładuje zwykłą naprawę albo montaż ulepszenia auta do kubka (etap 71c2).
+ * Ładuje pracę Technika do kubka: zwykłą naprawę albo montaż ulepszenia auta
+ * (etap 71c2), Ulepszanie przedmiotu albo Wytwarzanie (etap 71d2).
  * Kubek pokazuje, co wnosi karta (Umiejętność, Naprawa albo Ulepszanie,
  * Moto); PT, czas i cenę surowców wpisuje serwer z celu — karta rzutu mówi,
  * przeciw czemu rzucano, a MG dostaje na niej przycisk zegara.
@@ -648,12 +657,14 @@ export function loadFieldRepairCup(
 export function loadWorkCup(
   repairer: { characterId: string; characterName: string },
   work: {
-    kind: 'repair' | 'vehicleUpgrade';
+    kind: CpredWorkRollKind;
     target: CpredRepairTarget;
     skillId: string;
     /** „Kurtka (Kord)”, „Osa — Kolczatka” — tytuł kubka; serwer i tak pisze własny. */
     targetName: string;
     vehicleUpgradeId?: string;
+    /** Etap 71d2: sposób Ulepszania przedmiotu (s. 148). */
+    itemUpgradeId?: string;
   },
   data: CpredCharacterData,
   registry: CpredRegistry,
@@ -664,6 +675,7 @@ export function loadWorkCup(
     repairTarget: work.target,
     repairSkillId: work.skillId,
     ...(work.vehicleUpgradeId ? { vehicleUpgradeId: work.vehicleUpgradeId } : {}),
+    ...(work.itemUpgradeId ? { itemUpgradeId: work.itemUpgradeId } : {}),
     modifier: 0,
     luckSpent: 0,
   };
@@ -675,7 +687,7 @@ export function loadWorkCup(
     kind: work.kind,
     request,
     visibility: 'public',
-    title: `${work.kind === 'repair' ? 'Naprawa' : 'Ulepszanie'}: ${work.targetName}`,
+    title: `${WORK_CUP_TITLES[work.kind]}: ${work.targetName}`,
     modifierTotal: planned.plan.modifierTotal,
   });
   return true;

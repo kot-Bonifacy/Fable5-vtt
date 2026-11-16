@@ -9,6 +9,53 @@ czytany na starcie każdej sesji został listą zadań, a nie archiwum ustaleń.
 inaczej, niż mówi podręcznik, albo gdy dotykasz wymienionego tu kodu. Jeśli któraś z tych decyzji
 przestanie się bronić, przenieś ją stąd do `POMYSLY.md` jako zadanie — nie odwrotnie.
 
+## Praca Twórcy i kriopompa (etap 71d2, 16.11.2026)
+
+Bramka MG z 15.11 (G13, G19) — rozstrzygnięcia bez pytań:
+
+- **Ulepszanie i Wytwarzanie to Testy przez kubek w robotach drużyny (G13)** — ta sama rura co
+  naprawa z 71c2 (rodzaje rzutu `itemUpgrade` i `fabricate`), czas pracy to **propozycja zegara
+  dla MG** (decyzja bramki dla 71d), nie wpis „w toku”: rzecz jest gotowa po kościach, a MG
+  przesuwa zegar przyciskiem na karcie rzutu. Porażka — połowa czasu i od nowa, jak s. 148.
+- **PT i czas z pasma ceny rzeczy** (tabela s. 148), Superluksusowe — miesiąc na każde
+  100 000 ed ceny domowej (cennik 47a; „na każde 10 000 ed” z podręcznika razy dziesięć).
+- **Surowce to pieniądze, nie przedmioty (TEC-09)** — sprawdzane przed kośćmi, schodzą
+  z portfela Technika **przy sukcesie**; porażka ich nie zjada („nie odnoszą uszkodzeń”,
+  „nie przepadają”). Ulepszanie: cena **pasma** rzeczy (nie wydrukowana cena sztuki),
+  Wytwarzanie: pasmo niżej, Tanie — 5 ed z ramki s. 148, Superluksusowe — połowa ceny.
+  Wszystko w cenniku domowym wpisu (ten sam mnożnik, którym `entryPrice` liczy rzecz z samym
+  pasmem) — ciężki pistolet (Premium) to 1000 ed surowców na ulepszenie.
+- **Umiejętność „którą zwykle naprawia się taki przedmiot”** — broń i dodatki: Naprawa broni,
+  wszczep (także leżący w plecaku): Cyberinżynieria, cyberdek: Elektronika i zabezpieczenia,
+  reszta: Podstawowe naprawy (FAQ). Naprawa Technika do tych Testów nie dochodzi (TEC-03).
+- **Ulepsza się rzeczy kart drużyny** (jak naprawa), stempel tą samą `cpredApplyItemUpgrade`,
+  co menu MG „Ulepszenie…” — menu MG zostaje (furtka sędziego). **Montaż wynalazku i ulepszenie
+  pojazdu nie idą tą drogą**: wynalazek ma zasady i kategorię od MG (TEC-21), auto — „Zamontuj”
+  przy aucie (71c2). Rzecz **bez pasma ceny** (wiersz wpisany ręką) Testem się nie ulepsza —
+  nie ma skąd wziąć PT, czasu ani surowców; ulepsza ją MG.
+- **Wytwarza się broń, dodatki, pancerz, sprzęt i wszczepy** z Kompendium kampanii; wszczep
+  ląduje w Wyposażeniu jak znaleziony chrom (montaż dalej Testem i z Utratą Człowieczeństwa).
+  **Nie** wytwarza się amunicji (pudełka i kalibry), programów (Netrunner poza etapem 71),
+  pojazdów ani używek (farmaceutyki to Medyk, narkotyków ulicznych nie robi nawet on).
+- **Wytwarzanie gracza nie sięga ponad poziom sklepu kampanii** — decyzja D1 z bramki („żadna
+  postać nie sięga ponad poziom sklepu”) obowiązuje też tę drogę; MG bez ograniczeń.
+- **Kriopompa jest wierszem Wyposażenia z licznikiem zużytych ładunków (G19)** — ładunków 1,
+  a u Medyka z 4 i 5 punktami Obsługi kriosystemów 2 i 3 (liczone wg poziomu Medyka, który ją
+  trzyma — „twoja kriopompa”). Pierwszy punkt daje pompę raz, przyciskiem „Odbierz kriopompę”
+  w panelu Medycyny. Obsługuje ją wyłącznie Medyk (ranga Medycyny).
+- **Zamrożenie** — Akcja w walce, pacjent z kartą w zasięgu ramienia (nie sam Medyk), jeden
+  ładunek. Pacjent dostaje stan „w kriośnie” z terminem tygodnia zegara świata i status
+  „Nieprzytomny”; dopóki stan trwa, **nie rzuca przeciw śmierci** (tura go nie wymaga, rzut
+  odmawia `IN_CRYO`). Po tygodniu stan schodzi w przemiataniu zegara („kriostaza minęła”),
+  a status zostaje — pacjent dalej leży w worku; „Rozmroź” (Medyk, który zamroził, albo MG)
+  zdejmuje jedno i drugie. **Zgoda przytomnego pacjenta i osłona worka 15 PW zostają przy
+  stole** — VTT nie pyta o zgodę, a osłonę MG stawia na mapie.
+- **Płyn: 150 ed za ładunek** — „50 ed (Drogo)” z s. 353 w cenniku domowym drobnego sprzętu
+  (×3); poza walką.
+- **Kriozbiorniki (punkty 2–5) zostają prozą** — dostęp do zbiornika w krioośrodku i własne
+  zbiorniki to miejsca, nie przedmioty na karcie; Test PT 13 i leczenie dwa razy szybsze
+  prowadzi MG.
+
 ## Walka i leczenie po weryfikacji Ról (etap 71d1, 15.11.2026)
 
 Bramka MG z 15.11 (G12, G14–G18, G40, G41) — rozstrzygnięcia bez pytań:
@@ -822,6 +869,8 @@ Rozstrzygnięcia bez pytań z projektu etapu (nr 3, 5 i 6) i drobniejsze z sesji
   *Dopisek 15.11.2026 (etap 71d1):* nieaktualne — VTT liczy siedem z dziesięciu (gniazdo,
   gniazdo w broni egzotycznej, jakość Doskonała, do ukrycia, UC wszczepu, +1 OB, szybsza
   naprawa); sekcja „Walka i leczenie po weryfikacji Ról” na górze pliku.
+  *Dopisek 16.11.2026 (etap 71d2):* stempel stawia też Test Technika (Ulepszanie przez kubek
+  w robotach drużyny) — sekcja „Praca Twórcy i kriopompa”.
 
 - **Prowizorka nie ma odliczania (29.08, czwarta).** „Działa przez 10 minut na poziom" to sześćdziesiąt
   rund na poziom — dłużej, niż trwała którakolwiek walka w tym projekcie. Zegar, który nigdy nie
@@ -837,6 +886,9 @@ Rozstrzygnięcia bez pytań z projektu etapu (nr 3, 5 i 6) i drobniejsze z sesji
   (wiersz ekwipunku to wolny tekst, nie zapas z licznikiem) i kriozbiorników. Panel drukuje obie
   listy słowami podręcznika, więc przy stole są pod ręką; wytwarzanie i podawanie dawki prowadzi
   MG. Pozycja stoi w `zaleglosci.md` — gdyby powstał model przedmiotów zużywalnych, wraca.
+  *Dopisek 16.11.2026 (etap 71d2):* nieaktualne w obu częściach — Farmaceutyki działają od
+  03.09 (dawki z licznikiem), kriopompa od 71d2 (wiersz z ładunkami, stan „w kriośnie”);
+  prozą zostają tylko kriozbiorniki — sekcja „Praca Twórcy i kriopompa”.
 
 - **Celowanie w trzymany przedmiot jest zdaniem, nie ruchem w ekwipunku (29.08).** RAW: „cel
   upuszcza trzymany w rękach przedmiot (twój wybór). Przedmiot upada na podłoże przed

@@ -916,6 +916,8 @@ const CASES: Record<string, Case> = {
     characterId: a.characterId,
     entryId: 'weapon.tsunami-arms-helix',
   })),
+  // kriopompa (etap 71d2): rozmrożenie pacjenta z cudzej kampanii
+  'character:cryo': foreign((a) => ({ action: 'thaw', characterId: a.characterId })),
   // chase (etap 65b)
   'chase:place': foreign((a) => ({ sceneId: a.sceneId, vehicleId: a.vehicleId, x: 1, y: 1 })),
   'chase:move': foreign((a) => ({ sceneVehicleId: a.sceneVehicleId, x: 1, y: 1 })),

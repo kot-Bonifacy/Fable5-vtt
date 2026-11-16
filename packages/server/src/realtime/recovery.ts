@@ -129,7 +129,7 @@ async function requireOwnCharacter(
 }
 
 /** Karta powrotu do zdrowia na czacie — publiczna, bez bezwzględnych PW. */
-async function postRecoveryCard(
+export async function postRecoveryCard(
   deps: RealtimeDeps,
   campaignId: string,
   user: SessionUser,
@@ -624,7 +624,7 @@ function hostileDoseDefence(
   return { total: evasion.total, label: `Unik ${target.name}: ${evasion.total}` };
 }
 
-interface DoseTarget {
+export interface DoseTarget {
   name: string;
   character: Character | null;
   token: Token | null;
@@ -639,7 +639,7 @@ interface DoseTarget {
  * mapie — Medyk bez żetonu na tej scenie podaje w fikcji, a nie w geometrii,
  * i to jedyny wyjątek, bo bez żetonu nie ma też Akcji do zapłacenia.
  */
-async function resolveDoseTarget(
+export async function resolveDoseTarget(
   deps: RealtimeDeps,
   campaignId: string,
   medic: Character,

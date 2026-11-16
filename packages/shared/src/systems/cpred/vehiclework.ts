@@ -1,3 +1,4 @@
+import type { CpredItemUpgradeTargetView } from './fabrication.js';
 import type { CpredRepairTarget, CpredWorkTask } from './repair.js';
 import {
   CPRED_VEHICLE_DAMAGE,
@@ -100,4 +101,6 @@ export interface CpredRepairTargetView {
 
 export interface CpredRepairTargetsAck {
   targets: CpredRepairTargetView[];
+  /** Rzeczy drużyny do Ulepszania Testem (etap 71d2) — tylko dla karty z Ulepszaniem. */
+  items?: CpredItemUpgradeTargetView[];
 }

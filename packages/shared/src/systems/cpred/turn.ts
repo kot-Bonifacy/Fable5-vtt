@@ -154,6 +154,12 @@ export const CPRED_ACTION_BACKUP = 'backup-call';
 export const CPRED_ACTION_DOSE = 'dose';
 
 /**
+ * Zamrożenie kriopompą (s. 353, etap 71d2) — „w ramach Akcji można podłączyć
+ * go do pompy”. Jeden ładunek na pacjenta; robi to `character:cryo`.
+ */
+export const CPRED_ACTION_CRYO = 'cryo-freeze';
+
+/**
  * „Fiolka … którą w ramach Akcji można rozsmarować po ostrzu” (s. 353, etap 59b).
  * Akcją jest samo rozsmarowanie; trucizna działa potem przez 30 minut.
  */
@@ -413,6 +419,13 @@ export const CPRED_ACTIONS: readonly CpredActionDefinition[] = [
     hint:
       'Jedna dawka z ekwipunku — farmaceutyk (tylko Medyk), narkotyk albo alkohol — sobie ' +
       'albo komuś w zasięgu ramienia.',
+    handledElsewhere: true,
+  },
+  {
+    id: CPRED_ACTION_CRYO,
+    name: 'Kriopompa',
+    cost: 'action',
+    hint: 'Medyk podłącza nieprzytomnego albo zgadzającego się pacjenta do kriopompy — jeden ładunek.',
     handledElsewhere: true,
   },
   {

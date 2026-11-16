@@ -247,6 +247,7 @@ import { PortraitCropButton } from './PortraitCropEditor.js';
 import { useAttackStore } from '../stores/attackStore.js';
 import { useCompendiumStore } from '../stores/compendiumStore.js';
 import { ItemUpgrade } from './ItemUpgrade.js';
+import { CryoPatientNote, CryoPumpSection } from './CryoPump.js';
 import { MerchantSection } from './exchange/MerchantSection.js';
 import { openExchangeForCard } from './exchange/open.js';
 import { MapDropHandle } from './exchange/map-drop-item.js';
@@ -1202,7 +1203,12 @@ function IdentityColumn({
               kary zawiesza {woundSuspendedBy}
             </span>
           )}
-          {wound === 'mortal' && (
+          {wound === 'mortal' && data.cryo && (
+            <span title="Pacjent w worku kriopompy nie rzuca przeciw śmierci (s. 353).">
+              w kriośnie — bez Testu Przeżywalności
+            </span>
+          )}
+          {wound === 'mortal' && !data.cryo && (
             <button
               type="button"
               title={`Rzuć 1k10 pod BC ${cpredSheetDeathSaveTarget(data)}. Każdy kolejny test i każde trafienie atakiem są o 1 trudniejsze. W walce rzucasz raz, na początku swojej tury.`}
@@ -1221,6 +1227,8 @@ function IdentityColumn({
           <span>{psychosis.note}</span>
         </p>
       )}
+
+      <CryoPatientNote characterId={character.id} data={data} />
 
       <RecoveryPanel data={data} characterId={character.id} />
 
@@ -4075,6 +4083,8 @@ function GearTab({ character, data, saveData }: TabProps & { character: Characte
         />
 
         <DosesSection character={character} data={data} />
+        {/* Etap 71d2 (G19): kriopompa Medyka — ładunki, „Zamroź”, płyn. */}
+        <CryoPumpSection characterId={character.id} data={data} />
 
         <GearChromeSection data={data} saveData={saveData} />
       </section>

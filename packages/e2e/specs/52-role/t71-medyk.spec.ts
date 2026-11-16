@@ -1,9 +1,13 @@
 import type { Locator } from '@playwright/test';
 import { expect, test, type Actor } from '../../fixtures/actors.ts';
 import { characterId } from '../../fixtures/nocna-zmiana.ts';
+import { queryOne } from '../../fixtures/db.ts';
 import {
+  CELL,
   ROLES,
   cardData,
+  dataOf,
+  gmSocket,
   lastMessageId,
   rollAfter,
   seatRole,
@@ -19,6 +23,9 @@ import { pendingDice, scriptDice } from '../../instance/instance.ts';
  * i scenariusz T5b (Iskra) — tu Medyk z kreatora i jego Farmaceutyki.
  * Od 71d1: „Wytwórz” czeka na zapis punktów (G40), partia proponuje MG godzinę
  * zegara (G18); limit „raz dziennie” (G17) — `recovery.test.ts`.
+ * Od 71d2: kriopompa z Obsługi kriosystemów (MED-17, G19) — odbiór, zamrożenie
+ * pacjenta w zasięgu ramienia, rozmrożenie i płyn; koniec tygodnia zegara
+ * sprawdza `work-cryo.test.ts`.
  */
 
 const MED = ROLES.medtech;
@@ -143,5 +150,100 @@ test.describe.serial('@szybkie T71 Medyk — Medycyna', () => {
     await expect.poll(() => antibiotics().reduce((sum, row) => sum + row.qty, 0)).toBe(1);
     await expect.poll(() => sheet().recovery.antibioticDays).toBe(7);
     expect(celina.unexpectedErrors()).toEqual([]);
+  });
+
+  // ───────────── 71d2: kriopompa (G19, MED-17) ─────────────
+
+  test('MED-17 G19 kriopompa: odbiór z pierwszego punktu, zamrożenie sąsiada, bez Testu Przeżywalności, płyn', async () => {
+    const gm = await gmSocket();
+    const patient = ROLES.nomad.card;
+    type Cryo = { by: string; expiresAtMinute?: number } | null;
+    const patientCryo = () => cardData<{ cryo?: Cryo }>(patient).cryo ?? null;
+    const patientStatuses = () =>
+      JSON.parse(
+        queryOne<{ statuses: string }>(
+          'SELECT statuses FROM Token WHERE characterId = ?',
+          characterId(patient),
+        )!.statuses,
+      ) as string[];
+    const pump = () =>
+      sheet().gear.find((row) => row.compendiumId === 'gear.kriopompa') as
+        (Gear & { cryoUsed?: number }) | undefined;
+    try {
+      dataOf(
+        await emitAck(gm, 'character:update', {
+          characterId: characterId(MED.card),
+          patch: { data: { medicine: { surgery: 1, pharma: 2, cryo: 1 }, eddies: 2_000 } },
+        }),
+        'character:update Obsługa kriosystemów 1',
+      );
+      await card.getByRole('button', { name: 'Karta', exact: true }).click();
+      const cryo = panel().locator('details', { hasText: 'Obsługa kriosystemów — poziom 1' });
+      await cryo.locator('summary').click();
+      await cryo.getByRole('button', { name: 'Odbierz kriopompę', exact: true }).click();
+      await expect.poll(() => pump()?.name).toBe('Kriopompa');
+      await expect(cryo.getByRole('button', { name: 'Odbierz kriopompę' })).toHaveCount(0);
+
+      // Pacjent obok Medyka — zasięg ramienia (s. 353).
+      const patientToken = queryOne<{ id: string }>(
+        'SELECT id FROM Token WHERE characterId = ?',
+        characterId(patient),
+      )!.id;
+      dataOf(
+        await emitAck(gm, 'token:move', {
+          tokenId: patientToken,
+          x: (ROLES.medtech.column + 1) * CELL,
+          y: 3 * CELL,
+          final: true,
+        }),
+        'token:move pacjent obok Medyka',
+      );
+
+      await card.getByRole('button', { name: 'Ekwipunek', exact: true }).click();
+      const section = card.locator('.cp-cryo');
+      await expect(section).toContainText('ładunki 1/1');
+      await section
+        .getByRole('combobox', { name: 'Kogo zamrozić' })
+        .selectOption({ label: patient });
+      await section.getByRole('button', { name: 'Zamroź', exact: true }).click();
+      await expect.poll(patientCryo).toMatchObject({ by: MED.card });
+      expect(patientStatuses()).toContain('unconscious');
+      await expect.poll(() => pump()?.cryoUsed).toBe(1);
+      await expect(section).toContainText('ładunki 0/1');
+
+      // W worku nie rzuca się przeciw śmierci; stanu nie wpisze łata karty.
+      expect(
+        await emitAck(gm, 'character:roll', {
+          characterId: characterId(patient),
+          request: { kind: 'deathSave' },
+          visibility: 'public',
+        }),
+      ).toEqual({ ok: false, error: 'IN_CRYO' });
+      expect(
+        await emitAck(gm, 'character:update', {
+          characterId: characterId(patient),
+          patch: { data: { cryo: null } },
+        }),
+      ).toEqual({ ok: false, error: 'FORBIDDEN' });
+
+      // Rozmraża Medyk, który zamroził; status „Nieprzytomny” schodzi.
+      expect(
+        await emitAck(await celina.socket(), 'character:cryo', {
+          action: 'thaw',
+          characterId: characterId(patient),
+        }),
+      ).toMatchObject({ ok: true });
+      await expect.poll(patientCryo).toBeNull();
+      expect(patientStatuses()).not.toContain('unconscious');
+
+      const before = sheet().eddies;
+      await section.getByRole('button', { name: 'Uzupełnij (150 ed)', exact: true }).click();
+      await expect.poll(() => sheet().eddies).toBe(before - 150);
+      expect(pump()?.cryoUsed).toBeUndefined();
+      await expect(section).toContainText('ładunki 1/1');
+      expect(celina.unexpectedErrors()).toEqual([]);
+    } finally {
+      gm.close();
+    }
   });
 });

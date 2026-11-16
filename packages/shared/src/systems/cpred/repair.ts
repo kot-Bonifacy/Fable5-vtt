@@ -88,10 +88,20 @@ export function cpredFieldRepairProblem(
 
 // ─────────────── Zwykła naprawa i montaż Technikiem (etap 71c2) ───────────────
 
-/** Co da się naprawić Testem: wiersz pancerza karty drużyny albo pojazd. */
+/** Lista karty, na której leży przedmiot ulepszany przez Technika (etap 71d2). */
+export const CPRED_WORK_ITEM_LISTS = ['weapons', 'armor', 'gear', 'cyberware'] as const;
+export type CpredWorkItemList = (typeof CPRED_WORK_ITEM_LISTS)[number];
+
+/**
+ * Cel pracy Technika: wiersz pancerza karty drużyny albo pojazd (naprawa,
+ * 71c2), wiersz przedmiotu karty drużyny (Ulepszanie, 71d2) albo wpis
+ * Kompendium (Wytwarzanie, 71d2 — rzecz, która dopiero powstanie).
+ */
 export type CpredRepairTarget =
   | { kind: 'armor'; characterId: string; armorRowId: string }
-  | { kind: 'vehicle'; vehicleId: string };
+  | { kind: 'vehicle'; vehicleId: string }
+  | { kind: 'item'; characterId: string; list: CpredWorkItemList; rowId: string }
+  | { kind: 'entry'; entryId: string };
 
 export function isCpredRepairTarget(value: unknown): value is CpredRepairTarget {
   if (typeof value !== 'object' || value === null) return false;
@@ -99,7 +109,29 @@ export function isCpredRepairTarget(value: unknown): value is CpredRepairTarget 
   const id = (key: string) => typeof target[key] === 'string' && (target[key] as string).length > 0;
   if (target.kind === 'armor') return id('characterId') && id('armorRowId');
   if (target.kind === 'vehicle') return id('vehicleId');
+  if (target.kind === 'item') {
+    return (
+      id('characterId') &&
+      id('rowId') &&
+      (CPRED_WORK_ITEM_LISTS as readonly unknown[]).includes(target.list)
+    );
+  }
+  if (target.kind === 'entry') return id('entryId');
   return false;
+}
+
+/** Klucz celu do list i atrybutów `data-*` — jeden dla klienta i testów. */
+export function cpredWorkTargetKey(target: CpredRepairTarget): string {
+  switch (target.kind) {
+    case 'armor':
+      return `${target.characterId}:${target.armorRowId}`;
+    case 'vehicle':
+      return target.vehicleId;
+    case 'item':
+      return `${target.characterId}:${target.list}:${target.rowId}`;
+    case 'entry':
+      return target.entryId;
+  }
 }
 
 /** PT i czas pracy w minutach zegara świata. */
@@ -220,6 +252,10 @@ export const CPRED_REPAIR_SKILL_FALLBACK_NAMES: Record<string, string> = {
   'land-vehicle-tech': 'Naprawa pojazdów lądowych',
   'sea-vehicle-tech': 'Naprawa pojazdów wodnych',
   'air-vehicle-tech': 'Naprawa statków powietrznych',
+  // Etap 71d2: Ulepszanie i Wytwarzanie broni, chromu i deków.
+  weaponstech: 'Naprawa broni',
+  cybertech: 'Cyberinżynieria',
+  'electronics-security': 'Elektronika i zabezpieczenia',
 };
 
 // ─────────────── Lista robót dla drużyny (`repair:targets`, 71c2) ───────────────

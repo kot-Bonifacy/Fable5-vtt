@@ -1,11 +1,17 @@
 import type {
   ChatMessageView,
+  CompendiumEntry,
+  CpredCharacterData,
+  CpredItemUpgradeTargetView,
+  CpredUpgradeSubject,
+  CpredWorkItemList,
   CpredRepairTargetsAck,
   CpredRepairTargetsPayload,
   CpredRepairTargetView,
   CpredRollPlan,
   CpredRollRequest,
   CpredTechUpgradeOption,
+  CpredWorkPlan,
   CpredWorkTerms,
   RollClockPayload,
   RollResult,
@@ -15,11 +21,29 @@ import {
   CPRED_ARMOR_REPAIR_SKILL_ID,
   CPRED_TECH_VEHICLE_UPGRADE_TASK,
   CPRED_VEHICLE_DAMAGE,
+  CPRED_WORK_ITEM_LISTS,
   ROLE_GM,
+  ITEM_ROWS_MAX,
+  cpredApplyItemUpgrade,
   cpredArmorNeedsRepair,
   cpredArmorRepaired,
   cpredArmorRepairTask,
+  cpredEntryTechSkillId,
+  cpredFabricateMaterialsCost,
+  cpredFabricateProblem,
+  cpredFabricatedRow,
+  cpredFabricationWorkTask,
   cpredFailedWorkMinutes,
+  cpredIsBareHandsRow,
+  cpredItemTechSkillId,
+  cpredItemUpgrade,
+  cpredTechItemUpgradeProblem,
+  cpredTechUpgradesForTarget,
+  cpredUpgradeMaterialsCost,
+  entryPrice,
+  isWeaponEntry,
+  resolveWeapon,
+  shopTierOf,
   cpredSheetFabrication,
   cpredTechVehicleUpgradeProblem,
   cpredVehicleDamage,
@@ -50,6 +74,7 @@ import { applyBalance, nextRowId } from './economy.js';
 import { moveGameClock } from './gametime.js';
 import { withCampaignLock } from './merchant.js';
 import { RealtimeError, defineEvent, type RealtimeDeps } from './registry.js';
+import { campaignShopTier, campaignShopTierOverrides, requireUnlockedTier } from './shop.js';
 import { requireTeamCard, teamCardsWhere } from './team-cards.js';
 import { emitTokensOfCharacter } from './tokens.js';
 import { emitVehicleUpsert } from './vehicles.js';
@@ -108,6 +133,50 @@ async function requireTeamVehicle(
   return { vehicle, owner };
 }
 
+/** Wiersz przedmiotu z karty jako podmiot Ulepszania, z wpisem Kompendium (pasmo ceny). */
+async function itemSubject(
+  deps: RealtimeDeps,
+  campaignId: string,
+  data: CpredCharacterData,
+  list: CpredWorkItemList,
+  rowId: string,
+): Promise<{ subject: CpredUpgradeSubject; entry: CompendiumEntry | undefined } | null> {
+  const row = (data[list] as readonly { id: string; compendiumId?: string }[]).find(
+    (entry) => entry.id === rowId,
+  );
+  if (!row) return null;
+  const entry = row.compendiumId
+    ? await campaignEntry(deps, campaignId, row.compendiumId)
+    : undefined;
+  switch (list) {
+    case 'weapons': {
+      const weapon = data.weapons.find((entry) => entry.id === rowId)!;
+      const resolved =
+        entry && isWeaponEntry(entry)
+          ? resolveWeapon(entry, { weaponTypeById: deps.ctx.compendium.weaponTypeById })
+          : null;
+      return { subject: { kind: 'weapon', row: weapon, resolved }, entry };
+    }
+    case 'armor':
+      return { subject: { kind: 'armor', row: data.armor.find((r) => r.id === rowId)! }, entry };
+    case 'gear':
+      return {
+        subject: { kind: 'gear', row: data.gear.find((r) => r.id === rowId)!, entry },
+        entry,
+      };
+    case 'cyberware':
+      return {
+        subject: { kind: 'cyberware', row: data.cyberware.find((r) => r.id === rowId)! },
+        entry,
+      };
+  }
+}
+
+/** „Zgrzyt 9 (Kord) — Dodatkowe gniazdo” — nazwa celu Ulepszania na karcie rzutu. */
+function itemUpgradeName(rowName: string, ownerName: string, upgradeId: string): string {
+  return `${rowName} (${ownerName}) — ${cpredItemUpgrade(upgradeId)?.name ?? upgradeId}`;
+}
+
 /**
  * Wypełnia żądanie naprawy albo montażu tym, czego klient nie ma prawa podać:
  * Umiejętność z celu, PT i czas z celu, cena surowców z Kompendium kampanii.
@@ -120,6 +189,65 @@ export async function resolveWorkRequest(
 ): Promise<CpredRollRequest> {
   const target = request.repairTarget;
   if (!isCpredRepairTarget(target)) throw new RealtimeError('BAD_REQUEST');
+
+  // Etap 71d2 (G13): Ulepszanie przedmiotu z karty drużyny.
+  if (target.kind === 'item') {
+    if (request.kind !== 'itemUpgrade') throw new RealtimeError('BAD_REQUEST');
+    const upgradeId = String(request.itemUpgradeId ?? '');
+    const card = await requireTeamCard(deps.ctx.prisma, campaignId, user, target.characterId);
+    const found = await itemSubject(
+      deps,
+      campaignId,
+      parseCharacterData(card.data, deps.ctx.cpred),
+      target.list,
+      target.rowId,
+    );
+    if (!found) throw new RealtimeError('UNKNOWN_ITEM');
+    // Poziom Ulepszania karty sprawdza planer (`NO_UPGRADE_SPECIALTY`).
+    const problem = cpredTechItemUpgradeProblem(
+      Number.MAX_SAFE_INTEGER,
+      upgradeId,
+      found.subject,
+      found.entry,
+    );
+    if (problem) throw new RealtimeError(problem);
+    const entry = found.entry!;
+    const work: CpredWorkTerms = {
+      ...cpredFabricationWorkTask(entry.costCategory!, entryPrice(entry)),
+      targetName: itemUpgradeName(found.subject.row.name, card.name, upgradeId),
+      cost: cpredUpgradeMaterialsCost(entry) ?? 0,
+    };
+    return {
+      ...request,
+      repairSkillId: cpredItemTechSkillId(found.subject),
+      itemUpgradeId: upgradeId,
+      work,
+    };
+  }
+
+  // Etap 71d2 (G13): Wytwarzanie z wpisu Kompendium kampanii.
+  if (target.kind === 'entry') {
+    if (request.kind !== 'fabricate') throw new RealtimeError('BAD_REQUEST');
+    const entry = await campaignEntry(deps, campaignId, target.entryId);
+    if (!entry) throw new RealtimeError('ENTRY_NOT_FOUND');
+    const problem = cpredFabricateProblem(Number.MAX_SAFE_INTEGER, entry);
+    if (problem) throw new RealtimeError(problem);
+    // Decyzja MG z bramki (D1): żadna postać nie sięga ponad poziom sklepu
+    // kampanii — Wytwarzanie też nie, jak zakup.
+    if (user.role !== ROLE_GM) {
+      const overrides = await campaignShopTierOverrides(deps.ctx.prisma, campaignId);
+      requireUnlockedTier(
+        shopTierOf(entry, { overrides }),
+        await campaignShopTier(deps.ctx.prisma, campaignId),
+      );
+    }
+    const work: CpredWorkTerms = {
+      ...cpredFabricationWorkTask(entry.costCategory!, entryPrice(entry)),
+      targetName: entry.name,
+      cost: cpredFabricateMaterialsCost(entry) ?? 0,
+    };
+    return { ...request, repairSkillId: cpredEntryTechSkillId(entry), work };
+  }
 
   if (target.kind === 'armor') {
     if (request.kind !== 'repair') throw new RealtimeError('BAD_REQUEST');
@@ -137,6 +265,9 @@ export async function resolveWorkRequest(
     return { ...request, repairSkillId: CPRED_ARMOR_REPAIR_SKILL_ID, work };
   }
 
+  if (request.kind !== 'repair' && request.kind !== 'vehicleUpgrade') {
+    throw new RealtimeError('BAD_REQUEST');
+  }
   const { vehicle } = await requireTeamVehicle(deps, campaignId, user, target.vehicleId);
   const stats = readCpredVehicle(vehicle.system);
   const repairSkillId = cpredVehicleTechSkillId(stats.kind);
@@ -289,6 +420,163 @@ async function installUpgrade(
   });
 }
 
+/** Zapisuje kartę i rozsyła ją razem z figurami — jak po naprawie pancerza. */
+async function saveCard(
+  deps: RealtimeDeps,
+  campaignId: string,
+  card: Character,
+  data: CpredCharacterData,
+): Promise<void> {
+  const saved = await deps.ctx.prisma.character.update({
+    where: { id: card.id },
+    data: { data: JSON.stringify(data) },
+  });
+  await emitCharacterUpsert(deps, campaignId, toCharacterView(saved, deps.ctx.cpred));
+  await emitTokensOfCharacter(deps, campaignId, saved);
+}
+
+/**
+ * Surowce z portfela Technika i zapis karty, na której coś przybyło, jednym
+ * ruchem: gdy to ta sama karta, rzecz i opłata idą jednym zapisem
+ * (`applyBalance` zapisuje kartę, którą dostaje — jak zakup).
+ */
+async function payAndSave(
+  deps: RealtimeDeps,
+  campaignId: string,
+  user: SessionUser,
+  repairer: Character,
+  repairerData: CpredCharacterData,
+  changed: { card: Character; data: CpredCharacterData },
+  cost: number,
+  label: string,
+): Promise<void> {
+  const same = changed.card.id === repairer.id;
+  if (!same) await saveCard(deps, campaignId, changed.card, changed.data);
+  const wallet = same ? changed.data : repairerData;
+  if (cost > 0) {
+    await applyBalance(
+      deps,
+      campaignId,
+      repairer,
+      wallet,
+      { kind: 'purchase', amount: -cost, label },
+      user.id,
+    );
+  } else if (same) {
+    await saveCard(deps, campaignId, repairer, wallet);
+  }
+}
+
+const WORK_CLOCK_LABELS: Record<CpredWorkPlan['task'], string> = {
+  repair: 'Naprawa',
+  vehicleUpgrade: 'Ulepszanie',
+  itemUpgrade: 'Ulepszanie',
+  fabricate: 'Wytwarzanie',
+};
+
+type WorkSettled = 'done' | 'NOT_ENOUGH_EDDIES' | 'TOO_MANY_ROWS' | 'GONE';
+
+/**
+ * Udane Ulepszanie (etap 71d2): stempel `cpredApplyItemUpgrade` na wierszu
+ * karty drużyny, surowce z portfela Technika. Pod zamkiem kampanii warunki
+ * sprawdza się jeszcze raz — między kubkiem a kośćmi ktoś mógł rzecz oddać.
+ */
+async function upgradeItem(
+  deps: RealtimeDeps,
+  campaignId: string,
+  user: SessionUser,
+  repairerId: string,
+  target: { characterId: string; list: CpredWorkItemList; rowId: string },
+  upgradeId: string,
+  cost: number,
+  label: string,
+): Promise<WorkSettled> {
+  return withCampaignLock(campaignId, async () => {
+    const card = await deps.ctx.prisma.character.findUnique({ where: { id: target.characterId } });
+    const repairer = await deps.ctx.prisma.character.findUnique({ where: { id: repairerId } });
+    if (!card || !repairer) return 'GONE';
+    const data = parseCharacterData(card.data, deps.ctx.cpred);
+    const found = await itemSubject(deps, campaignId, data, target.list, target.rowId);
+    if (!found) return 'GONE';
+    const repairerData =
+      card.id === repairer.id ? data : parseCharacterData(repairer.data, deps.ctx.cpred);
+    const level = cpredSheetFabrication(repairerData, deps.ctx.cpred).upgrade;
+    if (cpredTechItemUpgradeProblem(level, upgradeId, found.subject, found.entry)) return 'GONE';
+    if (repairerData.eddies < cost) return 'NOT_ENOUGH_EDDIES';
+    const rows = data[target.list] as readonly { id: string }[];
+    const stamped = mergeCharacterData(data, {
+      [target.list]: rows.map((row) =>
+        row.id === target.rowId
+          ? cpredApplyItemUpgrade(row as Parameters<typeof cpredApplyItemUpgrade>[0], upgradeId)
+          : row,
+      ),
+    } as Partial<CpredCharacterData>);
+    await payAndSave(
+      deps,
+      campaignId,
+      user,
+      repairer,
+      repairerData,
+      { card, data: stamped },
+      cost,
+      label,
+    );
+    return 'done';
+  });
+}
+
+/**
+ * Udane Wytwarzanie (etap 71d2): rzecz z wpisu Kompendium ląduje na karcie
+ * Technika tym samym wierszem, co zakup, a surowce schodzą w tym samym zapisie.
+ */
+async function fabricateItem(
+  deps: RealtimeDeps,
+  campaignId: string,
+  user: SessionUser,
+  repairerId: string,
+  entryId: string,
+  cost: number,
+  label: string,
+): Promise<WorkSettled> {
+  return withCampaignLock(campaignId, async () => {
+    const repairer = await deps.ctx.prisma.character.findUnique({ where: { id: repairerId } });
+    const entry = await campaignEntry(deps, campaignId, entryId);
+    if (!repairer || !entry) return 'GONE';
+    const data = parseCharacterData(repairer.data, deps.ctx.cpred);
+    if (cpredFabricateProblem(cpredSheetFabrication(data, deps.ctx.cpred).fabricate, entry)) {
+      return 'GONE';
+    }
+    const resolved = isWeaponEntry(entry)
+      ? resolveWeapon(entry, { weaponTypeById: deps.ctx.compendium.weaponTypeById })
+      : null;
+    const made = cpredFabricatedRow(entry, resolved, nextRowId(), data.armor);
+    if (!made) return 'GONE';
+    const list = [...(data[made.list] as readonly unknown[]), made.row];
+    if (list.length > ITEM_ROWS_MAX) return 'TOO_MANY_ROWS';
+    if (data.eddies < cost) return 'NOT_ENOUGH_EDDIES';
+    const withItem = mergeCharacterData(data, {
+      [made.list]: list,
+    } as Partial<CpredCharacterData>);
+    await payAndSave(
+      deps,
+      campaignId,
+      user,
+      repairer,
+      data,
+      { card: repairer, data: withItem },
+      cost,
+      label,
+    );
+    return 'done';
+  });
+}
+
+const SETTLED_LABELS: Record<Exclude<WorkSettled, 'done'>, string> = {
+  NOT_ENOUGH_EDDIES: 'Zabrakło na surowce',
+  TOO_MANY_ROWS: 'Nie ma miejsca na karcie',
+  GONE: 'Praca niemożliwa',
+};
+
 /**
  * Po kościach: werdykt (ostra nierówność, jak każdy Test z PT), skutek
  * i propozycja zegara — pełen czas po sukcesie, połowa po porażce.
@@ -307,6 +595,7 @@ export async function settleWork(
   const success = result.total > dv;
   const spent = success ? minutes : cpredFailedWorkMinutes(minutes);
   const upgrade = work.task === 'vehicleUpgrade';
+  const materials = `Surowce: ${targetName}`;
 
   if (!success) {
     result.outcome = {
@@ -314,7 +603,43 @@ export async function settleWork(
       label: 'Trzeba zacząć od nowa',
       detail:
         `${result.total} ≤ PT ${dv} · w połowie pracy wychodzi, że trzeba zaczynać od początku` +
-        (upgrade && cost > 0 ? ' (surowce zostają)' : ''),
+        (cost > 0 ? ' (surowce zostają)' : ''),
+    };
+  } else if (work.target.kind === 'item' || work.target.kind === 'entry') {
+    // Etap 71d2 (G13): Ulepszanie przedmiotu i Wytwarzanie.
+    const settled =
+      work.target.kind === 'item'
+        ? await upgradeItem(
+            deps,
+            campaignId,
+            user,
+            repairer.id,
+            work.target,
+            work.itemUpgradeId ?? '',
+            cost,
+            materials,
+          )
+        : await fabricateItem(
+            deps,
+            campaignId,
+            user,
+            repairer.id,
+            work.target.entryId,
+            cost,
+            materials,
+          );
+    const done = settled === 'done';
+    result.outcome = {
+      success: done,
+      label: done
+        ? work.target.kind === 'item'
+          ? 'Ulepszone'
+          : 'Wytworzone'
+        : SETTLED_LABELS[settled as Exclude<WorkSettled, 'done'>],
+      detail:
+        `${result.total} > PT ${dv} · ${targetName}` +
+        (done && work.target.kind === 'entry' ? ` → Wyposażenie: ${repairer.name}` : '') +
+        (done && cost > 0 ? ` · surowce −${formatEddies(cost)} ed` : ''),
     };
   } else if (work.target.kind === 'armor') {
     const done = await repairArmor(
@@ -360,7 +685,7 @@ export async function settleWork(
   }
   result.clock = {
     minutes: spent,
-    label: `${upgrade ? 'Ulepszanie' : 'Naprawa'}: ${targetName}`,
+    label: `${WORK_CLOCK_LABELS[work.task]}: ${targetName}`,
   };
 }
 
@@ -409,6 +734,36 @@ export const repairTargetsEvent = defineEvent<CpredRepairTargetsPayload, CpredRe
       }
     }
 
+    // Etap 71d2 (G13): rzeczy drużyny, które Technik z Ulepszaniem może
+    // ulepszyć Testem — z PT, czasem i surowcami z pasma, albo bez nich
+    // (rzecz bez pasma — taką ulepsza MG menu „Ulepszenie…”).
+    let items: CpredItemUpgradeTargetView[] | undefined;
+    if (upgradeLevel > 0) {
+      items = [];
+      for (const card of cards) {
+        const data = parseCharacterData(card.data, deps.ctx.cpred);
+        for (const list of CPRED_WORK_ITEM_LISTS) {
+          for (const row of data[list] as readonly { id: string; name: string }[]) {
+            if (list === 'weapons' && cpredIsBareHandsRow(row)) continue;
+            const found = await itemSubject(deps, campaignId, data, list, row.id);
+            if (!found) continue;
+            const upgradeIds = cpredTechUpgradesForTarget(found.subject);
+            if (upgradeIds.length === 0) continue;
+            const band = found.entry?.costCategory;
+            items.push({
+              target: { kind: 'item', characterId: card.id, list, rowId: row.id },
+              name: row.name,
+              ownerName: card.name,
+              skillId: cpredItemTechSkillId(found.subject),
+              upgradeIds,
+              task: band ? cpredFabricationWorkTask(band, entryPrice(found.entry!)) : null,
+              cost: cpredUpgradeMaterialsCost(found.entry),
+            });
+          }
+        }
+      }
+    }
+
     const names = new Map(cards.map((card) => [card.id, card.name]));
     const vehicles = await deps.ctx.prisma.vehicle.findMany({
       where: { campaignId, ownerCharacterId: { in: [...names.keys()] } },
@@ -441,7 +796,7 @@ export const repairTargetsEvent = defineEvent<CpredRepairTargetsPayload, CpredRe
         ...(upgrades ? { upgrades } : {}),
       });
     }
-    return { targets };
+    return { targets, ...(items ? { items } : {}) };
   },
 });
 

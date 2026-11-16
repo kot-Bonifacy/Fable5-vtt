@@ -94,6 +94,8 @@ import type {
   CpredNetPosition,
   CpredRoleChangeProblem,
   CpredRepairTargetsAck,
+  CharacterCryoAck,
+  CharacterCryoPayload,
   CpredRollRequest,
   CpredStatId,
   CpredTeamProblem,
@@ -345,6 +347,8 @@ import {
   CPRED_FLEET_GIFT_PROBLEMS,
   CPRED_REPAIR_PROBLEMS,
   CPRED_TECH_UPGRADE_PROBLEMS,
+  CPRED_FABRICATION_PROBLEMS,
+  CPRED_CRYO_PROBLEMS,
   ADVANCEMENT_UNDO_PROBLEMS,
   CPRED_ROLE_CHANGE_PROBLEMS,
   CPRED_ATTACHMENT_PROBLEM_MESSAGES,
@@ -1800,7 +1804,18 @@ function rollAckErrorText(code: string): string {
     case 'VEHICLE_NOT_FOUND':
     case 'NOT_ENOUGH_EDDIES':
     case 'COMBAT_LOCKED':
+    case 'NO_FABRICATE_SPECIALTY': // od 71d2 — Praca Twórcy
+    case 'NOT_FABRICABLE':
+    case 'NO_PRICE_BAND':
+    case 'UPGRADE_BY_GM':
+    case 'ALREADY_UPGRADED':
+    case 'UPGRADE_NOT_FOR_ITEM':
+    case 'UNKNOWN_ITEM':
+    case 'ENTRY_NOT_FOUND':
       return repairWorkErrorText(code);
+    // Etap 71d2 — pacjent w worku kriopompy.
+    case 'IN_CRYO':
+      return CPRED_CRYO_PROBLEMS.IN_CRYO;
     // Akcja Prowizorki i Ustabilizowania — odmowy budżetu tury mówią po swojemu.
     case 'NO_ACTION_LEFT':
     case 'NOT_YOUR_TURN':
@@ -5296,12 +5311,57 @@ export async function moveClockFromRoll(messageId: number): Promise<void> {
   );
 }
 
+/**
+ * Kriopompa Medyka (etap 71d2, G19): odbiór pompy z Obsługi kriosystemów,
+ * zamrożenie pacjenta w zasięgu ramienia (Akcja w walce), rozmrożenie
+ * i uzupełnienie płynu — jedno zdarzenie `character:cryo`.
+ */
+export async function sendCryo(payload: CharacterCryoPayload): Promise<boolean> {
+  if (payload.action === 'grant') await characterSaved(payload.characterId);
+  const ack = await emitSceneAck<CharacterCryoAck>('character:cryo', payload);
+  noteAck('character', ack, cryoErrorText);
+  return ack.ok;
+}
+
+export function cryoErrorText(code: string | undefined): string {
+  if (code === undefined) return 'Serwer nie przyjął tej czynności.';
+  if (code in CPRED_CRYO_PROBLEMS)
+    return CPRED_CRYO_PROBLEMS[code as keyof typeof CPRED_CRYO_PROBLEMS];
+  switch (code) {
+    case 'DOSE_OUT_OF_REACH':
+      return 'Za daleko — pacjenta trzeba mieć w zasięgu ramienia.';
+    case 'NOT_ENOUGH_EDDIES':
+      return 'Za mało eurodolarów na płyn do kriopompy.';
+    case 'TOO_MANY_ROWS':
+      return 'Wyposażenie jest pełne — zrób miejsce na kriopompę.';
+    case 'COMBAT_LOCKED':
+      return COMBAT_LOCKED_TEXT;
+    case 'NO_ACTION_LEFT':
+    case 'NOT_YOUR_TURN':
+    case 'STATUS_BLOCKED':
+      return combatErrorText(code);
+    default:
+      return `Serwer nie przyjął tej czynności (${code}).`;
+  }
+}
+
 /** Odmowy zwykłej naprawy i montażu Technikiem (etap 71c2). */
 export function repairWorkErrorText(code: string | undefined): string {
   if (code === undefined) return 'Serwer nie przyjął tej naprawy.';
-  const tables: Record<string, string>[] = [CPRED_REPAIR_PROBLEMS, CPRED_TECH_UPGRADE_PROBLEMS];
+  const tables: Record<string, string>[] = [
+    CPRED_REPAIR_PROBLEMS,
+    CPRED_TECH_UPGRADE_PROBLEMS,
+    CPRED_FABRICATION_PROBLEMS,
+  ];
   for (const table of tables) if (code in table) return table[code]!;
+  // Etap 71d2: Wytwarzanie gracza nie sięga ponad poziom sklepu (decyzja D1).
+  const locked = shopTierErrorText(code);
+  if (locked) return locked;
   switch (code) {
+    case 'UNKNOWN_ITEM':
+      return 'Tej rzeczy nie ma już na karcie.';
+    case 'ENTRY_NOT_FOUND':
+      return 'Tego wpisu nie ma w Kompendium kampanii.';
     case 'NOT_ENOUGH_EDDIES':
       return 'Za mało eurodolarów na surowce — płaci się przy udanym montażu, ale trzeba je mieć na start.';
     case 'VEHICLE_NOT_FOUND':

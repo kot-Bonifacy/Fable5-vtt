@@ -575,7 +575,7 @@ describe('Specjalizacje Medycyny i Twórcy na karcie', () => {
     expect(row.fieldRepairSpent).toBe(true);
     // Stół dowiaduje się z wiersza „Efekty wygasły”.
     const swept = after.messages.filter((m) => m.text === 'Efekty wygasły').at(-1);
-    expect(JSON.stringify(swept?.payload ?? swept)).toContain('Prowizorka puściła: Kurtka');
+    expect(JSON.stringify(swept?.action ?? swept)).toContain('Prowizorka puściła: Kurtka');
   });
 
   it('Łatanie i Leczenie proponują MG przesunięcie zegara (G18, 71d1)', async () => {

@@ -1,5 +1,42 @@
 # Dziennik sesji — archiwum
 
+### Sesja 15.11 (czwarta) — etap 71c2: naprawa i montaż Technikiem
+
+**Zrobione (czeka na wdrożenie, bez migracji — nowe pola w JSON-ie karty, auta i karty rzutu):**
+
+- **G11 (TEC-19, TEC-15, TEC-S1, NOM-10) — zwykła naprawa to Test przez kubek** (rodzaj rzutu
+  `repair`): „Napraw” przy pancerzu (Podstawowe naprawy, PT i czas z pasma ceny wpisu, bez wpisu
+  PT 13 / 6 h, „Szybsza naprawa” połowi czas) i „Napraw (Test)” przy aucie (Naprawa pojazdów wg
+  rodzaju, PT i czas ze stopnia uszkodzeń) — dla każdej postaci, Naprawa i Moto dochodzą same.
+  Technik naprawia rzeczy drużyny z panelu Twórcy („Naprawa i montaż — rzeczy drużyny”,
+  `repair:targets`). Poza walką; warsztat 68 obok; porażka — pół czasu, od nowa.
+- **Czas pracy to propozycja zegara dla MG** (jak decyzja bramki dla 71d): karta rzutu niesie
+  `RollResult.clock`, MG klika „⏩ Przesuń zegar o …” (`roll:clock`, raz na kartę, karta „Czas”
+  z tytułem pracy — `moveGameClock`). Gracz czyta „Praca zajmuje … — zegar przesuwa MG.”
+- **G10 (TEC-18)** — „Zamontuj” ulepszenie z progu Moto 1 (rodzaj `vehicleUpgrade`): TECH +
+  Naprawa pojazdów + Ulepszanie (bez Naprawy) przeciw PT 24, dwa tygodnie, surowce = cena wpisu
+  ulepszenia (3000 ed z etapu 68) sprawdzane przed kośćmi i płatne przy sukcesie, raz na auto
+  (`techUpgrade` na wierszu ulepszenia), także w aucie Taboru.
+- **P5** — bieżące OB gracz tylko obniża: egzekwowane od 48c, dopisane testy (serwer, E2E).
+- **Broń nie ma w VTT stanu uszkodzenia** — naprawy broni nie ma czego robić; pomysł w `POMYSLY.md`.
+- Moduły: `systems/cpred/repair.ts` (bez pojazdów — czyta go planer) i nowy `vehiclework.ts`,
+  `realtime/repair-work.ts`, `RepairWork.tsx`, `loadWorkCup`. **Cykl importów** `repair.ts` →
+  warsztat → planer wywracał serwer w `tsx` (E2E padało na `restore.ts`), choć vitest i `tsc`
+  były zielone — pułapka na górze `testy`.
+- Macierz: TEC-19, TEC-18, TEC-S1, NOM-10 → ✅, TEC-15 → 🟡 (wybór skutku Ulepszania — 71d2);
+  rozstrzygnięcia w `decyzje-i-uproszczenia.md` („Naprawa i montaż Technikiem”), umowy na górze
+  `postac` i `czas`.
+
+Testy: `shared` 3111 i nowe `repair-work.test.ts` zielone; serwer 1820/1821 — jeden czerwony
+`net-encounter.test.ts` (Maskowanie pod okiem Strażnika) pod pełną suitą, osobno 3/3 zielony
+(migotanie, nie ruszane); nowy `repair-work.test.ts` 9/9, `campaign-isolation` z dwoma nowymi
+zdarzeniami zielony; `tsc` czterech pakietów i lint zmienionych plików czyste;
+`pnpm test:e2e t71-technik t71-nomada` — 18/18 (+3 Technik, +1 Nomada). **Oglądano w Firefoksie**
+(gracz z przebiegu E2E: wiersz pancerza z „Napraw”, karta rzutu z czasem, roboty drużyny
+w panelu Twórcy, karta auta z „Napraw (Test)”) i **w Chromium** (MG: przycisk zegara i karta
+po przesunięciu). Po oględzinach „Napraw (Test)” na karcie auta stanął w rzędzie z przyciskami Taboru
+(wisiał wyśrodkowany). `specs/99-zapomnij/` to dalej cudze tymczasowe oględziny z 14.11 — poza commitem.
+
 ### Sesja 15.11 (trzecia) — etap 71c1: Tabor Rodziny jako stan gry
 
 **Zrobione (czeka na wdrożenie, bez migracji — pola w JSON-ie `Vehicle.system` i karty):**
