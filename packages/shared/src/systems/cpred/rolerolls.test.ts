@@ -30,8 +30,15 @@ const registry: CpredRegistry = buildCpredRegistry(
   },
 );
 
+/** Od 71f prośba pada do grupy fanów z karty — po jednej każdej wielkości. */
+const FANS = [
+  { id: 'f-single', name: 'Barman', audience: 'single' as const },
+  { id: 'f-small', name: 'Ekipa z baru', audience: 'small' as const },
+  { id: 'f-large', name: 'Publika klubu', audience: 'large' as const },
+];
+
 function sheet(roleId: string | null, rank: number, extra: Record<string, unknown> = {}) {
-  return { ...createDefaultCharacterData(), roleId, roleAbilityRank: rank, ...extra };
+  return { ...createDefaultCharacterData(), roleId, roleAbilityRank: rank, fans: FANS, ...extra };
 }
 
 describe('Test Efektu Charyzmy', () => {
@@ -40,6 +47,7 @@ describe('Test Efektu Charyzmy', () => {
       kind: 'charisma',
       charismaAudience: 'single',
       charismaPurpose: 'favour',
+      charismaFanGroupId: 'f-single',
     });
     expect(planned.ok).toBe(true);
     if (!planned.ok) return;
@@ -52,6 +60,8 @@ describe('Test Efektu Charyzmy', () => {
       audience: 'single',
       purpose: 'favour',
       effect: expect.stringContaining('dużą przysługę'),
+      fanGroupId: 'f-single',
+      fanGroupName: 'Barman',
     });
     // To Test, więc dziesiątka eksploduje i rany bolą.
     expect(planned.plan.checkRule).toBe(true);
@@ -67,6 +77,7 @@ describe('Test Efektu Charyzmy', () => {
         kind: 'charisma',
         charismaAudience: audience,
         charismaPurpose: 'favour',
+        charismaFanGroupId: `f-${audience}`,
       });
       expect(planned.ok && planned.plan.charisma?.dv).toBe(dv);
     }
@@ -106,7 +117,13 @@ describe('Test Efektu Charyzmy', () => {
     const planned = planCpredRoll(
       sheet('rockerboy', 5, { hpCurrent: 10 }), // 35 PW → poważna rana
       registry,
-      { kind: 'charisma', charismaAudience: 'small', charismaPurpose: 'favour', modifier: 2 },
+      {
+        kind: 'charisma',
+        charismaAudience: 'small',
+        charismaPurpose: 'favour',
+        charismaFanGroupId: 'f-small',
+        modifier: 2,
+      },
     );
     expect(planned.ok && planned.plan.modifierTotal).toBe(5);
   });
@@ -117,21 +134,29 @@ describe('Test Rzetelności', () => {
     const planned = planCpredRoll(sheet('media', 7, { hpCurrent: 1 }), registry, {
       kind: 'reliability',
       reliabilityProof: 'none',
+      reliabilityTopic: 'Przekręt w ratuszu',
     });
     expect(planned.ok).toBe(true);
     if (!planned.ok) return;
     expect(planned.plan.breakdown).toEqual([]);
     expect(planned.plan.modifierTotal).toBe(0);
     expect(planned.plan.checkRule).toBe(false);
-    expect(planned.plan.reliability).toEqual({ chance: 5, proof: 'none', base: 5 });
+    expect(planned.plan.reliability).toEqual({
+      chance: 5,
+      proof: 'none',
+      base: 5,
+      topic: 'Przekręt w ratuszu',
+      again: false,
+    });
   });
 
   it('dowody podnoszą szansę, nie rzut', () => {
     const planned = planCpredRoll(sheet('media', 3), registry, {
       kind: 'reliability',
       reliabilityProof: 'irrefutable',
+      reliabilityTopic: 'Przekręt w ratuszu',
     });
-    expect(planned.ok && planned.plan.reliability).toEqual({
+    expect(planned.ok && planned.plan.reliability).toMatchObject({
       chance: 6,
       proof: 'irrefutable',
       base: 3,

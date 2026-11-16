@@ -1,5 +1,42 @@
 # Dziennik sesji — archiwum
 
+### Sesja 16.11 — etap 71d2: Praca Twórcy i kriopompa
+
+**Zrobione (czeka na wdrożenie, bez migracji — nowe pola w JSON-ie karty i karty rzutu):**
+
+- **G13 (TEC-03, TEC-07, TEC-08, TEC-09, TEC-11, TEC-15) — Praca Twórcy Testem przez kubek**
+  na rurze naprawy z 71c2: rodzaje rzutu `itemUpgrade` i `fabricate` (`CPRED_WORK_ROLL_KINDS`),
+  cel `{ kind: 'item' }` (wiersz karty drużyny) albo `{ kind: 'entry' }` (wpis Kompendium), nowy
+  moduł `systems/cpred/fabrication.ts`. W robotach drużyny panelu Twórcy (summary „Roboty
+  drużyny — naprawa, ulepszanie, wytwarzanie”) dwie sekcje: **Ulepszanie przedmiotów** (lista
+  z `repair:targets`, pole `items`; wybór sposobu z s. 148 bez wynalazku i ulepszenia auta, PT
+  i czas z pasma, surowce = cena pasma w cenniku domowym, stempel `cpredApplyItemUpgrade`)
+  i **Wytwarzanie** (wyszukiwarka Kompendium; broń, dodatki, pancerz, sprzęt, wszczepy; surowce
+  o pasmo niżej; rzecz na kartę Technika; poziom sklepu jak przy zakupie). Ulepszanie i
+  Wytwarzanie dodają własną Specjalizację, Naprawy nie. Czas — propozycja zegara dla MG.
+- **G19 (MED-17) — kriopompa**: wiersz Wyposażenia z `cryoUsed` (ładunki 1 / 2 / 3 wg Obsługi
+  kriosystemów), „Odbierz kriopompę” w panelu Medycyny (raz), „Zamroź” (Akcja, zasięg ramienia)
+  — stan `cryo` na karcie pacjenta z tygodniem zegara, status „Nieprzytomny”, bez rzutów
+  przeciw śmierci (`sheetOwesDeathSave`, odmowa `IN_CRYO`); „Rozmroź” (Medyk, który zamroził,
+  i MG), płyn 150 ed za ładunek, koniec tygodnia w przemiataniu („kriostaza minęła”). Moduły
+  `cryo.ts`, `realtime/cryo.ts` (`character:cryo`), `CryoPump.tsx`. Kriozbiorniki prozą.
+- Rozstrzygnięcia — `decyzje-i-uproszczenia.md` („Praca Twórcy i kriopompa”, dopiski przy dwóch
+  wpisach z 29.08); macierz: TEC-03, TEC-07, TEC-11, TEC-15 → ✅; TEC-08, TEC-09, MED-17 → 🟡;
+  umowy na górze `postac` (dwie) i `czas`.
+- Przy okazji: zastany błąd `tsc` w `specialties.test.ts` (pole `payload` zamiast `action`
+  na widoku czatu, z 71d1) poprawiony.
+
+Testy: `shared` 3146 (nowe `fabrication.test.ts` 12, `cryo.test.ts` 5), serwer 1832/1832 (nowy
+`work-cryo.test.ts` 7, `campaign-isolation` z `character:cryo`), klient 515; `tsc` czterech
+pakietów i lint zmienionych plików czyste; E2E `t71-technik` 12/12 (+2 G13) i `t71-medyk` 5/5
+(+1 G19). Pierwszy przebieg Medyka padł na liście „Kogo zamrozić” — gracz nie dostaje
+`characterId` cudzych figur, a filtr go wymagał; poprawione w UI. Dwa przebiegi E2E puszczone
+naraz zderzyły się na jednej instancji — liczy się drugi. **Oglądano w Firefoksie** (gracz:
+roboty drużyny z Ulepszaniem i Wytwarzaniem, sekcja kriopompy, panel Medycyny) i **w Chromium**
+(MG: notka „W kriośnie” z „Rozmroź” na karcie pacjenta); po oględzinach wybór sposobu
+i „Ulepsz” stanęły w jednym rzędzie (spadał guzik). Tymczasowa specyfikacja zrzutów usunięta.
+`specs/99-zapomnij/` to dalej cudze tymczasowe oględziny z 14.11 — poza commitem.
+
 ### Sesja 15.11 (piąta) — etap 71d1: walka i leczenie
 
 **Zrobione (czeka na wdrożenie, bez migracji — nowe pola w JSON-ie karty i karty rzutu):**

@@ -471,12 +471,28 @@ describe('etap 30d: Znajomości, Moto, Efekt Charyzmy i Wiarygodność', () => {
   });
 
   it('Test Efektu Charyzmy ląduje na czacie z PT i werdyktem', async () => {
+    // Od 71f prośba pada do grupy fanów z karty — wpisuje ją MG.
+    const withFan = data(
+      await emitAck<CharacterView>(gm, 'character:fans', {
+        characterId: rockerId,
+        action: 'add',
+        name: 'Barman',
+        audience: 'single',
+      }),
+      'character:fans',
+    );
+    const fanGroupId = (withFan.data as CpredCharacterData).fans[0]!.id;
     const card = waitForRoll(player, 'Efekt Charyzmy');
     expect(
       (
         await emitAck(player, 'character:roll', {
           characterId: rockerId,
-          request: { kind: 'charisma', charismaAudience: 'single', charismaPurpose: 'favour' },
+          request: {
+            kind: 'charisma',
+            charismaAudience: 'single',
+            charismaPurpose: 'favour',
+            charismaFanGroupId: fanGroupId,
+          },
           visibility: 'public',
         })
       ).ok,
@@ -493,13 +509,17 @@ describe('etap 30d: Znajomości, Moto, Efekt Charyzmy i Wiarygodność', () => {
       (
         await emitAck(player, 'character:roll', {
           characterId: mediaId,
-          request: { kind: 'reliability', reliabilityProof: 'solid' },
+          request: {
+            kind: 'reliability',
+            reliabilityProof: 'solid',
+            reliabilityTopic: 'Przekręt w ratuszu',
+          },
           visibility: 'public',
         })
       ).ok,
     ).toBe(true);
     const roll = (await card).message.roll;
-    expect(roll?.title).toBe('Test Rzetelności');
+    expect(roll?.title).toBe('Test Rzetelności: Przekręt w ratuszu');
     // Ranga 5 to szansa 4 na 10, plus 1 za rzetelny dowód.
     expect(roll?.outcome?.detail).toContain('szansa 5 na 10');
   });

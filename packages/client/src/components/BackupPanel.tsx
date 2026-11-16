@@ -1,13 +1,17 @@
 import { useState } from 'react';
 import {
   CPRED_BACKUP_ABILITY,
+  ROLE_GM,
+  cpredBackupCallCounts,
   cpredBackupTiersFor,
   cpredRoleAbilityRank,
   describeBackupTier,
 } from '@vtt/shared';
 import { clearNotices, notifyInfo } from '../notices.js';
 import { callBackup } from '../socket.js';
+import { useAuthStore } from '../stores/authStore.js';
 import { useCharacterStore } from '../stores/characterStore.js';
+import { useGameTimeStore } from '../stores/gameTimeStore.js';
 
 /**
  * Wezwanie Wsparcia (etap 30c, s. 158).
@@ -37,9 +41,13 @@ export function BackupPanel({
     ? cpredRoleAbilityRank(character.data, registry, CPRED_BACKUP_ABILITY)
     : null;
   const [calling, setCalling] = useState<string | null>(null);
+  const isGm = useAuthStore((s) => s.user?.role === ROLE_GM);
+  const now = useGameTimeStore((s) => s.minutes);
 
   if (!character || rank === null) return null;
   const tiers = cpredBackupTiersFor(rank);
+  // Etap 71f (G32): licznik wezwań, na które ktoś odpowiedział — dla MG.
+  const calls = cpredBackupCallCounts(character.data.backupCalls ?? [], now);
 
   async function call(level: number, tierId: string): Promise<void> {
     setCalling(tierId);
@@ -97,6 +105,12 @@ export function BackupPanel({
           </li>
         ))}
       </ul>
+      {isGm && (
+        <p className="awareness-hint" data-testid="backup-calls">
+          Wezwania z odzewem: dziś {calls.today} · w tym tygodniu {calls.week}. Czy to już nadużycie
+          — decyduje MG.
+        </p>
+      )}
       <p className="awareness-hint">
         Wezwanie kosztuje Akcję i udaje się na 1k10 ≤ {rank}. Potem 1k6 decyduje, ile Rund potrwa
         dojazd; szóstka przysyła kategorię wyżej. Nadużywanie kosztuje posadę (s. 158).

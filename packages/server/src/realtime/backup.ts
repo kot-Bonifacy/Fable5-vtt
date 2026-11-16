@@ -159,6 +159,20 @@ export async function spawnBackup(
   options: { near: { x: number; y: number } | null; user: SessionUser; callerName: string },
 ): Promise<Token[]> {
   const profile = await profileFor(deps, campaignId, tier);
+  // Etap 71f (G31): druga broń kategorii jako drugi wiersz karty figury.
+  // Nazwa, której katalog nie zna, wypada — pięści są już pod pierwszą.
+  const second = tier.secondWeapon ? await weaponFor(deps, campaignId, tier.secondWeapon) : null;
+  const extraWeapons =
+    tier.secondWeapon && second?.weaponId
+      ? [
+          {
+            name: tier.secondWeapon,
+            damage: second.weaponDamage,
+            ammoMax: second.ammoMax,
+            compendiumId: second.weaponId,
+          },
+        ]
+      : [];
   const spots = await freeSpotsNear(deps.ctx.prisma, scene, options.near, tier.count);
   const tokens: Token[] = [];
   for (let index = 0; index < tier.count; index += 1) {
@@ -168,6 +182,7 @@ export async function spawnBackup(
         at: spots[index]!,
         hp: tier.hp,
         quick: { ...profile },
+        extraWeapons,
       }),
     );
   }

@@ -205,6 +205,18 @@ export function gameDayKey(minutes: number): string {
 }
 
 /**
+ * Numer tygodnia kalendarza świata — tydzień zaczyna się w poniedziałek.
+ *
+ * Liczony od epoki (1 stycznia 1970 to czwartek), więc dwa momenty leżą w tym
+ * samym tygodniu dokładnie wtedy, gdy mają ten sam numer. Limity „w tygodniu”
+ * (Pogłoski Media, licznik wezwań Wsparcia) porównują numery, nie odliczają
+ * 10 080 minut.
+ */
+export function gameWeekIndex(minutes: number): number {
+  return Math.floor((Math.floor(minutes / MINUTES_PER_DAY) + 3) / 7);
+}
+
+/**
  * Ile **północy** minęło między dwiema chwilami.
  *
  * Nie „ile pełnych 24 godzin", bo doba odpoczynku podręcznika (s. 222) to noc

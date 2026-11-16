@@ -23,6 +23,7 @@ import {
   CPRED_CHARISMA_REFUSAL_DAYS,
   CPRED_EVASION_SKILL_ID,
   CPRED_MINUTE_S,
+  CPRED_RUMOUR_ROLLS_PER_WEEK,
   CPRED_RUMOUR_TIERS,
   CPRED_MELEE_REACH_M,
   CPRED_STABILIZE_DV,
@@ -108,6 +109,12 @@ import { settleDisarmTest } from './zones.js';
 import { sanitizeGesture } from './chat.js';
 import { rewriteAttackCard, settleDamageRoll } from './damage.js';
 import { requireWorkStart, resolveWorkRequest, settleWork } from './repair-work.js';
+import {
+  countRumourRoll,
+  requireCharismaStart,
+  settleCharisma,
+  settlePublication,
+} from './role-records.js';
 
 /**
  * Sheet-driven checks (stage 08). The client only sends an intention — which
@@ -1360,6 +1367,10 @@ async function performScopedRoll(
         );
       }
     }
+    // Etap 71f (G27, P2): nowi fani nie w walce, grupa nie pamięta odmowy.
+    if (plan.charisma && source.kind === 'character') {
+      await requireCharismaStart(deps, campaignId, user, plan, data);
+    }
     // Etap 71d2 (G19): w worku kriopompy nie rzuca się przeciw śmierci (s. 353).
     if (plan.deathSave && data.cryo) throw new RealtimeError('IN_CRYO');
     const deathSaveTurn =
@@ -1524,7 +1535,14 @@ async function performScopedRoll(
       // strict comparison Stabilizing and Treating use above. Written `>=` in
       // 30d on the ruling of 28.08, corrected 30.08 with the rest of them.
       const success = result.total > plan.charisma.dv;
-      const audience = CPRED_CHARISMA_AUDIENCE_LABELS[plan.charisma.audience];
+      const audience =
+        plan.charisma.fanGroupName ?? CPRED_CHARISMA_AUDIENCE_LABELS[plan.charisma.audience];
+      // Etap 71f (G27): udani nowi fani trafiają na kartę, odmowa zamyka grupę
+      // na tydzień kalendarza świata.
+      const recorded =
+        source.kind === 'character'
+          ? await settleCharisma(deps, campaignId, source.character.id, plan, success)
+          : '';
       result.outcome = {
         success,
         label: success
@@ -1537,10 +1555,10 @@ async function performScopedRoll(
         detail: success
           ? `${result.total} > PT ${plan.charisma.dv} · ${audience}${
               plan.charisma.effect ? ` — ${plan.charisma.effect}` : ''
-            }`
+            }${recorded}`
           : `${result.total} ≤ PT ${plan.charisma.dv} · ${audience}${
               plan.charisma.purpose === 'favour'
-                ? ` — o tę samą przysługę nie poprosisz ich przez ${CPRED_CHARISMA_REFUSAL_DAYS} dni`
+                ? ` — o tę samą przysługę nie poprosisz ich przez ${CPRED_CHARISMA_REFUSAL_DAYS} dni${recorded}`
                 : ''
             }`,
       };
@@ -1573,17 +1591,29 @@ async function performScopedRoll(
         label: believed ? 'Uwierzyli' : 'Nie kupili tego',
         detail:
           `${result.total} na 1k10 · szansa ${plan.reliability.chance} na 10` +
-          (bonus > 0 ? ` (${plan.reliability.base} + ${bonus} za dowody)` : ''),
+          (bonus > 0 ? ` (${plan.reliability.base} + ${bonus} za dowody)` : '') +
+          (plan.reliability.again ? ' · temat wraca z nowymi informacjami' : ''),
       };
+      // Etap 71f (G30): rejestr publikacji na karcie Media.
+      if (source.kind === 'character') {
+        await settlePublication(deps, campaignId, source.character.id, plan, believed);
+      }
     }
     if (plan.rumour) {
       const heard = cpredRumourHeard(result.total);
+      // Etap 71f (G28): licznik rzutów w tygodniu kalendarza świata.
+      const rolls =
+        source.kind === 'character'
+          ? await countRumourRoll(deps, campaignId, source.character.id)
+          : 0;
+      const counted =
+        rolls > 0 ? ` · rzut ${rolls} z ${CPRED_RUMOUR_ROLLS_PER_WEEK} w tym tygodniu` : '';
       result.outcome = {
         success: heard !== null,
         label: heard ? heard.name : 'Cisza na Ulicy',
         detail: heard
-          ? `${result.total} ≥ ${heard.passive} · ${heard.description}`
-          : `${result.total} — poniżej ${CPRED_RUMOUR_TIERS[0]!.passive}, nic nie doszło`,
+          ? `${result.total} > ${heard.passive} · ${heard.description}${counted}`
+          : `${result.total} — nie przebija ${CPRED_RUMOUR_TIERS[0]!.passive}, nic nie doszło${counted}`,
       };
     }
 

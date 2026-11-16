@@ -28,6 +28,14 @@ import {
   type CpredDebt,
   type CpredHaggleOpponent,
 } from './haggling.js';
+import { readCpredFans, type CpredFanGroup } from './rolefans.js';
+import {
+  readCpredPublications,
+  readCpredRumourWeek,
+  type CpredPublication,
+  type CpredRumourWeek,
+} from './rolerumours.js';
+import { readCpredBackupCalls } from './backuplog.js';
 import { cpredEmptyChems, isCpredDrugId, readCpredChems, type CpredChems } from './drugs.js';
 // Type-only the other way round: `roleability.ts` reads this file's sheet type,
 // so only its values travel here — the same bargain `creation.ts` makes above.
@@ -1169,6 +1177,27 @@ export interface CpredCharacterData {
    * `woundSuspension`: `character:cryo` i przemiatanie zegara świata.
    */
   cryo: CpredCryoState | null;
+  /**
+   * Etap 71f (G27, ROC-08, ROC-09): grupy fanów Rockera z blokadami próśb.
+   * Pisze je wyłącznie silnik: udany Test „nowi fani”, nieudana prośba
+   * (`character:roll`) i `character:fans` (MG dodaje, usuwa, zdejmuje blokadę).
+   */
+  fans: CpredFanGroup[];
+  /**
+   * Etap 71f (G28, MDA-04): rzuty Pogłosek MG w tygodniu kalendarza świata.
+   * Pisze rzut `rumour` i przemiatanie zegara.
+   */
+  rumourWeek: CpredRumourWeek | null;
+  /**
+   * Etap 71f (G30, MDA-10): rejestr publikacji Media. Dopisuje Test
+   * Rzetelności, wpis usuwa MG (`character:publication`).
+   */
+  publications: CpredPublication[];
+  /**
+   * Etap 71f (G32, STR-14): minuty zegara świata, w których ktoś odpowiedział
+   * na wezwanie Wsparcia. Pisze `backup:call`.
+   */
+  backupCalls: number[];
   /** skillId → level 1–10; untrained skills are simply absent. */
   skills: Record<string, number>;
   /**
@@ -1471,6 +1500,10 @@ export function createDefaultCharacterData(): CpredCharacterData {
     fleetGift: null,
     cryoPumpGranted: false,
     cryo: null,
+    fans: [],
+    rumourWeek: null,
+    publications: [],
+    backupCalls: [],
     skills: {},
     skillSpecialties: {},
     weapons: [],
@@ -2205,6 +2238,12 @@ function collectCharacterDataPatch(
   // odmawia łaty z nimi; tu tylko czytnik, który przyjmie starą kartę.
   if ('cryoPumpGranted' in input) patch.cryoPumpGranted = input.cryoPumpGranted === true;
   if ('cryo' in input) patch.cryo = readCpredCryo(input.cryo);
+  // Etap 71f: cztery pola Ról pisze wyłącznie silnik — `character:update`
+  // odmawia łaty z nimi; tu tylko czytniki, które przyjmą starą kartę.
+  if ('fans' in input) patch.fans = readCpredFans(input.fans);
+  if ('rumourWeek' in input) patch.rumourWeek = readCpredRumourWeek(input.rumourWeek);
+  if ('publications' in input) patch.publications = readCpredPublications(input.publications);
+  if ('backupCalls' in input) patch.backupCalls = readCpredBackupCalls(input.backupCalls);
   if ('skills' in input) {
     const skills = validateSkills(input.skills, registry, issues);
     if (skills) patch.skills = skills;

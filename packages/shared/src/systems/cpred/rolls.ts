@@ -74,6 +74,8 @@ import {
   type CpredCharismaPurpose,
   type CpredProofLevel,
 } from './roleability.js';
+import { CPRED_FAN_NOTE_MAX, cpredFavourProblem } from './rolefans.js';
+import { cpredPublicationProblem, cpredTopicPublished } from './rolerumours.js';
 
 /**
  * „Za każdy punkt dodaj +1 do Testów Percepcji" (Wyczucie zagrożenia, s. 146).
@@ -571,12 +573,20 @@ export interface CpredRollRequest {
    */
   charismaAudience?: CpredCharismaAudience;
   charismaPurpose?: CpredCharismaPurpose;
+  /** Etap 71f (G27): grupa fanów z karty, do której pada prośba (`favour`). */
+  charismaFanGroupId?: string;
+  /** Etap 71f: kogo zdobywa (`fans`) albo o co prosi (`favour`) — do wiersza na karcie. */
+  charismaNote?: string;
   /**
    * `kind: 'reliability'` (stage 30d) — how well the published material is
    * evidenced. „Ostateczne PT ustala MG", and so does this: nothing on the
    * sheet can tell whether a story carries four irrefutable proofs.
    */
   reliabilityProof?: CpredProofLevel;
+  /** Etap 71f (G30): temat materiału — trafia do rejestru publikacji. */
+  reliabilityTopic?: string;
+  /** Etap 71f (G30): powtórka tematu „z nowymi informacjami” (s. 152). */
+  reliabilityNewInfo?: boolean;
 }
 
 /** Highest damage multiplier any weapon can reach — guards the stored value. */
@@ -596,6 +606,11 @@ export type CpredRollProblem =
   | 'NO_ABILITY'
   /** „To żart, prawda? Jeszcze nie masz dużych grup fanów" (s. 144). */
   | 'NO_CROWD'
+  /** Prośba bez grupy fanów tej wielkości na karcie (etap 71f). */
+  | 'NO_FAN_GROUP'
+  /** Publikacja bez tematu albo powtórka bez nowych informacji (etap 71f). */
+  | 'NO_TOPIC'
+  | 'ALREADY_PUBLISHED'
   /** Prowizorka, której ta sztuka pancerza teraz nie przyjmie (etap 71c0). */
   | CpredFieldRepairProblem
   /** Montaż ulepszenia auta bez punktu w Ulepszaniu (etap 71c2). */
@@ -688,6 +703,11 @@ export interface CpredCharismaPlan {
    * say there.
    */
   effect: string;
+  /** Etap 71f: grupa, do której pada prośba, i jej nazwa do karty rzutu. */
+  fanGroupId?: string;
+  fanGroupName?: string;
+  /** Etap 71f: kogo zdobywa albo o co prosi. */
+  note?: string;
 }
 
 /**
@@ -700,6 +720,9 @@ export interface CpredReliabilityPlan {
   proof: CpredProofLevel;
   /** The tier's own chance, before the proofs — the card shows the arithmetic. */
   base: number;
+  /** Etap 71f (G30): temat do rejestru; `again` — powtórka z nowymi informacjami. */
+  topic: string;
+  again: boolean;
 }
 
 /** The GM's secret Pogłoski roll (stage 30d) — a rank against four thresholds. */
@@ -1397,19 +1420,42 @@ function planCharismaRoll(
   if (problem === 'NO_CROWD') return { ok: false, error: 'NO_CROWD' };
   if (problem !== null || audience === undefined) return { ok: false, error: 'BAD_REQUEST' };
 
+  // Etap 71f (G27): „Zdolność działa tylko na fanach” — prośba pada do grupy
+  // z karty. Blokadę tygodnia sprawdza serwer, bo planer nie zna zegara.
+  const group =
+    purpose === 'favour'
+      ? (data.fans.find((row) => row.id === request.charismaFanGroupId) ?? null)
+      : null;
+  if (purpose === 'favour' && cpredFavourProblem(data.fans, group?.id, audience, null)) {
+    return { ok: false, error: 'NO_FAN_GROUP' };
+  }
+  const note =
+    typeof request.charismaNote === 'string'
+      ? request.charismaNote.trim().slice(0, CPRED_FAN_NOTE_MAX)
+      : '';
+
   const dv = CPRED_CHARISMA_DV[audience];
   const effect = purpose === 'favour' ? (cpredCharismaEffect(rank!, audience) ?? '') : '';
   const title =
     purpose === 'fans'
       ? `Efekt Charyzmy: nowi fani — ${CPRED_CHARISMA_AUDIENCE_LABELS[audience]}`
-      : `Efekt Charyzmy: przysługa — ${CPRED_CHARISMA_AUDIENCE_LABELS[audience]}`;
+      : `Efekt Charyzmy: przysługa — ${group?.name ?? CPRED_CHARISMA_AUDIENCE_LABELS[audience]}`;
   return finishCheck(
     title,
     [{ label: `${CPRED_CHARISMA_ABILITY} ${rank}`, value: rank!, kind: 'skill' }],
     wound,
     modifier,
     luckSpent,
-    { charisma: { dv, audience, purpose, effect } },
+    {
+      charisma: {
+        dv,
+        audience,
+        purpose,
+        effect,
+        ...(group ? { fanGroupId: group.id, fanGroupName: group.name } : {}),
+        ...(note ? { note } : {}),
+      },
+    },
     context,
   );
 }
@@ -1461,18 +1507,32 @@ function planReliabilityRoll(
   if (!(CPRED_PROOF_LEVELS as readonly string[]).includes(proof)) {
     return { ok: false, error: 'BAD_REQUEST' };
   }
+  // Etap 71f (G30): materiał ma temat, a temat raz puszczony wraca tylko
+  // „z nowymi informacjami” (s. 152).
+  const again = request.reliabilityNewInfo === true;
+  const topicProblem = cpredPublicationProblem(data.publications, request.reliabilityTopic, again);
+  if (topicProblem === 'NO_TOPIC' || topicProblem === 'ALREADY_PUBLISHED') {
+    return { ok: false, error: topicProblem };
+  }
+  const topic = (request.reliabilityTopic ?? '').trim();
   const base = cpredReliabilityChance(rank, 'none');
   return {
     ok: true,
     plan: {
-      title: 'Test Rzetelności',
+      title: `Test Rzetelności: ${topic}`,
       formula: { terms: [{ kind: 'dice', sign: 1, count: 1, sides: 10 }] },
       breakdown: [],
       modifierTotal: 0,
       woundState: cpredSheetWoundState(data),
       luckSpent: 0,
       checkRule: false,
-      reliability: { chance: cpredReliabilityChance(rank, proof), proof, base },
+      reliability: {
+        chance: cpredReliabilityChance(rank, proof),
+        proof,
+        base,
+        topic,
+        again: again && cpredTopicPublished(data.publications, topic),
+      },
     },
   };
 }

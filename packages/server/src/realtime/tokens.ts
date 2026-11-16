@@ -30,6 +30,8 @@ import type {
   TokenWalkPayload,
 } from '@vtt/shared';
 import {
+  mergeCharacterData,
+  parseCharacterData,
   ROLE_GM,
   TOKEN_FEARED_MAX,
   WALK_LANDING_SLACK_CELLS,
@@ -635,6 +637,14 @@ export async function freeSpotsNear(
  * czyni groźnym, siedzi teraz w `Character.data` razem z Wartością bojową
  * i wydrukowanymi PW (`statBlock`).
  */
+/** Broń statysty poza szybkim profilem — zawsze wpis Kompendium. */
+export interface StatistExtraWeapon {
+  name: string;
+  damage: string;
+  ammoMax: number;
+  compendiumId: string;
+}
+
 export async function createStatistToken(
   deps: RealtimeDeps,
   campaignId: string,
@@ -645,16 +655,40 @@ export async function createStatistToken(
     hp: number;
     quick: TokenCombatProfile;
     imageUrl?: string | null;
+    /** Etap 71f (G31): dalsze wiersze broni obok tej z szybkiego profilu. */
+    extraWeapons?: readonly StatistExtraWeapon[];
   },
 ): Promise<Token> {
   const quick = sheetQuickStats({ ...spec.quick, hpCurrent: spec.hp, hpMax: spec.hp });
+  let sheet = sheetFromQuickStats(quick);
+  if (spec.extraWeapons && spec.extraWeapons.length > 0) {
+    const data = parseCharacterData(sheet, deps.ctx.cpred);
+    sheet = JSON.stringify(
+      mergeCharacterData(data, {
+        weapons: [
+          ...data.weapons,
+          ...spec.extraWeapons.map((weapon, index) => ({
+            id: `statist-extra-${index + 1}`,
+            name: weapon.name,
+            notes: '',
+            damage: weapon.damage,
+            ammoCurrent: weapon.ammoMax,
+            ammoMax: weapon.ammoMax,
+            ammoType: '',
+            rof: '1',
+            compendiumId: weapon.compendiumId,
+          })),
+        ],
+      }),
+    );
+  }
   const character = await deps.ctx.prisma.character.create({
     data: {
       campaignId,
       name: spec.name,
       // Figura, którą prowadzi MG — jak każdy inny NPC (patrz `team.ts`).
       ownerId: null,
-      data: sheetFromQuickStats(quick),
+      data: sheet,
     },
   });
   await emitCharacterUpsert(deps, campaignId, toCharacterView(character, deps.ctx.cpred));

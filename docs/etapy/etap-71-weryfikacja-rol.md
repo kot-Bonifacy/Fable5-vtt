@@ -317,6 +317,23 @@ Rozstrzygnięcia — `decyzje-i-uproszczenia.md` („Handel i pieniądze po wery
 na górze `postac` i `ekwipunek`; testy `haggling.test.ts`, `teamloyalty.test.ts`,
 `trade71e.test.ts`; E2E `t71-fixer` (+2), `t71-korpo` (+2).
 
+**Wynik 71f (16.11.2026) ✅.** Czas i zasoby narracyjne (nowe moduły
+`systems/cpred/rolefans.ts`, `rolerumours.ts`, `backuplog.ts`, `realtime/role-records.ts`;
+`gameWeekIndex` w `gametime.ts`). G27 (ROC-08, ROC-09): grupy fanów na karcie — udany Test „nowi
+fani” dopisuje grupę, prośba pada do grupy z karty (`NO_FAN_GROUP`), odmowa zamyka grupę na 7 dób
+zegara świata (`FANS_REFUSED`), MG wpisuje fanów bez rzutu, usuwa ich i zdejmuje blokadę
+(`character:fans`). P2 (ROC-04): nowych fanów nie robi się w walce (`FANS_IN_COMBAT`). G28
+(MDA-04): licznik Pogłosek w tygodniu kalendarza na guziku MG i przypomnienie w przemiataniu
+zegara. G29 (MDA-05): „Szukaj pogłosek” — wezwanie MG z PT z tabeli albo prośba gracza o Test.
+G30 (MDA-10): rejestr publikacji — temat obowiązkowy, powtórka tylko z nowymi informacjami, wpis
+usuwa MG (`character:publication`). G31 (STR-13): druga broń kategorii jako drugi wiersz karty
+funkcjonariusza. G32 (STR-14): licznik wezwań z odzewem (dziś / tydzień) u MG. G39: karta
+Pogłosek pisze „>”. Bez migracji (cztery pola w JSON-ie karty). Rozstrzygnięcia —
+`decyzje-i-uproszczenia.md` („Czas i zasoby narracyjne po weryfikacji Ról”), umowy na górze
+`postac` i `czas`; testy `rolenarrative.test.ts`, `roles71f.test.ts`; E2E `t71-rocker` (6,
+przepisany), `t71-media` (+3), `t71-stroz` (+1). G31 bez asercji E2E — Stróż z punktu
+`role-start` ma rangę 4, a druga broń zaczyna się od kategorii 5–7 (dowodem test serwera).
+
 Poza etapem 71: **G24 Nocny Targ — osobny etap** (`POMYSLY.md`), NOM-02 / NOM-03 — etap 72,
 STR-12 — po etapie 72, KOR-04 — tylko z abonamentem Trauma Team.
 

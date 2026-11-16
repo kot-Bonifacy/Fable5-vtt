@@ -742,3 +742,24 @@ export function sanitizeCharacterName(name: unknown): string | null {
   if (trimmed.length === 0 || trimmed.length > CHARACTER_NAME_MAX_LENGTH) return null;
   return trimmed;
 }
+
+/** Etap 71f (G27): ręka MG (i właściciela) na liście grup fanów Rockera. */
+export interface CharacterFansPayload {
+  characterId: string;
+  /**
+   * `add` — MG wpisuje, kto już jest fanem; `rename` — właściciel albo MG;
+   * `remove` i `unblock` (zdjęcie blokady po nieudanej prośbie) — tylko MG.
+   */
+  action: 'add' | 'rename' | 'remove' | 'unblock';
+  groupId?: string;
+  name?: string;
+  /** `add`: wielkość publiczności (`single` / `small` / `large`). */
+  audience?: string;
+}
+
+/** Etap 71f (G30): MG usuwa wpis z rejestru publikacji Media. */
+export interface CharacterPublicationPayload {
+  characterId: string;
+  publicationId: string;
+  action: 'remove';
+}

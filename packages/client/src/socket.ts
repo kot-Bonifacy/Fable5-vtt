@@ -350,6 +350,8 @@ import {
   CPRED_TECH_UPGRADE_PROBLEMS,
   CPRED_FABRICATION_PROBLEMS,
   CPRED_CRYO_PROBLEMS,
+  CPRED_FANS_PROBLEMS,
+  CPRED_PUBLICATION_PROBLEMS,
   ADVANCEMENT_UNDO_PROBLEMS,
   CPRED_ROLE_CHANGE_PROBLEMS,
   CPRED_ATTACHMENT_PROBLEM_MESSAGES,
@@ -1818,6 +1820,14 @@ function rollAckErrorText(code: string): string {
     // Etap 71d2 — pacjent w worku kriopompy.
     case 'IN_CRYO':
       return CPRED_CRYO_PROBLEMS.IN_CRYO;
+    // Etap 71f — fani Rockera i rejestr publikacji Media.
+    case 'NO_FAN_GROUP':
+    case 'FANS_REFUSED':
+    case 'FANS_IN_COMBAT':
+      return CPRED_FANS_PROBLEMS[code];
+    case 'NO_TOPIC':
+    case 'ALREADY_PUBLISHED':
+      return CPRED_PUBLICATION_PROBLEMS[code];
     // Akcja Prowizorki i Ustabilizowania — odmowy budżetu tury mówią po swojemu.
     case 'NO_ACTION_LEFT':
     case 'NOT_YOUR_TURN':
@@ -4659,6 +4669,43 @@ export async function settleDebt(
 ): Promise<boolean> {
   const ack = await emitSceneAck<unknown>('character:debt', { characterId, debtId, action });
   return noteAck('exchange', ack, haggleErrorText);
+}
+
+/** Ręka MG (i właściciela — zmiana nazwy) na liście fanów Rockera (71f, G27). */
+export async function manageFans(
+  characterId: string,
+  change:
+    | { action: 'add'; name: string; audience: string }
+    | { action: 'rename'; groupId: string; name: string }
+    | { action: 'remove' | 'unblock'; groupId: string },
+): Promise<boolean> {
+  const ack = await emitSceneAck<unknown>('character:fans', { characterId, ...change });
+  return noteAck('check', ack, roleRecordErrorText);
+}
+
+/** MG usuwa wpis z rejestru publikacji Media (71f, G30). */
+export async function removePublication(
+  characterId: string,
+  publicationId: string,
+): Promise<boolean> {
+  const ack = await emitSceneAck<unknown>('character:publication', {
+    characterId,
+    publicationId,
+    action: 'remove',
+  });
+  return noteAck('check', ack, roleRecordErrorText);
+}
+
+function roleRecordErrorText(code: string): string {
+  if (code === 'CHARACTER_AWAITING_GM') return CHARACTER_AWAITING_GM_TEXT;
+  if (code in CPRED_FANS_PROBLEMS) {
+    return CPRED_FANS_PROBLEMS[code as keyof typeof CPRED_FANS_PROBLEMS];
+  }
+  if (code in CPRED_PUBLICATION_PROBLEMS) {
+    return CPRED_PUBLICATION_PROBLEMS[code as keyof typeof CPRED_PUBLICATION_PROBLEMS];
+  }
+  if (code === 'FORBIDDEN') return 'To rozstrzyga MG.';
+  return `Błąd: ${code}`;
 }
 
 /** Polskie zdania dla odmów Targowania się i Taboru — te same, co w silniku. */

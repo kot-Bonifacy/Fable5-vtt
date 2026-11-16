@@ -73,6 +73,7 @@ import {
 } from './tokens.js';
 import { characterFigure, requireTurnSpend } from './combat-actions.js';
 import { scheduleBackup } from './backup.js';
+import { recordBackupCall } from './role-records.js';
 import { dropFromTeams, syncTeamMemberName } from './team.js';
 import { placeApprovedCreationToken } from './creation.js';
 import { INCLUDE_CHAT_NAMES, deliverRollMessage, toChatMessageView } from './chat-io.js';
@@ -367,6 +368,17 @@ export const characterUpdateEvent = defineEvent<CharacterUpdatePayload, Characte
       // rozmraża tym samym zdarzeniem. Odebraną pompę też — łata gracza
       // z `cryoPumpGranted: false` dałaby mu drugą za darmo.
       if (sheet.cryo !== undefined) throw new RealtimeError('FORBIDDEN');
+      // Etap 71f: fani, licznik Pogłosek, rejestr publikacji i licznik wezwań
+      // Wsparcia — cztery pola, które zapisuje rzut albo zegar. Łata z nimi
+      // dałaby fanów bez Testu i zdjęła blokadę bez MG.
+      if (
+        sheet.fans !== undefined ||
+        sheet.rumourWeek !== undefined ||
+        sheet.publications !== undefined ||
+        sheet.backupCalls !== undefined
+      ) {
+        throw new RealtimeError('FORBIDDEN');
+      }
       if (!isGm && sheet.cryoPumpGranted !== undefined) throw new RealtimeError('FORBIDDEN');
       // Etap 41: co postać trzyma w rękach, zmienia wyłącznie `weapon:draw`.
       // Schowanie broni kosztuje Akcję (s. 168), a łata karty nie ma czym jej
@@ -958,6 +970,8 @@ export const characterBackupCallEvent = defineEvent<
     if (!outcome.answered || !arriving) {
       return { answered: false, rounds: null, tierId: null, secondGroup: false };
     }
+    // Etap 71f (G32): licznik wezwań, na które ktoś odpowiedział — dla MG.
+    await recordBackupCall(deps, campaignId, character.id);
     // Nobody to arrive *to*: a sheet standing on no scene still gets its roll
     // and its chat card, and the GM places whatever the fiction needs.
     if (!scene) {

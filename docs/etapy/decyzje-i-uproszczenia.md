@@ -9,6 +9,40 @@ czytany na starcie każdej sesji został listą zadań, a nie archiwum ustaleń.
 inaczej, niż mówi podręcznik, albo gdy dotykasz wymienionego tu kodu. Jeśli któraś z tych decyzji
 przestanie się bronić, przenieś ją stąd do `POMYSLY.md` jako zadanie — nie odwrotnie.
 
+## Czas i zasoby narracyjne po weryfikacji Ról (etap 71f, 16.11.2026)
+
+Bramka MG z 15.11 (G27–G32, G39, P2) — rozstrzygnięcia bez pytań:
+
+- **Fani to grupy na karcie, a blokada jest na grupę (G27, ROC-08, ROC-09)** — podręcznik
+  zamyka „tych fanów” na „tę samą przysługę”; VTT nie umie porównać dwóch próśb, więc po
+  nieudanym Teście **cała grupa** nie przyjmuje prośby przez 7 dób zegara świata (termin i „o co”
+  stoją na wierszu). Gdy następna prośba jest o coś innego, blokadę zdejmuje MG („Odblokuj”).
+  Termin mija sam — bez przemiatania; prośba do zamkniętej grupy to odmowa także dla MG.
+- **Prośba wymaga grupy** — „Zdolność działa tylko na fanach”: bez grupy tej wielkości na karcie
+  rzutu nie ma. Grupę daje udany Test „nowi fani” (nazwa od gracza albo domyślna) albo MG
+  wpisem bez rzutu („kto już jest fanem, rozstrzyga MG”). Usuwa tylko MG, nazwę zmienia też
+  właściciel. Sufit 24 grup. Istniejące karty Rockerów zaczynają z pustą listą.
+- **Nowych fanów nie robi się w walce (P2, ROC-04)** — odmowa serwera dla gracza przy
+  jakiejkolwiek walce w kampanii (ta sama miara co `COMBAT_LOCKED`); MG przechodzi.
+- **Tydzień to tydzień kalendarza od poniedziałku (G28, G32)** — „dwa razy na tydzień” i licznik
+  wezwań liczą się w tygodniu daty świata (`gameWeekIndex`), nie w oknie 7 dób od rzutu.
+  Przypomnienie o Pogłoskach idzie **tylko do MG**, raz, gdy zegar wejdzie w nowy tydzień, a w
+  minionym były mniej niż dwa rzuty; skok o kilka tygodni daje jedno przypomnienie. Tylko karty
+  prowadzone przez graczy. Karta bez licznika (i zegar cofnięty) zaczyna liczyć po cichu.
+- **„Szukaj pogłosek” to skrót, nie nowy rzut (G29, MDA-05)** — MG wystawia zwykłe wezwanie
+  z PT z kolumny „Aktywne”, gracz zwykłą prośbę o Test z tym PT w uzasadnieniu („ostateczne PT
+  ustala MG”). Wynik nie zapisuje nic na karcie.
+- **Rejestr publikacji (G30, MDA-10)** — publikacja ma obowiązkowy temat; ten sam temat (bez
+  wielkości liter i odstępów) wraca tylko z zaznaczeniem „mam nowe informacje”, które zostaje we
+  wpisie. Czy są nowe — ocenia MG (może wpis usunąć). Rejestr trzyma 40 najnowszych. **Wpisu do
+  dziennika kampanii (24b) nie ma** — rejestr na karcie wystarcza regule, dziennik pisze MG.
+- **Druga broń Wsparcia (G31, STR-13)** — jedna na kategorię: pistolet policji stanowej
+  i federalnych, granatnik szeryfa, wyrzutnia C-SWAT. Bardzo ciężki pistolet szeryfa zostaje
+  w opisie wyposażenia. Broń, której nie ma w Kompendium kampanii, wypada bez błędu.
+- **Licznik wezwań (G32, STR-14)** — liczy wezwania, na które **ktoś odpowiedział** (nieudany
+  rzut i odmowa się nie liczą); widzi go MG w panelu Wsparcia. Kara to decyzja MG.
+- **Karta Pogłosek (G39)** — „14 > 13” zamiast „≥”; remis nie zdaje od 30.08.
+
 ## Handel i pieniądze po weryfikacji Ról (etap 71e, 16.11.2026)
 
 Bramka MG z 15.11 (G20–G23, G25, G26, P6) — rozstrzygnięcia bez pytań:
@@ -1421,6 +1455,8 @@ test; zdanie po polsku istnieje dla klienta, który by o tej blokadzie nie wiedz
   o tę samą przysługę przez tydzień" (s. 144) mierzy się w tygodniach, a VTT nie ma kalendarza
   ani pojęcia „ci fani". Zdanie stoi na karcie rzutu i w podpowiedzi panelu; pilnuje go MG. Ta
   sama decyzja, którą 30b podjęła wobec Prowizorki („10 minut na poziom").
+  **Dopisek 16.11.2026 (etap 71f): nieaktualne** — fani są grupami na karcie, a odmowa zamyka
+  grupę na 7 dób zegara świata; patrz „Czas i zasoby narracyjne po weryfikacji Ról”.
 
 - **Etap 30d — Test Rzetelności nie jest Testem.** Nie ma w nim Cechy, Umiejętności, kary za rany
   ani eksplodującej dziesiątki, a Szczęścia użyć nie wolno wprost z podręcznika (s. 152). Ranga
@@ -1448,6 +1484,8 @@ szansa` — kształt Rzutu na Śmierć, nie Testu na PT.
   szczegółowa). Czym pogłoska jest, VTT nie wymyśla — to materiał kampanii, który mieszka
   w dzienniku z 24b i w bazie wiedzy z 19b. Remis na progu zdaje, jak przy każdym innym PT
   statycznym (decyzja z 28.08), choć ramka pisze tu „wyższy od".
+  **Dopisek 16.11.2026 (etap 71f): zdanie o remisie nieaktualne od 30.08** — próg trzeba
+  przebić, a od 71f pisze to także karta rzutu („>”); rzuty liczy licznik tygodnia.
 
 - **Etap 30d — Tabor Rodziny to lista, a nie pojazdy.** Projekt nie ma pojazdów, więc wiersz
   Taboru jest nazwą, kategorią i notatką. Liczone są dokładnie te dwie rzeczy, które liczy

@@ -583,12 +583,17 @@ export function loadCharismaCup(
   purpose: CpredCharismaPurpose,
   data: CpredCharacterData,
   registry: CpredRegistry,
+  /** Etap 71f: grupa fanów, do której pada prośba, i dopisek (kto / o co). */
+  extra: { fanGroupId?: string; note?: string } = {},
 ): void {
   const store = useRollStore.getState();
+  const note = extra.note?.trim() ?? '';
   const request: CpredRollRequest = {
     kind: 'charisma',
     charismaAudience: audience,
     charismaPurpose: purpose,
+    ...(extra.fanGroupId ? { charismaFanGroupId: extra.fanGroupId } : {}),
+    ...(note ? { charismaNote: note } : {}),
     modifier: store.lastModifier,
     luckSpent: 0,
   };
@@ -705,9 +710,17 @@ export function loadReliabilityCup(
   proof: CpredProofLevel,
   data: CpredCharacterData,
   registry: CpredRegistry,
+  /** Etap 71f (G30): temat materiału i „wraca z nowymi informacjami”. */
+  topic: string,
+  newInfo: boolean,
 ): void {
   const store = useRollStore.getState();
-  const request: CpredRollRequest = { kind: 'reliability', reliabilityProof: proof };
+  const request: CpredRollRequest = {
+    kind: 'reliability',
+    reliabilityProof: proof,
+    reliabilityTopic: topic.trim(),
+    ...(newInfo ? { reliabilityNewInfo: true } : {}),
+  };
   const planned = planCpredRoll(data, registry, request);
   if (!planned.ok) return;
   store.loadCup({

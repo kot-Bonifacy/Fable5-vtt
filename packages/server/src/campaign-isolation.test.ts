@@ -682,6 +682,18 @@ const CASES: Record<string, Case> = {
   'character:haggle': foreign((a) => ({ characterId: a.characterId })),
   // raty „pół teraz, pół za miesiąc” (etap 71e): spłata cudzej karty
   'character:debt': foreign((a) => ({ characterId: a.characterId, debtId: 'x', action: 'pay' })),
+  // fani Rockera i rejestr publikacji Media (etap 71f): cudza karta
+  'character:fans': foreign((a) => ({
+    characterId: a.characterId,
+    action: 'add',
+    name: 'x',
+    audience: 'single',
+  })),
+  'character:publication': foreign((a) => ({
+    characterId: a.characterId,
+    publicationId: 'x',
+    action: 'remove',
+  })),
   // handouts
   'handout:list': own('handouty kampanii gniazda'),
   'handout:upsert': foreign((a) => ({ id: a.handoutId, title: 'x', body: 'x' })),

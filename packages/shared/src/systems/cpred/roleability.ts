@@ -1183,6 +1183,12 @@ export interface CpredBackupTier {
   body: number;
   /** Weapon each of them fires; looked up in the compendium by this name. */
   weapon: string;
+  /**
+   * Etap 71f (G31, STR-13): druga broń wyższych kategorii — granatnik szeryfa,
+   * wyrzutnia C-SWAT, pistolet przy karabinie. Drugi wiersz broni na karcie
+   * figury; szukana po nazwie jak pierwsza, a nieznana katalogowi wypada.
+   */
+  secondWeapon?: string;
   /** The rest of what they bring, as the block lists it. */
   loadout: string;
   /** Who they are and how they get there. */
@@ -1245,6 +1251,7 @@ export const CPRED_BACKUP_TIERS: readonly CpredBackupTier[] = [
     move: 4,
     body: 4,
     weapon: 'Karabin szturmowy',
+    secondWeapon: 'Ciężki pistolet',
     loadout: 'Ciężkie pistolety, Karabiny szturmowe, Ciężkie kurtki kuloodporne',
     description:
       'Dwóch funkcjonariuszy miejscowej „drogówki" patrolujących podmiejskie bogate osiedla ' +
@@ -1264,6 +1271,7 @@ export const CPRED_BACKUP_TIERS: readonly CpredBackupTier[] = [
     move: 6,
     body: 6,
     weapon: 'Karabin szturmowy',
+    secondWeapon: 'Granatnik',
     loadout: 'Bardzo ciężki pistolet, Karabin szturmowy, Granatnik, Ubranie kuloodporne',
     description:
       'Jak stróże prawa na Dzikim Zachodzie, ci samotnicy patrolują Strefy odzyskane i nowe ' +
@@ -1283,6 +1291,7 @@ export const CPRED_BACKUP_TIERS: readonly CpredBackupTier[] = [
     move: 4,
     body: 4,
     weapon: 'Karabin szturmowy',
+    secondWeapon: 'Wyrzutnia rakiet',
     loadout: 'Karabiny szturmowe, Wyrzutnie rakiet, Metalgear',
     description: 'Dwóch twardzieli z Psychobrygady. Przybywają z powietrza w AV-4.',
     page: 159,
@@ -1300,6 +1309,7 @@ export const CPRED_BACKUP_TIERS: readonly CpredBackupTier[] = [
     move: 6,
     body: 6,
     weapon: 'Karabin szturmowy',
+    secondWeapon: 'Bardzo ciężki pistolet',
     loadout: 'Bardzo ciężkie pistolety, Karabiny szturmowe, Lekkie kurtki przeciwpancerne',
     description:
       'Wsparcie dużego kalibru, działające pod egidą rządu państwowego lub międzynarodowych ' +

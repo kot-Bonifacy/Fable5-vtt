@@ -2126,6 +2126,40 @@ body:has(.dice-cup--moved) .hud-foot {
   margin-top: 0.4rem;
 }
 
+/* Etap 71f: pola „kogo / o co / temat” i wiersze MG w panelach Rockera i Media
+   — ten sam rząd co suma targu, z odstępem od listy. */
+.haggle-opponent.role-note {
+  margin: 0.3rem 0;
+}
+
+.haggle-opponent.role-note select {
+  flex: 1 1 5rem;
+  min-width: 0;
+  min-height: 0;
+  padding: 0.1rem 0.25rem;
+  font-size: 0.75rem;
+}
+
+.haggle-opponent.role-note input[type='checkbox'] {
+  width: auto;
+}
+
+.haggle-opponent.role-note button:not(.cp-mini-button) {
+  padding: 0.05rem 0.4rem;
+  font-size: 0.75rem;
+  line-height: 1.3;
+}
+
+.haggle-opponent.role-note button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.role-register {
+  margin-top: 0.4rem;
+  font-size: 0.75rem;
+}
+
 .haggle-struck {
   display: flex;
   align-items: baseline;

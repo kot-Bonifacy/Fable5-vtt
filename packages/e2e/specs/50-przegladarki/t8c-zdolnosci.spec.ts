@@ -120,10 +120,9 @@ test.describe.serial('T8c Zdolności: siedem Ról poza scenariuszem, Reputacja, 
   test('Efekt Charyzmy (Rocker 2): fani na rzut z kubka; prośby do dużej grupy nie ma jeszcze w zasięgu', async () => {
     const strip = card.locator('.cp-role-strip');
     await expect(strip).toContainText('Efekt Charyzmy 2');
+    // Od 71f prośba pada do grupy fanów z karty — świeża karta nie ma kogo prosić.
     await strip.getByRole('button', { name: 'Poproś fanów o przysługę' }).click();
-    await expect(
-      strip.getByRole('button', { name: 'Rzuć Efekt Charyzmy: Duża grupa' }),
-    ).toBeDisabled();
+    await expect(strip.getByTestId('fans-empty')).toBeVisible();
     await strip.getByRole('button', { name: 'Zrób z nich fanów' }).click();
     const since = lastMessageId();
     scriptDice([6]);
@@ -146,6 +145,8 @@ test.describe.serial('T8c Zdolności: siedem Ról poza scenariuszem, Reputacja, 
     await expect(strip).toContainText('Wiarygodność 4');
     await expect(strip.getByRole('button', { name: 'Pogłoski' })).toHaveCount(0);
     await strip.getByLabel('Dowody w materiale').selectOption({ index: 1 });
+    // Od 71f publikacja ma temat (rejestr na karcie).
+    await strip.getByLabel('Temat materiału').fill('Przeciek z Biotechniki');
     const since = lastMessageId();
     scriptDice([2]);
     await strip.getByRole('button', { name: 'Publikuj' }).click();

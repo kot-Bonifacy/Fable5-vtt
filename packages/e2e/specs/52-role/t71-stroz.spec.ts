@@ -7,6 +7,7 @@ import {
   ROLES,
   ROLE_SCENE,
   TARGET,
+  cardData,
   dataOf,
   gmSocket,
   lastMessageId,
@@ -21,12 +22,13 @@ import { sceneByName } from '../../fixtures/regresja.ts';
 import { centreCamera } from '../../fixtures/scene.ts';
 import { emitAck } from '../../fixtures/socket.ts';
 import { shakeCup } from '../../fixtures/table.ts';
-import { closeSheet } from '../../fixtures/walka.ts';
+import { closeSheet, openSheet } from '../../fixtures/walka.ts';
 import { pendingDice, scriptDice } from '../../instance/instance.ts';
 
 /**
  * Etap 71b — Stróż Prawa, Wsparcie (s. 158–159). Wiersze macierzy: STR-01,
- * STR-02, STR-03 (#84, naprawiony w 71c0), STR-04, STR-07, STR-15.
+ * STR-02, STR-03 (#84, naprawiony w 71c0), STR-04, STR-07, STR-14 (licznik
+ * wezwań dla MG, 71f), STR-15.
  * Pojazdy Wsparcia (STR-12) — po etapie 72.
  */
 
@@ -150,6 +152,23 @@ test.describe.serial('@szybkie T71 Stróż Prawa — Wsparcie', () => {
     expect(ack).toMatchObject({ ok: false, error: 'NO_ACTION_LEFT' });
     // Odmowa przed kośćmi: żadnej karty „Wezwanie Wsparcia”.
     expect(messagesAfter(before).filter((row) => row.kind === 'roll')).toEqual([]);
+  });
+
+  test('STR-14 licznik wezwań z odzewem stoi u MG, nie u gracza, i nie da się go wyzerować łatą', async () => {
+    // Jedno wezwanie z odzewem (poza walką); nieudane i odmówione się nie liczą.
+    expect(cardData<{ backupCalls?: number[] }>(LAW.card).backupCalls ?? []).toHaveLength(1);
+    const forged = await emitAck(await gosia.socket(), 'character:update', {
+      characterId: characterId(LAW.card),
+      patch: { data: { backupCalls: [] } },
+    });
+    expect(forged).toMatchObject({ ok: false });
+    const gmCard = await openSheet(mg, LAW.card);
+    await expect(gmCard.getByTestId('backup-calls')).toContainText('dziś 1 · w tym tygodniu 1');
+    await closeSheet(mg.page);
+    const own = await openSheet(gosia, LAW.card);
+    await expect(own.locator('.cp-role-strip')).toContainText('Wsparcie 4');
+    await expect(own.getByTestId('backup-calls')).toHaveCount(0);
+    await closeSheet(gosia.page);
   });
 
   test('porządek: brak błędów konsoli', async () => {
