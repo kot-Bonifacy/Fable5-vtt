@@ -9,6 +9,53 @@ czytany na starcie każdej sesji został listą zadań, a nie archiwum ustaleń.
 inaczej, niż mówi podręcznik, albo gdy dotykasz wymienionego tu kodu. Jeśli któraś z tych decyzji
 przestanie się bronić, przenieś ją stąd do `POMYSLY.md` jako zadanie — nie odwrotnie.
 
+## Handel i pieniądze po weryfikacji Ról (etap 71e, 16.11.2026)
+
+Bramka MG z 15.11 (G20–G23, G25, G26, P6) — rozstrzygnięcia bez pytań:
+
+- **Druga strona targu (G20, FIX-01)** — przy ladzie handlarza suma to CHA (efektywna) +
+  Handel + Znajomości **z karty handlarza**, liczona przez serwer; poza sklepem sumę wpisuje
+  MG na kartę Fixera („Daj graczowi”), a **jeden rzut ją zużywa** (wygrany czy przegrany).
+  Gracz nie podaje liczby wcale; MG rzucający za Fixera z karty podaje ją od ręki. Suma ma
+  sufit pola MG (30).
+- **Jeden rzut na ladę do transakcji** — po rzucie przy ladzie (`counterHaggle`) drugi rzut
+  u tego samego handlarza dopiero po transakcji z nim; inaczej rzucałoby się do skutku. Porzucenie
+  targu przez gracza nie zdejmuje rzutu (zdejmuje MG). Targ dobity przy ladzie działa **tylko
+  u tego handlarza**; targ z sumą od MG — wszędzie (Kompendium, salon aut, każdy sklep).
+- **Handlarz-Fixer urywa przy skupie (FIX-14, FAQ)** — handlarz z kartą ze Znajomościami płaci
+  przy skupie 10% mniej (Znajomości 1–8) albo 20% (9–10), dopóki sprzedający nie wygra z nim
+  rzutu spornego przy ladzie; wygrana daje „cenę bazową” (skup handlarza bez cięcia). Rzucić
+  może każdy („poziom Znajomości, jeśli masz”); u handlarza bez Znajomości rzut bez targu
+  odmawia `NOTHING_TO_HAGGLE`. Druga połowa FAQ (Fixer odsprzedaje drożej, pośrednictwo
+  z godzinową stawką) zostaje przy stole.
+- **Targ procentowy przy sprzedaży (G21, FIX-04)** — „sprzedajesz o 10% drożej albo kupujesz
+  o 10% taniej”: w jednej transakcji okna „Wymiana” targ idzie na stronę, która **waży więcej
+  w ed** (skup liczony po cięciu handlarza-Fixera; remis — zakup). Podwyżka i cięcie w dół.
+- **Szósta sztuka gratis (G22, FIX-05)** — jedna darmowa sztuka najdroższej pozycji koszyka
+  z co najmniej sześcioma sztukami („kupując 5 lub więcej, szóstą dostajesz za darmo” —
+  jedna, nie co szósta). Targ, którego koszyk nie używa, zostaje na karcie.
+- **Pół teraz, pół za miesiąc (G23, FIX-06)** — tylko w oknie „Wymiana” (Kompendium i salon
+  aut liczą dalej same procenty). Luksusowe = sztuka od 5000 ed ceny półki (pasmo Luksusowe
+  s. 342 bez mnożnika domowego); połowa w dół idzie na **ratę na karcie** z terminem tego samego
+  dnia miesiąc później w kalendarzu świata (31.01 → koniec lutego). Spłata — właściciel albo
+  MG, gotówką z karty, także po terminie; umorzenie — tylko MG. **Po terminie** przemiatanie
+  zegara oznacza ratę jako zaległą, **zamyka targ na zawsze** (`halfLaterClosed`) i pisze MG;
+  pieniędzy samo nie pobiera — co robi wierzyciel, rozstrzyga MG. Najwyżej 12 rat naraz.
+- **Lojalność na zamknięciu sesji (G25)** — każda droga końca sesji (MG, zegar, administrator):
+  ponad 10 → 10 samo (KOR-12); pracownik bez dodatniej zmiany z tabeli w tej sesji dostaje
+  **propozycję −1 dla MG** (KOR-13: „−1” przyjmuje wierszem „Brak wzrostu…”, „Pomiń” — wzrost
+  był przy stole), ujemna Lojalność — przypomnienie o odejściu (KOR-14), zwalnia dalej MG.
+  Jeden wiersz `gmaction` na Korpo. Wzrost liczy się od poprzedniego zamknięcia, więc zmiana
+  między sesjami idzie na konto następnej. Przycisk „Koniec sesji” przy pracowniku zniknął.
+- **Następca (G26, KOR-15)** — zaznaczenie „Następca (200 ed)” przy zatrudnieniu: Lojalność 1
+  i 200 ed z karty Korpo (wpis w historii), odmowa `NOT_ENOUGH_EDDIES` przed kośćmi HR.
+  Kto jest następcą, mówi gracz (VTT nie pamięta odejść).
+- **Pracownik staje obok Korpo (P6, KOR-S1)** — przy zatrudnieniu, na **aktywnej scenie**,
+  jeśli stoi na niej figura Korpo (najbliższe wolne pole); bez niej figurę stawia MG z listy
+  „Postacie”, jak dotąd.
+- **Targ przy ladzie i spłata raty działają między sesjami** w sklepach oznaczonych przez MG
+  (`BETWEEN_SESSIONS_EVENTS`) — te same pieniądze co `merchant:deal` i przelewy.
+
 ## Praca Twórcy i kriopompa (etap 71d2, 16.11.2026)
 
 Bramka MG z 15.11 (G13, G19) — rozstrzygnięcia bez pytań:
@@ -1361,6 +1408,9 @@ test; zdanie po polsku istnieje dla klienta, który by o tej blokadzie nie wiedz
   których projekt nie prowadzi (hurt, raty, wynagrodzenie za Zlecenie). Stoją w menu, bo Fixer
   wybiera z sześciu, a menu z dwoma po cichu przepisałoby Rolę (ta sama decyzja, co przy
   Ulepszaniu z 30b).
+  **Nieaktualne od 16.11.2026 (etap 71e):** VTT liczy cztery — procenty także przy sprzedaży,
+  szóstą sztukę i ratę za miesiąc; prozą zostają +20% dla Ekipy i podwójna zapłata — sekcja
+  „Handel i pieniądze po weryfikacji Ról”.
 
 - **Etap 30d — Zasięg na szczeblu 5–6 dziedziczy pasmo z niższego.** Ramka „ZNAJOMOŚCI –
   POZIOMY 5 I 6" jako jedyna **nie drukuje kategorii cenowej**: w jej miejscu stoi Nocny.

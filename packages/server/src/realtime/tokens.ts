@@ -527,8 +527,12 @@ export async function createCharacterToken(
   scene: Scene,
   character: Character,
   completeCreation = false,
+  /** Etap 71e (P6): stań obok tego punktu (pracownik przy Korpo), a nie przy starcie sceny. */
+  near: { x: number; y: number } | null = null,
 ): Promise<Token> {
-  const spot = await freeSpot(deps.ctx.prisma, scene);
+  const spot = near
+    ? (await freeSpotsNear(deps.ctx.prisma, scene, near, 1))[0]!
+    : await freeSpot(deps.ctx.prisma, scene);
   const token = await deps.ctx.prisma.$transaction(async (tx) => {
     const created = await tx.token.create({
       data: {

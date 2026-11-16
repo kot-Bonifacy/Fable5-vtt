@@ -236,8 +236,11 @@ export interface CharacterTeamLoyaltyPayload {
   changeId?: string;
   /** Roll the Test („MG musi rzucić 1k6") rather than change the number. */
   test?: boolean;
-  /** „jeśli na koniec sesji wynosi powyżej 10" — the between-sessions trim. */
-  endSession?: boolean;
+  /**
+   * Etap 71e (G25): MG pomija propozycję −1 po sesji bez wzrostu (przyjmuje ją
+   * wierszem tabeli `neglect`). Ścięcie do 10 robi samo zamknięcie sesji.
+   */
+  dismissNeglect?: boolean;
   /** Let them go: the row leaves the roster, the sheet stays. */
   dismiss?: boolean;
 }
@@ -266,10 +269,29 @@ export interface CharacterHagglePayload {
    * the GM for three separate numbers would be asking three times for one.
    */
   opponentBonus?: number;
+  /**
+   * Etap 71e (G20): targ przy ladzie tego handlarza — sumę drugiej strony liczy
+   * serwer z jego karty. Bez dealId — sam rzut sporny (nie-Fixer przy
+   * handlarzu-Fixerze, FIX-14).
+   */
+  merchantId?: string;
+  /**
+   * Etap 71e (G20): MG podaje sumę drugiej strony do targu poza sklepem
+   * (`haggleOpponent` na karcie); `null` ją zdejmuje. Nic nie rzuca.
+   */
+  opponent?: { bonus: number; label?: string } | null;
   /** Dice gesture, so the roll lands on chat like any other (stage 08). */
   gesture?: RollGesture;
   /** Drop the bargain waiting on the sheet; no roll, no card. */
   clear?: boolean;
+}
+
+/** Etap 71e (G23): spłata albo umorzenie raty „pół teraz, pół za miesiąc”. */
+export interface CharacterDebtPayload {
+  characterId: string;
+  debtId: string;
+  /** `pay` — właściciel albo MG z karty; `forgive` — tylko MG. */
+  action: 'pay' | 'forgive';
 }
 
 /**

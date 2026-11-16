@@ -6,6 +6,7 @@ import type {
   VehicleUpgradeBuyPayload,
 } from '@vtt/shared';
 import {
+  cpredHaggleDiscountAt,
   CPRED_VEHICLE_DAMAGE,
   LEDGER_KIND_LABELS,
   ROLE_GM,
@@ -105,7 +106,9 @@ async function payAtCounter(
   const card = await tx.character.findUnique({ where: { id: buyerId } });
   if (!card || card.campaignId !== campaignId) throw new RealtimeError('CHARACTER_NOT_FOUND');
   const data = parseCharacterData(card.data, deps.ctx.cpred);
-  const struck = data.haggle && data.haggle.discount > 0 ? data.haggle : null;
+  // Etap 71e: targ dobity przy innej ladzie tu nie działa.
+  const discount = cpredHaggleDiscountAt(data.haggle, counter?.merchantId ?? null);
+  const struck = discount > 0 ? data.haggle : null;
   const quote = quoteOf({
     ...(counter ? { priceMul: counter.priceMul } : {}),
     discount: struck?.discount ?? 0,

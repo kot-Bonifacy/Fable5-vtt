@@ -20,6 +20,14 @@ import { isPharmaceuticalId } from './pharma.js';
 import { CPRED_AMMO_PATTERNS, cpredAmmoPatternCounted, type CpredAmmoPattern } from './ammo.js';
 import { readCpredWoundSuspension, type CpredWoundSuspension } from './woundsuspension.js';
 import { readCpredCryo, readCpredCryoUsed, type CpredCryoState } from './cryo.js';
+import {
+  readCpredCounterHaggle,
+  readCpredDebts,
+  readCpredHaggleOpponent,
+  type CpredCounterHaggle,
+  type CpredDebt,
+  type CpredHaggleOpponent,
+} from './haggling.js';
 import { cpredEmptyChems, isCpredDrugId, readCpredChems, type CpredChems } from './drugs.js';
 // Type-only the other way round: `roleability.ts` reads this file's sheet type,
 // so only its values travel here — the same bargain `creation.ts` makes above.
@@ -1126,6 +1134,24 @@ export interface CpredCharacterData {
    */
   haggle: CpredHaggleStruck | null;
   /**
+   * Etap 71e (G20): suma drugiej strony targu podana przez MG (poza sklepem).
+   * Pisze ją MG przez `character:haggle` (`opponent`), zużywa jeden rzut.
+   */
+  haggleOpponent: CpredHaggleOpponent | null;
+  /**
+   * Etap 71e (G20, FIX-14): wynik rzutu spornego przy ladzie handlarza —
+   * blokuje drugi rzut u niego do transakcji, wygrana zdejmuje cięcie skupu
+   * handlarza-Fixera. Pisze `character:haggle`, zdejmuje `merchant:deal`.
+   */
+  counterHaggle: CpredCounterHaggle | null;
+  /**
+   * Etap 71e (G23, FIX-06): raty „pół teraz, pół za miesiąc”. Pisze je
+   * wyłącznie silnik (`merchant:deal`, `character:debt`, przemiatanie zegara).
+   */
+  debts: CpredDebt[];
+  /** Etap 71e (G23): niespłacona rata zamknęła targ „pół teraz, pół za miesiąc” na zawsze. */
+  halfLaterClosed: boolean;
+  /**
    * Etap 71c1 (NOM-14): broń, którą Rodzina podarowała przy pierwszym
    * Stanowisku bardzo ciężkiej broni (id wpisu Kompendium). Pisze ją wyłącznie
    * `character:fleet-gift`; raz wzięta — „kolejne bronie Nomada musi zdobyć
@@ -1438,6 +1464,10 @@ export function createDefaultCharacterData(): CpredCharacterData {
     team: [],
     fleet: [],
     haggle: null,
+    haggleOpponent: null,
+    counterHaggle: null,
+    debts: [],
+    halfLaterClosed: false,
     fleetGift: null,
     cryoPumpGranted: false,
     cryo: null,
@@ -2156,6 +2186,13 @@ function collectCharacterDataPatch(
   // A struck bargain never arrives by patch — `character:update` refuses one
   // that carries it — but an old sheet read back from the database does.
   if ('haggle' in input) patch.haggle = readCpredHaggle(input.haggle);
+  // Etap 71e: cztery pola handlu pisze wyłącznie silnik — `character:update`
+  // odmawia łaty z nimi; tu tylko czytniki, które przyjmą starą kartę.
+  if ('haggleOpponent' in input)
+    patch.haggleOpponent = readCpredHaggleOpponent(input.haggleOpponent);
+  if ('counterHaggle' in input) patch.counterHaggle = readCpredCounterHaggle(input.counterHaggle);
+  if ('debts' in input) patch.debts = readCpredDebts(input.debts);
+  if ('halfLaterClosed' in input) patch.halfLaterClosed = input.halfLaterClosed === true;
   if ('fleetGift' in input) {
     patch.fleetGift =
       typeof input.fleetGift === 'string' &&

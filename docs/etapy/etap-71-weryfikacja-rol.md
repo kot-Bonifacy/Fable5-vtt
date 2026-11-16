@@ -301,6 +301,22 @@ płyn 150 ed za ładunek (moduły `cryo.ts`, `realtime/cryo.ts`, `CryoPump.tsx`)
 prozą. Bez migracji. Rozstrzygnięcia — `decyzje-i-uproszczenia.md` („Praca Twórcy
 i kriopompa”), umowy na górze `postac` i `czas`; E2E `t71-technik` (+2), `t71-medyk` (+1).
 
+**Wynik 71e (16.11.2026) ✅.** Handel i pieniądze (nowe moduły `systems/cpred/haggling.ts`,
+`teamloyalty.ts`, `realtime/debts.ts`, `exchange/CounterHaggle.tsx`). G20 (FIX-01, FIX-14):
+druga strona targu przy ladzie to karta handlarza (CHA + Handel + Znajomości, liczy serwer),
+poza sklepem sumę podaje MG („Daj graczowi”, jeden rzut ją zużywa); jeden rzut na ladę do
+transakcji; handlarz-Fixer urywa przy skupie 10% / 20%, dopóki sprzedający nie wygra z nim rzutu
+(„Targuj się o cenę skupu”); targ dobity przy ladzie działa tylko u niej. G21 (FIX-04): procent
+na cięższą stronę koszyka (zakup albo sprzedaż). G22 (FIX-05): szósta sztuka gratis. G23
+(FIX-06): „pół teraz, pół za miesiąc” — rata na karcie z terminem miesiąca kalendarza, „Spłać”
+/ „Umorz” (MG), po terminie targ zamknięty na zawsze i wiersz dla MG. G25 (KOR-12…14):
+zamknięcie sesji ścina Lojalność do 10, proponuje MG −1 pracownikom bez wzrostu („−1” /
+„Pomiń”) i przypomina o odejściu. G26 (KOR-15): „Następca (200 ed)” pobiera opłatę z karty.
+P6 (KOR-S1): pracownik staje obok figury Korpo na aktywnej scenie. Bez migracji.
+Rozstrzygnięcia — `decyzje-i-uproszczenia.md` („Handel i pieniądze po weryfikacji Ról”), umowy
+na górze `postac` i `ekwipunek`; testy `haggling.test.ts`, `teamloyalty.test.ts`,
+`trade71e.test.ts`; E2E `t71-fixer` (+2), `t71-korpo` (+2).
+
 Poza etapem 71: **G24 Nocny Targ — osobny etap** (`POMYSLY.md`), NOM-02 / NOM-03 — etap 72,
 STR-12 — po etapie 72, KOR-04 — tylko z abonamentem Trauma Team.
 

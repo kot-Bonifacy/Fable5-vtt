@@ -1,5 +1,43 @@
 # Dziennik sesji — archiwum
 
+### Sesja 15.11 (piąta) — etap 71d1: walka i leczenie
+
+**Zrobione (czeka na wdrożenie, bez migracji — nowe pola w JSON-ie karty i karty rzutu):**
+
+- **G12 (TEC-05)** — łata Prowizorki niesie terminy rundy i zegara świata
+  (`fieldRepair.expiresAtRound/expiresAtMinute`), puszcza w przemiataniach efektów
+  (`expireSheetStatEffects` → „Efekty wygasły: … Prowizorka puściła: …”); koniec łaty —
+  `cpredFieldRepairEnded` (OB sprzed łaty albo niższe, ślad zostaje), także guzik.
+- **G14–G16 (TEC-12, TEC-13, TEC-14, TEC-16, TEC-17)** — nowy `systems/cpred/itemupgrade.ts`:
+  czwarte gniazdo broni (`CPRED_WEAPON_SLOTS_CEILING` = 4, `WEAPON_ATTACHMENTS_MAX` = 4), gniazdo
+  deku przy podpięciu (`CpredCyberdeck.upgrade`), gniazdo opcji wszczepu bazowego, gniazdo
+  w broni egzotycznej, jakość Doskonała, „do ukrycia”, UC znalezionego wszczepu −1k6 przy
+  montażu. Odczyt broni: `cpredUpgradedWeapon` w planerze ataku i montażu dodatków (serwer),
+  w podglądzie ataku i na karcie (klient). **Stempel wpisuje dziś MG** menu „Ulepszenie…”
+  przy przedmiocie (`ItemUpgrade.tsx`; gracz `ITEM_LOCKED`) — Test Technika to G13 w 71d2.
+- **G17 (MED-12, MED-13)** — limit „raz dziennie” był egzekwowany od 59b (audyt przeoczył);
+  dopisany test Turbo uzdrawiacza.
+- **G18 (MED-16)** — Łatanie (1 min) i Leczenie (4 h) proponują MG zegar na każdej próbie,
+  partia farmaceutyków — godzinę (`RollResult.clock`).
+- **G40 (MED-09)** — „Wytwórz” czeka na potwierdzenie autozapisu (`characterSaved` w
+  `socket.ts`), karta „Wytworzone: 2 dawki” (`cpredDosesLabel`).
+- **G41 (SOL-05, SOL-11)** — panel Zmysłu Walki „−1 obrażeń” / „+1” zamiast „1. próg”, kubek
+  obrażeń „… +2 Wykrycie słabości”.
+- Panel Twórcy przy dziesięciu sposobach Ulepszania pisze, co VTT liczy samo (`vtt` w
+  `CPRED_ITEM_UPGRADES`, zamiast `effect`). Rozstrzygnięcia: `decyzje-i-uproszczenia.md`
+  („Walka i leczenie po weryfikacji Ról”, dopiski przy czterech starych wpisach), macierz
+  (TEC-05, TEC-12, TEC-13, TEC-16, MED-12, MED-13, MED-16, SOL-05, SOL-11 → ✅; TEC-14, TEC-17 →
+  🟡), umowy na górze `postac`, `czas`, `karta`.
+
+Testy: `shared` 3129 (nowy `itemupgrade.test.ts`, 18), serwer 1825/1825 (nowe w
+`specialties`, `recovery`, `cyberware`, `attacks`), klient 515; `tsc` czterech pakietów i lint
+zmienionych plików czyste; `pnpm test:e2e t71-technik t71-medyk t71-solo t71-nomada` — 31/31
+(Technik +2, Medyk +1, Solo — asercja G41; pierwsza próba padła na asercji tekstu czatu bez
+otwartej zakładki „Czat” — poprawione w specyfikacji). **Oglądano w Firefoksie** (gracz:
+plakietka „⚙ Jakość Doskonała” z dymkiem, panel Zmysłu Walki) i **w Chromium** (MG: menu
+„Ulepszenie…” pod znalezionym Cyberokiem) — tymczasowa specyfikacja zrzutów usunięta.
+`specs/99-zapomnij/` to dalej cudze tymczasowe oględziny z 14.11 — poza commitem.
+
 ### Sesja 15.11 (czwarta) — etap 71c2: naprawa i montaż Technikiem
 
 **Zrobione (czeka na wdrożenie, bez migracji — nowe pola w JSON-ie karty, auta i karty rzutu):**

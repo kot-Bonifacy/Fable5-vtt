@@ -27,6 +27,7 @@ import type {
   CpredStatEffect,
   CpredWoundSuspension,
 } from '@vtt/shared';
+import { markDebtsOverdue } from './debts.js';
 import {
   CPRED_HOUR_S,
   CPRED_STAT_EFFECTS_MAX,
@@ -239,6 +240,9 @@ async function expireOne(
   character: Character,
   clock: CpredEffectClock,
 ): Promise<SweptSheet | null> {
+  // Etap 71e (G23): raty „pół teraz, pół za miesiąc” po terminie — ten sam
+  // zegar świata, osobny wiersz dla MG (pieniądze to nie sprawa całego stołu).
+  character = await markDebtsOverdue(deps, campaignId, character, clock.minutes);
   const result = expireSheetStatEffects(character, deps.ctx.cpred, clock);
   if (!result) return null;
   let saved = await deps.ctx.prisma.character.update({

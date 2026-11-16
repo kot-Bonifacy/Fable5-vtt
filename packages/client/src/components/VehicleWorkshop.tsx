@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import {
+  cpredHaggleDiscountAt,
   CPRED_VEHICLE_DAMAGE,
   CPRED_VEHICLE_UPGRADE_BUY_PROBLEMS,
   cpredHaggledPrice,
@@ -36,10 +37,10 @@ export function useCharacterVehicles(characterId: string): VehicleView[] {
 }
 
 /** Targ Fixera i portfel karty — cena przycisku liczy się tak samo jak na serwerze. */
-function useWallet(characterId: string) {
+function useWallet(characterId: string, merchantId: string | null) {
   const card = useCharacterStore((s) => s.characters[characterId]);
-  const discount =
-    card?.data.haggle && card.data.haggle.discount > 0 ? card.data.haggle.discount : 0;
+  // Etap 71e: targ dobity przy innej ladzie tu nie działa.
+  const discount = cpredHaggleDiscountAt(card?.data.haggle, merchantId);
   return { card, discount, wallet: card?.data.eddies ?? 0 };
 }
 
@@ -139,7 +140,7 @@ export function VehicleUpgradeOffer({
   merchantId?: string;
   blockedHint?: string | null;
 }) {
-  const { card, discount, wallet } = useWallet(characterId);
+  const { card, discount, wallet } = useWallet(characterId, merchantId ?? null);
   const price = cpredHaggledPrice(listed, discount);
   const upgrade = cpredVehicleUpgrade(upgradeId);
   const problem =
@@ -227,7 +228,7 @@ export function VehicleRepairOffer({
   priceMul: number;
   blockedHint?: string | null;
 }) {
-  const { card, discount, wallet } = useWallet(characterId);
+  const { card, discount, wallet } = useWallet(characterId, merchantId ?? null);
   const quote = cpredVehicleRepairQuote(readCpredVehicle(vehicle.system), { priceMul, discount });
   const price = quote?.price ?? 0;
   const hint =

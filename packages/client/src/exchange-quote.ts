@@ -80,6 +80,8 @@ export function merchantQuote(
     buyBackPct: view.buyBackPct,
     merchantCash: view.cash,
     ctx,
+    merchantId: view.id,
+    ...(view.saleCut !== undefined ? { saleCut: view.saleCut } : {}),
   });
 }
 

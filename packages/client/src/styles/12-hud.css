@@ -2016,6 +2016,39 @@ body:has(.dice-cup--moved) .hud-foot {
   width: auto;
 }
 
+/* Etap 71e (G25): propozycja −1 po sesji bez wzrostu i „odchodzi” — tylko u MG. */
+.team-neglect {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.72rem;
+  color: var(--text-dim);
+}
+
+.team-neglect button {
+  min-width: 1.6rem;
+  padding: 0.05rem 0.3rem;
+  line-height: 1.3;
+}
+
+.team-leaving {
+  color: var(--accent);
+  font-size: 0.72rem;
+}
+
+.team-replacement {
+  display: flex;
+  align-items: center;
+  gap: 0.2rem;
+  font-size: 0.75rem;
+}
+
+.team-hire .team-replacement input {
+  flex: none;
+  min-width: 0;
+}
+
 .team-gain {
   color: var(--ok);
   font-variant-numeric: tabular-nums;
@@ -2070,9 +2103,27 @@ body:has(.dice-cup--moved) .hud-foot {
   color: var(--text-dim);
 }
 
+.haggle-opponent {
+  flex-wrap: wrap;
+}
+
 .haggle-opponent input {
   width: 4rem;
   text-align: right;
+}
+
+/* Etap 71e: kto jest drugą stroną (MG) — pole tekstowe, nie liczba. */
+.haggle-opponent input.haggle-opponent-label {
+  flex: 1 1 6rem;
+  min-width: 0;
+  min-height: 0;
+  padding: 0.1rem 0.35rem;
+  font-size: 0.75rem;
+  text-align: left;
+}
+
+.haggle-debts {
+  margin-top: 0.4rem;
 }
 
 .haggle-struck {

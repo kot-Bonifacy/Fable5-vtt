@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { cpredHaggledPrice, readCpredVehicle } from '@vtt/shared';
+import { cpredHaggleDiscountAt, cpredHaggledPrice, readCpredVehicle } from '@vtt/shared';
 import { clearNotices, notifyInfo, notifyRefusal } from '../notices.js';
 import { buyVehicle, vehicleBuyErrorText } from '../socket.js';
 import { useCharacterStore } from '../stores/characterStore.js';
@@ -37,8 +37,8 @@ export function VehicleOffer({
   blockedHint?: string | null;
 }) {
   const card = useCharacterStore((s) => s.characters[characterId]);
-  const discount =
-    card?.data.haggle && card.data.haggle.discount > 0 ? card.data.haggle.discount : 0;
+  // Etap 71e: targ dobity przy innej ladzie tu nie działa.
+  const discount = cpredHaggleDiscountAt(card?.data.haggle, merchantId ?? null);
   const price = cpredHaggledPrice(listed, discount);
   const wallet = card?.data.eddies ?? 0;
   // Ile aut tego modelu ta postać już ma (06.11) — drugi zakup ma być świadomy.

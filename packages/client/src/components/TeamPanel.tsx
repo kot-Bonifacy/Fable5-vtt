@@ -1,6 +1,9 @@
 import { useState } from 'react';
 import {
   CPRED_LOYALTY_CHANGES,
+  CPRED_LOYALTY_NEGLECT_ID,
+  CPRED_LOYALTY_REPLACEMENT,
+  CPRED_LOYALTY_REPLACEMENT_FEE,
   CPRED_TEAM_PROFESSIONS,
   CPRED_TEAMWORK_ABILITY,
   cpredLoyaltyTreacherous,
@@ -35,7 +38,11 @@ export function TeamPanel({ characterId }: { characterId: string }) {
   // Lojalność prowadzi MG („MG musi rzucić 1k6", s. 154) — serwer odmawia
   // graczowi `character:team-loyalty`, więc gracz nie dostaje guzików (#75).
   const isGm = useAuthStore((s) => s.user?.role === ROLE_GM);
-  const [hiring, setHiring] = useState<{ professionId: string; name: string } | null>(null);
+  const [hiring, setHiring] = useState<{
+    professionId: string;
+    name: string;
+    replacement: boolean;
+  } | null>(null);
   const [busy, setBusy] = useState(false);
   const [openMember, setOpenMember] = useState<string | null>(null);
 
@@ -52,7 +59,12 @@ export function TeamPanel({ characterId }: { characterId: string }) {
   async function hire(): Promise<void> {
     if (!hiring || hiring.name.trim().length === 0) return;
     setBusy(true);
-    const ok = await hireTeamMember(characterId, hiring.professionId, hiring.name.trim());
+    const ok = await hireTeamMember(
+      characterId,
+      hiring.professionId,
+      hiring.name.trim(),
+      hiring.replacement,
+    );
     setBusy(false);
     if (ok) setHiring(null);
   }
@@ -83,6 +95,15 @@ export function TeamPanel({ characterId }: { characterId: string }) {
               <span className="awareness-name" title={profession?.duty ?? ''}>
                 {name ?? 'Pracownik'}
                 <small className="backup-stats"> {profession?.name ?? member.professionId}</small>
+                {isGm && member.loyalty < 0 && (
+                  <small
+                    className="team-leaving"
+                    title="Ujemna Lojalność na koniec sesji — pracownik odchodzi (s. 154)"
+                  >
+                    {' '}
+                    odchodzi
+                  </small>
+                )}
               </span>
               <span
                 className="awareness-value"
@@ -116,6 +137,35 @@ export function TeamPanel({ characterId }: { characterId: string }) {
                   </button>
                 </span>
               )}
+              {isGm && member.neglectDue && (
+                <span className="team-neglect" data-testid="team-neglect">
+                  Sesja bez wzrostu Lojalności:
+                  <button
+                    type="button"
+                    onClick={() =>
+                      void changeTeamLoyalty(characterId, member.characterId, {
+                        changeId: CPRED_LOYALTY_NEGLECT_ID,
+                      })
+                    }
+                    title="Brak wzrostu Lojalności przez całą sesję (s. 154)"
+                    aria-label={`Odejmij 1 Lojalności: ${name ?? 'pracownik'}`}
+                  >
+                    −1
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      void changeTeamLoyalty(characterId, member.characterId, {
+                        dismissNeglect: true,
+                      })
+                    }
+                    title="Wzrost był przy stole — nie odejmuj"
+                    aria-label={`Pomiń propozycję: ${name ?? 'pracownik'}`}
+                  >
+                    Pomiń
+                  </button>
+                </span>
+              )}
               {open && (
                 <ul className="team-loyalty">
                   {CPRED_LOYALTY_CHANGES.map((change) => (
@@ -137,17 +187,6 @@ export function TeamPanel({ characterId }: { characterId: string }) {
                     </li>
                   ))}
                   <li className="team-loyalty-tail">
-                    <button
-                      type="button"
-                      onClick={() =>
-                        void changeTeamLoyalty(characterId, member.characterId, {
-                          endSession: true,
-                        })
-                      }
-                      title="Koniec sesji: Lojalność powyżej 10 spada do 10"
-                    >
-                      Koniec sesji
-                    </button>
                     <button
                       type="button"
                       onClick={() =>
@@ -187,10 +226,25 @@ export function TeamPanel({ characterId }: { characterId: string }) {
               onChange={(e) => setHiring({ ...hiring, name: e.target.value })}
               aria-label="Imię pracownika"
             />
+            <label
+              className="team-replacement"
+              title={`Następca odchodzącego: Lojalność ${CPRED_LOYALTY_REPLACEMENT}, opłata ${CPRED_LOYALTY_REPLACEMENT_FEE} ed z karty (s. 154)`}
+            >
+              <input
+                type="checkbox"
+                checked={hiring.replacement}
+                onChange={(e) => setHiring({ ...hiring, replacement: e.target.checked })}
+              />
+              Następca ({CPRED_LOYALTY_REPLACEMENT_FEE} ed)
+            </label>
             <button
               type="button"
               onClick={() => void hire()}
-              disabled={busy || hiring.name.trim().length === 0}
+              disabled={
+                busy ||
+                hiring.name.trim().length === 0 ||
+                (hiring.replacement && character.data.eddies < CPRED_LOYALTY_REPLACEMENT_FEE)
+              }
             >
               {busy ? 'HR szuka…' : 'Zatrudnij'}
             </button>
@@ -202,7 +256,13 @@ export function TeamPanel({ characterId }: { characterId: string }) {
           <div className="awareness-buttons">
             <button
               type="button"
-              onClick={() => setHiring({ professionId: CPRED_TEAM_PROFESSIONS[0]!.id, name: '' })}
+              onClick={() =>
+                setHiring({
+                  professionId: CPRED_TEAM_PROFESSIONS[0]!.id,
+                  name: '',
+                  replacement: false,
+                })
+              }
             >
               Poproś HR o pracownika
             </button>

@@ -10,11 +10,14 @@ import type {
 import {
   CPRED_LOYALTY_REPLACEMENT,
   CPRED_LOYALTY_REPLACEMENT_FEE,
+  CPRED_LOYALTY_SESSION_CAP,
   CPRED_TEAM_ARMOR,
   CPRED_TEAM_WEAPON,
   CPRED_TEAMWORK_ABILITY,
   ROLE_GM,
-  cpredLoyaltyAfterSession,
+  cpredTeamAfterSession,
+  cpredTeamMemberChanged,
+  cpredTeamNeglectDismissed,
   cpredLoyaltyChange,
   cpredLoyaltyObeys,
   cpredLoyaltyTreacherous,
@@ -43,8 +46,18 @@ import type { Character } from '../generated/prisma/client.js';
 import { RealtimeError, defineEvent, type RealtimeDeps } from './registry.js';
 import { emitCharacterUpsert, toCharacterView, refuseAwaitingGm } from './character-io.js';
 import { buildCompendiumSync } from './compendium.js';
-import { INCLUDE_CHAT_NAMES, deliverRollMessage, toChatMessageView } from './chat-io.js';
+import {
+  INCLUDE_CHAT_NAMES,
+  deliverChatMessageTo,
+  deliverRollMessage,
+  insertChatMessage,
+  toChatMessageView,
+} from './chat-io.js';
+import { campaignGmUser } from './campaign-gm.js';
 import { createMixedRng } from './dice-rng.js';
+import { applyBalance } from './economy.js';
+import { getActiveScene } from './scenes.js';
+import { createCharacterToken } from './tokens.js';
 
 /**
  * Praca Zespołowa (stage 30c) — the Korpo's team (s. 153–157).
@@ -259,6 +272,13 @@ export const characterTeamHireEvent = defineEvent<CharacterTeamHirePayload, Char
       ? CPRED_LOYALTY_REPLACEMENT
       : cpredStartingLoyalty(loyaltyRoll.total);
 
+    // Etap 71e (G26, KOR-15): następca kosztuje Korpo 200 ed „opłaty
+    // manipulacyjnej” — pobierane z karty, nie dopisywane zdaniem. Odmowa przed
+    // kośćmi i przed kartą pracownika: HR nie przysyła nikogo na kredyt.
+    if (replacement && data.eddies < CPRED_LOYALTY_REPLACEMENT_FEE) {
+      throw new RealtimeError('NOT_ENOUGH_EDDIES');
+    }
+
     const memberData = await teamMemberData(deps, campaignId, profession, stats);
     const member = await deps.ctx.prisma.character.create({
       data: {
@@ -271,6 +291,10 @@ export const characterTeamHireEvent = defineEvent<CharacterTeamHirePayload, Char
       },
     });
     await emitCharacterUpsert(deps, campaignId, toCharacterView(member, deps.ctx.cpred));
+    // Etap 71e (P6, KOR-S1): pracownik staje na mapie obok Korpo — na aktywnej
+    // scenie, jeśli stoi na niej figura pracodawcy. Bez niej figurę stawia MG
+    // z listy „Postacie”, jak dotąd.
+    await placeBesideEmployer(deps, campaignId, employer.id, member);
 
     statsRoll.title = `HR przysyła: ${profession.name}`;
     statsRoll.actor = employer.name;
@@ -280,7 +304,7 @@ export const characterTeamHireEvent = defineEvent<CharacterTeamHirePayload, Char
       detail:
         `wiersz ${statsRoll.total} · Lojalność ${loyalty}` +
         (replacement
-          ? ` (następca — opłata manipulacyjna ${CPRED_LOYALTY_REPLACEMENT_FEE} ed)`
+          ? ` (następca — opłata manipulacyjna ${CPRED_LOYALTY_REPLACEMENT_FEE} ed z karty)`
           : ''),
     };
     const stored = await deps.ctx.prisma.chatMessage.create({
@@ -295,12 +319,59 @@ export const characterTeamHireEvent = defineEvent<CharacterTeamHirePayload, Char
     });
     await deliverRollMessage(deps, campaignId, user.id, toChatMessageView(stored));
 
-    return saveRoster(deps, campaignId, employer, data, [
+    const roster = [
       ...team,
       { characterId: member.id, professionId: profession.id, loyalty, name },
-    ]);
+    ];
+    if (!replacement) return saveRoster(deps, campaignId, employer, data, roster);
+    // Następca: roster i opłata w jednym zapisie karty (`applyBalance` zapisuje
+    // kartę, którą dostaje, i zostawia wiersz w historii).
+    const problem = cpredTeamProblem(
+      roster,
+      cpredRoleAbilityRank(data, deps.ctx.cpred, CPRED_TEAMWORK_ABILITY),
+    );
+    if (problem !== null) throw new RealtimeError(problem);
+    await applyBalance(
+      deps,
+      campaignId,
+      employer,
+      mergeCharacterData(data, { team: roster }),
+      {
+        kind: 'purchase',
+        amount: -CPRED_LOYALTY_REPLACEMENT_FEE,
+        label: `HR: opłata manipulacyjna (następca — ${name})`,
+      },
+      user.id,
+    );
+    const saved = await deps.ctx.prisma.character.findUniqueOrThrow({ where: { id: employer.id } });
+    return toCharacterView(saved, deps.ctx.cpred);
   },
 });
+
+/**
+ * Etap 71e (P6): figura nowego pracownika obok figury Korpo na aktywnej
+ * scenie. Ciche, gdy Korpo nie stoi na mapie — błąd stawiania nie psuje
+ * zatrudnienia (karta już jest).
+ */
+async function placeBesideEmployer(
+  deps: RealtimeDeps,
+  campaignId: string,
+  employerId: string,
+  member: Character,
+): Promise<void> {
+  try {
+    const scene = await getActiveScene(deps.ctx.prisma, campaignId);
+    if (!scene) return;
+    const boss = await deps.ctx.prisma.token.findFirst({
+      where: { sceneId: scene.id, characterId: employerId },
+      select: { x: true, y: true },
+    });
+    if (!boss) return;
+    await createCharacterToken(deps, campaignId, scene, member, false, boss);
+  } catch (error) {
+    deps.log.error({ err: error, characterId: member.id }, 'team member placement failed');
+  }
+}
 
 /**
  * Everything that happens to a Loyalty afterwards (s. 154).
@@ -375,20 +446,33 @@ export const characterTeamLoyaltyEvent = defineEvent<CharacterTeamLoyaltyPayload
       return toCharacterView(employer, deps.ctx.cpred);
     }
 
-    let loyalty = member.loyalty;
-    if (payload?.endSession === true) {
-      loyalty = cpredLoyaltyAfterSession(loyalty);
-    } else {
-      const change = cpredLoyaltyChange(payload?.changeId ?? '');
-      if (!change) throw new RealtimeError('BAD_REQUEST');
-      loyalty = Math.min(CPRED_LOYALTY_MAX, Math.max(CPRED_LOYALTY_MIN, loyalty + change.value));
+    // Etap 71e (G25): propozycja −1 po sesji bez wzrostu — MG ją pomija.
+    if (payload?.dismissNeglect === true) {
+      return saveRoster(
+        deps,
+        campaignId,
+        employer,
+        data,
+        team.map((row) =>
+          row.characterId === member.characterId ? cpredTeamNeglectDismissed(row) : row,
+        ),
+      );
     }
+
+    const change = cpredLoyaltyChange(payload?.changeId ?? '');
+    if (!change) throw new RealtimeError('BAD_REQUEST');
+    const loyalty = Math.min(
+      CPRED_LOYALTY_MAX,
+      Math.max(CPRED_LOYALTY_MIN, member.loyalty + change.value),
+    );
     return saveRoster(
       deps,
       campaignId,
       employer,
       data,
-      team.map((row) => (row.characterId === member.characterId ? { ...row, loyalty } : row)),
+      team.map((row) =>
+        row.characterId === member.characterId ? cpredTeamMemberChanged(row, loyalty, change) : row,
+      ),
     );
   },
 });
@@ -456,5 +540,59 @@ export async function syncTeamMemberName(
       },
     });
     await emitCharacterUpsert(deps, campaignId, toCharacterView(saved, deps.ctx.cpred));
+  }
+}
+
+/**
+ * Etap 71e (G25; KOR-12, KOR-13, KOR-14): zamknięcie sesji przechodzi po
+ * zespołach Korpo kampanii — Lojalność ponad 10 spada do 10 sama, pracownik
+ * bez wzrostu w sesji dostaje propozycję −1 (dla MG), a ujemna Lojalność —
+ * przypomnienie o odejściu. Jeden wiersz dla MG na pracodawcę; gracze go nie
+ * widzą (Lojalność prowadzi MG, #75).
+ */
+export async function closeTeamsForSession(deps: RealtimeDeps, campaignId: string): Promise<void> {
+  const sheets = await deps.ctx.prisma.character.findMany({ where: { campaignId } });
+  const gm = await campaignGmUser(deps.ctx.prisma, campaignId);
+  for (const sheet of sheets) {
+    const data = parseCharacterData(sheet.data, deps.ctx.cpred);
+    if (data.team.length === 0) continue;
+    const closed = cpredTeamAfterSession(data.team);
+    if (closed.changed) {
+      const saved = await deps.ctx.prisma.character.update({
+        where: { id: sheet.id },
+        data: { data: JSON.stringify(mergeCharacterData(data, { team: closed.team })) },
+      });
+      await emitCharacterUpsert(deps, campaignId, toCharacterView(saved, deps.ctx.cpred));
+    }
+    if (!gm) continue;
+    const label = (member: CpredTeamMember) => member.name ?? describeTeamMember(member);
+    const parts = [
+      ...(closed.capped.length > 0
+        ? [
+            `Lojalność ścięta do ${CPRED_LOYALTY_SESSION_CAP}: ` +
+              closed.capped.map((row) => `${label(row.member)} (${row.from})`).join(', '),
+          ]
+        : []),
+      ...(closed.neglect.length > 0
+        ? [
+            'bez wzrostu w tej sesji (propozycja −1 w panelu Pracy Zespołowej): ' +
+              closed.neglect.map(label).join(', '),
+          ]
+        : []),
+      ...(closed.leaving.length > 0
+        ? [
+            'Lojalność ujemna — pracownik odchodzi (s. 154), zwolnij go w panelu: ' +
+              closed.leaving.map((row) => `${label(row)} (${row.loyalty})`).join(', '),
+          ]
+        : []),
+    ];
+    if (parts.length === 0) continue;
+    const message = await insertChatMessage(deps.ctx.prisma, {
+      campaignId,
+      authorId: gm.id,
+      kind: 'gmaction',
+      text: `Koniec sesji — zespół ${sheet.name}: ${parts.join('; ')}.`,
+    });
+    await deliverChatMessageTo(deps, campaignId, message, [], true);
   }
 }

@@ -64,6 +64,8 @@ export * from './vehiclework.js';
 export * from './itemupgrade.js';
 export * from './fabrication.js';
 export * from './cryo.js';
+export * from './haggling.js';
+export * from './teamloyalty.js';
 export * from './initiative.js';
 export * from './treatment.js';
 export * from './recovery.js';

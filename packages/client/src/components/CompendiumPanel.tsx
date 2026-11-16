@@ -9,6 +9,7 @@ import type {
   WeaponTypeDefinition,
 } from '@vtt/shared';
 import {
+  cpredHaggleDiscountAt,
   CPRED_MARTIAL_ARTS_ENTRY_ID,
   cpredIsBareHandsEntry,
   isWeaponEntry,
@@ -491,8 +492,8 @@ function EntryCard({
   // mniej — karta ekonomii mówiła prawdę dopiero po fakcie (znalezione przy
   // oględzinach 30d). Warunek `discount > 0` jest ten sam, co na serwerze:
   // cztery z sześciu targów opisują pieniądze, których projekt nie liczy.
-  const struck = characters[target]?.data.haggle ?? null;
-  const discount = struck && struck.discount > 0 ? struck.discount : 0;
+  // Etap 71e: targ dobity przy ladzie handlarza działa tylko u niego.
+  const discount = cpredHaggleDiscountAt(characters[target]?.data.haggle, null);
   const payable = price === null ? null : cpredHaggledPrice(price, discount);
   const shopTier = useCompendiumStore((s) => s.shopTier);
   const shopTierOverrides = useCompendiumStore((s) => s.shopTierOverrides);

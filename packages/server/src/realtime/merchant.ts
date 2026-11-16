@@ -47,6 +47,14 @@ import {
   cpredMerchantDeal,
   cpredMerchantShelf,
   cpredSheetHpMax,
+  CPRED_HAGGLE_SKILL_ID,
+  CPRED_OPERATOR_ABILITY,
+  cpredCounterBonus,
+  cpredDebtDue,
+  cpredEffectiveStats,
+  cpredMerchantSaleCut,
+  cpredRoleAbilityRank,
+  cpredSkillLevel,
   entryPrice,
   formatEddies,
   isCatalogShopping,
@@ -75,6 +83,7 @@ import { requireCampaignId } from './combat.js';
 import { emitCharacterUpsert, toCharacterView } from './character-io.js';
 import { fetchCustomEntries } from './compendium.js';
 import { applyBalance } from './economy.js';
+import { campaignGameTime } from './gametime.js';
 import { campaignShopTierOverrides } from './shop.js';
 import {
   conditionsOf,
@@ -229,6 +238,27 @@ interface LoadedMerchant {
   closed: MerchantClosedReason | null;
   /** Szyld albo nazwa figury przy stole (alias, umowa `czat`). */
   name: string;
+  /** Etap 71e (FIX-14): cięcie skupu handlarza-Fixera w procentach (0 — nie jest Fixerem). */
+  saleCut: number;
+}
+
+/**
+ * Etap 71e (G20): druga strona targu przy ladzie — CHA + Handel + Znajomości
+ * z karty handlarza (CHA efektywna, jak w każdym Teście).
+ */
+export function merchantCounterSide(
+  deps: RealtimeDeps,
+  data: CpredCharacterData,
+): { cool: number; trading: number; operator: number } {
+  return {
+    cool: cpredEffectiveStats(data).cool,
+    trading: cpredSkillLevel(data, CPRED_HAGGLE_SKILL_ID),
+    operator: cpredRoleAbilityRank(data, deps.ctx.cpred, CPRED_OPERATOR_ABILITY) ?? 0,
+  };
+}
+
+export function merchantCounterBonus(deps: RealtimeDeps, data: CpredCharacterData): number {
+  return cpredCounterBonus(merchantCounterSide(deps, data));
 }
 
 /**
@@ -279,6 +309,9 @@ async function loadMerchant(
     placed,
     closed: merchantClosedReason(settings, keeperCondition(deps, data, placed)),
     name: settings.sign || (figure ? tokenTableName(figure, figure.name) : card.name),
+    saleCut: cpredMerchantSaleCut(
+      cpredRoleAbilityRank(data, deps.ctx.cpred, CPRED_OPERATOR_ABILITY),
+    ),
   };
 }
 
@@ -413,6 +446,7 @@ export function merchantViewFor(
     betweenSessions: merchant.settings.betweenSessions,
     priceMul: merchant.settings.priceMul,
     buyBackPct: merchant.settings.buyBackPct,
+    ...(merchant.saleCut > 0 ? { saleCut: merchant.saleCut } : {}),
     cash: merchant.settings.cashInfinite ? null : merchant.data.eddies,
     assortment: merchant.assortment,
     rows,
@@ -638,6 +672,8 @@ export const merchantDealEvent = defineEvent<MerchantDealPayload, MerchantDealRe
       throw new RealtimeError('BAD_REQUEST');
     }
     const catalog = await shopCatalogFor(deps, campaignId);
+    // Etap 71e (G23): termin raty liczy się od tej chwili zegara świata.
+    const nowMinutes = (await campaignGameTime(prisma, campaignId)).minutes;
 
     const outcome = await withCampaignLock(campaignId, () =>
       prisma.$transaction(async (tx) => {
@@ -676,18 +712,37 @@ export const merchantDealEvent = defineEvent<MerchantDealPayload, MerchantDealRe
           sell,
           ctx: pricing.ctx,
           catalog: pricing.catalog,
+          merchantId: row.id,
+          saleCut: merchant.saleCut,
         });
         if (!deal.ok) throw new RealtimeError(deal.error);
         const { quote } = deal.result;
         if (quote.total !== expectTotal) throw new RealtimeError('QUOTE_CHANGED');
 
-        const paid = quote.buy - quote.haggleOff;
+        const paid = quote.paid;
         const counterparty = merchant.card.id;
+        // Etap 71e (G23): „pół teraz, pół za miesiąc” — druga połowa wisi na
+        // karcie jako rata z terminem miesiąca kalendarza świata.
+        const debts =
+          quote.deferred > 0
+            ? [
+                ...buyerData.debts,
+                {
+                  id: `rata-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`,
+                  creditor: merchant.name,
+                  label: deal.result.bought.map(cpredItemLine).join(', ').slice(0, 160),
+                  amount: quote.deferred,
+                  dueAtMinute: cpredDebtDue(nowMinutes),
+                },
+              ]
+            : buyerData.debts;
         let nextBuyer = mergeCharacterData(buyerData, {
           weapons: deal.result.buyer.weapons,
           armor: deal.result.buyer.armor,
           gear: deal.result.buyer.gear,
           haggle: deal.result.buyer.haggle,
+          counterHaggle: deal.result.buyer.counterHaggle,
+          debts,
         });
         const buyerFlows = [
           { kind: 'purchase' as const, amount: -paid, label: `${merchant.name}: zakup` },
@@ -818,6 +873,8 @@ export async function requireVehicleCounter(
   name: string;
   priceMul: number;
   cashInfinite: boolean;
+  /** Etap 71e: id lady — targ dobity przy niej działa tylko tu. */
+  merchantId: string;
 }> {
   const viewer = viewerOf(socket as never);
   const row = await requireMerchantRow(tx, campaignId, merchantId);
@@ -845,7 +902,33 @@ export async function requireVehicleCounter(
     name: merchant.name,
     priceMul: merchant.settings.priceMul,
     cashInfinite: merchant.settings.cashInfinite,
+    merchantId: row.id,
   };
+}
+
+/**
+ * Etap 71e (G20): lada, przy której się targuje — te same bramki co „Zapłać”
+ * (dostęp, otwarty sklep, zasięg przy figurze). Zwraca handlarza z kartą.
+ */
+export async function requireHaggleCounter(
+  deps: RealtimeDeps,
+  socket: unknown,
+  campaignId: string,
+  merchantId: unknown,
+  buyerCardId: string,
+): Promise<LoadedMerchant> {
+  const db = deps.ctx.prisma;
+  const viewer = viewerOf(socket as never);
+  const row = await requireMerchantRow(db, campaignId, merchantId);
+  if (row.characterId === buyerCardId) throw new RealtimeError('BAD_REQUEST');
+  const merchant = await loadMerchant(deps, row, db);
+  await requireMerchantAccess(db, viewer, merchant);
+  if (merchant.closed) throw new RealtimeError('MERCHANT_CLOSED');
+  if (viewer.atTable && merchant.settings.access === 'reach') {
+    const metres = closestBetween(await placedTokens(db, buyerCardId), merchant.placed);
+    if (metres === null || metres > CPRED_MELEE_REACH_M) throw new RealtimeError('OUT_OF_REACH');
+  }
+  return merchant;
 }
 
 export { withCampaignLock };

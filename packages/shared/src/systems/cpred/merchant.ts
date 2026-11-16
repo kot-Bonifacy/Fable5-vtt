@@ -44,7 +44,13 @@ import {
 } from './inventory.js';
 import { cpredAmmoPiecePrice } from './ammostock.js';
 import { cpredIsBareHandsRow } from './barehands.js';
-import { cpredHaggledPrice } from './roleability.js';
+import {
+  CPRED_DEBTS_MAX,
+  cpredCutPrice,
+  cpredHaggleOnDeal,
+  cpredHaggleUsableAt,
+  type CpredHaggleLine,
+} from './haggling.js';
 import type { PurchasedRow } from './shopping.js';
 
 /** Cena wpisu katalogu po id — serwer i klient podają ją z własnego kompendium. */
@@ -206,6 +212,7 @@ export type CpredMerchantProblemCode =
   | 'ITEM_NOT_FOUND'
   | 'NOT_ENOUGH_EDDIES'
   | 'MERCHANT_NO_CASH'
+  | 'TOO_MANY_DEBTS'
   | 'NOTHING_TO_DEAL';
 
 /** Powód odmowy; `side` i `key` wskazują wiersz, którego dotyczy (brak — całość). */
@@ -218,10 +225,20 @@ export interface CpredMerchantProblem {
 export interface CpredMerchantQuote {
   /** Suma koszyka przed targiem. */
   buy: number;
-  /** Ile zdjął targ Fixera (0 bez targu albo bez zakupów). */
+  /** Ile zdjął targ Fixera (10% / 20% albo szósta sztuka; 0 bez targu). */
   haggleOff: number;
-  /** Suma pola sprzedaży — tyle handlarz płaci. */
+  /** Etap 71e (G23): ile zakupów przechodzi na ratę za miesiąc. */
+  deferred: number;
+  /** Ile kupujący płaci teraz za zakupy: `buy − haggleOff − deferred`. */
+  paid: number;
+  /** Suma pola sprzedaży — tyle handlarz płaci (po cięciu i targu). */
   sell: number;
+  /** Etap 71e (FIX-14): ile urwał przy skupie handlarz-Fixer, z którym nikt nie wygrał. */
+  saleCutOff: number;
+  /** Etap 71e (G21): ile dołożył do sprzedaży targ Fixera. */
+  haggleUp: number;
+  /** Targ zadziałał w tej transakcji — schodzi z karty. */
+  haggleSpent: boolean;
   /** Netto po stronie kupującego: dodatnie płaci, ujemne dostaje. */
   total: number;
   problems: CpredMerchantProblem[];
@@ -238,6 +255,13 @@ export interface CpredMerchantQuoteInput {
   /** Kasa handlarza; `null` — „bez dna”. */
   merchantCash: number | null;
   ctx: CpredPriceContext;
+  /**
+   * Etap 71e: id handlarza — targ dobity przy innej ladzie tu nie działa,
+   * a wygrany rzut sporny przy tej zdejmuje cięcie skupu.
+   */
+  merchantId?: string;
+  /** Etap 71e (FIX-14): procent cięcia skupu handlarza-Fixera (`cpredMerchantSaleCut`). */
+  saleCut?: number;
 }
 
 function rowsOfList(data: CpredCharacterData, list: CpredItemList): CpredItemRow[] {
@@ -248,15 +272,18 @@ function rowsOfList(data: CpredCharacterData, list: CpredItemList): CpredItemRow
  * Wycena koszyka i pola sprzedaży — z listą powodów, dla których nie da się
  * zapłacić. Klient rysuje nią stopkę okna, serwer liczy nią sumę transakcji.
  *
- * Targ Fixera (`haggle`, 30d) zdejmuje procent z **sumy zakupów** tej jednej
- * transakcji — „w czasie jednej transakcji można dobić tylko jednego targu”
- * (ta sama zasada co `economy:buy`). Sprzedaży nie dotyczy.
+ * Targ Fixera (`haggle`, 30d) działa na jedną transakcję — „w czasie jednej
+ * transakcji można dobić tylko jednego targu” (ta sama zasada co
+ * `economy:buy`). Od 71e: procent idzie na cięższą stronę koszyka (zakup albo
+ * sprzedaż), szósta sztuka i rata liczą się z koszyka, a handlarz-Fixer urywa
+ * przy skupie (`saleCut`), dopóki sprzedający nie wygra z nim rzutu.
  */
 export function cpredMerchantQuote(input: CpredMerchantQuoteInput): CpredMerchantQuote {
   const { shelf, buyer, buy, sell, buyBackPct, merchantCash, ctx } = input;
   const problems: CpredMerchantProblem[] = [];
   let buySum = 0;
 
+  const haggleLines: CpredHaggleLine[] = [];
   const seen = new Set<string>();
   for (const line of buy) {
     const key = merchantRowKey(line.list, line.rowId);
@@ -283,6 +310,7 @@ export function cpredMerchantQuote(input: CpredMerchantQuoteInput): CpredMerchan
       continue;
     }
     buySum += row.price * line.qty;
+    haggleLines.push({ price: row.price, qty: line.qty });
   }
 
   let sellSum = 0;
@@ -323,9 +351,26 @@ export function cpredMerchantQuote(input: CpredMerchantQuoteInput): CpredMerchan
     sellSum += piece * qty;
   }
 
-  const discount = buyer.haggle && buyer.haggle.discount > 0 ? buyer.haggle.discount : 0;
-  const buyNet = buySum > 0 ? cpredHaggledPrice(buySum, discount) : 0;
-  const total = buyNet - sellSum;
+  // Etap 71e (FIX-14): handlarz-Fixer urywa przy skupie, dopóki sprzedający
+  // nie wygra z nim rzutu spornego przy tej ladzie.
+  const merchantId = input.merchantId ?? null;
+  const counterWon =
+    merchantId !== null &&
+    buyer.counterHaggle?.merchantId === merchantId &&
+    buyer.counterHaggle.won;
+  const saleCut = counterWon ? 0 : Math.max(0, input.saleCut ?? 0);
+  const sellCut = cpredCutPrice(sellSum, saleCut);
+  // Targ Fixera (30d, 71e): jeden na transakcję — procent na cięższą stronę,
+  // szósta sztuka albo rata (`cpredHaggleOnDeal`).
+  const haggle = cpredHaggleOnDeal(
+    cpredHaggleUsableAt(buyer.haggle, merchantId),
+    haggleLines,
+    sellCut,
+    { halfLaterClosed: buyer.halfLaterClosed },
+  );
+  const paid = buySum - haggle.buyOff - haggle.deferred;
+  const sellNet = sellCut + haggle.sellUp;
+  const total = paid - sellNet;
 
   if (buy.length === 0 && sell.length === 0) problems.push({ code: 'NOTHING_TO_DEAL' });
   if (total > 0 && buyer.eddies < total) problems.push({ code: 'NOT_ENOUGH_EDDIES' });
@@ -333,7 +378,22 @@ export function cpredMerchantQuote(input: CpredMerchantQuoteInput): CpredMerchan
     problems.push({ code: 'MERCHANT_NO_CASH' });
   }
 
-  return { buy: buySum, haggleOff: buySum - buyNet, sell: sellSum, total, problems };
+  if (haggle.deferred > 0 && buyer.debts.length >= CPRED_DEBTS_MAX) {
+    problems.push({ code: 'TOO_MANY_DEBTS' });
+  }
+
+  return {
+    buy: buySum,
+    haggleOff: haggle.buyOff,
+    deferred: haggle.deferred,
+    paid,
+    sell: sellNet,
+    saleCutOff: sellSum - sellCut,
+    haggleUp: haggle.sellUp,
+    haggleSpent: haggle.spent,
+    total,
+    problems,
+  };
 }
 
 /* ------------------------------------------------------------------ *
@@ -354,6 +414,9 @@ export interface CpredMerchantDealInput {
   /** Wiersze z asortymentu kompendium — te same, które pokazała półka. */
   catalog?: readonly PurchasedRow[];
   makeId?: () => string;
+  /** Etap 71e — jak w `CpredMerchantQuoteInput`. */
+  merchantId?: string;
+  saleCut?: number;
 }
 
 export type CpredMerchantDealError = CpredMerchantProblemCode | 'TOO_MANY_ROWS';
@@ -401,6 +464,8 @@ export function cpredMerchantDeal(
     buyBackPct: input.buyBackPct,
     merchantCash: input.cashInfinite ? null : input.merchant.eddies,
     ctx: input.ctx,
+    ...(input.merchantId !== undefined ? { merchantId: input.merchantId } : {}),
+    ...(input.saleCut !== undefined ? { saleCut: input.saleCut } : {}),
   });
   const problem = quote.problems[0];
   if (problem) return { ok: false, error: problem.code };
@@ -459,13 +524,19 @@ export function cpredMerchantDeal(
     return { ok: false, error: 'TOO_MANY_ROWS' };
   }
 
-  // Targ znika w tym samym zapisie, który go wydał (umowa `economy:buy`, 30d).
-  const haggleSpent = quote.buy > 0 && (input.buyer.haggle?.discount ?? 0) > 0;
+  // Targ znika w tym samym zapisie, który go wydał (umowa `economy:buy`, 30d),
+  // a rzut sporny przy tej ladzie — z każdą transakcją u niej (71e).
   const buyer = cpredWithItemLists(input.buyer, buyerLists);
+  const counterDone =
+    input.merchantId !== undefined && input.buyer.counterHaggle?.merchantId === input.merchantId;
   return {
     ok: true,
     result: {
-      buyer: haggleSpent ? { ...buyer, haggle: null } : buyer,
+      buyer: {
+        ...buyer,
+        ...(quote.haggleSpent ? { haggle: null } : {}),
+        ...(counterDone ? { counterHaggle: null } : {}),
+      },
       merchant: cpredWithItemLists(input.merchant, merchantLists),
       overlays,
       quote,
@@ -485,6 +556,7 @@ export const CPRED_MERCHANT_PROBLEM_TEXTS: Record<CpredMerchantDealError, string
   ITEM_NOT_FOUND: 'Tej rzeczy nie ma już na twojej karcie.',
   NOT_ENOUGH_EDDIES: 'Nie stać cię na to.',
   MERCHANT_NO_CASH: 'Handlarza nie stać na tyle.',
+  TOO_MANY_DEBTS: 'Na karcie wisi już za dużo rat — spłać którąś.',
   NOTHING_TO_DEAL: 'Koszyk i pole sprzedaży są puste.',
   TOO_MANY_ROWS: 'Na karcie nie zmieści się więcej wierszy.',
 };

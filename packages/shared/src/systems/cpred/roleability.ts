@@ -2147,6 +2147,16 @@ export interface CpredTeamMember {
    * kept in step by the server when the GM renames the sheet.
    */
   name?: string;
+  /**
+   * Etap 71e (G25, KOR-13): Lojalność wzrosła w tej sesji. Ustawia każda
+   * dodatnia zmiana z tabeli, zdejmuje zamknięcie sesji.
+   */
+  grew?: true;
+  /**
+   * Etap 71e (G25): sesja zamknęła się bez wzrostu — propozycja −1 czeka na
+   * MG (zastosuj albo pomiń), automatu nie ma.
+   */
+  neglectDue?: true;
 }
 
 /** The longest name a roster row keeps — the same cap a sheet's name has. */
@@ -2185,6 +2195,8 @@ export function readCpredTeam(raw: unknown): CpredTeamMember[] {
       professionId: row.professionId,
       loyalty: Math.min(CPRED_LOYALTY_MAX, Math.max(CPRED_LOYALTY_MIN, loyalty)),
       ...(name.length > 0 ? { name } : {}),
+      ...(row.grew === true ? { grew: true as const } : {}),
+      ...(row.neglectDue === true ? { neglectDue: true as const } : {}),
     });
   }
   return team.slice(0, CPRED_TEAM_MAX);
@@ -2747,6 +2759,11 @@ export interface CpredHaggleStruck {
   discount: number;
   /** Arytmetyka rzutu, dla dymka przy chipie: „19 vs 14". */
   note: string;
+  /**
+   * Etap 71e (G20): targ dobity przy ladzie tego handlarza — działa tylko
+   * u niego. Brak — targ z sumą od MG, działa wszędzie (jak od 30d).
+   */
+  merchantId?: string;
 }
 
 export function readCpredHaggle(raw: unknown): CpredHaggleStruck | null {
@@ -2758,10 +2775,17 @@ export function readCpredHaggle(raw: unknown): CpredHaggleStruck | null {
     typeof input.discount === 'number' && Number.isFinite(input.discount)
       ? Math.max(0, Math.min(100, Math.round(input.discount)))
       : (deal.discount ?? 0);
+  const merchantId =
+    typeof input.merchantId === 'string' &&
+    input.merchantId.length > 0 &&
+    input.merchantId.length <= 64
+      ? input.merchantId
+      : undefined;
   return {
     dealId: deal.id,
     discount,
     note: typeof input.note === 'string' ? input.note.slice(0, 120) : '',
+    ...(merchantId !== undefined ? { merchantId } : {}),
   };
 }
 

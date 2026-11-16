@@ -61,6 +61,10 @@ export const BETWEEN_SESSIONS_EVENTS: ReadonlySet<string> = new Set([
   'merchant:list',
   'merchant:view',
   'merchant:deal',
+  // Etap 71e: targ przy ladzie oznaczonego sklepu i spłata raty — te same
+  // pieniądze, co `merchant:deal` i `economy:transfer`.
+  'character:haggle',
+  'character:debt',
   // Kreator postaci z rzutami kreatora (04.10) — zgoda MG obowiązuje dalej.
   'creation:permit-state',
   'creation:request',

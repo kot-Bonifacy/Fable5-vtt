@@ -1,6 +1,7 @@
 import type {
   CharacterHagglePayload,
   CharacterView,
+  CpredCharacterData,
   RollOpposedMeta,
   RollResult,
 } from '@vtt/shared';
@@ -15,6 +16,7 @@ import {
   cpredRoleAbilityRank,
   mergeCharacterData,
   parseCharacterData,
+  readCpredHaggleOpponent,
   rollFormula,
   cpredSheetWoundCondition,
   cpredWoundPenaltyRows,
@@ -25,29 +27,34 @@ import { emitCharacterUpsert, toCharacterView, refuseAwaitingGm } from './charac
 import { INCLUDE_CHAT_NAMES, deliverRollMessage, toChatMessageView } from './chat-io.js';
 import { sanitizeGesture } from './chat.js';
 import { createMixedRng } from './dice-rng.js';
+import { merchantCounterBonus, requireHaggleCounter } from './merchant.js';
 
 /**
  * Targowanie się — the Fixer's Znajomości in the one place they touch money
- * (stage 30d, s. 159).
+ * (stage 30d, s. 159; stage 71e, G20).
  *
  * „Gdy z kimś się targujesz, rzucasz CHA + Handel + Poziom Zdolności Specjalnej
  * Znajomości + 1k10 przeciw rzutowi przeciwnika: CHA + Handel + jego Znajomości
  * (jeśli jest Fixerem) + 1k10."
  *
- * Three things follow from that sentence and shape this whole file:
+ * What follows from that sentence and shapes this whole file:
  *
- *  - **Both sides roll here.** The other side of a haggle is a shopkeeper, a
- *    Fixer across town, a corpo buyer — fiction, not a sheet on this table. So
- *    the GM names one number (their CHA + Handel + Znajomości) and the d10 falls
- *    on the server, next to the Fixer's own. Asking for the three parts
- *    separately would be asking three times for one answer.
+ *  - **Both sides roll here.** Od 71e druga strona ma liczbę z prawdziwego
+ *    źródła: przy ladzie handlarza to jego karta (CHA + Handel + Znajomości,
+ *    `merchantCounterBonus`), poza sklepem — suma, którą MG wpisał na kartę
+ *    Fixera (`haggleOpponent`, zużywa ją jeden rzut). Gracz sam jej nie wpisuje
+ *    — w 71b targ wygrywał się z drugą stroną „0”.
  *  - **A win is stored, not announced.** „Jeśli rzut ci się udał, możesz dobić
  *    jednego targu o poziomie Znajomości lub niższym" — the bargain outlives
- *    the roll, so it goes onto the sheet and the next purchase spends it. That
- *    is why this is an event and not a `character:roll` kind.
+ *    the roll, so it goes onto the sheet and the next transaction spends it.
+ *    Targ dobity przy ladzie działa tylko u tego handlarza.
  *  - **One at a time.** „W czasie jednej transakcji można dobić tylko jednego
- *    targu", so the sheet holds one struck bargain; a second win overwrites it,
- *    which is what a Fixer who haggled again would expect.
+ *    targu", so the sheet holds one struck bargain, and one roll per counter
+ *    until a transaction there (`counterHaggle`) — inaczej rzucałoby się do
+ *    skutku.
+ *  - **Nie-Fixer też rzuca przy ladzie handlarza-Fixera** (FAQ, FIX-14): bez
+ *    targu, „poziom Znajomości (jeśli masz)” to 0, a wygrana zdejmuje cięcie
+ *    skupu.
  *
  * Ties go to the other side, like every other opposed test in this project.
  */
@@ -81,31 +88,84 @@ export const characterHaggleEvent = defineEvent<
     const data = parseCharacterData(character.data, deps.ctx.cpred);
     const rank = cpredRoleAbilityRank(data, deps.ctx.cpred, CPRED_OPERATOR_ABILITY);
 
+    // Etap 71e (G20): MG podaje sumę drugiej strony do targu poza sklepem.
+    // Nic nie rzuca — rzuca potem Fixer, a rzut ją zużywa.
+    if (payload?.opponent !== undefined) {
+      if (!isGm) throw new RealtimeError('FORBIDDEN');
+      if (rank === null) throw new RealtimeError('NO_ABILITY');
+      const opponent = payload.opponent === null ? null : readCpredHaggleOpponent(payload.opponent);
+      if (payload.opponent !== null && opponent === null) throw new RealtimeError('BAD_VALUE');
+      const view = await saveSheet(deps, campaign.id, character.id, data, {
+        haggleOpponent: opponent,
+      });
+      return { won: false, dealId: null, character: view };
+    }
+
     // 21.10.2026: targ to zakupy, a w walce się nie kupuje (zrzucenie niżej
     // przechodzi zawsze).
     if (payload?.clear !== true) await refuseInCombat(deps.ctx.prisma, campaign.id, user);
 
     // Dropping the bargain is free and rolls nothing: a Fixer who used the deal
-    // at the table rather than in the shop has to be able to say so.
+    // at the table rather than in the shop has to be able to say so. Rzut przy
+    // ladzie zostaje (blokuje drugi u tego handlarza) — zdejmuje go transakcja
+    // albo MG.
     if (payload?.clear === true) {
-      const cleared = await saveHaggle(deps, campaign.id, character.id, data, null);
-      return { won: false, dealId: null, character: cleared };
+      const view = await saveSheet(deps, campaign.id, character.id, data, {
+        haggle: null,
+        ...(isGm ? { counterHaggle: null } : {}),
+      });
+      return { won: false, dealId: null, character: view };
     }
 
-    const opponentBonus =
-      typeof payload?.opponentBonus === 'number' ? Math.round(payload.opponentBonus) : 0;
-    const problem = cpredHaggleProblem(rank, payload?.dealId, opponentBonus);
-    if (problem !== null) throw new RealtimeError(problem);
-    const deal = cpredHaggleDeal(payload!.dealId!)!;
+    // Lada handlarza (G20, FIX-01, FIX-14): druga strona to jego karta.
+    const atCounter = typeof payload?.merchantId === 'string' && payload.merchantId.length > 0;
+    const merchant = atCounter
+      ? await requireHaggleCounter(deps, socket, campaign.id, payload!.merchantId, character.id)
+      : null;
+    if (merchant && data.counterHaggle?.merchantId === merchant.row.id) {
+      throw new RealtimeError('ALREADY_HAGGLED');
+    }
+
+    const wantsDeal = typeof payload?.dealId === 'string';
+    let opponentBonus: number;
+    let opponentName = '';
+    let spendsOpponent = false;
+    if (merchant) {
+      opponentBonus = merchantCounterBonus(deps, merchant.data);
+      opponentName = merchant.name;
+      // Bez targu rzut przy ladzie ma sens tylko u handlarza-Fixera (FAQ).
+      if (!wantsDeal && merchant.saleCut === 0) throw new RealtimeError('NOTHING_TO_HAGGLE');
+    } else if (rank === null) {
+      // Poza ladą targuje się tylko Fixer — bez Zdolności nie ma o co pytać MG.
+      throw new RealtimeError('NO_ABILITY');
+    } else if (isGm && typeof payload?.opponentBonus === 'number') {
+      // MG rzuca za Fixera z karty i podaje liczbę od ręki.
+      opponentBonus = Math.round(payload.opponentBonus);
+    } else if (data.haggleOpponent) {
+      opponentBonus = data.haggleOpponent.bonus;
+      opponentName = data.haggleOpponent.label;
+      spendsOpponent = true;
+    } else {
+      throw new RealtimeError('NO_OPPONENT');
+    }
+
+    const deal = wantsDeal || !merchant ? cpredHaggleDeal(String(payload?.dealId ?? '')) : null;
+    if (wantsDeal || !merchant) {
+      const problem = cpredHaggleProblem(rank, payload?.dealId, opponentBonus);
+      if (problem !== null) throw new RealtimeError(problem);
+    }
+    if (deal?.id === 'halfLater' && data.halfLaterClosed) throw new RealtimeError('DEAL_CLOSED');
 
     // CHA is the effective one (stage 23a) — a Fixer who sold Empathy to a
     // ripperdoc haggles with what is left, the same as on every other Check.
     const cool = cpredEffectiveStats(data).cool;
     const trading = cpredSkillLevel(data, CPRED_HAGGLE_SKILL_ID);
+    // „poziom Znajomości (jeśli masz)” — nie-Fixer rzuca bez niego (FAQ).
+    const operator = rank ?? 0;
     // Kara za rany razem ze Stymem i Edytorem bólu — te same wiersze co w Teście.
     const woundRows = cpredWoundPenaltyRows(cpredSheetWoundCondition(data));
     const wound = woundRows.reduce((sum, row) => sum + row.value, 0);
-    const bonus = cool + trading + rank! + wound;
+    const bonus = cool + trading + operator + wound;
 
     const gesture = sanitizeGesture(payload?.gesture);
     const rng = createMixedRng(gesture?.entropy);
@@ -143,33 +203,41 @@ export const characterHaggleEvent = defineEvent<
     );
 
     const won = mine.total > theirs.total;
-    mine.title = `Targowanie się: ${deal.name}`;
+    const title = deal ? `Targowanie się: ${deal.name}` : 'Targowanie się przy ladzie';
+    const versus = `${mine.total} vs ${theirs.total}`;
+    mine.title = title;
     mine.actor = character.name;
     mine.breakdown = [
       { label: 'CHA', value: cool, kind: 'stat' },
       { label: trading > 0 ? 'Handel' : 'Handel (nietrenowany)', value: trading, kind: 'skill' },
-      { label: `${CPRED_OPERATOR_ABILITY} ${rank}`, value: rank!, kind: 'skill' },
+      ...(rank !== null
+        ? [{ label: `${CPRED_OPERATOR_ABILITY} ${rank}`, value: rank, kind: 'skill' as const }]
+        : []),
       ...woundRows,
     ];
     const system: HaggleCardSystem = {
-      dealId: deal.id,
-      dealName: deal.name,
+      dealId: deal?.id ?? '',
+      dealName: deal?.name ?? '',
       fixerTotal: mine.total,
       opponentTotal: theirs.total,
     };
+    const side = opponentName ? `${opponentName}: ` : 'druga strona: ';
     const opposed: RollOpposedMeta = {
       system,
-      label: `Targowanie się: ${deal.name}`,
-      detail: `${mine.total} vs ${theirs.total} (druga strona: ${opponentBonus} + 1k10)`,
+      label: title,
+      detail: `${versus} (${side}${opponentBonus} + 1k10)`,
       won,
     };
     mine.opposed = opposed;
+    const cutText = merchant && merchant.saleCut > 0 ? ` — skup u niego −${merchant.saleCut}%` : '';
     mine.outcome = {
       success: won,
-      label: won ? 'Targ dobity' : 'Nie tym razem',
+      label: won ? (deal ? 'Targ dobity' : 'Cena bazowa') : 'Nie tym razem',
       detail: won
-        ? deal.text
-        : `${mine.total} vs ${theirs.total} — remis też przegrywa, targuje się druga strona`,
+        ? deal
+          ? deal.text
+          : `${merchant!.name} skupi od ciebie bez urywania.`
+        : `${versus} — remis też przegrywa, targuje się druga strona${cutText}`,
     };
     if (gesture && gesture.strength > 0) mine.tossStrength = gesture.strength;
     if (gesture?.toss) mine.toss = gesture.toss;
@@ -179,39 +247,43 @@ export const characterHaggleEvent = defineEvent<
         campaignId: campaign.id,
         authorId: user.id,
         kind: 'roll',
-        text: `Targowanie się: ${deal.name}`,
+        text: title,
         payload: JSON.stringify(mine),
       },
       include: INCLUDE_CHAT_NAMES,
     });
     await deliverRollMessage(deps, campaign.id, user.id, toChatMessageView(stored));
 
-    const view = await saveHaggle(
-      deps,
-      campaign.id,
-      character.id,
-      data,
-      won
+    const struck =
+      won && deal
         ? {
             dealId: deal.id,
             discount: deal.discount ?? 0,
-            note: `${mine.total} vs ${theirs.total}`,
+            note: versus,
+            ...(merchant ? { merchantId: merchant.row.id } : {}),
           }
-        : null,
-    );
-    return { won, dealId: won ? deal.id : null, character: view };
+        : null;
+    const patch: Partial<CpredCharacterData> = {
+      // Nowy targ nadpisuje stary — jeden na kartę. Przegrana go nie zdejmuje:
+      // nie umówiłeś się na nic nowego, stary dalej czeka.
+      ...(struck ? { haggle: struck } : {}),
+      ...(merchant ? { counterHaggle: { merchantId: merchant.row.id, won, note: versus } } : {}),
+      ...(spendsOpponent ? { haggleOpponent: null } : {}),
+    };
+    const view = await saveSheet(deps, campaign.id, character.id, data, patch);
+    return { won, dealId: struck ? deal!.id : null, character: view };
   },
 });
 
-/** Writes the struck bargain (or clears it) and pushes the sheet out. */
-async function saveHaggle(
+/** Zapisuje pola targu na karcie i rozsyła ją. */
+async function saveSheet(
   deps: RealtimeDeps,
   campaignId: string,
   characterId: string,
-  data: Parameters<typeof mergeCharacterData>[0],
-  haggle: { dealId: string; discount: number; note: string } | null,
+  data: CpredCharacterData,
+  patch: Partial<CpredCharacterData>,
 ): Promise<CharacterView> {
-  const merged = mergeCharacterData(data, { haggle });
+  const merged = mergeCharacterData(data, patch);
   const saved = await deps.ctx.prisma.character.update({
     where: { id: characterId },
     data: { data: JSON.stringify(merged) },

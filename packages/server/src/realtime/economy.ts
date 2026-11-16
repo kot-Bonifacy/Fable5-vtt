@@ -15,6 +15,7 @@ import type {
   SessionUser,
 } from '@vtt/shared';
 import {
+  cpredHaggleDiscountAt,
   CPRED_AMMO_PACKS_MAX,
   EDDIES_MAX,
   ITEM_ROWS_MAX,
@@ -279,7 +280,8 @@ export const economyBuyEvent = defineEvent<EconomyBuyPayload, { balance: number 
     // Only the two deals with a percentage reach this far; the other four
     // describe money this project does not have and sit on the sheet until the
     // Fixer drops them by hand.
-    const struck = data.haggle && data.haggle.discount > 0 ? data.haggle : null;
+    // Etap 71e: targ dobity przy ladzie handlarza działa tylko u niego.
+    const struck = cpredHaggleDiscountAt(data.haggle, null) > 0 ? data.haggle : null;
     const price = struck ? cpredHaggledPrice(listed, struck.discount) : listed;
 
     const resolved =

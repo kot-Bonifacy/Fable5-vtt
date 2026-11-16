@@ -179,6 +179,7 @@ import {
 import { backupResolveEvent } from './backup.js';
 import { characterTeamHireEvent, characterTeamLoyaltyEvent } from './team.js';
 import { characterHaggleEvent } from './haggle.js';
+import { characterDebtEvent } from './debts.js';
 import {
   characterAdvanceEvent,
   characterRoleChangeEvent,
@@ -481,6 +482,7 @@ export const EVENTS: RealtimeEvent<never, unknown>[] = [
   characterTeamHireEvent,
   characterTeamLoyaltyEvent,
   characterHaggleEvent,
+  characterDebtEvent,
   characterCombatAwarenessEvent,
   characterFieldRepairEvent,
   characterDeleteEvent,

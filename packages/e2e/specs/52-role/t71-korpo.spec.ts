@@ -1,11 +1,14 @@
 import type { Locator } from '@playwright/test';
 import { expect, test, type Actor } from '../../fixtures/actors.ts';
 import { queryOne } from '../../fixtures/db.ts';
-import { characterId } from '../../fixtures/nocna-zmiana.ts';
+import { campaignId, characterId } from '../../fixtures/nocna-zmiana.ts';
 import {
+  CELL,
   ROLES,
   cardData,
+  gmSocket,
   lastMessageId,
+  messagesAfter,
   rollAfter,
   seatRole,
   startFromRoleStart,
@@ -15,17 +18,22 @@ import { closeSheet, openSheet } from '../../fixtures/walka.ts';
 import { pendingDice, scriptDice } from '../../instance/instance.ts';
 
 /**
- * Etap 71b — Korpo, Praca Zespołowa (s. 153–157), stan dzisiejszy. Wiersze
- * macierzy: KOR-02, KOR-05, KOR-06, KOR-08, KOR-09, KOR-11, KOR-18.
- * Lojalność po zamknięciu sesji (KOR-12…14) to klik MG przy pracowniku albo ❌.
+ * Etap 71b — Korpo, Praca Zespołowa (s. 153–157). Wiersze macierzy: KOR-02,
+ * KOR-05, KOR-06, KOR-08, KOR-09, KOR-11, KOR-18; od 71e także KOR-S1 (P6:
+ * pracownik staje obok Korpo), KOR-15 (G26: następca za 200 ed z karty)
+ * i KOR-12…14 (G25: zamknięcie sesji ścina Lojalność, proponuje −1
+ * i przypomina o odejściu).
  */
 
 const EXEC = ROLES.exec;
 const WORKER = 'Marta Kowalczyk';
 type Sheet = {
-  team: { characterId: string; loyalty: number; name?: string }[];
+  team: { characterId: string; loyalty: number; name?: string; neglectDue?: boolean }[];
   lifestyle: { housing: string } | null;
+  eddies: number;
 };
+const tokenAt = (id: string) =>
+  queryOne<{ x: number; y: number }>('SELECT x, y FROM Token WHERE characterId = ?', id);
 const sheet = () => cardData<Sheet>(EXEC.card);
 
 test.describe.serial('@szybkie T71 Korpo — Praca Zespołowa', () => {
@@ -57,6 +65,13 @@ test.describe.serial('@szybkie T71 Korpo — Praca Zespołowa', () => {
     )!;
     expect(worker.name).toBe(WORKER);
     expect(worker.ownerId, 'pracownikiem steruje MG').toBeNull();
+    // P6 (KOR-S1): figura pracownika staje na mapie obok figury Korpo.
+    const boss = tokenAt(characterId(EXEC.card))!;
+    await expect.poll(() => tokenAt(member.characterId)).not.toBeUndefined();
+    const placed = tokenAt(member.characterId)!;
+    expect(Math.max(Math.abs(placed.x - boss.x), Math.abs(placed.y - boss.y))).toBeLessThanOrEqual(
+      CELL,
+    );
     expect(
       Object.keys((JSON.parse(worker.data) as { skills: object }).skills).length,
     ).toBeGreaterThan(5);
@@ -103,6 +118,57 @@ test.describe.serial('@szybkie T71 Korpo — Praca Zespołowa', () => {
     await card.getByRole('button', { name: 'Ekwipunek', exact: true }).click();
     await card.getByLabel('Zakwaterowanie').selectOption('corpoConapt');
     await expect.poll(() => sheet().lifestyle?.housing).toBe('corpoConapt');
+    for (const actor of [mg, filip]) expect(actor.unexpectedErrors(), actor.name).toEqual([]);
+  });
+
+  test('KOR-15 G26 następca odchodzącego: Lojalność 1 i 200 ed z karty Korpo', async () => {
+    const gm = await gmSocket();
+    await emitAck(gm, 'economy:adjust', { characterId: characterId(EXEC.card), balance: 1000 });
+    expect(
+      await emitAck(gm, 'character:team-loyalty', {
+        characterId: characterId(EXEC.card),
+        memberId: sheet().team[0]!.characterId,
+        dismiss: true,
+      }),
+    ).toMatchObject({ ok: true });
+    gm.disconnect();
+    await expect.poll(() => sheet().team.length).toBe(0);
+    card = await openSheet(filip, EXEC.card);
+    await card.getByRole('button', { name: 'Karta', exact: true }).click();
+    await panel().getByRole('button', { name: 'Poproś HR o pracownika' }).click();
+    await panel().getByLabel('Imię pracownika').fill('Następca');
+    await panel()
+      .getByLabel(/Następca \(200 ed\)/)
+      .check();
+    await panel().getByRole('button', { name: 'Zatrudnij' }).click();
+    await expect.poll(() => sheet().team.length, { timeout: 20_000 }).toBe(1);
+    expect(sheet().team[0]!.loyalty).toBe(1);
+    expect(sheet().eddies).toBe(800);
+  });
+
+  test('KOR-12 KOR-13 KOR-14 G25 koniec sesji: propozycja −1 dla MG, przypomnienie o odejściu', async () => {
+    const since = lastMessageId();
+    const gm = await gmSocket();
+    expect(await emitAck(gm, 'session:end', { campaignId: campaignId() })).toMatchObject({
+      ok: true,
+    });
+    gm.disconnect();
+    await expect.poll(() => sheet().team[0]?.neglectDue).toBe(true);
+    await expect
+      .poll(() =>
+        messagesAfter(since)
+          .map((m) => m.text)
+          .join(' | '),
+      )
+      .toContain('Koniec sesji — zespół Krawat');
+    const gmCard = await openSheet(mg, EXEC.card);
+    const gmPanel = gmCard.locator('[data-sheet-panel="team"]');
+    await expect(gmPanel.getByTestId('team-neglect')).toContainText('Sesja bez wzrostu');
+    await gmPanel.getByRole('button', { name: 'Odejmij 1 Lojalności: Następca' }).click();
+    // 1 − 1 = 0: przy zerze pracownik czynnie zdradza, „odchodzi” dopiero poniżej.
+    await expect.poll(() => sheet().team[0]!.loyalty).toBe(0);
+    expect(sheet().team[0]!.neglectDue).toBeUndefined();
+    await expect(gmPanel.getByTestId('team-neglect')).toHaveCount(0);
     for (const actor of [mg, filip]) expect(actor.unexpectedErrors(), actor.name).toEqual([]);
   });
 });

@@ -27,6 +27,7 @@ import { refreshLuckForSession } from './characters.js';
 import { recordSessionEnd, recordSessionPlayer, recordSessionStart } from '../session-log.js';
 import { notifyAdmins } from './admin-room.js';
 import { endCampaignSneaks } from './sneak.js';
+import { closeTeamsForSession } from './team.js';
 
 /**
  * Sesje i sloty (etap 44c).
@@ -349,6 +350,12 @@ export async function endSession(
   );
   // Skradanie (etap 61, decyzja MG 5) kończy się z sesją.
   await endCampaignSneaks(deps, campaignId);
+  // Etap 71e (G25): Lojalność zespołów Korpo na koniec sesji.
+  try {
+    await closeTeamsForSession(deps, campaignId);
+  } catch (error) {
+    deps.log.warn({ err: error, campaignId }, 'team loyalty at session end failed');
+  }
   // Koniec sesji przekazuje AI następnej uprawnionej (44d).
   await deps.ctx.ai.refresh();
   const campaign = await prisma.campaign.findUniqueOrThrow({ where: { id: campaignId } });

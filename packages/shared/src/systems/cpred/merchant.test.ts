@@ -174,10 +174,21 @@ describe('wycena koszyka', () => {
       merchantCash: 500,
       ctx,
     });
-    expect(quote).toEqual({ buy: 120, haggleOff: 0, sell: 50, total: 70, problems: [] });
+    expect(quote).toEqual({
+      buy: 120,
+      haggleOff: 0,
+      deferred: 0,
+      paid: 120,
+      sell: 50,
+      saleCutOff: 0,
+      haggleUp: 0,
+      haggleSpent: false,
+      total: 70,
+      problems: [],
+    });
   });
 
-  it('targ Fixera zdejmuje procent wyłącznie z zakupów', () => {
+  it('targ procentowy idzie na cięższą stronę koszyka — tu zakup (71e, G21)', () => {
     const buyer = sheet({
       ...kowal(),
       haggle: { dealId: 'percent10', discount: 10, note: '19 vs 14' },
@@ -192,6 +203,7 @@ describe('wycena koszyka', () => {
       ctx,
     });
     expect(quote.haggleOff).toBe(12);
+    expect(quote.haggleUp).toBe(0);
     expect(quote.total).toBe(108 - 50);
   });
 
@@ -360,9 +372,16 @@ describe('transakcja', () => {
     const result = deal({ buyer, buy: [{ list: 'gear', rowId: 'g-stim', qty: 1 }] });
     if (!result.ok) throw new Error(result.error);
     expect(result.result.buyer.haggle).toBeNull();
+    // Od 71e (G21) targ procentowy działa też przy samej sprzedaży — i też znika.
     const selling = deal({ buyer, sell: [{ list: 'weapons', rowId: 'w-pistol' }] });
     if (!selling.ok) throw new Error(selling.error);
-    expect(selling.result.buyer.haggle).not.toBeNull();
+    expect(selling.result.quote.haggleUp).toBe(5);
+    expect(selling.result.buyer.haggle).toBeNull();
+    // Targ, którego koszyk nie używa (szósta sztuka bez sześciu sztuk), zostaje.
+    const sixth = sheet({ ...kowal(), haggle: { dealId: 'sixthFree', discount: 0, note: '' } });
+    const kept = deal({ buyer: sixth, buy: [{ list: 'gear', rowId: 'g-stim', qty: 1 }] });
+    if (!kept.ok) throw new Error(kept.error);
+    expect(kept.result.buyer.haggle).not.toBeNull();
   });
 
   it('limit wierszy liczy się na stanie końcowym', () => {

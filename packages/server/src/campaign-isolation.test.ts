@@ -680,6 +680,8 @@ const CASES: Record<string, Case> = {
   'grapple:resist': foreign((a) => ({ messageId: a.messageId })),
   'grapple:action': foreign((a) => ({ combatantId: a.combatantId, kind: 'release' })),
   'character:haggle': foreign((a) => ({ characterId: a.characterId })),
+  // raty „pół teraz, pół za miesiąc” (etap 71e): spłata cudzej karty
+  'character:debt': foreign((a) => ({ characterId: a.characterId, debtId: 'x', action: 'pay' })),
   // handouts
   'handout:list': own('handouty kampanii gniazda'),
   'handout:upsert': foreign((a) => ({ id: a.handoutId, title: 'x', body: 'x' })),

@@ -23,6 +23,7 @@ import { useExchangeStore } from '../../stores/exchangeStore.js';
 import { InlineNotice } from '../NoticeColumn.js';
 import { VehicleOffer } from '../VehicleOffer.js';
 import { MerchantWorkshop } from '../VehicleWorkshop.js';
+import { CounterHaggle } from './CounterHaggle.js';
 import { useExchangeDrag } from './drag.js';
 import { ItemGrid, countLabel, useGridSelection, useItemTile, type GridTile } from './ItemGrid.js';
 import { formatEd, itemKey } from './items.js';
@@ -356,7 +357,16 @@ export function MerchantPane({ anchorId, merchantId }: { anchorId: string; merch
     ...new Set(problems.map((problem) => CPRED_MERCHANT_PROBLEM_TEXTS[problem.code])),
   ];
   const empty = buyLines.length === 0 && sellRefs.length === 0;
-  const paid = quote ? quote.buy - quote.haggleOff : 0;
+  const paid = quote ? quote.paid : 0;
+  // Etap 71e: co targ i handlarz-Fixer zrobili z tą transakcją.
+  const haggleNotes = quote
+    ? [
+        quote.haggleOff > 0 ? `targ: −${formatEd(quote.haggleOff)}` : '',
+        quote.haggleUp > 0 ? `targ: +${formatEd(quote.haggleUp)} za sprzedaż` : '',
+        quote.deferred > 0 ? `rata za miesiąc: ${formatEd(quote.deferred)}` : '',
+        quote.saleCutOff > 0 ? `handlarz-Fixer urywa ${formatEd(quote.saleCutOff)}` : '',
+      ].filter((note) => note !== '')
+    : [];
 
   return (
     <>
@@ -554,11 +564,24 @@ export function MerchantPane({ anchorId, merchantId }: { anchorId: string; merch
       />
 
       <div className="trade-footer">
+        <CounterHaggle
+          anchorId={anchorId}
+          merchantId={merchantId}
+          merchantName={view.name}
+          saleCut={view.saleCut ?? 0}
+          blockedHint={
+            inCombat
+              ? COMBAT_LOCKED_HINT
+              : closed
+                ? `${MERCHANT_CLOSED_LABELS[closed]} — handlarz się nie targuje.`
+                : null
+          }
+        />
         {quote && !empty && (
           <p className="exchange-total" data-testid="exchange-total">
             Płacisz {formatEd(paid)} · dostajesz {formatEd(quote.sell)} · razem{' '}
             {signed(quote.total)} · zostanie {formatEd(wallet - quote.total)}
-            {quote.haggleOff > 0 ? ` (targ Fixera: −${formatEd(quote.haggleOff)})` : ''}
+            {haggleNotes.length > 0 ? ` (${haggleNotes.join(' · ')})` : ''}
           </p>
         )}
         {problemTexts.length > 0 && (

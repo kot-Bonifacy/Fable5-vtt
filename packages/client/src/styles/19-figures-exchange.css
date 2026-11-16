@@ -560,6 +560,25 @@
   padding: 0 0.7rem 0.9rem;
 }
 
+/* Etap 71e: targowanie się przy ladzie — wybór targu i przycisk w jednym rzędzie. */
+.counter-haggle {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.counter-haggle-row {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+
+.counter-haggle-row select {
+  min-width: 0;
+  flex: 0 1 14rem;
+}
+
 /* Duch przeciąganej rzeczy — nad wszystkim i przezroczysty dla trafień, bo
    `elementFromPoint` ma pod nim znaleźć pole wymiany. */
 .trade-drag-ghost {

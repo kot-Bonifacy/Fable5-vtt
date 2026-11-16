@@ -5,6 +5,7 @@ import {
   CPRED_HAGGLE_SKILL_ID,
   CPRED_OPERATOR_ABILITY,
   CPRED_OPERATOR_TIERS,
+  ROLE_GM,
   cpredAbilityTiersUpTo,
   cpredHaggleDeal,
   cpredHaggleDeals,
@@ -13,33 +14,45 @@ import {
   cpredRoleAbilityRank,
   readCpredHaggle,
   cpredSkillLevel,
+  formatGameDate,
+  type CpredHaggleDeal,
 } from '@vtt/shared';
 import { clearNotices, notifyInfo } from '../notices.js';
-import { dropHaggle, strikeHaggle } from '../socket.js';
+import { dropHaggle, setHaggleOpponent, settleDebt, strikeHaggle } from '../socket.js';
+import { useAuthStore } from '../stores/authStore.js';
 import { useCharacterStore } from '../stores/characterStore.js';
 import { COMBAT_LOCKED_HINT, useCombatLocked } from '../stores/combatStore.js';
+import { formatEd } from './exchange/items.js';
 import { NumberStepper } from './NumberStepper.js';
 
 /**
- * Znajomości Fixera (etap 30d, s. 159–161).
+ * Znajomości Fixera (etap 30d, s. 159–161; etap 71e).
  *
- * Trzy części ramki mają w VTT trzy różne wagi i panel tego nie ukrywa:
- *
- *  - **Zasięg** i **Wazeliniarz** to proza dla stołu. Sklep z 23b rządzi się
- *    poziomem odblokowanym przez MG (mechanizm kampanii, nie RAW), a Zasięg go
- *    nie przebija — decyzja MG z 30.08, zapisana w `decyzje-i-uproszczenia.md`.
- *  - **Targowanie się** jest jedyną częścią, którą VTT liczy do końca: udany
- *    rzut przeciwstawny odkłada targ na kartę, a najbliższy zakup zdejmuje
- *    z ceny 10% albo 20%. Pozostałe cztery targi stoją w menu jako zapis dla
- *    stołu, bo opisują pieniądze, których projekt nie prowadzi.
- *
- * Modyfikator drugiej strony to jedno pole, a nie trzy: sprzedawca jest fikcją,
- * więc MG podaje sumę CHA + Handel + Znajomości, a kość spada na serwerze.
+ *  - **Zasięg** i **Wazeliniarz** to proza dla stołu (decyzja MG z 30.08,
+ *    potwierdzona na bramce 15.11): żadna postać nie sięga ponad poziom
+ *    sklepu kampanii.
+ *  - **Targowanie się** liczy VTT. Od 71e druga strona ma liczbę z prawdziwego
+ *    źródła: przy ladzie handlarza — z jego karty (przycisk w oknie
+ *    „Wymiana”), poza sklepem — sumę wpisuje tu MG, a jeden rzut gracza ją
+ *    zużywa. Targ procentowy działa na zakup albo sprzedaż, szósta sztuka
+ *    i rata „pół teraz, pół za miesiąc” — w koszyku sklepu.
+ *  - **Raty** wiszą na karcie z terminem; niespłacona zamyka targ na zawsze.
  */
+
+/** Co targ robi w VTT — drobny dopisek przy pozycji menu. */
+function dealNote(deal: CpredHaggleDeal): string {
+  if (deal.discount !== undefined) return `−${deal.discount}% zakup / +${deal.discount}% sprzedaż`;
+  if (deal.id === 'sixthFree') return 'w koszyku sklepu';
+  if (deal.id === 'halfLater') return 'rata w koszyku sklepu';
+  return 'zapis dla stołu';
+}
+
 export function OperatorPanel({ characterId }: { characterId: string }) {
   const character = useCharacterStore((s) => s.characters[characterId] ?? null);
   const registry = useCharacterStore((s) => s.registry);
+  const isGm = useAuthStore((s) => s.user?.role === ROLE_GM);
   const [opponent, setOpponent] = useState(0);
+  const [opponentLabel, setOpponentLabel] = useState('');
   const [busy, setBusy] = useState<string | null>(null);
   const inCombat = useCombatLocked();
 
@@ -53,16 +66,21 @@ export function OperatorPanel({ characterId }: { characterId: string }) {
   const struck = readCpredHaggle(character.data.haggle);
   const struckDeal = struck ? cpredHaggleDeal(struck.dealId) : null;
   const trading = cpredSkillLevel(character.data, CPRED_HAGGLE_SKILL_ID);
+  const given = character.data.haggleOpponent ?? null;
+  const debts = character.data.debts ?? [];
+  const halfLaterClosed = character.data.halfLaterClosed === true;
+  // Gracz rzuca przeciw sumie od MG; MG rzuca od ręki z liczbą z pola.
+  const canRoll = isGm || given !== null;
 
   async function haggle(dealId: string): Promise<void> {
     setBusy(dealId);
     clearNotices('character');
-    const result = await strikeHaggle(characterId, dealId, opponent);
+    const result = await strikeHaggle(characterId, dealId, isGm ? { opponentBonus: opponent } : {});
     setBusy(null);
     if (!result.ok) return;
     notifyInfo(
       result.won
-        ? 'Targ dobity — zejdzie z ceny przy najbliższym zakupie.'
+        ? 'Targ dobity — zadziała przy najbliższej transakcji.'
         : 'Druga strona nie ustąpiła. Remis też przegrywa.',
       { title: 'Znajomości', topic: 'character' },
     );
@@ -80,7 +98,8 @@ export function OperatorPanel({ characterId }: { characterId: string }) {
       {struck && struckDeal && (
         <p className="awareness-derived haggle-struck">
           Dobity targ: <b>{struckDeal.name}</b>
-          {struck.discount > 0 ? ` (−${struck.discount}% od najbliższego zakupu)` : ''}
+          {struck.discount > 0 ? ` (${dealNote(struckDeal)})` : ''}
+          {struck.merchantId ? ' — tylko przy tej ladzie' : ''}
           <button
             type="button"
             className="cp-mini-button"
@@ -93,42 +112,140 @@ export function OperatorPanel({ characterId }: { characterId: string }) {
         </p>
       )}
 
-      <label className="haggle-opponent">
-        <span>Druga strona (CHA + Handel + Znajomości)</span>
-        <NumberStepper
-          min={0}
-          max={CPRED_HAGGLE_OPPONENT_MAX}
-          value={opponent}
-          onChange={setOpponent}
-          label="Modyfikator drugiej strony"
-        />
-      </label>
-
-      <ul className="awareness-list">
-        {cpredHaggleDeals(rank).map((deal) => (
-          <li key={deal.id} className="awareness-row backup-row">
-            <span className="awareness-name" title={deal.text}>
-              {deal.name}
-              <small className="backup-stats">
-                {' '}
-                poziom {deal.level}
-                {deal.discount === undefined ? ' · zapis dla stołu' : ` · −${deal.discount}%`}
-              </small>
-            </span>
-            <span className="awareness-steps">
+      {isGm ? (
+        <div className="haggle-opponent">
+          <span>Druga strona (CHA + Handel + Znajomości)</span>
+          <NumberStepper
+            min={0}
+            max={CPRED_HAGGLE_OPPONENT_MAX}
+            value={opponent}
+            onChange={setOpponent}
+            label="Modyfikator drugiej strony"
+          />
+          <input
+            type="text"
+            className="haggle-opponent-label"
+            value={opponentLabel}
+            maxLength={60}
+            placeholder="kto (opcjonalnie)"
+            aria-label="Kim jest druga strona"
+            onChange={(event) => setOpponentLabel(event.target.value)}
+          />
+          <button
+            type="button"
+            className="cp-mini-button"
+            title="Gracz targuje się sam przeciw tej sumie — jeden rzut ją zużywa"
+            onClick={() =>
+              void setHaggleOpponent(characterId, { bonus: opponent, label: opponentLabel })
+            }
+          >
+            Daj graczowi
+          </button>
+          {given && (
+            <small className="backup-stats">
+              {' '}
+              czeka: {given.label ? `${given.label} ` : ''}
+              {given.bonus}{' '}
               <button
                 type="button"
-                disabled={busy !== null || inCombat}
-                title={inCombat ? COMBAT_LOCKED_HINT : `Targuj się o: ${deal.name}`}
-                aria-label={`Targuj się: ${deal.name}`}
-                onClick={() => void haggle(deal.id)}
+                className="cp-mini-button"
+                title="Zdejmij sumę drugiej strony"
+                aria-label="Zdejmij sumę drugiej strony"
+                onClick={() => void setHaggleOpponent(characterId, null)}
               >
-                {busy === deal.id ? '…' : 'Targuj'}
+                ✕
               </button>
-            </span>
-          </li>
-        ))}
+            </small>
+          )}
+        </div>
+      ) : (
+        <p className="awareness-derived haggle-given">
+          {given
+            ? `Druga strona: ${given.label ? `${given.label}, ` : ''}${given.bonus} + 1k10 (podał MG — jeden rzut).`
+            : 'Poza sklepem sumę drugiej strony podaje MG. Przy ladzie handlarza targujesz się w oknie „Wymiana”.'}
+        </p>
+      )}
+
+      <ul className="awareness-list">
+        {cpredHaggleDeals(rank).map((deal) => {
+          const closed = deal.id === 'halfLater' && halfLaterClosed;
+          return (
+            <li key={deal.id} className="awareness-row backup-row">
+              <span className="awareness-name" title={deal.text}>
+                {deal.name}
+                <small className="backup-stats">
+                  {' '}
+                  poziom {deal.level} · {closed ? 'zamknięty na zawsze' : dealNote(deal)}
+                </small>
+              </span>
+              <span className="awareness-steps">
+                <button
+                  type="button"
+                  disabled={busy !== null || inCombat || !canRoll || closed}
+                  title={
+                    inCombat
+                      ? COMBAT_LOCKED_HINT
+                      : !canRoll
+                        ? 'Sumę drugiej strony podaje MG'
+                        : `Targuj się o: ${deal.name}`
+                  }
+                  aria-label={`Targuj się: ${deal.name}`}
+                  onClick={() => void haggle(deal.id)}
+                >
+                  {busy === deal.id ? '…' : 'Targuj'}
+                </button>
+              </span>
+            </li>
+          );
+        })}
       </ul>
+
+      {(debts.length > 0 || halfLaterClosed) && (
+        <div className="haggle-debts" data-testid="haggle-debts">
+          <p className="awareness-derived">
+            <b>Raty „pół teraz, pół za miesiąc”</b>
+            {halfLaterClosed ? ' — targ zamknięty przez niespłaconą ratę' : ''}
+          </p>
+          <ul className="awareness-list">
+            {debts.map((debt) => (
+              <li key={debt.id} className="awareness-row backup-row">
+                <span className="awareness-name" title={debt.label}>
+                  {formatEd(debt.amount)} — {debt.creditor || 'sprzedawca'}
+                  <small className="backup-stats">
+                    {' '}
+                    {debt.overdue ? 'po terminie' : `termin ${formatGameDate(debt.dueAtMinute)}`}
+                  </small>
+                </span>
+                <span className="awareness-steps">
+                  <button
+                    type="button"
+                    disabled={character.data.eddies < debt.amount}
+                    title={
+                      character.data.eddies < debt.amount
+                        ? 'Za mało gotówki na karcie'
+                        : `Spłać ${formatEd(debt.amount)}`
+                    }
+                    aria-label={`Spłać ratę: ${debt.creditor}`}
+                    onClick={() => void settleDebt(characterId, debt.id, 'pay')}
+                  >
+                    Spłać
+                  </button>
+                  {isGm && (
+                    <button
+                      type="button"
+                      title="Umorz ratę (decyzja MG) — bez pieniędzy"
+                      aria-label={`Umorz ratę: ${debt.creditor}`}
+                      onClick={() => void settleDebt(characterId, debt.id, 'forgive')}
+                    >
+                      Umorz
+                    </button>
+                  )}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       <div className="awareness-extras">
         {tier && (

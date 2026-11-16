@@ -337,6 +337,17 @@ export const characterUpdateEvent = defineEvent<CharacterUpdatePayload, Characte
       // and a discount reachable without the opposed roll that buys it is a
       // discount nobody rolled for — the same door `eddies` closed in 23b.
       if (sheet.haggle !== undefined) throw new RealtimeError('FORBIDDEN');
+      // Etap 71e: suma drugiej strony, rzut przy ladzie, raty i zamknięty targ
+      // „pół teraz” — cztery pola z ceną (rzut, pieniądze, termin), więc tylko
+      // silnik: `character:haggle`, `merchant:deal`, `character:debt`, zegar.
+      if (
+        sheet.haggleOpponent !== undefined ||
+        sheet.counterHaggle !== undefined ||
+        sheet.debts !== undefined ||
+        sheet.halfLaterClosed !== undefined
+      ) {
+        throw new RealtimeError('FORBIDDEN');
+      }
       // Etap 39: efekty czasowe na Cechach też. Nałożenie ma cenę — wylosować
       // 1k6, zapisać wynik i policzyć oba terminy z rundy i zegara świata —
       // a łata karty nie ma czym żadnej z nich zapłacić. Odmowa jest **dla

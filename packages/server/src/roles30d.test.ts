@@ -271,9 +271,44 @@ describe('etap 30d: Znajomości, Moto, Efekt Charyzmy i Wiarygodność', () => {
     ).toBe(true);
   });
 
-  it('Targowanie się odkłada dobity targ na kartę', async () => {
+  /** Etap 71e (G20): poza sklepem sumę drugiej strony podaje MG. */
+  async function giveOpponent(bonus: number): Promise<void> {
+    expect(
+      (
+        await emitAck(gm, 'character:haggle', {
+          characterId: fixerId,
+          opponent: { bonus, label: 'Paser' },
+        })
+      ).ok,
+    ).toBe(true);
+  }
+
+  it('G20 gracz nie targuje się bez sumy od MG i nie wpisze jej sam', async () => {
+    expect(
+      await emitAck(player, 'character:haggle', {
+        characterId: fixerId,
+        dealId: 'percent10',
+        opponentBonus: 0,
+      }),
+    ).toEqual({ ok: false, error: 'NO_OPPONENT' });
+    expect(
+      await emitAck(player, 'character:haggle', {
+        characterId: fixerId,
+        opponent: { bonus: 0 },
+      }),
+    ).toEqual({ ok: false, error: 'FORBIDDEN' });
+    expect(
+      await emitAck(gm, 'character:update', {
+        characterId: fixerId,
+        patch: { data: { haggleOpponent: { bonus: 0, label: '' } } },
+      }),
+    ).toEqual({ ok: false, error: 'FORBIDDEN' });
+  });
+
+  it('Targowanie się odkłada dobity targ na kartę; rzut zużywa sumę od MG', async () => {
     let struck: CpredCharacterData['haggle'] = null;
     for (let attempt = 0; attempt < 8 && struck === null; attempt += 1) {
+      await giveOpponent(0);
       const card = waitForRoll(player, 'Targowanie się');
       const result = data(
         await emitAck<{ won: boolean; dealId: string | null }>(player, 'character:haggle', {
@@ -285,8 +320,11 @@ describe('etap 30d: Znajomości, Moto, Efekt Charyzmy i Wiarygodność', () => {
       );
       const roll = (await card).message.roll;
       expect(roll?.opposed?.label).toContain('Targowanie się');
+      expect(roll?.opposed?.detail).toContain('Paser: 0 + 1k10');
       expect(roll?.breakdown?.map((entry) => entry.label)).toContain('Znajomości 10');
-      if (result.won) struck = (await sheetOf(player, fixerId)).haggle;
+      const after = await sheetOf(player, fixerId);
+      expect(after.haggleOpponent).toBeNull();
+      if (result.won) struck = after.haggle;
     }
     expect(struck).toMatchObject({ dealId: 'percent10', discount: 10 });
   });
@@ -300,10 +338,9 @@ describe('etap 30d: Znajomości, Moto, Efekt Charyzmy i Wiarygodność', () => {
       }),
     ).toEqual({ ok: false, error: 'NO_ABILITY' });
     expect(
-      await emitAck(player, 'character:haggle', {
+      await emitAck(gm, 'character:haggle', {
         characterId: fixerId,
-        dealId: 'percent10',
-        opponentBonus: 999,
+        opponent: { bonus: 999 },
       }),
     ).toEqual({ ok: false, error: 'BAD_VALUE' });
   });
@@ -356,6 +393,7 @@ describe('etap 30d: Znajomości, Moto, Efekt Charyzmy i Wiarygodność', () => {
   it('Fixer może sam porzucić dobity targ', async () => {
     let won = false;
     for (let attempt = 0; attempt < 8 && !won; attempt += 1) {
+      await giveOpponent(0);
       const result = data(
         await emitAck<{ won: boolean }>(player, 'character:haggle', {
           characterId: fixerId,

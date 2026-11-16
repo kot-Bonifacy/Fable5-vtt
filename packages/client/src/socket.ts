@@ -91,6 +91,7 @@ import type {
   CpredCombatAwarenessProblem,
   CpredCreationDraft,
   CpredHaggleProblem,
+  CpredHaggleMoneyProblem,
   CpredNetPosition,
   CpredRoleChangeProblem,
   CpredRepairTargetsAck,
@@ -361,6 +362,7 @@ import {
   CPRED_ROLES_PROBLEMS,
   CPRED_SPECIALTY_PROBLEMS,
   CPRED_HAGGLE_PROBLEMS,
+  CPRED_HAGGLE_MONEY_PROBLEMS,
   CPRED_MERCHANT_PROBLEM_TEXTS,
   CPRED_TEAM_PROBLEMS,
   CPRED_FACEDOWN_PROBLEM_MESSAGES,
@@ -4576,11 +4578,11 @@ export async function hireTeamMember(
   return true;
 }
 
-/** Wszystko, co dzieje się z Lojalnością potem: Test, tabela, koniec sesji, zwolnienie. */
+/** Wszystko, co dzieje się z Lojalnością potem: Test, tabela, propozycja −1, zwolnienie. */
 export async function changeTeamLoyalty(
   characterId: string,
   memberId: string,
-  what: { changeId?: string; test?: boolean; endSession?: boolean; dismiss?: boolean },
+  what: { changeId?: string; test?: boolean; dismissNeglect?: boolean; dismiss?: boolean },
 ): Promise<void> {
   const ack = await emitSceneAck<CharacterView>('character:team-loyalty', {
     characterId,
@@ -4609,24 +4611,24 @@ export function teamErrorText(code: string): string {
 }
 
 /**
- * Targowanie się (etap 30d, s. 159).
+ * Targowanie się (etap 30d, s. 159; etap 71e, G20).
  *
- * `opponentBonus` to jedna liczba, którą podaje MG: CHA + Handel + Znajomości
- * drugiej strony. Jej kość spada na serwerze obok kości Fixera, bo sprzedawca
- * jest fikcją, a nie kartą — pytanie o trzy liczby osobno byłoby pytaniem
- * trzy razy o jedno.
+ * Gracz nie podaje sumy drugiej strony: przy ladzie liczy ją serwer z karty
+ * handlarza (`merchantId`), poza sklepem bierze ją z karty Fixera, gdzie
+ * wpisał ją MG (`setHaggleOpponent`). `opponentBonus` przyjmuje serwer tylko
+ * od MG, który rzuca za Fixera z karty.
  */
 export async function strikeHaggle(
   characterId: string,
-  dealId: string,
-  opponentBonus: number,
-  gesture?: RollGesture,
+  dealId: string | null,
+  options: { opponentBonus?: number; merchantId?: string; gesture?: RollGesture } = {},
 ): Promise<{ ok: boolean; won?: boolean }> {
   const ack = await emitSceneAck<{ won: boolean; dealId: string | null }>('character:haggle', {
     characterId,
-    dealId,
-    opponentBonus,
-    ...(gesture ? { gesture } : {}),
+    ...(dealId !== null ? { dealId } : {}),
+    ...(options.opponentBonus !== undefined ? { opponentBonus: options.opponentBonus } : {}),
+    ...(options.merchantId ? { merchantId: options.merchantId } : {}),
+    ...(options.gesture ? { gesture: options.gesture } : {}),
   });
   if (!noteAck('exchange', ack, haggleErrorText)) {
     return { ok: false };
@@ -4640,13 +4642,38 @@ export async function dropHaggle(characterId: string): Promise<void> {
   noteAck('exchange', ack, haggleErrorText);
 }
 
+/** MG wpisuje (albo zdejmuje) sumę drugiej strony targu poza sklepem (71e, G20). */
+export async function setHaggleOpponent(
+  characterId: string,
+  opponent: { bonus: number; label: string } | null,
+): Promise<boolean> {
+  const ack = await emitSceneAck<unknown>('character:haggle', { characterId, opponent });
+  return noteAck('exchange', ack, haggleErrorText);
+}
+
+/** Spłata albo umorzenie raty „pół teraz, pół za miesiąc” (71e, G23). */
+export async function settleDebt(
+  characterId: string,
+  debtId: string,
+  action: 'pay' | 'forgive',
+): Promise<boolean> {
+  const ack = await emitSceneAck<unknown>('character:debt', { characterId, debtId, action });
+  return noteAck('exchange', ack, haggleErrorText);
+}
+
 /** Polskie zdania dla odmów Targowania się i Taboru — te same, co w silniku. */
 export function haggleErrorText(code: string): string {
   if (code === 'COMBAT_LOCKED') return COMBAT_LOCKED_TEXT;
   if (code === 'CHARACTER_AWAITING_GM') return CHARACTER_AWAITING_GM_TEXT;
   if (code in CPRED_HAGGLE_PROBLEMS) return CPRED_HAGGLE_PROBLEMS[code as CpredHaggleProblem];
+  if (code in CPRED_HAGGLE_MONEY_PROBLEMS) {
+    return CPRED_HAGGLE_MONEY_PROBLEMS[code as CpredHaggleMoneyProblem];
+  }
   if (code in CPRED_FLEET_PROBLEMS) {
     return CPRED_FLEET_PROBLEMS[code as keyof typeof CPRED_FLEET_PROBLEMS];
+  }
+  if (code.startsWith('MERCHANT_') || code === 'OUT_OF_REACH' || code === 'NOT_ENOUGH_EDDIES') {
+    return merchantErrorText(code);
   }
   return combatErrorText(code);
 }

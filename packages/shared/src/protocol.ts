@@ -913,6 +913,11 @@ export interface MerchantView {
   betweenSessions: boolean;
   priceMul: number;
   buyBackPct: number;
+  /**
+   * Etap 71e (FIX-14): handlarz jest Fixerem — przy skupie urywa tyle procent,
+   * dopóki sprzedający nie wygra z nim rzutu spornego. Brak — nie urywa.
+   */
+  saleCut?: number;
   /** Kasa handlarza; `null` — „bez dna”. */
   cash: number | null;
   /**
