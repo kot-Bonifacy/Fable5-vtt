@@ -108,9 +108,10 @@ export function XpAwardForm({ characterId, onDone }: { characterId: string; onDo
  * i otwiera się dopiero przy Zdolności bieżącej Roli na poziomie 4. Wybór Roli
  * na stronie pierwszej został ręką MG — tam poprawia się kartę, tutaj się gra.
  *
- * Powrót do Roli, którą postać już miała, jest za darmo (decyzja MG,
- * 30.08.2026): ranga siedzi na karcie i działa, zmienia się wyłącznie to, którą
- * Rolą widzi cię Ulica.
+ * Powrót do Roli, którą postać już miała, kosztuje jak nowa Rola — 60 PD — i
+ * zachowuje rangę (bramka 15.11.2026, D3; do tego dnia był darmowy). Od etapu
+ * 71g1 (G35) stoi też przy wierszu Roli poprzedniej jako „Zrób główną”, a MG ma
+ * tam zamianę bez bramki i bez PD — poprawkę karty, nie zakup.
  *
  * Zmiana Roli przestawia drabinki Zdolności, więc nie miesza się z koszykiem
  * podniesień (24.10.2026): póki coś w nim czeka, `blocked` gasi guzik.
@@ -121,6 +122,7 @@ function RoleChangeSection({ characterId, blocked }: { characterId: string; bloc
   const [picked, setPicked] = useState('');
   const [busy, setBusy] = useState(false);
   const locked = useCombatLocked();
+  const isGm = useAuthStore((s) => s.user?.role === ROLE_GM);
 
   if (!character) return null;
   const data = character.data;
@@ -133,12 +135,45 @@ function RoleChangeSection({ characterId, blocked }: { characterId: string; bloc
   const plan = picked ? planCpredRoleChange(data, registry, picked) : null;
   const gated = current.rank < CPRED_MULTICLASS_MIN_RANK;
 
-  async function change(): Promise<void> {
+  async function change(roleId: string, gmSwap = false): Promise<void> {
     setBusy(true);
-    const ack = await changeCharacterRole({ characterId, roleId: picked });
+    const ack = await changeCharacterRole({
+      characterId,
+      roleId,
+      ...(gmSwap ? { gmSwap: true } : {}),
+    });
     setBusy(false);
     if (!noteAck('character', ack, roleChangeErrorText)) return;
     setPicked('');
+  }
+
+  /** „Zrób główną” przy Roli poprzedniej — dla gracza zakup, dla MG zamiana. */
+  function promoteButton(roleId: string) {
+    const priced = planCpredRoleChange(data, registry, roleId, { gmSwap: isGm });
+    const refused = !priced.ok ? roleChangeErrorText(priced.problem) : null;
+    const title = locked
+      ? COMBAT_LOCKED_HINT
+      : blocked
+        ? 'Najpierw zatwierdź albo odrzuć podniesienia z koszyka.'
+        : refused
+          ? refused
+          : priced.ok && priced.plan.gmSwap
+            ? `Zamiana ręką MG: ${priced.plan.roleName} wraca jako główna (${priced.plan.ability} ${priced.plan.rank}) — bez PD i bez bramki.`
+            : priced.ok
+              ? `Powrót do Roli: ${priced.plan.roleName} — ${priced.plan.cost} PD, ${priced.plan.ability} zostaje na poziomie ${priced.plan.rank} (zostanie ${priced.plan.left} PD).`
+              : undefined;
+    return (
+      <button
+        type="button"
+        className="advance-buy"
+        onClick={() => void change(roleId, isGm)}
+        disabled={busy || locked || blocked || !priced.ok}
+        title={title}
+        aria-label={`Zrób główną: ${roleName(roleId)}`}
+      >
+        {isGm ? 'Zrób główną' : `Zrób główną (${priced.ok ? priced.plan.cost : 60} PD)`}
+      </button>
+    );
   }
 
   return (
@@ -150,7 +185,9 @@ function RoleChangeSection({ characterId, blocked }: { characterId: string; bloc
             <span className="awareness-name">{roleName(row.roleId)}</span>
             <span className="awareness-value">{index === 0 ? 'bieżąca' : 'poprzednia'}</span>
             <span className="awareness-cost">{row.rank}</span>
-            <span className="awareness-steps" />
+            <span className="awareness-steps">
+              {index === 0 ? null : promoteButton(row.roleId)}
+            </span>
           </li>
         ))}
       </ul>
@@ -176,7 +213,7 @@ function RoleChangeSection({ characterId, blocked }: { characterId: string; bloc
             const suffix = !priced.ok
               ? ''
               : priced.plan.returning
-                ? ` — powrót (${priced.plan.ability} ${priced.plan.rank})`
+                ? ` — powrót, ${priced.plan.cost} PD (${priced.plan.ability} ${priced.plan.rank})`
                 : ` — ${priced.plan.cost} PD`;
             return (
               <option key={role.id} value={role.id}>
@@ -189,7 +226,7 @@ function RoleChangeSection({ characterId, blocked }: { characterId: string; bloc
         <button
           type="button"
           className="advance-buy"
-          onClick={() => void change()}
+          onClick={() => void change(picked)}
           disabled={busy || locked || blocked || plan === null || !plan.ok}
           /* Nazwa Roli stoi w mianowniku po dwukropku, nigdy w środku zdania:
              `roles.json` niesie „Nomada", a „zostań Nomada" to nie jest zdanie
@@ -201,7 +238,7 @@ function RoleChangeSection({ characterId, blocked }: { characterId: string; bloc
                 ? 'Najpierw zatwierdź albo odrzuć podniesienia z koszyka.'
                 : plan?.ok
                   ? plan.plan.returning
-                    ? `Powrót do Roli: ${plan.plan.roleName} — za darmo, ${plan.plan.ability} wraca na poziom ${plan.plan.rank}.`
+                    ? `Powrót do Roli: ${plan.plan.roleName} — ${plan.plan.cost} PD, ${plan.plan.ability} wraca na poziom ${plan.plan.rank} (zostanie ${plan.plan.left} PD).`
                     : `Nowa Rola: ${plan.plan.roleName} — ${plan.plan.cost} PD, ${plan.plan.ability} od poziomu 1 (zostanie ${plan.plan.left} PD). Poprzednia Rola (${roleName(plan.plan.from.roleId)}) zostaje na karcie i działa dalej.`
                   : undefined
           }
@@ -213,7 +250,7 @@ function RoleChangeSection({ characterId, blocked }: { characterId: string; bloc
       <p className="awareness-hint">
         {gated
           ? `Rolę zmienia się dopiero przy Zdolności Specjalnej bieżącej Roli na poziomie ${CPRED_MULTICLASS_MIN_RANK} — dziś ${roleName(current.roleId)} ma ${current.rank} (s. 143).`
-          : 'Nowa Rola startuje od poziomu 1 i kosztuje 60 PD; poprzednia zostaje na karcie, działa i dalej rośnie (s. 143).'}
+          : 'Nowa Rola startuje od poziomu 1 i kosztuje 60 PD — powrót do Roli z karty też, z zachowanym poziomem; poprzednia zostaje na karcie, działa i dalej rośnie (s. 143).'}
       </p>
     </>
   );

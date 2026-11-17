@@ -1625,5 +1625,61 @@
         "body": "armor.kurtka-warsztatowa"
       }
     }
+  },
+  "edgerunnerKits": {
+    "$comment": "Etap 71g1: pakiet Roli Krawędziarza — wymyślone wpisy z próbki kompendium, tylko Nomada. Prawdziwe pakiety (s. 98, 103, 117) w data/private/cpred/creation.json.",
+    "nomad": {
+      "slots": [
+        [
+          [
+            {
+              "id": "weapon.zgrzyt-9"
+            }
+          ]
+        ],
+        [
+          [
+            {
+              "id": "weapon.szpon"
+            }
+          ],
+          [
+            {
+              "id": "weapon.puszka-hukowa"
+            },
+            {
+              "id": "ammo.sample-smoke",
+              "weaponType": "weapon-type.sample-grenade",
+              "qty": 2
+            }
+          ]
+        ],
+        [
+          [
+            {
+              "id": "armor.kurtka-warsztatowa"
+            },
+            {
+              "id": "armor.helm-kurierski"
+            }
+          ]
+        ],
+        [
+          [
+            {
+              "id": "gear.agent-kieszonkowy"
+            },
+            {
+              "id": "gear.latarka-taktyczna",
+              "qty": 3
+            },
+            {
+              "id": "cyberware.oko-przykladowe"
+            }
+          ]
+        ]
+      ],
+      "clothing": "Skóry z trasy: kurtka, buty ×2"
+    }
   }
 }

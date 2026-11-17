@@ -1,5 +1,48 @@
 # Dziennik sesji — archiwum
 
+### Sesja 16.11 (druga) — etap 71e: handel i pieniądze
+
+**Zrobione (czeka na wdrożenie, bez migracji — nowe pola w JSON-ie karty):**
+
+- **G20 (FIX-01, FIX-14) — rzut sporny przy ladzie**: `character:haggle` z `merchantId` liczy
+  sumę drugiej strony z karty handlarza (`merchantCounterBonus`: CHA + Handel + Znajomości),
+  poza sklepem bierze ją z `haggleOpponent`, którą wpisuje MG (panel Znajomości: pole, „kto”,
+  „Daj graczowi”; jeden rzut ją zużywa) — gracz nie wpisuje nic, bez sumy `NO_OPPONENT`.
+  Wynik rzutu przy ladzie (`counterHaggle`) blokuje drugi rzut u niej do transakcji
+  (`ALREADY_HAGGLED`); targ dobity przy ladzie niesie `merchantId` i działa tylko tam
+  (`cpredHaggleUsableAt` / `cpredHaggleDiscountAt` — okno, Kompendium, salon, warsztat).
+  Handlarz ze Znajomościami urywa przy skupie 10% / 20% (`saleCut`), dopóki sprzedający nie
+  wygra z nim rzutu — nie-Fixer rzuca „Targuj się o cenę skupu” w stopce okna „Wymiana”
+  (`CounterHaggle.tsx`), u zwykłego handlarza `NOTHING_TO_HAGGLE`.
+- **G21–G23 (FIX-04…06)** — `cpredHaggleOnDeal` w `cpredMerchantQuote`: procent na cięższą
+  stronę koszyka, szósta sztuka gratis (jedna, najdroższej pozycji z ≥ 6 sztukami), „pół
+  teraz, pół za miesiąc” — połowa rzeczy od 5000 ed na ratę (`debts`, termin `cpredDebtDue`),
+  „Spłać” / „Umorz” (`character:debt`), po terminie przemiatanie zegara oznacza ratę jako
+  zaległą, zamyka targ (`halfLaterClosed`) i pisze MG (`markDebtsOverdue`). Stopka okna mówi,
+  co zrobił targ i handlarz-Fixer.
+- **G25 (KOR-12…14)** — `closeTeamsForSession` w `endSession`: ponad 10 → 10, propozycja −1
+  (`neglectDue`, „−1” / „Pomiń” u MG) dla pracowników bez wzrostu (`grew` z dodatniej zmiany),
+  „odchodzi” przy ujemnej, jeden wiersz `gmaction` na Korpo; przycisk „Koniec sesji” przy
+  pracowniku zniknął. **G26 (KOR-15)** — „Następca (200 ed)” przy zatrudnieniu, opłata przez
+  `applyBalance`. **P6 (KOR-S1)** — pracownik staje obok figury Korpo na aktywnej scenie.
+- Rozstrzygnięcia — `decyzje-i-uproszczenia.md` („Handel i pieniądze po weryfikacji Ról”,
+  dopisek przy „z sześciu targów VTT liczy dwa”); macierz: FIX-01, FIX-04, FIX-05, KOR-12,
+  KOR-15, KOR-S1 → ✅; FIX-06, FIX-14, KOR-13, KOR-14 → 🟡; umowy na górze `postac`
+  i `ekwipunek`. `character:haggle` i `character:debt` działają między sesjami.
+
+Testy: `shared` 3169 (nowe `haggling.test.ts` 18, `teamloyalty.test.ts` 5, poprawione
+`merchant.test.ts` — targ przy samej sprzedaży teraz działa), serwer 1841/1841 (nowy
+`trade71e.test.ts` 8, `roles30d` pod G20, `campaign-isolation` z `character:debt`), klient 515;
+`tsc` czterech pakietów, lint i Prettier zmienionych plików czyste; E2E `t71-fixer` 5/5 (+2:
+lada, szósta sztuka) i `t71-korpo` 6/6 (+2: następca, koniec sesji; asercja figury obok
+Korpo). Pułapka przy okazji: w rejestrze testów serwera (bez danych prywatnych) Umiejętności
+„Handel” nie ma — łata karty ją pomija, suma Wiktora to 10, nie 14. **Oglądano w Firefoksie**
+(gracz: panel Znajomości bez sumy i z ratą, stopka okna „Wymiana” z targiem, cięciem i ratą)
+i **w Chromium** (MG: pole sumy z „Daj graczowi”, „Spłać / Umorz”, propozycja −1 w Pracy
+Zespołowej); po oględzinach pole „kto” i guziki „−1 / Pomiń” zmalały do rozmiaru panelu.
+Tymczasowa specyfikacja zrzutów usunięta. `specs/99-zapomnij/` to dalej cudze tymczasowe
+oględziny z 14.11 — poza commitem.
+
 ### Sesja 16.11 — etap 71d2: Praca Twórcy i kriopompa
 
 **Zrobione (czeka na wdrożenie, bez migracji — nowe pola w JSON-ie karty i karty rzutu):**

@@ -35,6 +35,7 @@ import {
   mergeCharacterData,
   parseCharacterData,
   planCpredRoleChange,
+  cpredOperatorLanguageReminder,
 } from '@vtt/shared';
 import type { Character } from '../generated/prisma/client.js';
 import { RealtimeError, defineEvent, type RealtimeDeps } from './registry.js';
@@ -43,6 +44,7 @@ import { emitRuns } from './netrun-io.js';
 import { refuseInCombat } from './combat-lock.js';
 import { emitTokensOfCharacter } from './tokens.js';
 import { campaignMemberSockets } from './state.js';
+import { deliverChatMessageTo, insertChatMessage } from './chat-io.js';
 
 /**
  * Punkty Doświadczenia (stage 29a, s. 408–411).
@@ -258,6 +260,20 @@ export const characterAdvanceEvent = defineEvent<CharacterAdvancePayload, Charac
     const view = toCharacterView(saved, deps.ctx.cpred);
     await emitCharacterUpsert(deps, campaign.id, view);
     await emitTokensOfCharacter(deps, campaign.id, saved);
+    // Etap 71g1 (G36): Znajomości na 3 / 5 / 7 — przypomnienie o nowym języku
+    // dla kupującego i MG; język dopisuje się ręką (jeden wiersz Języka).
+    for (const plan of result.plans) {
+      const reminder =
+        plan.kind === 'ability' ? cpredOperatorLanguageReminder(plan.name, plan.to) : null;
+      if (!reminder) continue;
+      const message = await insertChatMessage(deps.ctx.prisma, {
+        campaignId: campaign.id,
+        authorId: user.id,
+        kind: 'gmaction',
+        text: `${character.name}: ${reminder}`,
+      });
+      await deliverChatMessageTo(deps, campaign.id, message, [user.id], true);
+    }
     // Interfejs is the one Special Ability with machinery older than stage 30
     // (`netrun.ts`): a rank bought mid-run has to reach the run window, or the
     // netrunner sees a budget one save out of date.
@@ -290,8 +306,11 @@ export const characterRoleChangeEvent = defineEvent<CharacterRoleChangePayload, 
     await refuseInCombat(deps.ctx.prisma, campaign.id, user);
     const data = parseCharacterData(character.data, deps.ctx.cpred);
 
+    // Etap 71g1 (G35): zamiana ręką MG to poprawka karty — bez bramki i PD.
+    const gmSwap = payload?.gmSwap === true;
+    if (gmSwap && user.role !== ROLE_GM) throw new RealtimeError('FORBIDDEN');
     // The same function the panel greys its button with.
-    const result = planCpredRoleChange(data, deps.ctx.cpred, payload?.roleId);
+    const result = planCpredRoleChange(data, deps.ctx.cpred, payload?.roleId, { gmSwap });
     if (!result.ok) throw new RealtimeError(result.problem);
     const { plan } = result;
 

@@ -12,6 +12,7 @@ import {
   creationSkillPool,
   creationRolledStats,
   creationIssues,
+  creationKitPickSlots,
   creationPreview,
   creationPurchases,
   creationRoleKit,
@@ -37,7 +38,7 @@ import {
 } from './creation.js';
 import { cpredRandomNpc } from './npc.js';
 import { buildCpredRegistry, type CpredRegistry } from './character.js';
-import type { CompendiumEntry } from './compendium.js';
+import type { CompendiumEntry, WeaponTypeDefinition } from './compendium.js';
 import { CPRED_STAT_IDS, type CpredStatId } from './stats.js';
 
 /**
@@ -1248,10 +1249,16 @@ describe('etap 47a — wyposażenie Roli gratis', () => {
   });
 
   it('daje wyposażenie tylko Kompletnemu Pakietowi; chromu nie kładzie na kartę', () => {
-    const netrunner = { method: 'complete' as const, roleId: 'netrunner', kitChoice: null };
+    const netrunner = {
+      method: 'complete' as const,
+      roleId: 'netrunner',
+      kitChoice: null,
+      kitPicks: {},
+    };
+    const line = { qty: 1, count: 1, weaponTypeId: null };
     expect(creationRoleKit(netrunner, kitData, kitLookup)).toEqual([
-      { entryId: 'armor.kurtka', name: 'Kurtka', value: 100, onSheet: true },
-      { entryId: 'cyberware.sprzeg', name: 'Sprzęg', value: 5000, onSheet: false },
+      { entryId: 'armor.kurtka', name: 'Kurtka', value: 100, onSheet: true, ...line },
+      { entryId: 'cyberware.sprzeg', name: 'Sprzęg', value: 5000, onSheet: false, ...line },
     ]);
     expect(creationRoleKit({ ...netrunner, method: 'edgerunner' }, kitData, kitLookup)).toEqual([]);
     // Chrom z wyposażenia ląduje w „Po utworzeniu postaci”.
@@ -1319,6 +1326,146 @@ describe('etap 47a — wyposażenie Roli gratis', () => {
     ]);
     expect(outcome.spent).toBe(0);
     expect(outcome.sheet.eddies).toBe(outcome.budget);
+  });
+});
+
+describe('etap 71g1 — pakiet Roli Krawędziarza (G33)', () => {
+  const GRENADE_TYPE = {
+    id: 'weapon-type.granat',
+    name: 'Granat',
+    melee: false,
+    thrown: true,
+    ammunition: 'Granaty',
+    ammoPatterns: ['grenade'],
+  } as unknown as WeaponTypeDefinition;
+  const KIT_CATALOGUE: CompendiumEntry[] = [
+    ...CATALOGUE,
+    { id: 'weapon.noz', category: 'weapon', name: 'Nóż', cost: 50 } as CompendiumEntry,
+    {
+      id: 'armor.kurtka-2',
+      category: 'armor',
+      name: 'Kurtka lekka',
+      cost: 100,
+      sp: 11,
+      locations: ['body', 'head'],
+    } as CompendiumEntry,
+    {
+      id: 'ammo.dymny',
+      category: 'ammo',
+      name: 'Granat dymny',
+      cost: 50,
+      patterns: ['grenade'],
+    } as CompendiumEntry,
+    {
+      id: 'cyberware.sprzeg',
+      category: 'cyberware',
+      name: 'Sprzęg',
+      cost: 500,
+      type: 'neuralware',
+    } as CompendiumEntry,
+  ];
+  const kitLookup = (entryId: string) => KIT_CATALOGUE.find((row) => row.id === entryId);
+  const types = new Map([[GRENADE_TYPE.id, GRENADE_TYPE]]);
+  const kitRegistry = registry({
+    ...RAW_CREATION,
+    edgerunnerKits: {
+      $comment: 'pomijane — to nie Rola',
+      solo: {
+        slots: [
+          [[{ id: 'armor.kurtka-2', qty: 2 }]],
+          [
+            ['weapon.pistolet'],
+            ['weapon.noz', { id: 'ammo.dymny', weaponType: GRENADE_TYPE.id, qty: 2 }],
+          ],
+          [[{ id: 'gear.latarka', qty: 3 }, 'cyberware.sprzeg', { id: 'gear.zly', qty: 0 }]],
+          [[]],
+        ],
+        clothing: 'Sportowy: kurtka ×2',
+      },
+      wampir: { slots: [[['weapon.pistolet']]] },
+    },
+  });
+  const kitData = data(kitRegistry);
+
+  it('czyta pakiety Ról, które zna; rzecz bez liczby i pusty slot wypadają', () => {
+    expect(Object.keys(kitData.edgerunnerKits)).toEqual(['solo']);
+    const solo = kitData.edgerunnerKits.solo!;
+    expect(solo.slots).toHaveLength(3);
+    expect(solo.slots[2]).toEqual([
+      [
+        { id: 'gear.latarka', qty: 3, weaponType: null },
+        { id: 'cyberware.sprzeg', qty: 1, weaponType: null },
+      ],
+    ]);
+    expect(solo.clothing).toBe('Sportowy: kurtka ×2');
+    expect(data().edgerunnerKits).toEqual({});
+  });
+
+  it('wybór „lub” jest brakiem do rozstrzygnięcia, potem kładzie alternatywę', () => {
+    const start = finished();
+    expect(creationIssues(start, kitData, kitRegistry).map((i) => i.field)).toContain('kitPicks');
+    expect(creationIssueStep('kitPicks')).toBe('gear');
+    // Slot bez wyboru, numer spoza alternatyw i zły kształt — łata odpada.
+    expect(mergeCreationDraft(start, { kitPicks: { 0: 0 } }, kitData, kitRegistry)).toBeNull();
+    expect(mergeCreationDraft(start, { kitPicks: { 1: 2 } }, kitData, kitRegistry)).toBeNull();
+    expect(mergeCreationDraft(start, { kitPicks: [1] }, kitData, kitRegistry)).toBeNull();
+    const picked = mergeCreationDraft(start, { kitPicks: { 1: 1 } }, kitData, kitRegistry)!;
+    expect(picked.kitPicks).toEqual({ 1: 1 });
+    expect(creationIssues(picked, kitData, kitRegistry).map((i) => i.field)).not.toContain(
+      'kitPicks',
+    );
+    const lines = creationRoleKit(picked, kitData, kitLookup, types);
+    expect(lines.map((line) => [line.name, line.count, line.onSheet])).toEqual([
+      ['Kurtka lekka', 2, true],
+      ['Nóż', 1, true],
+      ['Granat dymny · Granaty', 2, true],
+      ['Latarka', 3, true],
+      ['Sprzęg', 1, false],
+    ]);
+    const slots = creationKitPickSlots(picked, kitData, kitLookup, types);
+    expect(slots.map((slot) => [slot.slot, slot.picked, slot.options.length])).toEqual([[1, 1, 2]]);
+    // Kompletny Pakiet nie ma pakietu Krawędziarza.
+    expect(creationRoleKit({ ...picked, method: 'complete' }, kitData, kitLookup)).toEqual([]);
+  });
+
+  it('zmiana Roli i metody zdejmuje wybory i mówi o tym; zapis spoza pakietu wypada', () => {
+    const picked = finished({ kitPicks: { 1: 0 } });
+    expect(
+      mergeCreationDraft(picked, { method: 'complete' }, kitData, kitRegistry)!.kitPicks,
+    ).toEqual({});
+    expect(
+      creationChangeEffect(picked, { roleId: 'netrunner' }, kitData, kitRegistry).lost,
+    ).toContain('Wybory „lub” z pakietu Roli (1).');
+    expect(parseCreationDraft(picked, kitData, kitRegistry).kitPicks).toEqual({ 1: 0 });
+    expect(
+      parseCreationDraft({ ...picked, kitPicks: { 1: 5, 0: 0 } }, kitData, kitRegistry).kitPicks,
+    ).toEqual({});
+  });
+
+  it('podsumowanie kładzie pakiet na kartę: dwie kurtki, broń, granaty, sprzęt z licznikiem, strój', () => {
+    const outcome = creationOutcome(
+      finished({ kitPicks: { 1: 1 } }),
+      kitData,
+      kitRegistry,
+      kitLookup,
+      { weaponTypeById: types },
+      true,
+    );
+    expect(outcome.sheet.armor.map((row) => [row.compendiumId, row.location])).toEqual([
+      ['armor.kurtka-2', 'body'],
+      ['armor.kurtka-2', 'head'],
+    ]);
+    expect(outcome.sheet.weapons.map((row) => row.compendiumId)).toContain('weapon.noz');
+    expect(outcome.sheet.gear.map((row) => [row.compendiumId, row.qty])).toEqual([
+      ['ammo.dymny', 2],
+      ['gear.latarka', 3],
+    ]);
+    expect(outcome.sheet.notes).toBe('Strój z pakietu Roli: Sportowy: kurtka ×2.');
+    expect(outcome.sheet.eddies).toBe(500);
+    // Chrom zostaje MG, a „Pakiet Roli od MG” znika, bo pakiet położył kreator.
+    const outside = creationLeftOutside(finished(), outcome.kit);
+    expect(outside.map((line) => line.id)).toEqual(['kit', 'cyberware']);
+    expect(creationLeftOutside(finished(), []).map((line) => line.id)).toContain('package');
   });
 });
 

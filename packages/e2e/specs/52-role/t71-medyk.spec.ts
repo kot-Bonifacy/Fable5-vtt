@@ -6,6 +6,7 @@ import {
   CELL,
   ROLES,
   cardData,
+  creationDataOf,
   dataOf,
   gmSocket,
   lastMessageId,
@@ -32,6 +33,7 @@ const MED = ROLES.medtech;
 type Gear = { name: string; qty: number; compendiumId?: string };
 type Sheet = {
   medicine: Record<string, number>;
+  pharmaPicks: string[];
   eddies: number;
   gear: Gear[];
   recovery: { antibioticDays: number };
@@ -78,12 +80,47 @@ test.describe.serial('@szybkie T71 Medyk — Medycyna', () => {
     expect(refused).toMatchObject({ ok: false });
   });
 
-  test('MED-08 MED-09 dwa punkty Farmaceutyków otwierają dwa środki; partia Antybiotyku: Test PT 13, surowce, dawki', async () => {
-    const pharma = panel().locator('details', {
-      hasText: 'Farmaceutyki — dostęp do 2 z 5 środków',
-    });
+  test('MED-08 MED-09 D2 dwa punkty Farmaceutyków czekają na wybór; Medyk bierze Antybiotyk i Stym, partia Antybiotyku: Test PT 13, surowce, dawki', async () => {
+    const pharma = panel().locator('details', { hasText: 'Farmaceutyki — dostęp do' });
+    await expect(pharma.locator('summary')).toHaveText(
+      'Farmaceutyki — dostęp do 0 z 5 środków · 2 punkty czekają na wybór',
+    );
     await pharma.locator('summary').click();
+    await expect(pharma.getByRole('button', { name: /^Wytwórz/ })).toHaveCount(0);
+    // Etap 71g1 (D2, bramka 15.11): środek wybiera się przy punkcie — Stym, choć
+    // w tabeli stoi czwarty (do 71g1 dwa punkty dawały dwa pierwsze wiersze).
+    for (const [index, drug] of ['Antybiotyk', 'Stym'].entries()) {
+      await pharma
+        .locator('li', { hasText: drug })
+        .getByRole('button', { name: 'Wybierz' })
+        .click();
+      await expect.poll(() => sheet().pharmaPicks.length).toBe(index + 1);
+    }
+    await expect.poll(() => sheet().pharmaPicks).toEqual(['pharma.antybiotyk', 'pharma.stym']);
+    await expect(panel()).toContainText('Farmaceutyki — dostęp do 2 z 5 środków');
+    await expect(pharma.getByRole('button', { name: 'Wybierz' })).toHaveCount(0);
     await expect(pharma.getByRole('button', { name: /^Wytwórz/ })).toHaveCount(2);
+    // Trzeciego środka bez trzeciego punktu nie ma, a łatą karty wyborów się nie zmieni.
+    const socket = await celina.socket();
+    expect(
+      await emitAck(socket, 'character:pharma-pick', {
+        characterId: characterId(MED.card),
+        pharmaId: 'pharma.zryw',
+      }),
+    ).toEqual({ ok: false, error: 'NO_PHARMA_POINT' });
+    expect(
+      await emitAck(socket, 'character:update', {
+        characterId: characterId(MED.card),
+        patch: { data: { pharmaPicks: ['pharma.zryw'] } },
+      }),
+    ).toEqual({ ok: false, error: 'FORBIDDEN' });
+    expect(
+      await emitAck(socket, 'character:pharma-pick', {
+        characterId: characterId(MED.card),
+        pharmaId: 'pharma.stym',
+        remove: true,
+      }),
+    ).toEqual({ ok: false, error: 'FORBIDDEN' });
     const eddies = sheet().eddies;
     const since = lastMessageId();
     scriptDice([8]);
@@ -101,7 +138,7 @@ test.describe.serial('@szybkie T71 Medyk — Medycyna', () => {
       .info()
       .annotations.push({ type: 'koszt partii', description: String(eddies - sheet().eddies) });
 
-    // Trzeci środek tabeli (Turbo uzdrawiacz) jest poza dwoma punktami.
+    // Turbo uzdrawiacz nie jest wybrany — Wytwórz odmawia.
     const refused = await emitAck(await celina.socket(), 'character:craft-pharma', {
       characterId: characterId(MED.card),
       pharmaId: 'pharma.turbo-uzdrawiacz',
@@ -120,14 +157,14 @@ test.describe.serial('@szybkie T71 Medyk — Medycyna', () => {
     await expect.poll(() => sheet().medicine.pharma).toBe(1);
     await expect(pharma.getByRole('button', { name: /^Wytwórz/ })).toHaveCount(1);
 
-    // Klik „Wytwórz” przy drugim środku tuż po „+”, zanim minie zwłoka
-    // autozapisu — do 71d1 serwer czytał kartę sprzed punktu i odmawiał.
+    // Zdjęty punkt chowa ostatni wybór (Stym); dołożony z powrotem go oddaje.
+    // Klik „Wytwórz” przy nim tuż po „+”, zanim minie zwłoka autozapisu — do
+    // 71d1 serwer czytał kartę sprzed punktu i odmawiał.
     await plus('Technologia Medyczna (Farmaceutyki)').click();
     const since = lastMessageId();
     scriptDice([8]);
     await pharma
-      .locator('li')
-      .nth(1)
+      .locator('li', { hasText: 'Stym' })
       .getByRole('button', { name: /^Wytwórz/ })
       .click();
     const roll = await rollAfter(since, 'Technologia Medyczna');
@@ -153,6 +190,14 @@ test.describe.serial('@szybkie T71 Medyk — Medycyna', () => {
   });
 
   // ───────────── 71d2: kriopompa (G19, MED-17) ─────────────
+
+  test('MED-K1 G34 lista Umiejętności Medyka wg oryginału: Broń długa zamiast Broni białej', async () => {
+    const creation = await creationDataOf();
+    const skills = creation.roles.find((role) => role.id === 'medtech')!.skills;
+    expect(skills).toContain('shoulder-arms');
+    expect(skills).not.toContain('melee-weapon');
+    expect(Object.keys(creation.streetrat.medtech!.skills)).toContain('shoulder-arms');
+  });
 
   test('MED-17 G19 kriopompa: odbiór z pierwszego punktu, zamrożenie sąsiada, bez Testu Przeżywalności, płyn', async () => {
     const gm = await gmSocket();

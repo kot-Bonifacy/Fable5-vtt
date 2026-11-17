@@ -7,13 +7,14 @@ import {
   MERCHANT,
   ROLES,
   cardData,
+  creationDataOf,
   gmSocket,
   lastMessageId,
   messagesAfter,
   seatRole,
   startFromRoleStart,
 } from '../../fixtures/role.ts';
-import { closeSheet } from '../../fixtures/walka.ts';
+import { closeSheet, openSheet } from '../../fixtures/walka.ts';
 import { emitAck } from '../../fixtures/socket.ts';
 import { pendingDice, scriptDice } from '../../instance/instance.ts';
 
@@ -205,5 +206,52 @@ test.describe.serial('@szybkie T71 Fixer — Znajomości', () => {
     await expect.poll(() => sheet().eddies).toBe(eddies - 300);
     expect(sheet().haggle).toBeNull();
     expect(ewa.unexpectedErrors()).toEqual([]);
+  });
+
+  test('FIX-12 G36 Znajomości 5 z panelu Awansu: przypomnienie o nowym języku dla gracza i MG', async () => {
+    const gm = await gmSocket();
+    expect(
+      await emitAck(gm, 'character:xp-award', {
+        characterId: characterId(FIXER.card),
+        amount: 300,
+      }),
+    ).toMatchObject({ ok: true });
+    gm.disconnect();
+    // Okno „Wymiana” z poprzedniego testu zasłania zakładki karty.
+    const exchange = ewa.page.getByRole('button', { name: 'Zamknij okno wymiany' });
+    // Powiadomienie o handlu leży nad oknem — klik zdarzeniem, nie myszą.
+    if (await exchange.isVisible()) await exchange.dispatchEvent('click');
+    await expect(exchange).toHaveCount(0);
+    const sheet = await openSheet(ewa, FIXER.card);
+    await ewa.page
+      .getByRole('button', { name: 'Ścieżka Życia', exact: true })
+      .dispatchEvent('click');
+    const advance = sheet.locator('.advance');
+    await advance.getByRole('button', { name: 'Podnieś: Znajomości na poziom 5' }).click();
+    const since = lastMessageId();
+    await advance.getByRole('button', { name: 'Zatwierdź zmiany' }).click();
+    await expect
+      .poll(() => cardData<{ roleAbilityRank: number }>(FIXER.card).roleAbilityRank)
+      .toBe(5);
+    await expect
+      .poll(() =>
+        messagesAfter(since)
+          .filter((row) => row.kind === 'gmaction')
+          .map((r) => r.text),
+      )
+      .toEqual([expect.stringContaining('Znajomości 5 — Wazeliniarz: nowa kultura')]);
+    await ewa.page.getByRole('button', { name: 'Czat', exact: true }).dispatchEvent('click');
+    await expect(
+      ewa.page.locator('.chat-message', { hasText: 'Wazeliniarz: nowa kultura' }),
+    ).toBeVisible();
+    expect(ewa.unexpectedErrors()).toEqual([]);
+  });
+
+  test('WSP-23 P4 Ulicznik Fixera: jeden pistolet i lekka broń biała (druk)', async () => {
+    const creation = await creationDataOf();
+    expect(creation.streetrat.fixer!.items).toEqual([
+      ['weapon.heavy-pistol', 'weapon.very-heavy-pistol'],
+      ['weapon.light-melee'],
+    ]);
   });
 });

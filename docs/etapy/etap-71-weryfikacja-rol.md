@@ -334,6 +334,23 @@ Pogłosek pisze „>”. Bez migracji (cztery pola w JSON-ie karty). Rozstrzygni
 przepisany), `t71-media` (+3), `t71-stroz` (+1). G31 bez asercji E2E — Stróż z punktu
 `role-start` ma rangę 4, a druga broń zaczyna się od kategorii 5–7 (dowodem test serwera).
 
+**Wynik 71g1 (17.11.2026) ✅.** G33 (WSP-08): pakiet Roli Krawędziarza kładzie kreator — dane
+`edgerunnerKits` w `creation.json` (s. 98, 103, 117, przepisane ręką ze sklejonych tabel),
+wybory „lub” to pola w kroku „Wyposażenie” (`kitPicks`, brak w `creationIssues`), te same
+funkcje co wyposażenie Kompletnego Pakietu (`creationRoleKit`, `creationKitSheetRows`);
+amunicja do broni palnej bez dna, strój prozą w notatkach, chrom wszczepia MG. G34 (ROC-K1,
+MED-K1): listy Rockera i Medyka wg oryginału (`ORIGINAL_EDITION_SWAPS` w parserze, pakiety
+Ulicznika też). D3 + G35 (WSP-18): powrót do Roli z karty za 60 PD z zachowaną rangą, „Zrób
+główną” przy Roli poprzedniej w Awansie — u MG zamiana bez bramki i PD (`gmSwap`). D2 (MED-08):
+Medyk wybiera środek przy punkcie Farmaceutyków (`pharmaPicks`, `character:pharma-pick`; stara
+karta z kolejności tabeli). G36 (FIX-12): awans Znajomości na 3 / 5 / 7 pisze wiersz `gmaction`
+o nowym języku. P4 (WSP-23): Ulicznik Fixera — pistolet i lekka broń biała. Bez migracji.
+Rozstrzygnięcia — `decyzje-i-uproszczenia.md` („Kreator, PD i wieloklasowość…”, cztery wątpliwe
+komórki zrzutu ❓ do sprawdzenia w druku), umowy na górze `postac`; testy `creation.test.ts`,
+`role-matrix.test.ts`, `advancement.test.ts`, `srv: creation`, `advancement`, `recovery`; E2E
+`t3a` (Kowal z pakietem, potem MG przebiera go do scenariusza), `t71-medyk`, `t71-rocker`,
+`t71-fixer`, `t71-solo`.
+
 Poza etapem 71: **G24 Nocny Targ — osobny etap** (`POMYSLY.md`), NOM-02 / NOM-03 — etap 72,
 STR-12 — po etapie 72, KOR-04 — tylko z abonamentem Trauma Team.
 

@@ -309,23 +309,60 @@ describe('zmiana Roli', () => {
     });
   });
 
-  it('powrót do Roli, którą postać już miała, jest za darmo i z zachowaną rangą', () => {
+  it('powrót do Roli, którą postać już miała, kosztuje jak nowa Rola i zachowuje rangę (D3)', () => {
     const runner = sheet({
       roleId: 'netrunner',
       roleAbilityRank: 4,
       formerRoles: [{ roleId: 'solo', rank: 6 }],
-      improvementPoints: 0,
+      improvementPoints: 70,
     });
     const result = planCpredRoleChange(runner, registry, 'solo');
     expect(result.ok).toBe(true);
     if (!result.ok) return;
-    expect(result.plan).toMatchObject({ returning: true, cost: 0, rank: 6, left: 0 });
+    expect(result.plan).toMatchObject({
+      returning: true,
+      gmSwap: false,
+      cost: CPRED_ABILITY_ADVANCE_COSTS[0],
+      rank: 6,
+      left: 10,
+    });
     expect(describeCpredRoleChange(result.plan)).toBe('Solo — powrót do Roli (Zmysł Walki 6)');
     // Netrunner schodzi na listę, Solo z niej znika — żadna Rola nie stoi dwa razy.
     expect(cpredRoleChangeSheet(runner, result.plan)).toEqual({
       roleId: 'solo',
       roleAbilityRank: 6,
       formerRoles: [{ roleId: 'netrunner', rank: 4 }],
+    });
+    // Bez 60 PD powrotu nie ma — 30.08 był darmowy, od bramki 15.11 już nie.
+    expect(planCpredRoleChange({ ...runner, improvementPoints: 59 }, registry, 'solo')).toEqual({
+      ok: false,
+      problem: 'NO_POINTS',
+    });
+  });
+
+  it('zamiana ręką MG (G35): bez bramki i PD, tylko z Rolą z karty', () => {
+    const medic = sheet({
+      roleId: 'medtech',
+      roleAbilityRank: 1,
+      formerRoles: [{ roleId: 'netrunner', rank: 6 }],
+      improvementPoints: 0,
+    });
+    // Gracz: Medyk 1 nie otwiera drzwi.
+    expect(planCpredRoleChange(medic, registry, 'netrunner')).toEqual({
+      ok: false,
+      problem: 'RANK_TOO_LOW',
+    });
+    const swap = planCpredRoleChange(medic, registry, 'netrunner', { gmSwap: true });
+    if (!swap.ok) throw new Error('zamiana odrzucona');
+    expect(swap.plan).toMatchObject({ gmSwap: true, cost: 0, rank: 6, left: 0 });
+    expect(describeCpredRoleChange(swap.plan)).toBe('Netrunner — zamiana ręką MG (Interfejs 6)');
+    expect(cpredRoleChangeSheet(medic, swap.plan).formerRoles).toEqual([
+      { roleId: 'medtech', rank: 1 },
+    ]);
+    // Nowej Roli MG tą drogą nie nadaje — od tego jest wiersz „Rola” na karcie.
+    expect(planCpredRoleChange(medic, registry, 'solo', { gmSwap: true })).toEqual({
+      ok: false,
+      problem: 'NOT_HELD',
     });
   });
 

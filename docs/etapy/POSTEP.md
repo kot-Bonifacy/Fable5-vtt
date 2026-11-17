@@ -21,7 +21,7 @@ w plikach obok — czytaj je **na żądanie, nigdy rutynowo**:
 
 | stan         | etapy                                                                                          |
 | ------------ | ---------------------------------------------------------------------------------------------- |
-| ⬜ otwarty   | **72** Przebudowa pościgu: prędkość, pasy ruchu i kokpit kierowcy (⬜ projekt 15.11, `etap-72-poscig-kokpit.md`; kodu nie ruszano, następny **72a** rdzeń modelu w `shared`, potem 72b–72g); **71** Weryfikacja Ról bez Netrunnera (🟨 `etap-71-weryfikacja-rol.md`: **71a ✅ 14.11** audyt, **71b ✅ 15.11** specyfikacje `52-role`, rozegrania i **bramka MG przeszła**; **71c0 ✅ 15.11** pięć błędów #83–#87, **71c1 ✅ 15.11** Tabor Rodziny jako stan, **71c2 ✅ 15.11** naprawa i montaż Technikiem, **71d1 ✅ 15.11** walka i leczenie, **71d2 ✅ 16.11** Praca Twórcy i kriopompa, **71e ✅ 16.11** handel i pieniądze, **71f ✅ 16.11** czas i zasoby narracyjne (siedem czeka na wdrożenie, bez migracji); następny **71g1** kreator, PD i wieloklasowość, potem 71g2 wg „Decyzji bramki”, 71h zamknięcie); **70** Przebudowa netrunningu: okno jednego piętra i przejęte urządzenia na mapie (🟨 zrobione 12–14.11, `etap-70-siec-przebudowa.md`: **70a** okno jednego piętra, **70b** przejęta wieżyczka i kamera, **70c** dron, oczy, pasek, **70d** obszar straży, Sieć ze sceny wg rodzaju, okienko strefy, **70e** automat LOD-u i Demona z hamulcem, **70f ✅ 14.11** wzorce 66b/66e pod nowe reguły i rozegranie; czeka na wdrożenie (70d z migracją `20261113180000_net_scene_installations`) i stół MG); **69** Lewa belka bez ramek (🟨 zrobione 11.11, czeka na wdrożenie i oględziny MG przy stole); **68** Warsztat: ulepszenia auta za ed i naprawa (🟨 zrobione 06.11, czeka na wdrożenie i oględziny MG przy stole); **67** Zakup pojazdu (🟨 zrobione 06.11, czeka na wdrożenie i oględziny MG przy stole); **66e** Scena przykładowa „Po zamknięciu” (🟨 zrobione 07.11, obejrzane w Firefoksie; rozegrana w przeglądarce do końca 07.11 — znaleziska w `zaleglosci.md` (27; pkt 18 i 19 nie, decyzja MG; 13 naprawionych 07.11); czeka na naprawę reszty, stół MG i wdrożenie); **66d** Scena przykładowa „Zastaw” (🟨 wzorzec zrobiony i rozegrany w przeglądarce 06.11; od 06.11 jeden taran na turę (decyzja MG); czeka na stół MG i wdrożenie); **66** Sceny przykładowe (🟨 zrobione 31.10, czeka na oględziny MG przy stole i wdrożenie; **66b** „Fabryka dronów” 🟨 zrobione 31.10, tak samo (netrunner obejrzany w przeglądarce 07.11, poprawki czekają na wdrożenie); **66c** „Ostatni zjazd” 🟨 wzorzec zrobiony, rozegrany w przeglądarce 04.11 i ponownie 05.11 po rebalansie (porażka o włos, balans zatwierdzony przez MG) — zaległości z przebiegów zamknięte 05.11, Esc na kubku MG 07.11 — czeka na stół MG i wdrożenie); **65** Scena pościgu i walka pojazdów (🟨 65a–65e ✅ 30–31.10, czeka na oględziny MG przy stole); **62** Sieć ze sceny (🟨 zrobione, czeka na oględziny MG na VPS po wdrożeniu); **61** Skradanie się (🟨 zrobione, czeka na słowo MG o rozstrzygnięciach); **28** Wdrożenie na VPS (🟨 działa na `https://vtt.tatanga.eu` z botami od 18.10; zostały off-site, utwardzenie, monitoring); **43b**, **43c** (UI walki); **60** Czytelny czat (zlecenie MG z 24.10; 🟨 60a–60c ✅, czeka na oględziny MG z pierwszego kryterium); T10; refaktoryzacja odłożona (MG 18.10) |
+| ⬜ otwarty   | **72** Przebudowa pościgu: prędkość, pasy ruchu i kokpit kierowcy (⬜ projekt 15.11, `etap-72-poscig-kokpit.md`; kodu nie ruszano, następny **72a** rdzeń modelu w `shared`, potem 72b–72g); **71** Weryfikacja Ról bez Netrunnera (🟨 `etap-71-weryfikacja-rol.md`: **71a ✅ 14.11** audyt, **71b ✅ 15.11** specyfikacje `52-role`, rozegrania i **bramka MG przeszła**; **71c0 ✅ 15.11** pięć błędów #83–#87, **71c1 ✅ 15.11** Tabor Rodziny jako stan, **71c2 ✅ 15.11** naprawa i montaż Technikiem, **71d1 ✅ 15.11** walka i leczenie, **71d2 ✅ 16.11** Praca Twórcy i kriopompa, **71e ✅ 16.11** handel i pieniądze, **71f ✅ 16.11** czas i zasoby narracyjne, **71g1 ✅ 17.11** kreator, PD i wieloklasowość (osiem czeka na wdrożenie, bez migracji); następny **71g2** licencja (G37, parafraza w `roleability.ts`), potem 71h zamknięcie); **70** Przebudowa netrunningu: okno jednego piętra i przejęte urządzenia na mapie (🟨 zrobione 12–14.11, `etap-70-siec-przebudowa.md`: **70a** okno jednego piętra, **70b** przejęta wieżyczka i kamera, **70c** dron, oczy, pasek, **70d** obszar straży, Sieć ze sceny wg rodzaju, okienko strefy, **70e** automat LOD-u i Demona z hamulcem, **70f ✅ 14.11** wzorce 66b/66e pod nowe reguły i rozegranie; czeka na wdrożenie (70d z migracją `20261113180000_net_scene_installations`) i stół MG); **69** Lewa belka bez ramek (🟨 zrobione 11.11, czeka na wdrożenie i oględziny MG przy stole); **68** Warsztat: ulepszenia auta za ed i naprawa (🟨 zrobione 06.11, czeka na wdrożenie i oględziny MG przy stole); **67** Zakup pojazdu (🟨 zrobione 06.11, czeka na wdrożenie i oględziny MG przy stole); **66e** Scena przykładowa „Po zamknięciu” (🟨 zrobione 07.11, obejrzane w Firefoksie; rozegrana w przeglądarce do końca 07.11 — znaleziska w `zaleglosci.md` (27; pkt 18 i 19 nie, decyzja MG; 13 naprawionych 07.11); czeka na naprawę reszty, stół MG i wdrożenie); **66d** Scena przykładowa „Zastaw” (🟨 wzorzec zrobiony i rozegrany w przeglądarce 06.11; od 06.11 jeden taran na turę (decyzja MG); czeka na stół MG i wdrożenie); **66** Sceny przykładowe (🟨 zrobione 31.10, czeka na oględziny MG przy stole i wdrożenie; **66b** „Fabryka dronów” 🟨 zrobione 31.10, tak samo (netrunner obejrzany w przeglądarce 07.11, poprawki czekają na wdrożenie); **66c** „Ostatni zjazd” 🟨 wzorzec zrobiony, rozegrany w przeglądarce 04.11 i ponownie 05.11 po rebalansie (porażka o włos, balans zatwierdzony przez MG) — zaległości z przebiegów zamknięte 05.11, Esc na kubku MG 07.11 — czeka na stół MG i wdrożenie); **65** Scena pościgu i walka pojazdów (🟨 65a–65e ✅ 30–31.10, czeka na oględziny MG przy stole); **62** Sieć ze sceny (🟨 zrobione, czeka na oględziny MG na VPS po wdrożeniu); **61** Skradanie się (🟨 zrobione, czeka na słowo MG o rozstrzygnięciach); **28** Wdrożenie na VPS (🟨 działa na `https://vtt.tatanga.eu` z botami od 18.10; zostały off-site, utwardzenie, monitoring); **43b**, **43c** (UI walki); **60** Czytelny czat (zlecenie MG z 24.10; 🟨 60a–60c ✅, czeka na oględziny MG z pierwszego kryterium); T10; refaktoryzacja odłożona (MG 18.10) |
 | ✅ ukończone | 01–11, 13–20b, 23a–27f, 27h–27l, 29a–30d, 31–35, 37–42c, 43a, 44a–44d, 45, 46a1, 46a2, 46c1, 46c2, 46b1, 46b2, 47a, 47b, 48a, 48b, 48c, 49a, 49b, 50a, 50b, 50c, 51, 52, 53, 54, 55, 56, 57 (57a–57c), 58 (58a–58d), 59 (59a–59c), 63 (63a–63b; 63c wycofane 29.10), 64 (64a–64c) (ostatni zamknięty: 64, 2026-10-30) |
 | ⛔ wycofane  | 12, 21, 22 (głos), 27g (wydajność), 36 (makra); 27, 29, 30, 38 rozdzielone na etapy literowane |
 
@@ -42,7 +42,8 @@ NPC-ów mają **zamiar i autopilota**, MG dostaje **panel „Pościg” z planem
 czeka w pliku na potwierdzenie w trakcie. Makieta: link w pliku etapu.
 
 **Weryfikacja Ról (etap 71, zlecenie MG z 14.11) — 71a–71d1 zrobione (15.11), 71d2, 71e i 71f
-(16.11); następny 71g1 (kreator, PD, wieloklasowość: G33–G36, D2, D3, P4).** Macierz `role-macierz.md` (194 reguły z dowodami, rozegrania 71b, „Lista
+(16.11), 71g1 (17.11); następny 71g2 (licencja: G37 — parafraza zdań podręcznika w
+`roleability.ts`), potem 71h.** Macierz `role-macierz.md` (194 reguły z dowodami, rozegrania 71b, „Lista
 bramki”) i plan w `etap-71-weryfikacja-rol.md` („Decyzje bramki”, tabela 71c0–71g2). **71c0 czeka
 na wdrożenie (bez migracji):** Zdolności z karty płacą Akcję figurą, którą znajduje serwer
 (`characterFigure`), Wykrycie słabości po mnożniku serii, **Prowizorka to Test przez kubek** (PT
@@ -76,7 +77,13 @@ zegara świata, MG wpisuje fanów bez rzutu i zdejmuje blokadę; nowych fanów n
 Media ma temat publikacji i rejestr na karcie, MG licznik Pogłosek w tygodniu („Pogłoski 1/2”)
 z przypomnieniem po tygodniu bez dwóch rzutów, a „Szukaj pogłosek” wystawia Test z PT z tabeli;
 funkcjonariusze wyższych kategorii Wsparcia mają drugą broń, a MG widzi licznik wezwań (moduły
-`rolefans.ts`, `rolerumours.ts`, `backuplog.ts`, `realtime/role-records.ts`). Specyfikacje startują z punktu `role-start` (fikstura `fixtures/role.ts`). **Etap 71 nie dotyka sceny pościgu** (styk z 72
+`rolefans.ts`, `rolerumours.ts`, `backuplog.ts`, `realtime/role-records.ts`). **71g1 też czeka na wdrożenie (bez migracji):** Krawędziarz dostaje
+pakiet Roli z kreatora (`edgerunnerKits` w prywatnym `creation.json`, wybory „lub” w kroku
+„Wyposażenie”; strój do notatek, chrom wszczepia MG — cztery komórki zrzutu ❓ do sprawdzenia
+przez MG w druku, `decyzje-i-uproszczenia.md`), listy Rockera i Medyka wg oryginału, powrót do
+Roli z karty za 60 PD i „Zrób główną” przy Roli poprzedniej (u MG bez PD), Medyk wybiera środek
+za punkt Farmaceutyków (`pharmaPicks`), awans Znajomości na 3 / 5 / 7 przypomina o języku,
+Ulicznik Fixera z pistoletem i bronią białą. Specyfikacje startują z punktu `role-start` (fikstura `fixtures/role.ts`). **Etap 71 nie dotyka sceny pościgu** (styk z 72
 w pliku etapu); Nocny Targ — osobny etap (`POMYSLY.md`).
 
 **Przebudowa netrunningu (etap 70, zlecenie MG z 11.11) — 70a–70f zrobione (12–14.11), czeka
@@ -867,20 +874,61 @@ a nie do tego pliku.
 | `atak`      | broń i dodatki, amunicja, obrażenia, pancerz, rany krytyczne, trucizna na ostrzu, auto-unik, strach z Konfrontacji, auto jako cel, broń pokładowa, wybór celu ze stosu, skutki amunicji po karcie ataku, ikona gołych rąk, broń dwuręczna w rękach przy tarczy | 57   | 8       |
 | `statysta`  | figura z kartą, `statBlock`, Wartość bojowa, `token:stat` (tylko zmienione grupy), wzorce, pełna karta bez sześciu pól | 19   | 3       |
 | `karta`     | strony i zakładki, panele, `sheet.css`, walidacja list, usuwanie przedmiotu, „Używane” i „Plecak”, czekanie na autozapis (`characterSaved`) | 13   | 12      |
-| `postac`    | kreator, PD i awanse, koszyk i cofanie awansów, Role i Zdolności, cyborgizacje, chrom zmieniający liczby, ekonomia, Test montażu gracza, pojazdy i Tabor, Tabor jako stan auta (`fleet.ts`), naprawa i montaż Technikiem (`repair-work.ts`), skutki Ulepszania na wierszu (`itemupgrade.ts`), Praca Twórcy (`fabrication.ts`), kriopompa (`cryo.ts`), Lojalność na zamknięciu sesji (`teamloyalty.ts`), zasoby narracyjne Ról (`role-records.ts`: fani, Pogłoski, publikacje, wezwania) | 65   | 3       |
+| `postac`    | kreator, PD i awanse, koszyk i cofanie awansów, Role i Zdolności, cyborgizacje, chrom zmieniający liczby, ekonomia, Test montażu gracza, pojazdy i Tabor, Tabor jako stan auta (`fleet.ts`), naprawa i montaż Technikiem (`repair-work.ts`), skutki Ulepszania na wierszu (`itemupgrade.ts`), Praca Twórcy (`fabrication.ts`), kriopompa (`cryo.ts`), Lojalność na zamknięciu sesji (`teamloyalty.ts`), zasoby narracyjne Ról (`role-records.ts`: fani, Pogłoski, publikacje, wezwania), pakiet Krawędziarza (`edgerunnerKits`, `kitPicks`), wybór Farmaceutyków (`pharmaPicks`), zamiana Roli MG (`gmSwap`) | 68   | 3       |
 | `ekwipunek` | wiersze wyposażenia, przekazanie, łup (także ciała graczy), handel, sklepy, asortyment handlarza z kompendium, zasięg, amunicja bez dna, egzoszkielet, latarka z ekwipunku, narkotyki i fiolki, siatka okna „Wymiana”, zgoda z góry, odświeżanie po naklejkach, znaczek „w użyciu”, zakup auta z modelu, warsztat (ulepszenia i naprawa auta), auto bokiem i „w garażu”, grafika auta to model i skala miniatur, postać na karcie przekazania, zasięg ręki do figury spoza siatki, targ przy ladzie i raty Fixera (`haggling.ts`) | 51   | 3       |
 | `czas`      | zegar świata, kalendarz, `statEffects`, leczenie po dobie, dawki i uzależnienia (`chems`), czas pracy z karty rzutu (`roll:clock`), Prowizorka w przemiataniach i czas zabiegu, tydzień w kriośnie, tydzień kalendarza (`gameWeekIndex`) | 23   | 2       |
 | `siec`      | Programy, LOD, demony, piętra architektury, dek jako towar, strefy bronione, kamery (także w ciemności), rozbrajanie, Sieć ze sceny, jedna próba i pamięć sukcesów, strzał z urządzenia, strefa tylko z marszu gracza, widok runu z rundą, strefa rozbrojona w Sieci, okno jednego piętra i ładunek bez szybu, pełny wiersz czatu zamiast skrótu, przejęta figura urządzenia (`operatorOf`, `netDeviceUse`), marsz drona, oczy urządzeń, figury wyciszone (`net-off`), pasek „Oczy i urządzenia”, Sieć ze sceny wg rodzaju, strefy i drzwi w „Instalacjach”, obszar straży od figury, okienko strefy, automat obrony Sieci i hamulec MG, „Włącz / Wyłącz w Sieci” MG i przeszukanie wyłączonego, Maskowanie piętro po piętrze, czerwone ślady bez Maskowania, Programy za wyjściem, rzut Sieci na kubek ze Szczęściem, „Zapomnij” sceny czyści Sieć, wykrycie w Sieci zakłada starcie | 33   | 12      |
 | `boty`      | llama-server, RAG, reindeks, dziennik i baza wiedzy, brama AI  | 10   | 10      |
 | `dane`      | `parse-manual.py`, kompendium poza repo, tabele z podręcznika  | 9    | 12      |
 | `kopie`     | `snapshot`, `archive`, paczki ZIP, wczytanie kampanii, „czeka na gracza”, kopie kampanii i cofnięcie, sklep i bot w paczce, zgłoszenie karty gracza, pojazdy w paczce, auta na scenie pościgu, przeszkody poza paczką | 22   | 6       |
-| `ogledziny` | CDP i Playwright MCP, zrzuty, dwie sesje, `window.confirm`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            | 0    | 126     |
+| `ogledziny` | CDP i Playwright MCP, zrzuty, dwie sesje, `window.confirm`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            | 0    | 127     |
 | `testy`     | vitest, migotanie, `tsc --noEmit`, środowisko dev                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     | 0    | 166     |
 
 
 ## Notatki z dwóch ostatnich sesji
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
+
+### Sesja 17.11 — etap 71g1: kreator, PD i wieloklasowość
+
+**Zrobione (czeka na wdrożenie, bez migracji — nowe pola w JSON-ie karty i szkicu):**
+
+- **G33 (WSP-08) — pakiet Roli Krawędziarza z kreatora**: sekcja `edgerunnerKits`
+  w prywatnym `creation.json` (s. 98, 103, 117 przepisane ręką; parser przenosi ją bez zmian),
+  wybory „lub” w kroku „Wyposażenie” (`kitPicks` w szkicu, brak w `creationIssues`, zdejmuje je
+  zmiana Roli i metody). `creationRoleKit` / `creationKitSheetRows` obsługują teraz sztuki,
+  granaty (wiersz „Granat” + zapas) i oba rodzaje pakietu; strój idzie do notatek karty, chrom
+  zostaje MG, amunicja do broni palnej bez dna. Próbka publiczna: wymyślony pakiet Nomady.
+  **Cztery komórki zrzutu ❓ do sprawdzenia przez MG w druku** (`decyzje-i-uproszczenia.md`).
+- **G34** — listy Rockera (Broń biała) i Medyka (Broń długa) wg oryginału:
+  `ORIGINAL_EDITION_SWAPS` w `parse-creation.py` (parser puszczony, różnica tylko w dwóch
+  Umiejętnościach), pakiety Ulicznika obu Ról też. **P4** — Ulicznik Fixera: pistolet i lekka
+  broń biała.
+- **D3 + G35 (WSP-18)** — powrót do Roli z karty kosztuje 60 PD i zachowuje rangę; „Zrób
+  główną” przy Roli poprzedniej w Awansie: gracz — zakup, MG — `gmSwap` bez bramki i PD
+  (`NOT_HELD` dla Roli spoza karty). Zaległość (9) zamknięta.
+- **D2 (MED-08)** — `pharmaPicks` na karcie, `character:pharma-pick` (właściciel wybiera,
+  MG zdejmuje ✕), `character:update` odmawia pola każdemu; stara karta czyta się z kolejności
+  tabeli (`parseCharacterData`), nowa i punkty wpisane ręką MG czekają na wybór.
+- **G36 (FIX-12)** — Znajomości kupione na 3 / 5 / 7 piszą `gmaction` kupującemu i MG
+  (`cpredOperatorLanguageReminder`).
+- Rozstrzygnięcia — `decyzje-i-uproszczenia.md` („Kreator, PD i wieloklasowość…”, dopiski przy
+  Farmaceutykach i UC wszczepów); macierz: WSP-18, MED-08, WSP-23, ROC-K1, MED-K1 → ✅, WSP-08,
+  FIX-12 → 🟡; umowy na górze `postac` (trzy wpisy).
+
+Testy: `shared` 3192 (`creation.test.ts` +4 „etap 71g1”, `role-matrix.test.ts` +2,
+`advancement.test.ts` D3 i `gmSwap`), serwer 1857/1857 (`creation`, `advancement` +2,
+`recovery` +1, `campaign-isolation` z `character:pharma-pick`), klient 515; `tsc` czterech
+pakietów, lint i Prettier zmienionych plików czyste. E2E: `t71-medyk` (D2 i MED-K1),
+`t71-rocker` (ROC-K1), `t71-fixer` (FIX-12, WSP-23), `t71-solo` (WSP-18) — zielone;
+**`t3a` 17/17** (nowy punkt `po-T3a`): Kowal (Solo-Krawędziarz) wybiera w kreatorze pakiet, 3.8 sprawdza go na karcie,
+a MG „przebiera” Kowala do broni sprzed 71g1 — 38 specyfikacji gra dalej tym Kowalem. **Oglądano
+w Firefoksie** (gracz: kreator Krawędziarza-Medyka z pakietem i wyborami, panel Medycyny
+z „Wybierz” i licznikiem czekających punktów) i **w Chromium** (MG: „Zrób główną” w Awansie).
+Pułapki przy okazji (`ogledziny`): zakładka „Ścieżka Życia” nie leży w regionie karty, a okno
+„Wymiana” i powiadomienie o handlu zasłaniają ją klikowi myszą; okno gracza w Firefoksie po
+długiej walce w `t71-solo` nie dostało końca starcia — pomógł `reload`. Tymczasowa
+specyfikacja zrzutów usunięta; `specs/99-zapomnij/` to dalej cudze oględziny z 14.11.
 
 ### Sesja 16.11 (trzecia) — etap 71f: czas i zasoby narracyjne
 
@@ -920,46 +968,3 @@ publikacjach, licznik wezwań, wiersz przypomnienia na czacie); po oględzinach 
 dostały krój „Rzuć” zamiast ikonowego. Pułapka przy okazji (`testy`): zmiana karty zapisana przez
 rzut dociera do drugiego okna dopiero po animacji kości. Tymczasowa specyfikacja zrzutów
 usunięta. `specs/99-zapomnij/` to dalej cudze tymczasowe oględziny z 14.11 — poza commitem.
-
-### Sesja 16.11 (druga) — etap 71e: handel i pieniądze
-
-**Zrobione (czeka na wdrożenie, bez migracji — nowe pola w JSON-ie karty):**
-
-- **G20 (FIX-01, FIX-14) — rzut sporny przy ladzie**: `character:haggle` z `merchantId` liczy
-  sumę drugiej strony z karty handlarza (`merchantCounterBonus`: CHA + Handel + Znajomości),
-  poza sklepem bierze ją z `haggleOpponent`, którą wpisuje MG (panel Znajomości: pole, „kto”,
-  „Daj graczowi”; jeden rzut ją zużywa) — gracz nie wpisuje nic, bez sumy `NO_OPPONENT`.
-  Wynik rzutu przy ladzie (`counterHaggle`) blokuje drugi rzut u niej do transakcji
-  (`ALREADY_HAGGLED`); targ dobity przy ladzie niesie `merchantId` i działa tylko tam
-  (`cpredHaggleUsableAt` / `cpredHaggleDiscountAt` — okno, Kompendium, salon, warsztat).
-  Handlarz ze Znajomościami urywa przy skupie 10% / 20% (`saleCut`), dopóki sprzedający nie
-  wygra z nim rzutu — nie-Fixer rzuca „Targuj się o cenę skupu” w stopce okna „Wymiana”
-  (`CounterHaggle.tsx`), u zwykłego handlarza `NOTHING_TO_HAGGLE`.
-- **G21–G23 (FIX-04…06)** — `cpredHaggleOnDeal` w `cpredMerchantQuote`: procent na cięższą
-  stronę koszyka, szósta sztuka gratis (jedna, najdroższej pozycji z ≥ 6 sztukami), „pół
-  teraz, pół za miesiąc” — połowa rzeczy od 5000 ed na ratę (`debts`, termin `cpredDebtDue`),
-  „Spłać” / „Umorz” (`character:debt`), po terminie przemiatanie zegara oznacza ratę jako
-  zaległą, zamyka targ (`halfLaterClosed`) i pisze MG (`markDebtsOverdue`). Stopka okna mówi,
-  co zrobił targ i handlarz-Fixer.
-- **G25 (KOR-12…14)** — `closeTeamsForSession` w `endSession`: ponad 10 → 10, propozycja −1
-  (`neglectDue`, „−1” / „Pomiń” u MG) dla pracowników bez wzrostu (`grew` z dodatniej zmiany),
-  „odchodzi” przy ujemnej, jeden wiersz `gmaction` na Korpo; przycisk „Koniec sesji” przy
-  pracowniku zniknął. **G26 (KOR-15)** — „Następca (200 ed)” przy zatrudnieniu, opłata przez
-  `applyBalance`. **P6 (KOR-S1)** — pracownik staje obok figury Korpo na aktywnej scenie.
-- Rozstrzygnięcia — `decyzje-i-uproszczenia.md` („Handel i pieniądze po weryfikacji Ról”,
-  dopisek przy „z sześciu targów VTT liczy dwa”); macierz: FIX-01, FIX-04, FIX-05, KOR-12,
-  KOR-15, KOR-S1 → ✅; FIX-06, FIX-14, KOR-13, KOR-14 → 🟡; umowy na górze `postac`
-  i `ekwipunek`. `character:haggle` i `character:debt` działają między sesjami.
-
-Testy: `shared` 3169 (nowe `haggling.test.ts` 18, `teamloyalty.test.ts` 5, poprawione
-`merchant.test.ts` — targ przy samej sprzedaży teraz działa), serwer 1841/1841 (nowy
-`trade71e.test.ts` 8, `roles30d` pod G20, `campaign-isolation` z `character:debt`), klient 515;
-`tsc` czterech pakietów, lint i Prettier zmienionych plików czyste; E2E `t71-fixer` 5/5 (+2:
-lada, szósta sztuka) i `t71-korpo` 6/6 (+2: następca, koniec sesji; asercja figury obok
-Korpo). Pułapka przy okazji: w rejestrze testów serwera (bez danych prywatnych) Umiejętności
-„Handel” nie ma — łata karty ją pomija, suma Wiktora to 10, nie 14. **Oglądano w Firefoksie**
-(gracz: panel Znajomości bez sumy i z ratą, stopka okna „Wymiana” z targiem, cięciem i ratą)
-i **w Chromium** (MG: pole sumy z „Daj graczowi”, „Spłać / Umorz”, propozycja −1 w Pracy
-Zespołowej); po oględzinach pole „kto” i guziki „−1 / Pomiń” zmalały do rozmiaru panelu.
-Tymczasowa specyfikacja zrzutów usunięta. `specs/99-zapomnij/` to dalej cudze tymczasowe
-oględziny z 14.11 — poza commitem.

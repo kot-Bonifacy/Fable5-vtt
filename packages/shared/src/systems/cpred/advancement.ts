@@ -335,7 +335,13 @@ export function planCpredAdvances<T extends CpredAdvanceSheet>(
 // ─────────────────────────── Zmiana Roli (s. 143) ───────────────────────────
 
 export type CpredRoleChangeProblem =
-  'BAD_REQUEST' | 'UNKNOWN_ROLE' | 'NO_ROLE' | 'SAME_ROLE' | 'RANK_TOO_LOW' | 'NO_POINTS';
+  | 'BAD_REQUEST'
+  | 'UNKNOWN_ROLE'
+  | 'NO_ROLE'
+  | 'SAME_ROLE'
+  | 'RANK_TOO_LOW'
+  | 'NO_POINTS'
+  | 'NOT_HELD';
 
 export const CPRED_ROLE_CHANGE_PROBLEMS: Record<CpredRoleChangeProblem, string> = {
   BAD_REQUEST: 'Nie wiadomo, jaką Rolą miałaby być ta postać.',
@@ -344,6 +350,7 @@ export const CPRED_ROLE_CHANGE_PROBLEMS: Record<CpredRoleChangeProblem, string> 
   SAME_ROLE: 'To już jest bieżąca Rola tej postaci.',
   RANK_TOO_LOW: `Rolę zmienia się dopiero przy Zdolności Specjalnej bieżącej Roli na poziomie ${CPRED_MULTICLASS_MIN_RANK} (s. 143).`,
   NO_POINTS: 'Za mało Punktów Doświadczenia.',
+  NOT_HELD: 'Zamienić można tylko z Rolą, którą karta już niesie.',
 };
 
 /** One change of Role, priced and judged. */
@@ -356,8 +363,13 @@ export interface CpredRoleChangePlan {
   ability: string;
   /** Rank it stands at afterwards: 1 for a new Role, the kept one on a return. */
   rank: number;
-  /** True when the sheet already carried this Role — then the change is free. */
+  /** True when the sheet already carried this Role (kept rank, same price — D3, 15.11). */
   returning: boolean;
+  /**
+   * Zamiana ręką MG (etap 71g1, G35): poprawka karty, nie zakup — bez bramki
+   * rangi i bez PD, tylko między Rolami, które karta już niesie.
+   */
+  gmSwap: boolean;
   cost: number;
   /** Points left after paying. */
   left: number;
@@ -381,16 +393,20 @@ export type CpredRoleChangeSheet = CpredRoleSheet & Pick<CpredCharacterData, 'im
  * rather than the first: „dopóki nie podniesiesz poziomu Zdolności Specjalnej
  * swojej nowej Roli do 4".
  *
- * Two shapes come out of one rule. Taking up a Role never held before buys its
- * Ability's first rung (60 PD, s. 411) and starts at 1; going back to one the
- * sheet already carries costs nothing, because the rank is still there and the
- * only thing changing is which Role the Street sees (decision of the GM,
- * 30.08.2026).
+ * Taking up a Role never held before buys its Ability's first rung (60 PD,
+ * s. 411) and starts at 1. Going back to one the sheet already carries costs
+ * **the same 60 PD** and keeps the rank it had (bramka 15.11, D3 — zmiana
+ * decyzji MG z 30.08, kiedy powrót był darmowy): the book is silent, and a free
+ * return would make Role-hopping cheaper than the first change.
+ *
+ * `gmSwap` (etap 71g1, G35) is the GM correcting a sheet: only to a Role the
+ * sheet already carries, without the rank gate and without points.
  */
 export function planCpredRoleChange(
   data: CpredRoleChangeSheet,
   registry: CpredRegistry,
   roleId: unknown,
+  options: { gmSwap?: boolean } = {},
 ): CpredRoleChangeResult {
   if (typeof roleId !== 'string' || roleId.length === 0) {
     return { ok: false, problem: 'BAD_REQUEST' };
@@ -403,12 +419,16 @@ export function planCpredRoleChange(
     return { ok: false, problem: 'NO_ROLE' };
   }
   if (current.roleId === roleId) return { ok: false, problem: 'SAME_ROLE' };
-  if (current.rank < CPRED_MULTICLASS_MIN_RANK) return { ok: false, problem: 'RANK_TOO_LOW' };
 
   const former: readonly CpredRoleRank[] = data.formerRoles ?? [];
   const held = former.find((entry) => entry.roleId === roleId) ?? null;
   const returning = held !== null;
-  const cost = returning ? 0 : (cpredAbilityAdvanceCost(1) ?? 0);
+  const gmSwap = options.gmSwap === true;
+  if (gmSwap && !returning) return { ok: false, problem: 'NOT_HELD' };
+  if (!gmSwap && current.rank < CPRED_MULTICLASS_MIN_RANK) {
+    return { ok: false, problem: 'RANK_TOO_LOW' };
+  }
+  const cost = gmSwap ? 0 : (cpredAbilityAdvanceCost(1) ?? 0);
   const left = Math.round(data.improvementPoints) - cost;
   if (left < 0) return { ok: false, problem: 'NO_POINTS' };
 
@@ -420,6 +440,7 @@ export function planCpredRoleChange(
       ability: role.ability,
       rank: held ? Math.max(1, Math.round(held.rank)) : 1,
       returning,
+      gmSwap,
       cost,
       left,
       from: current,
@@ -444,7 +465,7 @@ export function cpredRoleChangeSheet(
 
 /** „Nomada — nowa Rola (Moto 1)" — what the audit row says about the change. */
 export function describeCpredRoleChange(plan: CpredRoleChangePlan): string {
-  const what = plan.returning ? 'powrót do Roli' : 'nowa Rola';
+  const what = plan.gmSwap ? 'zamiana ręką MG' : plan.returning ? 'powrót do Roli' : 'nowa Rola';
   return `${plan.roleName} — ${what} (${plan.ability} ${plan.rank})`;
 }
 
@@ -797,6 +818,11 @@ export interface CharacterRoleChangePayload {
   characterId: string;
   /** Registry role id the character becomes. */
   roleId: string;
+  /**
+   * Zamiana ręką MG (etap 71g1, G35): tylko z Rolą, którą karta już niesie,
+   * bez bramki i PD. Od gracza — `FORBIDDEN`.
+   */
+  gmSwap?: boolean;
 }
 
 /** Client → server payload of `character:xp-history` — the audit of one sheet. */

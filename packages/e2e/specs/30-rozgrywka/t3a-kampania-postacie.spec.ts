@@ -67,6 +67,12 @@ const character = (name: string): CharacterRow => {
 };
 
 const sheetOf = (name: string) => JSON.parse(character(name).data) as Record<string, unknown>;
+/** Szkic kreatora gracza (JSON) — do asercji wyborów, których UI nie odbija w liczbach. */
+const draftOf = (player: string) =>
+  queryOne<{ data: string }>(
+    `SELECT d.data FROM CharacterDraft d JOIN User u ON u.id = d.userId WHERE u.name = ?`,
+    player,
+  )?.data ?? '';
 /** Etap 48b: Programy z pakietu Roli Netrunnera, w kolejności `creation.json`. */
 const ISKRA_KIT_PROGRAMS = ['Pancerz', 'Miecz', 'Mam cię!', 'Mózgoklep', 'Robak'];
 
@@ -331,8 +337,18 @@ test.describe.serial('T3a: kampania, gracze, zgody i oba kreatory', () => {
     await language.selectOption({ label: languages.includes('Polski') ? 'Polski' : languages[0]! });
 
     await goToStep(page, /Wyposażenie/);
-    // Etap 47b (cennik domowy, decyzja MG z 10.10): B.C. Pistolet, broń biała i kurtka
-    // kosztują razem 2050 ed (broń biała ×1 od 20.10) — pakiet Roli Krawędziarza daje MG po przyjęciu (3.8).
+    // Etap 71g1 (G33): pakiet Roli Krawędziarza kładzie kreator — Solo wybiera
+    // dużą broń białą albo tarczę i Sandevistan albo Rosomaki (s. 98, 117).
+    const kit = window.getByRole('region', { name: 'Wyposażenie Roli gratis' });
+    await expect(kit.getByRole('heading', { name: 'Pakiet Roli — gratis' })).toBeVisible();
+    await expect(kit).toContainText('Karabin szturmowy');
+    await expect(kit).toContainText('Lekka kurtka kuloodporna ×2');
+    const picks = kit.locator('select[data-kit-slot]');
+    await expect(picks).toHaveCount(2);
+    await picks.nth(0).selectOption({ label: 'Duża broń biała' });
+    await expect.poll(() => draftOf('Marek')).toContain('"kitPicks":{"1":0}');
+    await picks.nth(1).selectOption({ label: 'Sandevistan (chrom — wszczepia MG)' });
+    await expect.poll(() => draftOf('Marek')).toMatch(/"kitPicks":\{"1":0,"5":0\}/);
     // Kule się nie kończą (zasada domowa MG z 23.10) — półka „Amunicja” nie ma
     // zwykłej do pistoletu, a Kowal zostaje przy swoich 500 ed.
     await expect(window.getByText(/500 ed startowych/)).toBeVisible();
@@ -364,8 +380,13 @@ test.describe.serial('T3a: kampania, gracze, zgody i oba kreatory', () => {
     const sheet = sheetOf('Kowal');
     expect(sheet.stats).toEqual(KOWAL_STATS);
     expect(sheet.eddies).toBe(500);
-    // Gołe ręce z urzędu (47b) — jedyna „broń” przed pakietem Roli od MG.
-    expect((sheet.weapons as { name: string }[]).map((w) => w.name)).toEqual(['Bijatyka']);
+    // Etap 71g1 (G33): broń z pakietu Roli przed gołymi rękami z urzędu (47b).
+    expect((sheet.weapons as { name: string }[]).map((w) => w.name)).toEqual([
+      'Karabin szturmowy',
+      'Bardzo ciężki pistolet',
+      'Duża broń biała',
+      'Bijatyka',
+    ]);
     expect(
       (sheet.gear as { name: string; qty?: number; ammo?: { calibre: string } }[])
         .filter((row) => row.ammo)
@@ -549,10 +570,33 @@ test.describe.serial('T3a: kampania, gracze, zgody i oba kreatory', () => {
     }
   });
 
-  test('3.8 MG daje pakiet Roli: Kowalowi broń i kurtkę, Iskrze chrom z wyposażenia (47b)', async () => {
+  test('3.8 pakiet Roli Kowala z kreatora (G33); MG przebiera go do scenariusza, Iskrze chrom z wyposażenia (47b)', async () => {
     test.setTimeout(3 * 60_000);
-    // Krawędziarz: pakiet Roli dokłada MG w całości (umowa 47a) — przy cenniku
-    // domowym 500 ed Kowala nie starcza nawet na pistolet.
+    // Etap 71g1 (G33): pakiet Roli Krawędziarza położył kreator — broń z wyborem,
+    // dwie kurtki (ciało, głowa), Agent; chrom (sprzęg, Sandevistan) czeka na MG.
+    type Row = { name: string; location?: string };
+    const kit = sheetOf('Kowal') as { weapons: Row[]; armor: Row[]; gear: Row[]; eddies: number };
+    expect(kit.weapons.map((w) => w.name)).toEqual([
+      'Karabin szturmowy',
+      'Bardzo ciężki pistolet',
+      'Duża broń biała',
+      'Bijatyka',
+    ]);
+    expect(kit.armor.map((a) => [a.name, a.location])).toEqual([
+      ['Lekka kurtka kuloodporna', 'body'],
+      ['Lekka kurtka kuloodporna', 'head'],
+    ]);
+    expect(kit.gear.map((g) => g.name)).toEqual(['Agent']);
+    expect(kit.eddies).toBe(500);
+    // Dalsze scenariusze (T4–T6, 46, 47) grają Kowalem z bronią sprzed 71g1 —
+    // MG przebiera go ręką: zdejmuje pakiet i daje trzy rzeczy z Kompendium.
+    expect(
+      await emitAck(await mg.socket(), 'character:update', {
+        characterId: character('Kowal').id,
+        patch: { data: { weapons: [], armor: [], gear: [] } },
+      }),
+    ).toMatchObject({ ok: true });
+    await expect.poll(() => (sheetOf('Kowal').armor as Row[]).length).toBe(0);
     for (const item of ['Bardzo ciężki pistolet', 'Średnia broń biała']) {
       await giveEntry(mg, 'Kowal', item);
       await expect

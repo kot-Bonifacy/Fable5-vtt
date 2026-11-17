@@ -199,21 +199,88 @@ export function cpredDosesLabel(count: number): string {
  * Do których środków sięga Medyk z tyloma punktami Farmaceutyków (s. 150).
  *
  * „Zawsze, gdy przydzielasz punkt do Farmaceutyków, zyskujesz dostęp do jednego
- * z poniższych środków" — podręcznik nie każe wybierać, który, więc VTT bierze
- * je **w kolejności tabeli**. To uproszczenie i jest świadome: alternatywą byłby
- * szósty wybór na karcie („które pięć z pięciu?") po to, żeby przy pełnej
- * randze i tak wyszło to samo. Zapisane w `decyzje-i-uproszczenia.md`.
+ * z poniższych środków" — od etapu 71g1 (bramka 15.11, D2) Medyk **wybiera**
+ * środek przy każdym punkcie: `picks` to jego wybory w kolejności, a dostęp
+ * dają pierwsze `points` z nich (punkt zdjęty „−” chowa ostatni wybór, punkt
+ * dołożony z powrotem go oddaje). `picks === null` to karta sprzed wyboru —
+ * czyta się po staremu, w kolejności tabeli (decyzja z 03.09).
  */
-export function cpredPharmaAccess(points: number): readonly CpredPharmaceutical[] {
-  return CPRED_PHARMACEUTICALS.slice(
-    0,
-    Math.max(0, Math.min(CPRED_PHARMACEUTICALS.length, points)),
-  );
+export function cpredPharmaAccess(
+  points: number,
+  picks: readonly string[] | null = null,
+): readonly CpredPharmaceutical[] {
+  const count = Math.max(0, Math.min(CPRED_PHARMACEUTICALS.length, points));
+  if (picks === null) return CPRED_PHARMACEUTICALS.slice(0, count);
+  return cpredReadPharmaPicks(picks)
+    .slice(0, count)
+    .map((id) => BY_ID.get(id))
+    .filter((row): row is CpredPharmaceutical => row !== undefined);
 }
 
 /** Czy ten Medyk ma dostęp do tego środka. */
-export function cpredCanCraftPharma(points: number, id: string): boolean {
-  return cpredPharmaAccess(points).some((row) => row.id === id);
+export function cpredCanCraftPharma(
+  points: number,
+  id: string,
+  picks: readonly string[] | null = null,
+): boolean {
+  return cpredPharmaAccess(points, picks).some((row) => row.id === id);
+}
+
+/** Wybory z karty: tylko znane środki, każdy raz, najwyżej pięć. */
+export function cpredReadPharmaPicks(raw: unknown): CpredPharmaceuticalId[] {
+  if (!Array.isArray(raw)) return [];
+  const picks: CpredPharmaceuticalId[] = [];
+  for (const id of raw) {
+    if (typeof id !== 'string' || !isPharmaceuticalId(id) || picks.includes(id)) continue;
+    picks.push(id);
+  }
+  return picks.slice(0, CPRED_PHARMACEUTICALS.length);
+}
+
+/** Wybory karty sprzed etapu 71g1 — to, co dawała kolejność tabeli. */
+export function cpredLegacyPharmaPicks(points: number): CpredPharmaceuticalId[] {
+  return cpredPharmaAccess(points).map((row) => row.id);
+}
+
+export type CpredPharmaPickProblem =
+  'UNKNOWN_PHARMA' | 'NO_PHARMA_POINT' | 'ALREADY_PICKED' | 'NOT_PICKED';
+
+export const CPRED_PHARMA_PICK_PROBLEMS: Record<CpredPharmaPickProblem, string> = {
+  UNKNOWN_PHARMA: 'Nie ma takiego farmaceutyku.',
+  NO_PHARMA_POINT:
+    'Każdy punkt Farmaceutyków ma już swój środek — następny wybierzesz przy następnym punkcie.',
+  ALREADY_PICKED: 'Ten środek jest już wybrany.',
+  NOT_PICKED: 'Tego środka nie ma wśród wyborów.',
+};
+
+/**
+ * Wybór środka za punkt Farmaceutyków (D2): dopisuje go na koniec, gdy któryś
+ * punkt czeka na wybór. Wybory schowane zdjętym punktem liczą się jak zajęte —
+ * dołożony punkt odda je sam, więc nowego nie przyjmie.
+ */
+export function cpredPickPharma(
+  points: number,
+  picks: readonly string[] | null,
+  id: string,
+): { ok: true; picks: CpredPharmaceuticalId[] } | { ok: false; problem: CpredPharmaPickProblem } {
+  if (!isPharmaceuticalId(id)) return { ok: false, problem: 'UNKNOWN_PHARMA' };
+  const current = picks === null ? cpredLegacyPharmaPicks(points) : cpredReadPharmaPicks(picks);
+  if (current.includes(id)) return { ok: false, problem: 'ALREADY_PICKED' };
+  if (current.length >= Math.min(points, CPRED_PHARMACEUTICALS.length)) {
+    return { ok: false, problem: 'NO_PHARMA_POINT' };
+  }
+  return { ok: true, picks: [...current, id] };
+}
+
+/** Ręka MG: zdejmuje wybór (poprawka karty), punkt znów czeka na środek. */
+export function cpredUnpickPharma(
+  points: number,
+  picks: readonly string[] | null,
+  id: string,
+): { ok: true; picks: CpredPharmaceuticalId[] } | { ok: false; problem: CpredPharmaPickProblem } {
+  const current = picks === null ? cpredLegacyPharmaPicks(points) : cpredReadPharmaPicks(picks);
+  if (!current.includes(id as CpredPharmaceuticalId)) return { ok: false, problem: 'NOT_PICKED' };
+  return { ok: true, picks: current.filter((pick) => pick !== id) };
 }
 
 /** Nazwa przedmiotu, którym dawkę wbija się komuś, kto się broni (s. 150). */

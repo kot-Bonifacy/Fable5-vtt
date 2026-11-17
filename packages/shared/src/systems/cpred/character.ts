@@ -16,7 +16,12 @@ import {
   type CyberwareInstallation,
 } from './cyberware.js';
 import { isHousingOption, isLifestyleLevel, type CpredLifestyle } from './economy.js';
-import { isPharmaceuticalId } from './pharma.js';
+import {
+  cpredLegacyPharmaPicks,
+  cpredReadPharmaPicks,
+  isPharmaceuticalId,
+  type CpredPharmaceuticalId,
+} from './pharma.js';
 import { CPRED_AMMO_PATTERNS, cpredAmmoPatternCounted, type CpredAmmoPattern } from './ammo.js';
 import { readCpredWoundSuspension, type CpredWoundSuspension } from './woundsuspension.js';
 import { readCpredCryo, readCpredCryoUsed, type CpredCryoState } from './cryo.js';
@@ -1101,6 +1106,14 @@ export interface CpredCharacterData {
    * decided against the merged sheet, where the rank is known.
    */
   medicine: CpredMedicine;
+  /**
+   * Etap 71g1 (D2, bramka 15.11): środki, które Medyk wybrał za kolejne punkty
+   * Farmaceutyków, w kolejności wyboru (`cpredPharmaAccess`). Karta sprzed
+   * wyboru dostaje przy odczycie środki z kolejności tabeli — tyle, ile ma
+   * punktów (`parseCharacterData`) — i dopiero następne wybiera. Pisze
+   * wyłącznie `character:pharma-pick`.
+   */
+  pharmaPicks: CpredPharmaceuticalId[];
   fabrication: CpredFabrication;
   /**
    * The Korpo's team (s. 154, stage 30c): who HR has assigned and how loyal
@@ -1489,6 +1502,7 @@ export function createDefaultCharacterData(): CpredCharacterData {
     formerRoles: [],
     combatAwareness: {},
     medicine: {},
+    pharmaPicks: [],
     fabrication: {},
     team: [],
     fleet: [],
@@ -2241,6 +2255,10 @@ function collectCharacterDataPatch(
   // Etap 71f: cztery pola Ról pisze wyłącznie silnik — `character:update`
   // odmawia łaty z nimi; tu tylko czytniki, które przyjmą starą kartę.
   if ('fans' in input) patch.fans = readCpredFans(input.fans);
+  // Etap 71g1 (D2): wybory Farmaceutyków pisze wyłącznie `character:pharma-pick`.
+  if ('pharmaPicks' in input) {
+    patch.pharmaPicks = cpredReadPharmaPicks(input.pharmaPicks);
+  }
   if ('rumourWeek' in input) patch.rumourWeek = readCpredRumourWeek(input.rumourWeek);
   if ('publications' in input) patch.publications = readCpredPublications(input.publications);
   if ('backupCalls' in input) patch.backupCalls = readCpredBackupCalls(input.backupCalls);
@@ -2879,5 +2897,12 @@ export function parseCharacterData(raw: unknown, registry: CpredRegistry): Cpred
   }
   // Tolerant: keep whatever validated, default the rest (issues are dropped).
   const { patch } = collectCharacterDataPatch(parsed, registry);
-  return mergeCharacterData(defaults, patch);
+  const merged = mergeCharacterData(defaults, patch);
+  // Etap 71g1 (D2): karta zapisana przed wyborem środka nie ma pola — jej
+  // punkty dostają środki z kolejności tabeli (jak do dziś), a nie pustą listę
+  // z wartości domyślnych, która zabrałaby Medykowi dostęp.
+  if (typeof parsed === 'object' && parsed !== null && !('pharmaPicks' in parsed)) {
+    return { ...merged, pharmaPicks: cpredLegacyPharmaPicks(merged.medicine.pharma ?? 0) };
+  }
+  return merged;
 }

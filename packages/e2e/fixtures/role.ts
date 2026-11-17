@@ -218,6 +218,22 @@ export function dataOf<T>(ack: unknown, what: string): T {
   return typed.data;
 }
 
+/** Dane kreatora tak, jak je dostaje klient (`/api/cpred/data`) — do asercji na danych Ról (71g1). */
+export async function creationDataOf(): Promise<{
+  roles: { id: string; skills: string[] }[];
+  streetrat: Record<string, { skills: Record<string, number>; items: (string | null)[][] }>;
+  edgerunnerKits: Record<string, { slots: { id: string }[][][]; clothing: string }>;
+}> {
+  const api = await apiGm();
+  try {
+    const response = await api.get('/api/cpred/data');
+    expect(response.status()).toBe(200);
+    return ((await response.json()) as { creation: never }).creation;
+  } finally {
+    await api.dispose();
+  }
+}
+
 /** Gniazdo MG prosto na serwer (bez przeglądarki) — do budowy stanu i rąk MG w testach. */
 export async function gmSocket(): Promise<Socket> {
   const { socket, error } = await rawSocket(await cookieHeader(await apiGm()));

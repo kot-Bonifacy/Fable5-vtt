@@ -353,6 +353,7 @@ import {
   CPRED_FANS_PROBLEMS,
   CPRED_PUBLICATION_PROBLEMS,
   ADVANCEMENT_UNDO_PROBLEMS,
+  CPRED_PHARMA_PICK_PROBLEMS,
   CPRED_ROLE_CHANGE_PROBLEMS,
   CPRED_ATTACHMENT_PROBLEM_MESSAGES,
   CPRED_ATTACK_PROBLEM_MESSAGES,
@@ -4440,6 +4441,25 @@ export async function craftPharmaceutical(
 }
 
 /**
+ * Etap 71g1 (D2): środek za punkt Farmaceutyków — wybór właściciela albo MG;
+ * `remove` (tylko MG) zdejmuje wybór i punkt znów czeka.
+ */
+export async function pickPharmaceutical(
+  characterId: string,
+  pharmaId: string,
+  remove = false,
+): Promise<void> {
+  // Punkt dołożony przed chwilą musi być w bazie, zanim serwer go policzy.
+  await characterSaved(characterId);
+  const ack = await emitSceneAck<CharacterView>('character:pharma-pick', {
+    characterId,
+    pharmaId,
+    ...(remove ? { remove: true } : {}),
+  });
+  noteAck('character', ack, recoveryErrorText);
+}
+
+/**
  * Podanie jednej dawki (s. 150) — Akcja, gdy trwa walka.
  *
  * `targetTokenId` pominięty znaczy „sobie". Dawka schodzi z ekwipunku
@@ -4491,6 +4511,10 @@ export function recoveryErrorText(code: string): string {
   switch (code) {
     case 'UNKNOWN_PHARMA':
       return 'Nie znam takiego farmaceutyku.';
+    case 'NO_PHARMA_POINT':
+    case 'ALREADY_PICKED':
+    case 'NOT_PICKED':
+      return CPRED_PHARMA_PICK_PROBLEMS[code];
     case 'PHARMA_NOT_UNLOCKED':
       return 'Ten Medyk nie ma jeszcze dostępu do tego środka — brakuje punktów w Farmaceutykach.';
     case 'NO_MEDTECH_SKILL':

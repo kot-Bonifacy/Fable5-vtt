@@ -14,6 +14,8 @@
 
 import type {
   CharacterCraftPharmaPayload,
+  CharacterPharmaPickPayload,
+  CharacterView,
   CharacterRestPayload,
   CharacterUseDosePayload,
   CpredGearRow,
@@ -38,6 +40,8 @@ import {
   ROLE_GM,
   cpredApplyAntibiotic,
   cpredCanCraftPharma,
+  cpredPickPharma,
+  cpredUnpickPharma,
   cpredHasAirhypo,
   cpredHealRate,
   cpredDrugOfRow,
@@ -127,6 +131,37 @@ async function requireOwnCharacter(
   refuseAwaitingGm(character, user);
   return character;
 }
+
+/**
+ * `character:pharma-pick` (etap 71g1, D2 z bramki 15.11): Medyk wybiera środek
+ * za punkt Farmaceutyków, który na wybór czeka; MG może wybór zdjąć (`remove`)
+ * i punkt znów czeka. Poza walką i w walce tak samo — to decyzja przy awansie,
+ * nie czynność w turze.
+ */
+export const characterPharmaPickEvent = defineEvent<CharacterPharmaPickPayload, CharacterView>({
+  name: 'character:pharma-pick',
+  handler: async ({ deps, socket, user, payload }) => {
+    const campaignId = requireCampaignId(socket.data);
+    const character = await requireOwnCharacter(deps, campaignId, user, payload?.characterId);
+    if (payload?.remove === true && user.role !== ROLE_GM) throw new RealtimeError('FORBIDDEN');
+    const data = parseCharacterData(character.data, deps.ctx.cpred);
+    const points = cpredSheetMedicine(data, deps.ctx.cpred).pharma;
+    const id = typeof payload?.pharmaId === 'string' ? payload.pharmaId : '';
+    const result =
+      payload?.remove === true
+        ? cpredUnpickPharma(points, data.pharmaPicks, id)
+        : cpredPickPharma(points, data.pharmaPicks, id);
+    if (!result.ok) throw new RealtimeError(result.problem);
+    const next = mergeCharacterData(data, { pharmaPicks: result.picks });
+    const saved = await deps.ctx.prisma.character.update({
+      where: { id: character.id },
+      data: { data: JSON.stringify(next) },
+    });
+    const view = toCharacterView(saved, deps.ctx.cpred);
+    await emitCharacterUpsert(deps, campaignId, view);
+    return view;
+  },
+});
 
 /** Karta powrotu do zdrowia na czacie — publiczna, bez bezwzględnych PW. */
 export async function postRecoveryCard(
@@ -238,7 +273,7 @@ export const characterCraftPharmaEvent = defineEvent<
     const medicine = cpredSheetMedicine(data, deps.ctx.cpred);
     // „Zawsze, gdy przydzielasz punkt do Farmaceutyków, zyskujesz dostęp do
     // jednego z poniższych środków" — bez punktu nie ma do czego sięgnąć.
-    if (!cpredCanCraftPharma(medicine.pharma, drug.id)) {
+    if (!cpredCanCraftPharma(medicine.pharma, drug.id, data.pharmaPicks)) {
       throw new RealtimeError('PHARMA_NOT_UNLOCKED');
     }
     if (medicine.medtechSkill < 1) throw new RealtimeError('NO_MEDTECH_SKILL');

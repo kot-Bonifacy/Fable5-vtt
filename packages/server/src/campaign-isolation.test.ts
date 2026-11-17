@@ -827,6 +827,10 @@ const CASES: Record<string, Case> = {
   // recovery
   'character:rest': foreign((a) => ({ characterId: a.characterId })),
   'character:craft-pharma': foreign((a) => ({ characterId: a.characterId, pharmaId: 'x' })),
+  'character:pharma-pick': foreign((a) => ({
+    characterId: a.characterId,
+    pharmaId: 'pharma.stym',
+  })),
   'character:use-dose': foreign((a) => ({
     characterId: a.characterId,
     gearRowId: 'x',

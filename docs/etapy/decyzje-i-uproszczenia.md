@@ -9,6 +9,46 @@ czytany na starcie każdej sesji został listą zadań, a nie archiwum ustaleń.
 inaczej, niż mówi podręcznik, albo gdy dotykasz wymienionego tu kodu. Jeśli któraś z tych decyzji
 przestanie się bronić, przenieś ją stąd do `POMYSLY.md` jako zadanie — nie odwrotnie.
 
+## Kreator, PD i wieloklasowość po weryfikacji Ról (etap 71g1, 17.11.2026)
+
+Bramka MG z 15.11 (G33–G36, D2, D3, P4) — rozstrzygnięcia bez pytań:
+
+- **Pakiet Roli Krawędziarza kładzie kreator (G33, WSP-08)** — `edgerunnerKits`
+  w `data/private/cpred/creation.json`, przepisane ręką z sklejonych tabel s. 98 (broń
+  i pancerz), s. 103 (Ekwipunek, Osprzęt, strój) i s. 117 (cyborgizacje). Wybory „lub” to pola
+  w kroku „Wyposażenie” (brak w `creationIssues`, zmiana Roli i metody je zdejmuje); 500 ed
+  zostaje na resztę, a pakiet nie zostawia wiersza w historii eurodolców. Świadomie poza kartą:
+  **amunicja do broni palnej** (także zapalająca Medyka — kule, śrut i strzały są bez dna od
+  23.10), **strój** (VTT nie ma katalogu Mody — trafia prozą do notatek karty), **chrom** (wszczepia
+  MG „Dodaj za darmo” z losowaną UC — stała UC z tabeli s. 117 dalej czeka w `POMYSLY.md`).
+  Granat z pakietu to wiersz „Granat” i zapas w sztukach. Wątpliwe komórki zrzutu, odczytane
+  **❓ do sprawdzenia w druku przez MG**: Rocker ma gitarę **i** wykrywacz podsłuchu (zrzut:
+  „Gitara elektryczna lub Wykrywacz podsłuchu” — nazwa wpisu to „Gitara… lub inny instrument”);
+  Korpo dostaje Agenta, choć zrzut zgubił jego komórkę (ma go każda Rola); Stróż Prawa ma dwa
+  zestawy stroju; Media — „Jednorazowy telefon ×2 **lub** wyrzutnia haków”. Poprawka to edycja
+  danych, nie kodu.
+- **Listy Umiejętności Rockera i Medyka wg oryginału (G34, ROC-K1, MED-K1)** — parser zamienia
+  jedną Umiejętność broni (`ORIGINAL_EDITION_SWAPS` w `parse-creation.py`), pakiety Ulicznika
+  idą za nią. Gotowe postacie bez zmian; szkic Krawędziarza w toku traci punkty w Umiejętności,
+  która wypadła z listy (filtr listy Roli przy odczycie).
+- **Powrót do Roli z karty kosztuje jak nowa Rola — 60 PD (D3, WSP-18)** — zmiana decyzji MG
+  z 30.08. Ranga zostaje ta, którą Rola miała; bramka dalej pyta bieżącą Rolę (≥ 4).
+- **„Zrób główną” przy Roli poprzedniej (G35, zaległość 9)** — u gracza to ten sam zakup co
+  wybór z listy (bramka, 60 PD); **u MG to poprawka karty**: bez bramki i bez PD, tylko z Rolą,
+  którą karta już niesie (`gmSwap`, odmowa `NOT_HELD`), z wierszem „zamiana ręką MG” w rejestrze.
+  Nową Rolę MG dalej nadaje wierszem „Rola” na karcie.
+- **Środek za punkt Farmaceutyków wybiera Medyk (D2, MED-08)** — zmiana decyzji z 03.09.
+  `pharmaPicks` na karcie: kolejność wyborów, dostęp dają pierwsze N (N = punkty). Karta sprzed
+  71g1 dostaje przy odczycie środki z kolejności tabeli, ile ma punktów, i dopiero następne
+  wybiera. Zdjęty punkt chowa ostatni wybór, dołożony z powrotem go oddaje. Wybór zdejmuje tylko
+  MG (✕ przy środku); łata karty (`character:update`) wyborów nie zmieni nikomu. Punkty
+  Farmaceutyków wpisane ręką MG czekają na wybór jak każde inne.
+- **Wazeliniarz przy awansie (G36, FIX-12)** — Znajomości kupione na 3, 5 albo 7 piszą wiersz
+  `gmaction` dla kupującego i MG: nowa kultura i jej język na poziomie 4. Języka nie dopisuje
+  automat — karta ma jeden wiersz Języka (projekt wielu języków w `POMYSLY.md`); ranga ustawiona
+  ręką MG przypomnienia nie daje.
+- **Ulicznik Fixera: pistolet i lekka broń biała (P4, WSP-23)** — jak druk; dane poprawione.
+
 ## Czas i zasoby narracyjne po weryfikacji Ról (etap 71f, 16.11.2026)
 
 Bramka MG z 15.11 (G27–G32, G39, P2) — rozstrzygnięcia bez pytań:
@@ -1201,6 +1241,8 @@ to jest ten akapit do przeczytania na nowo.
   środków" (s. 150) — podręcznik nie każe wybierać, a `cpredPharmaAccess` daje pierwsze N wierszy.
   Alternatywą byłby szósty wybór na karcie („które trzy z pięciu?") po to, żeby przy pełnej randze
   i tak wyszło to samo. Panel pokazuje resztę wyszarzoną, więc widać, co kupi następny punkt.
+  *Dopisek 17.11.2026 (etap 71g1, D2):* nieaktualne — Medyk wybiera środek przy punkcie
+  (`pharmaPicks`); kolejność tabeli zostaje tylko dla kart sprzed tej zmiany.
 
 - **Stym i Edytor bólu zawieszają KARĘ Poważnie Rannego, nie stan (12.09.2026; Edytor bólu
   decyzją MG).** Do 12.09 Stym zostawał przy MG z dopiskiem „do etapu 39" — a etap 39 zamknięto
@@ -1266,6 +1308,8 @@ to jest ten akapit do przeczytania na nowo.
   cyborgizacji (25c), a Kompendium zawsze rzuca kośćmi — także przy „Dodaj za darmo” z pakietu
   Krawędziarza. Kreator mówi o tym na liście „Po utworzeniu postaci”; stała UC dla postaci przed
   zatwierdzeniem gotowości przez MG czeka w `POMYSLY.md`.
+  *Dopisek 17.11.2026 (etap 71g1):* pakiet Krawędziarza kładzie dziś kreator — chrom z niego
+  dalej wszczepia MG, z losowaną UC.
 
 - **Dostępność liczy się z rodzaju rzeczy, nie z ceny (17.09, decyzja MG, naprawa 3b).** Do 17.09
   poziom był progiem ceny z 25c (≤ 50 / ≤ 500 / ≤ 1000 / wyżej), co stawiało wyrzutnię rakiet,

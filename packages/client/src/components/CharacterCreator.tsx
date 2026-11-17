@@ -13,6 +13,7 @@ import type {
   CompendiumEntry,
   CpredCharacterData,
   CpredCreationData,
+  CpredCreationKitLine,
   CpredCreationDraft,
   CpredCreationMethod,
   CpredCreationSkillRow,
@@ -60,6 +61,9 @@ import {
   creationIssueStep,
   creationIssues,
   creationLeftOutside,
+  creationEdgerunnerKitOf,
+  creationKitClothingNote,
+  creationKitPickSlots,
   creationRoleKit,
   creationRoleKitChoices,
   creationMissingSkillMinima,
@@ -3107,7 +3111,7 @@ function CreatorLeftOutside({
   data,
   compact = false,
 }: {
-  draft: Pick<CpredCreationDraft, 'method' | 'roleId' | 'kitChoice'>;
+  draft: Pick<CpredCreationDraft, 'method' | 'roleId' | 'kitChoice' | 'kitPicks'>;
   data: CpredCreationData;
   compact?: boolean;
 }) {
@@ -3427,29 +3431,42 @@ function CreatorRoleKit({ draft, data }: { draft: CpredCreationDraft; data: Cpre
   const patch = useCreationStore((s) => s.patch);
   const busy = useCreationStore((s) => s.busy);
   const entriesById = useCompendiumStore((s) => s.entries);
+  const weaponTypes = useCompendiumStore((s) => s.weaponTypeById);
+  const typeMap = useMemo(() => new Map(Object.entries(weaponTypes)), [weaponTypes]);
   const lookup = (entryId: string) => entriesById[entryId];
+  const edgerunner = creationEdgerunnerKitOf(draft, data) !== null;
   const choices = creationRoleKitChoices(draft, data, lookup);
-  const lines = creationRoleKit(draft, data, lookup).filter(
-    (line) => line.entryId !== draft.kitChoice,
-  );
-  if (lines.length === 0 && choices.length === 0) return null;
+  // Etap 71g1: u Krawędziarza lista to sloty stałe, a wybory „lub” stoją niżej
+  // osobnymi polami — dlatego pakiet liczy się tu bez wyborów.
+  const lines = creationRoleKit(
+    edgerunner ? { ...draft, kitPicks: {} } : draft,
+    data,
+    lookup,
+    typeMap,
+  ).filter((line) => line.entryId !== draft.kitChoice);
+  const slots = creationKitPickSlots(draft, data, lookup, typeMap);
+  if (lines.length === 0 && choices.length === 0 && slots.length === 0) return null;
   const value = (amount: number | null) => (amount === null ? '—' : `${formatEddies(amount)} ed`);
+  const lineName = (line: CpredCreationKitLine) =>
+    line.count > 1 ? `${line.name} ×${line.count}` : line.name;
   return (
     <section
       className="creator-summary-section creator-kit"
       aria-label="Wyposażenie Roli gratis"
-      data-creation-field="kitChoice"
+      data-creation-field={edgerunner ? 'kitPicks' : 'kitChoice'}
     >
-      <h4>Wyposażenie Roli — gratis</h4>
+      <h4>{edgerunner ? 'Pakiet Roli — gratis' : 'Wyposażenie Roli — gratis'}</h4>
       <p className="creator-hint">
-        Kompletny Pakiet dostaje podstawowe narzędzie Roli za darmo; gotówka zostaje na resztę.
+        {edgerunner
+          ? 'Krawędziarz dostaje broń, pancerz, sprzęt i chrom swojej Roli (s. 98, 103); 500 ed zostaje na resztę.'
+          : 'Kompletny Pakiet dostaje podstawowe narzędzie Roli za darmo; gotówka zostaje na resztę.'}
       </p>
       {lines.length > 0 ? (
         <ul className="creator-basket">
-          {lines.map((line) => (
-            <li key={line.entryId}>
+          {lines.map((line, index) => (
+            <li key={`${line.entryId}-${index}`}>
               <span className="creator-basket-name">
-                {line.name}
+                {lineName(line)}
                 {line.onSheet ? null : (
                   <span className="creator-hint"> — chrom, wszczepia MG po utworzeniu</span>
                 )}
@@ -3458,6 +3475,39 @@ function CreatorRoleKit({ draft, data }: { draft: CpredCreationDraft; data: Cpre
             </li>
           ))}
         </ul>
+      ) : null}
+      {slots.map((slot) => (
+        <label key={slot.slot} className="bot-field">
+          Do wyboru (jedno z kilku)
+          <select
+            value={slot.picked ?? ''}
+            disabled={busy}
+            data-kit-slot={slot.slot}
+            onChange={(event) => {
+              const picked = event.target.value;
+              void patch((current) => {
+                const next = { ...current.kitPicks };
+                if (picked === '') delete next[String(slot.slot)];
+                else next[String(slot.slot)] = Number(picked);
+                return { kitPicks: next };
+              });
+            }}
+          >
+            <option value="">— wybierz —</option>
+            {slot.options.map((option, index) => (
+              <option key={index} value={index}>
+                {option.map(lineName).join(' + ')}
+                {option.some((line) => !line.onSheet) ? ' (chrom — wszczepia MG)' : ''}
+              </option>
+            ))}
+          </select>
+        </label>
+      ))}
+      {edgerunner && creationKitClothingNote(draft, data) ? (
+        <p className="creator-hint">
+          {creationKitClothingNote(draft, data)} VTT nie ma katalogu Mody — strój trafi do notatek
+          karty.
+        </p>
       ) : null}
       {choices.length > 0 ? (
         <label className="bot-field">

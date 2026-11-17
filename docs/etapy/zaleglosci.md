@@ -62,7 +62,7 @@ do wznowienia).** Pełny opis i stan: `etap-66e-po-zamknieciu.md` („Rozegranie
 pytania~~ — zamknięte 13.11 w 70d (okienko strefy), czeka na wdrożenie; (6) 🟠 gniazdo znalezione Skanerem poza wzrokiem nie ma znacznika u gracza; ~~(7) tekst
 przycisków karty w kolorze tła~~ i ~~(8) „Dodaj za darmo” w pierwszą postać~~ — zamknięte 14.11
 (zaległości), czekają na wdrożenie;
-(9) brak zamiany Roli głównej z poprzednią na karcie; (10) kubek zasłania ostatnie akcje
+~~(9) brak zamiany Roli głównej z poprzednią na karcie~~ — zamknięte 17.11 w 71g1 („Zrób główną”, u MG bez PD), czeka na wdrożenie; (10) kubek zasłania ostatnie akcje
 panelu (do sprawdzenia, czy jeszcze aktualne po lewej belce z etapu 69); ~~(11) zauważenie
 przez kamerę tylko poufnym wierszem~~, ~~(12) marsz w ciemności bez komunikatu~~, ~~(13) pola
 statysty przy pełnej karcie~~ i ~~(14) dwa paski po ✕ walki~~ — zamknięte 14.11 (druga sesja

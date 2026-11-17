@@ -368,6 +368,9 @@ export const characterUpdateEvent = defineEvent<CharacterUpdatePayload, Characte
       // rozmraża tym samym zdarzeniem. Odebraną pompę też — łata gracza
       // z `cryoPumpGranted: false` dałaby mu drugą za darmo.
       if (sheet.cryo !== undefined) throw new RealtimeError('FORBIDDEN');
+      // Etap 71g1 (D2): środek za punkt Farmaceutyków wybiera się raz, przy
+      // punkcie — `character:pharma-pick`; łata przestawiłaby wybory za darmo.
+      if (sheet.pharmaPicks !== undefined) throw new RealtimeError('FORBIDDEN');
       // Etap 71f: fani, licznik Pogłosek, rejestr publikacji i licznik wezwań
       // Wsparcia — cztery pola, które zapisuje rzut albo zegar. Łata z nimi
       // dałaby fanów bez Testu i zdjęła blokadę bez MG.

@@ -184,6 +184,30 @@ export interface CpredStreetratKit {
   armor: { head: string | null; body: string | null };
 }
 
+/**
+ * Jedna rzecz pakietu Roli Krawędziarza (etap 71g1, G33). `qty` to sztuki —
+ * a dla amunicji paczki (s. 344: 10 naboi albo 1 granat), z typem broni, który
+ * wyznacza kaliber, jak klucz koszyka (`creationBasketKey`).
+ */
+export interface CpredKitItem {
+  id: string;
+  qty: number;
+  weaponType: string | null;
+}
+
+/**
+ * Pakiet Roli Krawędziarza (etap 71g1, G33; s. 98, 103 i 117): broń, pancerz,
+ * Ekwipunek, Osprzęt i cyborgizacje Roli plus strój. Slot to lista alternatyw
+ * „lub” — slot z jedną przychodzi zawsze, z kilkoma czeka na wybór gracza
+ * (`CpredCreationDraft.kitPicks`); alternatywa to kilka rzeczy naraz (strzelba
+ * razem z nabojami zapalającymi do niej). Strój idzie na kartę prozą: VTT nie ma
+ * katalogu Mody (decyzja MG z 10.10).
+ */
+export interface CpredEdgerunnerKit {
+  slots: CpredKitItem[][][];
+  clothing: string;
+}
+
 /** Parsed `cpred/creation.json`. */
 export interface CpredCreationData {
   /** Stat ids in the order the Role templates print their columns. */
@@ -204,6 +228,8 @@ export interface CpredCreationData {
   roleKits: Record<string, CpredRoleKit>;
   /** Rola → pakiet Ulicznika dla losowego NPC-a (etap 49b); brak Roli — nie da się losować. */
   streetrat: Record<string, CpredStreetratKit>;
+  /** Rola → pakiet Roli Krawędziarza (etap 71g1); brak Roli — pakiet daje MG ręką. */
+  edgerunnerKits: Record<string, CpredEdgerunnerKit>;
 }
 
 export const DEFAULT_CREATION_BUDGETS: CpredCreationBudgets = {
@@ -237,6 +263,7 @@ export const EMPTY_CPRED_CREATION_DATA: CpredCreationData = {
   roles: [],
   roleKits: {},
   streetrat: {},
+  edgerunnerKits: {},
 };
 
 export interface CpredCreationDraft {
@@ -280,6 +307,12 @@ export interface CpredCreationDraft {
    * nie wybrano albo Rola nie ma wyboru. Znika ze zmianą Roli i metody.
    */
   kitChoice: string | null;
+  /**
+   * Wybory „lub” z pakietu Roli Krawędziarza (etap 71g1): numer slotu → numer
+   * alternatywy. Tylko sloty z więcej niż jedną alternatywą; znika ze zmianą
+   * Roli i metody, jak `kitChoice`.
+   */
+  kitPicks: Record<string, number>;
   /**
    * „Ruszam bez zakupów” (etap 48a, decyzja MG z 10.10): gracz świadomie nie
    * kupuje nic. Bez tego pusty koszyk szkicu gracza jest brakiem — żeby nikt
@@ -348,6 +381,7 @@ export function createDefaultCreationDraft(data: CpredCreationData): CpredCreati
     name: '',
     purchases: {},
     kitChoice: null,
+    kitPicks: {},
     skipPurchases: false,
     portraitUrl: null,
     // Session zero ends with a figure on the map, so the box starts ticked; a
@@ -465,6 +499,7 @@ export function buildCreationData(raw: unknown, registry: CpredRegistry): CpredC
     roles,
     roleKits: readRoleKits(input.roleKits, roles),
     streetrat: readStreetrat(input.streetrat, roles, registry, limits),
+    edgerunnerKits: readEdgerunnerKits(input.edgerunnerKits, roles),
   };
 }
 
@@ -525,6 +560,54 @@ function readRoleKits(
     const input = value as Record<string, unknown>;
     const kit = { entries: ids(input.entries), choose: ids(input.choose) };
     if (kit.entries.length > 0 || kit.choose.length > 0) kits[roleId] = kit;
+  }
+  return kits;
+}
+
+/** Najwięcej sztuk jednej rzeczy pakietu — sufit odczytu danych, nie zasada. */
+const KIT_ITEM_QTY_MAX = 20;
+
+function readKitItem(raw: unknown): CpredKitItem | null {
+  if (typeof raw === 'string') return raw.length > 0 ? { id: raw, qty: 1, weaponType: null } : null;
+  if (typeof raw !== 'object' || raw === null) return null;
+  const input = raw as Record<string, unknown>;
+  if (typeof input.id !== 'string' || input.id.length === 0) return null;
+  const qty = input.qty === undefined ? 1 : input.qty;
+  if (!isInteger(qty) || qty < 1 || qty > KIT_ITEM_QTY_MAX) return null;
+  const weaponType =
+    typeof input.weaponType === 'string' && input.weaponType.length > 0 ? input.weaponType : null;
+  return { id: input.id, qty, weaponType };
+}
+
+/**
+ * `edgerunnerKits` z pliku danych (etap 71g1). Rzecz bez id albo z liczbą spoza
+ * widełek wypada, alternatywa bez rzeczy też, a slot bez alternatyw znika —
+ * pusty wybór „lub” zablokowałby „Utwórz postać” na zawsze. Id z katalogiem
+ * sprawdza dopiero `creationRoleKit`, jak w `roleKits`.
+ */
+function readEdgerunnerKits(
+  raw: unknown,
+  roles: readonly CpredCreationRole[],
+): Record<string, CpredEdgerunnerKit> {
+  if (typeof raw !== 'object' || raw === null) return {};
+  const kits: Record<string, CpredEdgerunnerKit> = {};
+  for (const [roleId, value] of Object.entries(raw as Record<string, unknown>)) {
+    if (!roles.some((role) => role.id === roleId)) continue;
+    if (typeof value !== 'object' || value === null) continue;
+    const input = value as Record<string, unknown>;
+    const slots = (Array.isArray(input.slots) ? input.slots : [])
+      .map((slot) =>
+        (Array.isArray(slot) ? slot : [])
+          .map((option) =>
+            (Array.isArray(option) ? option : [])
+              .map(readKitItem)
+              .filter((item): item is CpredKitItem => item !== null),
+          )
+          .filter((option) => option.length > 0),
+      )
+      .filter((slot) => slot.length > 0);
+    const clothing = typeof input.clothing === 'string' ? input.clothing.trim() : '';
+    if (slots.length > 0 || clothing) kits[roleId] = { slots, clothing };
   }
   return kits;
 }
@@ -792,6 +875,7 @@ export function creationIssueStep(field: string): CpredCreationStep {
       return 'lifepath';
     case 'purchases':
     case 'kitChoice':
+    case 'kitPicks':
       return 'gear';
     case 'name':
       return 'details';
@@ -906,11 +990,20 @@ export function creationSpentEddies(lines: readonly CpredCreationPurchase[]): nu
   return lines.reduce((sum, line) => sum + line.total, 0);
 }
 
-/** Jedna rzecz z wyposażenia Roli gratis (etap 47a). */
+/** Jedna rzecz z wyposażenia Roli gratis (etap 47a; pakiet Krawędziarza od 71g1). */
 export interface CpredCreationKitLine {
   entryId: string;
   name: string;
-  /** Cena w sklepie — ile Rola dostaje za darmo; null, gdy wpis jej nie ma. */
+  /** Sztuki — a dla amunicji paczki (s. 344), jak w koszyku. */
+  qty: number;
+  /** Typ broni amunicji (kaliber); null dla każdej innej rzeczy. */
+  weaponTypeId: string | null;
+  /**
+   * Ile sztuk widzi gracz: naboje w paczkach przeliczone na sztuki (paczka to 10
+   * naboi albo 1 granat), inaczej `qty`.
+   */
+  count: number;
+  /** Cena w sklepie za całą linię — ile Rola dostaje za darmo; null, gdy wpis jej nie ma. */
   value: number | null;
   /**
    * Czy „Utwórz postać” kładzie to na kartę. Chrom nie: kreator nie montuje
@@ -929,13 +1022,57 @@ export function creationRoleKitOf(
   return data.roleKits[draft.roleId] ?? null;
 }
 
-function kitLine(entry: CompendiumEntry): CpredCreationKitLine {
+/** Pakiet Roli tego szkicu, gdy jest Krawędziarzem (etap 71g1); inaczej null. */
+export function creationEdgerunnerKitOf(
+  draft: Pick<CpredCreationDraft, 'method' | 'roleId'>,
+  data: Pick<CpredCreationData, 'edgerunnerKits'>,
+): CpredEdgerunnerKit | null {
+  if (draft.method !== 'edgerunner' || draft.roleId === null) return null;
+  return data.edgerunnerKits[draft.roleId] ?? null;
+}
+
+function kitLine(
+  entry: CompendiumEntry,
+  item: Pick<CpredKitItem, 'qty' | 'weaponType'> = { qty: 1, weaponType: null },
+  weaponTypeById?: CompendiumRegistry['weaponTypeById'],
+): CpredCreationKitLine {
+  const price = entryPrice(entry);
+  let onSheet: boolean;
+  let count = item.qty;
+  let name = entry.name;
+  if (entry.category === 'ammo') {
+    // Amunicja bez kalibru nie jest towarem — tak samo jak w koszyku.
+    onSheet = item.weaponType !== null;
+    const type = item.weaponType ? weaponTypeById?.get(item.weaponType) : undefined;
+    if (type) {
+      const box = cpredPurchasedAmmoRow(toAmmoProfile(entry), type, item.qty, 'probe');
+      onSheet = box !== null;
+      if (box) count = box.qty;
+      if (type.ammunition) name = `${entry.name} · ${type.ammunition}`;
+    }
+  } else {
+    onSheet = entry.category !== 'cyberware' && purchasedSheetRow(entry, null, 'probe') !== null;
+  }
   return {
     entryId: entry.id,
-    name: entry.name,
-    value: entryPrice(entry),
-    onSheet: entry.category !== 'cyberware' && purchasedSheetRow(entry, null, 'probe') !== null,
+    name,
+    qty: item.qty,
+    weaponTypeId: entry.category === 'ammo' ? item.weaponType : null,
+    count,
+    value: price === null ? null : price * item.qty,
+    onSheet,
   };
+}
+
+function kitLines(
+  items: readonly CpredKitItem[],
+  lookup: (entryId: string) => CompendiumEntry | undefined,
+  weaponTypeById?: CompendiumRegistry['weaponTypeById'],
+): CpredCreationKitLine[] {
+  return items.flatMap((item) => {
+    const entry = lookup(item.id);
+    return entry ? [kitLine(entry, item, weaponTypeById)] : [];
+  });
 }
 
 /** Lista „do wyboru” wyposażenia Roli — to, co katalog zna. */
@@ -949,18 +1086,75 @@ export function creationRoleKitChoices(
   return kit.choose
     .map((id) => lookup(id))
     .filter((entry): entry is CompendiumEntry => entry !== undefined)
-    .map(kitLine);
+    .map((entry) => kitLine(entry));
+}
+
+/** Jeden wybór „lub” pakietu Krawędziarza, jak go pokazuje kreator. */
+export interface CpredKitPickSlot {
+  /** Numer slotu w pakiecie — klucz w `kitPicks`. */
+  slot: number;
+  /** Alternatywy w kolejności druku; każda to kilka rzeczy naraz. */
+  options: CpredCreationKitLine[][];
+  /** Wybrana alternatywa; null — jeszcze nie wybrano. */
+  picked: number | null;
+}
+
+/** Sloty pakietu Krawędziarza z wyborem „lub” (etap 71g1) — dla kreatora. */
+export function creationKitPickSlots(
+  draft: Pick<CpredCreationDraft, 'method' | 'roleId' | 'kitPicks'>,
+  data: Pick<CpredCreationData, 'edgerunnerKits'>,
+  lookup: (entryId: string) => CompendiumEntry | undefined,
+  weaponTypeById?: CompendiumRegistry['weaponTypeById'],
+): CpredKitPickSlot[] {
+  const kit = creationEdgerunnerKitOf(draft, data);
+  if (!kit) return [];
+  return kit.slots.flatMap((slot, index) =>
+    slot.length > 1
+      ? [
+          {
+            slot: index,
+            options: slot.map((option) => kitLines(option, lookup, weaponTypeById)),
+            picked: draft.kitPicks[String(index)] ?? null,
+          },
+        ]
+      : [],
+  );
+}
+
+/** Ile slotów z wyborem szkic jeszcze nie rozstrzygnął — dla `creationIssues`. */
+function unpickedKitSlots(
+  draft: Pick<CpredCreationDraft, 'method' | 'roleId' | 'kitPicks'>,
+  data: Pick<CpredCreationData, 'edgerunnerKits'>,
+): number {
+  const kit = creationEdgerunnerKitOf(draft, data);
+  if (!kit) return 0;
+  return kit.slots.filter(
+    (slot, index) => slot.length > 1 && draft.kitPicks[String(index)] === undefined,
+  ).length;
 }
 
 /**
- * Co Rola dostaje za darmo: stałe wpisy i wybrany z listy. Wpis, którego
- * katalog nie zna, znika po cichu — jak wiersz koszyka w `creationPurchases`.
+ * Co Rola dostaje za darmo: u Kompletnego Pakietu stałe wpisy i wybrany z listy
+ * (etap 47a), u Krawędziarza cały pakiet Roli — sloty stałe i wybrane
+ * alternatywy (etap 71g1). Wpis, którego katalog nie zna, znika po cichu — jak
+ * wiersz koszyka w `creationPurchases`.
  */
 export function creationRoleKit(
-  draft: Pick<CpredCreationDraft, 'method' | 'roleId' | 'kitChoice'>,
-  data: Pick<CpredCreationData, 'roleKits'>,
+  draft: Pick<CpredCreationDraft, 'method' | 'roleId' | 'kitChoice' | 'kitPicks'>,
+  data: Pick<CpredCreationData, 'roleKits' | 'edgerunnerKits'>,
   lookup: (entryId: string) => CompendiumEntry | undefined,
+  /** Typy broni — wtedy amunicja mówi kaliber i liczy naboje, a nie paczki. */
+  weaponTypeById?: CompendiumRegistry['weaponTypeById'],
 ): CpredCreationKitLine[] {
+  const edgerunner = creationEdgerunnerKitOf(draft, data);
+  if (edgerunner) {
+    const items = edgerunner.slots.flatMap((slot, index) => {
+      if (slot.length === 1) return slot[0] ?? [];
+      const picked = draft.kitPicks[String(index)];
+      return picked === undefined ? [] : (slot[picked] ?? []);
+    });
+    return kitLines(items, lookup, weaponTypeById);
+  }
   const kit = creationRoleKitOf(draft, data);
   if (!kit) return [];
   const ids = [...kit.entries];
@@ -968,12 +1162,25 @@ export function creationRoleKit(
   return ids
     .map((id) => lookup(id))
     .filter((entry): entry is CompendiumEntry => entry !== undefined)
-    .map(kitLine);
+    .map((entry) => kitLine(entry));
+}
+
+/** Id wpisów katalogu, które pakiet tej Roli może położyć — z wyborami „lub”. */
+export function creationKitEntryIds(
+  draft: Pick<CpredCreationDraft, 'method' | 'roleId'>,
+  data: Pick<CpredCreationData, 'roleKits' | 'edgerunnerKits'>,
+): string[] {
+  const edgerunner = creationEdgerunnerKitOf(draft, data);
+  if (edgerunner) return [...new Set(edgerunner.slots.flat(2).map((item) => item.id))];
+  const kit = creationRoleKitOf(draft, data);
+  return kit ? [...kit.entries, ...kit.choose] : [];
 }
 
 /**
  * Wiersze karty z wyposażenia Roli — jedno źródło dla `creationOutcome`
- * i `creation:finish`, tak jak `purchasedSheetRow` dla koszyka.
+ * i `creation:finish`, tak jak `purchasedSheetRow` dla koszyka. Broń i pancerz
+ * idą sztuka po sztuce (dwie kurtki: ciało, potem głowa), sprzęt jednym
+ * wierszem z licznikiem, amunicja pudełkiem paczek (etap 71g1).
  */
 export function creationKitSheetRows(
   lines: readonly CpredCreationKitLine[],
@@ -986,10 +1193,24 @@ export function creationKitSheetRows(
     if (!line.onSheet) continue;
     const entry = lookup(line.entryId);
     if (!entry) continue;
+    if (entry.category === 'ammo') {
+      const type = line.weaponTypeId ? compendium.weaponTypeById.get(line.weaponTypeId) : undefined;
+      const box = type
+        ? cpredPurchasedAmmoRow(toAmmoProfile(entry), type, line.qty, nextRowId())
+        : null;
+      if (box) rows.push({ list: 'gear', row: box });
+      continue;
+    }
     const resolved = entry.category === 'weapon' ? resolveWeapon(entry, compendium) : null;
-    const worn = rows.flatMap((done) => (done.list === 'armor' ? [done.row] : []));
-    const row = purchasedSheetRow(entry, resolved, nextRowId(), worn);
-    if (row) rows.push(row);
+    const copies = entry.category === 'weapon' || entry.category === 'armor' ? line.qty : 1;
+    for (let copy = 0; copy < copies; copy += 1) {
+      const worn = rows.flatMap((done) => (done.list === 'armor' ? [done.row] : []));
+      const row = purchasedSheetRow(entry, resolved, nextRowId(), worn);
+      if (!row) continue;
+      if (row.list === 'gear' && line.qty > 1) {
+        rows.push({ list: 'gear', row: { ...row.row, qty: row.row.qty * line.qty } });
+      } else rows.push(row);
+    }
   }
   return rows;
 }
@@ -1172,6 +1393,17 @@ export function creationIssues(
   ) {
     issues.push(issue('kitChoice', 'Wybierz broń z wyposażenia Roli — dostajesz ją za darmo.'));
   }
+  const unpicked = unpickedKitSlots(draft, data);
+  if (unpicked > 0) {
+    issues.push(
+      issue(
+        'kitPicks',
+        unpicked === 1
+          ? 'Pakiet Roli: rozstrzygnij jeszcze jeden wybór „lub” — dostajesz go za darmo.'
+          : `Pakiet Roli: rozstrzygnij jeszcze ${unpicked} wybory „lub” — dostajesz je za darmo.`,
+      ),
+    );
+  }
 
   if (lookup) {
     for (const key of Object.keys(draft.purchases)) {
@@ -1292,8 +1524,10 @@ export function mergeCreationDraft(
       // The two methods shop with different money (500 vs 2550 ed), so a basket
       // filled under one of them is not a bill the other agreed to.
       next.purchases = {};
-      // Wyposażenie Roli gratis ma tylko Kompletny Pakiet (etap 47a).
+      // Wyposażenie Roli gratis ma tylko Kompletny Pakiet (etap 47a), a pakiet
+      // Roli z wyborami „lub” — tylko Krawędziarz (etap 71g1).
       next.kitChoice = null;
+      next.kitPicks = {};
     }
     next.method = method;
   }
@@ -1311,8 +1545,14 @@ export function mergeCreationDraft(
       if (shop) next.purchases = creationBasketForRole(next.purchases, roleId, shop);
       // Strzelba Solo nie jest wyborem Medyka (etap 47a).
       next.kitChoice = null;
+      next.kitPicks = {};
     }
     next.roleId = roleId;
+  }
+  if ('kitPicks' in patch) {
+    const picks = readKitPicks(patch.kitPicks, next, data);
+    if (picks === null) return null;
+    next.kitPicks = picks;
   }
   if ('kitChoice' in patch) {
     const choice = patch.kitChoice;
@@ -1537,6 +1777,10 @@ export function creationChangeEffect(
     const name = lookup?.(current.kitChoice)?.name ?? current.kitChoice;
     lost.push(`Wybór z wyposażenia Roli: ${name}.`);
   }
+  const picks = Object.keys(current.kitPicks).length;
+  if (picks > 0 && Object.keys(next.kitPicks).length === 0) {
+    lost.push(`Wybory „lub” z pakietu Roli (${picks}).`);
+  }
 
   const answers = current.lifepath.roleAnswers.filter(
     (answer) =>
@@ -1653,6 +1897,7 @@ export function parseCreationDraft(
       (data.roleKits[roleId]?.choose ?? []).includes(input.kitChoice)
         ? input.kitChoice
         : null,
+    kitPicks: {},
     skipPurchases: input.skipPurchases === true,
     portraitUrl: sanitizeTokenImageUrl(input.portraitUrl ?? null) ?? null,
     placeToken: input.placeToken !== false,
@@ -1665,7 +1910,36 @@ export function parseCreationDraft(
   draft.skills = Object.fromEntries(
     Object.entries(draft.skills).filter(([skillId]) => allowed.has(skillId)),
   );
+  // Pakiet zmieniony w danych od zapisu: wybór, którego slot już nie ma, wypada.
+  draft.kitPicks = readKitPicks(input.kitPicks, draft, data, true) ?? {};
   return draft;
+}
+
+/**
+ * Wybory „lub” pakietu Krawędziarza (etap 71g1): numer slotu z kilkoma
+ * alternatywami → numer alternatywy. Łata niesie całą mapę. Bez `lenient` zła
+ * para unieważnia łatę (null), z nim — przy odczycie szkicu — po cichu wypada.
+ */
+function readKitPicks(
+  raw: unknown,
+  draft: Pick<CpredCreationDraft, 'method' | 'roleId'>,
+  data: Pick<CpredCreationData, 'edgerunnerKits'>,
+  lenient = false,
+): Record<string, number> | null {
+  if (raw === undefined || raw === null) return {};
+  if (typeof raw !== 'object' || Array.isArray(raw)) return lenient ? {} : null;
+  const kit = creationEdgerunnerKitOf(draft, data);
+  const picks: Record<string, number> = {};
+  for (const [key, value] of Object.entries(raw as Record<string, unknown>)) {
+    const slot = /^\d+$/.test(key) ? kit?.slots[Number(key)] : undefined;
+    const fits = slot !== undefined && slot.length > 1 && isInteger(value) && value >= 0;
+    if (!fits || value >= slot.length) {
+      if (lenient) continue;
+      return null;
+    }
+    picks[key] = value;
+  }
+  return picks;
 }
 
 /**
@@ -1851,7 +2125,19 @@ export function creationToCharacterData(
     // the player to copy by hand. It stays an ordinary editable line.
     style: lifepathStyleLine(draft.lifepath),
     lifestyle,
+    // Etap 71g1 (G33): strój z pakietu Roli Krawędziarza. VTT nie ma katalogu
+    // Mody (decyzja MG z 10.10), więc ubrania stoją w notatkach, nie w Wyposażeniu.
+    notes: creationKitClothingNote(draft, data),
   };
+}
+
+/** „Strój z pakietu Roli: …” — notatka karty Krawędziarza; pusta bez stroju w danych. */
+export function creationKitClothingNote(
+  draft: Pick<CpredCreationDraft, 'method' | 'roleId'>,
+  data: Pick<CpredCreationData, 'edgerunnerKits'>,
+): string {
+  const clothing = creationEdgerunnerKitOf(draft, data)?.clothing ?? '';
+  return clothing ? `Strój z pakietu Roli: ${clothing}.` : '';
 }
 
 /**
@@ -1918,7 +2204,7 @@ export function creationOutcome(
   let gearWithAmmo: CpredGearRow[] = gear;
   let rows = 0;
   // Etap 47a: wyposażenie Roli kładzie się przed koszykiem, tak jak w `creation:finish`.
-  const kit = creationRoleKit(draft, data, lookup);
+  const kit = creationRoleKit(draft, data, lookup, compendium.weaponTypeById);
   for (const purchased of creationKitSheetRows(kit, lookup, compendium, () => {
     rows += 1;
     return `creation-${rows}`;
@@ -2005,7 +2291,9 @@ export function creationLeftOutside(
       text: `${kitChrome.map((line) => line.name).join(', ')} — gratis; MG wszczepi go na gotowej postaci.`,
     });
   }
-  if (draft.method === 'edgerunner') {
+  // Od 71g1 pakiet Krawędziarza kładzie kreator; MG daje go ręką tylko wtedy,
+  // gdy dane Roli pakietu nie mają.
+  if (draft.method === 'edgerunner' && kit.length === 0) {
     lines.push({
       id: 'package',
       title: 'Pakiet Roli',

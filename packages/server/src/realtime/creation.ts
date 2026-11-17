@@ -57,7 +57,7 @@ import {
   creationKitSheetRows,
   creationPurchases,
   creationRoleKit,
-  creationRoleKitOf,
+  creationKitEntryIds,
   creationRole,
   creationSkillPool,
   creationSpentEddies,
@@ -1285,7 +1285,7 @@ export const creationFinishEvent = defineCreationEvent<CreationFinishPayload, Cr
         throw new RealtimeError('CREATION_RANK_PENDING');
       const lookup = await purchaseLookup(deps, campaignId, [
         ...Object.keys(draft.purchases),
-        ...kitEntryIds(draft, data),
+        ...creationKitEntryIds(draft, data),
       ]);
       const shopRules = await creationShopRules(deps, campaignId);
       if (
@@ -1318,7 +1318,7 @@ export const creationFinishEvent = defineCreationEvent<CreationFinishPayload, Cr
           creationLifestyle(deps.ctx.cpred, draft.roleId, ownerId !== null),
         ),
         creationKitSheetRows(
-          creationRoleKit(draft, data, lookup),
+          creationRoleKit(draft, data, lookup, deps.ctx.compendium.weaponTypeById),
           lookup,
           deps.ctx.compendium,
           nextRowId,
@@ -1472,12 +1472,6 @@ async function payStartingKit(
  */
 function withKitRows(sheet: CpredCharacterData, rows: readonly PurchasedRow[]): CpredCharacterData {
   return rows.reduce((data, row) => mergeCharacterData(data, addPurchasedRow(data, row)), sheet);
-}
-
-/** Id wpisów wyposażenia Roli, które `purchaseLookup` musi pobrać (z wyborem). */
-function kitEntryIds(draft: CpredCreationDraft, data: ReturnType<typeof creationDataOf>): string[] {
-  const kit = creationRoleKitOf(draft, data);
-  return kit ? [...kit.entries, ...kit.choose] : [];
 }
 
 function addPurchasedRow(

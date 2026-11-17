@@ -1,10 +1,20 @@
 import { describe, expect, it } from 'vitest';
 import { damageTotal } from '../../dice.js';
 import { buildCpredRegistry, createDefaultCharacterData, type CpredRegistry } from './character.js';
-import { CPRED_PHARMACEUTICALS, cpredCanCraftPharma, cpredPharmaAccess } from './pharma.js';
+import {
+  CPRED_PHARMACEUTICALS,
+  cpredCanCraftPharma,
+  cpredLegacyPharmaPicks,
+  cpredPharmaAccess,
+  cpredPickPharma,
+  cpredReadPharmaPicks,
+  cpredUnpickPharma,
+} from './pharma.js';
 import {
   CPRED_FABRICATION_RULES,
   CPRED_MEDICINE_RULES,
+  CPRED_OPERATOR_ABILITY,
+  cpredOperatorLanguageReminder,
   cpredFleetProblem,
   cpredRumourHeard,
   cpredSpecialtyPool,
@@ -127,7 +137,7 @@ describe('Rozwój — korzyści rangi 4 z kreatora (FAQ)', () => {
 });
 
 describe('Medyk — dostęp do Farmaceutyków', () => {
-  it('MED-08 punkt Farmaceutyków otwiera kolejny środek w kolejności tabeli', () => {
+  it('MED-08 karta sprzed wyboru (null) czyta środki w kolejności tabeli', () => {
     expect(cpredPharmaAccess(0)).toHaveLength(0);
     expect(cpredPharmaAccess(2).map((entry) => entry.id)).toEqual(
       CPRED_PHARMACEUTICALS.slice(0, 2).map((entry) => entry.id),
@@ -135,6 +145,61 @@ describe('Medyk — dostęp do Farmaceutyków', () => {
     expect(cpredPharmaAccess(5)).toHaveLength(CPRED_PHARMACEUTICALS.length);
     expect(cpredCanCraftPharma(1, CPRED_PHARMACEUTICALS[1]!.id)).toBe(false);
     expect(cpredCanCraftPharma(2, CPRED_PHARMACEUTICALS[1]!.id)).toBe(true);
+  });
+
+  it('MED-08 D2: każdy punkt otwiera środek, który Medyk wybrał (71g1)', () => {
+    const [antibiotic, detox, turbo, stim] = CPRED_PHARMACEUTICALS.map((row) => row.id);
+    // Nowa karta: dwa punkty, nic nie wybrane — dostępu nie ma.
+    expect(cpredPharmaAccess(2, [])).toEqual([]);
+    const first = cpredPickPharma(2, [], stim!);
+    if (!first.ok) throw new Error('wybór odrzucony');
+    const second = cpredPickPharma(2, first.picks, turbo!);
+    if (!second.ok) throw new Error('wybór odrzucony');
+    expect(cpredPharmaAccess(2, second.picks).map((row) => row.id)).toEqual([stim, turbo]);
+    expect(cpredCanCraftPharma(2, antibiotic!, second.picks)).toBe(false);
+    // Trzeci wybór bez trzeciego punktu, powtórka i obcy środek — odmowa.
+    expect(cpredPickPharma(2, second.picks, detox!)).toEqual({
+      ok: false,
+      problem: 'NO_PHARMA_POINT',
+    });
+    expect(cpredPickPharma(3, second.picks, stim!)).toEqual({
+      ok: false,
+      problem: 'ALREADY_PICKED',
+    });
+    expect(cpredPickPharma(3, second.picks, 'pharma.nie-ma')).toEqual({
+      ok: false,
+      problem: 'UNKNOWN_PHARMA',
+    });
+    // Punkt zdjęty „−” chowa ostatni wybór, a dołożony z powrotem go oddaje.
+    expect(cpredPharmaAccess(1, second.picks).map((row) => row.id)).toEqual([stim]);
+    expect(cpredPickPharma(1, second.picks, detox!).ok).toBe(false);
+    // Karta sprzed wyboru czyta się z dwoma środkami z tabeli i trzeci punkt wybiera.
+    const legacy = cpredPickPharma(3, cpredLegacyPharmaPicks(2), stim!);
+    expect(legacy.ok && legacy.picks).toEqual([antibiotic, detox, stim]);
+    // Ręka MG zdejmuje wybór; zdjęcie czegoś, czego nie wybrano — odmowa.
+    const removed = cpredUnpickPharma(2, second.picks, stim!);
+    expect(removed.ok && removed.picks).toEqual([turbo]);
+    expect(cpredUnpickPharma(2, second.picks, antibiotic!)).toEqual({
+      ok: false,
+      problem: 'NOT_PICKED',
+    });
+    // Odczyt karty: obce id, powtórki i nie-tablica wypadają.
+    expect(cpredReadPharmaPicks([stim, stim, 'x', 7])).toEqual([stim]);
+    expect(cpredReadPharmaPicks('stym')).toEqual([]);
+  });
+});
+
+describe('Fixer — Wazeliniarz przy awansie (G36)', () => {
+  it('FIX-12 Znajomości 3, 5 i 7 przypominają o nowym języku; inne poziomy i Zdolności — nie', () => {
+    for (const to of [3, 5, 7]) {
+      expect(cpredOperatorLanguageReminder(CPRED_OPERATOR_ABILITY, to)).toContain(
+        `Znajomości ${to}`,
+      );
+    }
+    for (const to of [1, 2, 4, 6, 8, 9, 10]) {
+      expect(cpredOperatorLanguageReminder(CPRED_OPERATOR_ABILITY, to)).toBeNull();
+    }
+    expect(cpredOperatorLanguageReminder('Medycyna', 3)).toBeNull();
   });
 });
 

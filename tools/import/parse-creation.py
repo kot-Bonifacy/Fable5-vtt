@@ -92,9 +92,10 @@ def write(path: Path, payload: dict) -> None:
 def existing_section(path: Path, key: str) -> dict:
     """Sekcje, których import nie czyta z podręcznika, przechodzą z pliku bez zmian.
 
-    `roleKits` (etap 47a) to decyzja MG, a `streetrat` (etap 49b) — pakiety
-    Ulicznika przepisane ręką z tabel s. 86–87 i 98, których zrzut PDF nie
-    oddaje (komórki sklejone i zgubione). Bez tego każdy ponowny przebieg po
+    `roleKits` (etap 47a) to decyzja MG, a `streetrat` (etap 49b) i
+    `edgerunnerKits` (etap 71g1) — pakiety Ulicznika i Krawędziarza przepisane
+    ręką z tabel s. 86–87, 98, 103 i 117, których zrzut PDF nie oddaje (komórki
+    sklejone i zgubione). Bez tego każdy ponowny przebieg po
     cichu zabierałby Kompletnemu Pakietowi dek Netrunnera, a MG — losowego NPC-a.
     """
     try:
@@ -236,10 +237,30 @@ def parse_role_skills(chapter: str, basic: list[str], overrides: dict) -> dict[s
         for label, ids in zip(labels, columns, strict=True):
             professional[MANUAL_ROLE_NAMES[label]] = ids
     return {
-        role_id: basic + professional.get(role_id, [])
+        role_id: original_edition(role_id, basic + professional.get(role_id, []))
         for role_id in MANUAL_ROLE_NAMES.values()
         if role_id in professional
     }
+
+
+# Decyzja MG z 14.11.2026 (etap 71, G34): druk polski zamienia jedną Umiejętność
+# broni między listami Rockera i Medyka — Rocker startuje z dużą bronią białą,
+# a Medyk ze strzelbą (s. 98), więc listy idą za oryginałem. Para (z, na).
+ORIGINAL_EDITION_SWAPS: dict[str, tuple[str, str]] = {
+    "rockerboy": ("shoulder-arms", "melee-weapon"),
+    "medtech": ("melee-weapon", "shoulder-arms"),
+}
+
+
+def original_edition(role_id: str, skills: list[str]) -> list[str]:
+    swap = ORIGINAL_EDITION_SWAPS.get(role_id)
+    if swap is None:
+        return skills
+    old, new = swap
+    if old not in skills:
+        warn(f"Rola {role_id}: brak {old} do zamiany na {new} — druk się zmienił?")
+        return skills
+    return [new if skill == old else skill for skill in skills]
 
 
 def title(label: str) -> str:
@@ -593,6 +614,7 @@ def main() -> int:
         "budgets": parse_budgets(roles_chapter),
         "roleKits": existing_section(CPRED_DIR / "creation.json", "roleKits"),
         "streetrat": existing_section(CPRED_DIR / "creation.json", "streetrat"),
+        "edgerunnerKits": existing_section(CPRED_DIR / "creation.json", "edgerunnerKits"),
         "roles": roles,
     }
     write(CPRED_DIR / "creation.json", payload)

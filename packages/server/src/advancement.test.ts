@@ -3,7 +3,7 @@ import { randomBytes } from 'node:crypto';
 import { mkdtempSync, unlinkSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { io as ioClient, type Socket as ClientSocket } from 'socket.io-client';
 import type {
   CampaignSummary,
@@ -457,7 +457,7 @@ describe('etap 29b: wieloklasowość', () => {
     });
   });
 
-  it('powrót jest darmowy, ale bramka pyta bieżącą Rolę i tak', async () => {
+  it('bramka powrotu pyta bieżącą Rolę', async () => {
     // Moto stoi na jedynce, więc drzwi są zamknięte — mimo że Zmysł Walki na
     // liście poprzednich Ról ma pięć. „Poprzedniej Roli" z s. 143 znaczy „tej,
     // którą jesteś teraz", i to jest cała bramka trzeciej Roli.
@@ -466,9 +466,9 @@ describe('etap 29b: wieloklasowość', () => {
     ).toEqual({ ok: false, error: 'RANK_TOO_LOW' });
   });
 
-  it('Moto doprowadzone do czwórki otwiera powrót — i nie kosztuje ani punktu', async () => {
-    // 1 → 4 to 120 + 180 + 240 = 540 PD.
-    expect((await emitAck(gm, 'character:xp-award', { characterId: heroId, amount: 540 })).ok).toBe(
+  it('Moto doprowadzone do czwórki otwiera powrót — za 60 PD, jak nowa Rola (D3)', async () => {
+    // 1 → 4 to 120 + 180 + 240 = 540 PD, powrót — 60 (bramka 15.11).
+    expect((await emitAck(gm, 'character:xp-award', { characterId: heroId, amount: 600 })).ok).toBe(
       true,
     );
     for (const to of [2, 3, 4]) {
@@ -488,8 +488,48 @@ describe('etap 29b: wieloklasowość', () => {
     expect(sheet.roleId).toBe('solo');
     expect(sheet.roleAbilityRank).toBe(5);
     expect(sheet.formerRoles).toEqual([{ roleId: 'nomad', rank: 4 }]);
-    // Zero PD w sakiewce, a zmiana i tak przeszła.
     expect(sheet.improvementPoints).toBe(0);
+  });
+
+  it('zamiana ręką MG (G35): gracz jej nie wyśle, MG zamienia bez bramki i PD', async () => {
+    expect(
+      await emitAck(player, 'character:role-change', {
+        characterId: heroId,
+        roleId: 'nomad',
+        gmSwap: true,
+      }),
+    ).toEqual({ ok: false, error: 'FORBIDDEN' });
+    const view = data(
+      await emitAck<CharacterView>(gm, 'character:role-change', {
+        characterId: heroId,
+        roleId: 'nomad',
+        gmSwap: true,
+      }),
+      'character:role-change',
+    );
+    const sheet = view.data as CpredCharacterData;
+    expect(sheet.roleId).toBe('nomad');
+    expect(sheet.roleAbilityRank).toBe(4);
+    expect(sheet.formerRoles).toEqual([{ roleId: 'solo', rank: 5 }]);
+    expect(sheet.improvementPoints).toBe(0);
+    // Nowej Roli tą drogą MG nie nadaje.
+    expect(
+      await emitAck(gm, 'character:role-change', {
+        characterId: heroId,
+        roleId: 'medtech',
+        gmSwap: true,
+      }),
+    ).toEqual({ ok: false, error: 'NOT_HELD' });
+    // Z powrotem — żeby reszta opisu zastała Solo jako bieżącą.
+    expect(
+      (
+        await emitAck(gm, 'character:role-change', {
+          characterId: heroId,
+          roleId: 'solo',
+          gmSwap: true,
+        })
+      ).ok,
+    ).toBe(true);
   });
 
   it('gracz nie dopisze sobie Roli łatą karty', async () => {
@@ -924,5 +964,57 @@ describe('koszyk awansów i cofanie wpisu przez MG (24.10)', () => {
       entryId: entry.id,
     });
     expect(ack.ok).toBe(false);
+  });
+});
+
+describe('etap 71g1 (G36): Wazeliniarz przy awansie Znajomości', () => {
+  let gm: ClientSocket;
+  let player: ClientSocket;
+  let fixerId: string;
+
+  it('Znajomości 3 przypomina o nowym języku kupującemu i MG; 4 — nie', async () => {
+    const gmConn = createSocket(gmCookie);
+    const playerConn = createSocket(playerCookie);
+    gm = gmConn.socket;
+    player = playerConn.socket;
+    await Promise.all([gmConn.firstSync, playerConn.firstSync]);
+    fixerId = data(
+      await emitAck<CharacterView>(gm, 'character:create', { name: 'Paser', ownerId: playerId }),
+      'character:create',
+    ).id;
+    expect(
+      (
+        await emitAck(gm, 'character:update', {
+          characterId: fixerId,
+          patch: { data: { roleId: 'fixer', roleAbilityRank: 2, improvementPoints: 420 } },
+        })
+      ).ok,
+    ).toBe(true);
+
+    const heard: { player: string[]; gm: string[] } = { player: [], gm: [] };
+    const listen = (socket: ClientSocket, into: string[]) =>
+      socket.on('chat:message', (payload: { message: { kind: string; text: string } }) => {
+        if (payload.message.kind === 'gmaction') into.push(payload.message.text);
+      });
+    listen(player, heard.player);
+    listen(gm, heard.gm);
+
+    // 2 → 3 kosztuje 180 PD (s. 411).
+    expect(
+      (await emitAck(player, 'character:advance', { characterId: fixerId, kind: 'ability', to: 3 }))
+        .ok,
+    ).toBe(true);
+    await vi.waitFor(() => expect(heard.gm).toHaveLength(1));
+    await vi.waitFor(() => expect(heard.player).toHaveLength(1));
+    expect(heard.player[0]).toContain('Paser: Znajomości 3 — Wazeliniarz: nowa kultura');
+    expect(heard.gm[0]).toBe(heard.player[0]);
+
+    // 3 → 4 kosztuje 240 PD — bez nowej kultury, bez wiersza.
+    expect(
+      (await emitAck(player, 'character:advance', { characterId: fixerId, kind: 'ability', to: 4 }))
+        .ok,
+    ).toBe(true);
+    await new Promise((resolve) => setTimeout(resolve, 200));
+    expect(heard.gm).toHaveLength(1);
   });
 });

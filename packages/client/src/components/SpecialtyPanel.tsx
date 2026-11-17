@@ -28,8 +28,11 @@ import {
   CPRED_PHARMA_BATCH_COST,
   CPRED_PHARMA_CRAFT_DV,
   cpredPharmaAccess,
+  cpredPickPharma,
+  ROLE_GM,
 } from '@vtt/shared';
-import { craftPharmaceutical, queueCharacterSave } from '../socket.js';
+import { craftPharmaceutical, pickPharmaceutical, queueCharacterSave } from '../socket.js';
+import { useAuthStore } from '../stores/authStore.js';
 import { TeamWorkshop } from './RepairWork.js';
 import { CryoGrantButton } from './CryoPump.js';
 import { plural } from '../plural.js';
@@ -203,6 +206,11 @@ function MedicineExtras({
   const cryo = allocation.cryo ?? 0;
   const effects = cpredMedicineEffects(allocation, rank);
   const sheet = useCharacterStore((s) => s.characters[characterId]?.data ?? null);
+  const isGm = useAuthStore((s) => s.user?.role === ROLE_GM);
+  // Etap 71g1 (D2): środek wybiera się przy punkcie.
+  const picks = sheet?.pharmaPicks ?? [];
+  const access = cpredPharmaAccess(pharma, picks);
+  const waiting = Math.max(0, Math.min(pharma, CPRED_PHARMACEUTICALS.length) - access.length);
   return (
     <div className="awareness-extras">
       {/* Dwie Umiejętności, których nie ma w tabeli Umiejętności karty i mieć
@@ -214,18 +222,43 @@ function MedicineExtras({
       </p>
       {pharma > 0 && (
         <details>
-          <summary>Farmaceutyki — dostęp do {pharma} z 5 środków</summary>
+          <summary>
+            Farmaceutyki — dostęp do {access.length} z 5 środków
+            {waiting > 0
+              ? ` · ${plural(waiting, 'punkt czeka', 'punkty czekają', 'punktów czeka')} na wybór`
+              : ''}
+          </summary>
           <ul className="pharma-list">
             {CPRED_PHARMACEUTICALS.map((drug) => {
               // „Zawsze, gdy przydzielasz punkt do Farmaceutyków, zyskujesz
-              // dostęp do jednego z poniższych środków" (s. 150) — kolejność
-              // tabeli jest kolejnością odblokowania, więc reszta zostaje
-              // wypisana szarym: gracz ma widzieć, co go czeka.
-              const unlocked = cpredPharmaAccess(pharma).some((row) => row.id === drug.id);
+              // dostęp do jednego z poniższych środków" (s. 150) — od 71g1
+              // Medyk wybiera, który; reszta stoi szarym, żeby było widać, co
+              // jeszcze można wziąć.
+              const unlocked = access.some((row) => row.id === drug.id);
+              const pickable = !unlocked && cpredPickPharma(pharma, picks, drug.id).ok;
               return (
                 <li key={drug.id} className={unlocked ? undefined : 'pharma-locked'}>
                   <b>{drug.name}</b> — {drug.effect}
                   {drug.limit ? <i> {drug.limit}</i> : null}
+                  {pickable ? (
+                    <button
+                      type="button"
+                      title={`Punkt Farmaceutyków otwiera ${drug.name} — wybór zostaje na karcie.`}
+                      onClick={() => void pickPharmaceutical(characterId, drug.id)}
+                    >
+                      Wybierz
+                    </button>
+                  ) : null}
+                  {unlocked && isGm ? (
+                    <button
+                      type="button"
+                      title="Poprawka MG: zdejmij wybór — punkt znów czeka na środek."
+                      aria-label={`Zdejmij wybór: ${drug.name}`}
+                      onClick={() => void pickPharmaceutical(characterId, drug.id, true)}
+                    >
+                      ✕
+                    </button>
+                  ) : null}
                   {unlocked && effects.medtechSkill > 0 ? (
                     <button
                       type="button"

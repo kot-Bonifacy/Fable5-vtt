@@ -233,4 +233,67 @@ test.describe.serial('@szybkie T71 Solo — Zmysł Walki', () => {
     test.info().annotations.push({ type: 'karta ataku', description: JSON.stringify(attack) });
     for (const actor of [mg, ada]) expect(actor.unexpectedErrors(), actor.name).toEqual([]);
   });
+
+  // ───────────── 71g1: zamiana Roli głównej (G35) i cena powrotu (D3) ─────────────
+
+  test('WSP-18 G35 D3 „Zrób główną” przy Roli poprzedniej: gracz płaci 60 PD, MG zamienia bez PD', async () => {
+    dataOf(await emitAck(gm, 'combat:end', undefined), 'combat:end');
+    const id = characterId(SOLO.card);
+    type Roles = {
+      roleId: string;
+      roleAbilityRank: number;
+      formerRoles: { roleId: string; rank: number }[];
+      improvementPoints: number;
+    };
+    const roles = () => cardData<Roles>(SOLO.card);
+    dataOf(
+      await emitAck(gm, 'character:update', {
+        characterId: id,
+        patch: { data: { formerRoles: [{ roleId: 'nomad', rank: 4 }], improvementPoints: 60 } },
+      }),
+      'Moto 4 jako Rola poprzednia, 60 PD',
+    );
+    await expect.poll(() => roles().formerRoles).toEqual([{ roleId: 'nomad', rank: 4 }]);
+    await expect.poll(() => queryOne<{ n: number }>('SELECT count(*) AS n FROM Combat')?.n).toBe(0);
+    const rank = roles().roleAbilityRank;
+
+    // Okno Ady po długiej walce nie zawsze dostaje koniec starcia na żywo
+    // (Firefox w tle) — świeże wczytanie, jak F5 gracza.
+    await ada.page.reload();
+    const sheet = await openSheet(ada, SOLO.card);
+    await ada.page.getByRole('button', { name: 'Ścieżka Życia', exact: true }).click();
+    const advance = sheet.locator('.advance');
+    // Koniec walki i nowa Rola poprzednia muszą dojść do okna gracza.
+    await expect(advance).not.toContainText('W trakcie walki');
+    await expect(advance).toContainText('60 PD w zapasie');
+    const promote = advance.getByRole('button', { name: 'Zrób główną: Nomada' });
+    await expect(promote).toHaveText('Zrób główną (60 PD)');
+    await promote.click();
+    await expect.poll(() => roles().roleId).toBe('nomad');
+    expect(roles()).toMatchObject({
+      roleAbilityRank: 4,
+      formerRoles: [{ roleId: 'solo', rank }],
+      improvementPoints: 0,
+    });
+    // Bez PD powrót do Solo się nie kupi — 30.08 był darmowy, od bramki 15.11 nie.
+    const player = await ada.socket();
+    expect(
+      await emitAck(player, 'character:role-change', { characterId: id, roleId: 'solo' }),
+    ).toEqual({ ok: false, error: 'NO_POINTS' });
+    expect(
+      await emitAck(player, 'character:role-change', {
+        characterId: id,
+        roleId: 'solo',
+        gmSwap: true,
+      }),
+    ).toEqual({ ok: false, error: 'FORBIDDEN' });
+    // MG poprawia kartę: Solo wraca jako główna bez bramki i bez PD.
+    dataOf(
+      await emitAck(gm, 'character:role-change', { characterId: id, roleId: 'solo', gmSwap: true }),
+      'zamiana MG',
+    );
+    await expect.poll(() => roles().roleId).toBe('solo');
+    expect(roles()).toMatchObject({ roleAbilityRank: rank, improvementPoints: 0 });
+    expect(ada.unexpectedErrors()).toEqual([]);
+  });
 });

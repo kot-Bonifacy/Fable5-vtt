@@ -8,6 +8,7 @@ import {
   ROLE_SCENE,
   TARGET,
   cardData,
+  creationDataOf,
   dataOf,
   gmSocket,
   lastMessageId,
@@ -192,5 +193,18 @@ test.describe.serial('@szybkie T71 Rocker — Efekt Charyzmy', () => {
     );
     expect(refused).toMatchObject({ ok: false });
     expect(hubert.unexpectedErrors()).toEqual([]);
+  });
+
+  test('ROC-K1 G34 lista Umiejętności Rockera wg oryginału: Broń biała zamiast Broni długiej', async () => {
+    const creation = await creationDataOf();
+    const skills = creation.roles.find((role) => role.id === 'rockerboy')!.skills;
+    expect(skills).toContain('melee-weapon');
+    expect(skills).not.toContain('shoulder-arms');
+    expect(Object.keys(creation.streetrat.rockerboy!.skills)).toContain('melee-weapon');
+    // Pakiet Krawędziarza (G33): duża broń biała albo granat błyskowy — jedno z dwóch.
+    const slots = creation.edgerunnerKits.rockerboy!.slots.filter((slot) => slot.length > 1);
+    expect(slots.map((slot) => slot.map((option) => option.map((item) => item.id)))).toEqual([
+      [['weapon.heavy-melee'], ['ammo.flashbang']],
+    ]);
   });
 });

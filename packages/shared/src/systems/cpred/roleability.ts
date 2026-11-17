@@ -2738,6 +2738,25 @@ export function cpredOperatorTierAt(rank: number): CpredOperatorTier | null {
   return cpredAbilityTierAt(CPRED_OPERATOR_TIERS, rank);
 }
 
+/** Poziomy Znajomości, na których Wazeliniarz daje nową kulturę (s. 160–161, FAQ). */
+export const CPRED_OPERATOR_LANGUAGE_RANKS: readonly number[] = [3, 5, 7];
+
+/**
+ * Przypomnienie przy awansie (etap 71g1, G36; FIX-12): Znajomości na 3, 5 albo 7
+ * to nowa kultura i jej język na poziomie 4. VTT trzyma jeden wiersz Języka
+ * (wiele języków — `POMYSLY.md`), więc automat tylko przypomina; null — awans
+ * innej Zdolności albo poziom bez nowej kultury.
+ */
+export function cpredOperatorLanguageReminder(ability: string, to: number): string | null {
+  if (ability !== CPRED_OPERATOR_ABILITY || !CPRED_OPERATOR_LANGUAGE_RANKS.includes(to)) {
+    return null;
+  }
+  return (
+    `Znajomości ${to} — Wazeliniarz: nowa kultura i jej język na poziomie 4, inny niż już ` +
+    'znane (s. 160–161). Karta ma jeden wiersz Języka — dopisz go w notatkach.'
+  );
+}
+
 /**
  * Pasmo, do którego Fixer zawsze sięgnie.
  *

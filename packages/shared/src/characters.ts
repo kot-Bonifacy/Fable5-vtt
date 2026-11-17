@@ -359,6 +359,15 @@ export interface CharacterRestPayload {
  * musi zdać Test o PT 13 — „W przypadku porażki surowce przepadają". Rzut robi
  * serwer i to on zdejmuje eurodolce, bo obie te rzeczy mają swoje księgi.
  */
+/** Etap 71g1 (D2): środek za punkt Farmaceutyków — wybór właściciela albo MG. */
+export interface CharacterPharmaPickPayload {
+  characterId: string;
+  /** Id środka z `CPRED_PHARMACEUTICALS`. */
+  pharmaId: string;
+  /** Ręka MG: zdejmij wybór (poprawka karty). Od gracza — `FORBIDDEN`. */
+  remove?: boolean;
+}
+
 export interface CharacterCraftPharmaPayload {
   characterId: string;
   /** Id środka z `CPRED_PHARMACEUTICALS`. */

@@ -1825,6 +1825,87 @@ describe('kreator postaci', () => {
     });
   });
 
+  describe('etap 71g1 — pakiet Roli Krawędziarza (G33)', () => {
+    // data/public/cpred/creation.json: Nomada (próbka) — Zgrzyt 9, Szpon albo
+    // Puszka hukowa z dwoma ładunkami dymnymi, kurtka i hełm, Agent, trzy
+    // latarki i cyberoko (chrom — tego kreator nie montuje), strój w notatkach.
+    it('wybór „lub” jest brakiem; pakiet leży na karcie tak, jak liczy podsumowanie', async () => {
+      await dropDraft(vexId);
+      data(await emitAck<Draft>(vex, 'creation:start'), 'creation:start');
+      await patch(vex, {
+        method: 'edgerunner',
+        roleId: 'nomad',
+        name: 'Koleina',
+        placeToken: false,
+      });
+      await rollMissingStats(vex);
+      const ready = await allocateRemaining(vex);
+      expect(refusal(await emitAck(vex, 'creation:finish', { draftId: ready.id }))).toBe(
+        'CREATION_INCOMPLETE',
+      );
+      // Slot bez wyboru i alternatywa spoza listy — odmowa.
+      for (const kitPicks of [{ 0: 0 }, { 1: 2 }]) {
+        expect(refusal(await emitAck(vex, 'creation:patch', { patch: { kitPicks } }))).toBe(
+          'INVALID_DATA',
+        );
+      }
+      const picked = await patch(vex, { kitPicks: { 1: 1 } });
+      expect(picked.draft.kitPicks).toEqual({ 1: 1 });
+
+      const res = await built.app.inject({
+        method: 'GET',
+        url: '/api/cpred/data',
+        headers: { cookie: vexCookie },
+      });
+      const payload = res.json() as CpredDataPayload;
+      const registry = withCreationData(
+        buildCpredRegistry({ skills: payload.skills }, { roles: payload.roles }),
+        payload.creation,
+      );
+      const { compendium } = await createSocket(vexCookie).firstSync;
+      const entries = new Map(compendium.entries.map((entry) => [entry.id, entry]));
+      const outcome = creationOutcome(
+        picked.draft,
+        registry.creation!,
+        registry,
+        (entryId) => entries.get(entryId),
+        { weaponTypeById: new Map(compendium.weaponTypes.map((type) => [type.id, type])) },
+        true,
+      );
+
+      const finished = data(
+        await emitAck<CreationFinishResult>(vex, 'creation:finish', { draftId: picked.id }),
+        'creation:finish',
+      );
+      const sheet = finished.data as CpredCharacterData;
+      const withoutRowIds = (value: CpredCharacterData) => ({
+        ...value,
+        weapons: value.weapons.map(({ id: _id, ...row }) => row),
+        armor: value.armor.map(({ id: _id, ...row }) => row),
+        gear: value.gear.map(({ id: _id, ...row }) => row),
+      });
+      expect(withoutRowIds(sheet)).toEqual(withoutRowIds(outcome.sheet));
+      expect(sheet.weapons.map((row) => row.compendiumId)).toEqual([
+        'weapon.zgrzyt-9',
+        'weapon.puszka-hukowa',
+        'weapon.brawling',
+      ]);
+      expect(sheet.armor.map((row) => [row.compendiumId, row.location])).toEqual([
+        ['armor.kurtka-warsztatowa', 'body'],
+        ['armor.helm-kurierski', 'head'],
+      ]);
+      expect(sheet.gear.map((row) => [row.compendiumId, row.qty])).toEqual([
+        ['ammo.sample-smoke', 2],
+        ['gear.agent-kieszonkowy', 1],
+        ['gear.latarka-taktyczna', 3],
+      ]);
+      expect(sheet.cyberware).toHaveLength(0);
+      expect(sheet.notes).toBe('Strój z pakietu Roli: Skóry z trasy: kurtka, buty ×2.');
+      // 500 ed Krawędziarza nietknięte, a pakiet nie zostawia wierszy zakupu.
+      expect(sheet.eddies).toBe(500);
+    });
+  });
+
   describe('naprawa 3b — narzędzia Ról i wyjątki MG', () => {
     // data/public/cpred/shop-tiers.json: the field medkit is a Medyk's tool on
     // level 2, the sample rifle type is a Solo's (50 ed w próbce = 500 ed po

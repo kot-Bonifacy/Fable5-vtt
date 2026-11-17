@@ -376,6 +376,69 @@ describe('naturalne leczenie i farmaceutyki', () => {
     expect((await sheetOf(patientId)).recovery.stabilized).toBe(false);
   });
 
+  it('etap 71g1 (D2): Medyk wybiera środek za każdy punkt Farmaceutyków', async () => {
+    // Nowa karta: trzy punkty, żadnego wyboru — dostępu jeszcze nie ma.
+    expect((await sheetOf(medicId)).pharmaPicks).toEqual([]);
+    expect(
+      await emitAck(gm, 'character:craft-pharma', {
+        characterId: medicId,
+        pharmaId: 'pharma.antybiotyk',
+      }),
+    ).toMatchObject({ ok: false, error: 'PHARMA_NOT_UNLOCKED' });
+    for (const pharmaId of ['pharma.antybiotyk', 'pharma.dynadetoks', 'pharma.turbo-uzdrawiacz']) {
+      data(
+        await emitAck<CharacterView>(gm, 'character:pharma-pick', {
+          characterId: medicId,
+          pharmaId,
+        }),
+        'character:pharma-pick',
+      );
+    }
+    expect((await sheetOf(medicId)).pharmaPicks).toEqual([
+      'pharma.antybiotyk',
+      'pharma.dynadetoks',
+      'pharma.turbo-uzdrawiacz',
+    ]);
+    // Czwarty bez czwartego punktu, powtórka i obcy środek — odmowy.
+    for (const [pharmaId, error] of [
+      ['pharma.stym', 'NO_PHARMA_POINT'],
+      ['pharma.turbo-uzdrawiacz', 'ALREADY_PICKED'],
+      ['pharma.nie-ma', 'UNKNOWN_PHARMA'],
+    ] as const) {
+      expect(
+        await emitAck(gm, 'character:pharma-pick', { characterId: medicId, pharmaId }),
+      ).toMatchObject({ ok: false, error });
+    }
+    // Ręka MG zdejmuje wybór i oddaje punkt; Turbo uzdrawiacz staje drugi.
+    data(
+      await emitAck<CharacterView>(gm, 'character:pharma-pick', {
+        characterId: medicId,
+        pharmaId: 'pharma.dynadetoks',
+        remove: true,
+      }),
+      'remove',
+    );
+    data(
+      await emitAck<CharacterView>(gm, 'character:pharma-pick', {
+        characterId: medicId,
+        pharmaId: 'pharma.dynadetoks',
+      }),
+      'pick again',
+    );
+    expect((await sheetOf(medicId)).pharmaPicks).toEqual([
+      'pharma.antybiotyk',
+      'pharma.turbo-uzdrawiacz',
+      'pharma.dynadetoks',
+    ]);
+    // Łatą karty wyborów nie zmieni nawet MG.
+    expect(
+      await emitAck(gm, 'character:update', {
+        characterId: medicId,
+        patch: { data: { pharmaPicks: ['pharma.zryw'] } },
+      }),
+    ).toMatchObject({ ok: false, error: 'FORBIDDEN' });
+  });
+
   it('nie wytworzy środka, do którego Medyk nie ma dostępu', async () => {
     await emitAck(gm, 'economy:adjust', {
       characterId: medicId,
@@ -384,7 +447,7 @@ describe('naturalne leczenie i farmaceutyki', () => {
     });
     const ack = await emitAck(gm, 'character:craft-pharma', {
       characterId: medicId,
-      // Zryw jest piąty w tabeli, a Medyk ma trzy punkty Farmaceutyków.
+      // Zrywu Medyk nie wybrał (D2), a trzy punkty Farmaceutyków są już zajęte.
       pharmaId: 'pharma.zryw',
     });
     expect(ack).toMatchObject({ ok: false, error: 'PHARMA_NOT_UNLOCKED' });

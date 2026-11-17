@@ -110,6 +110,7 @@ import {
 import { characterRollEvent } from './character-rolls.js';
 import {
   characterCraftPharmaEvent,
+  characterPharmaPickEvent,
   characterRestEvent,
   characterUseDoseEvent,
 } from './recovery.js';
@@ -513,6 +514,7 @@ export const EVENTS: RealtimeEvent<never, unknown>[] = [
   characterRollEvent,
   characterRestEvent,
   characterCraftPharmaEvent,
+  characterPharmaPickEvent,
   characterUseDoseEvent,
   characterCryoEvent,
   checkCallEvent,
