@@ -124,9 +124,10 @@ export interface TokenView {
    *
    * Do etapu 38a wypełniało się wyłącznie przy figurze bez karty, bo tylko taka
    * trzymała rany po stronie żetonu. Od 38a każda ostatystykowana figura ma
-   * kartę, więc pole niesie rany **karty bez właściciela** — czyli figury,
-   * którą prowadzi MG. Karta gracza nie jedzie tędy: swoje rany gracz widzi na
-   * własnej karcie, a cudzych oglądać nie ma po co.
+   * kartę, więc pole niesie rany karty. Do 71h2 tylko **karty bez właściciela**;
+   * od 71h2 (#88) każdej, bo Medyk gracza leczy ranę kolegi z drużyny z podglądu
+   * figury — cudzej karty nie otworzy. Przy figurze z kartą klucz jest zawsze,
+   * także pusty: klient scala widoki spreadem.
    *
    * Nieprzezroczyste dla rdzenia VTT: co jest raną, wie wyłącznie warstwa
    * systemu (CP RED: `CpredCriticalInjuryRow`).

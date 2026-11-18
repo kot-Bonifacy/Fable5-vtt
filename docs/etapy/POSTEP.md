@@ -21,8 +21,8 @@ w plikach obok — czytaj je **na żądanie, nigdy rutynowo**:
 
 | stan         | etapy                                                                                          |
 | ------------ | ---------------------------------------------------------------------------------------------- |
-| ⬜ otwarty   | **72** Przebudowa pościgu: prędkość, pasy ruchu i kokpit kierowcy (⬜ projekt 15.11, `etap-72-poscig-kokpit.md`; kodu nie ruszano, następny **72a** rdzeń modelu w `shared`, potem 72b–72g); **71** Weryfikacja Ról bez Netrunnera (🟨 `etap-71-weryfikacja-rol.md`: **71a ✅ 14.11** audyt, **71b ✅ 15.11** specyfikacje `52-role`, rozegrania i **bramka MG przeszła**; **71c0 ✅ 15.11** pięć błędów #83–#87, **71c1 ✅ 15.11** Tabor Rodziny jako stan, **71c2 ✅ 15.11** naprawa i montaż Technikiem, **71d1 ✅ 15.11** walka i leczenie, **71d2 ✅ 16.11** Praca Twórcy i kriopompa, **71e ✅ 16.11** handel i pieniądze, **71f ✅ 16.11** czas i zasoby narracyjne, **71g1 ✅ 17.11** kreator, PD i wieloklasowość, **71g2 ✅ 18.11** licencja — parafraza w `roleability.ts`, **71h1 ✅ 18.11** suita, T8c jako wieloklasowość, drugie rozegranie (dziesięć czeka na wdrożenie, bez migracji); następny **71h2** naprawa #88 — Medyk leczy ranę postaci innego gracza — i zamknięcie etapu); **73** Parafraza zdań podręcznika w reszcie kodu (⬜ decyzja MG 18.11, ~535 ciągów, plik etapu do napisania); **70** Przebudowa netrunningu: okno jednego piętra i przejęte urządzenia na mapie (🟨 zrobione 12–14.11, `etap-70-siec-przebudowa.md`: **70a** okno jednego piętra, **70b** przejęta wieżyczka i kamera, **70c** dron, oczy, pasek, **70d** obszar straży, Sieć ze sceny wg rodzaju, okienko strefy, **70e** automat LOD-u i Demona z hamulcem, **70f ✅ 14.11** wzorce 66b/66e pod nowe reguły i rozegranie; czeka na wdrożenie (70d z migracją `20261113180000_net_scene_installations`) i stół MG); **69** Lewa belka bez ramek (🟨 zrobione 11.11, czeka na wdrożenie i oględziny MG przy stole); **68** Warsztat: ulepszenia auta za ed i naprawa (🟨 zrobione 06.11, czeka na wdrożenie i oględziny MG przy stole); **67** Zakup pojazdu (🟨 zrobione 06.11, czeka na wdrożenie i oględziny MG przy stole); **66e** Scena przykładowa „Po zamknięciu” (🟨 zrobione 07.11, obejrzane w Firefoksie; rozegrana w przeglądarce do końca 07.11 — znaleziska w `zaleglosci.md` (27; pkt 18 i 19 nie, decyzja MG; 13 naprawionych 07.11); czeka na naprawę reszty, stół MG i wdrożenie); **66d** Scena przykładowa „Zastaw” (🟨 wzorzec zrobiony i rozegrany w przeglądarce 06.11; od 06.11 jeden taran na turę (decyzja MG); czeka na stół MG i wdrożenie); **66** Sceny przykładowe (🟨 zrobione 31.10, czeka na oględziny MG przy stole i wdrożenie; **66b** „Fabryka dronów” 🟨 zrobione 31.10, tak samo (netrunner obejrzany w przeglądarce 07.11, poprawki czekają na wdrożenie); **66c** „Ostatni zjazd” 🟨 wzorzec zrobiony, rozegrany w przeglądarce 04.11 i ponownie 05.11 po rebalansie (porażka o włos, balans zatwierdzony przez MG) — zaległości z przebiegów zamknięte 05.11, Esc na kubku MG 07.11 — czeka na stół MG i wdrożenie); **65** Scena pościgu i walka pojazdów (🟨 65a–65e ✅ 30–31.10, czeka na oględziny MG przy stole); **62** Sieć ze sceny (🟨 zrobione, czeka na oględziny MG na VPS po wdrożeniu); **61** Skradanie się (🟨 zrobione, czeka na słowo MG o rozstrzygnięciach); **28** Wdrożenie na VPS (🟨 działa na `https://vtt.tatanga.eu` z botami od 18.10; zostały off-site, utwardzenie, monitoring); **43b**, **43c** (UI walki); **60** Czytelny czat (zlecenie MG z 24.10; 🟨 60a–60c ✅, czeka na oględziny MG z pierwszego kryterium); T10; refaktoryzacja odłożona (MG 18.10) |
-| ✅ ukończone | 01–11, 13–20b, 23a–27f, 27h–27l, 29a–30d, 31–35, 37–42c, 43a, 44a–44d, 45, 46a1, 46a2, 46c1, 46c2, 46b1, 46b2, 47a, 47b, 48a, 48b, 48c, 49a, 49b, 50a, 50b, 50c, 51, 52, 53, 54, 55, 56, 57 (57a–57c), 58 (58a–58d), 59 (59a–59c), 63 (63a–63b; 63c wycofane 29.10), 64 (64a–64c) (ostatni zamknięty: 64, 2026-10-30) |
+| ⬜ otwarty   | **72** Przebudowa pościgu: prędkość, pasy ruchu i kokpit kierowcy (⬜ projekt 15.11, `etap-72-poscig-kokpit.md`; kodu nie ruszano, następny **72a** rdzeń modelu w `shared`, potem 72b–72g); **73** Parafraza zdań podręcznika w reszcie kodu (⬜ decyzja MG 18.11, ~535 ciągów, plik etapu do napisania); **70** Przebudowa netrunningu: okno jednego piętra i przejęte urządzenia na mapie (🟨 zrobione 12–14.11, `etap-70-siec-przebudowa.md`: **70a** okno jednego piętra, **70b** przejęta wieżyczka i kamera, **70c** dron, oczy, pasek, **70d** obszar straży, Sieć ze sceny wg rodzaju, okienko strefy, **70e** automat LOD-u i Demona z hamulcem, **70f ✅ 14.11** wzorce 66b/66e pod nowe reguły i rozegranie; czeka na wdrożenie (70d z migracją `20261113180000_net_scene_installations`) i stół MG); **69** Lewa belka bez ramek (🟨 zrobione 11.11, czeka na wdrożenie i oględziny MG przy stole); **68** Warsztat: ulepszenia auta za ed i naprawa (🟨 zrobione 06.11, czeka na wdrożenie i oględziny MG przy stole); **67** Zakup pojazdu (🟨 zrobione 06.11, czeka na wdrożenie i oględziny MG przy stole); **66e** Scena przykładowa „Po zamknięciu” (🟨 zrobione 07.11, obejrzane w Firefoksie; rozegrana w przeglądarce do końca 07.11 — znaleziska w `zaleglosci.md` (27; pkt 18 i 19 nie, decyzja MG; 13 naprawionych 07.11); czeka na naprawę reszty, stół MG i wdrożenie); **66d** Scena przykładowa „Zastaw” (🟨 wzorzec zrobiony i rozegrany w przeglądarce 06.11; od 06.11 jeden taran na turę (decyzja MG); czeka na stół MG i wdrożenie); **66** Sceny przykładowe (🟨 zrobione 31.10, czeka na oględziny MG przy stole i wdrożenie; **66b** „Fabryka dronów” 🟨 zrobione 31.10, tak samo (netrunner obejrzany w przeglądarce 07.11, poprawki czekają na wdrożenie); **66c** „Ostatni zjazd” 🟨 wzorzec zrobiony, rozegrany w przeglądarce 04.11 i ponownie 05.11 po rebalansie (porażka o włos, balans zatwierdzony przez MG) — zaległości z przebiegów zamknięte 05.11, Esc na kubku MG 07.11 — czeka na stół MG i wdrożenie); **65** Scena pościgu i walka pojazdów (🟨 65a–65e ✅ 30–31.10, czeka na oględziny MG przy stole); **62** Sieć ze sceny (🟨 zrobione, czeka na oględziny MG na VPS po wdrożeniu); **61** Skradanie się (🟨 zrobione, czeka na słowo MG o rozstrzygnięciach); **28** Wdrożenie na VPS (🟨 działa na `https://vtt.tatanga.eu` z botami od 18.10; zostały off-site, utwardzenie, monitoring); **43b**, **43c** (UI walki); **60** Czytelny czat (zlecenie MG z 24.10; 🟨 60a–60c ✅, czeka na oględziny MG z pierwszego kryterium); T10; refaktoryzacja odłożona (MG 18.10) |
+| ✅ ukończone | 01–11, 13–20b, 23a–27f, 27h–27l, 29a–30d, 31–35, 37–42c, 43a, 44a–44d, 45, 46a1, 46a2, 46c1, 46c2, 46b1, 46b2, 47a, 47b, 48a, 48b, 48c, 49a, 49b, 50a, 50b, 50c, 51, 52, 53, 54, 55, 56, 57 (57a–57c), 58 (58a–58d), 59 (59a–59c), 63 (63a–63b; 63c wycofane 29.10), 64 (64a–64c), 71 (71a–71h2) (ostatni zamknięty: 71, 2026-11-18) |
 | ⛔ wycofane  | 12, 21, 22 (głos), 27g (wydajność), 36 (makra); 27, 29, 30, 38 rozdzielone na etapy literowane |
 
 Pełna tabela z nazwami i datami: `archiwum/tabela-etapow.md`.
@@ -41,19 +41,13 @@ NPC-ów mają **zamiar i autopilota**, MG dostaje **panel „Pościg” z planem
 72f panel i kreator, 72g wzorce 66c/66d i rozegranie. Jedenaście rozstrzygnięć „bez pytań”
 czeka w pliku na potwierdzenie w trakcie. Makieta: link w pliku etapu.
 
-**Weryfikacja Ról (etap 71, zlecenie MG z 14.11) — 71a–71h1 zrobione (14–18.11); następny
-71h2: naprawa błędu #88 i zamknięcie etapu.** #88 (B2, z drugiego rozegrania 18.11): gracz-Medyk
-nie uruchomi Chirurgii ani Leczenia na Ranie Krytycznej postaci innego gracza — podgląd figury
-z kartą nie pokazuje ran, a `TreatInjury` na karcie pacjenta podsuwa leczących tylko
-właściciela karty i MG; serwer (`resolveTreatInjuryRequest`) już to przyjmuje. Plan 71h2
-w `etap-71-weryfikacja-rol.md` (decyzja MG 18.11). Stan Ról: `role-macierz.md` (138 ✅, 34 🟡,
-19 📜, 2 ❌ poza etapem, 1 ⚠️ = MED-05 / #88; tabele „Rozegrania 71b” i „71h”), co zostało prozą
-— `decyzje-i-uproszczenia.md` („Role po weryfikacji”). Testy pojedynczych Zdolności:
-`52-role/t71-<rola>` (start z `role-start`), `t8c-zdolnosci` — tylko wieloklasowość. **71c0–71h1
-czekają na wdrożenie, bez migracji** (pełny opis doróbek: `archiwum/od-czego-zaczac.md`,
-„Etap 71 do 71g2”). Parafraza zdań podręcznika poza `roleability.ts` (~535 ciągów) — **osobny
-etap 73** (decyzja MG 18.11, `zaleglosci.md`). Etap 71 nie dotyka sceny pościgu (styk z 72
-w pliku etapu); Nocny Targ — osobny etap (`POMYSLY.md`).
+**Weryfikacja Ról (etap 71, zlecenie MG z 14.11) — ✅ ukończony 18.11, 71c0–71h2 czekają na
+wdrożenie (bez migracji).** Stan Ról: `role-macierz.md` (139 ✅, 34 🟡, 19 📜, 2 ❌ poza etapem —
+NOM-03 → 72, FIX-10 Nocny Targ osobno), co zostało prozą — `decyzje-i-uproszczenia.md` („Role po
+weryfikacji”). Testy pojedynczych Zdolności: `52-role/t71-<rola>` (start z `role-start`),
+`t8c-zdolnosci` — wieloklasowość. Od 71h2 rany każdej karty jadą na żetonie i gracz-Medyk leczy
+ranę kolegi z podglądu figury (umowa na górze `statysta`). Parafraza zdań podręcznika w reszcie
+kodu — **etap 73** (plik do napisania). Pełne akapity: `archiwum/od-czego-zaczac.md`.
 
 **Przebudowa netrunningu (etap 70, zlecenie MG z 11.11) — 70a–70f zrobione (12–14.11), czeka
 na wdrożenie (70d z migracją `20261113180000_net_scene_installations`) i stół MG.** Okno SIEĆ
@@ -841,7 +835,7 @@ a nie do tego pliku.
 | `kosci`     | kubek, `rollFormula`, wezwania i prośby o Test, tabele losowe, PT od MG | 24   | 2       |
 | `tura`      | budżet Akcji i metrów, kolejka, trasa, ruch przez ściany, skok, walka z zauważenia, pytanie MG o przekroczenie, Percepcja w drodze (z linią wzroku), ukryte figury, skradanie, kropki ataków, kierowca bez Biegu, Test jazdy w Akcji Ruchu, darmowa ręka MG, napis wiersza Akcji, taran raz na turę, spóźniona inicjatywa rundy 1, krok planera w jednym oku, „Następna tura” z widzianą turą | 42   | 8       |
 | `atak`      | broń i dodatki, amunicja, obrażenia, pancerz, rany krytyczne, trucizna na ostrzu, auto-unik, strach z Konfrontacji, auto jako cel, broń pokładowa, wybór celu ze stosu, skutki amunicji po karcie ataku, ikona gołych rąk, broń dwuręczna w rękach przy tarczy | 57   | 8       |
-| `statysta`  | figura z kartą, `statBlock`, Wartość bojowa, `token:stat` (tylko zmienione grupy), wzorce, pełna karta bez sześciu pól | 19   | 3       |
+| `statysta`  | figura z kartą, `statBlock`, Wartość bojowa, `token:stat` (tylko zmienione grupy), wzorce, pełna karta bez sześciu pól, rany każdej karty na żetonie | 20   | 3       |
 | `karta`     | strony i zakładki, panele, `sheet.css`, walidacja list, usuwanie przedmiotu, „Używane” i „Plecak”, czekanie na autozapis (`characterSaved`) | 13   | 12      |
 | `postac`    | kreator, PD i awanse, koszyk i cofanie awansów, Role i Zdolności, cyborgizacje, chrom zmieniający liczby, ekonomia, Test montażu gracza, pojazdy i Tabor, Tabor jako stan auta (`fleet.ts`), naprawa i montaż Technikiem (`repair-work.ts`), skutki Ulepszania na wierszu (`itemupgrade.ts`), Praca Twórcy (`fabrication.ts`), kriopompa (`cryo.ts`), Lojalność na zamknięciu sesji (`teamloyalty.ts`), zasoby narracyjne Ról (`role-records.ts`: fani, Pogłoski, publikacje, wezwania), pakiet Krawędziarza (`edgerunnerKits`, `kitPicks`), wybór Farmaceutyków (`pharmaPicks`), zamiana Roli MG (`gmSwap`), testy Ról w `52-role` | 69   | 3       |
 | `ekwipunek` | wiersze wyposażenia, przekazanie, łup (także ciała graczy), handel, sklepy, asortyment handlarza z kompendium, zasięg, amunicja bez dna, egzoszkielet, latarka z ekwipunku, narkotyki i fiolki, siatka okna „Wymiana”, zgoda z góry, odświeżanie po naklejkach, znaczek „w użyciu”, zakup auta z modelu, warsztat (ulepszenia i naprawa auta), auto bokiem i „w garażu”, grafika auta to model i skala miniatur, postać na karcie przekazania, zasięg ręki do figury spoza siatki, targ przy ladzie i raty Fixera (`haggling.ts`) | 51   | 3       |
@@ -857,6 +851,32 @@ a nie do tego pliku.
 ## Notatki z dwóch ostatnich sesji
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
+
+### Sesja 18.11 (trzecia) — etap 71h2: naprawa #88, zamknięcie etapu 71
+
+**Zrobione (czeka na wdrożenie, bez migracji):**
+
+- **#88 (B2) naprawiony — gracz-Medyk leczy Ranę Krytyczną postaci innego gracza.**
+  `toTokenView` wysyła rany **każdej** karty na żetonie (do dziś tylko karty bez właściciela),
+  a przy figurze z kartą klucz `injuries` jest zawsze, także pusty — klient scala widoki
+  spreadem i bez klucza wyleczona rana zostawała u gracza (dotyczyło też statystów). Klient
+  (`hud.ts`) bierze rany z żetonu, gdy karty figury nie ma w sklepie, więc w podglądzie figury
+  kolegi stoi sekcja „Rany” z „Załataj” / „Lecz”; `TreatInjury` podsuwa leczących z własnych
+  postaci gracza. Cudza karta dalej nie jedzie. Umowa na górze `statysta`.
+- **Testy:** serwer — `specialties.test.ts` „Medyk gracza leczy ranę postaci innego gracza
+  (#88)” (gniazda dwóch graczy; bez poprawki pada); E2E — `t71-medyk` „MED-05 #88 Ruta leczy
+  Złamaną rękę Brzytwy Chirurgią z podglądu figury” (klik figury, kubek, rana znika z karty
+  i z belki).
+- **Dokumenty:** MED-05 ⚠️ → ✅ (macierz: 139 ✅, 0 ⚠️), #88 naprawiony w `testy-rejestr.md`,
+  checklisty 71h2 i kryteria etapu odhaczone, **etap 71 → ✅** (`archiwum/tabela-etapow.md`).
+
+Testy: `shared` 3192, klient 515, serwer 1859; lint, Prettier i `tsc` czterech pakietów czyste.
+E2E: `t71-medyk` 7/7; pełne `--grep @szybkie` **183 przeszło, 2 czerwone** — `t65-kreator`
+(„＋ Dodaj pojazd” wyszarzony, stale, do etapu 72) i T9a (konsola; w powtórce 7/7 zielony).
+**Oglądano w Firefoksie** (Playwright MCP, instancja z `role-start`, gracz Celina): rana Brzytwy
+w podglądzie figury, formularz „Leczy: Ruta”, Chirurgia PT 11 kubkiem (15 vs PT 11), po
+animacji kości sekcja „Rany” znika, karta czatu „Wyleczona”. `specs/99-zapomnij/` to dalej
+cudze oględziny z 14.11.
 
 ### Sesja 18.11 (druga) — etap 71h1: suita Ról, T8c jako wieloklasowość, drugie rozegranie
 
@@ -891,30 +911,4 @@ E2E: `t71-technik`, `-stroz`, `-korpo` i `t8c-zdolnosci` zielone; pełne `--grep
 i `t65-kreator` („＋ Dodaj pojazd” wyszarzony — pada stale, kreator pościgu, **do etapu 72**
 wg MG). Pierwszy pełny przebieg był nieważny — dwie suity szły naraz na jednej instancji
 (pułapka na górze `testy`). **Oglądano w Firefoksie** (gracz, wszystkie dziewięć Ról).
-`specs/99-zapomnij/` to dalej cudze oględziny z 14.11.
-
-### Sesja 18.11 — etap 71g2: parafraza zdań podręcznika w `roleability.ts`
-
-**Zrobione (czeka na wdrożenie, bez migracji, bez zmian mechaniki):**
-
-- **G37 (WSP-19)** — każde zdanie o regule w `roleability.ts` przepisane własnymi słowami ze
-  stroną: opisy Zmysłu Walki (dymki panelu), Specjalizacji Twórcy i Medycyny, dziesięć skutków
-  Ulepszania, grupy Wsparcia, przywileje i tabela Lojalności Korpo, zadania pracowników, drabiny
-  Rockera, Fixera i Media, targi, odmowa „dużej grupy” Rockera; cytaty w komentarzach po
-  angielsku. Nazwy, listy nazw i liczby zostają (`decyzje-i-uproszczenia.md`, „Parafraza zdań
-  podręcznika…”).
-- **Miara i strażnik** — wspólny ciąg ≥ 6 słów z `data/private/rulebook/manual/CPRED-podrecznik/`
-  + FAQ: przed ~1500 słów w 142 ciągach, po — tylko listy nazw. Test „no rulebook sentences in
-  committed code” w `server/src/licensing.test.ts` (lista `guarded`, wyjątki `NAME_LISTS`,
-  pomija się bez `data/private`); sprawdzony na starej wersji pliku — łapie cytaty.
-- **Reszta kodu** — ten sam pomiar: ~535 ciągów w innych plikach → `zaleglosci.md` (18.11), do
-  decyzji MG: 71h czy osobny etap. Tabele liczb Ról do `data/private` — `POMYSLY.md`.
-- Macierz: WSP-19 ❌ → 🟡; umowa na górze `postac`.
-
-Testy: `shared` 3192 (jedna asercja fragmentu zdania w `rolerolls.test.ts` przepięta; scena
-Rockera 10 dalej zawiera „stadiony”, czego pilnuje `ladders.test.ts`), serwer 1857/1857 + strażnik (pierwszy przebieg
-skończył się kodem 1 przy wszystkich zielonych — znane migotanie, drugi czysty), klient 515;
-`tsc` czterech pakietów, lint i Prettier zmienionych plików czyste. E2E `52-role` 70/70.
-**Oglądano w Firefoksie** (gracz, instancja E2E z `role-start`): panele ośmiu Ról — nowe
-teksty drabin, dymki Zmysłu Walki; tymczasowa specyfikacja zrzutów usunięta.
 `specs/99-zapomnij/` to dalej cudze oględziny z 14.11.

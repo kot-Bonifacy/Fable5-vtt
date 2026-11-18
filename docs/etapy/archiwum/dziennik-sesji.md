@@ -1,5 +1,31 @@
 # Dziennik sesji — archiwum
 
+### Sesja 18.11 — etap 71g2: parafraza zdań podręcznika w `roleability.ts`
+
+**Zrobione (czeka na wdrożenie, bez migracji, bez zmian mechaniki):**
+
+- **G37 (WSP-19)** — każde zdanie o regule w `roleability.ts` przepisane własnymi słowami ze
+  stroną: opisy Zmysłu Walki (dymki panelu), Specjalizacji Twórcy i Medycyny, dziesięć skutków
+  Ulepszania, grupy Wsparcia, przywileje i tabela Lojalności Korpo, zadania pracowników, drabiny
+  Rockera, Fixera i Media, targi, odmowa „dużej grupy” Rockera; cytaty w komentarzach po
+  angielsku. Nazwy, listy nazw i liczby zostają (`decyzje-i-uproszczenia.md`, „Parafraza zdań
+  podręcznika…”).
+- **Miara i strażnik** — wspólny ciąg ≥ 6 słów z `data/private/rulebook/manual/CPRED-podrecznik/`
+  + FAQ: przed ~1500 słów w 142 ciągach, po — tylko listy nazw. Test „no rulebook sentences in
+  committed code” w `server/src/licensing.test.ts` (lista `guarded`, wyjątki `NAME_LISTS`,
+  pomija się bez `data/private`); sprawdzony na starej wersji pliku — łapie cytaty.
+- **Reszta kodu** — ten sam pomiar: ~535 ciągów w innych plikach → `zaleglosci.md` (18.11), do
+  decyzji MG: 71h czy osobny etap. Tabele liczb Ról do `data/private` — `POMYSLY.md`.
+- Macierz: WSP-19 ❌ → 🟡; umowa na górze `postac`.
+
+Testy: `shared` 3192 (jedna asercja fragmentu zdania w `rolerolls.test.ts` przepięta; scena
+Rockera 10 dalej zawiera „stadiony”, czego pilnuje `ladders.test.ts`), serwer 1857/1857 + strażnik (pierwszy przebieg
+skończył się kodem 1 przy wszystkich zielonych — znane migotanie, drugi czysty), klient 515;
+`tsc` czterech pakietów, lint i Prettier zmienionych plików czyste. E2E `52-role` 70/70.
+**Oglądano w Firefoksie** (gracz, instancja E2E z `role-start`): panele ośmiu Ról — nowe
+teksty drabin, dymki Zmysłu Walki; tymczasowa specyfikacja zrzutów usunięta.
+`specs/99-zapomnij/` to dalej cudze oględziny z 14.11.
+
 ### Sesja 17.11 — etap 71g1: kreator, PD i wieloklasowość
 
 **Zrobione (czeka na wdrożenie, bez migracji — nowe pola w JSON-ie karty i szkicu):**

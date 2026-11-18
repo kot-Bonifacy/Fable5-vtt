@@ -6,6 +6,22 @@ wyłącznie wtedy, gdy ktoś wraca do świeżo zamkniętego etapu. **To, co z ni
 w kodzie, mieszka w sekcjach obszarów `umowy-kodu.md` i `pulapki-dev.md`** — tu leży kontekst:
 po co to powstało, co było przed, czego świadomie nie zrobiono.
 
+## Etap 71 po 71h1 (wyprowadzone 18.11.2026, sesja 71h2)
+
+**Weryfikacja Ról (etap 71, zlecenie MG z 14.11) — 71a–71h1 zrobione (14–18.11); następny
+71h2: naprawa błędu #88 i zamknięcie etapu.** #88 (B2, z drugiego rozegrania 18.11): gracz-Medyk
+nie uruchomi Chirurgii ani Leczenia na Ranie Krytycznej postaci innego gracza — podgląd figury
+z kartą nie pokazuje ran, a `TreatInjury` na karcie pacjenta podsuwa leczących tylko
+właściciela karty i MG; serwer (`resolveTreatInjuryRequest`) już to przyjmuje. Plan 71h2
+w `etap-71-weryfikacja-rol.md` (decyzja MG 18.11). Stan Ról: `role-macierz.md` (138 ✅, 34 🟡,
+19 📜, 2 ❌ poza etapem, 1 ⚠️ = MED-05 / #88; tabele „Rozegrania 71b” i „71h”), co zostało prozą
+— `decyzje-i-uproszczenia.md` („Role po weryfikacji”). Testy pojedynczych Zdolności:
+`52-role/t71-<rola>` (start z `role-start`), `t8c-zdolnosci` — tylko wieloklasowość. **71c0–71h1
+czekają na wdrożenie, bez migracji** (pełny opis doróbek: `archiwum/od-czego-zaczac.md`,
+„Etap 71 do 71g2”). Parafraza zdań podręcznika poza `roleability.ts` (~535 ciągów) — **osobny
+etap 73** (decyzja MG 18.11, `zaleglosci.md`). Etap 71 nie dotyka sceny pościgu (styk z 72
+w pliku etapu); Nocny Targ — osobny etap (`POMYSLY.md`).
+
 ## Etap 71 do 71g2 (wyprowadzone 18.11.2026, sesja 71h1)
 
 **Weryfikacja Ról (etap 71, zlecenie MG z 14.11) — 71a–71d1 zrobione (15.11), 71d2, 71e i 71f

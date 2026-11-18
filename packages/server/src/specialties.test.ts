@@ -52,6 +52,7 @@ const config: ServerConfig = {
 let built: BuiltApp;
 let baseUrl: string;
 let gmCookie: string;
+let campaignId: string;
 const openSockets: ClientSocket[] = [];
 
 function cookieOf(setCookieHeader: string | string[] | undefined): string {
@@ -129,7 +130,7 @@ beforeAll(async () => {
     headers: { cookie: gmCookie },
     payload: { name: 'Klinika' },
   });
-  const campaignId = (campaignRes.json() as CampaignSummary).id;
+  campaignId = (campaignRes.json() as CampaignSummary).id;
   // Etap 44b: linki są imienne — wystawia je `joinUrl` przy każdym wejściu.
   const invite = campaignId;
   await built.app.inject({
@@ -695,5 +696,157 @@ describe('Specjalizacje Medycyny i Twórcy na karcie', () => {
       injuryId: 'injury.cokolwiek',
     });
     expect(refused.ok === false && refused.error).toBe('TOKEN_HAS_NO_PROFILE');
+  });
+});
+
+/**
+ * Gracz-Medyk leczy ranę postaci innego gracza (#88, etap 71h2).
+ *
+ * Serwer przyjmował ten rzut od początku (`resolveTreatInjuryRequest` pyta
+ * o żeton pacjenta, nie o jego właściciela) — brakowało drogi do niego: rany
+ * karty z właścicielem nie jechały na żetonie, a cudzej karty gracz nie
+ * otworzy. Tu sprawdzany jest cały szew z gniazd **graczy**, nie MG.
+ */
+describe('Medyk gracza leczy ranę postaci innego gracza (#88)', () => {
+  let gm: ClientSocket;
+  let medic: ClientSocket;
+  let medicId: string;
+  let patientId: string;
+  let patientTokenId: string;
+
+  const brokenArm = {
+    id: 'injury.body-zlamana-reka',
+    name: 'Złamana ręka',
+    effect: 'Ręka jest bezużyteczna.',
+    quickFix: 'Ratownictwo medyczne PT 13',
+    treatment: 'Ratownictwo medyczne PT 13 lub Chirurgia PT 11',
+  };
+
+  async function playerJoin(name: string): Promise<{ cookie: string; id: string }> {
+    const res = await built.app.inject({
+      method: 'POST',
+      url: await joinUrl(built, campaignId, name),
+    });
+    return {
+      cookie: cookieOf(res.headers['set-cookie']),
+      id: (res.json() as { user: { id: string } }).user.id,
+    };
+  }
+
+  async function syncOf(socket: ClientSocket): Promise<StateSyncPayload> {
+    const next = new Promise<StateSyncPayload>((resolve, reject) => {
+      const timer = setTimeout(() => reject(new Error('state:sync timeout')), 4000);
+      socket.once('state:sync', (payload: StateSyncPayload) => {
+        clearTimeout(timer);
+        resolve(payload);
+      });
+    });
+    await emitAck(socket, 'state:request');
+    return next;
+  }
+
+  it('rany postaci kolegi jadą na jego figurze, a Medyk leczy je swoją postacią', async () => {
+    const gmConn = createSocket(gmCookie);
+    gm = gmConn.socket;
+    await gmConn.firstSync;
+    const ruta = await playerJoin('Ruta-gracz');
+    const ada = await playerJoin('Ada');
+
+    medicId = data(
+      await emitAck<CharacterView>(gm, 'character:create', { name: 'Ruta', ownerId: ruta.id }),
+      'character:create',
+    ).id;
+    patientId = data(
+      await emitAck<CharacterView>(gm, 'character:create', { name: 'Brzytwa', ownerId: ada.id }),
+      'character:create',
+    ).id;
+    const medicSheet = (await syncOf(gm)).characters.find((c) => c.id === medicId)!
+      .data as CpredCharacterData;
+    const raised = await emitAck(gm, 'character:update', {
+      characterId: medicId,
+      patch: {
+        data: {
+          roleId: 'medtech',
+          roleAbilityRank: 5,
+          medicine: { surgery: 5 },
+          stats: { ...medicSheet.stats, tech: 8 },
+        },
+      },
+    });
+    expect(raised.ok).toBe(true);
+    const wounded = await emitAck(gm, 'character:update', {
+      characterId: patientId,
+      patch: { data: { criticalInjuries: [brokenArm] } },
+    });
+    expect(wounded.ok).toBe(true);
+
+    const scene = data(
+      await emitAck<SceneView>(gm, 'scene:create', { name: 'Sala zabiegowa' }),
+      'scene:create',
+    );
+    await emitAck(gm, 'scene:visibility', { sceneId: scene.id, visibility: 'open' });
+    await emitAck(gm, 'scene:activate', { sceneId: scene.id });
+    patientTokenId = data(
+      await emitAck<TokenView>(gm, 'token:create', {
+        sceneId: scene.id,
+        name: 'Brzytwa',
+        x: 0,
+        y: 0,
+        characterId: patientId,
+      }),
+      'token:create',
+    ).id;
+
+    const medicConn = createSocket(ruta.cookie);
+    medic = medicConn.socket;
+    const seen = (await medicConn.firstSync).tokens.find((t) => t.id === patientTokenId)!;
+    // Cudza karta dalej nie przychodzi — tylko rany na publicznej części żetonu.
+    expect(seen.characterId).toBeUndefined();
+    expect((await syncOf(medic)).characters.some((c) => c.id === patientId)).toBe(false);
+    expect((seen.injuries ?? []).map((row) => (row as { id: string }).id)).toEqual([brokenArm.id]);
+
+    // Samoleczenia tędy nie ma, a cudzą postacią leczyć nie wolno.
+    const notMine = await emitAck(medic, 'character:roll', {
+      characterId: patientId,
+      request: {
+        kind: 'treatInjury',
+        treatTokenId: patientTokenId,
+        treatInjuryId: brokenArm.id,
+        treatSkillId: 'medicine.surgery',
+      },
+      visibility: 'public',
+    });
+    expect(notMine.ok).toBe(false);
+
+    // Ostatni widok figury, który dostał gracz-Medyk — po nim klient scala.
+    let lastUpsert: TokenView | null = null;
+    medic.on('token:upsert', (payload: { token: TokenView }) => {
+      if (payload.token.id === patientTokenId) lastUpsert = payload.token;
+    });
+
+    // Powtarzane jak Chirurgia wyżej — fumble potrafi zabrać 1k10.
+    let healed = false;
+    for (let attempt = 0; attempt < 8 && !healed; attempt += 1) {
+      const ack = await emitAck(medic, 'character:roll', {
+        characterId: medicId,
+        request: {
+          kind: 'treatInjury',
+          treatTokenId: patientTokenId,
+          treatInjuryId: brokenArm.id,
+          treatSkillId: 'medicine.surgery',
+        },
+        visibility: 'public',
+      });
+      expect(ack.ok).toBe(true);
+      const patient = (await syncOf(gm)).characters.find((c) => c.id === patientId)!
+        .data as CpredCharacterData;
+      healed = patient.criticalInjuries.length === 0;
+    }
+    expect(healed).toBe(true);
+
+    // Pusta lista jedzie wprost: bez klucza klient gracza zostawiłby wyleczoną ranę.
+    await expect.poll(() => lastUpsert?.injuries).toEqual([]);
+    const after = (await syncOf(medic)).tokens.find((t) => t.id === patientTokenId)!;
+    expect(after.injuries).toEqual([]);
   });
 });

@@ -190,14 +190,14 @@ export function toTokenView(
         ? { sceneVehicleId: token.sceneVehicleId, seat: token.vehicleSeat }
         : null,
   };
-  // Rany figury prowadzonej przez MG jadą **publicznie** (31.08): przy stole
-  // widać, że ktoś ma odciętą dłoń, a Medyk gracza ma mieć co załatać. Do 38a
-  // czytało się je z profilu bojowego żetonu; teraz z karty, bo profilu nie ma.
-  // Karta z właścicielem tędy nie jedzie — swoje rany gracz widzi na własnej
-  // karcie, a cudzych oglądać nie ma po co.
-  if (linked && linked.ownerId === null && linked.injuries.length > 0) {
-    view.injuries = linked.injuries;
-  }
+  // Rany figury z kartą jadą **publicznie** (31.08): przy stole widać, że ktoś
+  // ma odciętą dłoń, a Medyk gracza ma mieć co załatać. Do 38a czytało się je
+  // z profilu bojowego żetonu; teraz z karty, bo profilu nie ma. Od 71h2 (#88)
+  // także karta z właścicielem: Medyk drużyny nie otworzy cudzej karty, więc
+  // ranę kolegi leczy z podglądu figury. Kto figury nie widzi, nie dostaje jej
+  // widoku wcale. Zawsze, także pusta lista: klient scala widoki spreadem, więc
+  // brak klucza zostawiłby u gracza ranę, którą przed chwilą wyleczył.
+  if (linked && !linked.container) view.injuries = linked.injuries;
   // Pojemnik (46b): stan zamka jedzie do wszystkich, a pasek PW nie jedzie
   // nikomu — skrzynia nie jest ranna, a jej domyślne Cechy nic nie znaczą.
   if (linked?.container) view.container = linked.container;

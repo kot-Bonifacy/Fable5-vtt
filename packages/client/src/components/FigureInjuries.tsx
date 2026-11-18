@@ -30,6 +30,13 @@ import { TreatInjury } from './TreatInjury.js';
  * leczenia to **ten sam** komponent, którego używa karta postaci — różnica
  * między postacią a statystą kończy się na tym, skąd wzięto listę ran.
  *
+ * Od 71h2 (#88) ta sama sekcja stoi przy figurze **postaci innego gracza**:
+ * gracz-Medyk nie otworzy cudzej karty, a Chirurgia i Ratownictwo na koledze
+ * z drużyny to zwykła robota Medyka. Rany przychodzą z żetonu (serwer wysyła
+ * je przy każdej karcie), leczący — z własnych postaci gracza (`TreatInjury`),
+ * a samoleczenia nie ma jak tu wybrać, bo własna postać ma kartę i leczy się
+ * na niej.
+ *
  * Ręka MG jest tu szersza niż na karcie o jedną rzecz i węższa o żadną: „nadaj
  * ranę" idzie zdarzeniem `character:injury` z adresem żetonu, więc rana wchodzi
  * z karami, dopłatą do Testu Przeżywalności i zabraną Akcją z 14e — a karta na

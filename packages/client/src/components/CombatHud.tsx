@@ -1158,8 +1158,9 @@ export function CombatHud() {
             {/* Etap 31.08: rany i Testy figury bez karty. Stoją **nad** bronią,
                 bo obie odpowiadają na pytanie „w jakim ona jest stanie", a nie
                 „co może zrobić" — i bo rana zabierająca Akcję tłumaczy wyszarzone
-                przyciski niżej. Przy figurze z kartą nie ma ich wcale: tam jedno
-                i drugie mieszka na karcie. */}
+                przyciski niżej. Przy figurze z kartą, którą ten klient ma, nie
+                ma ich wcale: tam jedno i drugie mieszka na karcie. Gracz widzi
+                tu rany postaci kolegi z drużyny (71h2, #88) — i leczy je swoją. */}
             {context.injuries.length > 0 || (context.isGm && !token.characterId) ? (
               <FigureInjuries tokenId={token.id} injuries={context.injuries} />
             ) : null}

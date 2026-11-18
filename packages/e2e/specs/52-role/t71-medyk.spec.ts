@@ -15,6 +15,9 @@ import {
   startFromRoleStart,
 } from '../../fixtures/role.ts';
 import { emitAck } from '../../fixtures/socket.ts';
+import { clickWorld } from '../../fixtures/canvas.ts';
+import { shakeCup } from '../../fixtures/table.ts';
+import { closeSheet } from '../../fixtures/walka.ts';
 import { pendingDice, scriptDice } from '../../instance/instance.ts';
 
 /**
@@ -27,6 +30,8 @@ import { pendingDice, scriptDice } from '../../instance/instance.ts';
  * Od 71d2: kriopompa z Obsługi kriosystemów (MED-17, G19) — odbiór, zamrożenie
  * pacjenta w zasięgu ramienia, rozmrożenie i płyn; koniec tygodnia zegara
  * sprawdza `work-cryo.test.ts`.
+ * Od 71h2 (#88): Chirurgia na Ranie Krytycznej **postaci innego gracza** —
+ * z podglądu jego figury w lewej belce (MED-05).
  */
 
 const MED = ROLES.medtech;
@@ -290,5 +295,64 @@ test.describe.serial('@szybkie T71 Medyk — Medycyna', () => {
     } finally {
       gm.close();
     }
+  });
+
+  // ───────────── 71h2: rana postaci innego gracza (#88) ─────────────
+
+  test('MED-05 #88 Ruta leczy Złamaną rękę Brzytwy Chirurgią z podglądu figury; rana znika z karty Ady', async () => {
+    const SOLO = ROLES.solo;
+    // Rana wpisana ręką MG — w zdaniu Leczenia Chirurgia PT 11 (Ruta ma ją od
+    // MED-17: punkt Chirurgii = poziom 2, TECH 7).
+    const arm = {
+      id: 'injury.e2e-zlamana-reka',
+      name: 'Złamana ręka',
+      effect: 'Ręka do niczego się nie nadaje.',
+      quickFix: 'Ratownictwo medyczne PT 13',
+      treatment: 'Ratownictwo medyczne PT 13 lub Chirurgia PT 11',
+    };
+    const wounds = () =>
+      cardData<{ criticalInjuries: { id: string }[] }>(SOLO.card).criticalInjuries.map(
+        (row) => row.id,
+      );
+    const gm = await gmSocket();
+    try {
+      dataOf(
+        await emitAck(gm, 'character:update', {
+          characterId: characterId(SOLO.card),
+          patch: { data: { criticalInjuries: [arm] } },
+        }),
+        'character:update rana Brzytwy',
+      );
+    } finally {
+      gm.close();
+    }
+    expect(wounds()).toEqual([arm.id]);
+
+    // Cudzej karty Celina nie otworzy — rana ma być przy figurze Brzytwy.
+    const page = celina.page;
+    await closeSheet(page);
+    await clickWorld(page, { x: (SOLO.column + 0.5) * CELL, y: 3.5 * CELL });
+    const rail = page.locator('.hud-rail');
+    await expect(rail.locator('.hud-card-title')).toContainText(SOLO.card);
+    const injuries = rail.locator('.hud-injuries');
+    await expect(injuries).toContainText('Złamana ręka');
+    // Nie MG i nie właściciel: bez „Usuń ranę” i bez nadawania nowych.
+    await expect(injuries.getByRole('button', { name: /^Usuń ranę/ })).toHaveCount(0);
+    await injuries.getByRole('button', { name: 'Lecz ranę: Złamana ręka' }).click();
+    // Leczy własna postać gracza; samej Brzytwy na liście nie ma (to nie jego karta).
+    const who = injuries.getByRole('combobox', { name: 'Kto leczy tę ranę' });
+    await expect(who.locator('option')).toHaveText([MED.card]);
+
+    const since = lastMessageId();
+    scriptDice([8]);
+    await injuries.getByRole('button', { name: 'Chirurgia PT 11', exact: true }).click();
+    await shakeCup(page);
+    const roll = await rollAfter(since, 'Złamana ręka', 'roll');
+    expect(roll.total, JSON.stringify(roll)).toBeGreaterThanOrEqual(11);
+    expect(pendingDice()).toBe('');
+    await expect.poll(wounds).toEqual([]);
+    // Pusta lista dojechała na żeton — wyleczonej rany w belce już nie ma.
+    await expect(rail.locator('.hud-injuries')).toHaveCount(0);
+    expect(celina.unexpectedErrors()).toEqual([]);
   });
 });

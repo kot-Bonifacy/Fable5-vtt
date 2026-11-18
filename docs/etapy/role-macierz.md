@@ -19,11 +19,11 @@ tekstu podręcznika w tym pliku nie ma i nie może być (repo jest publiczne).
 
 ## Podsumowanie audytu
 
-| Rola        | ✅  | 🟡  | 📜  | ❌  | ⚠️  | ❓  | po weryfikacji (stan 71h, 18.11)                                                                 |
+| Rola        | ✅  | 🟡  | 📜  | ❌  | ⚠️  | ❓  | po weryfikacji (stan 71h2, 18.11)                                                                |
 | ----------- | --- | --- | --- | --- | --- | --- | ------------------------------------------------------------------------------------------------ |
 | Solo        | 16  | 3   | 0   | 0   | 0   | 0   | Akcja z serwera, Wykrycie po mnożniku, belka w rundzie 0, czytelne progi i kubek obrażeń          |
 | Technik     | 17  | 4   | 2   | 0   | 0   | 0   | Prowizorka, naprawa, montaż, Ulepszanie i Wytwarzanie to Testy przez kubek; czas — zegar MG      |
-| Medyk       | 17  | 3   | 1   | 0   | 1   | 0   | wybór środka Farmaceutyków, limity dobowe, kriopompa; MED-05 ⚠️ (#88, naprawa w 71h2)          |
+| Medyk       | 18  | 3   | 1   | 0   | 0   | 0   | wybór środka Farmaceutyków, limity dobowe, kriopompa; rana kolegi leczona z podglądu figury     |
 | Nomada      | 14  | 1   | 2   | 1   | 0   | 0   | Tabor jako stan auta (w użyciu, u Rodziny, Głowa Rodziny); NOM-03 czeka na etap 72                |
 | Fixer       | 8   | 6   | 2   | 1   | 0   | 0   | druga strona targu z karty handlarza albo od MG, targ przy sprzedaży, raty; Nocny Targ osobno     |
 | Korpo       | 16  | 4   | 2   | 0   | 0   | 0   | pracownik staje na mapie, Lojalność ścina zamknięcie sesji, następca za 200 ed                    |
@@ -31,7 +31,7 @@ tekstu podręcznika w tym pliku nie ma i nie może być (repo jest publiczne).
 | Rocker      | 10  | 1   | 3   | 0   | 0   | 0   | grupy fanów na karcie z blokadą na 7 dób, bez nowych fanów w walce                               |
 | Media       | 11  | 1   | 3   | 0   | 0   | 0   | licznik Pogłosek w tygodniu, „Szukaj pogłosek”, rejestr publikacji                                |
 | wspólne     | 17  | 6   | 1   | 0   | 0   | 0   | pakiet Krawędziarza, listy wg oryginału, powrót do Roli za PD, parafraza w `roleability.ts`       |
-| **razem**   | 138 | 34  | 19  | 2   | 1   | 0   | 194 wiersze; ❌ tylko poza etapem 71 (NOM-03 → 72, FIX-10 → osobny etap), ⚠️ MED-05 → 71h2          |
+| **razem**   | 139 | 34  | 19  | 2   | 0   | 0   | 194 wiersze; ❌ tylko poza etapem 71 (NOM-03 → 72, FIX-10 → osobny etap)                          |
 
 Stan wyjściowy z 71a (14.11): 101 ✅, 28 🟡, 31 📜, 21 ❌, 5 ⚠️, 8 ❓.
 
@@ -44,6 +44,7 @@ Po 71c2 (15.11): TEC-19 ❌, TEC-18 📜, TEC-S1, NOM-10 🟡 → ✅, TEC-15 �
 Po 71g1 (17.11): WSP-18, MED-08 ❌, WSP-23, ROC-K1, MED-K1 ⚠️ → ✅; WSP-08, FIX-12 ❌ → 🟡 (G33–G36, D2, D3, P4).
 Po 71g2 (18.11): WSP-19 ❌ → 🟡 (G37; `roleability.ts` sparafrazowany, reszta kodu — osobny etap, decyzja MG 18.11).
 Po 71h1 (18.11): tabela wyżej przeliczona; asercje E2E dla TEC-16, STR-13, WSP-22; drugie rozegranie przestawiło MED-05 ✅ → ⚠️ (#88, naprawa w 71h2 — decyzja MG 18.11).
+Po 71h2 (18.11): MED-05 ⚠️ → ✅ (#88 naprawiony: rany każdej karty na żetonie, leczenie z podglądu figury).
 
 **Źródła:** podręcznik główny (s. 43–106, 142–165, 189–192, 222–229, 411), FAQ wydania polskiego
 (tabela „co wchodzi do którego rzutu”, pytania o Zdolności, zakupy Fixera, Wytwarzanie) i DLC
@@ -180,7 +181,7 @@ katalogiem VTT).
 | MED-02 | 149      | Chirurgia: 2 punkty Umiejętności za punkt Specjalizacji, najwyżej 10                                                                | Zdolność | ✅   | `ra: cpredMedicineEffects`; `specialties.test.ts` „Chirurgia to dwa punkty Umiejętności…”; `t71-medyk`                                                                                                                                                                                            | A   | —                                                                                                                               |
 | MED-03 | 149      | Szósty punkt Chirurgii nic nie kupuje                                                                                               | Zdolność | 🟡   | `specialties.test.ts` „szósty punkt Chirurgii jest odrzucany”; `dec` — powód aktualny                                                                                                                                                                                                             | A   | —                                                                                                                               |
 | MED-04 | 149      | Chirurgia dostępna tylko przez Specjalizację Medyka                                                                                 | Zdolność | 🟡   | `srv: specialties.test.ts` „Ratownik bez Medycyny nie tknie rany wymagającej Chirurgii”; `dec` „Chirurgia to Specjalizacja, nie Rola” — powód aktualny                                                                                                                                            | A   | —                                                                                                                               |
-| MED-05 | 149, 222 | Chirurgią leczy się najcięższe Rany Krytyczne                                                                                       | Zdolność | ⚠️   | `srv: specialties.test.ts` „Medyk z Chirurgią rzuca, a udany rzut zdejmuje ranę z karty”; **#88 (71h)**: gracz-Medyk nie uruchomi leczenia rany postaci innego gracza — tylko MG (UI) | A   | **S–M** 71h2: rany figury z kartą w podglądzie drużyny, leczący z własnych postaci (decyzja MG 18.11) |
+| MED-05 | 149, 222 | Chirurgią leczy się najcięższe Rany Krytyczne                                                                                       | Zdolność | ✅   | `srv: specialties.test.ts` „Medyk z Chirurgią rzuca, a udany rzut zdejmuje ranę z karty” i „Medyk gracza leczy ranę postaci innego gracza (#88)”; `t71-medyk` MED-05 #88 (Ruta leczy Brzytwę z podglądu figury, kubek) | A   | #88 naprawiony w 71h2 (18.11): rany każdej karty jadą na żetonie, leczący z własnych postaci gracza |
 | MED-06 | 149, 226 | Chirurgią wszczepia się cyborgizacje                                                                                                | styk     | ✅   | `srv: surgery.test.ts` „Medyk operuje za darmo: Test za Iskrę, wszczep u Kowala…”                                                                                                                                                                                                                 | A   | —                                                                                                                               |
 | MED-07 | 149      | Technologia Medyczna = punkty Farmaceutyków + kriosystemów, najwyżej 10; po 5 na Specjalizację                                      | Zdolność | ✅   | `specialties.test.ts` „Technologia Medyczna to suma…”; `ra: CPRED_MEDICINE_SPECIALTY_MAX`; `t71-medyk`                                                                                                                                                                                            | A   | —                                                                                                                               |
 | MED-08 | 150      | Każdy punkt Farmaceutyków otwiera jeden z pięciu środków                                                                            | Zdolność | ✅   | 71g1 (D2): `pharma.ts: cpredPharmaAccess, cpredPickPharma` + `pharmaPicks` na karcie, `character:pharma-pick` (MG zdejmuje wybór), stara karta z kolejności tabeli; `rm: MED-08`, `srv: recovery.test.ts` „etap 71g1”; E2E `t71-medyk` (Antybiotyk i Stym) | A   | — |

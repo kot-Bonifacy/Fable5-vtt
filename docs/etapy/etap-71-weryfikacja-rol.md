@@ -5,6 +5,7 @@ wieloklasowość), 30a–30d (Zdolności Ról), 31 (dodatki do broni), 37 (kalen
 (handlarze, cennik), 59 (chrom, farmaceutyki, narkotyki), 65 i 67–68 (pojazdy, warsztat)
 
 > **Projekt z 14.11.2026 (zlecenie MG).** Etap wielosesyjny: podetapy 71a–71h, jeden na sesję.
+> **✅ Ukończony 18.11.2026 (71h2).**
 > **Netrunner jest poza zakresem** — Interfejs przeszedł własną przebudowę w etapie 70.
 > Zakres podetapów 71c–71g jest **wstępny**: ostateczną listę doróbek ustala bramka MG po 71b.
 
@@ -392,37 +393,40 @@ STR-12 — po etapie 72, KOR-04 — tylko z abonamentem Trauma Team.
       próg z rangi dawnej Roli, z etykietami „Dołóż pojazd / ulepszenie”)
 - [x] **Drugie rozegranie** tych samych dziewięciu scenek w Firefoksie; porównanie z pierwszym
       (te same trzy punkty oceny) — „Rozegrania 71h” w `role-macierz.md`
-- [ ] Macierz bez wierszy ❌ i ⚠️ poza odrzuconymi przez MG na bramce (te mają wpis decyzji)
+- [x] Macierz bez wierszy ❌ i ⚠️ poza odrzuconymi przez MG na bramce (te mają wpis decyzji)
       i przekazanymi etapowi 72 (NOM-03, STR-12 — wiersz wskazuje, gdzie czeka) — **zostało
-      MED-05 ⚠️ (#88) → 71h2**; FIX-10 ❌ to Nocny Targ (G24, osobny etap)
+      MED-05 ⚠️ (#88) → 71h2**, ✅ 18.11; FIX-10 ❌ to Nocny Targ (G24, osobny etap)
 - [x] `decyzje-i-uproszczenia.md`: nowa sekcja „Role po weryfikacji (etap 71)” z tym, co
       świadomie zostało prozą, i odsyłaczem do macierzy
 - [x] `umowy-kodu.md` (`postac`), `POSTEP.md`, `archiwum/tabela-etapow.md` zaktualizowane
 
-#### 71h2 — naprawa #88 i zamknięcie etapu (S–M)
+#### 71h2 — naprawa #88 i zamknięcie etapu (S–M, ✅ 18.11.2026)
 
-- [ ] Gracz widzi Rany Krytyczne figury z kartą **postaci drużyny** w podglądzie figury
+- [x] Gracz widzi Rany Krytyczne figury z kartą **postaci drużyny** w podglądzie figury
       (lewa belka) — nazwy, PT i stan „załatana”, bez reszty karty; serwer wysyła je tylko
-      tam, gdzie figura jest widoczna (filtr jak dziś przy statystach)
-- [ ] Formularz `TreatInjury` w podglądzie: leczący z **własnych** postaci gracza (Medyk
+      tam, gdzie figura jest widoczna (filtr jak dziś przy statystach) — `toTokenView` wysyła
+      rany każdej karty, także pustą listę (klient scala widoki spreadem; bez klucza wyleczona
+      rana zostawała u gracza — dotyczyło też statystów)
+- [x] Formularz `TreatInjury` w podglądzie: leczący z **własnych** postaci gracza (Medyk
       z Chirurgią / Ratownictwem), pacjentem jest żeton; serwer (`resolveTreatInjuryRequest`)
       już to przyjmuje — test serwera „gracz leczy ranę postaci innego gracza” i odmowa
       `SELF_TREATMENT` bez zmian
-- [ ] Asercja E2E w `t71-medyk` (MED-05 #88): Ruta leczy Złamaną rękę Brzytwy Chirurgią
+- [x] Asercja E2E w `t71-medyk` (MED-05 #88): Ruta leczy Złamaną rękę Brzytwy Chirurgią
       z podglądu figury, kubek, rana znika z karty Ady
-- [ ] MED-05 ⚠️ → ✅, #88 → naprawiony; oględziny w Firefoksie
-- [ ] Kryteria ukończenia etapu niżej odhaczone; etap 71 → ✅ w `POSTEP.md`
+- [x] MED-05 ⚠️ → ✅, #88 → naprawiony; oględziny w Firefoksie
+- [x] Kryteria ukończenia etapu niżej odhaczone; etap 71 → ✅ w `POSTEP.md`
 
 **Kryteria ukończenia etapu 71**
 
-- [ ] Każda reguła klasy A i B dziewięciu Ról jest ✅ albo 🟡 z decyzją MG (poza NOM-03
+- [x] Każda reguła klasy A i B dziewięciu Ról jest ✅ albo 🟡 z decyzją MG (poza NOM-03
       i STR-12, które czekają na etap 72)
 - [x] Każda Rola ma zieloną specyfikację E2E i dwie rozegrane scenki (71b 15.11, 71h1 18.11)
 - [x] Postać świeżo z kreatora w każdej z dziewięciu Ról zgadza się z podręcznikiem (pakiety,
       wyposażenie, ranga startowa) — wiersze `*-K*` macierzy ✅ (71g1), `creation.test.ts`
-- [ ] `pnpm test`, `pnpm test:e2e --grep @szybkie` i lint zielone — 71h1: `pnpm test` i lint
+- [x] `pnpm test`, `pnpm test:e2e --grep @szybkie` i lint zielone — 71h1: `pnpm test` i lint
       zielone, `@szybkie` 182 + `52-role` w całości; czerwony tylko `t65-kreator` (kreator pościgu,
-      do etapu 72 — `zaleglosci.md`); do powtórki w 71h2
+      do etapu 72 — `zaleglosci.md`); 71h2: `@szybkie` 183 zielone, czerwone tylko `t65-kreator`
+      (to samo, do etapu 72) i T9a (konsola, w powtórce 7/7 zielony)
 
 ## Testy w przeglądarce — szczegóły
 

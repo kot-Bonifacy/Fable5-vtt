@@ -188,10 +188,10 @@ export interface HudContext {
    */
   sheetNotMine: boolean;
   /**
-   * Rany, które ta figura nosi — **tylko przy figurze bez karty** (31.08).
-   * Postać ma je na karcie, i tam się je opatruje; statysta nie miał ich
-   * dotąd gdzie pokazać, więc rana nadana mu regułą (gaz, strefa, Celowanie)
-   * była nie do zdjęcia inaczej niż ręką w bazie.
+   * Rany, które ta figura nosi — **tylko gdy karty tej figury tu nie ma**
+   * (31.08, od 71h2 także postać kolegi z drużyny). Kto kartę ma, opatruje na
+   * niej; statysta nie miał ran dotąd gdzie pokazać, a Medyk gracza nie
+   * otworzy cudzej karty (#88).
    *
    * Czytane z publicznej części żetonu, nie z profilu bojowego: profil jedzie
    * wyłącznie do MG i właściciela, a Medyk gracza ma mieć co załatać.
@@ -441,7 +441,9 @@ export function hudContextFor(tokenId: string | null): HudContext {
     steering,
     sheetNotMine:
       !isGm && token.characterId !== null && token.characterId !== undefined && !character,
-    injuries: token.characterId ? [] : sanitizeCriticalInjuryRows(token.injuries),
+    // Rany z żetonu, gdy karty tu nie ma: statysta albo postać kolegi z drużyny
+    // (71h2, #88). Kto kartę ma (MG, właściciel), opatruje na karcie.
+    injuries: character ? [] : sanitizeCriticalInjuryRows(token.injuries),
     figureSkills: character ? [] : figureSkillsOf(token),
     statEffects: character ? hudStatEffects(character.data) : [],
     target: steering ? standingTargetOf(token) : null,
