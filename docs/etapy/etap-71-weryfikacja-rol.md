@@ -351,6 +351,18 @@ komórki zrzutu ❓ do sprawdzenia w druku), umowy na górze `postac`; testy `cr
 `t3a` (Kowal z pakietem, potem MG przebiera go do scenariusza), `t71-medyk`, `t71-rocker`,
 `t71-fixer`, `t71-solo`.
 
+**Wynik 71g2 (18.11.2026) ✅.** G37 (WSP-19): wszystkie zdania o regułach w `roleability.ts`
+przepisane własnymi słowami — opisy Zmysłu Walki, Specjalizacji Twórcy i Medycyny, dziesięć
+skutków Ulepszania, grupy Wsparcia, przywileje i tabela Lojalności Korpo, zadania pracowników,
+drabiny Rockera, Fixera i Media, targi, odmowa „dużej grupy” i cytaty w komentarzach (te po
+angielsku), każde z numerem strony. Nazwy, listy nazw i liczby zostają. Miara: wspólny ciąg
+≥ 6 słów z prywatnym podręcznikiem — przed: ~1500 słów w 142 ciągach, po: tylko listy nazw.
+Strażnik: `server/src/licensing.test.ts` („no rulebook sentences in committed code”, lista
+`guarded`, pomija się bez `data/private`). Reguły bez zmian — testy Ról zielone (jedna asercja
+fragmentu zdania w `rolerolls.test.ts` przepięta), E2E `52-role` zielone. Reszta kodu (~535
+ciągów poza `roleability.ts`) — `zaleglosci.md` (18.11); tabele liczb do `data/private` —
+`POMYSLY.md`. Rozstrzygnięcia — `decyzje-i-uproszczenia.md` („Parafraza zdań podręcznika…”).
+
 Poza etapem 71: **G24 Nocny Targ — osobny etap** (`POMYSLY.md`), NOM-02 / NOM-03 — etap 72,
 STR-12 — po etapie 72, KOR-04 — tylko z abonamentem Trauma Team.
 

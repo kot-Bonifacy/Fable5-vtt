@@ -21,7 +21,7 @@ w plikach obok — czytaj je **na żądanie, nigdy rutynowo**:
 
 | stan         | etapy                                                                                          |
 | ------------ | ---------------------------------------------------------------------------------------------- |
-| ⬜ otwarty   | **72** Przebudowa pościgu: prędkość, pasy ruchu i kokpit kierowcy (⬜ projekt 15.11, `etap-72-poscig-kokpit.md`; kodu nie ruszano, następny **72a** rdzeń modelu w `shared`, potem 72b–72g); **71** Weryfikacja Ról bez Netrunnera (🟨 `etap-71-weryfikacja-rol.md`: **71a ✅ 14.11** audyt, **71b ✅ 15.11** specyfikacje `52-role`, rozegrania i **bramka MG przeszła**; **71c0 ✅ 15.11** pięć błędów #83–#87, **71c1 ✅ 15.11** Tabor Rodziny jako stan, **71c2 ✅ 15.11** naprawa i montaż Technikiem, **71d1 ✅ 15.11** walka i leczenie, **71d2 ✅ 16.11** Praca Twórcy i kriopompa, **71e ✅ 16.11** handel i pieniądze, **71f ✅ 16.11** czas i zasoby narracyjne, **71g1 ✅ 17.11** kreator, PD i wieloklasowość (osiem czeka na wdrożenie, bez migracji); następny **71g2** licencja (G37, parafraza w `roleability.ts`), potem 71h zamknięcie); **70** Przebudowa netrunningu: okno jednego piętra i przejęte urządzenia na mapie (🟨 zrobione 12–14.11, `etap-70-siec-przebudowa.md`: **70a** okno jednego piętra, **70b** przejęta wieżyczka i kamera, **70c** dron, oczy, pasek, **70d** obszar straży, Sieć ze sceny wg rodzaju, okienko strefy, **70e** automat LOD-u i Demona z hamulcem, **70f ✅ 14.11** wzorce 66b/66e pod nowe reguły i rozegranie; czeka na wdrożenie (70d z migracją `20261113180000_net_scene_installations`) i stół MG); **69** Lewa belka bez ramek (🟨 zrobione 11.11, czeka na wdrożenie i oględziny MG przy stole); **68** Warsztat: ulepszenia auta za ed i naprawa (🟨 zrobione 06.11, czeka na wdrożenie i oględziny MG przy stole); **67** Zakup pojazdu (🟨 zrobione 06.11, czeka na wdrożenie i oględziny MG przy stole); **66e** Scena przykładowa „Po zamknięciu” (🟨 zrobione 07.11, obejrzane w Firefoksie; rozegrana w przeglądarce do końca 07.11 — znaleziska w `zaleglosci.md` (27; pkt 18 i 19 nie, decyzja MG; 13 naprawionych 07.11); czeka na naprawę reszty, stół MG i wdrożenie); **66d** Scena przykładowa „Zastaw” (🟨 wzorzec zrobiony i rozegrany w przeglądarce 06.11; od 06.11 jeden taran na turę (decyzja MG); czeka na stół MG i wdrożenie); **66** Sceny przykładowe (🟨 zrobione 31.10, czeka na oględziny MG przy stole i wdrożenie; **66b** „Fabryka dronów” 🟨 zrobione 31.10, tak samo (netrunner obejrzany w przeglądarce 07.11, poprawki czekają na wdrożenie); **66c** „Ostatni zjazd” 🟨 wzorzec zrobiony, rozegrany w przeglądarce 04.11 i ponownie 05.11 po rebalansie (porażka o włos, balans zatwierdzony przez MG) — zaległości z przebiegów zamknięte 05.11, Esc na kubku MG 07.11 — czeka na stół MG i wdrożenie); **65** Scena pościgu i walka pojazdów (🟨 65a–65e ✅ 30–31.10, czeka na oględziny MG przy stole); **62** Sieć ze sceny (🟨 zrobione, czeka na oględziny MG na VPS po wdrożeniu); **61** Skradanie się (🟨 zrobione, czeka na słowo MG o rozstrzygnięciach); **28** Wdrożenie na VPS (🟨 działa na `https://vtt.tatanga.eu` z botami od 18.10; zostały off-site, utwardzenie, monitoring); **43b**, **43c** (UI walki); **60** Czytelny czat (zlecenie MG z 24.10; 🟨 60a–60c ✅, czeka na oględziny MG z pierwszego kryterium); T10; refaktoryzacja odłożona (MG 18.10) |
+| ⬜ otwarty   | **72** Przebudowa pościgu: prędkość, pasy ruchu i kokpit kierowcy (⬜ projekt 15.11, `etap-72-poscig-kokpit.md`; kodu nie ruszano, następny **72a** rdzeń modelu w `shared`, potem 72b–72g); **71** Weryfikacja Ról bez Netrunnera (🟨 `etap-71-weryfikacja-rol.md`: **71a ✅ 14.11** audyt, **71b ✅ 15.11** specyfikacje `52-role`, rozegrania i **bramka MG przeszła**; **71c0 ✅ 15.11** pięć błędów #83–#87, **71c1 ✅ 15.11** Tabor Rodziny jako stan, **71c2 ✅ 15.11** naprawa i montaż Technikiem, **71d1 ✅ 15.11** walka i leczenie, **71d2 ✅ 16.11** Praca Twórcy i kriopompa, **71e ✅ 16.11** handel i pieniądze, **71f ✅ 16.11** czas i zasoby narracyjne, **71g1 ✅ 17.11** kreator, PD i wieloklasowość, **71g2 ✅ 18.11** licencja — parafraza w `roleability.ts` (dziewięć czeka na wdrożenie, bez migracji); następny **71h** zamknięcie: pełna suita i drugie rozegranie); **70** Przebudowa netrunningu: okno jednego piętra i przejęte urządzenia na mapie (🟨 zrobione 12–14.11, `etap-70-siec-przebudowa.md`: **70a** okno jednego piętra, **70b** przejęta wieżyczka i kamera, **70c** dron, oczy, pasek, **70d** obszar straży, Sieć ze sceny wg rodzaju, okienko strefy, **70e** automat LOD-u i Demona z hamulcem, **70f ✅ 14.11** wzorce 66b/66e pod nowe reguły i rozegranie; czeka na wdrożenie (70d z migracją `20261113180000_net_scene_installations`) i stół MG); **69** Lewa belka bez ramek (🟨 zrobione 11.11, czeka na wdrożenie i oględziny MG przy stole); **68** Warsztat: ulepszenia auta za ed i naprawa (🟨 zrobione 06.11, czeka na wdrożenie i oględziny MG przy stole); **67** Zakup pojazdu (🟨 zrobione 06.11, czeka na wdrożenie i oględziny MG przy stole); **66e** Scena przykładowa „Po zamknięciu” (🟨 zrobione 07.11, obejrzane w Firefoksie; rozegrana w przeglądarce do końca 07.11 — znaleziska w `zaleglosci.md` (27; pkt 18 i 19 nie, decyzja MG; 13 naprawionych 07.11); czeka na naprawę reszty, stół MG i wdrożenie); **66d** Scena przykładowa „Zastaw” (🟨 wzorzec zrobiony i rozegrany w przeglądarce 06.11; od 06.11 jeden taran na turę (decyzja MG); czeka na stół MG i wdrożenie); **66** Sceny przykładowe (🟨 zrobione 31.10, czeka na oględziny MG przy stole i wdrożenie; **66b** „Fabryka dronów” 🟨 zrobione 31.10, tak samo (netrunner obejrzany w przeglądarce 07.11, poprawki czekają na wdrożenie); **66c** „Ostatni zjazd” 🟨 wzorzec zrobiony, rozegrany w przeglądarce 04.11 i ponownie 05.11 po rebalansie (porażka o włos, balans zatwierdzony przez MG) — zaległości z przebiegów zamknięte 05.11, Esc na kubku MG 07.11 — czeka na stół MG i wdrożenie); **65** Scena pościgu i walka pojazdów (🟨 65a–65e ✅ 30–31.10, czeka na oględziny MG przy stole); **62** Sieć ze sceny (🟨 zrobione, czeka na oględziny MG na VPS po wdrożeniu); **61** Skradanie się (🟨 zrobione, czeka na słowo MG o rozstrzygnięciach); **28** Wdrożenie na VPS (🟨 działa na `https://vtt.tatanga.eu` z botami od 18.10; zostały off-site, utwardzenie, monitoring); **43b**, **43c** (UI walki); **60** Czytelny czat (zlecenie MG z 24.10; 🟨 60a–60c ✅, czeka na oględziny MG z pierwszego kryterium); T10; refaktoryzacja odłożona (MG 18.10) |
 | ✅ ukończone | 01–11, 13–20b, 23a–27f, 27h–27l, 29a–30d, 31–35, 37–42c, 43a, 44a–44d, 45, 46a1, 46a2, 46c1, 46c2, 46b1, 46b2, 47a, 47b, 48a, 48b, 48c, 49a, 49b, 50a, 50b, 50c, 51, 52, 53, 54, 55, 56, 57 (57a–57c), 58 (58a–58d), 59 (59a–59c), 63 (63a–63b; 63c wycofane 29.10), 64 (64a–64c) (ostatni zamknięty: 64, 2026-10-30) |
 | ⛔ wycofane  | 12, 21, 22 (głos), 27g (wydajność), 36 (makra); 27, 29, 30, 38 rozdzielone na etapy literowane |
 
@@ -42,8 +42,8 @@ NPC-ów mają **zamiar i autopilota**, MG dostaje **panel „Pościg” z planem
 czeka w pliku na potwierdzenie w trakcie. Makieta: link w pliku etapu.
 
 **Weryfikacja Ról (etap 71, zlecenie MG z 14.11) — 71a–71d1 zrobione (15.11), 71d2, 71e i 71f
-(16.11), 71g1 (17.11); następny 71g2 (licencja: G37 — parafraza zdań podręcznika w
-`roleability.ts`), potem 71h.** Macierz `role-macierz.md` (194 reguły z dowodami, rozegrania 71b, „Lista
+(16.11), 71g1 (17.11), 71g2 (18.11); następny 71h (zamknięcie: pełna suita, drugie
+rozegranie dziewięciu scenek, sekcja „Role po weryfikacji”).** Macierz `role-macierz.md` (194 reguły z dowodami, rozegrania 71b, „Lista
 bramki”) i plan w `etap-71-weryfikacja-rol.md` („Decyzje bramki”, tabela 71c0–71g2). **71c0 czeka
 na wdrożenie (bez migracji):** Zdolności z karty płacą Akcję figurą, którą znajduje serwer
 (`characterFigure`), Wykrycie słabości po mnożniku serii, **Prowizorka to Test przez kubek** (PT
@@ -83,7 +83,11 @@ pakiet Roli z kreatora (`edgerunnerKits` w prywatnym `creation.json`, wybory „
 przez MG w druku, `decyzje-i-uproszczenia.md`), listy Rockera i Medyka wg oryginału, powrót do
 Roli z karty za 60 PD i „Zrób główną” przy Roli poprzedniej (u MG bez PD), Medyk wybiera środek
 za punkt Farmaceutyków (`pharmaPicks`), awans Znajomości na 3 / 5 / 7 przypomina o języku,
-Ulicznik Fixera z pistoletem i bronią białą. Specyfikacje startują z punktu `role-start` (fikstura `fixtures/role.ts`). **Etap 71 nie dotyka sceny pościgu** (styk z 72
+Ulicznik Fixera z pistoletem i bronią białą. **71g2 też czeka na wdrożenie (bez migracji, bez
+zmian mechaniki):** każde zdanie o regule w `roleability.ts` (dymki, drabiny, tabele, komentarze)
+jest parafrazą ze stroną, a pilnuje tego `server/src/licensing.test.ts` (ciągi ≥ 6 słów
+z prywatnym podręcznikiem, poza listami nazw); reszta kodu (~535 ciągów) czeka w
+`zaleglosci.md` — do decyzji MG, czy w 71h, czy osobno. Specyfikacje startują z punktu `role-start` (fikstura `fixtures/role.ts`). **Etap 71 nie dotyka sceny pościgu** (styk z 72
 w pliku etapu); Nocny Targ — osobny etap (`POMYSLY.md`).
 
 **Przebudowa netrunningu (etap 70, zlecenie MG z 11.11) — 70a–70f zrobione (12–14.11), czeka
@@ -889,6 +893,32 @@ a nie do tego pliku.
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
 
+### Sesja 18.11 — etap 71g2: parafraza zdań podręcznika w `roleability.ts`
+
+**Zrobione (czeka na wdrożenie, bez migracji, bez zmian mechaniki):**
+
+- **G37 (WSP-19)** — każde zdanie o regule w `roleability.ts` przepisane własnymi słowami ze
+  stroną: opisy Zmysłu Walki (dymki panelu), Specjalizacji Twórcy i Medycyny, dziesięć skutków
+  Ulepszania, grupy Wsparcia, przywileje i tabela Lojalności Korpo, zadania pracowników, drabiny
+  Rockera, Fixera i Media, targi, odmowa „dużej grupy” Rockera; cytaty w komentarzach po
+  angielsku. Nazwy, listy nazw i liczby zostają (`decyzje-i-uproszczenia.md`, „Parafraza zdań
+  podręcznika…”).
+- **Miara i strażnik** — wspólny ciąg ≥ 6 słów z `data/private/rulebook/manual/CPRED-podrecznik/`
+  + FAQ: przed ~1500 słów w 142 ciągach, po — tylko listy nazw. Test „no rulebook sentences in
+  committed code” w `server/src/licensing.test.ts` (lista `guarded`, wyjątki `NAME_LISTS`,
+  pomija się bez `data/private`); sprawdzony na starej wersji pliku — łapie cytaty.
+- **Reszta kodu** — ten sam pomiar: ~535 ciągów w innych plikach → `zaleglosci.md` (18.11), do
+  decyzji MG: 71h czy osobny etap. Tabele liczb Ról do `data/private` — `POMYSLY.md`.
+- Macierz: WSP-19 ❌ → 🟡; umowa na górze `postac`.
+
+Testy: `shared` 3192 (jedna asercja fragmentu zdania w `rolerolls.test.ts` przepięta; scena
+Rockera 10 dalej zawiera „stadiony”, czego pilnuje `ladders.test.ts`), serwer 1857/1857 + strażnik (pierwszy przebieg
+skończył się kodem 1 przy wszystkich zielonych — znane migotanie, drugi czysty), klient 515;
+`tsc` czterech pakietów, lint i Prettier zmienionych plików czyste. E2E `52-role` 70/70.
+**Oglądano w Firefoksie** (gracz, instancja E2E z `role-start`): panele ośmiu Ról — nowe
+teksty drabin, dymki Zmysłu Walki; tymczasowa specyfikacja zrzutów usunięta.
+`specs/99-zapomnij/` to dalej cudze oględziny z 14.11.
+
 ### Sesja 17.11 — etap 71g1: kreator, PD i wieloklasowość
 
 **Zrobione (czeka na wdrożenie, bez migracji — nowe pola w JSON-ie karty i szkicu):**
@@ -929,42 +959,3 @@ Pułapki przy okazji (`ogledziny`): zakładka „Ścieżka Życia” nie leży w
 „Wymiana” i powiadomienie o handlu zasłaniają ją klikowi myszą; okno gracza w Firefoksie po
 długiej walce w `t71-solo` nie dostało końca starcia — pomógł `reload`. Tymczasowa
 specyfikacja zrzutów usunięta; `specs/99-zapomnij/` to dalej cudze oględziny z 14.11.
-
-### Sesja 16.11 (trzecia) — etap 71f: czas i zasoby narracyjne
-
-**Zrobione (czeka na wdrożenie, bez migracji — cztery nowe pola w JSON-ie karty):**
-
-- **G27 (ROC-08, ROC-09) — fani Rockera jako stan**: pole `fans` (`rolefans.ts`). Udany Test
-  „nowi fani” dopisuje grupę (nazwa z pola „Kogo zdobywasz” albo domyślna), prośba wymaga grupy
-  z karty (`charismaFanGroupId`, bez niej `NO_FAN_GROUP`), nieudana prośba stawia
-  `blockedUntilMinute` na 7 dób zegara świata (`FANS_REFUSED`, wiersz „Odmówili — do … : o co”).
-  MG: „Dodaj fanów”, „Odblokuj”, ✕ (`character:fans`); właściciel zmienia tylko nazwę.
-  **P2 (ROC-04)** — `FANS_IN_COMBAT` dla gracza, guziki „Rzuć” gasną w walce.
-- **G28 (MDA-04)** — `rumourWeek` liczy rzuty Pogłosek w tygodniu kalendarza (`gameWeekIndex`,
-  od poniedziałku); guzik MG „Pogłoski 1/2”, karta rzutu „rzut 1 z 2 w tym tygodniu”,
-  przemiatanie zegara pisze MG wiersz po tygodniu bez dwóch (`remindRumourWeek` w `expireOne`).
-  **G39** — karta pisze „14 > 13”. **G29 (MDA-05)** — „Szukaj pogłosek”: MG wystawia wezwanie
-  z PT z kolumny „Aktywne”, gracz prośbę o Test. **G30 (MDA-10)** — `publications`: temat
-  obowiązkowy (`NO_TOPIC`), powtórka tylko z „mam nowe informacje” (`ALREADY_PUBLISHED`),
-  rejestr w panelu, wpis usuwa MG (`character:publication`).
-- **G31 (STR-13)** — `CpredBackupTier.secondWeapon` (policja stanowa, szeryf, C-SWAT, federalni)
-  jako drugi wiersz broni karty figury (`createStatistToken.extraWeapons`). **G32 (STR-14)** —
-  `backupCalls` (minuty wezwań z odzewem), panel Wsparcia pokazuje MG „dziś N · w tym tygodniu M”.
-- Wszystkie zapisy poza rzutem w nowym `realtime/role-records.ts`; `character:update` odmawia
-  łaty z czterema polami także MG. Rozstrzygnięcia — `decyzje-i-uproszczenia.md` („Czas i zasoby
-  narracyjne po weryfikacji Ról”, dopiski przy dwóch wpisach z 30d); macierz: ROC-04, ROC-09,
-  MDA-04, MDA-05 → ✅; ROC-08, MDA-10, STR-13, STR-14 → 🟡; umowy na górze `postac` i `czas`.
-
-Testy: `shared` 3185 (nowy `rolenarrative.test.ts` 16, `rolerolls.test.ts` pod grupy fanów
-i temat), serwer 1853/1853 (nowy `roles71f.test.ts` 12, `roles30d` i `campaign-isolation` pod
-nowe zdarzenia), klient 515; `tsc` czterech pakietów, lint i Prettier zmienionych plików czyste;
-E2E `t71-rocker` 6/6 (przepisany pod fanów), `t71-media` 6/6 (+3), `t71-stroz` 6/6 (+1),
-`t8c-zdolnosci` — testy Charyzmy i Wiarygodności dostosowane i zielone, dalej pada na zastanym
-„Dołóż wpis” Moto (zaległość z 15.11, 71h). G31 bez asercji E2E (ranga 4 w `role-start` nie
-sięga kategorii z drugą bronią) — dowodem test serwera z fiksturą Kompendium. **Oglądano
-w Firefoksie** (gracz: lista fanów z blokadą, tryb „nowi fani”, panel Media z tematem, powtórką
-i rejestrem) i **w Chromium** (MG: „Odblokuj”, ✕ i „Dodaj fanów”, „Pogłoski 1/2”, ✕ przy
-publikacjach, licznik wezwań, wiersz przypomnienia na czacie); po oględzinach guziki tekstowe MG
-dostały krój „Rzuć” zamiast ikonowego. Pułapka przy okazji (`testy`): zmiana karty zapisana przez
-rzut dociera do drugiego okna dopiero po animacji kości. Tymczasowa specyfikacja zrzutów
-usunięta. `specs/99-zapomnij/` to dalej cudze tymczasowe oględziny z 14.11 — poza commitem.

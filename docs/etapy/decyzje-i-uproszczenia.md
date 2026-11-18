@@ -9,6 +9,34 @@ czytany na starcie każdej sesji został listą zadań, a nie archiwum ustaleń.
 inaczej, niż mówi podręcznik, albo gdy dotykasz wymienionego tu kodu. Jeśli któraś z tych decyzji
 przestanie się bronić, przenieś ją stąd do `POMYSLY.md` jako zadanie — nie odwrotnie.
 
+## Parafraza zdań podręcznika w `roleability.ts` (etap 71g2, 18.11.2026)
+
+Bramka MG z 15.11 (G37, WSP-19): **parafraza w kodzie** — nie „zostają” i nie „teksty do
+`data/private`”. Rozstrzygnięcia bez pytań:
+
+- **Co jest parafrazą.** Każde zdanie o regule: opisy Zdolności i Specjalizacji (dymki paneli),
+  dziesięć skutków Ulepszania, szczeble drabin (Rocker, Fixer, Media), przywileje Korpo, tabela
+  zmian Lojalności, opisy grup Wsparcia, zadania pracowników, targi Fixera, odmowa „dużej grupy”
+  Rockera i cytaty w komentarzach. Komentarze mówią teraz po angielsku albo własnymi słowami,
+  zawsze z numerem strony. Treść reguł (liczby, progi, warunki) się nie zmieniła — zmieniło się
+  tylko brzmienie; testy jednostkowe wszystkich Ról przechodzą bez zmian poza jednym, który
+  sprawdzał fragment zdania (`rolerolls.test.ts`).
+- **Co zostaje dosłownie i dlaczego.** Nazwy (Zdolności, Specjalizacji, Umiejętności,
+  przedmiotów, wszczepów, pojazdów, grup Wsparcia, szczebli) — to słownictwo stołu, a nazwa
+  inna niż w podręczniku utrudniałaby grę. Listy samych nazw (Umiejętności agentów federalnych,
+  wszczepy i osprzęt pracowników Korpo) też. **Liczby** — tabele Cech pracowników (s. 155–157),
+  bloki statystyk Wsparcia, progi, PT — to fakty mechaniki, nie zdania; G37 nie obejmował ich
+  przeniesienia do `data/private` (gdyby MG chciał, to osobna doróbka — `POMYSLY.md`).
+- **Miara „dosłowne”**: wspólny ciąg co najmniej **6 słów** z prywatnym podręcznikiem
+  (`data/private/rulebook/manual/CPRED-podrecznik/*.md` + FAQ). Przed 71g2 w `roleability.ts`
+  było ~1500 takich słów w 142 ciągach, po 71g2 — tylko listy nazw. Strażnik:
+  `packages/server/src/licensing.test.ts` („no rulebook sentences in committed code”); na
+  maszynie bez podręcznika test się pomija. Lista `guarded` w teście to pliki już
+  sparafrazowane; kolejne dopisuje się po ich przepisaniu.
+- **Reszta kodu poza zakresem 71g2** — ten sam pomiar znalazł ~535 takich ciągów w innych
+  plikach (`attacks.ts`, `netcombat.ts`, `character.ts`, `netrunning.ts`, `turn.ts`…), głównie
+  cytaty reguł w komentarzach. Zapisane w `zaleglosci.md` (18.11).
+
 ## Kreator, PD i wieloklasowość po weryfikacji Ról (etap 71g1, 17.11.2026)
 
 Bramka MG z 15.11 (G33–G36, D2, D3, P4) — rozstrzygnięcia bez pytań:

@@ -59,7 +59,7 @@ describe('Test Efektu Charyzmy', () => {
       dv: 8,
       audience: 'single',
       purpose: 'favour',
-      effect: expect.stringContaining('dużą przysługę'),
+      effect: expect.stringContaining('coś większego'),
       fanGroupId: 'f-single',
       fanGroupName: 'Barman',
     });

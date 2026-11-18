@@ -6,6 +6,18 @@ w `POMYSLY.md` („Do sprawdzenia przy stole”), decyzje MG — w `decyzje-i-up
 
 ## Otwarte
 
+**18.11.2026 — zdania podręcznika poza `roleability.ts` (po 71g2, WSP-19).** Ten sam pomiar co
+w 71g2 (wspólny ciąg ≥ 6 słów z `data/private/rulebook/manual/CPRED-podrecznik/`) na reszcie
+kodu bez testów: ~535 ciągów. Najwięcej słów: `shared/…/cpred/attacks.ts` 290, `netcombat.ts`
+270, `character.ts` 267, `netrunning.ts` 251, `turn.ts` 221, `server/…/realtime/attacks.ts` 203,
+`reputation.ts` 185, `netrun.ts` i `attachments.ts` po 153; razem kilkadziesiąt plików, głównie
+cytaty reguł w komentarzach, część w tekstach UI. Dolna część to listy nazw (zostają, jak
+w 71g2). Sposób pracy i miara — `decyzje-i-uproszczenia.md` („Parafraza zdań podręcznika…”);
+po przepisaniu pliku dopisz go do `guarded` w `server/src/licensing.test.ts`. Wycena: L, do
+podziału na kilka sesji; do decyzji MG, czy to osobny etap, czy część 71h. Te same cytaty co
+w `roleability.ts` stoją jeszcze w komentarzach `rolls.ts`, `initiative.ts`, `damage.ts`,
+`attacks.ts` (obu pakietów), `itemupgrade.ts` i kilku testów.
+
 **15.11.2026 — drobiazgi UI z rozegrań Ról (71b), spoza listy bramki.** (1) Kubek pisze
 „Inicjatywa +0” zaraz po wejściu gracza do gry, zanim dojdzie karta — serwer rzuca dobrze
 (1k10+7). (2) Klik w wiersz listy „Ustabilizuj” potrafi przełączyć belkę gracza na cudzą figurę;

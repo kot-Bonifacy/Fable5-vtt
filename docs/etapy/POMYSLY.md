@@ -1,5 +1,12 @@
 # Pomysły poza zakresem etapów
 
+**18.11.2026 (etap 71g2) — tabele liczb Ról do `data/private`.** Po parafrazie zdań
+`roleability.ts` niesie dalej liczby z podręcznika: sześć wierszy Cech dla każdego z pięciu
+zawodów pracowników Korpo (s. 155–157), bloki statystyk sześciu grup Wsparcia (s. 158–159),
+pakiety Umiejętności pracowników. To fakty mechaniki, nie zdania (G37 ich nie obejmował), ale
+gdyby MG chciał trzymać je jak kompendium — plik w `data/private/cpred/` z próbką wymyśloną
+w `data/public/` i czytnik w miejsce stałych. Wycena M.
+
 **15.11.2026 (etap 71c2) — uszkodzona broń jako stan.** Naprawa broni (s. 140) nie ma dziś
 czego naprawiać: żadna reguła VTT broni nie psuje. Gdyby MG chciał niszczyć broń fabularnie
 (granat, kwas, upadek) — znacznik „uszkodzona” na wierszu broni stawiany przez MG, broń bez

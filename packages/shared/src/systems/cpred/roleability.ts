@@ -9,8 +9,13 @@
  *
  * Stage 30a fills in the second of the ten: **Zmysł Walki** (s. 146), the only
  * Special Ability that is spent rather than merely owned. A Solo has as many
- * points as their rank and divides them between six combat abilities, „poza
- * walką, gdy rozpoczyna się walka albo w trakcie walki (w ramach Akcji)".
+ * points as their rank and divides them between six combat abilities — out of
+ * combat, as a fight starts, or mid-fight for the price of an Action.
+ *
+ * Stage 71g2 (G37): every rule this file states — comments and UI strings alike
+ * — is a paraphrase with a page number, never the printed sentence. The repo is
+ * public and the rulebook is not; names of abilities, items and Skills stay,
+ * because they are what the table calls things.
  *
  * Two of those six say „first in the Round", which is state of the *Round*, not
  * of the sheet — it lives in `CpredTurnLedger` (`turn.ts`) next to the round
@@ -36,7 +41,7 @@ import { HOUSING_DEFINITIONS, type HousingOption } from './economy.js';
 
 /**
  * The Solo's Special Ability, matched by name for the reason described above.
- * „Zdolnością Specjalną Solo jest Zmysł Walki" (s. 31, s. 146).
+ * The Solo's ability is Zmysł Walki (s. 31, s. 146).
  */
 export const CPRED_COMBAT_AWARENESS_ABILITY = 'Zmysł Walki';
 
@@ -45,11 +50,10 @@ export const CPRED_COMBAT_AWARENESS_ABILITY = 'Zmysł Walki';
 /**
  * One Role this character carries, and how far its Special Ability has come.
  *
- * Stage 29b — „W Czasie Czerwieni możesz zmienić Rolę zawsze, gdy poziom
- * Zdolności Specjalnej poprzedniej Roli wynosi co najmniej 4" (s. 143). What
- * the rulebook does *not* say is that the old Role stops working: „cały czas
- * możesz podnosić poziom Zdolności Specjalnej poprzedniej Roli i korzystać
- * z oferowanych przez nią korzyści". So a Role, once had, is had for good, and
+ * Stage 29b — a character may take up a new Role once the old one's Special
+ * Ability has reached rank 4 (s. 143). What the rulebook does *not* say is that
+ * the old Role stops working: its rank can still be raised and its benefits
+ * still used. So a Role, once had, is had for good, and
  * the sheet needs somewhere to keep the ones that are no longer current.
  */
 export interface CpredRoleRank {
@@ -208,12 +212,11 @@ export type CpredCombatAwarenessId = (typeof CPRED_COMBAT_AWARENESS_IDS)[number]
  * How points turn into an effect. Three shapes, because the rulebook prints
  * three:
  *
- *  - `perPoint` — „Każdy przydzielony punkt to +1" (Błyskawiczna reakcja,
- *    Wykrycie słabości, Wyczucie zagrożenia)
- *  - `steps` — a ladder of fixed prices („Za 3 punkty +1, za 6 punktów +2…":
- *    Precyzyjny atak, Redukcja obrażeń)
- *  - `flat` — one price, one switch („Za 4 punkty ignorujesz…": Wyjście
- *    z opresji)
+ *  - `perPoint` — every point is +1 (Błyskawiczna reakcja, Wykrycie słabości,
+ *    Wyczucie zagrożenia)
+ *  - `steps` — a ladder of fixed prices, +1 per rung (Precyzyjny atak,
+ *    Redukcja obrażeń)
+ *  - `flat` — one price, one switch (Wyjście z opresji at 4)
  */
 export type CpredCombatAwarenessShape = 'perPoint' | 'steps' | 'flat';
 
@@ -221,7 +224,7 @@ export interface CpredCombatAwarenessDefinition {
   id: CpredCombatAwarenessId;
   /** Printed name, as the sheet's panel and the roll breakdown say it. */
   name: string;
-  /** What it does, in the rulebook's own words — the panel's tooltip. */
+  /** What it does, paraphrased (G37) — the panel's tooltip. */
   description: string;
   shape: CpredCombatAwarenessShape;
   /**
@@ -250,8 +253,8 @@ export const CPRED_COMBAT_AWARENESS: readonly CpredCombatAwarenessDefinition[] =
     id: 'damageReduction',
     name: 'Redukcja obrażeń',
     description:
-      'Za 2 punkty zmniejsz o 1 pierwsze obrażenia otrzymane w tej Rundzie; za 4 punkty o 2, ' +
-      'za 6 o 3, za 8 o 4, za 10 o 5.',
+      'Pierwsze obrażenia, które dostajesz w Rundzie, maleją o 1 na każde pełne 2 punkty ' +
+      '(2 → −1, 4 → −2 … 10 → −5).',
     shape: 'steps',
     costs: [2, 4, 6, 8, 10],
     page: 146,
@@ -260,8 +263,8 @@ export const CPRED_COMBAT_AWARENESS: readonly CpredCombatAwarenessDefinition[] =
     id: 'luckyEscape',
     name: 'Wyjście z opresji',
     description:
-      'Za 4 punkty ignorujesz Krytyczne porażki (wyniki 1 na kości) wyrzucone w Testach ataku. ' +
-      'Wynik nadal liczy się jako 1.',
+      'Przy 4 punktach jedynka na kości w Teście ataku nie wywołuje Krytycznej porażki — ' +
+      'liczysz ją po prostu jako 1.',
     shape: 'flat',
     costs: [4],
     page: 146,
@@ -269,7 +272,7 @@ export const CPRED_COMBAT_AWARENESS: readonly CpredCombatAwarenessDefinition[] =
   {
     id: 'fastReflexes',
     name: 'Błyskawiczna reakcja',
-    description: 'Każdy przydzielony punkt to +1 do rzutów na Inicjatywę.',
+    description: 'Inicjatywa rośnie o 1 za każdy punkt.',
     shape: 'perPoint',
     costs: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
     page: 146,
@@ -277,8 +280,7 @@ export const CPRED_COMBAT_AWARENESS: readonly CpredCombatAwarenessDefinition[] =
   {
     id: 'preciseAttack',
     name: 'Precyzyjny atak',
-    description:
-      'Za 3 punkty dodajesz +1 do każdego wykonywanego Ataku; za 6 punktów +2, za 9 punktów +3.',
+    description: 'Premia do wszystkich Twoich Ataków: +1 przy 3 punktach, +2 przy 6, +3 przy 9.',
     shape: 'steps',
     costs: [3, 6, 9],
     page: 146,
@@ -287,8 +289,8 @@ export const CPRED_COMBAT_AWARENESS: readonly CpredCombatAwarenessDefinition[] =
     id: 'weakSpot',
     name: 'Wykrycie słabości',
     description:
-      'Za każdy punkt dodajesz +1 do obrażeń (przed uwzględnieniem pancerza) zadanych ' +
-      'pierwszym udanym Atakiem w Rundzie.',
+      'Pierwszy celny Atak w Rundzie rani mocniej: +1 za każdy punkt, doliczane, zanim ' +
+      'zadziała pancerz.',
     shape: 'perPoint',
     costs: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
     page: 146,
@@ -296,7 +298,7 @@ export const CPRED_COMBAT_AWARENESS: readonly CpredCombatAwarenessDefinition[] =
   {
     id: 'threatSense',
     name: 'Wyczucie zagrożenia',
-    description: 'Za każdy punkt dodaj +1 do Testów Percepcji.',
+    description: 'Testy Percepcji: +1 za każdy punkt.',
     shape: 'perPoint',
     costs: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
     page: 146,
@@ -510,10 +512,10 @@ export function describeCombatAwareness(allocation: CpredCombatAwareness): strin
  * The rulebook prints the two rules one page apart and they are **not** the
  * same, whatever the stage description said before it was checked:
  *
- *  - „Gdy Technik podnosi poziom zdolności Twórca o jeden, zyskuje po punkcie
- *    w **dwóch różnych**, wybranych przez siebie Specjalizacjach" (s. 147)
- *  - „Gdy Medyk zwiększa poziom zdolności Medycyna, wybiera **jedną** z trzech
- *    Specjalizacji Medycyny […] i przydziela do niej **jeden** punkt" (s. 149)
+ *  - Twórca: each level gives one point to each of **two different**
+ *    Specialties of the Technik's choosing (s. 147)
+ *  - Medycyna: each level gives **one** point to **one** of the three
+ *    Specialties (s. 149)
  *
  * So one hands out two points a level and the other one — which is `perRank`
  * below. What both share is the ceiling: a single level can put at most **one**
@@ -524,12 +526,12 @@ export interface CpredSpecialtyDefinition<Id extends string = string> {
   id: Id;
   /** Printed name, as the panel and the roll breakdown say it. */
   name: string;
-  /** What it does, in the rulebook's own words — the panel's tooltip. */
+  /** What it does, paraphrased (G37) — the panel's tooltip. */
   description: string;
   /**
    * Ceiling the rulebook prints for this Specialty on top of the rank one
-   * („Tej Specjalizacji można przyznać maksimum 5 punktów", s. 150), or the
-   * point past which more points buy nothing at all.
+   * (five points for two of the Medyk's, s. 150), or the point past which more
+   * points buy nothing at all.
    */
   max: number;
   page: number;
@@ -584,9 +586,8 @@ export function cpredSpecialtySpent(allocation: CpredSpecialtyAllocation): numbe
 /**
  * Judges a proposed allocation. Null = it is legal.
  *
- * The two conditions below are not an approximation of „po punkcie w dwóch
- * różnych Specjalizacjach przy każdym awansie" — they are exactly equivalent to
- * it. Any allocation whose points sum to at most `perRank × rank` with no
+ * The two conditions below are not an approximation of „two different
+ * Specialties a level" — they are exactly equivalent to it. Any allocation whose points sum to at most `perRank × rank` with no
  * Specialty above `rank` can be dealt out level by level in legal pairs, and
  * nothing else can. That is why no history of past level-ups is stored: the
  * numbers on the sheet already say whether they could have been bought.
@@ -651,7 +652,7 @@ export function describeSpecialties(
 
 // ─────────────────────── Twórca (Technik, s. 147–149) ───────────────────────
 
-/** „Zdolnością Specjalną Technika jest Twórca" (s. 31, s. 147). */
+/** The Technik's ability is Twórca (s. 31, s. 147). */
 export const CPRED_FABRICATION_ABILITY = 'Twórca';
 
 export const CPRED_FABRICATION_IDS = ['repair', 'upgrade', 'fabricate', 'invent'] as const;
@@ -665,9 +666,9 @@ export const CPRED_FABRICATION: readonly CpredSpecialtyDefinition<CpredFabricati
     id: 'repair',
     name: 'Naprawa',
     description:
-      'Dodaj poziom tej Specjalizacji do Testów Podstawowych napraw, Cyberinżynierii, Elektroniki ' +
-      'i zabezpieczeń, Naprawy broni albo Naprawy pojazdów, chyba że dany Test wiąże się z inną ' +
-      'Specjalizacją Twórcy. Od poziomu 1 możesz też w ramach Akcji zrobić prowizorkę.',
+      'Poziom tej Specjalizacji dochodzi do Testów technicznych — Podstawowe naprawy, ' +
+      'Cyberinżynieria, Elektronika i zabezpieczenia, Naprawa broni, Naprawa pojazdów — o ile Test ' +
+      'nie należy do innej Specjalizacji Twórcy. Od poziomu 1 daje też prowizorkę za Akcję.',
     max: CPRED_ROLE_ABILITY_RANK_MAX,
     page: 147,
   },
@@ -675,8 +676,8 @@ export const CPRED_FABRICATION: readonly CpredSpecialtyDefinition<CpredFabricati
     id: 'upgrade',
     name: 'Ulepszanie',
     description:
-      'Ulepsza przedmiot na jeden z dziesięciu sposobów z s. 148. Za pomocą tej Specjalizacji dany ' +
-      'przedmiot można ulepszyć tylko raz.',
+      'Jedna z dziesięciu przeróbek z s. 148; każdą rzecz ulepsza się tą Specjalizacją ' +
+      'najwyżej raz.',
     max: CPRED_ROLE_ABILITY_RANK_MAX,
     page: 148,
   },
@@ -684,8 +685,8 @@ export const CPRED_FABRICATION: readonly CpredSpecialtyDefinition<CpredFabricati
     id: 'fabricate',
     name: 'Wytwarzanie',
     description:
-      'Pozwala wytworzyć z surowców znany sobie przedmiot. Surowce z kategorii cenowej o jeden ' +
-      'niższej niż wytwarzany przedmiot (Superluksusowe: połowa ceny).',
+      'Budujesz z surowców rzecz, którą znasz. Surowce kosztują tyle, co pasmo cenowe o stopień ' +
+      'tańsze od gotowej rzeczy (Superluksusowe: połowa ceny).',
     max: CPRED_ROLE_ABILITY_RANK_MAX,
     page: 148,
   },
@@ -693,8 +694,8 @@ export const CPRED_FABRICATION: readonly CpredSpecialtyDefinition<CpredFabricati
     id: 'invent',
     name: 'Wynajdywanie',
     description:
-      'Wynajdujesz ulepszenie istniejącego przedmiotu albo coś zupełnie nowego. Najniższa możliwa ' +
-      'Kategoria Cenowa wynalazku to Kosztowny.',
+      'Projektujesz przeróbkę istniejącej rzeczy albo całkiem nowy wynalazek; tańszy niż ' +
+      'Kosztowny być nie może.',
     max: CPRED_ROLE_ABILITY_RANK_MAX,
     page: 148,
   },
@@ -707,8 +708,8 @@ export type CpredFabrication = CpredSpecialtyAllocation<CpredFabricationId>;
  *
  * Ids of the rulebook's own skill list, not names: this list is read against
  * `registry.skills`, which is a data file the group may translate — but the ids
- * are minted by the importer and stable. „chyba że dany Test wiąże się z inną
- * Specjalizacją Twórcy" is why crafting and inventing are **not** here: those
+ * are minted by the importer and stable. The exception for Tests that belong to
+ * another Twórca Specialty is why crafting and inventing are **not** here: those
  * Tests add their own Specialty instead, and adding both would pay twice.
  */
 export const CPRED_REPAIR_SKILL_IDS: readonly string[] = [
@@ -724,8 +725,9 @@ export const CPRED_REPAIR_SKILL_IDS: readonly string[] = [
 /**
  * PT and time of Ulepszanie / Wytwarzanie / Wynajdywanie, by the price band of
  * the thing being made (s. 148). Superluksusowe shares Luksusowe's PT and pays
- * in time instead — „1 miesiąc na każde 10 000 ed ceny" (w cenniku domowym
- * z etapu 47a: na każde 100 000 ed — pasmo zostało, cena urosła dziesięć razy).
+ * in time instead — a month per slice of the price (the rulebook's slice is
+ * 10 000 ed; the house price list of stage 47a multiplied prices by ten, so the
+ * slice here is 100 000 ed).
  */
 export const CPRED_FABRICATION_TASK: Record<CostCategory, { dv: number; time: string }> = {
   cheap: { dv: 9, time: '1 godzina' },
@@ -804,7 +806,7 @@ export function readCpredFabrication(raw: unknown): CpredFabrication {
 
 // ─────────────────────── Medycyna (Medyk, s. 149–151) ───────────────────────
 
-/** „Zdolnością Specjalną Medyka jest Medycyna" (s. 31, s. 149). */
+/** The Medyk's ability is Medycyna (s. 31, s. 149). */
 export const CPRED_MEDICINE_ABILITY = 'Medycyna';
 
 export const CPRED_MEDICINE_IDS = ['surgery', 'pharma', 'cryo'] as const;
@@ -814,8 +816,8 @@ export type CpredMedicineId = (typeof CPRED_MEDICINE_IDS)[number];
 export const CPRED_MEDICINE_RULES: CpredSpecialtyRules = { perRank: 1, across: 1 };
 
 /**
- * Ceiling the rulebook prints for Farmaceutyki and Obsługa kriosystemów („Tej
- * Specjalizacji można przyznać maksimum 5 punktów", s. 150).
+ * Ceiling the rulebook prints for Farmaceutyki and Obsługa kriosystemów: five
+ * points each (s. 150).
  *
  * Chirurgia gets the same number for a different reason: each of its points is
  * worth two of the Skill, and the Skill stops at ten. A sixth point would buy
@@ -829,9 +831,8 @@ export const CPRED_MEDICINE: readonly CpredSpecialtyDefinition<CpredMedicineId>[
     id: 'surgery',
     name: 'Chirurgia',
     description:
-      'Za każdy punkt otrzymujesz 2 punkty w Umiejętności Chirurgia (do maksimum 10). Chirurgia ' +
-      'leczy najpoważniejsze Rany Krytyczne i wszczepia cyborgizacje; jest dostępna wyłącznie ' +
-      'Medykom.',
+      'Jeden punkt tu to dwa poziomy Umiejętności Chirurgia, najwyżej 10. Chirurgią zszywa się ' +
+      'najcięższe Rany Krytyczne i wszczepia chrom; poza Medykiem nikt jej nie ma.',
     max: CPRED_MEDICINE_SPECIALTY_MAX,
     page: 149,
   },
@@ -839,8 +840,8 @@ export const CPRED_MEDICINE: readonly CpredSpecialtyDefinition<CpredMedicineId>[
     id: 'pharma',
     name: 'Technologia Medyczna (Farmaceutyki)',
     description:
-      'Za każdy punkt 1 punkt w Umiejętności Technologia Medyczna (do maksimum 10) oraz dostęp do ' +
-      'jednego z pięciu środków: Antybiotyk, Dynadetoks, Turbo uzdrawiacz, Stym, Zryw.',
+      'Jeden punkt tu to poziom Technologii Medycznej (najwyżej 10) i jeden nowy środek do ' +
+      'wyboru: Antybiotyk, Dynadetoks, Turbo uzdrawiacz, Stym albo Zryw.',
     max: CPRED_MEDICINE_SPECIALTY_MAX,
     page: 149,
   },
@@ -848,8 +849,8 @@ export const CPRED_MEDICINE: readonly CpredSpecialtyDefinition<CpredMedicineId>[
     id: 'cryo',
     name: 'Technologia Medyczna (Obsługa kriosystemów)',
     description:
-      'Za każdy punkt 1 punkt w Umiejętności Technologia Medyczna (do maksimum 10) oraz kolejne ' +
-      'kriopompy i kriozbiorniki wg tabeli poziomów z s. 150.',
+      'Jeden punkt tu to poziom Technologii Medycznej (najwyżej 10); kolejne progi dają ' +
+      'kriopompę i kriozbiorniki (tabela na s. 150).',
     max: CPRED_MEDICINE_SPECIALTY_MAX,
     page: 150,
   },
@@ -857,15 +858,15 @@ export const CPRED_MEDICINE: readonly CpredSpecialtyDefinition<CpredMedicineId>[
 
 export type CpredMedicine = CpredSpecialtyAllocation<CpredMedicineId>;
 
-/** Ceiling of a Skill bought through Medycyna — „do maksimum 10" (s. 149). */
+/** Ceiling of a Skill bought through Medycyna — ten, like any Skill (s. 149). */
 export const CPRED_MEDICINE_SKILL_MAX = 10;
 
 /**
  * The two Skills Medycyna hands out.
  *
  * They are **not** in `skills.json` and must not be: the rulebook's skill list
- * does not print them, because „Ta Umiejętność jest dostępna tylko dla Medyków
- * i tylko poprzez tę Specjalizację" (s. 149). Their level is a function of the
+ * does not print them, because only a Medyk gets them and only through this
+ * Specialty (s. 149). Their level is a function of the
  * allocation, not a number anybody types — which is exactly why they are here
  * rather than in the registry, where a level could be edited free of charge.
  */
@@ -887,9 +888,9 @@ export interface CpredMedicineEffects {
   surgery: number;
   pharma: number;
   cryo: number;
-  /** „2 punkty w Umiejętności Chirurgia" za punkt, sufit 10 (s. 149). */
+  /** Two Skill levels per Chirurgia point, ceiling 10 (s. 149). */
   surgerySkill: number;
-  /** „równa się sumie punktów Farmaceutyków i Obsługi kriosystemów" (s. 149). */
+  /** Farmaceutyki and Obsługa kriosystemów points added together (s. 149). */
   medtechSkill: number;
 }
 
@@ -1010,7 +1011,7 @@ export interface CpredItemUpgradeDefinition {
   id: string;
   /** Short label for the row's chip. */
   name: string;
-  /** The rulebook's own sentence — what the table plays out. */
+  /** What the upgrade does, paraphrased (G37) — what the table plays out. */
   text: string;
   /** Rows this may be put on; `vehicle` has nowhere to land yet (no vehicles). */
   targets: readonly CpredUpgradeTarget[];
@@ -1024,8 +1025,7 @@ export interface CpredItemUpgradeDefinition {
 }
 
 /**
- * „Ulepsza przedmiot na jeden z poniższych sposobów. Za pomocą tej
- * specjalizacji dany przedmiot można ulepszyć tylko raz" (s. 148).
+ * The ten ways Ulepszanie changes an item, each usable once per item (s. 148).
  *
  * **Ten of them, not eleven** — the stage description said eleven and the page
  * prints ten bullets; counted at the source, like the six abilities of Zmysł
@@ -1040,8 +1040,8 @@ export const CPRED_ITEM_UPGRADES: readonly CpredItemUpgradeDefinition[] = [
     id: 'humanity',
     name: 'Łagodniejsza cyborgizacja',
     text:
-      'Obniżasz Utratę Człowieczeństwa za cyborgizacje niebędące borgizacjami o 1k6, jeśli UC ' +
-      'tej cyborgizacji wynosi 2k6 lub więcej.',
+      'Wszczep (nie borgizacja) o UC 2k6 albo większej kosztuje przy montażu o 1k6 mniej ' +
+      'Człowieczeństwa.',
     targets: ['cyberware'],
     vtt: 'UC przy montażu znalezionego wszczepu niższa o 1k6',
   },
@@ -1049,36 +1049,36 @@ export const CPRED_ITEM_UPGRADES: readonly CpredItemUpgradeDefinition[] = [
     id: 'slot',
     name: 'Dodatkowe gniazdo',
     text:
-      'Zwiększasz o 1 liczbę gniazd przedmiotu na Dodatki, Programy/Ulepszenia sprzętowe, ' +
-      'modyfikacje itp. Nowe gniazdo musi być tego samego rodzaju, co gniazda już posiadane.',
+      'Rzecz zyskuje jedno gniazdo więcej (na Dodatki, Programy, Ulepszenia sprzętowe i ' +
+      'podobne) — takie samo jak te, które już ma.',
     targets: ['weapon', 'gear', 'cyberware'],
     vtt: 'czwarte gniazdo broni, gniazdo deku, opcja wszczepu bazowego',
   },
   {
     id: 'fastRepair',
     name: 'Szybsza naprawa',
-    text: 'Przeprojektowujesz przedmiot, dzięki czemu w przyszłości można go naprawić dwa razy szybciej.',
+    text: 'Po przeróbce każda kolejna naprawa tej rzeczy trwa o połowę krócej.',
     targets: ['weapon', 'armor', 'gear'],
     vtt: 'połowa czasu zwykłej naprawy',
   },
   {
     id: 'concealable',
     name: 'Broń do ukrycia',
-    text: 'Przebudowujesz jednoręczną broń, której standardowo nie da się ukryć, tak, że można ją ukryć.',
+    text: 'Jednoręczna broń, która dotąd nie mieściła się pod ubraniem, daje się schować.',
     targets: ['weapon'],
     vtt: 'broń „do ukrycia” na karcie',
   },
   {
     id: 'excellent',
     name: 'Jakość Doskonała',
-    text: 'Podnosisz jakość broni ze Zwykłej na Doskonałą.',
+    text: 'Broń Zwykłej jakości staje się Doskonała.',
     targets: ['weapon'],
     vtt: '+1 do Testów ataku',
   },
   {
     id: 'exoticSlot',
     name: 'Gniazdo w broni egzotycznej',
-    text: 'Dodajesz gniazdo dodatku do broni egzotycznej.',
+    text: 'Broń egzotyczna dostaje jedno gniazdo na Dodatek.',
     targets: ['weapon'],
     vtt: 'jedno gniazdo dodatku',
   },
@@ -1086,29 +1086,29 @@ export const CPRED_ITEM_UPGRADES: readonly CpredItemUpgradeDefinition[] = [
     id: 'exoticAmmo',
     name: 'Amunicja niestandardowa',
     text:
-      'Przebudowujesz broń egzotyczną tak, by mogła strzelać jednym, określonym rodzajem ' +
-      'amunicji niestandardowej, tego samego typu, co amunicja standardowo w niej stosowana.',
+      'Broń egzotyczna przyjmuje jeden wybrany rodzaj amunicji niestandardowej — w typie, ' +
+      'którego i tak używa.',
     targets: ['weapon'],
   },
   {
     id: 'armorSp',
     name: '+1 OB',
-    text: 'Zwiększasz OB przedmiotu o 1, ale tylko jeśli przedmiot ma jakąś OB.',
+    text: 'OB rzeczy, która w ogóle ma OB, rośnie o 1.',
     targets: ['armor'],
     vtt: '+1 OB na wierszu pancerza',
   },
   {
     id: 'vehicleMod',
     name: 'Ulepszenie pojazdu',
-    text: 'Dodajesz do pojazdu ulepszenie, które wymaga Zdolności Specjalnej Nomady na poziomie 1.',
+    text: 'Montujesz w aucie ulepszenie z progu Moto 1 (tego, które Nomada ma od poziomu 1).',
     targets: ['vehicle'],
   },
   {
     id: 'invention',
     name: 'Montaż wynalazku',
     text:
-      'Montujesz ulepszenie wynalezione za pomocą Specjalizacji Wynajdywanie. Wymaga surowców ' +
-      'w Kategorii Cenowej ustalonej przez MG, gdy przedmiot był wynajdywany.',
+      'Wbudowujesz ulepszenie z Wynajdywania; surowce kosztują tyle, ile MG wycenił przy ' +
+      'wynalazku.',
     targets: ['weapon', 'armor', 'gear', 'cyberware'],
   },
 ];
@@ -1123,10 +1123,9 @@ export function cpredItemUpgrade(id: string): CpredItemUpgradeDefinition | null 
 }
 
 /**
- * „Prowizorka" (s. 147): how long a field repair holds.
+ * Prowizorka (s. 147): how long a field repair holds.
  *
- * „Prowizorka działa przez 10 minut na poziom tej Specjalizacji" — sixty rounds
- * a level, which is longer than any fight this VTT has ever run. That is why it
+ * Ten minutes per level of Naprawa — sixty rounds a level, which is longer than any fight this VTT has ever run. That is why it
  * carries no round timer: a countdown that can never reach zero is a countdown
  * nobody reads. The row keeps what the piece was worth before, and a button
  * puts it back — the same bargain stage 16h struck for effects outside combat.
@@ -1139,7 +1138,7 @@ export function cpredFieldRepairMinutes(repairLevel: number): number {
 
 // ────────────────── Wsparcie (Stróż Prawa, s. 158–159) ──────────────────
 
-/** „Zdolnością Specjalną Stróża Prawa jest Wsparcie" (s. 37, s. 158). */
+/** The Stróż Prawa's ability is Wsparcie (s. 37, s. 158). */
 export const CPRED_BACKUP_ABILITY = 'Wsparcie';
 
 /**
@@ -1149,16 +1148,15 @@ export const CPRED_BACKUP_ABILITY = 'Wsparcie';
  * s. 158–159, and the top three are single levels because the officers stop
  * being interchangeable — a Marshal on a superbike is not two C-SWAT troopers.
  *
- * „Wartość bojowa: Umiejętność bazowa używana do ataku i obrony. Reprezentuje
- * sumę Cechy i Umiejętności funkcjonariusza" — one figure that is Stat and Skill
- * merged, which is the shape `combatProfileWithCombatValue` already gives a
- * turret (26e). `move` and `body` stay real numbers, because RAW says what they
- * are for: „istotne przy rozpatrywaniu dystansu i niektórych efektów odnoszących
- * się do Ruchu lub BC celu (np. w Teście Przeżywalności)".
+ * Wartość bojowa is the one number an officer attacks and defends with — Stat
+ * and Skill already added up — which is the shape `combatProfileWithCombatValue`
+ * already gives a turret (26e). `move` and `body` stay real numbers, because RAW
+ * keeps them for distance and for effects that read RUCH or BC (a Death Save,
+ * for one).
  */
 export interface CpredBackupTier {
   id: string;
-  /** Who answers the radio, in the rulebook's own words. */
+  /** Who answers the radio — the block's title. */
   name: string;
   /**
    * One of them, for the name on the figure. „Miejscowe krawężniki 1" reads
@@ -1173,7 +1171,7 @@ export interface CpredBackupTier {
   count: number;
   /** Wartość bojowa — attack *and* defence, plus 1d10. */
   combatValue: number;
-  /** OB — „Odporność balistyczna pancerza na głowie i ciele". */
+  /** OB — the armour's SP, same on head and body. */
   sp: number;
   /** PW of each officer. */
   hp: number;
@@ -1195,8 +1193,7 @@ export interface CpredBackupTier {
   description: string;
   /**
    * Skills the group may roll its Wartość bojowa in. Only the federal team has
-   * any: „mogą oni wykorzystać swoją Wartość bojową w Testach poniższych
-   * Umiejętności" (s. 159) — nobody below level 10 does anything but shoot.
+   * a list (s. 159) — nobody below level 10 does anything but shoot.
    */
   skills?: readonly string[];
   page: number;
@@ -1218,7 +1215,7 @@ export const CPRED_BACKUP_TIERS: readonly CpredBackupTier[] = [
     body: 4,
     weapon: 'Ciężki pistolet',
     loadout: 'Ciężkie pistolety, Kevlar',
-    description: 'Czterech miejscowych korpogliniarzy, przybywających na piechotę.',
+    description: 'Czwórka ochroniarzy z pobliskiej korporacji; zjawiają się pieszo.',
     page: 158,
   },
   {
@@ -1235,7 +1232,7 @@ export const CPRED_BACKUP_TIERS: readonly CpredBackupTier[] = [
     body: 5,
     weapon: 'Ciężki pistolet',
     loadout: 'Ciężkie pistolety, Kevlar',
-    description: 'Patrol czterech funkcjonariuszy. Przybywają dwoma samochodami kompaktowymi.',
+    description: 'Czteroosobowy patrol w dwóch samochodach kompaktowych.',
     page: 158,
   },
   {
@@ -1254,8 +1251,8 @@ export const CPRED_BACKUP_TIERS: readonly CpredBackupTier[] = [
     secondWeapon: 'Ciężki pistolet',
     loadout: 'Ciężkie pistolety, Karabiny szturmowe, Ciężkie kurtki kuloodporne',
     description:
-      'Dwóch funkcjonariuszy miejscowej „drogówki" patrolujących podmiejskie bogate osiedla ' +
-      'i autostrady wokół Miasta. Przybywają Samochodem sportowym.',
+      'Para z drogówki, która pilnuje autostrad i zamożnych przedmieść wokół Miasta; ' +
+      'podjeżdża Samochodem sportowym.',
     page: 158,
   },
   {
@@ -1274,8 +1271,8 @@ export const CPRED_BACKUP_TIERS: readonly CpredBackupTier[] = [
     secondWeapon: 'Granatnik',
     loadout: 'Bardzo ciężki pistolet, Karabin szturmowy, Granatnik, Ubranie kuloodporne',
     description:
-      'Jak stróże prawa na Dzikim Zachodzie, ci samotnicy patrolują Strefy odzyskane i nowe ' +
-      'miasta. Jeden z nich przybywa na Supermotocyklu.',
+      'Samotny szeryf Stref odzyskanych i świeżo stawianych miasteczek, rodem z westernu; ' +
+      'nadjeżdża na Supermotocyklu.',
     page: 159,
   },
   {
@@ -1293,7 +1290,7 @@ export const CPRED_BACKUP_TIERS: readonly CpredBackupTier[] = [
     weapon: 'Karabin szturmowy',
     secondWeapon: 'Wyrzutnia rakiet',
     loadout: 'Karabiny szturmowe, Wyrzutnie rakiet, Metalgear',
-    description: 'Dwóch twardzieli z Psychobrygady. Przybywają z powietrza w AV-4.',
+    description: 'Dwóch ciężko uzbrojonych z Psychobrygady; spadają z nieba w AV-4.',
     page: 159,
   },
   {
@@ -1312,10 +1309,9 @@ export const CPRED_BACKUP_TIERS: readonly CpredBackupTier[] = [
     secondWeapon: 'Bardzo ciężki pistolet',
     loadout: 'Bardzo ciężkie pistolety, Karabiny szturmowe, Lekkie kurtki przeciwpancerne',
     description:
-      'Wsparcie dużego kalibru, działające pod egidą rządu państwowego lub międzynarodowych ' +
-      'organizacji policyjnych. Dwoje funkcjonariuszy przybywa w AV-4. W przeciwieństwie do ' +
-      'Wsparcia niższych kategorii zostają na miejscu po walce i pomagają w zabezpieczeniu ' +
-      'sceny zbrodni; na kolejne wezwania w tej samej „sprawie" przybywają ci sami dwaj.',
+      'Agenci federalni albo międzynarodowi — najcięższe Wsparcie; para przylatuje AV-4. ' +
+      'Jako jedyni nie znikają po walce, tylko zostają przy zabezpieczaniu miejsca zdarzenia, ' +
+      'a przy tej samej „sprawie” wracają na wezwanie ci sami dwaj.',
     skills: [
       'Aktorstwo',
       'Atrakcyjność',
@@ -1350,8 +1346,8 @@ export function cpredBackupTier(id: string): CpredBackupTier | null {
 }
 
 /**
- * „Stróż Prawa może wezwać na pomoc grupę Wsparcia o poziomie równym lub
- * niższym wartości Zdolności Specjalnej" — so the choice is the Lawman's, and a
+ * Any group at or below the ability's rank may be called (s. 158) — so the
+ * choice is the Lawman's, and a
  * rank 7 officer may deliberately whistle up four beat cops instead of the
  * state police.
  */
@@ -1360,22 +1356,22 @@ export function cpredBackupTiersFor(rank: number): CpredBackupTier[] {
   return CPRED_BACKUP_TIERS.filter((tier) => tier.minLevel <= value);
 }
 
-/** „Oddział z wyższej kategorii" — the next block down the page. */
+/** The category above — the next block down the page. */
 export function cpredBackupTierAfter(tier: CpredBackupTier): CpredBackupTier | null {
   const index = CPRED_BACKUP_TIERS.findIndex((entry) => entry.id === tier.id);
   if (index < 0) return null;
   return CPRED_BACKUP_TIERS[index + 1] ?? null;
 }
 
-/** „musisz wyrzucić na 1k10 tyle, ile wynosi twój poziom […] lub mniej". */
+/** Call roll: 1d10 at or under the rank answers (s. 158). */
 export const CPRED_BACKUP_CALL_DIE = 10;
-/** „rzutem 1k6 określ liczbę Rund potrzebnych Wsparciu na przybycie". */
+/** Arrival: 1d6 Rounds (s. 158). */
 export const CPRED_BACKUP_ARRIVAL_DIE = 6;
 /** The rank at which a six sends two groups instead of promoting one. */
 export const CPRED_BACKUP_DOUBLE_RANK = 10;
 
 export interface CpredBackupOutcome {
-  /** „Jeśli ktoś odpowie na twoje wezwanie…" */
+  /** Somebody picked up. */
   answered: boolean;
   /** Category that actually turns up; null when nobody answered. */
   tierId: string | null;
@@ -1384,8 +1380,8 @@ export interface CpredBackupOutcome {
   /** A six came up on the arrival die. */
   escalated: boolean;
   /**
-   * „chyba że poziom twojej Zdolności wynosi 10 – w takim wypadku przybywają
-   * dwie różne grupy Wsparcia". Which second group is not printed, so the VTT
+   * At rank 10 a six brings two different groups instead of a bigger one.
+   * Which second group is not printed, so the VTT
    * does not invent one: it says two are coming and lets the GM name the other
    * (session decision, 2026-08-29).
    */
@@ -1400,9 +1396,9 @@ export interface CpredBackupOutcome {
  * dice engine so the table sees the numbers, and the test suite rolls whatever
  * it needs to.
  *
- * A six escalates past the Lawman's own rank on purpose. „Zamiast zwykłego
- * wsparcia, na odsiecz przybywa oddział z wyższej kategorii" says nothing about
- * the ceiling that governs *calling*, and the reward for the six is precisely
+ * A six escalates past the Lawman's own rank on purpose. The rule that sends the
+ * next category up says nothing about the ceiling that governs *calling*, and
+ * the reward for the six is precisely
  * that somebody bigger than you could ask for turned up.
  */
 export function cpredBackupCall(
@@ -1432,8 +1428,8 @@ export function cpredBackupCall(
 /**
  * Umiejętności kategorii jako profil bojowy: id → Wartość bojowa (31.08).
  *
- * „Mogą oni wykorzystać swoją Wartość bojową w Testach poniższych
- * Umiejętności" (s. 159) — jedna liczba w piętnastu miejscach, bo Wartość
+ * Agenci rzucają Wartością bojową w Testach z listy na s. 159 — jedna liczba
+ * w piętnastu miejscach, bo Wartość
  * bojowa to już suma Cechy i Umiejętności. Stąd `combatValue` przy każdym
  * wpisie, a nie poziom do dodania do czegokolwiek.
  *
@@ -1463,7 +1459,7 @@ export function cpredBackupSkillLevels(
   return levels;
 }
 
-/** „Wartość bojowa 14 · OB 13 · PW 35 · RUCH 4 · BC 4" — the block, on one line. */
+/** „Wartość bojowa X · OB X · PW X · RUCH X · BC X" — the block, on one line. */
 export function describeBackupTier(tier: CpredBackupTier): string {
   return (
     `Wartość bojowa ${tier.combatValue} · OB ${tier.sp} · PW ${tier.hp} · ` +
@@ -1482,10 +1478,10 @@ export function describeBackupTier(tier: CpredBackupTier): string {
  *
  * Three deliberate details:
  *
- *  - `evasion` is the combat value, not zero. „Umiejętność bazowa używana do
- *    ataku **i obrony**" — an officer parries a machete with the same figure he
+ *  - `evasion` is the combat value, not zero. The value serves attack **and**
+ *    defence — an officer parries a machete with the same figure he
  *    shoots with, and REF/DEX stay at zero so the breakdown reads honestly.
- *  - `noBulletDodge` is what „Funkcjonariusze Wsparcia nie mogą Unikać pocisków"
+ *  - `noBulletDodge` is what the rule that Backup cannot dodge bullets
  *    actually costs. Without it the flag would be decoration: `attack:evade` in
  *    this project ducks bullets as happily as blades.
  *  - `weaponDamage` is left for the caller to fill from the compendium, by name.
@@ -1530,13 +1526,12 @@ export interface CpredBackupProfileSeed {
 
 // ─────────────── Praca Zespołowa (Korpo, s. 153–157) ───────────────
 
-/** „Zdolnością Specjalną Korpo jest Praca Zespołowa" (s. 36, s. 153). */
+/** The Korpo's ability is Praca Zespołowa (s. 36, s. 153). */
 export const CPRED_TEAMWORK_ABILITY = 'Praca Zespołowa';
 
 /**
- * „Poczynając od 3. poziomu Pracy Zespołowej, Korpo otrzymuje do pomocy członka
- * zespołu. Na poziomach 5. i 9. […] po dodatkowym pracowniku. Maksymalna liczba
- * członków zespołu wynosi 3" (s. 154).
+ * Team size by rank: the first member joins at 3, one more at 5 and at 9, never
+ * more than three (s. 154).
  */
 export const CPRED_TEAM_SLOT_LEVELS: readonly number[] = [3, 5, 9];
 export const CPRED_TEAM_MAX = CPRED_TEAM_SLOT_LEVELS.length;
@@ -1553,7 +1548,7 @@ export function cpredTeamSlots(rank: number): number {
  * Prose rather than mechanics on purpose: a conapt, a Trauma Team subscription
  * and a McPosiadłość are the GM's world, not the engine's arithmetic — the one
  * thing here the VTT could compute (rent) is already the Lifestyle of 23b, and
- * „nie płacąc czynszu" is a sentence the table applies, not a discount the
+ * a rent-free flat is something the table applies, not a discount the
  * settlement can guess at.
  */
 export interface CpredTeamworkPerk {
@@ -1567,40 +1562,39 @@ export const CPRED_TEAMWORK_PERKS: readonly CpredTeamworkPerk[] = [
     level: 1,
     name: 'Premia motywacyjna',
     text:
-      'Ubranie biznesowe (kurtka, tułów, nogi, stopy), które pozwala zidentyfikować cię jako ' +
-      'pracownika tej firmy. Nie można go odsprzedać bez wzbudzania podejrzeń.',
+      'Firmowy garnitur (kurtka, tułów, nogi, stopy) — każdy pozna, dla kogo pracujesz. ' +
+      'Kto próbuje go sprzedać, ściąga na siebie podejrzenia.',
   },
   {
     level: 2,
     name: 'Korporacyjny kwaterunek',
     text:
-      'Klucze do konapu należącego do pracodawcy — bez czynszu i innych opłat. Poziom życia ' +
-      'nadal pokrywasz sam.',
+      'Mieszkasz w konapcie firmy i nie płacisz za niego ani czynszu, ani rachunków; ' +
+      'za Styl życia płacisz dalej sam.',
   },
   { level: 3, name: 'Pierwszy członek zespołu', text: 'HR przydziela ci pierwszego pracownika.' },
   { level: 5, name: 'Drugi członek zespołu', text: 'Do zespołu dochodzi druga osoba.' },
   {
     level: 6,
     name: 'Korporacyjne Ubezpieczenie Zdrowotne',
-    text: 'Srebrny abonament Trauma Team, co miesiąc opłacany przez Korporację.',
+    text: 'Trauma Team w wersji srebrnej, a rachunek co miesiąc reguluje firma.',
   },
   {
     level: 7,
     name: 'Dom w Bobrowisku',
-    text: 'Przeprowadzka do domu w korporacyjnym Bobrowisku w Strefie Korporacyjnej.',
+    text: 'Firma przenosi cię do domu w Bobrowisku, osiedlu korporacji w jej Strefie.',
   },
   {
     level: 8,
     name: 'Platynowy Trauma Team',
-    text: 'Abonament Trauma Team podniesiony do platyny.',
+    text: 'Trauma Team awansuje do wersji platynowej.',
   },
   { level: 9, name: 'Trzeci członek zespołu', text: 'Zespół osiąga maksymalny rozmiar.' },
   {
     level: 10,
     name: 'Luksus',
     text:
-      'McPosiadłość w Bobrowisku albo Luksusowy apartament na szczycie wieżowca w Strefie ' +
-      'Korporacyjnej.',
+      'Do wyboru: McPosiadłość w Bobrowisku albo penthouse w wieżowcu Strefy ' + 'Korporacyjnej.',
   },
 ];
 
@@ -1641,8 +1635,8 @@ export type CpredTeamProfessionId = (typeof CPRED_TEAM_PROFESSION_IDS)[number];
  * Nine numbers, not ten: the tables print INT, REF, ZW, TECH, CHA, SW, RUCH, BC
  * and EMP, and **no Szczęście**. That is not an omission to paper over — an
  * employee is not a Player Character, and Luck is the stat that says otherwise.
- * The generated sheet gets 0, which is what „Postać Gracza wydaje Szczęście,
- * a BN nie" has meant in this project since the statist of 16b.
+ * The generated sheet gets 0, which is what „only Player Characters spend
+ * Luck" has meant in this project since the statist of 16b.
  */
 export interface CpredTeamStatRow {
   int: number;
@@ -1660,7 +1654,7 @@ export interface CpredTeamStatRow {
  * A profession HR can hire for (s. 155–157).
  *
  * The skill packages are stored as `skillId → level` because that is what a
- * sheet stores; the rulebook's three bands („Umiejętności +2 / +4 / +6") are a
+ * sheet stores; the rulebook's three bands (Skills at +2 / +4 / +6) are a
  * printing convenience, and preserving them here would mean every reader of the
  * data flattening them again.
  *
@@ -1668,14 +1662,14 @@ export interface CpredTeamStatRow {
  * uliczny)" and „Wiedza lokalna (Twój dom)". The first goes where 25b put every
  * language — `lifepath.language`, next to the Culture of Origin — and the
  * second into `skillSpecialties`, which is exactly the map that exists for
- * „musisz wybrać, którą specjalizację rozwijasz".
+ * Skills that make you name a field.
  */
 export interface CpredTeamProfession {
   id: CpredTeamProfessionId;
   name: string;
-  /** „Przykrywka: Osoba towarzysząca, osobisty trener". */
+  /** The job on paper — what the payroll says. */
   cover: string;
-  /** „Prawdziwa praca: Chronić Korpo przed niebezpieczeństwem." */
+  /** The job in fact — paraphrased (G37). */
   duty: string;
   /** Six rows; index 0 is a roll of 1. */
   rows: readonly CpredTeamStatRow[];
@@ -1687,19 +1681,19 @@ export interface CpredTeamProfession {
   language: string | null;
   /**
    * Special Ability the package hands out, by **name** — the Corporate
-   * Netrunner's package opens with „Interfejs (Zdolność Specjalna Netrunnera)",
-   * which is a Role, not a skill. Null for the other four.
+   * Netrunner's package opens with the Netrunner's Interfejs, which is a Role,
+   * not a skill. Null for the other four.
    */
   ability: { name: string; rank: number } | null;
   /**
-   * „Cyberdek (7 gniazd: …)" out of the Netrunner's „Osprzęt:" — the one piece
+   * The deck out of the Netrunner's gear list — the one piece
    * of gear a sheet cannot do without, because `netrun:*` refuses a character
    * with no deck. Null for the other four.
    */
   cyberdeck: CpredTeamCyberdeck | null;
-  /** „Cyborgizacje:" — prose, and see `cpredTeamMemberPatch` for why. */
+  /** Implants — prose, and see `cpredTeamMemberPatch` for why. */
   cyberware: string;
-  /** „Osprzęt:" minus the armour, the pistol and the deck, which become real rows. */
+  /** Gear minus the armour, the pistol and the deck, which become real rows. */
   gear: string;
   page: number;
 }
@@ -1714,20 +1708,20 @@ export interface CpredTeamProfession {
 export interface CpredTeamCyberdeck {
   /** Catalogue name of the deck, found by name like the pistol. */
   name: string;
-  /** „7 gniazd" — the printed number, not the catalogue row's. */
+  /** Seven — the printed number, not the catalogue row's. */
   slots: number;
   programs: readonly string[];
 }
 
-/** Shared by all five packages: „Osprzęt: Lekka kurtka kuloodporna (OB 11)". */
+/** Shared by all five packages: a light armorjack, SP 11. */
 export const CPRED_TEAM_ARMOR = { name: 'Lekka kurtka kuloodporna', sp: 11 } as const;
-/** And „Bardzo ciężki pistolet, zwykła amunicja do B.C. pistoletu x50". */
+/** And a very heavy pistol with fifty basic rounds. */
 export const CPRED_TEAM_WEAPON = {
   name: 'Bardzo ciężki pistolet',
   damage: '4k6',
   magazine: 8,
 } as const;
-/** „Najcięższym pancerzem, jaki mogą nosić członkowie zespołu […]" (s. 154). */
+/** The team's armour ceiling is the armour HR issues (s. 154). */
 export const CPRED_TEAM_ARMOR_SP_MAX = CPRED_TEAM_ARMOR.sp;
 
 export const CPRED_TEAM_PROFESSIONS: readonly CpredTeamProfession[] = [
@@ -1735,7 +1729,7 @@ export const CPRED_TEAM_PROFESSIONS: readonly CpredTeamProfession[] = [
     id: 'bodyguard',
     name: 'Firmowy ochroniarz',
     cover: 'Osoba towarzysząca, osobisty trener',
-    duty: 'Chronić Korpo przed niebezpieczeństwem.',
+    duty: 'Osłania Korpo przed każdym zagrożeniem.',
     rows: [
       { int: 3, ref: 7, dex: 7, tech: 4, cool: 7, will: 6, move: 4, body: 8, emp: 4 },
       { int: 5, ref: 8, dex: 6, tech: 2, cool: 7, will: 8, move: 4, body: 8, emp: 2 },
@@ -1777,7 +1771,7 @@ export const CPRED_TEAM_PROFESSIONS: readonly CpredTeamProfession[] = [
     id: 'agent',
     name: 'Korporacyjny tajny agent',
     cover: 'Asystent, stylista',
-    duty: 'Sprawia, że ręce Korpo są zawsze czyste.',
+    duty: 'Załatwia brudne sprawy, żeby nic nie przylgnęło do Korpo.',
     rows: [
       { int: 4, ref: 8, dex: 5, tech: 4, cool: 6, will: 8, move: 5, body: 7, emp: 3 },
       { int: 3, ref: 8, dex: 6, tech: 2, cool: 8, will: 6, move: 6, body: 6, emp: 5 },
@@ -1814,8 +1808,8 @@ export const CPRED_TEAM_PROFESSIONS: readonly CpredTeamProfession[] = [
     ability: null,
     cyberdeck: null,
     cyberware:
-      'Cyberoczy ze sparowanym widzeniem w ciemności/podczerwieni/UV i zmianą koloru; cyberręka ' +
-      'z dłonią-hakiem, wysuwaną bronią dystansową (b. ciężki pistolet) i pokryciem Realskinn',
+      'Cyberoczy (para: widzenie w ciemności/podczerwień/UV, zmiana koloru); cyberręka ' +
+      '(dłoń-hak, wysuwana broń dystansowa — b. ciężki pistolet, pokrycie Realskinn)',
     gear: 'Agent; zwykła amunicja do B.C. pistoletu ×50',
     page: 155,
   },
@@ -1823,7 +1817,7 @@ export const CPRED_TEAM_PROFESSIONS: readonly CpredTeamProfession[] = [
     id: 'driver',
     name: 'Szofer korporacyjny',
     cover: 'Lokaj, osobisty kierowca',
-    duty: 'Prowadzi i pilotuje, a także serwisuje pojazdy zespołu.',
+    duty: 'Siedzi za sterami wszystkiego, czym zespół jeździ i lata, i dba o te maszyny.',
     rows: [
       { int: 5, ref: 8, dex: 6, tech: 4, cool: 6, will: 5, move: 6, body: 5, emp: 5 },
       { int: 5, ref: 7, dex: 7, tech: 5, cool: 5, will: 7, move: 4, body: 7, emp: 3 },
@@ -1861,14 +1855,14 @@ export const CPRED_TEAM_PROFESSIONS: readonly CpredTeamProfession[] = [
     cyberdeck: null,
     cyberware:
       'Radar/Sonar, Zestaw cyberaudio, Agent wewnętrzny, odbiornik lokalizatora, wykrywacz radaru',
-    gear: 'Samochód kompaktowy z ulepszonymi fotelami; zwykła amunicja do B.C. pistoletu ×50',
+    gear: 'Samochód kompaktowy (ulepszone fotele); zwykła amunicja do B.C. pistoletu ×50',
     page: 156,
   },
   {
     id: 'netrunner',
     name: 'Korporacyjny netrunner',
     cover: 'Informatyk, analityk',
-    duty: 'Sieciowanie i zdobywanie informacji.',
+    duty: 'Włamuje się do Sieci i zdobywa informacje.',
     rows: [
       { int: 6, ref: 7, dex: 8, tech: 7, cool: 5, will: 4, move: 5, body: 5, emp: 3 },
       { int: 7, ref: 8, dex: 4, tech: 6, cool: 8, will: 3, move: 4, body: 6, emp: 4 },
@@ -1901,11 +1895,11 @@ export const CPRED_TEAM_PROFESSIONS: readonly CpredTeamProfession[] = [
     },
     skillSpecialties: { 'local-expert': 'Twój dom' },
     language: 'Slang uliczny',
-    // „Umiejętności +2: Interfejs (Zdolność Specjalna Netrunnera)" — the one
+    // Interfejs at +2 — the one
     // entry in all five packages that is a Role rather than a skill, and the
     // reason a team member had to be a real sheet: a cyberdeck needs one.
     ability: { name: 'Interfejs', rank: 2 },
-    // „Cyberdek (7 gniazd: Miecz, Zabójca, Robak, Pancerz)" — the catalogue's
+    // A seven-slot deck with four Programs — the catalogue's
     // seven-slot deck is the ordinary-quality one. Out of `gear` since
     // 13.09.2026: a deck written as prose is a deck `netrun:*` refuses.
     cyberdeck: {
@@ -1922,7 +1916,7 @@ export const CPRED_TEAM_PROFESSIONS: readonly CpredTeamProfession[] = [
     id: 'techie',
     name: 'Technik korporacji',
     cover: 'Informatyk, stażysta',
-    duty: 'Naprawa osprzętu i broni zespołu.',
+    duty: 'Utrzymuje sprzęt i broń zespołu na chodzie.',
     rows: [
       { int: 8, ref: 8, dex: 5, tech: 7, cool: 3, will: 4, move: 4, body: 5, emp: 6 },
       { int: 8, ref: 7, dex: 6, tech: 8, cool: 3, will: 5, move: 5, body: 4, emp: 4 },
@@ -1967,7 +1961,7 @@ export function cpredTeamProfession(id: string): CpredTeamProfession | null {
   return CPRED_TEAM_PROFESSIONS.find((entry) => entry.id === id) ?? null;
 }
 
-/** „W tabeli odpowiedniego zawodu rzuć 1k6, odczytaj i zapisz Cechy pracownika." */
+/** Stats come from one 1d6 roll on the profession's table (s. 155). */
 export function cpredTeamStats(
   profession: CpredTeamProfession,
   roll: number,
@@ -2038,13 +2032,13 @@ export function cpredTeamCyberdeck(
 
 // ─────────────────────────── Lojalność (s. 154) ───────────────────────────
 
-/** „Rzuć 1k6 i dodaj 1" — and the same die decides whether an order is obeyed. */
+/** Starting Loyalty is 1d6 + 1 — and the same die decides whether an order is obeyed. */
 export const CPRED_LOYALTY_DIE = 6;
-/** „jeśli na koniec sesji wynosi powyżej 10, jej wartość spada do 10". */
+/** Loyalty above 10 drops back to 10 when a session ends. */
 export const CPRED_LOYALTY_SESSION_CAP = 10;
-/** „początkowa Lojalność tego pracownika wynosi tylko 1" — a replacement's. */
+/** A replacement starts at Loyalty 1. */
 export const CPRED_LOYALTY_REPLACEMENT = 1;
-/** „będzie to kosztować Korpo dodatkowe 200 ed »opłaty manipulacyjnej«". */
+/** And HR charges the Korpo 200 ed for the trouble. */
 export const CPRED_LOYALTY_REPLACEMENT_FEE = 200;
 
 /** Bounds the stored number is clamped to; the rule itself has none. */
@@ -2056,8 +2050,8 @@ export function cpredStartingLoyalty(roll: number): number {
 }
 
 /**
- * „MG musi rzucić 1k6. Jeśli wynik wynosi **mniej niż** obecna Lojalność tego
- * pracownika, ten wykonuje polecenie."
+ * An order: the GM rolls 1d6 and the employee obeys when the die is **below**
+ * their current Loyalty (s. 154).
  *
  * Strictly less, which is why this is a function rather than an inline `<=`
  * somewhere: Loyalty 1 obeys nothing at all, and that asymmetry is the whole
@@ -2067,7 +2061,7 @@ export function cpredLoyaltyObeys(roll: number, loyalty: number): boolean {
   return Math.round(roll) < Math.round(loyalty);
 }
 
-/** „Jeśli Lojalność pracownika wynosi 0 lub mniej, będzie on czynnie starał się zdradzić". */
+/** Loyalty at 0 or below: the employee is working against the Korpo. */
 export function cpredLoyaltyTreacherous(loyalty: number): boolean {
   return Math.round(loyalty) <= 0;
 }
@@ -2094,36 +2088,36 @@ export const CPRED_LOYALTY_CHANGES: readonly CpredLoyaltyChange[] = [
     id: 'compliment',
     value: 1,
     text:
-      'Skomplementowanie pracy członka zespołu. Nadużywanie tej metody w ciągu tygodnia ' +
-      'zablokuje możliwość podniesienia Lojalności tej osoby.',
+      'Pochwała za dobrą robotę. Pochwały sypane co chwilę w jednym tygodniu przestają ' +
+      'działać — Lojalność tej osoby już nie wzrośnie.',
   },
-  { id: 'bonus', value: 4, text: 'Premia lub inny bonus o wartości co najmniej 200 ed.' },
-  { id: 'backing', value: 4, text: 'Wsparcie w konflikcie z Górą.' },
-  { id: 'cut', value: 6, text: 'Premia w postaci 20% twojego zarobku za ostatnie zlecenie.' },
+  { id: 'bonus', value: 4, text: 'Nagroda albo premia warta 200 ed lub więcej.' },
+  { id: 'backing', value: 4, text: 'Stanięcie po jego stronie w sporze z Górą.' },
+  { id: 'cut', value: 6, text: 'Oddanie mu 20% zarobku z ostatniego zlecenia.' },
   {
     id: 'leave',
     value: 6,
-    text: 'Płatny urlop. Członek zespołu będzie nieobecny przez całą sesję.',
+    text: 'Urlop na koszt firmy — tę sesję pracownik spędza poza grą.',
   },
   {
     id: 'risk',
     value: 8,
-    text: 'Narażenie się na fizyczne niebezpieczeństwo dla członka zespołu.',
+    text: 'Ryzykowanie własną skórą, żeby go ratować.',
   },
   {
     id: 'neglect',
     value: -1,
-    text: 'Brak wzrostu Lojalności u danego członka zespołu przez całą sesję.',
+    text: 'Cała sesja minęła, a jego Lojalność ani drgnęła.',
   },
-  { id: 'criticism', value: -2, text: 'Krytyka lub opierniczanie członka zespołu lub jego pracy.' },
+  { id: 'criticism', value: -2, text: 'Ostra krytyka — jego samego albo tego, co robi.' },
   {
     id: 'silence',
     value: -4,
-    text: 'Przemilczenie wkładu członka zespołu w projekt. Zapomnienie o jego urodzinach.',
+    text: 'Pominięcie jego udziału w sukcesie albo zapomniane urodziny.',
   },
-  { id: 'no-bonus', value: -6, text: 'Nieprzyznanie obiecanej premii lub bonusu.' },
-  { id: 'thrown-up', value: -6, text: 'Rzucenie na pożarcie Górze.' },
-  { id: 'abandoned', value: -8, text: 'Zostawienie członka zespołu na polu walki.' },
+  { id: 'no-bonus', value: -6, text: 'Obiecana premia nie przyszła.' },
+  { id: 'thrown-up', value: -6, text: 'Wystawienie go Górze jako kozła ofiarnego.' },
+  { id: 'abandoned', value: -8, text: 'Porzucenie go w trakcie walki.' },
 ];
 
 export function cpredLoyaltyChange(id: string): CpredLoyaltyChange | null {
@@ -2138,7 +2132,7 @@ export function cpredLoyaltyChange(id: string): CpredLoyaltyChange | null {
  * On the employer rather than on the employee, and that is the whole design
  * decision of this half of the stage. Loyalty is not a property of a person —
  * it is a property of a working relationship, and the sentence that governs it
- * („Gdy Korpo wydaje polecenie członkowi zespołu…") names both sides. Keeping
+ * (the Korpo gives an order, the employee obeys or not) names both sides. Keeping
  * the roster here also makes the cap enforceable in one place: the number of
  * rows is checked against the rank that pays for them.
  *
@@ -2244,7 +2238,7 @@ export function describeTeamMember(member: CpredTeamMember): string {
  * A group that has answered the radio and is still on its way.
  *
  * Lives in the combat's `systemState` rather than in a table of its own, and
- * the lifetime is the argument: „rzutem 1k6 określ liczbę Rund" measures a
+ * the lifetime is the argument: arrival in 1d6 Rounds measures a
  * distance in a unit that only exists while a fight is running, and a call
  * whose fight has ended is a call nobody is counting any more. Ending the
  * combat drops the column with it, which is exactly right — the officers did
@@ -2264,7 +2258,7 @@ export interface CpredBackupPending {
   /** Who called, for the chat line and the tracker row. */
   callerName: string;
   /**
-   * „Przybywają dwie różne grupy Wsparcia" and the rulebook does not say which
+   * Two different groups come, and the rulebook does not say which
    * second one, so the VTT does not invent it: the row carries the question
    * until the GM names a category (session decision, 2026-08-29).
    */
@@ -2381,9 +2375,9 @@ export function cpredAbilityTiersUpTo<T extends CpredAbilityTier>(
 export const CPRED_CHARISMA_ABILITY = 'Efekt Charyzmy';
 
 /**
- * Liczebność publiczności, bo to ona — a nie ranga — ustawia PT.
- * „PT 8 dla jednej osoby, PT 10 dla małej grupy (do 6 osób) lub PT 12 dla dużej
- * grupy" (s. 144). Te same trzy progi obsługują oba zastosowania Zdolności.
+ * Liczebność publiczności, bo to ona — a nie ranga — ustawia PT: 8 przy
+ * jednym słuchaczu, 10 przy grupce do sześciu, 12 przy tłumie (s. 144). Te same
+ * trzy progi obsługują oba zastosowania Zdolności.
  */
 export const CPRED_CHARISMA_AUDIENCES = ['single', 'small', 'large'] as const;
 export type CpredCharismaAudience = (typeof CPRED_CHARISMA_AUDIENCES)[number];
@@ -2404,12 +2398,11 @@ export const CPRED_CHARISMA_AUDIENCE_LABELS: Record<CpredCharismaAudience, strin
  * Po co Rocker rzuca. Dwa zastosowania jednej Zdolności, oba tym samym Testem
  * i przeciw tym samym PT, ale o różnych stawkach:
  *
- *  - `fans` — „możesz zmienić osoby, które nie są twoimi fanami, w fanów (chyba
- *    że czynnie cię nie lubią)"; **tylko poza walką**, i tabela rang tu nie
- *    rządzi: nowych fanów robi się na każdym poziomie.
+ *  - `fans` — zjednanie sobie ludzi, którzy fanami jeszcze nie są (o ile nie
+ *    są wrogo nastawieni); **tylko poza walką**, i tabela rang tu nie rządzi:
+ *    nowych fanów robi się na każdym poziomie.
  *  - `favour` — prośba do tych, którzy fanami już są. Tu tabela rozstrzyga, czy
- *    żądanie w ogóle wolno postawić: „Jeśli tak nie jest, próba automatycznie
- *    się nie udaje".
+ *    żądanie w ogóle wolno postawić — za duże przepada bez rzutu (s. 144).
  */
 export const CPRED_CHARISMA_PURPOSES = ['fans', 'favour'] as const;
 export type CpredCharismaPurpose = (typeof CPRED_CHARISMA_PURPOSES)[number];
@@ -2420,12 +2413,12 @@ export const CPRED_CHARISMA_PURPOSE_LABELS: Record<CpredCharismaPurpose, string>
 };
 
 export interface CpredCharismaTier extends CpredAbilityTier {
-  /** „Miejsca występów: Najlepsze miejsce, w którym Rocker może wystąpić". */
+  /** Największa scena, na którą Rockera jeszcze wpuszczą. */
   venues: string;
   /**
    * Co wolno wyprosić u publiczności tej wielkości. `null` znaczy „takiej
    * publiczności jeszcze nie masz" — jedyny taki wpis w tabeli to duża grupa
-   * przy randze 1–2 („To żart, prawda?"), i to nie jest żart redakcyjny, tylko
+   * przy randze 1–2, i to nie jest żart redakcyjny, tylko
    * zasada: żądanie nieadekwatne do poziomu **nie dochodzi do kości**.
    */
   effects: Record<CpredCharismaAudience, string | null>;
@@ -2439,8 +2432,8 @@ export const CPRED_CHARISMA_TIERS: readonly CpredCharismaTier[] = [
     page: 144,
     venues: 'Małe miejscowe kluby',
     effects: {
-      single: 'Fan wyświadcza niewielką przysługę: kupi drinka albo jedzenie, gdzieś podwiezie.',
-      small: 'Do 6 fanów prosi o autografy i pamiątki, zatrzymuje Rockera na ulicy, chce pogadać.',
+      single: 'Drobna przysługa od jednego fana — postawi drinka albo obiad, podrzuci autem.',
+      small: 'Grupka do 6 osób łapie Rockera na ulicy po autograf, pamiątkę i rozmowę.',
       large: null,
     },
   },
@@ -2451,10 +2444,10 @@ export const CPRED_CHARISMA_TIERS: readonly CpredCharismaTier[] = [
     page: 144,
     venues: 'Popularne kluby',
     effects: {
-      single:
-        'Fan, jeśli da się go przekonać, wyświadcza dużą przysługę: pójdzie do łóżka, zarekomenduje.',
-      small: 'Do 6 fanów regularnie spędza czas z Rockerem — alkohol, prochy, imprezowe atrakcje.',
-      large: 'Oddana grupa fanów kupuje dzieła i artykuły promocyjne Rockera.',
+      single: 'Przekonany fan zrobi coś większego: zaprosi do łóżka, poleci Rockera, komu trzeba.',
+      small:
+        'Grupka do 6 osób kręci się przy Rockerze na stałe i zapewnia imprezę: alkohol, prochy.',
+      large: 'Wierna publika kupuje płyty, gadżety i wszystko z jego logo.',
     },
   },
   {
@@ -2464,11 +2457,11 @@ export const CPRED_CHARISMA_TIERS: readonly CpredCharismaTier[] = [
     page: 145,
     venues: 'Duże, ważne kluby',
     effects: {
-      single: 'Fan popełnia pomniejsze przestępstwo (kradzież ze sklepu) albo pomaga w walce.',
+      single:
+        'Fan złamie dla niego prawo po drobnemu (podwędzi coś ze sklepu) albo stanie do bójki.',
       small:
-        'Do 6 fanów działa jako osobista „ekipa": są w pobliżu, spełniają zachcianki, dostarczają rzeczy.',
-      large:
-        'Fani w całym mieście i okolicznych miastach — bardzo lojalni, wyświadczają duże przysługi.',
+        'Grupka do 6 osób to jego świta: zawsze pod ręką, załatwia, przynosi, spełnia kaprysy.',
+      large: 'Fani w całym Mieście i miastach wokół — wierni i gotowi na spore przysługi.',
     },
   },
   {
@@ -2476,12 +2469,12 @@ export const CPRED_CHARISMA_TIERS: readonly CpredCharismaTier[] = [
     min: 7,
     max: 8,
     page: 145,
-    venues: 'Małe hale koncertowe, miejscowy kanał wideo',
+    venues: 'Mniejsze sale koncertowe, lokalny kanał wideo',
     effects: {
-      single: 'Bez zbędnych pytań fan zaryzykuje dla Rockera życie.',
-      small: 'Do 6 fanów popełnia pomniejsze przestępstwo albo pomaga w walce.',
+      single: 'Fan nadstawi za niego karku i o nic nie zapyta.',
+      small: 'Grupka do 6 osób złamie dla niego prawo po drobnemu albo stanie do bójki.',
       large:
-        'Wściekle lojalni: biją się z fanami rywali, trzymają sieci informacyjne, zbierają się na wezwanie.',
+        'Fanatycznie wierni: tłuką się z fanami konkurencji, donoszą, co słychać, i stawiają się na każde wezwanie.',
     },
   },
   {
@@ -2489,12 +2482,11 @@ export const CPRED_CHARISMA_TIERS: readonly CpredCharismaTier[] = [
     min: 9,
     max: 9,
     page: 145,
-    venues: 'Duże hale koncertowe, krajowe kanały wideo',
+    venues: 'Wielkie sale koncertowe, ogólnokrajowe kanały wideo',
     effects: {
-      single: 'Fan popełnia poważne przestępstwo — ukradnie coś drogiego, kogoś pobije.',
-      small: 'Do 6 fanów popełnia poważne przestępstwo: kradzież czegoś kosztownego, pobicie.',
-      large:
-        'Fani zachowują się jak po praniu mózgu: rozpoczną zamieszki, zniszczą własność, zabiją.',
+      single: 'Fan pójdzie na poważne przestępstwo — kradzież czegoś cennego, pobicie.',
+      small: 'Grupka do 6 osób pójdzie na poważne przestępstwo — kradzież czegoś cennego, pobicie.',
+      large: 'Tłum bez własnej woli: wywoła rozruchy, zdemoluje, zabije.',
     },
   },
   {
@@ -2502,18 +2494,18 @@ export const CPRED_CHARISMA_TIERS: readonly CpredCharismaTier[] = [
     min: 10,
     max: 10,
     page: 145,
-    venues: 'Ogromne stadiony lub międzynarodowy kanał wideo',
+    venues: 'Wielkie stadiony, kanał wideo na cały świat',
     effects: {
-      single: 'Bez zbędnych pytań fan poświęci dla Rockera życie.',
-      small: 'Do 6 fanów zaryzykuje życiem — stają się jego ochroną.',
-      large:
-        'Międzynarodowa, podobna sekcie sieć: prywatna armia, która zrobi praktycznie wszystko.',
+      single: 'Fan odda za niego życie i o nic nie zapyta.',
+      small: 'Grupka do 6 osób nadstawi za niego karku — to jego ochrona.',
+      large: 'Sekta rozsiana po świecie — prywatne wojsko, które zrobi niemal wszystko.',
     },
   },
 ];
 
-/** Zdanie z tabeli — jedyne miejsce, w którym „duża grupa" bywa niedostępna. */
-export const CPRED_CHARISMA_NO_CROWD = 'To żart, prawda? Jeszcze nie masz dużych grup fanów.';
+/** Odmowa tam, gdzie tabela nie daje „dużej grupy" — jedyne takie miejsce. */
+export const CPRED_CHARISMA_NO_CROWD =
+  'Na tłum fanów jeszcze za wcześnie — tej publiczności Rocker nie ma.';
 
 export function cpredCharismaTierAt(rank: number): CpredCharismaTier | null {
   return cpredAbilityTierAt(CPRED_CHARISMA_TIERS, rank);
@@ -2537,8 +2529,8 @@ export const CPRED_CHARISMA_PROBLEMS: Record<CpredCharismaProblem, string> = {
 
 /**
  * Czy ten Test w ogóle wolno rzucić. Robienie nowych fanów nie pyta tabeli —
- * pyta o nią tylko prośba, bo tylko ona jest „żądaniem", które musi być
- * „adekwatne do aktualnego poziomu Efektu Charyzmy".
+ * pyta o nią tylko prośba, bo tylko ona jest żądaniem, które musi pasować
+ * do bieżącej rangi Efektu Charyzmy (s. 144).
  */
 export function cpredCharismaProblem(
   rank: number | null,
@@ -2557,20 +2549,20 @@ export function cpredCharismaProblem(
   return null;
 }
 
-/** „Rocker nie może prosić tych fanów o tę samą przysługę przez tydzień". */
+/** Po odmowie Rocker czeka tydzień, zanim poprosi tych fanów o to samo (s. 144). */
 export const CPRED_CHARISMA_REFUSAL_DAYS = 7;
 
 // ────────────────────── Znajomości (Fixer, s. 159–161) ──────────────────────
 
 export const CPRED_OPERATOR_ABILITY = 'Znajomości';
 
-/** „rzucasz CHA + Handel + Poziom […] Znajomości + 1k10" (s. 159). */
+/** Targowanie się to CHA + Handel + ranga Znajomości + 1k10 (s. 159). */
 export const CPRED_HAGGLE_SKILL_ID = 'trading';
 
 /**
- * Jeden targ z drabiny. Sześć wierszy, po jednym na szczebel — „możesz dobić
- * jednego targu o poziomie Znajomości **lub niższym**", więc to menu, a nie
- * automat: Fixer rangi 9 wybiera spośród pięciu.
+ * Jeden targ z drabiny. Sześć wierszy, po jednym na szczebel — wolno dobić
+ * jednego targu z rangi Fixera **albo niższej**, więc to menu, a nie automat:
+ * Fixer rangi 9 wybiera spośród pięciu.
  *
  * `discount` niesie tylko te dwa, które VTT umie policzyć do końca (−10% i −20%
  * przy zakupie). Pozostałe cztery opisują pieniądze, których w tym projekcie
@@ -2593,41 +2585,41 @@ export const CPRED_HAGGLE_DEALS: readonly CpredHaggleDeal[] = [
     id: 'percent10',
     level: 1,
     name: 'Dziesięć procent',
-    text: 'Sprzedajesz przedmiot o 10% drożej albo kupujesz go o 10% taniej.',
+    text: 'Cena przesuwa się o 10% na Twoją korzyść — w górę przy sprzedaży, w dół przy zakupie.',
     discount: 10,
   },
   {
     id: 'sixthFree',
     level: 3,
     name: 'Szósta sztuka gratis',
-    text: 'Kupując 5 lub więcej sztuk tego samego produktu, szóstą dostajesz za darmo.',
+    text: 'Przy zakupie co najmniej pięciu jednakowych sztuk szósta idzie gratis.',
   },
   {
     id: 'crewRaise',
     level: 5,
     name: 'Podwyżka dla Ekipy',
-    text: 'Zleceniodawca podnosi wynagrodzenie każdego członka Ekipy o 20%.',
+    text: 'Każdy z Ekipy dostaje od zleceniodawcy 20% więcej.',
   },
   {
     id: 'halfLater',
     level: 7,
     name: 'Pół teraz, pół za miesiąc',
     text:
-      'Kupując Luksusowe lub Superluksusowe płacisz połowę od razu, resztę po miesiącu. ' +
-      'Niespłacona rata zamyka ten targ u wszystkich na zawsze.',
+      'Rzecz Luksusową albo Superluksusową bierzesz za pół ceny, drugą połowę oddajesz po ' +
+      'miesiącu. Niespłacona rata zamyka Ci ten targ na dobre, u każdego.',
   },
   {
     id: 'percent20',
     level: 9,
     name: 'Dwadzieścia procent',
-    text: 'Sprzedajesz przedmiot o 20% drożej albo kupujesz go o 20% taniej.',
+    text: 'Cena przesuwa się o 20% na Twoją korzyść — w górę przy sprzedaży, w dół przy zakupie.',
     discount: 20,
   },
   {
     id: 'doublePay',
     level: 10,
     name: 'Podwójna zapłata',
-    text: 'Zleceniodawca Niebezpiecznego Zlecenia płaci każdemu uczestnikowi podwójnie.',
+    text: 'Za Niebezpieczne Zlecenie zleceniodawca płaci każdemu z Ekipy dwa razy tyle.',
   },
 ];
 
@@ -2635,13 +2627,13 @@ export function cpredHaggleDeal(id: string): CpredHaggleDeal | null {
   return CPRED_HAGGLE_DEALS.find((deal) => deal.id === id) ?? null;
 }
 
-/** Targi w zasięgu tej rangi — „o poziomie Znajomości lub niższym". */
+/** Targi w zasięgu tej rangi — z jej szczebla i niższych. */
 export function cpredHaggleDeals(rank: number): CpredHaggleDeal[] {
   return CPRED_HAGGLE_DEALS.filter((deal) => deal.level <= rank);
 }
 
 export interface CpredOperatorTier extends CpredAbilityTier {
-  /** „Układy i klienci: Miejscowy przywódca, szef gangu…" */
+  /** Z kim Fixer robi interesy na tym szczeblu. */
   contacts: string;
   /**
    * Najwyższe pasmo cenowe zawsze osiągalne. `null` na szczeblu 5–6, bo ten
@@ -2649,7 +2641,7 @@ export interface CpredOperatorTier extends CpredAbilityTier {
    * szczebla wtedy zostaje — patrz `cpredOperatorReach`.
    */
   reach: CostCategory | null;
-  /** Zdanie o Zasięgu tak, jak stoi w ramce (Nocny, Nocny Północny). */
+  /** Zasięg jednym zdaniem (z Nocnym i Nocnym Północnym), sparafrazowany (G37). */
   reachText: string;
   /** Targ, który ten szczebel otwiera — id z `CPRED_HAGGLE_DEALS`. */
   dealId: string;
@@ -2663,60 +2655,58 @@ export const CPRED_OPERATOR_TIERS: readonly CpredOperatorTier[] = [
     min: 1,
     max: 2,
     page: 160,
-    contacts: 'Miejscowy przywódca, szef gangu, przedstawiciele miejscowych władz',
+    contacts: 'Lokalni liderzy, szefowie gangów, urzędnicy z dzielnicy',
     reach: 'everyday',
-    reachText: 'Zawsze znajdziesz kogoś z Tanimi i Codziennymi przedmiotami — choćby po kawałku.',
+    reachText: 'Rzeczy Tanie i Codzienne zdobędziesz zawsze — choćby po kawałku.',
     dealId: 'percent10',
-    chameleon: 'Znasz od podszewki kultury i grupy (w tym gangi) z najbliższej okolicy.',
+    chameleon: 'Kultury i grupy okolicy, gangi też, znasz na wylot.',
   },
   {
     id: 'operator-3-4',
     min: 3,
     max: 4,
     page: 160,
-    contacts: 'Szef gangu z całego miasta, pomniejszy polityk, manager średniego szczebla',
+    contacts: 'Szefowie gangów z całego Miasta, drobni politycy, kierownicy średniego szczebla',
     reach: 'expensive',
-    reachText: 'Zawsze znajdziesz kogoś z przedmiotami Kosztownymi lub niższymi.',
+    reachText: 'Rzeczy Kosztowne i tańsze zdobędziesz zawsze.',
     dealId: 'sixthFree',
     chameleon:
-      'Dopasujesz się do co najmniej jednej dodatkowej kultury; jej język zapisz jako Umiejętność na poziomie 4.',
+      'Wtapiasz się w jeszcze jedną kulturę; jej język wpisz jako Umiejętność na poziomie 4.',
   },
   {
     id: 'operator-5-6',
     min: 5,
     max: 6,
     page: 160,
-    contacts: 'Ważny w Mieście gracz, miejski polityk, lokalny celebryta',
+    contacts: 'Grube ryby Miasta: radni, lokalne gwiazdy',
     reach: null,
     reachText:
-      'Raz na miesiąc, razem z Fixerami o tym samym poziomie, organizujesz Nocny — na nim ' +
-      'znajdziesz przedmioty z każdej kategorii cenowej (s. 338).',
+      'Co miesiąc z Fixerami Twojej rangi stawiasz Nocny — tam jest towar z każdego pasma ' +
+      'cenowego (s. 338).',
     dealId: 'crewRaise',
-    chameleon:
-      'Dopasujesz się do co najmniej dwóch dodatkowych kultur (w sumie trzech); ich języki zapisz na poziomie 4.',
+    chameleon: 'Wtapiasz się w dwie kultury więcej (razem trzy); ich języki wpisz na poziomie 4.',
   },
   {
     id: 'operator-7-8',
     min: 7,
     max: 8,
     page: 161,
-    contacts: 'Dyrektor miejscowej Korporacji, burmistrz lub zarządca Miasta, słynny celebryta',
+    contacts: 'Dyrektorzy miejscowych Korporacji, władze Miasta, znane gwiazdy',
     reach: 'veryExpensive',
-    reachText: 'Zawsze znajdziesz kogoś z przedmiotami Bardzo kosztownymi lub niższymi.',
+    reachText: 'Rzeczy Bardzo kosztowne i tańsze zdobędziesz zawsze.',
     dealId: 'halfLater',
-    chameleon:
-      'Dopasujesz się do co najmniej trzech dodatkowych kultur (w sumie czterech); ich języki zapisz na poziomie 4.',
+    chameleon: 'Wtapiasz się w trzy kultury więcej (razem cztery); ich języki wpisz na poziomie 4.',
   },
   {
     id: 'operator-9',
     min: 9,
     max: 9,
     page: 161,
-    contacts: 'Regionalny szef Korporacji, polityk stanowy, słynny celebryta',
+    contacts: 'Regionalne kierownictwo Korporacji, politycy stanowi, sławy',
     reach: 'luxury',
     reachText:
-      'Zawsze znajdziesz kogoś z przedmiotami Luksusowymi lub niższymi. Przy Nocnym umiesz ' +
-      'zaaranżować Nocny Północny — spotkanie przywódców przestępczego półświatka.',
+      'Rzeczy Luksusowe i tańsze zdobędziesz zawsze. Przy Nocnym zwołasz też Nocny Północny ' +
+      '— zjazd bossów półświatka.',
     dealId: 'percent20',
     chameleon: 'Wtapiasz się nie tylko w kultury okolicy, ale i w Korporacje oraz agencje rządowe.',
   },
@@ -2725,12 +2715,12 @@ export const CPRED_OPERATOR_TIERS: readonly CpredOperatorTier[] = [
     min: 10,
     max: 10,
     page: 161,
-    contacts: 'Ważny światowy przywódca, szef dużej Korporacji, światowej sławy celebryta',
+    contacts: 'Przywódcy światowi, prezesi wielkich Korporacji, gwiazdy znane wszędzie',
     reach: 'superLuxury',
-    reachText: 'Zawsze znajdziesz kogoś z przedmiotami Superluksusowymi lub niższymi.',
+    reachText: 'Rzeczy Superluksusowe i tańsze zdobędziesz zawsze.',
     dealId: 'doublePay',
     chameleon:
-      'Wtapiasz się w prawie każdą grupę — także w tajne stowarzyszenia, sekty i grupy „tylko dla członków".',
+      'Wtopisz się niemal wszędzie — także w tajne stowarzyszenia, sekty i kluby „tylko dla członków”.',
   },
 ];
 
@@ -2776,7 +2766,7 @@ export function cpredOperatorReach(rank: number): CostCategory | null {
 
 /**
  * Targ dobity i czekający na wykorzystanie — jedna sztuka na karcie, bo
- * „w czasie jednej transakcji można dobić tylko jednego targu" (s. 159).
+ * jedna transakcja znosi tylko jeden targ (s. 159).
  *
  * Zapisuje go wyłącznie serwer po udanym Targowaniu się (`character:haggle`),
  * a zdejmuje albo zakup, albo ręka Fixera. Ten sam układ, co przy `eddies`
@@ -2861,9 +2851,8 @@ export function cpredHaggleProblem(
 export const CPRED_MOTO_ABILITY = 'Moto';
 
 /**
- * „Nomada dodaje poziom Moto do każdego wykonywanego Testu Prowadzenia pojazdów
- * lądowych, Żeglowania, Pilotowania Statków Powietrznych, Naprawy pojazdów
- * lądowych, Naprawy statków powietrznych i Naprawy pojazdów wodnych" (s. 161).
+ * Ranga Moto dochodzi do Testów prowadzenia wszystkiego, co jeździ, pływa
+ * i lata, oraz do Testów naprawy tych samych trzech rodzajów maszyn (s. 161).
  *
  * Sześć Umiejętności i ani jednej więcej — trzy o prowadzeniu, trzy o naprawie.
  * Bliźniak `CPRED_REPAIR_SKILL_IDS` z 30b i liczony tak samo: **wprost z karty**
@@ -2895,7 +2884,7 @@ export const CPRED_MOTO_FLEET: readonly CpredFleetTier[] = [
     min: 1,
     max: 4,
     page: 162,
-    vehicles: 'Samochód kompaktowy, żyrokopter, skuter wodny, standardowy motocykl',
+    vehicles: 'Motocykl standardowy, samochód kompaktowy, skuter wodny, żyrokopter',
   },
   {
     id: 'fleet-5-6',
@@ -2913,10 +2902,9 @@ export function cpredFleetTierAt(rank: number): CpredFleetTier | null {
 }
 
 /**
- * „Zawsze, gdy Nomada podnosi poziom Zdolności Specjalnej Moto, może zrobić
- * jedną z dwóch rzeczy: albo dodać do Taboru Rodziny standardowy pojazd […],
- * albo zainstalować w jednym pojeździe Taboru […] ulepszenie" (s. 161) — więc
- * wiersz jest jednego z dwóch rodzajów, a wierszy jest tyle, ile awansów.
+ * Każdy awans Moto daje do wyboru: nowy pojazd w Taborze Rodziny albo
+ * ulepszenie jednego z tych, które już w nim są (s. 161) — więc wiersz jest
+ * jednego z dwóch rodzajów, a wierszy jest tyle, ile awansów.
  */
 export const CPRED_FLEET_KINDS = ['vehicle', 'upgrade'] as const;
 export type CpredFleetKind = (typeof CPRED_FLEET_KINDS)[number];
@@ -2930,7 +2918,7 @@ export interface CpredFleetRow {
   id: string;
   kind: CpredFleetKind;
   name: string;
-  /** Kategoria wpisu — „równa wartości Moto lub niższa" (1…10). */
+  /** Kategoria wpisu — nie wyższa niż ranga Moto (1…10). */
   level: number;
   notes: string;
   /**
@@ -3012,11 +3000,11 @@ export function cpredFleetProblem(
   return null;
 }
 
-/** „Oczekuje się też, że Nomada zapłaci 500 ed za tę usługę" (s. 162). */
+/** Naprawa u Rodziny kosztuje Nomadę 500 ed (s. 162). */
 export const CPRED_MOTO_REPAIR_FEE = 500;
 
 /**
- * Na poziomie 10: „ulepszać je, płacąc 1000 ed za każde ulepszenie" (s. 162).
+ * Na poziomie 10 każde ulepszenie Taboru kosztuje 1000 ed (s. 162).
  * Cennik domowy (etap 47a): ulepszenie to sprzęt, więc ×10; naprawa wyżej to
  * usługa i zostaje jak w podręczniku.
  */
@@ -3030,13 +3018,13 @@ export const CPRED_MOTO_ELDER_LEVEL = 10;
 export const CPRED_CREDIBILITY_ABILITY = 'Wiarygodność';
 
 export interface CpredCredibilityTier extends CpredAbilityTier {
-  /** „Dostęp/Źródło" — z kim Media umie się skontaktować. */
+  /** Dostęp — z kim Media umie się skontaktować. */
   access: string;
-  /** „Zasięgi" — do ilu odbiorców dociera materiał. */
+  /** Zasięg — do ilu odbiorców dociera materiał. */
   audience: string;
-  /** „Rzetelność: Szansa N na 10, że odbiorcy uwierzą w twoje odkrycia". */
+  /** Rzetelność — szansa N na 10, że publika da wiarę materiałowi. */
   reliability: number;
-  /** „Efekt" — skala zmian, jakie publikacja powoduje. */
+  /** Efekt — skala zmian, jakie publikacja powoduje. */
   effect: string;
 }
 
@@ -3046,11 +3034,10 @@ export const CPRED_CREDIBILITY_TIERS: readonly CpredCredibilityTier[] = [
     min: 1,
     max: 2,
     page: 152,
-    access: 'Miejscowy przywódca, szef gangu, przedstawiciele miejscowych władz',
+    access: 'Przywódcy z sąsiedztwa, szefowie gangów, lokalni urzędnicy',
     audience: 'Tylko najbliższa okolica.',
     reliability: 2,
-    effect:
-      'Zmiany niewielkie: mało znaczący złoczyńcy przestraszyli się i może nieco się zmienią.',
+    effect: 'Drobne zmiany: płotki dostają nauczkę i może trochę się pohamują.',
   },
   {
     id: 'credibility-3-4',
@@ -3058,51 +3045,50 @@ export const CPRED_CREDIBILITY_TIERS: readonly CpredCredibilityTier[] = [
     max: 4,
     page: 152,
     access:
-      'Szef gangu z całego miasta, pomniejszy polityk, manager średniego szczebla, ktoś znany w sąsiedztwie',
-    audience: 'Jesteś dobrze znanym autorem lokalnego Kanału Aktualności albo Banku Danych.',
+      'Szefowie gangów z całego Miasta, drobni politycy, kierownicy średniego szczebla, znane twarze z dzielnicy',
+    audience: 'Masz rozpoznawalne nazwisko w lokalnym Kanale Aktualności albo Banku Danych.',
     reliability: 3,
-    effect: 'Bezpośrednie zmiany: miejscowe płotki półświatka trafiają za kraty lub tracą władzę.',
+    effect: 'Widoczne skutki: drobni gracze półświatka idą siedzieć albo tracą wpływy.',
   },
   {
     id: 'credibility-5-6',
     min: 5,
     max: 6,
     page: 152,
-    access: 'Ważny w Mieście gracz, miejski polityk, lokalny celebryta',
-    audience: 'Materiały docierają do wszystkich mieszkańców Miasta — Kanały Aktualności i TV.',
+    access: 'Grube ryby Miasta: radni, lokalne gwiazdy',
+    audience: 'Czyta i ogląda cię całe Miasto — Kanały Aktualności i TV.',
     reliability: 4,
-    effect: 'Zmiany odmieniają Miasto: wysoko postawieni idą siedzieć, uchwala się nowe prawo.',
+    effect: 'Miasto się zmienia: grube ryby trafiają za kraty, rada uchwala nowe przepisy.',
   },
   {
     id: 'credibility-7-8',
     min: 7,
     max: 8,
     page: 152,
-    access: 'Dyrektor miejscowej Korporacji, burmistrz lub zarządca Miasta, słynny celebryta',
-    audience: 'Materiały docierają do mieszkańców całego stanu. Jesteś pomniejszym celebrytą.',
+    access: 'Dyrektorzy miejscowych Korporacji, władze Miasta, znane gwiazdy',
+    audience: 'Twoje materiały zna cały stan, a Ty jesteś już trochę gwiazdą.',
     reliability: 5,
-    effect: 'Zmiany w kilku miastach; średnie Korporacje i organizacje rządowe tracą władzę.',
+    effect: 'Skutki w kilku miastach; średnie Korporacje i urzędy tracą wpływy.',
   },
   {
     id: 'credibility-9',
     min: 9,
     max: 9,
     page: 152,
-    access: 'Regionalny szef Korporacji, polityk stanowy, słynny celebryta',
-    audience: 'Kojarzy cię wielu mieszkańców kraju — z ogólnokrajowego kanału informacyjnego.',
+    access: 'Regionalne kierownictwo Korporacji, politycy stanowi, sławy',
+    audience: 'Rozpoznaje cię spora część kraju — z ogólnokrajowego kanału informacyjnego.',
     reliability: 6,
-    effect: 'Zmiany na obszarze całego kraju: padają duże Korporacje albo władze państwa.',
+    effect: 'Skutki w całym kraju: upadają wielkie Korporacje albo rząd.',
   },
   {
     id: 'credibility-10',
     min: 10,
     max: 10,
     page: 153,
-    access: 'Ważny światowy przywódca, szef dużej Korporacji, światowej sławy celebryta',
+    access: 'Przywódcy światowi, prezesi wielkich Korporacji, gwiazdy znane wszędzie',
     audience: 'Zna cię cały świat; ważne osoby przychodzą, gdy coś ma wyciec dyskretnie.',
     reliability: 7,
-    effect:
-      'Zmiany odmieniają świat: padają rządy i Megakorporacje, powstają regulacje międzynarodowe.',
+    effect: 'Świat się zmienia: upadają rządy i Megakorporacje, rodzą się prawa międzynarodowe.',
   },
 ];
 
@@ -3110,13 +3096,13 @@ export function cpredCredibilityTierAt(rank: number): CpredCredibilityTier | nul
   return cpredAbilityTierAt(CPRED_CREDIBILITY_TIERS, rank);
 }
 
-/** Test Rzetelności to jedna kość i nic więcej — „rzuć 1k10" (s. 151). */
+/** Test Rzetelności to jedna k10 i nic więcej (s. 151). */
 export const CPRED_RELIABILITY_DIE = 10;
 
 /**
- * Dowody w materiale. Podręcznik drukuje dwie premie i zdanie „Te premie
- * kumulują się": +1 za choćby jeden rzetelny i łatwy do zrozumienia dowód, +2
- * za więcej niż cztery niepodważalne. Ponieważ materiał z pięcioma
+ * Dowody w materiale. Podręcznik drukuje dwie premie, które się sumują: +1 za
+ * co najmniej jeden solidny, czytelny dowód i +2 za więcej niż cztery
+ * nie do podważenia. Ponieważ materiał z pięcioma
  * niepodważalnymi dowodami ma tym samym ten jeden rzetelny, trzeci stopień
  * niesie sumę obu — i dlatego to jedna lista, a nie dwa niezależne pola.
  */
@@ -3135,7 +3121,7 @@ export const CPRED_PROOF_LABELS: Record<CpredProofLevel, string> = {
   irrefutable: 'Ponad 4 niepodważalne dowody (+1 i +2)',
 };
 
-/** Szansa „N na 10", że odbiorcy uwierzą — z rangi i z dowodów w materiale. */
+/** Szansa „N na 10”, że publika da wiarę — z rangi i z dowodów w materiale. */
 export function cpredReliabilityChance(rank: number, proof: CpredProofLevel): number {
   const tier = cpredCredibilityTierAt(rank);
   if (!tier) return 0;
@@ -3148,8 +3134,8 @@ export function cpredAudienceBelieves(roll: number, chance: number): boolean {
 }
 
 /**
- * Pogłoski (s. 151). „Przynajmniej dwa razy na tydzień MG wykonuje potajemny
- * Test twojej Wiarygodności + 1k10" — kolumna „Zasłyszane" to progi tego rzutu,
+ * Pogłoski (s. 151). MG co najmniej dwa razy w tygodniu rzuca w ukryciu
+ * Wiarygodność + 1k10 — kolumna „Zasłyszane" to progi tego rzutu,
  * kolumna „Aktywne" to PT zwykłego Testu Umiejętności, gdy Media szuka sam
  * (Przeszukiwanie baz danych, Konwersacja, Przesłuchiwanie).
  */
@@ -3174,7 +3160,7 @@ export const CPRED_RUMOUR_TIERS: readonly CpredRumourTier[] = [
   {
     id: 'typical',
     name: 'Typowa pogłoska',
-    description: 'Na tyle wartościowa, że pozwala zrobić kolejny krok w śledztwie.',
+    description: 'Wystarczy, żeby śledztwo ruszyło o krok dalej.',
     passive: 9,
     active: 15,
   },
@@ -3194,15 +3180,14 @@ export const CPRED_RUMOUR_TIERS: readonly CpredRumourTier[] = [
   },
 ];
 
-/** Ile razy w tygodniu MG rzuca ten Test — „przynajmniej dwa razy". */
+/** Ile razy w tygodniu MG rzuca ten Test — co najmniej dwa. */
 export const CPRED_RUMOUR_ROLLS_PER_WEEK = 2;
 
 /**
- * Pogłoska, którą przynosi ten wynik — „ta z najwyższym przerzuconym PT".
+ * Pogłoska, którą przynosi ten wynik — najwyższy pobity próg.
  *
- * Remis nie zdaje — podręcznik pisze tu „wyższy od" i tak samo brzmi ogólna
- * zasada Testu („wynik będzie większy od PT", s. 130; „wyższy od PT, udało ci
- * się", s. 131). Do 30.08 stało tu `>=` na podstawie decyzji MG z 28.08, która
+ * Remis nie zdaje — tabela żąda wyniku ponad PT i tak samo działa ogólna
+ * zasada Testu (s. 130–131). Do 30.08 stało tu `>=` na podstawie decyzji MG z 28.08, która
  * cytowała nieistniejące w polskim wydaniu „równy lub wyższy"; poprawione.
  */
 export function cpredRumourHeard(total: number): CpredRumourTier | null {

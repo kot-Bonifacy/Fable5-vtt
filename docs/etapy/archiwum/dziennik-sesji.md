@@ -1,5 +1,44 @@
 # Dziennik sesji — archiwum
 
+### Sesja 16.11 (trzecia) — etap 71f: czas i zasoby narracyjne
+
+**Zrobione (czeka na wdrożenie, bez migracji — cztery nowe pola w JSON-ie karty):**
+
+- **G27 (ROC-08, ROC-09) — fani Rockera jako stan**: pole `fans` (`rolefans.ts`). Udany Test
+  „nowi fani” dopisuje grupę (nazwa z pola „Kogo zdobywasz” albo domyślna), prośba wymaga grupy
+  z karty (`charismaFanGroupId`, bez niej `NO_FAN_GROUP`), nieudana prośba stawia
+  `blockedUntilMinute` na 7 dób zegara świata (`FANS_REFUSED`, wiersz „Odmówili — do … : o co”).
+  MG: „Dodaj fanów”, „Odblokuj”, ✕ (`character:fans`); właściciel zmienia tylko nazwę.
+  **P2 (ROC-04)** — `FANS_IN_COMBAT` dla gracza, guziki „Rzuć” gasną w walce.
+- **G28 (MDA-04)** — `rumourWeek` liczy rzuty Pogłosek w tygodniu kalendarza (`gameWeekIndex`,
+  od poniedziałku); guzik MG „Pogłoski 1/2”, karta rzutu „rzut 1 z 2 w tym tygodniu”,
+  przemiatanie zegara pisze MG wiersz po tygodniu bez dwóch (`remindRumourWeek` w `expireOne`).
+  **G39** — karta pisze „14 > 13”. **G29 (MDA-05)** — „Szukaj pogłosek”: MG wystawia wezwanie
+  z PT z kolumny „Aktywne”, gracz prośbę o Test. **G30 (MDA-10)** — `publications`: temat
+  obowiązkowy (`NO_TOPIC`), powtórka tylko z „mam nowe informacje” (`ALREADY_PUBLISHED`),
+  rejestr w panelu, wpis usuwa MG (`character:publication`).
+- **G31 (STR-13)** — `CpredBackupTier.secondWeapon` (policja stanowa, szeryf, C-SWAT, federalni)
+  jako drugi wiersz broni karty figury (`createStatistToken.extraWeapons`). **G32 (STR-14)** —
+  `backupCalls` (minuty wezwań z odzewem), panel Wsparcia pokazuje MG „dziś N · w tym tygodniu M”.
+- Wszystkie zapisy poza rzutem w nowym `realtime/role-records.ts`; `character:update` odmawia
+  łaty z czterema polami także MG. Rozstrzygnięcia — `decyzje-i-uproszczenia.md` („Czas i zasoby
+  narracyjne po weryfikacji Ról”, dopiski przy dwóch wpisach z 30d); macierz: ROC-04, ROC-09,
+  MDA-04, MDA-05 → ✅; ROC-08, MDA-10, STR-13, STR-14 → 🟡; umowy na górze `postac` i `czas`.
+
+Testy: `shared` 3185 (nowy `rolenarrative.test.ts` 16, `rolerolls.test.ts` pod grupy fanów
+i temat), serwer 1853/1853 (nowy `roles71f.test.ts` 12, `roles30d` i `campaign-isolation` pod
+nowe zdarzenia), klient 515; `tsc` czterech pakietów, lint i Prettier zmienionych plików czyste;
+E2E `t71-rocker` 6/6 (przepisany pod fanów), `t71-media` 6/6 (+3), `t71-stroz` 6/6 (+1),
+`t8c-zdolnosci` — testy Charyzmy i Wiarygodności dostosowane i zielone, dalej pada na zastanym
+„Dołóż wpis” Moto (zaległość z 15.11, 71h). G31 bez asercji E2E (ranga 4 w `role-start` nie
+sięga kategorii z drugą bronią) — dowodem test serwera z fiksturą Kompendium. **Oglądano
+w Firefoksie** (gracz: lista fanów z blokadą, tryb „nowi fani”, panel Media z tematem, powtórką
+i rejestrem) i **w Chromium** (MG: „Odblokuj”, ✕ i „Dodaj fanów”, „Pogłoski 1/2”, ✕ przy
+publikacjach, licznik wezwań, wiersz przypomnienia na czacie); po oględzinach guziki tekstowe MG
+dostały krój „Rzuć” zamiast ikonowego. Pułapka przy okazji (`testy`): zmiana karty zapisana przez
+rzut dociera do drugiego okna dopiero po animacji kości. Tymczasowa specyfikacja zrzutów
+usunięta. `specs/99-zapomnij/` to dalej cudze tymczasowe oględziny z 14.11 — poza commitem.
+
 ### Sesja 16.11 (druga) — etap 71e: handel i pieniądze
 
 **Zrobione (czeka na wdrożenie, bez migracji — nowe pola w JSON-ie karty):**

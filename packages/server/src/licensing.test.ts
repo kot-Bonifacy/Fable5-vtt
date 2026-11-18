@@ -129,6 +129,71 @@ describe('licence guard', () => {
     expect(parsed.source ?? '').toMatch(/przykładowe|wymyślone/i);
   });
 
+  describe('no rulebook sentences in committed code (stage 71g2, G37)', () => {
+    // Only runs where the GM's private copy of the rulebook sits on disk —
+    // the public checkout has nothing to compare against, and that is fine:
+    // the guard exists for the machine the text is edited on.
+    const manualDir = join(REPO_ROOT, 'data', 'private', 'rulebook', 'manual', 'CPRED-podrecznik');
+    const faq = join(REPO_ROOT, 'data', 'private', 'rulebook', 'text', 'CPRED-FAQ_1.txt');
+    /** Files whose prose has been paraphrased; the follow-up adds the rest. */
+    const guarded = ['packages/shared/src/systems/cpred/roleability.ts'];
+    /** Shortest shared run of words that counts as a quotation. */
+    const RUN = 6;
+    /**
+     * Shared runs that are lists of names — Skills, implants, gear — and so
+     * the vocabulary of the game rather than its text. Normalised: lower case,
+     * punctuation dropped, single spaces.
+     */
+    const NAME_LISTS = new Set([
+      'bardzo ciężki pistolet karabin szturmowy granatnik',
+      'aktorstwo atrakcyjność dedukcja fałszerstwo kryminologia kryptografia księgowość ' +
+        'odporność na tortury narkotyki percepcja przesłuchiwanie ratownictwo medyczne ' +
+        'skradanie się tropienie ukrycie znalezienie przedmiotu wykształcenie',
+      'ulepszone przeciwciała pancerz podskórny ob 11 zestaw cyberaudio agent wewnętrzny ' +
+        'odbiornik lokalizatora',
+      'zwykła amunicja do b c pistoletu',
+      'radar sonar zestaw cyberaudio agent wewnętrzny odbiornik lokalizatora wykrywacz radaru',
+      'sprzęg neuralny gniazdo czipów edytor bólu gniazda interfejsu cyberoczy z wirtualem',
+      'dłoń z narzędziami zestaw cyberaudio agent wewnętrzny wykrywacz podsłuchu ' +
+        'rejestrator dźwięku',
+    ]);
+
+    const words = (text: string): string[] =>
+      text
+        .replace(/-\s*\n\s*/g, '')
+        .toLowerCase()
+        .match(/[0-9a-ząćęłńóśźż]+/g) ?? [];
+
+    it.skipIf(!existsSync(manualDir))('paraphrases every rule it states', () => {
+      const book = readdirSync(manualDir)
+        .filter((name) => name.endsWith('.md'))
+        .map((name) => readFileSync(join(manualDir, name), 'utf8'));
+      if (existsSync(faq)) book.push(readFileSync(faq, 'utf8'));
+      const grams = new Set<string>();
+      for (const page of book) {
+        const list = words(page);
+        for (let i = 0; i + RUN <= list.length; i += 1) grams.add(list.slice(i, i + RUN).join(' '));
+      }
+      const quoted: string[] = [];
+      for (const path of guarded) {
+        const list = words(readFileSync(join(REPO_ROOT, path), 'utf8'));
+        const hit = list.map(() => false);
+        for (let i = 0; i + RUN <= list.length; i += 1) {
+          if (grams.has(list.slice(i, i + RUN).join(' '))) hit.fill(true, i, i + RUN);
+        }
+        for (let i = 0; i < list.length; i += 1) {
+          if (!hit[i]) continue;
+          let end = i;
+          while (end < list.length && hit[end]) end += 1;
+          const run = list.slice(i, end).join(' ');
+          if (!NAME_LISTS.has(run)) quoted.push(`${path}: ${run}`);
+          i = end;
+        }
+      }
+      expect(quoted).toEqual([]);
+    });
+  });
+
   it('never commits the importer output alongside the scripts', () => {
     const tracked = wouldBeCommitted('tools/import');
     expect(tracked.length).toBeGreaterThan(0);
