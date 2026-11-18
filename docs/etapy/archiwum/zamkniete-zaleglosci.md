@@ -9,6 +9,18 @@ go czytać.
 albo gdy chcesz sprawdzić, czy pozycja, która wygląda na nową, nie jest wracającą starą.
 Treść wpisów jest niezmieniona — łącznie z datami i odsyłaczami do notatek sesji.
 
+## Zamknięte 2026-11-18, etap 71h (zamknięcie weryfikacji Ról)
+
+**15.11.2026 — `t8c-zdolnosci` klika „Dołóż wpis” w panelu Moto, a przycisk od 65a nazywa się
+„Dołóż pojazd” / „Dołóż ulepszenie”.** Wyszło przy pisaniu `52-role/t71-nomada` (71b): w kliencie
+nie ma już „Dołóż wpis”, więc test Moto w T8c nie przejdzie. Nie poprawiane w 71b — plan etapu 71
+przepina T8c na test wieloklasowości w 71h; wtedy też tę etykietę.
+
+**Naprawa (71h):** `t8c-zdolnosci` przepięty na test wieloklasowości (siedem paneli z rangami na
+jednej karcie, próg Moto z rangi dawnej Roli, układ siatki #76 / #77): Moto klika „Dołóż pojazd”
+i „Dołóż ulepszenie”; duplikaty pojedynczych Zdolności wypadły (są w `52-role/t71-*`), a #74
+i #75 przeszły do `t71-korpo`.
+
 ## Zamknięte 2026-11-14, druga sesja („wykonaj kilka zaległości”, bez migracji)
 
 - **14.11 pkt 1 — urządzenie przy krawędzi sceny ląduje pod oknem SIEĆ.** Diagnoza: kadr

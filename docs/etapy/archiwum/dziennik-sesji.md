@@ -1,5 +1,46 @@
 # Dziennik sesji — archiwum
 
+### Sesja 17.11 — etap 71g1: kreator, PD i wieloklasowość
+
+**Zrobione (czeka na wdrożenie, bez migracji — nowe pola w JSON-ie karty i szkicu):**
+
+- **G33 (WSP-08) — pakiet Roli Krawędziarza z kreatora**: sekcja `edgerunnerKits`
+  w prywatnym `creation.json` (s. 98, 103, 117 przepisane ręką; parser przenosi ją bez zmian),
+  wybory „lub” w kroku „Wyposażenie” (`kitPicks` w szkicu, brak w `creationIssues`, zdejmuje je
+  zmiana Roli i metody). `creationRoleKit` / `creationKitSheetRows` obsługują teraz sztuki,
+  granaty (wiersz „Granat” + zapas) i oba rodzaje pakietu; strój idzie do notatek karty, chrom
+  zostaje MG, amunicja do broni palnej bez dna. Próbka publiczna: wymyślony pakiet Nomady.
+  **Cztery komórki zrzutu ❓ do sprawdzenia przez MG w druku** (`decyzje-i-uproszczenia.md`).
+- **G34** — listy Rockera (Broń biała) i Medyka (Broń długa) wg oryginału:
+  `ORIGINAL_EDITION_SWAPS` w `parse-creation.py` (parser puszczony, różnica tylko w dwóch
+  Umiejętnościach), pakiety Ulicznika obu Ról też. **P4** — Ulicznik Fixera: pistolet i lekka
+  broń biała.
+- **D3 + G35 (WSP-18)** — powrót do Roli z karty kosztuje 60 PD i zachowuje rangę; „Zrób
+  główną” przy Roli poprzedniej w Awansie: gracz — zakup, MG — `gmSwap` bez bramki i PD
+  (`NOT_HELD` dla Roli spoza karty). Zaległość (9) zamknięta.
+- **D2 (MED-08)** — `pharmaPicks` na karcie, `character:pharma-pick` (właściciel wybiera,
+  MG zdejmuje ✕), `character:update` odmawia pola każdemu; stara karta czyta się z kolejności
+  tabeli (`parseCharacterData`), nowa i punkty wpisane ręką MG czekają na wybór.
+- **G36 (FIX-12)** — Znajomości kupione na 3 / 5 / 7 piszą `gmaction` kupującemu i MG
+  (`cpredOperatorLanguageReminder`).
+- Rozstrzygnięcia — `decyzje-i-uproszczenia.md` („Kreator, PD i wieloklasowość…”, dopiski przy
+  Farmaceutykach i UC wszczepów); macierz: WSP-18, MED-08, WSP-23, ROC-K1, MED-K1 → ✅, WSP-08,
+  FIX-12 → 🟡; umowy na górze `postac` (trzy wpisy).
+
+Testy: `shared` 3192 (`creation.test.ts` +4 „etap 71g1”, `role-matrix.test.ts` +2,
+`advancement.test.ts` D3 i `gmSwap`), serwer 1857/1857 (`creation`, `advancement` +2,
+`recovery` +1, `campaign-isolation` z `character:pharma-pick`), klient 515; `tsc` czterech
+pakietów, lint i Prettier zmienionych plików czyste. E2E: `t71-medyk` (D2 i MED-K1),
+`t71-rocker` (ROC-K1), `t71-fixer` (FIX-12, WSP-23), `t71-solo` (WSP-18) — zielone;
+**`t3a` 17/17** (nowy punkt `po-T3a`): Kowal (Solo-Krawędziarz) wybiera w kreatorze pakiet, 3.8 sprawdza go na karcie,
+a MG „przebiera” Kowala do broni sprzed 71g1 — 38 specyfikacji gra dalej tym Kowalem. **Oglądano
+w Firefoksie** (gracz: kreator Krawędziarza-Medyka z pakietem i wyborami, panel Medycyny
+z „Wybierz” i licznikiem czekających punktów) i **w Chromium** (MG: „Zrób główną” w Awansie).
+Pułapki przy okazji (`ogledziny`): zakładka „Ścieżka Życia” nie leży w regionie karty, a okno
+„Wymiana” i powiadomienie o handlu zasłaniają ją klikowi myszą; okno gracza w Firefoksie po
+długiej walce w `t71-solo` nie dostało końca starcia — pomógł `reload`. Tymczasowa
+specyfikacja zrzutów usunięta; `specs/99-zapomnij/` to dalej cudze oględziny z 14.11.
+
 ### Sesja 16.11 (trzecia) — etap 71f: czas i zasoby narracyjne
 
 **Zrobione (czeka na wdrożenie, bez migracji — cztery nowe pola w JSON-ie karty):**

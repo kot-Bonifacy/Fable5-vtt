@@ -17,14 +17,16 @@ import { closeSheet, openSheet } from '../../fixtures/walka.ts';
 import { pendingDice, scriptDice } from '../../instance/instance.ts';
 
 /**
- * T8c, Zdolności Ról spoza scenariusza (`testy.md` 6.4): scenariusz gra Solo
- * (Kowal) i Netrunnerkę z Medycyną (Iskra), więc siedem pozostałych Zdolności
- * nikt dotąd nie kliknął w przeglądarce. Nowy gracz Kuba dostaje od MG jedną
+ * T8c, wieloklasowość (`testy.md` 6.4): nowy gracz Kuba dostaje od MG jedną
  * kartę wieloklasową (Rocker 2 — Rola bieżąca — oraz Media, Nomada, Fixer,
- * Stróż Prawa, Korpo i Technik jako dawne Role): każda dawna Rola zachowuje
- * swoją Zdolność (wieloklasowość, etap 29b), więc wszystkie panele stoją na
- * jednej karcie. Przygotowanie karty idzie gniazdem MG — to nie przedmiot testu.
- * Do tego Reputacja z Konfrontacją i styl życia z rozliczeniem miesiąca.
+ * Stróż Prawa, Korpo i Technik jako dawne Role). Każda dawna Rola zachowuje
+ * swoją Zdolność z rangą, przy której ją zostawiono (etap 29b), więc wszystkie
+ * panele stoją na jednej karcie — tego pilnuje ten plik: panele, próg Moto
+ * z rangi dawnej Roli i układ siatki paneli (#76, #77). Pojedyncze Zdolności
+ * sprawdzają od etapu 71h specyfikacje `52-role/t71-*` (jedna Rola na kartę,
+ * start z `role-start`); stąd wypadły ich duplikaty. Przygotowanie karty idzie
+ * gniazdem MG — to nie przedmiot testu. Do tego Reputacja z Konfrontacją i styl
+ * życia z rozliczeniem miesiąca.
  */
 
 const CARD = 'Wielorak';
@@ -39,9 +41,6 @@ const FORMER = [
 
 interface Sheet {
   fleet: unknown[];
-  fabrication: Record<string, number>;
-  team: { characterId: string; loyalty: number }[];
-  haggle: unknown;
   reputationSources: { level: number }[];
   lifestyle: { level: string; housing: string } | null;
   eddies: number;
@@ -61,7 +60,8 @@ const messagesAfter = (id: number) =>
 const lastMessageId = () =>
   queryOne<{ id: number | null }>('SELECT max(id) AS id FROM ChatMessage')!.id ?? 0;
 
-test.describe.serial('T8c Zdolności: siedem Ról poza scenariuszem, Reputacja, styl życia', () => {
+test.describe
+  .serial('T8c Wieloklasowość: siedem Zdolności na jednej karcie, Reputacja, styl życia', () => {
   let mg: Actor;
   let kuba: Actor;
   let card: Locator;
@@ -117,61 +117,35 @@ test.describe.serial('T8c Zdolności: siedem Ról poza scenariuszem, Reputacja, 
     await expect(card.locator('.cp-role-strip')).toBeVisible();
   });
 
-  test('Efekt Charyzmy (Rocker 2): fani na rzut z kubka; prośby do dużej grupy nie ma jeszcze w zasięgu', async () => {
+  test('Rola bieżąca i sześć dawnych: siedem paneli Zdolności z rangami na jednej karcie', async () => {
     const strip = card.locator('.cp-role-strip');
-    await expect(strip).toContainText('Efekt Charyzmy 2');
-    // Od 71f prośba pada do grupy fanów z karty — świeża karta nie ma kogo prosić.
-    await strip.getByRole('button', { name: 'Poproś fanów o przysługę' }).click();
-    await expect(strip.getByTestId('fans-empty')).toBeVisible();
-    await strip.getByRole('button', { name: 'Zrób z nich fanów' }).click();
-    const since = lastMessageId();
-    scriptDice([6]);
-    await strip.getByRole('button', { name: 'Rzuć Efekt Charyzmy: Pojedynczy fan' }).click();
-    await shakeCup(kuba.page);
-    await expect
-      .poll(() => messagesAfter(since).filter((m) => m.authorId === userId('Kuba')).length, {
-        timeout: 20_000,
-      })
-      .toBeGreaterThan(0);
-    expect(pendingDice()).toBe('');
-    test.info().annotations.push({
-      type: 'karta Charyzmy',
-      description: JSON.stringify(messagesAfter(since)),
-    });
-  });
-
-  test('Wiarygodność (Media 4): „Publikuj” rzuca Rzetelność; Pogłoski tylko u MG', async () => {
-    const strip = card.locator('.cp-role-strip');
-    await expect(strip).toContainText('Wiarygodność 4');
+    for (const label of [
+      'Efekt Charyzmy 2',
+      'Wiarygodność 4',
+      'Moto 2',
+      'Znajomości 4',
+      'Wsparcie 4',
+      'Praca Zespołowa 4',
+      'Twórca 4',
+    ]) {
+      await expect(strip, label).toContainText(label);
+    }
+    // Pogłoski rzuca MG — także wtedy, gdy Media to dawna Rola gracza.
     await expect(strip.getByRole('button', { name: 'Pogłoski' })).toHaveCount(0);
-    await strip.getByLabel('Dowody w materiale').selectOption({ index: 1 });
-    // Od 71f publikacja ma temat (rejestr na karcie).
-    await strip.getByLabel('Temat materiału').fill('Przeciek z Biotechniki');
-    const since = lastMessageId();
-    scriptDice([2]);
-    await strip.getByRole('button', { name: 'Publikuj' }).click();
-    await shakeCup(kuba.page);
-    await expect
-      .poll(() => messagesAfter(since).filter((m) => m.authorId === userId('Kuba')).length, {
-        timeout: 20_000,
-      })
-      .toBeGreaterThan(0);
-    expect(pendingDice()).toBe('');
-    const gmCard = await openSheet(mg, CARD);
-    await expect(
-      gmCard.locator('.cp-role-strip').getByRole('button', { name: 'Pogłoski' }),
-    ).toBeVisible();
-    await closeSheet(mg.page);
   });
 
-  test('Moto (Nomada 2): dwa wpisy Taboru, trzeci zablokowany — także dla gniazda', async () => {
+  test('Moto (dawna Nomada 2): dwa wpisy Taboru z rangi dawnej Roli, trzeci zablokowany — także dla gniazda', async () => {
     const strip = card.locator('.cp-role-strip');
-    const add = strip.getByRole('button', { name: 'Dołóż wpis' });
-    await add.click();
+    // Od 65a wpis Taboru to pojazd albo ulepszenie w nim (etykiety z 71b).
+    const vehicle = strip.getByRole('button', { name: 'Dołóż pojazd' });
+    const upgrade = strip.getByRole('button', { name: 'Dołóż ulepszenie' });
+    await vehicle.click();
     await expect.poll(() => sheet().fleet.length).toBe(1);
-    await add.click();
+    await expect(upgrade).toBeEnabled({ timeout: 15_000 });
+    await upgrade.click();
     await expect.poll(() => sheet().fleet.length).toBe(2);
-    await expect(add).toBeDisabled();
+    await expect(vehicle).toBeDisabled();
+    await expect(upgrade).toBeDisabled();
     await expect(strip).toContainText('Tabor skompletowany');
     const fleet = sheet().fleet;
     const refused = await emitAck(await kuba.socket(), 'character:update', {
@@ -212,150 +186,6 @@ test.describe.serial('T8c Zdolności: siedem Ról poza scenariuszem, Reputacja, 
     });
     expect(rows.length).toBeGreaterThan(1);
     for (const gap of rows) expect(gap, 'pusty kawałek rzędu paneli').toBeLessThan(2);
-  });
-
-  test('Znajomości (Fixer 4): targ przeciw drugiej stronie; nieznanego targu serwer nie przyjmie', async () => {
-    const strip = card.locator('.cp-role-strip');
-    await expect(strip).toContainText('Znajomości 4');
-    const since = lastMessageId();
-    scriptDice([10, 1]);
-    await strip
-      .getByRole('button', { name: /^Targuj się: / })
-      .first()
-      .click();
-    await expect(kuba.page.locator('.notice', { hasText: /Targ dobity|nie ustąpiła/ })).toBeVisible(
-      {
-        timeout: 20_000,
-      },
-    );
-    test
-      .info()
-      .annotations.push(
-        { type: 'targ', description: JSON.stringify(sheet().haggle) },
-        { type: 'czat po targu', description: JSON.stringify(messagesAfter(since)) },
-        { type: 'kości w kolejce', description: pendingDice() },
-      );
-    const refused = await emitAck(await kuba.socket(), 'character:haggle', {
-      characterId: cardId,
-      dealId: 'nie-ma-takiego',
-      opponent: 0,
-    });
-    expect(refused).toMatchObject({ ok: false });
-  });
-
-  test('Wsparcie (Stróż Prawa 4): wezwanie odebrane, karta na czacie; poziom ponad rangę odmówiony', async () => {
-    const strip = card.locator('.cp-role-strip');
-    await expect(strip).toContainText('Wsparcie 4');
-    const since = lastMessageId();
-    scriptDice([2, 3]);
-    await strip
-      .getByRole('button', { name: /^Wezwij: / })
-      .first()
-      .click();
-    await expect(kuba.page.locator('.notice', { hasText: 'Odsiecz w drodze' })).toBeVisible({
-      timeout: 20_000,
-    });
-    expect(pendingDice()).toBe('');
-    expect(messagesAfter(since).map((m) => m.text)).toContain('Wezwanie Wsparcia');
-    const refused = await emitAck(await kuba.socket(), 'character:backup-call', {
-      characterId: cardId,
-      level: 9,
-    });
-    expect(refused).toEqual({ ok: false, error: 'BACKUP_LEVEL_TOO_HIGH' });
-  });
-
-  test('Praca Zespołowa (Korpo 4): HR zatrudnia pracownika z własną kartą, Test Lojalności; obcy gracz nie zatrudni', async ({
-    cast,
-  }) => {
-    test.setTimeout(3 * 60_000);
-    const strip = card.locator('.cp-role-strip');
-    await expect(strip).toContainText('Praca Zespołowa 4');
-    await strip.getByRole('button', { name: 'Poproś HR o pracownika' }).click();
-    await strip.getByLabel('Imię pracownika').fill('Jan Wiśniewski');
-    await strip.getByRole('button', { name: 'Zatrudnij' }).click();
-    await expect.poll(() => sheet().team.length, { timeout: 20_000 }).toBe(1);
-    const member = sheet().team[0]!;
-    expect(
-      queryOne<{ name: string }>('SELECT name FROM Character WHERE id = ?', member.characterId)
-        ?.name,
-    ).toBe('Jan Wiśniewski');
-    // Karta pracownika jest NPC-em MG („członków zespołu kontroluje MG”, s. 154) —
-    // imię niesie wpis zespołu (#74, test niżej).
-    await expect(strip.locator('.team-row')).toHaveCount(1);
-    // Test Lojalności rzuca MG (zdarzenie MG) — gracz nie ma guzików (#75, test
-    // niżej), a podrobione zdarzenie dostaje odmowę.
-    expect(
-      await emitAck(await kuba.socket(), 'character:team-loyalty', {
-        characterId: cardId,
-        memberId: member.characterId,
-        test: true,
-      }),
-    ).toEqual({ ok: false, error: 'FORBIDDEN' });
-    const since = lastMessageId();
-    const gmCard = await openSheet(mg, CARD);
-    await gmCard
-      .locator('.cp-role-strip')
-      .getByRole('button', { name: 'Test Lojalności: Jan Wiśniewski' })
-      .click();
-    await expect.poll(() => messagesAfter(since).length, { timeout: 20_000 }).toBeGreaterThan(0);
-    test.info().annotations.push({
-      type: 'Test Lojalności MG',
-      description: JSON.stringify(messagesAfter(since)),
-    });
-    await closeSheet(mg.page);
-    card = await openSheet(kuba, CARD);
-
-    // Odmowa: Marek zatrudnia na cudzej karcie.
-    const marek = await cast.gracz(
-      'Marek',
-      PLAYER_ENGINE,
-      await createInvitation(mg, campaignId(), 'Marek'),
-    );
-    const refused = await emitAck(await marek.socket(), 'character:team-hire', {
-      characterId: cardId,
-      professionId: 'bodyguard',
-      name: 'Podstawiony',
-    });
-    expect(refused).toMatchObject({ ok: false });
-    expect(sheet().team.length).toBe(1);
-    await marek.close();
-  });
-
-  test('#74 Kuba widzi imię pracownika, którego sam nazwał przy zatrudnieniu', async () => {
-    await expect(card.locator('.cp-role-strip .team-row')).toContainText('Jan Wiśniewski', {
-      timeout: 3_000,
-    });
-  });
-
-  test('#75 gracz nie dostaje przycisków Lojalności, które serwer zostawia MG', async () => {
-    await expect(
-      card.locator('.cp-role-strip').getByRole('button', { name: /^Test Lojalności: / }),
-    ).toHaveCount(0, { timeout: 3_000 });
-  });
-
-  test('Twórca (Technik 4): punkty w Specjalizacje do wyczerpania puli; więcej serwer nie przyjmie', async () => {
-    const strip = card.locator('.cp-role-strip');
-    const fabrication = strip.locator('[data-sheet-panel="fabrication"]');
-    await expect(fabrication).toContainText('Do rozdzielenia');
-    const plus = fabrication.getByRole('button', { name: /^Dołóż punkt: / }).first();
-    for (let guard = 0; guard < 12 && (await plus.isEnabled()); guard += 1) {
-      const before = JSON.stringify(sheet().fabrication);
-      await plus.click();
-      await expect.poll(() => JSON.stringify(sheet().fabrication)).not.toBe(before);
-    }
-    await expect(plus).toBeDisabled();
-    const spent = Object.values(sheet().fabrication).reduce((a, b) => a + b, 0);
-    expect(spent).toBeGreaterThan(0);
-    const [first] = Object.keys(sheet().fabrication);
-    const refused = await emitAck(await kuba.socket(), 'character:update', {
-      characterId: cardId,
-      patch: { data: { fabrication: { ...sheet().fabrication, [first!]: 99 } } },
-    });
-    expect(refused).toMatchObject({ ok: false });
-    test.info().annotations.push({
-      type: 'Twórca',
-      description: `${JSON.stringify(sheet().fabrication)} — ${await fabrication.locator('.awareness-head').textContent()}`,
-    });
   });
 
   test('Reputacja i Konfrontacja: MG przyznaje wyczyn, Kuba staje Zbirowi, MG odpowiada kubkiem, Zbir się wycofuje', async () => {

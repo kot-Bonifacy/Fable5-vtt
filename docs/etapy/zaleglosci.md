@@ -14,21 +14,37 @@ kodu bez testów: ~535 ciągów. Najwięcej słów: `shared/…/cpred/attacks.ts
 cytaty reguł w komentarzach, część w tekstach UI. Dolna część to listy nazw (zostają, jak
 w 71g2). Sposób pracy i miara — `decyzje-i-uproszczenia.md` („Parafraza zdań podręcznika…”);
 po przepisaniu pliku dopisz go do `guarded` w `server/src/licensing.test.ts`. Wycena: L, do
-podziału na kilka sesji; do decyzji MG, czy to osobny etap, czy część 71h. Te same cytaty co
+podziału na kilka sesji. **Decyzja MG z 18.11 (start 71h): osobny etap — 73** (wiersz
+w `archiwum/tabela-etapow.md`, plik etapu do napisania przy jego starcie). Te same cytaty co
 w `roleability.ts` stoją jeszcze w komentarzach `rolls.ts`, `initiative.ts`, `damage.ts`,
 `attacks.ts` (obu pakietów), `itemupgrade.ts` i kilku testów.
 
+**18.11.2026 — `48-poscig/t65-kreator` pada stale: „＋ Dodaj pojazd” w kroku „Auta” jest
+wyszarzony (test „dwa wozy z katalogu stają „Na drogę” obok siebie”, 120 s czekania na
+przycisk).** Wyszło w pełnej suicie `@szybkie` w 71h1 i w osobnym przebiegu; zmiany 71h1 kreatora
+pościgu nie dotykały. **Do etapu 72 (72f przebudowuje kreator — uwaga MG z 18.11)**, nie
+naprawiane osobno. Ten sam przebieg: T9a „konsola bez nowych błędów” raz złapał dwa błędy
+WebSocketu, w powtórce zielony (migotanie).
+
+**18.11.2026 — drugie rozegranie Ról (71h): błąd #88 i drobiazgi czytelności.** Pełna tabela
+— „Rozegrania 71h” w `role-macierz.md`. **#88 (B2, decyzja MG 18.11: naprawa w podetapie 71h2):** gracz-Medyk nie uruchomi
+Chirurgii ani Leczenia na Ranie Krytycznej postaci innego gracza — tylko MG
+(`testy-rejestr.md`). Drobiazgi (żaden nie zmienia liczb): druga karta obrażeń w Rundzie nie
+mówi, że Redukcja Solo już poszła; w walce Prowizorki nie ma na belce (karta → Ekwipunek);
+„Roboty drużyny” podsuwają do Ulepszania przedmiot fabularny bez ceny; partia farmaceutyków
+i targ przy ladzie rzucają bez kubka (bez Szczęścia), choć prace Technika idą kubkiem; „Komu:”
+przy dawce ma „sobie” i własną postać; „HR szuka…” ok. 10 s; kwaterunek Korpo nie przestawia
+Zakwaterowania (rozliczenie liczy czynsz kontenera); odliczanie Wsparcia „w drodze” gracz widzi
+tylko w powiadomieniu; karta prośby Rockera nie niesie „O co prosisz”. Spoza Ról: belka po
+przełączeniu konta w tym samym profilu przeglądarki zostaje na figurze poprzedniego gracza
+(`vtt.hudFocus`) — przy stole jeden gracz to jedna przeglądarka, więc najpewniej bez znaczenia.
+
 **15.11.2026 — drobiazgi UI z rozegrań Ról (71b), spoza listy bramki.** (1) Kubek pisze
 „Inicjatywa +0” zaraz po wejściu gracza do gry, zanim dojdzie karta — serwer rzuca dobrze
-(1k10+7). (2) Klik w wiersz listy „Ustabilizuj” potrafi przełączyć belkę gracza na cudzą figurę;
+(1k10+7). **Powtórzone 18.11 (71h, Odznaka).** (2) Klik w wiersz listy „Ustabilizuj” potrafi przełączyć belkę gracza na cudzą figurę;
 odmowa mówi wtedy „Ten uczestnik nie ma karty postaci”, choć ma (zła figura, nie brak karty).
-(3) Ustabilizowanie wolno rzucić na figurę „bez ran” — rzut na nic. Oglądane w Firefoksie
+(3) Ustabilizowanie wolno rzucić na figurę „bez ran” — rzut na nic. 18.11: lista pisze przy takiej figurze „BEZ RAN”, ale dalej ją podsuwa. Oglądane w Firefoksie
 (gracz) i Chromium (MG), instancja E2E z `role-start`.
-
-**15.11.2026 — `t8c-zdolnosci` klika „Dołóż wpis” w panelu Moto, a przycisk od 65a nazywa się
-„Dołóż pojazd” / „Dołóż ulepszenie”.** Wyszło przy pisaniu `52-role/t71-nomada` (71b): w kliencie
-nie ma już „Dołóż wpis”, więc test Moto w T8c nie przejdzie. Nie poprawiane w 71b — plan etapu 71
-przepina T8c na test wieloklasowości w 71h; wtedy też tę etykietę.
 
 **14.11.2026 — `walls.test.ts` zostawia zapis pamięci eksploracji po zamknięciu testu.** Pełna
 suita serwera raz skończyła się kodem 1 przy 1806/1806 zielonych: `persistMemory`

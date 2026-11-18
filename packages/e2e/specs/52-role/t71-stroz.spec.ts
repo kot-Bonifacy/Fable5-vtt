@@ -171,6 +171,44 @@ test.describe.serial('@szybkie T71 Stróż Prawa — Wsparcie', () => {
     await closeSheet(gosia.page);
   });
 
+  test('STR-13 G31 ranga 5: Policja stanowa przyjeżdża z drugą bronią na karcie figury', async () => {
+    // Ranga 4 z `role-start` nie sięga kategorii z drugą bronią — MG podnosi ją do 5
+    // po zamknięciu walki (wezwanie poza walką nie kosztuje Akcji).
+    expect((await emitAck(gm, 'combat:end', {})).ok).toBe(true);
+    dataOf(
+      await emitAck(gm, 'character:update', {
+        characterId: characterId(LAW.card),
+        patch: { data: { roleAbilityRank: 5 } },
+      }),
+      'ranga 5',
+    );
+    await expect(async () => {
+      const form = hud().locator('.hud-form');
+      if (!(await form.isVisible())) await radio().click();
+      await expect(form.getByRole('button', { name: /^Wezwij: Policja stanowa/ })).toBeVisible({
+        timeout: 1_000,
+      });
+    }).toPass({ timeout: 15_000 });
+    const since = lastMessageId();
+    scriptDice([3, 4]);
+    await hud()
+      .locator('.hud-form')
+      .getByRole('button', { name: /^Wezwij: Policja stanowa/ })
+      .click();
+    const call = await rollAfter(since, 'Wezwanie Wsparcia', 'roll');
+    expect(call.outcome?.success, JSON.stringify(call.outcome)).toBe(true);
+    expect(pendingDice()).toBe('');
+    const officer = 'Funkcjonariusz drogówki 1';
+    await expect.poll(() => figures().includes(officer), { timeout: 15_000 }).toBe(true);
+    const weapons = cardData<{ weapons: { name: string; compendiumId?: string }[] }>(
+      officer,
+    ).weapons;
+    expect(weapons.map((row) => row.name)).toEqual(
+      expect.arrayContaining(['Karabin szturmowy', 'Ciężki pistolet']),
+    );
+    expect(weapons.find((row) => row.name === 'Ciężki pistolet')?.compendiumId).toBeTruthy();
+  });
+
   test('porządek: brak błędów konsoli', async () => {
     for (const actor of [mg, gosia]) expect(actor.unexpectedErrors(), actor.name).toEqual([]);
   });

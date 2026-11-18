@@ -19,18 +19,21 @@ tekstu podręcznika w tym pliku nie ma i nie może być (repo jest publiczne).
 
 ## Podsumowanie audytu
 
-| Rola        | ✅  | 🟡  | 📜  | ❌  | ⚠️  | ❓  | najważniejsze ustalenie                                                                       |
-| ----------- | --- | --- | --- | --- | --- | --- | --------------------------------------------------------------------------------------------- |
-| Solo        | 16  | 3   | 0   | 0   | 0   | 0   | 71c0: Wykrycie słabości po mnożniku (#83), belka w rundzie 0 (#87), Akcja bez `tokenId` (#84) |
-| Technik     | 10  | 2   | 7   | 4   | 0   | 0   | 71c2: zwykła naprawa Testem z czasem dla zegara MG, montaż ulepszenia auta Technikiem          |
-| Medyk       | 14  | 3   | 2   | 2   | 1   | 0   | Farmaceutyki działają w całości — wpis decyzji o „prozie” jest nieaktualny                    |
-| Nomada      | 14  | 1   | 2   | 1   | 0   | 0   | 71c1: Tabor jako stan — auto w użyciu, naprawa u Rodziny, Głowa Rodziny, broń od Rodziny      |
-| Fixer       | 5   | 3   | 4   | 4   | 1   | 0   | targ nie działa przy sprzedaży; 71b: sumę drugiej strony targu wpisuje gracz                  |
-| Korpo       | 13  | 3   | 3   | 3   | 0   | 0   | kwaterunek liczy się od 48a (wpis decyzji nieaktualny); Lojalność po sesji ręcznie            |
-| Stróż Prawa | 12  | 4   | 3   | 1   | 0   | 0   | pojazdy Wsparcia prozą; 71c0: wezwanie z karty w walce płaci Akcję (#84)                      |
-| Rocker      | 7   | 0   | 3   | 3   | 1   | 0   | blokada tygodniowa i „ci fani” nie istnieją jako stan                                         |
-| Media       | 9   | 1   | 3   | 2   | 0   | 0   | limit Pogłosek na tydzień bez licznika; publikacja nie zostawia śladu                         |
-| wspólne     | 15  | 4   | 1   | 3   | 1   | 0   | Krawędziarz nie dostaje pakietu Roli; wydanie polskie rozjeżdża się z oryginałem              |
+| Rola        | ✅  | 🟡  | 📜  | ❌  | ⚠️  | ❓  | po weryfikacji (stan 71h, 18.11)                                                                 |
+| ----------- | --- | --- | --- | --- | --- | --- | ------------------------------------------------------------------------------------------------ |
+| Solo        | 16  | 3   | 0   | 0   | 0   | 0   | Akcja z serwera, Wykrycie po mnożniku, belka w rundzie 0, czytelne progi i kubek obrażeń          |
+| Technik     | 17  | 4   | 2   | 0   | 0   | 0   | Prowizorka, naprawa, montaż, Ulepszanie i Wytwarzanie to Testy przez kubek; czas — zegar MG      |
+| Medyk       | 17  | 3   | 1   | 0   | 1   | 0   | wybór środka Farmaceutyków, limity dobowe, kriopompa; MED-05 ⚠️ (#88, naprawa w 71h2)          |
+| Nomada      | 14  | 1   | 2   | 1   | 0   | 0   | Tabor jako stan auta (w użyciu, u Rodziny, Głowa Rodziny); NOM-03 czeka na etap 72                |
+| Fixer       | 8   | 6   | 2   | 1   | 0   | 0   | druga strona targu z karty handlarza albo od MG, targ przy sprzedaży, raty; Nocny Targ osobno     |
+| Korpo       | 16  | 4   | 2   | 0   | 0   | 0   | pracownik staje na mapie, Lojalność ścina zamknięcie sesji, następca za 200 ed                    |
+| Stróż Prawa | 12  | 5   | 3   | 0   | 0   | 0   | druga broń funkcjonariuszy, licznik wezwań u MG; STR-12 (pojazdy) po etapie 72                    |
+| Rocker      | 10  | 1   | 3   | 0   | 0   | 0   | grupy fanów na karcie z blokadą na 7 dób, bez nowych fanów w walce                               |
+| Media       | 11  | 1   | 3   | 0   | 0   | 0   | licznik Pogłosek w tygodniu, „Szukaj pogłosek”, rejestr publikacji                                |
+| wspólne     | 17  | 6   | 1   | 0   | 0   | 0   | pakiet Krawędziarza, listy wg oryginału, powrót do Roli za PD, parafraza w `roleability.ts`       |
+| **razem**   | 138 | 34  | 19  | 2   | 1   | 0   | 194 wiersze; ❌ tylko poza etapem 71 (NOM-03 → 72, FIX-10 → osobny etap), ⚠️ MED-05 → 71h2          |
+
+Stan wyjściowy z 71a (14.11): 101 ✅, 28 🟡, 31 📜, 21 ❌, 5 ⚠️, 8 ❓.
 
 Liczby liczą wiersze tabel niżej (bez sekcji „Rewizja wpisów decyzji”); stan po 71b (15.11):
 SOL-15 ❓ → ✅ (kod), SOL-02, TEC-06, STR-03, NOM-06, FIX-01 → ⚠️; po bramce wszystkie ❓ rozstrzygnięte
@@ -39,7 +42,8 @@ Po 71c0 (15.11): SOL-02, SOL-03, SOL-10, TEC-04, TEC-06, STR-03 ⚠️ → ✅ (
 Po 71c1 (15.11): NOM-06 ⚠️, NOM-08, NOM-09, NOM-11 ❌, NOM-14 📜 → ✅ (G6–G9, G38).
 Po 71c2 (15.11): TEC-19 ❌, TEC-18 📜, TEC-S1, NOM-10 🟡 → ✅, TEC-15 📜 → 🟡 (G10, G11, P5).
 Po 71g1 (17.11): WSP-18, MED-08 ❌, WSP-23, ROC-K1, MED-K1 ⚠️ → ✅; WSP-08, FIX-12 ❌ → 🟡 (G33–G36, D2, D3, P4).
-Po 71g2 (18.11): WSP-19 ❌ → 🟡 (G37; `roleability.ts` sparafrazowany, reszta kodu w zaległościach). Tabela wyżej liczy stan po 71c2.
+Po 71g2 (18.11): WSP-19 ❌ → 🟡 (G37; `roleability.ts` sparafrazowany, reszta kodu — osobny etap, decyzja MG 18.11).
+Po 71h1 (18.11): tabela wyżej przeliczona; asercje E2E dla TEC-16, STR-13, WSP-22; drugie rozegranie przestawiło MED-05 ✅ → ⚠️ (#88, naprawa w 71h2 — decyzja MG 18.11).
 
 **Źródła:** podręcznik główny (s. 43–106, 142–165, 189–192, 222–229, 411), FAQ wydania polskiego
 (tabela „co wchodzi do którego rzutu”, pytania o Zdolności, zakupy Fixera, Wytwarzanie) i DLC
@@ -176,7 +180,7 @@ katalogiem VTT).
 | MED-02 | 149      | Chirurgia: 2 punkty Umiejętności za punkt Specjalizacji, najwyżej 10                                                                | Zdolność | ✅   | `ra: cpredMedicineEffects`; `specialties.test.ts` „Chirurgia to dwa punkty Umiejętności…”; `t71-medyk`                                                                                                                                                                                            | A   | —                                                                                                                               |
 | MED-03 | 149      | Szósty punkt Chirurgii nic nie kupuje                                                                                               | Zdolność | 🟡   | `specialties.test.ts` „szósty punkt Chirurgii jest odrzucany”; `dec` — powód aktualny                                                                                                                                                                                                             | A   | —                                                                                                                               |
 | MED-04 | 149      | Chirurgia dostępna tylko przez Specjalizację Medyka                                                                                 | Zdolność | 🟡   | `srv: specialties.test.ts` „Ratownik bez Medycyny nie tknie rany wymagającej Chirurgii”; `dec` „Chirurgia to Specjalizacja, nie Rola” — powód aktualny                                                                                                                                            | A   | —                                                                                                                               |
-| MED-05 | 149, 222 | Chirurgią leczy się najcięższe Rany Krytyczne                                                                                       | Zdolność | ✅   | `srv: specialties.test.ts` „Medyk z Chirurgią rzuca, a udany rzut zdejmuje ranę z karty”                                                                                                                                                                                                          | A   | —                                                                                                                               |
+| MED-05 | 149, 222 | Chirurgią leczy się najcięższe Rany Krytyczne                                                                                       | Zdolność | ⚠️   | `srv: specialties.test.ts` „Medyk z Chirurgią rzuca, a udany rzut zdejmuje ranę z karty”; **#88 (71h)**: gracz-Medyk nie uruchomi leczenia rany postaci innego gracza — tylko MG (UI) | A   | **S–M** 71h2: rany figury z kartą w podglądzie drużyny, leczący z własnych postaci (decyzja MG 18.11) |
 | MED-06 | 149, 226 | Chirurgią wszczepia się cyborgizacje                                                                                                | styk     | ✅   | `srv: surgery.test.ts` „Medyk operuje za darmo: Test za Iskrę, wszczep u Kowala…”                                                                                                                                                                                                                 | A   | —                                                                                                                               |
 | MED-07 | 149      | Technologia Medyczna = punkty Farmaceutyków + kriosystemów, najwyżej 10; po 5 na Specjalizację                                      | Zdolność | ✅   | `specialties.test.ts` „Technologia Medyczna to suma…”; `ra: CPRED_MEDICINE_SPECIALTY_MAX`; `t71-medyk`                                                                                                                                                                                            | A   | —                                                                                                                               |
 | MED-08 | 150      | Każdy punkt Farmaceutyków otwiera jeden z pięciu środków                                                                            | Zdolność | ✅   | 71g1 (D2): `pharma.ts: cpredPharmaAccess, cpredPickPharma` + `pharmaPicks` na karcie, `character:pharma-pick` (MG zdejmuje wybór), stara karta z kolejności tabeli; `rm: MED-08`, `srv: recovery.test.ts` „etap 71g1”; E2E `t71-medyk` (Antybiotyk i Stym) | A   | — |
@@ -417,6 +421,34 @@ rzucić na siebie „bez ran”.
 Nie rozegrane w tej sesji: Prowizorka w walce, Chirurgia na ranie krytycznej, przyjazd
 funkcjonariuszy po odliczaniu i ich Unik, przesunięcie kalendarza o tydzień u Rockera — wszystkie
 mają testy serwera; trafią do drugiego rozegrania w 71h.
+
+## Rozegrania 71h (18.11.2026) — drugie, po doróbkach
+
+Te same scenki i te same trzy punkty oceny co w 71b. Instancja E2E z punktu `role-start`, gracz
+w **Firefoksie** (Playwright MCP, jeden profil przeglądarki, konta przełączane linkiem
+odnowienia), kroki MG gniazdem MG (start walki, ciosy w Solo, uszkodzenie aut, Pogłoski, Test
+Lojalności, rozliczenie, zegar świata); kości z losu, a tam, gdzie scenka musiała dojść do
+skutku (wezwanie, prośba Rockera, publikacje), ze skryptu instancji.
+
+| Rola        | znajdzie (71b → 71h)                                                                                                                  | zrozumie (71h)                                                                                                                       | kliknięcia (71h)                                     | znaleziska 71h                                                                                                                                                                                         |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Solo        | tak → tak; panel z belki mówi „poza walką za darmo, w walce Akcja”                                                                    | pierwszy cios: „− 2 (Redukcja obrażeń)”, drugi pełny; zmiana w rundzie 2 — wiersz „Zmysł Walki — Precyzyjny atak 1 (3 pkt)”, Akcja zgaszona | przydział 6; dwa strzały po 2                        | druga karta obrażeń w Rundzie nie mówi, że Redukcja już poszła (czytelność)                                                                                                                             |
+| Technik     | **nie → częściowo**: dymek „Naprawy” mówi o Prowizorce za Akcję; w walce kafla Prowizorki na belce brak (karta → Ekwipunek)           | „Nie trzyma · 17 ≤ PT 17 · … można spróbować w kolejnej Akcji”; naprawy i Ulepszanie z „Praca zajmuje … — zegar przesuwa MG”           | Prowizorka w walce 5; naprawa 2; Ulepszanie 4        | „Roboty drużyny” podsuwają do Ulepszania przedmiot fabularny bez ceny (bez PT)                                                                                                                         |
+| Medyk       | Ustabilizowanie — belka; Farmaceutyki — karta, zwinięte „2 punkty czekają na wybór”                                                   | stabilizacja „cel wraca do 1 PW · rusza naturalne leczenie”; dawka „Przez tydzień dzień odpoczynku daje 8 PW”                           | wybór 2 + partia 1; dawka 3                          | **#88 (B2, → 71h2)**: Chirurgii i Leczenia rany krytycznej postaci innego gracza gracz-Medyk nie uruchomi — tylko MG; „Wytwórz” rzuca bez kubka (prace Technika idą kubkiem); „Komu:” ma „sobie” i własną postać |
+| Nomada      | tak → tak                                                                                                                             | auto Taboru „W UŻYCIU” po „Biorę to auto”, w naprawie „Moto 4” w rozbiciu                                                            | pojazd + ulepszenie 3; wzięcie i naprawa 3           | lista Taboru już tylko z tabeli s. 162 (G38) — brak nowych                                                                                                                                               |
+| Fixer       | tak → tak (prawy klik na ladzie → „Wymiana…”)                                                                                          | „wygrane (21 vs 18) — dobity targ”, „targ: −100 ed”, przy sprzedaży „+50 ed za sprzedaż”; sumy drugiej strony gracz nie wpisuje       | targ 1; zakup 2; sprzedaż 3                          | targ przy ladzie rzuca jednym klikiem, bez kubka (bez Szczęścia); towaru ponad poziom sklepu nie ma (D1)                                                                                                |
+| Korpo       | tak → tak                                                                                                                             | „HR przysyła … Lojalność 3”, „Odmawia albo zawala · 4 ≥ Lojalność 3”; pracownik staje obok Korpo                                    | zatrudnienie 4                                       | „HR szuka…” ok. 10 s (jak w 71b); pole „Następca (200 ed)” przy pierwszym etacie; kwaterunek z rangi nie przestawia Zakwaterowania — rozliczenie liczy czynsz kontenera, dopóki gracz go nie zmieni |
+| Stróż Prawa | tak → tak                                                                                                                             | „Ktoś odpowiada · 2 ≤ 4 · … za 2 Rundy”, „Odsiecz w drodze: 2 Rund.”, przyjazd na początku rundy 3 („Wsparcie przybywa”)              | wezwanie 2                                           | odliczanie „w drodze” gracz widzi tylko w jednorazowym powiadomieniu; drugie wezwanie tego dnia bez ostrzeżenia (licznik u MG — STR-14 🟡); Unik funkcjonariusza nie rozegrany (test serwera)           |
+| Rocker      | tak → tak                                                                                                                             | „Masz nowych fanów … na karcie: „Bywalcy Afterlife””, „Odmówili — do 22 marca 2045: Pożyczcie mi vana”; po tygodniu zegara guzik wraca | fani 3; prośba 3                                     | karta prośby nie niesie treści „O co prosisz” (pokazuje ją dopiero blokada)                                                                                                                             |
+| Media       | tak → tak                                                                                                                             | „szansa 4 na 10 (3 + 1 za dowody)”, rejestr „Publikacje (2)”; gracz nie widzi żadnej karty Pogłosek, MG „rzut 3 z 2 w tym tygodniu”  | publikacja 3                                         | trzeci rzut Pogłosek w tygodniu przechodzi z licznikiem ponad limit (decyzja: limit przypomina, nie blokuje — MDA-04)                                                                                   |
+
+**Porównanie z 71b.** Wszystkie znaleziska 71b z listy bramki są zamknięte i potwierdzone w drugim
+rozegraniu: podpowiedź Prowizorki, ślad łaty, suma drugiej strony targu z karty handlarza, targ
+przy sprzedaży, Tabor z tabeli, pamięć fanów i blokada na 7 dób, licznik Pogłosek i „>”,
+„2 dawki”, belka Zmysłu Walki w rundzie 0. Nowe: jeden błąd B2 (#88, MED-05 ⚠️ — naprawa w 71h2, decyzja MG 18.11) i drobiazgi czytelności
+z tabeli — żaden nie zmienia liczb. Poza Rolami (do `zaleglosci.md`): kubek znów pisał
+„Inicjatywa +0” tuż po wejściu (serwer liczy 1k10+7); belka po przełączeniu konta w tym samym
+profilu przeglądarki zostaje na figurze poprzedniego gracza (`vtt.hudFocus`).
 
 ## Lista bramki (71b, 15.11.2026)
 

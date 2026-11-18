@@ -6,6 +6,57 @@ wyłącznie wtedy, gdy ktoś wraca do świeżo zamkniętego etapu. **To, co z ni
 w kodzie, mieszka w sekcjach obszarów `umowy-kodu.md` i `pulapki-dev.md`** — tu leży kontekst:
 po co to powstało, co było przed, czego świadomie nie zrobiono.
 
+## Etap 71 do 71g2 (wyprowadzone 18.11.2026, sesja 71h1)
+
+**Weryfikacja Ról (etap 71, zlecenie MG z 14.11) — 71a–71d1 zrobione (15.11), 71d2, 71e i 71f
+(16.11), 71g1 (17.11), 71g2 (18.11); następny 71h (zamknięcie: pełna suita, drugie
+rozegranie dziewięciu scenek, sekcja „Role po weryfikacji”).** Macierz `role-macierz.md` (194 reguły z dowodami, rozegrania 71b, „Lista
+bramki”) i plan w `etap-71-weryfikacja-rol.md` („Decyzje bramki”, tabela 71c0–71g2). **71c0 czeka
+na wdrożenie (bez migracji):** Zdolności z karty płacą Akcję figurą, którą znajduje serwer
+(`characterFigure`), Wykrycie słabości po mnożniku serii, **Prowizorka to Test przez kubek** (PT
+z pasma ceny wpisu, moduł `repair.ts`), zużyta łata czeka na pełną naprawę, kafel Zmysłu Walki
+czynny w rundzie 0. **71c1 też czeka na wdrożenie (bez migracji):** Tabor Rodziny jako stan na
+aucie — „Biorę to auto” (wymiana przyjeżdża o 6:00), „Oddaj Rodzinie do naprawy” (wrak, 500 ed,
+tydzień), Głowa Rodziny na Moto 10 („Do Taboru Rodziny”, „Rodzina montuje” za 10 000 ed), broń od
+Rodziny przy pierwszym Stanowisku, Tabor tylko z tabeli s. 162 (moduły `fleet.ts`). **71c2 też
+czeka na wdrożenie (bez migracji):** „Napraw” przy pancerzu i „Napraw (Test)” przy aucie dla
+każdej postaci, roboty drużyny i „Zamontuj” ulepszenie z progu Moto 1 w panelu Twórcy — Testy
+przez kubek; czas pracy to przycisk zegara MG na karcie rzutu (`roll:clock`), nie automat
+(moduły `repair.ts`, `vehiclework.ts`, `realtime/repair-work.ts`). **71d1 też czeka na wdrożenie
+(bez migracji):** Prowizorka puszcza sama z zegarem, skutki Ulepszania (czwarte gniazdo, dek,
+jakość Doskonała, UC wszczepu −1k6) czyta `itemupgrade.ts`, a stempel wpisuje dziś MG menu
+„Ulepszenie…” przy przedmiocie — **71d2 dokłada do tego Test Technika** (`cpredApplyItemUpgrade`);
+Łatanie, Leczenie i partia farmaceutyków proponują MG zegar. **71d2 też czeka na wdrożenie (bez
+migracji):** Ulepszanie rzeczy drużyny i Wytwarzanie z Kompendium to Testy przez kubek w robotach
+drużyny panelu Twórcy (rodzaje `itemUpgrade`, `fabricate`; surowce w ed przy sukcesie, czas dla
+zegara MG, moduł `fabrication.ts`), a kriopompa jest wierszem Wyposażenia z ładunkami — „Odbierz
+kriopompę”, „Zamroź” (stan `cryo` na karcie pacjenta: tydzień bez rzutów przeciw śmierci),
+„Rozmroź”, płyn (moduły `cryo.ts`, `realtime/cryo.ts`). **71e też czeka na wdrożenie (bez migracji):** druga strona targu przy ladzie to karta
+handlarza, poza sklepem sumę podaje MG („Daj graczowi” w panelu Znajomości, jeden rzut ją
+zużywa); handlarz-Fixer urywa przy skupie, dopóki sprzedający nie wygra rzutu („Targuj się”
+w stopce okna „Wymiana”); targ procentowy działa też przy sprzedaży, szósta sztuka gratis,
+„pół teraz, pół za miesiąc” to rata na karcie z terminem (po terminie targ zamknięty, wiersz
+dla MG); zamknięcie sesji ścina Lojalność, proponuje MG −1 i przypomina o odejściu, następca
+kosztuje 200 ed, pracownik staje obok Korpo (moduły `haggling.ts`, `teamloyalty.ts`,
+`realtime/debts.ts`). **71f też czeka na wdrożenie (bez migracji):** fani Rockera są grupami na
+karcie — udany Test „nowi fani” dopisuje grupę, prośba pada do grupy, odmowa zamyka ją na 7 dób
+zegara świata, MG wpisuje fanów bez rzutu i zdejmuje blokadę; nowych fanów nie robi się w walce;
+Media ma temat publikacji i rejestr na karcie, MG licznik Pogłosek w tygodniu („Pogłoski 1/2”)
+z przypomnieniem po tygodniu bez dwóch rzutów, a „Szukaj pogłosek” wystawia Test z PT z tabeli;
+funkcjonariusze wyższych kategorii Wsparcia mają drugą broń, a MG widzi licznik wezwań (moduły
+`rolefans.ts`, `rolerumours.ts`, `backuplog.ts`, `realtime/role-records.ts`). **71g1 też czeka na wdrożenie (bez migracji):** Krawędziarz dostaje
+pakiet Roli z kreatora (`edgerunnerKits` w prywatnym `creation.json`, wybory „lub” w kroku
+„Wyposażenie”; strój do notatek, chrom wszczepia MG — cztery komórki zrzutu ❓ do sprawdzenia
+przez MG w druku, `decyzje-i-uproszczenia.md`), listy Rockera i Medyka wg oryginału, powrót do
+Roli z karty za 60 PD i „Zrób główną” przy Roli poprzedniej (u MG bez PD), Medyk wybiera środek
+za punkt Farmaceutyków (`pharmaPicks`), awans Znajomości na 3 / 5 / 7 przypomina o języku,
+Ulicznik Fixera z pistoletem i bronią białą. **71g2 też czeka na wdrożenie (bez migracji, bez
+zmian mechaniki):** każde zdanie o regule w `roleability.ts` (dymki, drabiny, tabele, komentarze)
+jest parafrazą ze stroną, a pilnuje tego `server/src/licensing.test.ts` (ciągi ≥ 6 słów
+z prywatnym podręcznikiem, poza listami nazw); reszta kodu (~535 ciągów) czeka w
+`zaleglosci.md` — do decyzji MG, czy w 71h, czy osobno. Specyfikacje startują z punktu `role-start` (fikstura `fixtures/role.ts`). **Etap 71 nie dotyka sceny pościgu** (styk z 72
+w pliku etapu); Nocny Targ — osobny etap (`POMYSLY.md`).
+
 ## Etap 65 do 65d2 (wyprowadzone 31.10.2026)
 
 **Etap 65 „Scena pościgu i walka pojazdów” (zlecenie MG z 30.10) w toku — 65a i 65b zrobione

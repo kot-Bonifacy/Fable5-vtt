@@ -36,6 +36,7 @@ Statusy: ⬜ nierozpoczęty · 🟨 w toku · ✅ ukończony · 🔁 do powtórk
 | T9a  | Konta MG 1/2: rejestracja, izolacja, uploady, linki (po 44b) | ✅     | 04.10.2026 |
 | T9b  | Konta MG 2/2: dwie grupy naraz, AI właściciela, limit (po 44d) | ✅     | 04.10.2026 |
 | T70  | Sieć po przebudowie (etap 70): okno piętra, urządzenia na mapie, automat obrony | ✅     | 14.11.2026 |
+| T71  | Role po weryfikacji (etap 71): `52-role/t71-*` dziewięciu Ról, T8c jako wieloklasowość, dwa rozegrania | ✅     | 18.11.2026 |
 | T10  | Werdykt lokalny (triaż, retest poprawek)                  | ⬜     |            |
 | T11  | Smoke test na VPS (po etapie 28), werdykt końcowy         | ⬜     |            |
 
@@ -834,6 +835,21 @@ strefy), `t70e-automat-lod` (wykrycie i Tura LOD-u bez MG, hamulec). Puszcza si�
 `pnpm test:e2e 47-siec`. **T5b po 70a–70e przepięty, ale niepuszczony** (wymaga gatewaya —
 `docs/etapy/zaleglosci.md`). Rozegranie obu wzorców netrunnerem po 70f (tymczasowe specy
 oględzin, nie w repo) — notatka sesji 70f w `POSTEP.md`.
+
+### 6.8. T71 — Role po weryfikacji (etap 71, 14–18.11.2026)
+
+Spoza planu z 26.09 (zlecenie MG z 14.11, `docs/etapy/etap-71-weryfikacja-rol.md`). Specy
+`packages/e2e/specs/52-role/` (`@szybkie`, bez LLM, gateway martwy, start z punktu
+`role-start` budowanego z `po-T6` przez `t71-00-start`, fikstura `fixtures/role.ts`): po jednym
+pliku na Rolę (`t71-solo`, `-technik`, `-medyk`, `-nomada`, `-fixer`, `-korpo`, `-stroz`,
+`-rocker`, `-media`), gracz w Firefoksie, MG w Chromium albo gniazdem MG, kości ze skryptu.
+Nazwa testu zaczyna się identyfikatorami wierszy `role-macierz.md` i pozycji bramki (`SOL-03`,
+`G31`, `P3`); każdy łączy klik w UI, skutek w bazie i odmowę z gniazda gracza. Puszcza się je
+razem: `pnpm test:e2e 52-role`. **Od 71h** pojedyncze Zdolności sprawdzają wyłącznie te pliki,
+a `50-przegladarki/t8c-zdolnosci` pilnuje **wieloklasowości** (siedem paneli z rangami na
+jednej karcie, próg Moto z rangi dawnej Roli, siatka paneli #76 / #77) oraz Reputacji i stylu
+życia. Dwa rozegrania dziewięciu scenek w Firefoksie (71b 15.11, 71h 18.11) — tabele
+„Rozegrania” w `role-macierz.md`; błąd #88 z drugiego naprawia podetap 71h2 (decyzja MG 18.11).
 
 ## 7. Bramka bety
 

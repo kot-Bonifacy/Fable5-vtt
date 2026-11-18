@@ -9,6 +9,7 @@ import {
   gmSocket,
   lastMessageId,
   messagesAfter,
+  creationDataOf,
   rollAfter,
   seatRole,
   startFromRoleStart,
@@ -19,10 +20,11 @@ import { pendingDice, scriptDice } from '../../instance/instance.ts';
 
 /**
  * Etap 71b — Korpo, Praca Zespołowa (s. 153–157). Wiersze macierzy: KOR-02,
- * KOR-05, KOR-06, KOR-08, KOR-09, KOR-11, KOR-18; od 71e także KOR-S1 (P6:
+ * KOR-05, KOR-06, KOR-08 (z #74 i #75 przeniesionymi z T8c w 71h), KOR-09, KOR-11, KOR-18; od 71e także KOR-S1 (P6:
  * pracownik staje obok Korpo), KOR-15 (G26: następca za 200 ed z karty)
  * i KOR-12…14 (G25: zamknięcie sesji ścina Lojalność, proponuje −1
- * i przypomina o odejściu).
+ * i przypomina o odejściu). Od 71h — WSP-22 (P3: pakiet Ulicznika Korpo
+ * wg oryginału, suma 86).
  */
 
 const EXEC = ROLES.exec;
@@ -77,6 +79,10 @@ test.describe.serial('@szybkie T71 Korpo — Praca Zespołowa', () => {
     ).toBeGreaterThan(5);
     // Ranga 4: jeden etat — drugiego HR nie oferuje.
     await expect(panel().getByRole('button', { name: 'Poproś HR o pracownika' })).toHaveCount(0);
+    // #74 (z T8c, 71h): gracz widzi imię, które sam nadał; #75: guzików Lojalności,
+    // które serwer zostawia MG, gracz nie dostaje.
+    await expect(panel().locator('.team-row')).toContainText(WORKER);
+    await expect(panel().getByRole('button', { name: /^Test Lojalności: / })).toHaveCount(0);
   });
 
   test('KOR-05 KOR-18 gniazdo gracza nie zatrudni drugiego ani nie rzuci Testu Lojalności', async () => {
@@ -170,5 +176,14 @@ test.describe.serial('@szybkie T71 Korpo — Praca Zespołowa', () => {
     expect(sheet().team[0]!.neglectDue).toBeUndefined();
     await expect(gmPanel.getByTestId('team-neglect')).toHaveCount(0);
     for (const actor of [mg, filip]) expect(actor.unexpectedErrors(), actor.name).toEqual([]);
+  });
+
+  test('WSP-22 P3 Ulicznik Korpo: pakiet wg oryginału, 86 punktów (druk polski: 84)', async () => {
+    const creation = await creationDataOf();
+    const skills = creation.streetrat.exec!.skills;
+    // Lista Korpo nie ma Umiejętności o podwójnym koszcie — suma poziomów to koszt.
+    expect(Object.values(skills).reduce((sum, level) => sum + level, 0)).toBe(86);
+    expect(skills['personal-grooming']).toBe(4);
+    expect(Object.values(skills).filter((level) => level === 6)).toHaveLength(11);
   });
 });

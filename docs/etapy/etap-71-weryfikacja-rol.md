@@ -376,26 +376,53 @@ STR-12 — po etapie 72, KOR-04 — tylko z abonamentem Trauma Team.
 
 ### 71h — Zamknięcie: pełna suita i rozegranie końcowe
 
-- [ ] Specyfikacje `t71-*` uzupełnione o wszystkie doróbki, oznaczone `@szybkie` tam, gdzie nie
-      potrzebują LLM; wpis w `testy.md`
-- [ ] `t8c-zdolnosci.spec.ts` zostaje jako test **wieloklasowości** (wszystkie panele na jednej
+> **Podział 18.11 (decyzja MG):** drugie rozegranie znalazło błąd #88 (Medyk nie leczy Rany
+> Krytycznej postaci innego gracza), więc 71h ma dwie części — **71h1** (suita, rozegranie,
+> dokumenty) i **71h2** (naprawa #88, zamknięcie etapu). Parafraza zdań podręcznika w reszcie
+> kodu — **osobny etap 73** (decyzja MG z 18.11), nie 71h.
+
+#### 71h1 — suita, drugie rozegranie, dokumenty (✅ 18.11.2026)
+
+- [x] Specyfikacje `t71-*` uzupełnione o wszystkie doróbki, oznaczone `@szybkie` tam, gdzie nie
+      potrzebują LLM; wpis w `testy.md` (T71, sekcja 6.8) — w 71h1 doszły G16 (TEC-16),
+      G31 (STR-13), P3 (WSP-22), a #74 i #75 przeszły z T8c do `t71-korpo`
+- [x] `t8c-zdolnosci.spec.ts` zostaje jako test **wieloklasowości** (wszystkie panele na jednej
       karcie); asercje pojedynczych Zdolności, które zdublowały się z `t71-*`, wypadają
-- [ ] **Drugie rozegranie** tych samych dziewięciu scenek w Firefoksie; porównanie z pierwszym
-      (te same trzy punkty oceny)
+      (Charyzma, Wiarygodność, Znajomości, Wsparcie, Praca Zespołowa, Twórca; Moto zostaje jako
+      próg z rangi dawnej Roli, z etykietami „Dołóż pojazd / ulepszenie”)
+- [x] **Drugie rozegranie** tych samych dziewięciu scenek w Firefoksie; porównanie z pierwszym
+      (te same trzy punkty oceny) — „Rozegrania 71h” w `role-macierz.md`
 - [ ] Macierz bez wierszy ❌ i ⚠️ poza odrzuconymi przez MG na bramce (te mają wpis decyzji)
-      i przekazanymi etapowi 72 (NOM-03, STR-12 — wiersz wskazuje, gdzie czeka)
-- [ ] `decyzje-i-uproszczenia.md`: nowa sekcja „Role po weryfikacji (etap 71)” z tym, co
+      i przekazanymi etapowi 72 (NOM-03, STR-12 — wiersz wskazuje, gdzie czeka) — **zostało
+      MED-05 ⚠️ (#88) → 71h2**; FIX-10 ❌ to Nocny Targ (G24, osobny etap)
+- [x] `decyzje-i-uproszczenia.md`: nowa sekcja „Role po weryfikacji (etap 71)” z tym, co
       świadomie zostało prozą, i odsyłaczem do macierzy
-- [ ] `umowy-kodu.md` (`postac`), `POSTEP.md`, `archiwum/tabela-etapow.md` zaktualizowane
+- [x] `umowy-kodu.md` (`postac`), `POSTEP.md`, `archiwum/tabela-etapow.md` zaktualizowane
+
+#### 71h2 — naprawa #88 i zamknięcie etapu (S–M)
+
+- [ ] Gracz widzi Rany Krytyczne figury z kartą **postaci drużyny** w podglądzie figury
+      (lewa belka) — nazwy, PT i stan „załatana”, bez reszty karty; serwer wysyła je tylko
+      tam, gdzie figura jest widoczna (filtr jak dziś przy statystach)
+- [ ] Formularz `TreatInjury` w podglądzie: leczący z **własnych** postaci gracza (Medyk
+      z Chirurgią / Ratownictwem), pacjentem jest żeton; serwer (`resolveTreatInjuryRequest`)
+      już to przyjmuje — test serwera „gracz leczy ranę postaci innego gracza” i odmowa
+      `SELF_TREATMENT` bez zmian
+- [ ] Asercja E2E w `t71-medyk` (MED-05 #88): Ruta leczy Złamaną rękę Brzytwy Chirurgią
+      z podglądu figury, kubek, rana znika z karty Ady
+- [ ] MED-05 ⚠️ → ✅, #88 → naprawiony; oględziny w Firefoksie
+- [ ] Kryteria ukończenia etapu niżej odhaczone; etap 71 → ✅ w `POSTEP.md`
 
 **Kryteria ukończenia etapu 71**
 
 - [ ] Każda reguła klasy A i B dziewięciu Ról jest ✅ albo 🟡 z decyzją MG (poza NOM-03
       i STR-12, które czekają na etap 72)
-- [ ] Każda Rola ma zieloną specyfikację E2E i dwie rozegrane scenki
-- [ ] Postać świeżo z kreatora w każdej z dziewięciu Ról zgadza się z podręcznikiem (pakiety,
-      wyposażenie, ranga startowa)
-- [ ] `pnpm test`, `pnpm test:e2e --grep @szybkie` i lint zielone
+- [x] Każda Rola ma zieloną specyfikację E2E i dwie rozegrane scenki (71b 15.11, 71h1 18.11)
+- [x] Postać świeżo z kreatora w każdej z dziewięciu Ról zgadza się z podręcznikiem (pakiety,
+      wyposażenie, ranga startowa) — wiersze `*-K*` macierzy ✅ (71g1), `creation.test.ts`
+- [ ] `pnpm test`, `pnpm test:e2e --grep @szybkie` i lint zielone — 71h1: `pnpm test` i lint
+      zielone, `@szybkie` 182 + `52-role` w całości; czerwony tylko `t65-kreator` (kreator pościgu,
+      do etapu 72 — `zaleglosci.md`); do powtórki w 71h2
 
 ## Testy w przeglądarce — szczegóły
 

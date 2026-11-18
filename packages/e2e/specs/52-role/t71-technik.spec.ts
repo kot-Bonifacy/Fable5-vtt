@@ -31,6 +31,8 @@ import { pendingDice, scriptDice } from '../../instance/instance.ts';
  * Od 71d2: Ulepszanie przedmiotu drużyny i Wytwarzanie z Kompendium to Testy
  * przez kubek w robotach drużyny (TEC-03, TEC-07–TEC-09, G13); Wynajdywanie
  * zostaje u MG (TEC-20).
+ * Od 71h: znaleziony wszczep po „Łagodniejszej cyborgizacji” kosztuje przy
+ * montażu 1k6 mniej (TEC-16, G16).
  */
 
 const TECH = ROLES.tech;
@@ -464,6 +466,64 @@ test.describe.serial('@szybkie T71 Technik — Twórca', () => {
     });
     expect(ammo).toEqual({ ok: false, error: 'NOT_FABRICABLE' });
     await closeSheet(bartek.page);
+    for (const actor of [mg, bartek]) expect(actor.unexpectedErrors(), actor.name).toEqual([]);
+  });
+
+  test('TEC-16 G16 wszczep po „Łagodniejszej cyborgizacji”: montaż rzuca UC 1k6 zamiast 2k6', async () => {
+    type Gear = { id: string; name: string; compendiumId?: string; upgrade?: string };
+    const gear = () => cardData<{ gear: Gear[] }>(TECH.card).gear;
+    const eye = () => gear().find((row) => row.id === 'r71-oko');
+    // Znalezione Cyberoko (UC 2k6) trafia do Wyposażenia Technika ręką MG.
+    dataOf(
+      await emitAck(gm, 'character:update', {
+        characterId: characterId(TECH.card),
+        patch: {
+          data: {
+            gear: [
+              ...gear(),
+              {
+                id: 'r71-oko',
+                name: 'Cyberoko',
+                notes: '',
+                compendiumId: 'cyberware.cyberoko',
+                qty: 1,
+              },
+            ],
+          },
+        },
+      }),
+      'character:update Cyberoko',
+    );
+    const gmCard = await openSheet(mg, TECH.card);
+    await gmCard.getByRole('button', { name: 'Ekwipunek', exact: true }).click();
+    const menu = gmCard.getByRole('combobox', { name: 'Ulepszenie Technika: Cyberoko' });
+    await menu.selectOption('humanity');
+    await expect.poll(() => eye()?.upgrade).toBe('humanity');
+    await expect(
+      gmCard.locator('.item-upgrade-chip', { hasText: 'Łagodniejsza cyborgizacja' }),
+    ).toBeVisible();
+    await closeSheet(mg.page);
+
+    const before = cardData<{ humanityCurrent: number }>(TECH.card).humanityCurrent;
+    const since = lastMessageId();
+    scriptDice([4]);
+    dataOf(
+      await emitAck(gm, 'character:cyberware', {
+        characterId: characterId(TECH.card),
+        action: 'install',
+        entryId: 'cyberware.cyberoko',
+        payment: 'installOnly',
+      }),
+      'character:cyberware install',
+    );
+    const roll = await rollAfter(since, 'Łagodniejsza cyborgizacja', 'roll');
+    expect(roll.notation, JSON.stringify(roll)).toBe('1d6');
+    expect(roll.outcome?.detail).toContain('2k6 → 1k6');
+    expect(pendingDice()).toBe('');
+    expect(eye()).toBeUndefined();
+    await expect
+      .poll(() => cardData<{ humanityCurrent: number }>(TECH.card).humanityCurrent)
+      .toBe(before - 4);
     for (const actor of [mg, bartek]) expect(actor.unexpectedErrors(), actor.name).toEqual([]);
   });
 });

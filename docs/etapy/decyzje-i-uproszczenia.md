@@ -9,6 +9,37 @@ czytany na starcie każdej sesji został listą zadań, a nie archiwum ustaleń.
 inaczej, niż mówi podręcznik, albo gdy dotykasz wymienionego tu kodu. Jeśli któraś z tych decyzji
 przestanie się bronić, przenieś ją stąd do `POMYSLY.md` jako zadanie — nie odwrotnie.
 
+## Role po weryfikacji (etap 71, 14–18.11.2026)
+
+Etap 71 sprawdził dziewięć Ról (bez Netrunnera — etap 70) regułę po regule wobec podręcznika
+i wobec maszynerii, która doszła po etapie 30. **Pełna odpowiedź „co działa, co uproszczone,
+dlaczego” stoi w `role-macierz.md`** — 194 wiersze z dowodem (kod, test vitest, specyfikacja
+`52-role/t71-*`) i klasą odwzorowalności. Stan po 71h1: 138 ✅, 34 🟡, 19 📜, 2 ❌ (oba poza
+etapem), 1 ⚠️ (MED-05, błąd #88 — naprawa w 71h2). Każde 🟡 ma wpis w jednej z sekcji „… po weryfikacji Ról” niżej (71c0–71g2).
+
+**Co świadomie zostało prozą (📜)** — reguły klasy C i D, których VTT nie liczy, bo skutek pisze
+MG albo fabuła; każda ma zdanie w panelu Zdolności albo na karcie rzutu:
+
+| Rola        | wiersze                    | dlaczego proza                                                                                  |
+| ----------- | -------------------------- | ----------------------------------------------------------------------------------------------- |
+| wspólne     | WSP-20                     | „nieco czasu między awansami” — przy stole (bramka 15.11, D4)                                    |
+| Technik     | TEC-20, TEC-21             | Wynajdywanie: zasady wynalazku pisze MG, wynalazek to jego wpis Kompendium                      |
+| Medyk       | MED-14                     | Zryw działa w opisie środka; snu VTT nie modeluje                                               |
+| Nomada      | NOM-15, NOM-16             | reputacja w Rodzinie i opcje Zakwaterowania Nomady — fabuła; zakwaterowanie ustawia się na karcie |
+| Fixer       | FIX-07, FIX-11             | wypłat za Zlecenia VTT nie prowadzi; „kto odbiera telefon” to drabina w panelu                  |
+| Korpo       | KOR-01, KOR-04             | katalogu Mody i abonamentów Trauma Team nie ma (KOR-04 wraca, jeśli abonament powstanie)        |
+| Stróż Prawa | STR-10, STR-12, STR-R1     | federalni w tej samej sprawie i stopień w organizacji — fabuła; pojazdy Wsparcia — po etapie 72 |
+| Rocker      | ROC-05, ROC-10, ROC-11     | kto jest fanem, miejsca występów i co fani zrobią — rozstrzyga MG, karta podaje zakres          |
+| Media       | MDA-06, MDA-11, MDA-12     | treść pogłoski i skala skutku publikacji pisze MG (bez treści od LLM, decyzja 14.11)            |
+
+**Czego etap 71 nie zamknął i gdzie to czeka:** MED-05 — leczenie Rany Krytycznej postaci
+innego gracza przez gracza-Medyka (#88) — podetap 71h2 (decyzja MG 18.11); NOM-03 (Moto w progu „słabego kierowcy”)
+i NOM-02 (Wyścig i Manewr Nomady) — etap 72; STR-12 (Wsparcie autem w pościgu) — po etapie 72;
+FIX-10 (Nocny Targ) — osobny etap (`POMYSLY.md`); KOR-04 — tylko z abonamentem Trauma Team;
+parafraza zdań podręcznika w reszcie kodu (~535 ciągów poza `roleability.ts`) — **osobny etap,
+decyzja MG z 18.11** (`zaleglosci.md`). Boty i NPC-e MG używający Zdolności — poza zakresem
+(decyzja 14.11).
+
 ## Parafraza zdań podręcznika w `roleability.ts` (etap 71g2, 18.11.2026)
 
 Bramka MG z 15.11 (G37, WSP-19): **parafraza w kodzie** — nie „zostają” i nie „teksty do
