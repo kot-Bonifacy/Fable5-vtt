@@ -83,6 +83,11 @@ podaje nazwy Programów za wyjściem, Maskowanie liczy się piętro po piętrze 
 Turze i zostawia znacznik na planie MG. Do słowa MG: Demon porównany Interfejsem. Od siódmej
 sesji 14.11 piętra opuszczone bez zatartych śladów są **czerwone** — tylko u MG.
 
+**Zaległości 18.11 („wykonaj kilka zaległości”) — czekają na wdrożenie (bez migracji).**
+Kubek inicjatywy liczy modyfikator z karty na żywo, Ustabilizowanie nie podsuwa figur bez ran
+(serwer odmawia), „Komu:” przy dawce bez własnej postaci, zamknięcie serwera dopisuje pamięć
+eksploracji przed rozłączeniem bazy.
+
 **Zaległości 14.11 (dwie sesje „wykonaj kilka zaległości”) — czekają na wdrożenie (bez
 migracji).** Belka przejętego urządzenia bez czerwonego „ODMOWA” po strzale, okienko strefy mówi
 o obszarze straży, łup z urządzenia „W urządzeniu”, czytelne przyciski karty i sekcja „Pojazdy”,
@@ -852,6 +857,28 @@ a nie do tego pliku.
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
 
+### Sesja 18.11 (czwarta) — „wykonaj kilka zaległości”
+
+**Zrobione (czeka na wdrożenie, bez migracji):**
+
+- **„Inicjatywa +0” na kubku (15.11 pkt 1)** — kubek liczy modyfikator z karty na żywo
+  (`PendingInitiative.tokenId`, `initiativeCupModifier` w `DiceCup.tsx`); bez karty pisze samo
+  „Inicjatywa”.
+- **Ustabilizowanie figury bez ran (15.11 pkt 3)** — lista pacjentów pomija znanych „bez ran”,
+  pusta mówi, że nikt w zasięgu nie jest ranny; serwer odmawia `STABILIZE_NOT_WOUNDED`.
+- **„Komu:” przy dawce (18.11, 71h)** — bez własnej postaci obok „sobie”.
+- **Zapis pamięci eksploracji po zamknięciu (14.11, `walls.test.ts`)** —
+  `flushExplorationWrites` w `onClose` serwera; pułapka na górze `testy` oznaczona jako
+  naprawiona.
+- Wpisy w `archiwum/zamkniete-zaleglosci.md`; w `zaleglosci.md` z 15.11 został pkt 2 (klik
+  w wiersz „Ustabilizuj” przełącza belkę — przyczyny nie znaleziono w kodzie).
+
+Testy: serwer 1860/1860 (pełna suita czysta, bez „Unhandled Errors”), klient 515; lint, Prettier
+i `tsc` klienta i serwera czyste. **Oglądano w Firefoksie** (tymczasowy spec E2E z `role-start`,
+gracz Celina/Ruta, skasowany): „Komu:” = tylko „sobie” i cudze figury, pusta lista
+Ustabilizowania z odmową, Manekin („nie wiadomo”) na liście bez Ruty, kubek „Inicjatywa +7”
+po `combat:start`. `specs/99-zapomnij/` to dalej cudze oględziny z 14.11.
+
 ### Sesja 18.11 (trzecia) — etap 71h2: naprawa #88, zamknięcie etapu 71
 
 **Zrobione (czeka na wdrożenie, bez migracji):**
@@ -877,38 +904,3 @@ E2E: `t71-medyk` 7/7; pełne `--grep @szybkie` **183 przeszło, 2 czerwone** —
 w podglądzie figury, formularz „Leczy: Ruta”, Chirurgia PT 11 kubkiem (15 vs PT 11), po
 animacji kości sekcja „Rany” znika, karta czatu „Wyleczona”. `specs/99-zapomnij/` to dalej
 cudze oględziny z 14.11.
-
-### Sesja 18.11 (druga) — etap 71h1: suita Ról, T8c jako wieloklasowość, drugie rozegranie
-
-**Zrobione (testy E2E i dokumenty — kodu aplikacji nie ruszano, nic nowego do wdrożenia):**
-
-- **Decyzje MG z sesji:** parafraza zdań podręcznika poza `roleability.ts` (~535 ciągów) to
-  **osobny etap 73** (wiersz w `archiwum/tabela-etapow.md`, plik do napisania); błąd #88 z
-  drugiego rozegrania — **podetap 71h2** (71h podzielony na 71h1 i 71h2 w pliku etapu).
-- **Specyfikacje:** `t71-technik` + TEC-16 G16 (wszczep po „Łagodniejszej cyborgizacji” — UC
-  1k6 zamiast 2k6), `t71-stroz` + STR-13 G31 (ranga 5: drogówka z drugą bronią na karcie
-  figury), `t71-korpo` + WSP-22 P3 (Ulicznik Korpo = 86) oraz #74 i #75 przeniesione z T8c.
-  `t8c-zdolnosci` przepięty na **wieloklasowość** (siedem paneli z rangami, próg Moto z dawnej
-  Roli z „Dołóż pojazd / ulepszenie”, siatka #76 / #77, Reputacja, styl życia) — zaległość
-  „Dołóż wpis” zamknięta. Umowa na górze `postac`; T71 w `testy.md` (6.8).
-- **Drugie rozegranie dziewięciu scenek w Firefoksie** (Playwright MCP, instancja z `role-start`,
-  ręce MG gniazdem — skrypt w scratchpadzie): tabela „Rozegrania 71h” w `role-macierz.md`.
-  Znaleziska bramki z 71b — wszystkie potwierdzone jako naprawione. Nowe: **#88 (B2)** gracz-
-  Medyk nie leczy Rany Krytycznej postaci innego gracza (MED-05 ✅ → ⚠️, `testy-rejestr.md`)
-  i drobiazgi czytelności (`zaleglosci.md`, 18.11): druga karta obrażeń bez słowa o zużytej
-  Redukcji, Prowizorki brak na belce w walce, partia farmaceutyków i targ przy ladzie bez
-  kubka, „HR szuka…” ~10 s, kwaterunek Korpo nie przestawia Zakwaterowania, karta prośby
-  Rockera bez „O co prosisz”. „Inicjatywa +0” na kubku wróciła (zaległość z 15.11).
-- **Macierz:** podsumowanie przeliczone (138 ✅, 34 🟡, 19 📜, 2 ❌ poza etapem, 1 ⚠️);
-  `decyzje-i-uproszczenia.md` — sekcja „Role po weryfikacji (etap 71)” (co zostało prozą
-  i dlaczego, co czeka poza etapem). Akapit 71 w „Od czego zacząć” skrócony do stanu na dziś,
-  pełny — w `archiwum/od-czego-zaczac.md`.
-
-Testy: `shared` 3192, klient 515, serwer 1858/1858 (pierwszy przebieg kod 1 przez znane
-„Unhandled Errors” z `walls.test.ts`, drugi czysty); lint i `tsc` e2e czyste.
-E2E: `t71-technik`, `-stroz`, `-korpo` i `t8c-zdolnosci` zielone; pełne `--grep @szybkie`
-**182 przeszło, 2 czerwone**: T9a (dwa błędy WebSocketu w konsoli — w powtórce zielony)
-i `t65-kreator` („＋ Dodaj pojazd” wyszarzony — pada stale, kreator pościgu, **do etapu 72**
-wg MG). Pierwszy pełny przebieg był nieważny — dwie suity szły naraz na jednej instancji
-(pułapka na górze `testy`). **Oglądano w Firefoksie** (gracz, wszystkie dziewięć Ról).
-`specs/99-zapomnij/` to dalej cudze oględziny z 14.11.

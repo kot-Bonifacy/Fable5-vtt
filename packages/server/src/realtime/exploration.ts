@@ -73,8 +73,13 @@ function cacheKey(key: MemoryKey): string {
 
 /** sceneId (drużyna) albo sceneId:userId (gracz) → pamięć tej sceny. */
 const grids = new Map<string, ExplorationGrid>();
-/** Ten sam klucz → zaplanowany zapis. */
-const pendingWrites = new Map<string, NodeJS.Timeout>();
+/** Ten sam klucz → zaplanowany zapis (z bazą, do której ma trafić). */
+const pendingWrites = new Map<
+  string,
+  { timer: NodeJS.Timeout; prisma: PrismaClient; key: MemoryKey }
+>();
+/** Zapisy, które już wystartowały z timera — zamknięcie serwera na nie czeka. */
+const inflightWrites = new Set<{ prisma: PrismaClient; done: Promise<void> }>();
 
 /** Does this scene remember anything at all? */
 export function usesExploration(scene: Pick<Scene, 'visibility' | 'explore'>): boolean {
@@ -198,18 +203,49 @@ function schedulePersist(prisma: PrismaClient, key: MemoryKey): void {
   if (pendingWrites.has(id)) return;
   const timer = setTimeout(() => {
     pendingWrites.delete(id);
-    void persistMemory(prisma, key);
+    trackWrite(prisma, persistMemory(prisma, key));
   }, PERSIST_DEBOUNCE_MS);
   // The write must never be the reason a test run or a shutdown hangs.
   timer.unref?.();
-  pendingWrites.set(id, timer);
+  pendingWrites.set(id, { timer, prisma, key });
+}
+
+function trackWrite(prisma: PrismaClient, write: Promise<void>): void {
+  const entry = {
+    prisma,
+    // Pamięć eksploracji to wygoda, nie stan gry: nieudany zapis nie może
+    // wywrócić procesu nieobsłużonym odrzuceniem.
+    done: write.catch((error: unknown) => {
+      console.error('exploration memory write failed', error);
+    }),
+  };
+  inflightWrites.add(entry);
+  void entry.done.finally(() => inflightWrites.delete(entry));
+}
+
+/**
+ * Zamknięcie serwera (`onClose` przed `$disconnect`): zaplanowane zapisy tej
+ * bazy idą od razu, a te w locie są doczekane. Do 18.11 zapis z timera potrafił
+ * przyjść po zwinięciu bazy testu (`walls.test.ts`, P2021 jako „Unhandled
+ * Errors” przy zielonej suicie), a przy zwykłym restarcie ostatnia sekunda
+ * odkrytej mapy przepadała.
+ */
+export async function flushExplorationWrites(prisma: PrismaClient): Promise<void> {
+  for (const [id, pending] of [...pendingWrites]) {
+    if (pending.prisma !== prisma) continue;
+    clearTimeout(pending.timer);
+    pendingWrites.delete(id);
+    trackWrite(prisma, persistMemory(prisma, pending.key));
+  }
+  const mine = [...inflightWrites].filter((entry) => entry.prisma === prisma);
+  await Promise.all(mine.map((entry) => entry.done));
 }
 
 async function persistMemory(prisma: PrismaClient, key: MemoryKey): Promise<void> {
   const id = cacheKey(key);
-  const timer = pendingWrites.get(id);
-  if (timer) {
-    clearTimeout(timer);
+  const pending = pendingWrites.get(id);
+  if (pending) {
+    clearTimeout(pending.timer);
     pendingWrites.delete(id);
   }
   const grid = grids.get(id);
@@ -390,8 +426,8 @@ export function dropExplorationCache(sceneId: string): void {
 }
 
 function dropCached(id: string): void {
-  const timer = pendingWrites.get(id);
-  if (timer) clearTimeout(timer);
+  const pending = pendingWrites.get(id);
+  if (pending) clearTimeout(pending.timer);
   pendingWrites.delete(id);
   grids.delete(id);
 }
@@ -403,7 +439,7 @@ function dropPlayerMemories(sceneId: string): void {
 
 /** Test hook: drops the in-memory copy so a fresh server reads the rows again. */
 export function resetExplorationCache(): void {
-  for (const timer of pendingWrites.values()) clearTimeout(timer);
+  for (const pending of pendingWrites.values()) clearTimeout(pending.timer);
   pendingWrites.clear();
   grids.clear();
 }

@@ -100,8 +100,12 @@ export interface PendingInitiative {
   combatantId: string;
   /** Participant's name, shown on the cup. */
   name: string;
-  /** REF, or 0 for a statist without a sheet. */
-  modifierTotal: number;
+  /**
+   * The participant's figure. The cup reads the modifier off its sheet **live**
+   * (`initiativeCupModifier`): until 18.11 it was frozen at loading time, and
+   * a player whose cup loaded before the sheet arrived saw „Inicjatywa +0”.
+   */
+  tokenId: string | null;
 }
 
 /**

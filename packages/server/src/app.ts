@@ -31,6 +31,7 @@ import { registerMusicRoutes } from './routes/music.js';
 import { setupRealtime, type RealtimeHandle } from './realtime/index.js';
 import { diceScriptPath } from './realtime/dice-script.js';
 import { reseatChasePassengers } from './realtime/chase.js';
+import { flushExplorationWrites } from './realtime/exploration.js';
 import { sweepUploadsInBackground } from './uploads-gc.js';
 import { campaignUploadReadable, migrateFlatUploads } from './campaign-uploads.js';
 import { MapPreviews } from './map-preview.js';
@@ -254,6 +255,7 @@ export async function buildApp(
     ai.stop();
     gateway.stop();
     io.close();
+    await flushExplorationWrites(prisma);
     await prisma.$disconnect();
   });
 

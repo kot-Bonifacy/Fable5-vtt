@@ -694,6 +694,9 @@ async function resolveStabilizeRequest(
     // rung is the honest default and the GM can still modify the roll.
     state = 'light';
   }
+  // Pełne PW to nic do stabilizowania (zaległość z 15.11): do 18.11 kubek
+  // rzucał na zdrowego, a sukces nie zmieniał niczego.
+  if (state === 'healthy') throw new RealtimeError('STABILIZE_NOT_WOUNDED');
   return {
     ...request,
     stabilizeDv: CPRED_STABILIZE_DV[state],

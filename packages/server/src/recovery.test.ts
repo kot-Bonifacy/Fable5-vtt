@@ -347,6 +347,16 @@ describe('naturalne leczenie i farmaceutyki', () => {
     });
   });
 
+  it('odmawia Ustabilizowania figury bez ran (zaległość z 15.11)', async () => {
+    // Medyk ma pełne PW — kubek nie ma prawa rzucić „na nic”.
+    const ack = await emitAck(gm, 'character:roll', {
+      characterId: medicId,
+      visibility: 'public',
+      request: { kind: 'stabilize', stabilizeTokenId: medicTokenId, skillId: 'paramedic' },
+    });
+    expect(ack).toMatchObject({ ok: false, error: 'STABILIZE_NOT_WOUNDED' });
+  });
+
   it('dzień odpoczynku wraca BC punktów i pisze rozbicie na karcie', async () => {
     const card = waitFor<ChatMessageBroadcast>(gm, 'chat:message');
     const result = data(

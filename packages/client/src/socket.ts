@@ -1788,6 +1788,8 @@ function rollAckErrorText(code: string): string {
     // pacjencie, a nie na odległość.
     case 'STABILIZE_OUT_OF_REACH':
       return 'Za daleko — Ustabilizowanie wymaga zasięgu ramienia (2 m).';
+    case 'STABILIZE_NOT_WOUNDED':
+      return 'Ta figura nie jest ranna — nie ma czego stabilizować.';
     case 'STABILIZE_NOT_ON_SCENE':
       return 'Ta postać nie ma figury na scenie pacjenta — nie ma jak go dosięgnąć.';
     // Etap 71c0 — Prowizorka jako Test przez kubek.

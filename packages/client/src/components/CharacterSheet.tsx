@@ -4169,7 +4169,11 @@ function DosesSection({
     );
   });
 
-  const figures = Object.values(tokens).filter((token) => token.name.length > 0);
+  // Własna figura to „sobie” z pierwszej pozycji — do 18.11 stała na liście
+  // drugi raz, pod imieniem postaci.
+  const figures = Object.values(tokens).filter(
+    (token) => token.name.length > 0 && token.characterId !== character.id,
+  );
   // „Siłą" (s. 150) ma sens wyłącznie przy cudzej figurze i ze strzykawką
   // bezigłową w plecaku — samemu sobie nikt się nie opiera.
   const target = targetId ? tokens[targetId] : undefined;

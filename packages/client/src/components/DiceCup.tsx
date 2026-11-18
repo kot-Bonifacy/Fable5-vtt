@@ -6,6 +6,7 @@ import {
   ROLE_GM,
   checkCallTargetText,
   cpredRollTakesLuck,
+  cpredSheetInitiative,
   formatRollNotation,
   parseChatInput,
 } from '@vtt/shared';
@@ -300,10 +301,31 @@ function callLabel(entry: CheckCallEntry): string {
   return `Wezwanie: ${entry.rollLabel} · ${checkCallTargetText(entry)}`;
 }
 
+/**
+ * Modyfikator inicjatywy z karty figury — liczony przy każdym rysowaniu, bo
+ * kubek ładuje się zaraz po dopisaniu do walki, często zanim karta dojdzie.
+ * `null` = karta jeszcze w drodze (etykieta bez liczby, zamiast kłamliwego
+ * „+0”); statysta bez karty rzuca z 0, tak jak liczy serwer.
+ */
+function initiativeCupModifier(
+  pending: PendingInitiative,
+  tokens: ReturnType<typeof useTokenStore.getState>['tokens'],
+  characters: ReturnType<typeof useCharacterStore.getState>['characters'],
+  registry: ReturnType<typeof useCharacterStore.getState>['registry'],
+): number | null {
+  if (!pending.tokenId) return 0;
+  const token = tokens[pending.tokenId];
+  if (!token) return null;
+  if (!token.characterId) return 0;
+  const character = characters[token.characterId];
+  return character ? cpredSheetInitiative(character.data, registry).modifier : null;
+}
+
 /** Cup label for a loaded initiative roll, e.g. `Inicjatywa +8`. */
-function initiativeLabel(pending: PendingInitiative): string {
-  const sign = pending.modifierTotal < 0 ? '−' : '+';
-  return `Inicjatywa ${sign}${Math.abs(pending.modifierTotal)}`;
+function initiativeLabel(modifier: number | null): string {
+  if (modifier === null) return 'Inicjatywa';
+  const sign = modifier < 0 ? '−' : '+';
+  return `Inicjatywa ${sign}${Math.abs(modifier)}`;
 }
 
 /**
@@ -330,6 +352,7 @@ export function DiceCup() {
   const user = useAuthStore((s) => s.user);
   const myUserId = user?.id ?? '';
   const characters = useCharacterStore((s) => s.characters);
+  const registry = useCharacterStore((s) => s.registry);
   const tokens = useTokenStore((s) => s.tokens);
   const skippedDamageCalls = useRollStore((s) => s.skippedDamageCalls);
   const skippedEvasionCalls = useRollStore((s) => s.skippedEvasionCalls);
@@ -862,7 +885,9 @@ export function DiceCup() {
                 : mode.kind === 'grapple' || mode.kind === 'facedown' || mode.kind === 'net'
                   ? `Potrząśnij i rzuć: ${mode.pending.title} · Esc odkłada rzut`
                   : mode.kind === 'initiative'
-                    ? `Potrząśnij i rzuć inicjatywę: ${mode.pending.name} — ${initiativeLabel(mode.pending)} · Esc odkłada rzut`
+                    ? `Potrząśnij i rzuć inicjatywę: ${mode.pending.name} — ${initiativeLabel(
+                        initiativeCupModifier(mode.pending, tokens, characters, registry),
+                      )} · Esc odkłada rzut`
                     : mode.kind === 'sheet'
                       ? `Potrząśnij i rzuć: ${mode.pending.characterName} — ${sheetLabel(mode.pending, luck)}${
                           mode.pending.visibility === 'gm' ? ' (do MG)' : ''
@@ -936,7 +961,9 @@ export function DiceCup() {
           <span className="dice-cup-label">{sheetLabel(mode.pending, luck)}</span>
         )}
         {mode.kind === 'initiative' && (
-          <span className="dice-cup-label">{initiativeLabel(mode.pending)}</span>
+          <span className="dice-cup-label">
+            {initiativeLabel(initiativeCupModifier(mode.pending, tokens, characters, registry))}
+          </span>
         )}
       </div>
       {menu && (

@@ -9,6 +9,29 @@ go czytać.
 albo gdy chcesz sprawdzić, czy pozycja, która wygląda na nową, nie jest wracającą starą.
 Treść wpisów jest niezmieniona — łącznie z datami i odsyłaczami do notatek sesji.
 
+## Zamknięte 2026-11-18, czwarta sesja („wykonaj kilka zaległości”, bez migracji)
+
+- **15.11 pkt 1 — kubek pisze „Inicjatywa +0” zaraz po wejściu gracza do gry (powtórzone 18.11,
+  Odznaka).** Diagnoza: `CombatBar` ładował kubek z modyfikatorem policzonym w chwili
+  załadowania (`initiativeModifierOf`), a automatyczne załadowanie po dopisaniu do walki
+  przychodzi często przed kartą postaci — brak karty dawał 0 i liczba zostawała na kubku do
+  rzutu. Serwer liczył dobrze. Naprawa: `PendingInitiative` niesie `tokenId` zamiast liczby,
+  `DiceCup` liczy modyfikator z karty przy każdym rysowaniu (`initiativeCupModifier`); póki karta
+  jest w drodze, kubek pisze samo „Inicjatywa”, statysta bez karty — „+0” jak na serwerze.
+- **15.11 pkt 3 — Ustabilizowanie wolno rzucić na figurę „bez ran”.** Lista podsuwała figurę
+  z plakietką „BEZ RAN”, kubek rzucał, a sukces nic nie zmieniał. Naprawa: `StabilizeTargetList`
+  pomija figury, o których wiadomo, że są bez ran (cudze „nie wiadomo” zostaje), pusta lista
+  mówi „Nikt na wyciągnięcie ręki nie jest ranny…”; serwer odmawia `STABILIZE_NOT_WOUNDED`
+  („Ta figura nie jest ranna — nie ma czego stabilizować.”), test w `recovery.test.ts`.
+- **18.11 (71h) — „Komu:” przy dawce ma „sobie” i własną postać.** Naprawa: lista figur
+  w `DosesPanel` (`CharacterSheet.tsx`) pomija figury tej karty.
+- **14.11 — `walls.test.ts` zostawia zapis pamięci eksploracji po zamknięciu testu.** Diagnoza:
+  zapis z timera `schedulePersist` szedł `void` po `app.close()`, gdy baza testu była już
+  zwinięta (`P2021`, „Unhandled Errors” przy zielonej suicie). Naprawa:
+  `flushExplorationWrites(prisma)` w `onClose` (`app.ts`, przed `$disconnect`) wysyła
+  zaplanowane zapisy tej bazy od razu i czeka na te w locie; nieudany zapis idzie do
+  `console.error`. Przy okazji zwykły restart serwera nie gubi ostatniej sekundy odkrytej mapy.
+
 ## Zamknięte 2026-11-18, etap 71h (zamknięcie weryfikacji Ról)
 
 **15.11.2026 — `t8c-zdolnosci` klika „Dołóż wpis” w panelu Moto, a przycisk od 65a nazywa się

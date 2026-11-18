@@ -6,7 +6,6 @@ import {
   ROLE_GM,
   cpredOutOfFight,
   CPRED_NET_SEIZED_STATUS_ID,
-  cpredSheetInitiative,
   cpredTurnReminders,
   findInitiativeTies,
 } from '@vtt/shared';
@@ -25,7 +24,6 @@ import { useCombatStore, activeCombatantOf } from '../stores/combatStore.js';
 import { useSceneStore } from '../stores/sceneStore.js';
 import { useSelectionStore } from '../stores/selectionStore.js';
 import { useTokenStore } from '../stores/tokenStore.js';
-import { useCharacterStore } from '../stores/characterStore.js';
 import { useDeathSaveAutoLoad, useDeathSavePrompt } from '../death-save.js';
 import { usePortraitFrameStyle } from '../portrait-banner.js';
 import { takeFigure } from '../hud.js';
@@ -214,7 +212,7 @@ function ChipInitiative({
           useRollStore.getState().loadInitiativeCup({
             combatantId: combatant.id,
             name: combatant.name,
-            modifierTotal: initiativeModifierOf(combatant),
+            tokenId: combatant.tokenId,
           })
         }
         title="Rzuć inicjatywę — załaduj kubek i potrząśnij nim"
@@ -260,14 +258,6 @@ function ChipPortrait({ name, imageUrl }: { name: string; imageUrl: string | nul
       />
     </span>
   );
-}
-
-function initiativeModifierOf(combatant: CombatantView): number {
-  const token = combatant.tokenId ? useTokenStore.getState().tokens[combatant.tokenId] : undefined;
-  const characters = useCharacterStore.getState();
-  const character = token?.characterId ? characters.characters[token.characterId] : undefined;
-  if (!character) return 0;
-  return cpredSheetInitiative(character.data, characters.registry).modifier;
 }
 
 export function CombatBar() {
@@ -343,7 +333,7 @@ export function CombatBar() {
     useRollStore.getState().loadInitiativeCup({
       combatantId: mine.id,
       name: mine.name,
-      modifierTotal: initiativeModifierOf(mine),
+      tokenId: mine.tokenId,
     });
   }, [combat, user, isGm, cupEmpty]);
 

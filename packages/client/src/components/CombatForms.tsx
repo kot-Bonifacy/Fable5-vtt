@@ -258,14 +258,6 @@ export function StabilizeNearbyPicker({
       .sort((a, b) => Number(b.self) - Number(a.self) || a.name.localeCompare(b.name, 'pl'));
   }, [medic, scene, tokens]);
 
-  if (targets.length <= 1 && targets[0]?.self && targets[0].wounds === 'healthy') {
-    return (
-      <p className="hud-refusal">
-        Nikogo na wyciągnięcie ręki — Ustabilizowanie wymaga zasięgu ramienia ({CPRED_MELEE_REACH_M}{' '}
-        m).
-      </p>
-    );
-  }
   return <StabilizeTargetList acting={acting} targets={targets} onDone={onDone} />;
 }
 
@@ -281,6 +273,20 @@ function StabilizeTargetList({
 }) {
   const registry = useCharacterStore((s) => s.registry);
   const [error, setError] = useState<string | null>(null);
+  // Figura, o której wiadomo, że jest „bez ran", nie ma czego stabilizować —
+  // do 18.11 lista podsuwała ją z plakietką, a kubek rzucał na nic (serwer
+  // odmawia od tego dnia `STABILIZE_NOT_WOUNDED`). „Nie wiadomo" zostaje:
+  // gracz nie zna cudzych PW, a lista istnieje po to, żeby znaleźć konającego.
+  const patients = targets.filter((target) => target.wounds !== 'healthy');
+
+  if (patients.length === 0) {
+    return (
+      <p className="hud-refusal">
+        Nikt na wyciągnięcie ręki nie jest ranny — Ustabilizowanie wymaga pacjenta w zasięgu
+        ramienia ({CPRED_MELEE_REACH_M} m).
+      </p>
+    );
+  }
 
   function stabilize(target: { tokenId: string; name: string }) {
     if (!acting) {
@@ -299,10 +305,9 @@ function StabilizeTargetList({
   return (
     <>
       <ul className="combat-picker">
-        {targets.map((target) => (
+        {patients.map((target) => (
           <li key={target.tokenId} className="combat-picker-row">
             <span className="combat-picker-name">{target.name}</span>
-            {target.wounds === 'healthy' && <span className="combat-tag">bez ran</span>}
             <button
               type="button"
               className="small-button"

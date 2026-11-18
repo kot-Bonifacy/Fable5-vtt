@@ -32,25 +32,19 @@ Chirurgii ani Leczenia na Ranie Krytycznej postaci innego gracza — tylko MG
 (`testy-rejestr.md`). Drobiazgi (żaden nie zmienia liczb): druga karta obrażeń w Rundzie nie
 mówi, że Redukcja Solo już poszła; w walce Prowizorki nie ma na belce (karta → Ekwipunek);
 „Roboty drużyny” podsuwają do Ulepszania przedmiot fabularny bez ceny; partia farmaceutyków
-i targ przy ladzie rzucają bez kubka (bez Szczęścia), choć prace Technika idą kubkiem; „Komu:”
-przy dawce ma „sobie” i własną postać; „HR szuka…” ok. 10 s; kwaterunek Korpo nie przestawia
+i targ przy ladzie rzucają bez kubka (bez Szczęścia), choć prace Technika idą kubkiem; ~~„Komu:”
+przy dawce ma „sobie” i własną postać~~ (zamknięte 18.11, zaległości); „HR szuka…” ok. 10 s; kwaterunek Korpo nie przestawia
 Zakwaterowania (rozliczenie liczy czynsz kontenera); odliczanie Wsparcia „w drodze” gracz widzi
 tylko w powiadomieniu; karta prośby Rockera nie niesie „O co prosisz”. Spoza Ról: belka po
 przełączeniu konta w tym samym profilu przeglądarki zostaje na figurze poprzedniego gracza
 (`vtt.hudFocus`) — przy stole jeden gracz to jedna przeglądarka, więc najpewniej bez znaczenia.
 
-**15.11.2026 — drobiazgi UI z rozegrań Ról (71b), spoza listy bramki.** (1) Kubek pisze
-„Inicjatywa +0” zaraz po wejściu gracza do gry, zanim dojdzie karta — serwer rzuca dobrze
-(1k10+7). **Powtórzone 18.11 (71h, Odznaka).** (2) Klik w wiersz listy „Ustabilizuj” potrafi przełączyć belkę gracza na cudzą figurę;
-odmowa mówi wtedy „Ten uczestnik nie ma karty postaci”, choć ma (zła figura, nie brak karty).
-(3) Ustabilizowanie wolno rzucić na figurę „bez ran” — rzut na nic. 18.11: lista pisze przy takiej figurze „BEZ RAN”, ale dalej ją podsuwa. Oglądane w Firefoksie
-(gracz) i Chromium (MG), instancja E2E z `role-start`.
-
-**14.11.2026 — `walls.test.ts` zostawia zapis pamięci eksploracji po zamknięciu testu.** Pełna
-suita serwera raz skończyła się kodem 1 przy 1806/1806 zielonych: `persistMemory`
-(`realtime/exploration.ts`) zapisał `playerExploration` po zwinięciu bazy (`P2021`), vitest
-policzył dwa „Unhandled Errors”. Drugi przebieg czysty. Do zrobienia: doczekać zapisu przy
-zamykaniu (test albo `close` serwera). Pułapka na górze `testy`.
+**15.11.2026 — drobiazgi UI z rozegrań Ról (71b), spoza listy bramki.** ~~(1) „Inicjatywa +0”
+na kubku~~ i ~~(3) Ustabilizowanie figury „bez ran”~~ — zamknięte 18.11 (zaległości), czekają
+na wdrożenie. (2) Klik w wiersz listy „Ustabilizuj” potrafi przełączyć belkę gracza na cudzą
+figurę; odmowa mówi wtedy „Ten uczestnik nie ma karty postaci”, choć ma (zła figura, nie brak
+karty) — przyczyny nie ustalono, do złapania w przeglądarce. Oglądane w Firefoksie (gracz)
+i Chromium (MG), instancja E2E z `role-start`.
 
 **14.11.2026 — rozegranie „Fabryki dronów” i „Po zamknięciu” po przebudowie Sieci (70f).**
 Tymczasowe specy oględzin (MG w Chromium, Ola i Marek w Firefoksie), oba wzorce do końca, konsole
