@@ -574,12 +574,12 @@ describe('kreator pościgu (03.11): wbudowana droga jako tło', () => {
   it('MG kładzie drogę z listy jedną łatą, a adres spoza listy odpada', async () => {
     const gm = await connect(gmCookie);
     const created = data(
-      await emitAck<SceneView>(gm, 'scene:create', { name: 'Autostrada', kind: 'chase' }),
+      await emitAck<SceneView>(gm, 'scene:create', { name: 'Neonowa ulica', kind: 'chase' }),
       'scene:create',
     );
     // Domyślnie auta jadą w lewo (decyzja MG z 04.11).
     expect(created.chase.direction).toBe('left');
-    const preset = chaseRoadByUrl('/art/roads/highway.webp')!;
+    const preset = chaseRoadByUrl('/art/roads/neon-street.webp')!;
     // Rozmiar z drutu się nie liczy — serwer bierze go z listy dróg.
     const patch = chaseRoadPatch(preset);
     const view = data(
@@ -589,10 +589,10 @@ describe('kreator pościgu (03.11): wbudowana droga jako tło', () => {
       }),
       'scene:update road',
     );
-    expect(view.background).toEqual({ url: preset.url, width: 3500, height: 1800 });
-    expect(view).toMatchObject({ width: 3500, height: 1800, metersPerSquare: 1 });
+    expect(view.background).toEqual({ url: preset.url, width: 3500, height: 2400 });
+    expect(view).toMatchObject({ width: 3500, height: 2400, metersPerSquare: 1 });
     expect(view.grid).toMatchObject({ sizePx: 100, offsetX: 0, offsetY: 0 });
-    expect(view.chase).toMatchObject({ direction: 'left', road: { from: 2, to: 16 } });
+    expect(view.chase).toMatchObject({ direction: 'left', road: { from: 6, to: 18 } });
 
     const fake = await emitAck(gm, 'scene:update', {
       sceneId: created.id,
@@ -615,6 +615,6 @@ describe('kreator pościgu (03.11): wbudowana droga jako tło', () => {
     expect(switched.chase.direction).toBe('left');
 
     const file = await exportCampaign(built.prisma, campaignId, { includeChat: false });
-    expect(JSON.stringify(file)).toContain('/art/roads/highway.webp');
+    expect(JSON.stringify(file)).toContain('/art/roads/neon-street.webp');
   });
 });

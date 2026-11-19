@@ -1,5 +1,31 @@
 # Dziennik sesji — archiwum
 
+### Sesja 18.11 (trzecia) — etap 71h2: naprawa #88, zamknięcie etapu 71
+
+**Zrobione (czeka na wdrożenie, bez migracji):**
+
+- **#88 (B2) naprawiony — gracz-Medyk leczy Ranę Krytyczną postaci innego gracza.**
+  `toTokenView` wysyła rany **każdej** karty na żetonie (do dziś tylko karty bez właściciela),
+  a przy figurze z kartą klucz `injuries` jest zawsze, także pusty — klient scala widoki
+  spreadem i bez klucza wyleczona rana zostawała u gracza (dotyczyło też statystów). Klient
+  (`hud.ts`) bierze rany z żetonu, gdy karty figury nie ma w sklepie, więc w podglądzie figury
+  kolegi stoi sekcja „Rany” z „Załataj” / „Lecz”; `TreatInjury` podsuwa leczących z własnych
+  postaci gracza. Cudza karta dalej nie jedzie. Umowa na górze `statysta`.
+- **Testy:** serwer — `specialties.test.ts` „Medyk gracza leczy ranę postaci innego gracza
+  (#88)” (gniazda dwóch graczy; bez poprawki pada); E2E — `t71-medyk` „MED-05 #88 Ruta leczy
+  Złamaną rękę Brzytwy Chirurgią z podglądu figury” (klik figury, kubek, rana znika z karty
+  i z belki).
+- **Dokumenty:** MED-05 ⚠️ → ✅ (macierz: 139 ✅, 0 ⚠️), #88 naprawiony w `testy-rejestr.md`,
+  checklisty 71h2 i kryteria etapu odhaczone, **etap 71 → ✅** (`archiwum/tabela-etapow.md`).
+
+Testy: `shared` 3192, klient 515, serwer 1859; lint, Prettier i `tsc` czterech pakietów czyste.
+E2E: `t71-medyk` 7/7; pełne `--grep @szybkie` **183 przeszło, 2 czerwone** — `t65-kreator`
+(„＋ Dodaj pojazd” wyszarzony, stale, do etapu 72) i T9a (konsola; w powtórce 7/7 zielony).
+**Oglądano w Firefoksie** (Playwright MCP, instancja z `role-start`, gracz Celina): rana Brzytwy
+w podglądzie figury, formularz „Leczy: Ruta”, Chirurgia PT 11 kubkiem (15 vs PT 11), po
+animacji kości sekcja „Rany” znika, karta czatu „Wyleczona”. `specs/99-zapomnij/` to dalej
+cudze oględziny z 14.11.
+
 ### Sesja 18.11 (druga) — etap 71h1: suita Ról, T8c jako wieloklasowość, drugie rozegranie
 
 **Zrobione (testy E2E i dokumenty — kodu aplikacji nie ruszano, nic nowego do wdrożenia):**

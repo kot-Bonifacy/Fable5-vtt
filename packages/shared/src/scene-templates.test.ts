@@ -100,14 +100,14 @@ describe('readSceneTemplate (etap 66)', () => {
   });
 
   it('tło z wbudowanej drogi: adres i rozmiar z CHASE_ROADS, nie z pliku (66c)', () => {
-    const viaduct = CHASE_ROADS.find((road) => road.id === 'viaduct')!;
+    const neon = CHASE_ROADS.find((road) => road.id === 'neon-street')!;
     const raw = minimal();
     const template = readSceneTemplate(
       {
         ...raw,
         scene: {
           ...raw.scene,
-          backgroundUrl: viaduct.url,
+          backgroundUrl: neon.url,
           backgroundWidth: 10,
           backgroundHeight: undefined,
           gridSizePx: 100,
@@ -117,11 +117,11 @@ describe('readSceneTemplate (etap 66)', () => {
     )!;
     expect(template).not.toBeNull();
     expect(template.scene).toMatchObject({
-      backgroundUrl: '/art/roads/viaduct.webp',
-      backgroundWidth: viaduct.width,
-      backgroundHeight: viaduct.height,
-      width: viaduct.width,
-      height: viaduct.height,
+      backgroundUrl: '/art/roads/neon-street.webp',
+      backgroundWidth: neon.width,
+      backgroundHeight: neon.height,
+      width: neon.width,
+      height: neon.height,
     });
   });
 

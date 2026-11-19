@@ -80,8 +80,8 @@ function ownThumb(url: string): string {
 }
 
 /**
- * Wybór drogi: cztery wbudowane (tło, pas, kierunek i skala jednym klikiem)
- * i „Własna mapa” — MG wgrywa swoją grafikę (uwaga MG z 03.11).
+ * Wybór drogi: wbudowana Neonowa ulica (tło, pas, kierunek i skala jednym
+ * klikiem; cztery pozostałe MG usunął 19.11) i „Własna mapa” — MG wgrywa swoją grafikę (uwaga MG z 03.11).
  */
 export function ChaseRoadPicker({ scene }: { scene: SceneView }) {
   const patchDraft = useSceneStore((s) => s.patchDraft);
@@ -303,7 +303,7 @@ export function ChaseRoadSection({ scene }: { scene: SceneView }) {
 
 /**
  * Rozmiar kratki na własnej mapie: auto ma 3×5 kratek, więc kratka mówi, jak
- * duże jest auto względem jezdni. Wbudowane drogi mają ją ustawioną.
+ * duże jest auto względem jezdni. Wbudowana droga ma ją ustawioną.
  */
 export function ChaseGridSection({ scene }: { scene: SceneView }) {
   const patchDraft = useSceneStore((s) => s.patchDraft);

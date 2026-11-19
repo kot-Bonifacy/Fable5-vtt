@@ -2,7 +2,7 @@
 
 **Faza:** przed betą (zlecenie MG z 15.11 spoza planu) · **Wymaga etapów:** 65 (scena pościgu,
 65a–65e), kreator pościgu z 03.11, 66c i 66d (wzorce pościgu), 69 (lewa belka bez ramek),
-32 (wezwanie do Testu) · **Status:** ⬜ projekt (15.11), realizacja w siedmiu sesjach (72a–72g)
+32 (wezwanie do Testu) · **Status:** 🟨 w toku — projekt 15.11, **72a ✅ 19.11**, następny 72b
 
 ## Skąd ten etap
 
@@ -77,8 +77,8 @@ maleje o połowę co rundę (`cpredCoastSpeed`, bez zmian), wrak ma 0.
 | —       | bez zmian                                        | jazda prosto z tą samą prędkością nic nie kosztuje |
 
 **Pasy.** Jezdnia (`chaseRoad.from…to`) dzieli się na `Scene.chaseLanes` równych pasów; auto stoi
-środkiem bryły na środku pasa. Wbudowane drogi niosą liczbę pasów w `CHASE_ROADS` (Autostrada 3,
-Ulica 2+2 — 4, Estakada 3, Badlands 2, Neonowa ulica 3; do sprawdzenia z grafiką w 72a), własna
+środkiem bryły na środku pasa. Wbudowana droga niesie liczbę pasów w `CHASE_ROADS` (od 19.11
+jedyna to Neonowa ulica — 3 pasy po 4 m; cztery pozostałe MG usunął w 72a), własna
 mapa MG dostaje `round(szerokość pasa jezdni / 4)` i pole „Liczba pasów”. Zmiana o jeden pas
 wchodzi w tę samą Akcję Ruchu co pedał; o dwa naraz — Manewr „Gwałtowny skręt”.
 
@@ -324,20 +324,51 @@ przejmuje ten etap (`etap-71-weryfikacja-rol.md`, „Styk z etapem 72”):
 
 Każdy podetap to jedna sesja; po każdym aplikacja działa i testy przechodzą.
 
-### 72a — rdzeń modelu w `shared`
+### 72a — rdzeń modelu w `shared` (✅ 19.11)
 
-- [ ] `shared/chase-drive.ts`: pasy (`chaseLaneCentre`, `chaseLaneOf`, liczba pasów z drogi),
-      krok ruchu (`chaseDriveStep`: pas + przesunięcie wzdłuż → nowy środek, odcinek do
-      kolizji), kadr (`chaseAnchorShift` — sztywne przesunięcie, miejsce auta kadru wg roli),
-      prognoza przeszkody (`chaseObstacleEta`).
-- [ ] `systems/cpred/chase-drive.ts`: `cpredPedalSpeed` (gaz / hamulec / maksimum),
-      `cpredSpeedMph`, `cpredDriveAdvance` (różnica prędkości + zryw + Nitro),
-      `cpredRaceBonuses` (zryw z wyników, sufit 5, słaby kierowca), `cpredLostControlMove`
-      (spadek prędkości, 1k6 → pas), `cpredCanSlowBehind`.
-- [ ] Próg „słabego kierowcy” w nowym modelu liczy Moto (NOM-03, punkt 9).
-- [ ] `CHASE_ROADS[].lanes` sprawdzone z `tools/art/chase-roads.py` i `chase-neon-street.py`;
-      mil/h = Ruch × 5 sprawdzone na katalogu z `data/private` (bez wnoszenia treści do repo).
-- [ ] Testy `shared` do każdej funkcji (deterministyczny RNG). Zachowanie aplikacji bez zmian.
+- [x] `shared/chase-drive.ts`: pasy (`chaseLaneCentre`, `chaseLaneOf`, `chaseLaneSpanPx`,
+      `chaseLaneTarget`, `chaseSnapToLane`, liczba pasów z drogi — `chaseDefaultLanes`,
+      `chaseLanesForWidth`), krok ruchu (`chaseDriveStep`: pas + przesunięcie wzdłuż → odcinek
+      do `chaseFirstContact`), kadr (`chaseAnchorShift`, `CHASE_ANCHOR_FRACTION`, `ChaseRole`
+      `pursue` / `flee`, wybór auta kadru `chaseAnchorVehicle`), prognoza przeszkody
+      (`chaseObstacleEta` — odstęp, rundy, czy na pasie auta).
+- [x] `systems/cpred/chase-drive.ts`: `cpredPedalSpeed` i `cpredPedalProblem` (gaz / hamulec /
+      maksimum), `cpredSpeedMph` i `cpredMphToSpeed`, `cpredStartSpeed`, `cpredDriveAdvance`
+      (różnica prędkości + zryw + Nitro), `cpredRoadSquaresPerRound`, `cpredRaceRollers`
+      i `cpredRaceBonuses` (zryw z wyników, sufit 5, słaby kierowca), `cpredLostControlMove`
+      (−10 Ruchu, 1k6 → pas), `cpredCanSlowBehind` i `cpredSlowBehindSpeed`.
+- [x] Próg „słabego kierowcy” w nowym modelu liczy Moto (NOM-03, punkt 9): `cpredWeakDriver`
+      i `cpredSheetWeakDriver` (te same liczby co planer rzutu — test spójności). Wiersz macierzy
+      i `role-matrix.test.ts` „NOM-03” zostają do 72c, gdy próg zacznie działać na serwerze.
+- [x] `CHASE_ROADS[].lanes` sprawdzone ze skryptami grafiki — **korekta planu (MG 19.11):**
+      Autostrada i Badlands miały pasy namalowane węziej niż jezdnia (0,5–0,7 m rozjazdu), a MG
+      uznał, że jedyną wartościową grafiką jest Neonowa ulica. Cztery drogi (Autostrada, Ulica
+      2+2, Estakada, Badlands) usunięte z `CHASE_ROADS`, z `public/art/roads/` i razem ze
+      skryptem `tools/art/chase-roads.py`; zostaje Neonowa ulica, 3 pasy po 4 m (jezdnia 6–18).
+      Jedyna scena na usuniętej drodze w `dev.db` (stare „Ostatni zjazd” na Estakadzie w kampanii
+      „Oględziny 12.09 — do usunięcia”) skasowana na słowo MG; na VPS nie sprawdzano.
+- [x] mil/h = Ruch × 5 sprawdzone na katalogu z `data/private`: lądowe i latające ×5 co do mili
+      (katalog niesie km/h: Ruch 20 = 161 km/h). **Polskie wydanie podaje km/h — MG 19.11
+      zostaje przy milach** (decyzja 5). Łodzie się nie zgadzają (skuter i motorówka Ruch 20 =
+      97 km/h, łódź kabinowa Ruch 10 = 24 km/h) — **MG 19.11: jedna skala ×5 dla wszystkiego**.
+- [x] Testy `shared` do każdej funkcji (deterministyczny RNG). Zachowanie aplikacji bez zmian
+      poza kreatorem (jedna wbudowana droga).
+
+Rozstrzygnięcia z sesji 72a (do potwierdzenia przy rozegraniu 72g):
+
+- **Słaby kierowca w Wyścigu zdaje, gdy wynik przewyższa PT 10** (`total > PT`, jak każdy Test
+  w VTT i dzisiejszy Test zwykłej jazdy) — w punkcie 3 stało „poniżej 10”.
+- **Słaby kierowca, który stracił kontrolę, nie dostaje zrywu**, ale jego wynik dalej jest
+  „najniższym” dla reszty — przegrał wyścig.
+- **Jedno auto z kierowcą w kadrze (MG 19.11):** Wyścigu nie ma, ale słaby kierowca z pełną kartą
+  rzuca na początku rundy sam — ten sam rzut kubkiem, bez zrywu, jako Test zwykłej jazdy
+  (`cpredRaceRollers`). Reguła s. 192 działa więc i w samotnym aucie.
+- **„Zwolnij za nim” liczy różnicę od prędkości z początku tury** (sprzed pedału); auto przyjmuje
+  prędkość blokującego, najwyżej swój Ruch.
+- **Prognoza przeszkody** liczy rundy z prędkości auta po drodze (`prędkość / 4` na rundę —
+  przeszkoda stoi na drodze, kadr jedzie z prędkością pościgu); auto stojące „nie dojedzie”.
+- **Auto kadru bez kierowcy:** gdy auto drużyny nie ma kierowcy, kadr i tak trzyma się go (stoi
+  auto drużyny — stoi droga); wrak obcego auta kadru nie trzyma.
 
 ### 72b — serwer nowej jazdy i surowy kokpit
 
@@ -396,6 +427,10 @@ Każdy podetap to jedna sesja; po każdym aplikacja działa i testy przechodzą.
       i kopie (`kopie`), testy `shared` i serwera, E2E `t65-kreator` dostosowany.
 
 ### 72g — wzorce, rozegranie, zamknięcie
+
+> **MG 19.11:** dziś żadna scena pościgu nie jest dobrze zrobiona, a obie obecne („Ostatni zjazd”,
+> „Zastaw”) wkrótce się zmienią — zostanie z nich tylko grafika drogi (Neonowa ulica). Zakres
+> 72g ustalić z MG na starcie sesji, zanim przepisze się wzorce.
 
 - [ ] „Ostatni zjazd” i „Zastaw” przepisane: pasy, prędkości startowe, zamiary, plan rund
       z notatek ⚠️ (kolczatka, posiłki, roboty drogowe, barykada), notatki MG pod nowe UI.

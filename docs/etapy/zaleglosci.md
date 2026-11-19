@@ -6,6 +6,12 @@ w `POMYSLY.md` („Do sprawdzenia przy stole”), decyzje MG — w `decyzje-i-up
 
 ## Otwarte
 
+**19.11.2026 — po 72a: Firefox i sceny na usuniętych drogach na VPS.** (1) Kreator pościgu
+z jedną wbudowaną drogą obejrzany tylko w czystym Chromium — Firefox z Playwright MCP nie
+wystartował; obejrzeć w Firefoksie przy 72b. (2) Po wdrożeniu sprawdzić na VPS sceny z tłem
+`/art/roads/{highway,street,viaduct,badlands}.webp` i skasować je (decyzja MG z 19.11; w `dev.db`
+była jedna i poszła). Bez tego taka scena zostaje bez tła.
+
 **18.11.2026 — zdania podręcznika poza `roleability.ts` (po 71g2, WSP-19).** Ten sam pomiar co
 w 71g2 (wspólny ciąg ≥ 6 słów z `data/private/rulebook/manual/CPRED-podrecznik/`) na reszcie
 kodu bez testów: ~535 ciągów. Najwięcej słów: `shared/…/cpred/attacks.ts` 290, `netcombat.ts`

@@ -1,15 +1,14 @@
 /**
  * Kreator sceny pościgu (zlecenie MG z 03.11) — rdzeń VTT, bez liczb CP RED.
  *
- * Wbudowane drogi to tła z `packages/client/public/art/roads/`, rysowane przez
- * `tools/art/chase-roads.py` z dwóch zdjęć asfaltu CC0 (ambientCG). Każda ma
- * okres 32 kratek i 3 kratki zapasu, więc szew bieżni (`CHASE_SEAM_SQUARES`)
- * przenika dwa identyczne pasy i znika. Wiersze jezdni poniżej są kopią
- * układu ze skryptu — zmieniasz jedno, zmieniasz drugie.
- *
- * „Neonowa ulica” (MG, 05.11) jest inna: `tools/art/chase-neon-street.py`
+ * Wbudowana droga to tło z `packages/client/public/art/roads/`. Od 19.11.2026
+ * jest jedna — „Neonowa ulica” (MG, 05.11): `tools/art/chase-neon-street.py`
  * skleja trzy mapy MG w długą pętlę (`strip`, ok. 238 kratek), którą bieżnia
  * przewija pod sceną 35 × 24 zamiast tła — droga nie powtarza się co 32 m.
+ * Cztery drogi rysowane skryptem z asfaltu CC0 (Autostrada, Ulica 2+2,
+ * Estakada, Badlands) MG usunął 19.11 (etap 72a) jako słabe graficznie.
+ * Wiersze jezdni i liczba pasów poniżej są kopią układu ze skryptu — zmieniasz
+ * jedno, zmieniasz drugie.
  *
  * Wolne miejsce na drodze (`chaseFreeSpot`) liczy klient przed „Na drogę”:
  * auta stawiane jedno po drugim nie lądują na sobie na środku sceny.
@@ -25,7 +24,7 @@ import {
   type ChaseSettings,
 } from './chase.js';
 
-export const CHASE_ROAD_IDS = ['highway', 'street', 'viaduct', 'badlands', 'neon-street'] as const;
+export const CHASE_ROAD_IDS = ['neon-street'] as const;
 export type ChaseRoadId = (typeof CHASE_ROAD_IDS)[number];
 
 export interface ChaseRoadPreset {
@@ -42,6 +41,11 @@ export interface ChaseRoadPreset {
   /** Pas jezdni w wierszach kratek (`from` włącznie, `to` bez). */
   road: { from: number; to: number };
   /**
+   * Liczba pasów ruchu (etap 72) — tyle, ile namalowano: jezdnia dzieli się
+   * na nie po równo (`chaseLaneCentre`).
+   */
+  lanes: number;
+  /**
    * Długa, już zapętlona tekstura drogi (ta sama wysokość w kratkach co tło,
    * dowolna długość) — bieżnia przewija ją zamiast tła, bez przenikania szwu.
    * Tło (`url`) jest wtedy jej pierwszymi 35 kratkami, stopklatką sceny.
@@ -49,8 +53,8 @@ export interface ChaseRoadPreset {
   strip?: string;
 }
 
-/** Rozmiar każdej wbudowanej drogi: 35 × 18 kratek po 100 px (1 m na kratkę). */
-const ROAD_SIZE = { width: 3500, height: 1800, gridSizePx: 100 } as const;
+/** Rozmiar wbudowanej drogi: 35 kratek długości po 100 px (1 m na kratkę); wysokość — z drogi. */
+const ROAD_SIZE = { width: 3500, gridSizePx: 100 } as const;
 
 function road(
   id: ChaseRoadId,
@@ -58,7 +62,9 @@ function road(
   hint: string,
   from: number,
   to: number,
-  extra: Partial<Pick<ChaseRoadPreset, 'width' | 'height' | 'strip'>> = {},
+  lanes: number,
+  height: number,
+  extra: Partial<Pick<ChaseRoadPreset, 'strip'>> = {},
 ): ChaseRoadPreset {
   return {
     id,
@@ -67,50 +73,27 @@ function road(
     url: `/art/roads/${id}.webp`,
     thumbUrl: `/art/roads/${id}-thumb.webp`,
     ...ROAD_SIZE,
+    height,
     ...extra,
     // Drogi są symetryczne w poziomie; domyślnie jazda w lewo (MG, 04.11).
     direction: 'left',
     road: { from, to },
+    lanes,
   };
 }
 
 export const CHASE_ROADS: readonly ChaseRoadPreset[] = [
-  road(
-    'highway',
-    'Autostrada',
-    'Trzy pasy w jedną stronę, pobocza i betonowe bariery z odblaskami.',
-    2,
-    16,
-  ),
-  road(
-    'street',
-    'Ulica 2+2',
-    'Dwa pasy w każdą stronę, podwójna żółta, chodniki w neonach i przejście dla pieszych.',
-    2,
-    16,
-  ),
-  road(
-    'viaduct',
-    'Estakada',
-    'Trzy pasy nad nocnym miastem, neonowe bariery i przepaść po obu stronach.',
-    3,
-    15,
-  ),
-  road(
-    'badlands',
-    'Badlands',
-    'Spękana dwupasmówka przez pustkowie — auto zjedzie na twarde pobocze.',
-    4,
-    14,
-  ),
-  // Układ powtarza `tools/art/chase-neon-street.py`: 24 kratki w poprzek, jezdnia 6–18.
+  // Układ powtarza `tools/art/chase-neon-street.py`: 24 kratki w poprzek,
+  // jezdnia 6–18, trzy pasy po 4 m.
   road(
     'neon-street',
     'Neonowa ulica',
     'Trzy pasy między neonami dzielnicy, chodniki i fronty budynków; droga nie powtarza się przez ponad 200 m.',
     6,
     18,
-    { height: 2400, strip: '/art/roads/neon-street-strip.webp' },
+    3,
+    2400,
+    { strip: '/art/roads/neon-street-strip.webp' },
   ),
 ];
 
