@@ -8,6 +8,9 @@ import {
   cpredCanSlowBehind,
   cpredDriveAdvance,
   cpredLostControlMove,
+  cpredLostControlLane,
+  cpredLostControlNote,
+  cpredLostControlSpeed,
   cpredMphToSpeed,
   cpredPedalProblem,
   cpredPedalSpeed,
@@ -240,6 +243,15 @@ describe('utrata kontroli', () => {
 
   it('prędkość nie spada poniżej zera', () => {
     expect(cpredLostControlMove(5, fixed(3)).speed).toBe(0);
+  });
+
+  it('prędkość i tor osobno: spadek od razu, 1k6 dopiero przy ruchu', () => {
+    expect(cpredLostControlSpeed(30)).toBe(20);
+    expect(cpredLostControlSpeed(4)).toBe(0);
+    expect(cpredLostControlLane(fixed(6))).toEqual({ laneDelta: 1, die: 6 });
+    expect(cpredLostControlNote({ laneDelta: 1, die: 6 })).toBe('1k6: 6 — pas niżej');
+    expect(cpredLostControlNote({ laneDelta: 0, die: 3 })).toBe('1k6: 3 — prosto');
+    expect(cpredLostControlNote({ laneDelta: -1, die: 1 })).toBe('1k6: 1 — pas wyżej');
   });
 
   it('rzuca dokładnie jedną kością k6 z wstrzykniętego RNG', () => {

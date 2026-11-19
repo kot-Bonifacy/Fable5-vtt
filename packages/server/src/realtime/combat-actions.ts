@@ -81,6 +81,7 @@ import { emitRunsOnRoundChange, resetNetLedgersOnScene } from './netrun-io.js';
 import { netSilencedTokenIds } from './net-control.js';
 import { playNetFoeTurn } from './net-defense.js';
 import { liftNetFoesToTop } from './net-encounter.js';
+import { resetChaseCombat } from './chase-offstage.js';
 
 /**
  * The action economy (stage 14b).
@@ -899,11 +900,8 @@ export const combatEndEvent = defineEvent({
     await calmVisibleFoes(deps, campaignId, scene);
     // Ending clears the state completely — round history is not persisted.
     await deps.ctx.prisma.combat.deleteMany({ where: { sceneId: scene.id } });
-    // Pęd aut pościgu (05.11.2026) żyje tylko w walce — poza nią auto bez kierowcy stoi.
-    await deps.ctx.prisma.sceneVehicle.updateMany({
-      where: { sceneId: scene.id, momentum: { not: null } },
-      data: { momentum: null },
-    });
+    // Prędkość aut pościgu (etap 72) żyje tylko w walce — poza nią to zapowiedź startowej.
+    await resetChaseCombat(deps.ctx.prisma, scene.id);
     await emitCombatOfScene(deps, campaignId, scene);
     // Księga węzłów liczy rundy tej walki — następna zacznie od rundy 1 (70c).
     await resetNetLedgersOnScene(deps, scene.id);

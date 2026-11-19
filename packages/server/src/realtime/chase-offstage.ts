@@ -35,3 +35,19 @@ export async function seatedOffstage(
   });
   return row !== null && sceneVehicleOffstage(row.status);
 }
+
+/**
+ * Walka na scenie pościgu się zaczęła albo skończyła: prędkości, ruchy rundy,
+ * zryw i stan rundy wracają do zera — poza walką prędkość to tylko zapowiedź
+ * startowej (`cpredStartSpeed`), a bieżnia jedzie jak przed etapem 72.
+ */
+export async function resetChaseCombat(prisma: PrismaClient, sceneId: string): Promise<void> {
+  await prisma.sceneVehicle.updateMany({
+    where: { sceneId },
+    data: { speed: 0, movedRound: 0, raceBonus: 0, lostControl: false },
+  });
+  await prisma.scene.updateMany({
+    where: { id: sceneId, kind: 'chase' },
+    data: { chasePursuitSpeed: null, chaseRace: null },
+  });
+}

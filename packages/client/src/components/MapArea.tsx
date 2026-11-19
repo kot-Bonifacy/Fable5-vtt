@@ -569,10 +569,10 @@ function sceneDeleteErrorText(kind: SceneObjectRef['kind'], code: string | undef
 }
 
 /**
- * Czy gracz może ciągnąć to auto i jak daleko (65c) — to samo pytanie, które
- * zada serwer, żeby kursor nie obiecywał jazdy, której nie będzie: figura
- * gracza za kierownicą, auto w kadrze, silnik i kontrola. Poza walką bez
- * limitu, w walce tylko we własnej turze i najwyżej o resztę budżetu kierowcy.
+ * Czy gracz może ciągnąć to auto (65c, od etapu 72 tylko poza walką) — to samo
+ * pytanie, które zada serwer, żeby kursor nie obiecywał jazdy, której nie
+ * będzie: figura gracza za kierownicą, auto w kadrze, silnik i kontrola. W walce
+ * auto prowadzi się gazem, hamulcem i pasem (`vehicle:drive`), nie myszą.
  */
 function driverDragLimit(
   vehicle: SceneVehicleView,
@@ -586,16 +586,7 @@ function driverDragLimit(
   );
   if (!driver || !userId || driver.ownerId !== userId || !scene) return false;
   if (vehicle.status !== 'racing' || !vehicle.started || vehicle.control !== 'driver') return false;
-  const row =
-    combat && combat.round >= 1
-      ? combat.combatants.find((entry) => entry.tokenId === driver.id)
-      : undefined;
-  if (!row) return null;
-  if (combat?.activeCombatantId !== row.id) return false;
-  const distance = row.turn?.distance;
-  if (!distance) return null;
-  const metresLeft = Math.max(0, distance.max - distance.used);
-  return (metresLeft / scene.metersPerSquare) * scene.grid.sizePx;
+  return combat ? false : null;
 }
 
 /**

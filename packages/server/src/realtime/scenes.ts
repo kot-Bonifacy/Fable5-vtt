@@ -16,7 +16,10 @@ import {
   CHASE_AMBIENCE,
   ROLE_GM,
   DEFAULT_CHASE_SETTINGS,
+  chaseDefaultLanes,
   chaseRoadByUrl,
+  clampChaseLanes,
+  isChaseRole,
   defaultChaseDirection,
   isAmbiencePreset,
   isChaseDirection,
@@ -87,22 +90,30 @@ export function toSceneView(scene: Scene): SceneView {
 }
 
 /** Ustawienia pościgu z wiersza sceny (etap 65b); nieczytelne pola — domyślne. */
-export function chaseSettingsOf(
-  scene: Pick<
-    Scene,
-    'chaseDirection' | 'chaseTempo' | 'chaseRunning' | 'chaseRoadFrom' | 'chaseRoadTo'
-  >,
-): ChaseSettings {
+export function chaseSettingsOf(scene: Scene): ChaseSettings {
+  const direction = isChaseDirection(scene.chaseDirection) ? scene.chaseDirection : 'right';
+  const road =
+    scene.chaseRoadFrom !== null &&
+    scene.chaseRoadTo !== null &&
+    scene.chaseRoadTo > scene.chaseRoadFrom
+      ? { from: scene.chaseRoadFrom, to: scene.chaseRoadTo }
+      : null;
+  // Etap 72: liczba pasów wpisana przez MG albo z drogi (wbudowana niesie
+  // własną, własna mapa — z szerokości jezdni).
+  const lanes =
+    scene.chaseLanes !== null
+      ? clampChaseLanes(scene.chaseLanes)
+      : chaseDefaultLanes(scene.backgroundUrl, { direction, road }, scene);
   return {
-    direction: isChaseDirection(scene.chaseDirection) ? scene.chaseDirection : 'right',
+    direction,
     tempo: scene.chaseTempo,
     running: scene.chaseRunning,
-    road:
-      scene.chaseRoadFrom !== null &&
-      scene.chaseRoadTo !== null &&
-      scene.chaseRoadTo > scene.chaseRoadFrom
-        ? { from: scene.chaseRoadFrom, to: scene.chaseRoadTo }
-        : null,
+    road,
+    lanes,
+    role: isChaseRole(scene.chaseRole) ? scene.chaseRole : 'pursue',
+    anchorId: scene.chaseAnchorId,
+    pursuitSpeed: scene.chasePursuitSpeed,
+    shiftSq: scene.chaseShiftSq,
   };
 }
 

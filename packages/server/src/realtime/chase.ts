@@ -15,10 +15,8 @@ import {
   ROLE_GM,
   VEHICLE_LAYOUTS,
   cpredDriverIncapable,
-  cpredCoastSpeed,
-  cpredVehicleChase,
+  cpredStartSpeed,
   cpredVehicleDerived,
-  cpredVehicleSpeed,
   cpredVehicleHasPlow,
   cpredVehicleUpgradeNames,
   cpredVehicleWindows,
@@ -30,7 +28,9 @@ import {
   isChaseObstacleKind,
   readCpredVehicle,
   chaseBodyContains,
-  chaseFrameTempo,
+  chaseIsHorizontal,
+  chaseLaneOf,
+  chaseSnapToLane,
   clampChaseVehicle,
   isSceneVehicleStatus,
   isVehicleLayoutId,
@@ -39,7 +39,6 @@ import {
   vehicleSeatCentre,
   type ChaseBody,
   type ChaseControl,
-  type ChaseFrameVehicle,
   type ScenePoint,
 } from '@vtt/shared';
 import type { PrismaClient } from '../db.js';
@@ -119,29 +118,23 @@ export function driverCapable(token: Pick<Token, 'statuses'>): boolean {
 function toSceneVehicleView(
   row: PlacedVehicle,
   context: {
-    running: boolean;
+    scene: Scene;
     driverTokens: readonly Pick<Token, 'id' | 'characterId'>[];
     motion: VehicleMotion;
-    /** Prędkość ramy w następnej rundzie — od niej dryf w menu auta. */
-    nextFrameTempo: number;
   },
 ): SceneVehicleView {
+  const { scene, motion } = context;
   const body = chaseBodyOf(row.vehicle);
   const drivers = new Set(readDrivers(row.drivers));
   const driverTokens = context.driverTokens;
   const stats = readCpredVehicle(row.vehicle.system);
-  const { motion } = context;
-  const chase = cpredVehicleChase(stats, {
-    tempo: context.nextFrameTempo,
-    started: row.started,
-    nitroUsed: row.nitroUsed,
-    speed: motion.nextSpeed,
-  });
   const derived = cpredVehicleDerived(stats);
+  const { settings, frame } = chaseGeometry(scene);
   const stored = isSceneVehicleStatus(row.status) ? row.status : 'racing';
   // Wrak (65d1) to PUK 0, nie kolumna: auto w kadrze z zerem pokazuje się jako
   // `wrecked`, a za krawędzią zostaje `behind` / `escaped` jak każde inne.
   const status = stored === 'racing' && cpredVehicleWrecked(stats) ? 'wrecked' : stored;
+  const round = chaseRoundOf(scene);
   return {
     id: row.id,
     sceneId: row.sceneId,
@@ -160,9 +153,11 @@ function toSceneVehicleView(
       .map((token) => token.id),
     started: row.started,
     control: motion.control,
-    moveSq: chase.moveSq,
-    driftSq: chase.driftSq,
-    nitroLeft: chase.nitroLeft,
+    lane: chaseLaneOf(row, settings.lanes, settings, frame),
+    maxSpeed: Math.max(0, stats.move),
+    raceBonus: row.raceBonus,
+    moved: round !== null && row.movedRound >= round,
+    nitroLeft: Math.max(0, derived.nitroTanks - row.nitroUsed),
     spikesLeft: cpredVehicleSpikesLeft(stats, row.spikesUsed),
     refillable:
       (row.nitroUsed > 0 && derived.nitroTanks > 0) ||
@@ -182,7 +177,7 @@ function toSceneVehicleView(
         upgradeId: upgrade.upgradeId,
         ...(stats.mountAmmo[upgrade.id] !== undefined ? { ammo: stats.mountAmmo[upgrade.id] } : {}),
       })),
-    moving: context.running && motion.speed > 0,
+    moving: scene.chaseRunning && motion.speed > 0,
     speed: motion.speed,
     party: motion.party,
     blockingVehicleId: row.blockingId,
@@ -212,23 +207,43 @@ export function vehicleMoving(
 }
 
 /**
- * Ruch auta w ramie pościgu (decyzja MG z 05.11.2026): kto prowadzi, czy wiezie
- * drużynę, prędkość teraz i w następnej rundzie (bez kierowcy — pęd zwalnia).
+ * Runda walki, w której scena pościgu ostatnio zaczęła rundę modelu jazdy
+ * (etap 72, `startChaseRound`) — `null` poza walką. Siedzi w `chaseRace`, bo
+ * Wyścig (72c) i tak jest stanem rundy.
+ */
+export function chaseRoundOf(scene: Pick<Scene, 'chaseRace' | 'chasePursuitSpeed'>): number | null {
+  if (scene.chasePursuitSpeed === null || !scene.chaseRace) return null;
+  try {
+    const parsed: unknown = JSON.parse(scene.chaseRace);
+    const round =
+      typeof parsed === 'object' && parsed !== null ? (parsed as { round?: unknown }).round : null;
+    return typeof round === 'number' && Number.isInteger(round) ? round : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Ruch auta w pościgu (etap 72): kto prowadzi, czy wiezie drużynę i jak szybko
+ * jedzie. W walce prędkość to `SceneVehicle.speed` (trwa między turami), poza
+ * nią — prędkość, z którą auto ruszy na starcie walki (`cpredStartSpeed`).
  */
 export interface VehicleMotion {
   control: ChaseControl;
   party: boolean;
-  /** Własna prędkość teraz (`cpredVehicleSpeed`). */
+  /** Prędkość w punktach Ruchu. */
   speed: number;
-  /** Własna prędkość na następny dryf — bez kierowcy połowa pędu (`cpredCoastSpeed`). */
-  nextSpeed: number;
 }
 
 /** Figura w fotelu — tyle, ile ruch auta o niej musi wiedzieć. */
-type SeatedToken = Pick<Token, 'sceneVehicleId' | 'vehicleSeat' | 'statuses' | 'ownerId'>;
+export type SeatedToken = Pick<Token, 'sceneVehicleId' | 'vehicleSeat' | 'statuses' | 'ownerId'>;
 
 /** Ruch auta z jego wiersza i figur w fotelach. */
-export function vehicleMotion(row: PlacedVehicle, seated: readonly SeatedToken[]): VehicleMotion {
+export function vehicleMotion(
+  row: PlacedVehicle,
+  seated: readonly SeatedToken[],
+  scene: Pick<Scene, 'chasePursuitSpeed' | 'chaseTempo'>,
+): VehicleMotion {
   const stats = readCpredVehicle(row.vehicle.system);
   const inside = seated.filter((token) => token.sceneVehicleId === row.id);
   const driver = inside.find((token) => token.vehicleSeat === 0) ?? null;
@@ -237,30 +252,17 @@ export function vehicleMotion(row: PlacedVehicle, seated: readonly SeatedToken[]
     : driver && driverCapable(driver)
       ? 'driver'
       : 'none';
-  const driven = control !== 'none';
-  const state = { started: row.started, driven, momentum: row.momentum };
-  const speed = cpredVehicleSpeed(stats, state);
-  const nextSpeed = cpredVehicleSpeed(stats, {
-    ...state,
-    momentum: cpredCoastSpeed(row.momentum ?? 0),
-  });
+  const speed =
+    scene.chasePursuitSpeed !== null
+      ? Math.max(0, row.speed)
+      : cpredStartSpeed(stats.move, scene.chaseTempo, {
+          started: row.started,
+          driven: control !== 'none',
+          wrecked: cpredVehicleWrecked(stats),
+        });
   const party =
     row.vehicle.ownerCharacterId !== null || inside.some((token) => token.ownerId !== null);
-  return { control, party, speed, nextSpeed };
-}
-
-/** Rama auta do `chaseFrameTempo` — status w kadrze liczy się jak w widoku (wrak z PUK 0). */
-export function frameVehicle(
-  row: PlacedVehicle,
-  motion: VehicleMotion,
-  speed: number,
-): ChaseFrameVehicle {
-  return {
-    status: isSceneVehicleStatus(row.status) ? row.status : 'racing',
-    party: motion.party,
-    speed,
-    control: motion.control,
-  };
+  return { control, party, speed };
 }
 
 /** Figury w fotelach aut tej sceny. */
@@ -275,22 +277,13 @@ export async function seatedOnScene(
   });
 }
 
-/** Ruch wszystkich aut sceny i prędkości ramy: teraz i na następny dryf. */
+/** Ruch wszystkich aut sceny. */
 export function sceneMotion(
   rows: readonly PlacedVehicle[],
   seated: readonly SeatedToken[],
-  tempo: number,
-): { motions: Map<string, VehicleMotion>; frameTempo: number; nextFrameTempo: number } {
-  const motions = new Map(rows.map((row) => [row.id, vehicleMotion(row, seated)] as const));
-  const frameTempo = chaseFrameTempo(
-    tempo,
-    rows.map((row) => frameVehicle(row, motions.get(row.id)!, motions.get(row.id)!.speed)),
-  );
-  const nextFrameTempo = chaseFrameTempo(
-    tempo,
-    rows.map((row) => frameVehicle(row, motions.get(row.id)!, motions.get(row.id)!.nextSpeed)),
-  );
-  return { motions, frameTempo, nextFrameTempo };
+  scene: Pick<Scene, 'chasePursuitSpeed' | 'chaseTempo'>,
+): Map<string, VehicleMotion> {
+  return new Map(rows.map((row) => [row.id, vehicleMotion(row, seated, scene)] as const));
 }
 
 /** Auta sceny jako widoki, z figurami, którym wolno prowadzić, i kierowcami. */
@@ -300,10 +293,8 @@ export async function placedViews(
 ): Promise<SceneVehicleView[]> {
   const rows = await placedOnScene(prisma, sceneId);
   if (rows.length === 0) return [];
-  const scene = await prisma.scene.findUnique({
-    where: { id: sceneId },
-    select: { chaseTempo: true, chaseRunning: true },
-  });
+  const scene = await prisma.scene.findUnique({ where: { id: sceneId } });
+  if (!scene) return [];
   const allowed = new Set(rows.flatMap((row) => readDrivers(row.drivers)));
   const tokens =
     allowed.size === 0
@@ -313,14 +304,9 @@ export async function placedViews(
           select: { id: true, characterId: true },
         });
   const seated = await seatedOnScene(prisma, rows);
-  const { motions, nextFrameTempo } = sceneMotion(rows, seated, scene?.chaseTempo ?? 0);
+  const motions = sceneMotion(rows, seated, scene);
   return rows.map((row) =>
-    toSceneVehicleView(row, {
-      running: scene?.chaseRunning ?? false,
-      driverTokens: tokens,
-      motion: motions.get(row.id)!,
-      nextFrameTempo,
-    }),
+    toSceneVehicleView(row, { scene, driverTokens: tokens, motion: motions.get(row.id)! }),
   );
 }
 
@@ -500,6 +486,29 @@ export async function carryPassengers(
 }
 
 /**
+ * Przy starcie serwera stawia auta scen pościgu na środku najbliższego pasa
+ * (etap 72) — stare sceny i wzorce sprzed pasów miały auta w dowolnym miejscu
+ * jezdni. Wzdłuż drogi nic się nie rusza. Figury w fotelach przesadza potem
+ * `reseatChasePassengers`. Zwraca liczbę przestawionych aut.
+ */
+export async function snapChaseVehiclesToLanes(prisma: PrismaClient): Promise<number> {
+  const placed = await prisma.sceneVehicle.findMany({
+    where: { scene: { kind: 'chase' } },
+    include: { scene: true },
+  });
+  let moved = 0;
+  for (const row of placed) {
+    const { settings, frame } = chaseGeometry(row.scene);
+    const lane = chaseLaneOf(row, settings.lanes, settings, frame);
+    const centre = chaseSnapToLane(row, lane, settings.lanes, settings, frame);
+    if (Math.abs(centre.x - row.x) < 0.5 && Math.abs(centre.y - row.y) < 0.5) continue;
+    await prisma.sceneVehicle.update({ where: { id: row.id }, data: centre });
+    moved += 1;
+  }
+  return moved;
+}
+
+/**
  * Przy starcie serwera przesadza figury w fotelach wszystkich aut na drogach
  * według bieżącego układu foteli. `x`, `y` figury w fotelu są zapisane, a
  * `carryPassengers` woła tylko ruch auta — po zmianie `VEHICLE_LAYOUTS`
@@ -656,15 +665,26 @@ export function requirePoint(payload: { x?: unknown; y?: unknown } | undefined):
   return { x, y };
 }
 
-/** Przesuwa auto na scenie i figury w jego fotelach — bez gniazd (65c doda budżet). */
+/**
+ * Przesuwa auto na scenie i figury w jego fotelach. `free` — jazda w turze
+ * kierowcy (etap 72): wzdłuż drogi bez przycięcia do sceny, bo auto, które
+ * wyjedzie za krawędź, odpada z pościgu; w poprzek dalej w pasie jezdni.
+ */
 export async function moveSceneVehicle(
   deps: RealtimeDeps,
   campaignId: string,
   placed: PlacedVehicle & { scene: Scene },
   target: ScenePoint,
+  options: { free?: boolean } = {},
 ): Promise<SceneVehicleView> {
   const { scene, ...row } = placed;
-  const centre = clampOnScene(scene, chaseBodyOf(row.vehicle), target);
+  const clamped = clampOnScene(scene, chaseBodyOf(row.vehicle), target);
+  const horizontal = chaseIsHorizontal(chaseGeometry(scene).settings.direction);
+  const centre = !options.free
+    ? clamped
+    : horizontal
+      ? { x: target.x, y: clamped.y }
+      : { x: clamped.x, y: target.y };
   const shifted = Math.hypot(centre.x - row.x, centre.y - row.y) >= 0.5;
   const updated = await deps.ctx.prisma.sceneVehicle.update({
     where: { id: row.id },

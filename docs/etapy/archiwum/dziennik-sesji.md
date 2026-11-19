@@ -1,5 +1,27 @@
 # Dziennik sesji — archiwum
 
+### Sesja 18.11 (czwarta) — „wykonaj kilka zaległości”
+
+**Zrobione (czeka na wdrożenie, bez migracji):**
+
+- **„Inicjatywa +0” na kubku (15.11 pkt 1)** — kubek liczy modyfikator z karty na żywo
+  (`PendingInitiative.tokenId`, `initiativeCupModifier` w `DiceCup.tsx`); bez karty pisze samo
+  „Inicjatywa”.
+- **Ustabilizowanie figury bez ran (15.11 pkt 3)** — lista pacjentów pomija znanych „bez ran”,
+  pusta mówi, że nikt w zasięgu nie jest ranny; serwer odmawia `STABILIZE_NOT_WOUNDED`.
+- **„Komu:” przy dawce (18.11, 71h)** — bez własnej postaci obok „sobie”.
+- **Zapis pamięci eksploracji po zamknięciu (14.11, `walls.test.ts`)** —
+  `flushExplorationWrites` w `onClose` serwera; pułapka na górze `testy` oznaczona jako
+  naprawiona.
+- Wpisy w `archiwum/zamkniete-zaleglosci.md`; w `zaleglosci.md` z 15.11 został pkt 2 (klik
+  w wiersz „Ustabilizuj” przełącza belkę — przyczyny nie znaleziono w kodzie).
+
+Testy: serwer 1860/1860 (pełna suita czysta, bez „Unhandled Errors”), klient 515; lint, Prettier
+i `tsc` klienta i serwera czyste. **Oglądano w Firefoksie** (tymczasowy spec E2E z `role-start`,
+gracz Celina/Ruta, skasowany): „Komu:” = tylko „sobie” i cudze figury, pusta lista
+Ustabilizowania z odmową, Manekin („nie wiadomo”) na liście bez Ruty, kubek „Inicjatywa +7”
+po `combat:start`. `specs/99-zapomnij/` to dalej cudze oględziny z 14.11.
+
 ### Sesja 18.11 (trzecia) — etap 71h2: naprawa #88, zamknięcie etapu 71
 
 **Zrobione (czeka na wdrożenie, bez migracji):**

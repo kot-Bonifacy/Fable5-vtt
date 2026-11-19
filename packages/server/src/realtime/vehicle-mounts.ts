@@ -31,7 +31,7 @@ import {
   requirePlaced,
   vehicleMoving,
 } from './chase.js';
-import { driverOf, requireOwnDriver } from './chase-driving.js';
+import { driverOf, requireOwnDriver } from './chase-drive.js';
 import { findCombatantForToken } from './combat.js';
 import { requireTurnSpend } from './combat-actions.js';
 import { RealtimeError, defineEvent, type RealtimeDeps } from './registry.js';

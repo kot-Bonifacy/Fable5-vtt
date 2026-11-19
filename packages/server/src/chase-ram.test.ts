@@ -12,6 +12,7 @@ import type {
   CombatView,
   CpredCharacterData,
   SceneVehicleView,
+  VehicleDriveResult,
   SceneView,
   SocketAck,
   TokenView,
@@ -314,7 +315,7 @@ describe('etap 65d2: Manewr, taranowanie i broń pokładowa', () => {
         sceneId: scene.id,
         vehicleId: ours.id,
         x: 800,
-        y: 900,
+        y: 1050,
       }),
       'chase:place A',
     );
@@ -323,7 +324,7 @@ describe('etap 65d2: Manewr, taranowanie i broń pokładowa', () => {
         sceneId: scene.id,
         vehicleId: theirs.id,
         x: 1600,
-        y: 900,
+        y: 1050,
       }),
       'chase:place B',
     );
@@ -382,9 +383,81 @@ describe('etap 65d2: Manewr, taranowanie i broń pokładowa', () => {
       data: { initiative: 12 },
     });
     data(await emitAck<CombatView>(gm, 'combat:next'), 'combat:next round 1');
+    // Etap 72: kadr stawia auto drużyny na 30% od tyłu (900 z 3000) — o kratkę naprzód.
+    expect((await placedRow(carA.id)).x).toBe(900);
+    expect((await placedRow(carB.id)).x).toBe(1700);
+    // Skrót testu: pościg stoi (prędkość pościgu 0), więc A przy 20 Ruchu
+    // wysuwa się o 5 kratek — B stoi 3 kratki przed jego zderzakiem.
+    await built.prisma.scene.update({ where: { id: scene.id }, data: { chasePursuitSpeed: 0 } });
   });
 
-  it('Manewr gracza kosztuje Akcję, a oblany oddaje auto MG', async () => {
+  it('auto na drodze ruchu: serwer pyta, zanim cokolwiek wyda', async () => {
+    const asked = data(
+      await emitAck<VehicleDriveResult>(player, 'vehicle:drive', {
+        sceneVehicleId: carA.id,
+        pedal: null,
+        laneDelta: 0,
+      }),
+      'vehicle:drive asks',
+    );
+    // B stoi bez kierowcy (0), A jedzie 20 — mieści się w hamulcu (100 mil/h).
+    expect(asked).toEqual({
+      moved: false,
+      contact: { name: 'Kompakt Zetka', kind: 'vehicle', side: false, canSlow: true, speed: 0 },
+    });
+    expect((await placedRow(carA.id)).x).toBe(900);
+    expect((await statsOf(theirs.id)).hp).toBe(45);
+  });
+
+  it('taranowanie Pługiem przodem: uderzony 6k6 i Rana dla jadących, taranujący cały', async () => {
+    scriptDice([6, 6, 6, 6, 6, 6]);
+    const after = data(
+      await emitAck<VehicleDriveResult>(player, 'vehicle:drive', {
+        sceneVehicleId: carA.id,
+        pedal: null,
+        laneDelta: 0,
+        onContact: 'ram',
+      }),
+      'vehicle:drive ram',
+    );
+    // 36 z 45 PUK — B stoi, więc A zatrzymuje się na nim (tył B: 1700 − 250).
+    expect((await statsOf(theirs.id)).hp).toBe(9);
+    expect((await statsOf(ours.id)).hp).toBe(45);
+    expect(after.moved && after.vehicle.x).toBeCloseTo(1200, 0);
+    const ganger = await sheetOf(gangerCharacterId);
+    expect(ganger.criticalInjuries.map((row) => row.id)).toContain(INJURY_ID);
+    expect((await sheetOf(vexId)).criticalInjuries).toEqual([]);
+    const line = await built.prisma.chatMessage.findFirst({
+      where: { kind: 'action', text: 'Taranowanie' },
+    });
+    expect(line).not.toBeNull();
+  });
+
+  it('jeden taran na turę: drugi — także ręką MG w turze kierowcy — dostaje RAM_USED', async () => {
+    const vexRow = await built.prisma.combatant.findFirstOrThrow({
+      where: { tokenId: vexToken.id },
+    });
+    expect(JSON.parse(vexRow.turnState ?? '{}')).toMatchObject({ rammed: true });
+
+    scriptDice([6, 6, 6, 6, 6, 6]);
+    expect(
+      await emitAck(player, 'vehicle:drive', {
+        sceneVehicleId: carA.id,
+        pedal: null,
+        laneDelta: 0,
+        onContact: 'ram',
+      }),
+    ).toMatchObject({ ok: false, error: 'ALREADY_DROVE' });
+    expect(
+      await emitAck(gm, 'chase:move', { sceneVehicleId: carA.id, x: 1600, y: 1050, ram: true }),
+    ).toMatchObject({ ok: false, error: 'RAM_USED' });
+    expect((await statsOf(theirs.id)).hp).toBe(9);
+    const after = await built.prisma.combatant.findFirstOrThrow({ where: { id: vexRow.id } });
+    expect(after.turnState).toBe(vexRow.turnState);
+    scriptDice([]);
+  });
+
+  it('Manewr gracza kosztuje Akcję, a oblany zbija prędkość i oddaje auto automatowi', async () => {
     // 8 + 4 + 1, Krytyczna Porażka odejmuje drugą kość: 12 < 17.
     scriptDice([1, 1]);
     const view = data(
@@ -395,6 +468,8 @@ describe('etap 65d2: Manewr, taranowanie i broń pokładowa', () => {
       'vehicle:maneuver',
     );
     expect(view.control).toBe('lost');
+    // Etap 72: utrata kontroli zbija prędkość od razu o 10 Ruchu (−50 mil/h).
+    expect(view.speed).toBe(10);
     expect(await emitAck(player, 'combat:action', { actionId: 'aim' })).toMatchObject({
       ok: false,
     });
@@ -436,61 +511,6 @@ describe('etap 65d2: Manewr, taranowanie i broń pokładowa', () => {
       'vehicle:maneuver called',
     );
     expect(done).toMatchObject({ maneuverCall: null, control: 'driver' });
-  });
-
-  it('bez taranowania auto staje przed autem na drodze i płaci tylko za dojazd', async () => {
-    const moved = data(
-      await emitAck<SceneVehicleView>(player, 'chase:move', {
-        sceneVehicleId: carA.id,
-        x: 1500,
-        y: 900,
-      }),
-      'chase:move stop',
-    );
-    // Przód A (x + 250) dotyka tyłu B (1600 − 250): środek A na 1100.
-    expect(moved.x).toBeCloseTo(1100, 1);
-    expect((await placedRow(carB.id)).x).toBe(1600);
-    expect((await statsOf(theirs.id)).hp).toBe(45);
-  });
-
-  it('taranowanie Pługiem przodem: uderzony 6k6 i Rana dla jadących, taranujący cały', async () => {
-    scriptDice([6, 6, 6, 6, 6, 6]);
-    const after = data(
-      await emitAck<SceneVehicleView>(player, 'chase:move', {
-        sceneVehicleId: carA.id,
-        x: 1300,
-        y: 900,
-        ram: true,
-      }),
-      'chase:move ram',
-    );
-    // 36 z 45 PUK — B stoi, więc A zatrzymuje się na nim.
-    expect((await statsOf(theirs.id)).hp).toBe(9);
-    expect((await statsOf(ours.id)).hp).toBe(45);
-    expect(after.x).toBeCloseTo(1100, 0);
-    const ganger = await sheetOf(gangerCharacterId);
-    expect(ganger.criticalInjuries.map((row) => row.id)).toContain(INJURY_ID);
-    expect((await sheetOf(vexId)).criticalInjuries).toEqual([]);
-    const line = await built.prisma.chatMessage.findFirst({
-      where: { kind: 'action', text: 'Taranowanie' },
-    });
-    expect(line).not.toBeNull();
-  });
-
-  it('jeden taran na turę: drugi w tej samej turze dostaje RAM_USED i nic nie kosztuje', async () => {
-    const vexRow = await built.prisma.combatant.findFirstOrThrow({
-      where: { tokenId: vexToken.id },
-    });
-    expect(JSON.parse(vexRow.turnState ?? '{}')).toMatchObject({ rammed: true });
-
-    scriptDice([6, 6, 6, 6, 6, 6]);
-    expect(
-      await emitAck(player, 'chase:move', { sceneVehicleId: carA.id, x: 1300, y: 900, ram: true }),
-    ).toMatchObject({ ok: false, error: 'RAM_USED' });
-    expect((await statsOf(theirs.id)).hp).toBe(9);
-    const after = await built.prisma.combatant.findFirstOrThrow({ where: { id: vexRow.id } });
-    expect(after.turnState).toBe(vexRow.turnState);
-    scriptDice([]);
   });
 
   it('pieszy uskakuje Testem ZW + Unik PT 13 — bez obrażeń, auto jedzie dalej', async () => {
@@ -572,31 +592,35 @@ describe('etap 65d2: Manewr, taranowanie i broń pokładowa', () => {
     expect((await statsOf(ours.id)).mountAmmo['u-mg']).toBe(30);
   });
 
-  it('dryf nie przepycha auta przez auto — staje przy zderzaku, bez obrażeń', async () => {
-    // A ma zgaszony silnik, B stoi kratkę za nim w tym samym pasie.
-    // B ma kierowcę (przegląd 03.11: auto bez kontroli wjechałoby w A od razu).
-    const ganger = await built.prisma.token.findFirstOrThrow({
-      where: { sceneVehicleId: carB.id },
-    });
-    expect(
-      (await emitAck(gm, 'vehicle:seat', { tokenId: ganger.id, sceneVehicleId: carB.id, seat: 0 }))
-        .ok,
-    ).toBe(true);
+  it('auto bez tury cofa się na auto z kierowcą — staje przy zderzaku bez obrażeń i czeka', async () => {
+    // A (Vex) ma już ruch tej rundy za sobą i jedzie 20; B bez kierowcy (Ganger
+    // w fotelu pasażera) stoi kratkę przed nim — droga zabiera B w tył o 5 kratek.
+    await emitAck(gm, 'vehicle:engine', { sceneVehicleId: carA.id, on: true });
     const a = await placedRow(carA.id);
     await built.prisma.sceneVehicle.update({
+      where: { id: carA.id },
+      data: { speed: 20, movedRound: 3, lostControl: false },
+    });
+    await built.prisma.sceneVehicle.update({
       where: { id: carB.id },
-      data: { x: a.x - 600, y: a.y },
+      data: { x: a.x + 600, y: a.y, speed: 0, blockingId: null },
     });
     const hpBefore = (await statsOf(theirs.id)).hp;
     data(await emitAck<CombatView>(gm, 'combat:next'), 'combat:next round 4');
     const afterA = await placedRow(carA.id);
     const afterB = await placedRow(carB.id);
-    // A to auto drużyny ze zgaszonym silnikiem: stoi, więc rama stoi (decyzja MG
-    // z 05.11.2026) — A zostaje, a B dojeżdża dryfem (+5) do jego tylnego zderzaka.
-    expect(afterA.x).toBeCloseTo(a.x, 0);
-    expect(afterB.x).toBeCloseTo(a.x - 500, 0);
+    // Kadr stawia A na 900; B cofa się do jego przedniego zderzaka i staje.
+    expect(afterA.x).toBe(900);
+    expect(afterB.x).toBeCloseTo(1400, 0);
     expect((await statsOf(theirs.id)).hp).toBe(hpBefore);
-    // Stojące A czeka na wybór kierowcy B: Gwałtowny skręt albo taranowanie.
-    expect(afterA.blockingId).toBe(carB.id);
+    // Stojące B czeka na wybór kierowcy A: Gwałtowny skręt albo taranowanie.
+    expect(afterB.blockingId).toBe(carA.id);
+    expect(
+      await emitAck(player, 'vehicle:drive', {
+        sceneVehicleId: carA.id,
+        pedal: null,
+        laneDelta: 0,
+      }),
+    ).toMatchObject({ ok: false, error: 'OBSTACLE_PENDING' });
   });
 });

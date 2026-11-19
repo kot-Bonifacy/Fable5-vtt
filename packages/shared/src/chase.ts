@@ -15,6 +15,7 @@ import type { ScenePoint } from './measure.js';
 import type { VehicleLayoutId } from './vehicles.js';
 import { VEHICLE_LAYOUTS } from './vehicles.js';
 import type { ChaseObstacleView } from './chase-obstacles.js';
+import type { ChaseRole } from './chase-drive.js';
 
 export const SCENE_KINDS = ['map', 'chase'] as const;
 /** `map` — zwykła mapa, `chase` — scena pościgu z bieżnią i autami. */
@@ -56,7 +57,11 @@ export const CHASE_SEAM_SQUARES = 3;
 /** Ustawienia pościgu sceny — jadą do wszystkich, bo to ich bieżnia. */
 export interface ChaseSettings {
   direction: ChaseDirection;
-  /** Tempo pościgu (Ruch) — prędkość bieżni, a od 65c dryf aut. */
+  /**
+   * Prędkość startowa (Ruch; do etapu 72 „Tempo”): przy starcie walki auto
+   * z kierowcą i pracującym silnikiem dostaje `min(Ruch, prędkość startowa)`.
+   * Poza walką od niej przewija się bieżnia (`chaseFrameTempo`).
+   */
   tempo: number;
   /** Droga jedzie (bieżnia się przewija) albo stoi. */
   running: boolean;
@@ -65,6 +70,25 @@ export interface ChaseSettings {
    * (`from` włącznie, `to` bez). Null — cała szerokość sceny.
    */
   road: { from: number; to: number } | null;
+  /**
+   * Liczba pasów jezdni (etap 72) — wpisana przez MG albo z drogi
+   * (`chaseDefaultLanes`). Serwer zawsze podaje liczbę już ustaloną.
+   */
+  lanes: number;
+  /** Drużyna goni albo ucieka — gdzie w kadrze stoi auto kadru (etap 72). */
+  role: ChaseRole;
+  /** Auto kadru wskazane przez MG; `null` — reguła domyślna (`chaseAnchorVehicle`). */
+  anchorId: string | null;
+  /**
+   * Prędkość pościgu tej rundy w punktach Ruchu (auto kadru z początku rundy)
+   * — z nią przewija się bieżnia w walce; `null` poza walką.
+   */
+  pursuitSpeed: number | null;
+  /**
+   * Suma sztywnych przesunięć kadru w kratkach wzdłuż jazdy (etap 72). Klient
+   * przesuwa o różnicę teksturę drogi, więc przesunięcie wygląda jak kamera.
+   */
+  shiftSq: number;
 }
 
 /**
@@ -76,6 +100,11 @@ export const DEFAULT_CHASE_SETTINGS: ChaseSettings = {
   tempo: CHASE_TEMPO_DEFAULT,
   running: true,
   road: null,
+  lanes: 1,
+  role: 'pursue',
+  anchorId: null,
+  pursuitSpeed: null,
+  shiftSq: 0,
 };
 
 /**
@@ -670,10 +699,14 @@ export interface SceneVehicleView {
    * kontroli (zwykła jazda, puszczona kierownica) do następnej rundy.
    */
   control: ChaseControl;
-  /** Kratki na Akcję Ruchu kierowcy (`Ruch / 4`) — system liczy, rdzeń rysuje. */
-  moveSq: number;
-  /** Dryf na rundę w kratkach (ujemny — w tył); 0 bez tempa albo ze zgaszonym silnikiem. */
-  driftSq: number;
+  /** Pas, na którym stoi środek auta (etap 72) — od krawędzi `road.from`, od zera. */
+  lane: number;
+  /** Ruch pojazdu — najwyższa prędkość (etap 72); na ekranie × 5 mil/h. */
+  maxSpeed: number;
+  /** Zryw z Wyścigu tej rundy w kratkach (etap 72c); 0 bez Wyścigu. */
+  raceBonus: number;
+  /** Auto już przesunęło się w tej rundzie walki (etap 72: „Jedź” albo ruch serwera). */
+  moved: boolean;
   /** Zbiorniki Nitro, które jeszcze zostały na ten pościg. */
   nitroLeft: number;
   /** Kolczatki w wyrzutni na ten pościg (65e); 0 — brak wyrzutni albo pusta. */
@@ -716,9 +749,10 @@ export interface SceneVehicleView {
    */
   moving: boolean;
   /**
-   * Własna prędkość auta w jednostkach Ruchu (05.11.2026): z kierowcą — Ruch,
-   * bez kierowcy — malejący pęd, zgaszone i wrak — 0. System liczy, rdzeń
-   * składa z niej ramę (`chaseFrameTempo`).
+   * Prędkość auta w punktach Ruchu (etap 72; na ekranie × 5 mil/h). W walce
+   * trwa między turami (gaz, hamulec, wybieg bez kierowcy); poza walką to
+   * prędkość, z którą auto ruszy na starcie walki — z niej bieżnia składa
+   * ramę (`chaseFrameTempo`).
    */
   speed: number;
   /** Auto wiezie drużynę: karta gracza jest jego właścicielem albo figura gracza siedzi w fotelu. */
@@ -789,6 +823,43 @@ export interface ChaseMovePayload {
    */
   ram?: boolean;
 }
+
+/** Co auto zrobi na drodze ruchu, gdy coś na niej stoi (etap 72). */
+export type VehicleDriveContact = 'ram' | 'slow';
+
+/**
+ * `vehicle:drive` — ruch auta w turze jego kierowcy (etap 72): pedał (gaz,
+ * hamulec albo nic), zmiana pasa o jeden i — gdy na drodze ruchu coś stoi —
+ * wybór „Taranuj” albo „Zwolnij za nim”. Gracz prowadzi auto, w którym jego
+ * figura siedzi za kierownicą, MG — każde auto z kierowcą. Raz na rundę;
+ * pedał albo zmiana pasa kosztują Akcję Ruchu, jazda prosto — nic.
+ */
+export interface VehicleDrivePayload {
+  sceneVehicleId: string;
+  /** `gas` (+10 Ruchu), `brake` (−20 Ruchu) albo `null` — ta sama prędkość. */
+  pedal: 'gas' | 'brake' | null;
+  /** −1 — pas wyżej (w stronę `road.from`), 0 — ten sam, +1 — pas niżej. */
+  laneDelta: -1 | 0 | 1;
+  /** Odpowiedź na zderzenie z poprzedniej próby (`contact` w wyniku). */
+  onContact?: VehicleDriveContact;
+}
+
+/** Co stoi na drodze ruchu — serwer pyta o wybór, zanim cokolwiek wyda. */
+export interface VehicleDriveContactInfo {
+  /** Nazwa auta, przeszkody albo figury. */
+  name: string;
+  kind: 'vehicle' | 'obstacle' | 'token';
+  /** Uderzenie bokiem przy zmianie pasa — „Zepchnij” (bez Pługa). */
+  side: boolean;
+  /** Mieści się w zwykłym hamulcu — „Zwolnij za nim” bez Testu. */
+  canSlow: boolean;
+  /** Prędkość blokującego w punktach Ruchu (przeszkoda i pieszy — 0). */
+  speed: number;
+}
+
+/** Wynik `vehicle:drive`: auto pojechało albo serwer pyta o wybór przy zderzeniu. */
+export type VehicleDriveResult =
+  { moved: true; vehicle: SceneVehicleView } | { moved: false; contact: VehicleDriveContactInfo };
 
 /**
  * `vehicle:maneuver` — kierowca wykonuje Manewr (65d2, s. 192): sam za Akcję

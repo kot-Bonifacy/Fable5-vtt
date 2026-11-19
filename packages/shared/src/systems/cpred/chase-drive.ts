@@ -233,9 +233,33 @@ export interface CpredLostControlMove {
  * (`chaseLaneTarget`), bo tylko on zna liczbę pasów.
  */
 export function cpredLostControlMove(speed: number, rng: DiceRng): CpredLostControlMove {
+  return { speed: cpredLostControlSpeed(speed), ...cpredLostControlLane(rng) };
+}
+
+/** Prędkość zaraz po utracie kontroli — spada od razu, zanim auto pojedzie. */
+export function cpredLostControlSpeed(speed: number): number {
+  return Math.max(0, speed - CPRED_LOST_CONTROL_SLOWDOWN);
+}
+
+/**
+ * Tor auta bez kontroli w jego ruchu (1k6: 1–2 pas wyżej, 3–4 prosto, 5–6 pas
+ * niżej). Osobno od prędkości, bo prędkość spada w chwili utraty kontroli,
+ * a auto jedzie dopiero w turze kierowcy.
+ */
+export function cpredLostControlLane(
+  rng: DiceRng,
+): Pick<CpredLostControlMove, 'laneDelta' | 'die'> {
   const die = rng(6);
   const laneDelta: -1 | 0 | 1 = die <= 2 ? -1 : die <= 4 ? 0 : 1;
-  return { speed: Math.max(0, speed - CPRED_LOST_CONTROL_SLOWDOWN), laneDelta, die };
+  return { laneDelta, die };
+}
+
+/** Podpis toru z 1k6 na czat: „1k6: 5 — pas niżej”. */
+export function cpredLostControlNote(
+  move: Pick<CpredLostControlMove, 'laneDelta' | 'die'>,
+): string {
+  const lane = move.laneDelta < 0 ? 'pas wyżej' : move.laneDelta > 0 ? 'pas niżej' : 'prosto';
+  return `1k6: ${move.die} — ${lane}`;
 }
 
 // ───────────────────────── Zderzenie na drodze ruchu ─────────────────────────

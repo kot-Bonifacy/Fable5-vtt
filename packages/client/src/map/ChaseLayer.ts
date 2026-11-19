@@ -276,9 +276,11 @@ export class ChaseLayer {
   tick(seconds: number): void {
     const scene = this.scene;
     if (!scene || !this.road.visible || !scene.chase.running) return;
-    // Droga przewija się z ramą (05.11.2026): stojące auto drużyny ją zatrzymuje.
+    // W walce droga jedzie z prędkością pościgu (etap 72, auto kadru z początku
+    // rundy); poza nią z ramą (05.11.2026): stojące auto drużyny ją zatrzymuje.
+    const tempo = scene.chase.pursuitSpeed ?? chaseFrameTempo(scene.chase.tempo, this.vehicles);
     const speed =
-      chaseScrollSpeed(chaseFrameTempo(scene.chase.tempo, this.vehicles), scene.grid.sizePx) *
+      chaseScrollSpeed(tempo, scene.grid.sizePx) *
       (prefersReducedMotion() ? REDUCED_MOTION_FACTOR : 1);
     const step = speed * seconds;
     // Auta jadą w `direction`, więc droga ucieka w przeciwną stronę.

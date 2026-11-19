@@ -231,14 +231,14 @@ describe('etap 65e: przeszkody, ruch uliczny i kolczatka', () => {
     readCpredVehicle(
       (await built.prisma.vehicle.findUniqueOrThrow({ where: { id: vehicleId } })).system,
     );
-  /** Dwie tury (gang 15, Vex 12) — nowa runda i dryf. */
   /**
-   * Auto C nie ma kierowcy, więc samo z siebie stoi (decyzja MG z 05.11.2026) i jedzie
-   * z drogą razem z przeszkodami. Tu toczy się, jakby kierowca dopiero co wypadł: pęd 40
-   * to w następnej rundzie Ruch 20 (`cpredCoastSpeed`) — dryf −5, przeszkody −10.
+   * Auto C nie ma kierowcy, więc samo z siebie stoi i droga zabiera je w tył. Tu
+   * toczy się, jakby kierowca dopiero co wypadł: prędkość 40 to w następnej
+   * rundzie 20 (`cpredCoastSpeed`) — tyle co pościg, więc stoi w kadrze, a
+   * przeszkody zbliżają się do niego o 5 kratek na rundę.
    */
   const rollingC = () =>
-    built.prisma.sceneVehicle.update({ where: { id: carC.id }, data: { momentum: 40 } });
+    built.prisma.sceneVehicle.update({ where: { id: carC.id }, data: { speed: 40 } });
 
   const nextRound = async (label: string) => {
     data(await emitAck<CombatView>(gm, 'combat:next'), `${label}: Vex`);
@@ -253,7 +253,8 @@ describe('etap 65e: przeszkody, ruch uliczny i kolczatka', () => {
       await emitAck<SceneView>(gm, 'scene:create', { name: 'Roboty', kind: 'chase' }),
       'scene:create',
     );
-    // Tempo = Ruch kompaktu (20): auta nie dryfują, przeszkoda zbliża się 5 kratek na rundę.
+    // Prędkość startowa = Ruch kompaktu (20): prędkość pościgu 20, przeszkoda zbliża się
+    // 5 kratek na rundę.
     scene = data(
       await emitAck<SceneView>(gm, 'scene:update', {
         sceneId: scene.id,
@@ -322,6 +323,8 @@ describe('etap 65e: przeszkody, ruch uliczny i kolczatka', () => {
     carC = await place(empty.id, 300, 750);
     expect(carB.spikesLeft).toBe(1);
     expect(carA.spikesLeft).toBe(0);
+    // Auto drużyny jedzie na czele — drużyna ucieka, kadr trzyma je na 70% (etap 72).
+    await built.prisma.scene.update({ where: { id: scene.id }, data: { chaseRole: 'flee' } });
 
     vexToken = data(
       await emitAck<TokenView>(gm, 'token:create', {
@@ -395,6 +398,10 @@ describe('etap 65e: przeszkody, ruch uliczny i kolczatka', () => {
       });
     }
     data(await emitAck<CombatView>(gm, 'combat:next'), 'combat:next round 1');
+    // Kadr: auto drużyny 1800 → 2100 (70% z 3000), reszta o 3 kratki za nim.
+    expect((await placedRow(carA.id)).x).toBe(2100);
+    expect((await placedRow(carB.id)).x).toBe(1300);
+    expect((await placedRow(carC.id)).x).toBe(600);
     // Gracz nie wypuszcza przeszkód.
     expect(
       await emitAck(player, 'chase:obstacle-spawn', {
@@ -429,16 +436,32 @@ describe('etap 65e: przeszkody, ruch uliczny i kolczatka', () => {
     await nextRound('runda 2');
     const [row] = await obstacleRows();
     expect(row).toMatchObject({ blockingId: carA.id, driftRound: 2 });
-    // Zderzak auta (1800 + 250) plus połowa furgonu (250).
-    expect(row!.x).toBeCloseTo(2300, 0);
+    // Zderzak auta (2100 + 250) plus połowa furgonu (250).
+    expect(row!.x).toBeCloseTo(2600, 0);
     const note = await built.prisma.chatMessage.findFirst({
       where: { kind: 'action', text: 'Przeszkoda na drodze' },
     });
     expect(note).not.toBeNull();
-    // Najpierw odpowiedź — jazda czeka.
+    // Najpierw odpowiedź — jazda czeka (sprawdzane w turze Vex, potem tura wraca do gangu).
+    const combat = await built.prisma.combat.findFirstOrThrow({ where: { sceneId: scene.id } });
+    const vexRow = await built.prisma.combatant.findFirstOrThrow({
+      where: { tokenId: vexToken.id },
+    });
+    await built.prisma.combat.update({
+      where: { id: combat.id },
+      data: { activeCombatantId: vexRow.id },
+    });
     expect(
-      await emitAck(player, 'chase:move', { sceneVehicleId: carA.id, x: 1900, y: 1050 }),
+      await emitAck(player, 'vehicle:drive', {
+        sceneVehicleId: carA.id,
+        pedal: null,
+        laneDelta: 0,
+      }),
     ).toMatchObject({ ok: false, error: 'OBSTACLE_PENDING' });
+    await built.prisma.combat.update({
+      where: { id: combat.id },
+      data: { activeCombatantId: combat.activeCombatantId },
+    });
   });
 
   it('udany Gwałtowny skręt: przeszkoda znika z drogi, auto bez szkody', async () => {
@@ -526,7 +549,11 @@ describe('etap 65e: przeszkody, ruch uliczny i kolczatka', () => {
       error: 'NO_SPIKES',
     });
     const spikes = (await obstacleRows()).find((entry) => entry.kind === 'spikes')!;
-    expect(spikes).toMatchObject({ x: 1000 - 250 - 50 - 5, y: 750, droppedById: carB.id });
+    expect(spikes).toMatchObject({
+      x: (await placedRow(carB.id)).x - 250 - 50 - 5,
+      y: 750,
+      droppedById: carB.id,
+    });
     // MG uzupełnia wyrzutnię (03.11) — gracz nie może.
     expect(await emitAck(player, 'vehicle:refill', { sceneVehicleId: carB.id })).toMatchObject({
       ok: false,
@@ -575,8 +602,8 @@ describe('etap 65e: przeszkody, ruch uliczny i kolczatka', () => {
   });
 
   it('auto bez kierowcy wjeżdża w przeszkodę samo; MG zdejmuje przeszkody z drogi', async () => {
-    // Auto cywilne na pasie auta bez kierowcy (C stoi na x = 300, przód 550);
-    // na aucie gangu (B, x = 1000) stoi od wypuszczenia, więc go nie trafia.
+    // Auto cywilne na pasie auta bez kierowcy (C stoi na x = 600, przód 850);
+    // na aucie gangu (B, x = 1300) stoi od wypuszczenia, więc go nie trafia.
     const lane = data(
       await emitAck<ChaseObstacleView>(gm, 'chase:obstacle-spawn', {
         sceneId: scene.id,
@@ -588,7 +615,7 @@ describe('etap 65e: przeszkody, ruch uliczny i kolczatka', () => {
       'chase:obstacle-spawn 3',
     );
     // Wypuszczona na x = 2750 jechałaby kilka rund — stawiamy ją bliżej.
-    await built.prisma.chaseObstacle.update({ where: { id: lane.id }, data: { x: 1100 } });
+    await built.prisma.chaseObstacle.update({ where: { id: lane.id }, data: { x: 1400 } });
     const hpBefore = (await statsOf((await placedRow(carC.id)).vehicleId)).hp;
     // Barykada 6k6 → 6 (zostaje), auto C 6k6 → 6.
     scriptDice([1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]);

@@ -26,7 +26,7 @@ import type { ServerConfig } from './config.js';
 import { buildApp, type BuiltApp } from './app.js';
 import { joinUrl } from './test-join.js';
 import { exportCampaign } from './archive.js';
-import { reseatChasePassengers } from './realtime/chase.js';
+import { reseatChasePassengers, snapChaseVehiclesToLanes } from './realtime/chase.js';
 
 /**
  * Etap 65b na żywych gniazdach: scena pościgu. MG zakłada scenę „Pościg”, stawia
@@ -229,6 +229,12 @@ describe('etap 65b: scena pościgu, auta i fotele', () => {
       tempo: 40,
       running: true,
       road: { from: 6, to: 12 },
+      // Etap 72: jezdnia 6 kratek bez wbudowanej drogi — round(6 / 4) = 2 pasy.
+      lanes: 2,
+      role: 'pursue',
+      anchorId: null,
+      pursuitSpeed: null,
+      shiftSq: 0,
     });
     const activated = waitForMatch(owner, 'scene:activate', () => true);
     await emitAck(gm, 'scene:activate', { sceneId: scene.id });
@@ -477,6 +483,18 @@ describe('etap 65b: scena pościgu, auta i fotele', () => {
     const row = await tokenRow(heroToken.id);
     expect({ x: row.x, y: row.y }).toEqual({ x: before.x, y: before.y });
     expect(await reseatChasePassengers(built.prisma)).toBe(0);
+  });
+
+  it('start serwera stawia auto krzywo na jezdni na środku najbliższego pasa (etap 72)', async () => {
+    // Jezdnia 6–12 kratek, 2 pasy: górny 600–900 (środek 750), dolny 900–1200 (1050).
+    const before = await built.prisma.sceneVehicle.findUniqueOrThrow({ where: { id: car.id } });
+    await built.prisma.sceneVehicle.update({ where: { id: car.id }, data: { y: 980 } });
+    expect(await snapChaseVehiclesToLanes(built.prisma)).toBeGreaterThanOrEqual(1);
+    const after = await built.prisma.sceneVehicle.findUniqueOrThrow({ where: { id: car.id } });
+    expect({ x: after.x, y: after.y }).toEqual({ x: before.x, y: 1050 });
+    expect(await snapChaseVehiclesToLanes(built.prisma)).toBe(0);
+    await built.prisma.sceneVehicle.update({ where: { id: car.id }, data: { y: before.y } });
+    await reseatChasePassengers(built.prisma);
   });
 
   it('MG przesadza do innego auta upuszczeniem i wysadza na jezdnię', async () => {

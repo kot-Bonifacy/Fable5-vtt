@@ -293,6 +293,8 @@ export function cpredMountReloaded(
  * ją Gwałtownym skrętem, a porażka to utrata kontroli i zderzenie.
  */
 export const CPRED_OBSTACLE_MANEUVER_ID: CpredVehicleManeuverId = 'swerve';
+/** Nagłe zatrzymanie (etap 72): udane zbija prędkość auta do zera od razu. */
+export const CPRED_SUDDEN_STOP_ID: CpredVehicleManeuverId = 'sudden-stop';
 
 /** „…Test Prowadzenia pojazdów lądowych o PT 17, by ominąć wyrzuconą kolczatkę” (s. 165). */
 export const CPRED_SPIKES_DV = 17;

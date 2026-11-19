@@ -332,6 +332,8 @@ import type {
   SceneVehicleView,
   VehicleAllowDriverPayload,
   VehicleSeatPayload,
+  VehicleDrivePayload,
+  VehicleDriveResult,
   VehicleUpdatePayload,
   VehicleUpsertBroadcast,
   VehicleView,
@@ -3593,6 +3595,9 @@ export const allowVehicleDriver = (payload: VehicleAllowDriverPayload) =>
 /** Etap 65c: silnik (kierowca w walce za Akcję), Nitro, a u MG powrót i kontrola. */
 export const setVehicleEngine = (sceneVehicleId: string, on: boolean) =>
   emitSceneAck<SceneVehicleView>('vehicle:engine', { sceneVehicleId, on });
+/** Etap 72: ruch auta w turze kierowcy — pedał, pas i wybór przy zderzeniu. */
+export const driveVehicle = (payload: VehicleDrivePayload) =>
+  emitSceneAck<VehicleDriveResult>('vehicle:drive', payload);
 export const fireVehicleNitro = (sceneVehicleId: string) =>
   emitSceneAck<SceneVehicleView>('vehicle:nitro', { sceneVehicleId });
 /** MG (03.11): pełne zbiorniki Nitro i pełna wyrzutnia kolczatki. */

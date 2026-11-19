@@ -2,7 +2,8 @@
 
 **Faza:** przed betą (zlecenie MG z 15.11 spoza planu) · **Wymaga etapów:** 65 (scena pościgu,
 65a–65e), kreator pościgu z 03.11, 66c i 66d (wzorce pościgu), 69 (lewa belka bez ramek),
-32 (wezwanie do Testu) · **Status:** 🟨 w toku — projekt 15.11, **72a ✅ 19.11**, następny 72b
+32 (wezwanie do Testu) · **Status:** 🟨 w toku — projekt 15.11, **72a ✅ 19.11**, **72b1 ✅ 19.11**,
+następny 72b2
 
 ## Skąd ten etap
 
@@ -372,20 +373,55 @@ Rozstrzygnięcia z sesji 72a (do potwierdzenia przy rozegraniu 72g):
 
 ### 72b — serwer nowej jazdy i surowy kokpit
 
-- [ ] Migracja Prisma (kolumny z punktu 8), przyciągnięcie starych scen do pasów przy starcie.
-- [ ] `vehicle:drive`: pedał + pas + wybór przy zderzeniu, koszt Akcji Ruchu przez
-      `requireTurnSpend`, ruch przez `moveSceneVehicle` (figury w fotelach jadą jak dziś).
-- [ ] Ruch automatyczny na koniec tury kierowcy, który nie wcisnął „Jedź”.
-- [ ] `startChaseRound` w `advanceTurn`: prędkość pościgu, sztywne przesunięcie kadru,
-      przeszkody, wybieg aut bez kierowcy, odpadanie; zryw na razie zerowy.
-- [ ] Automat utraty kontroli; „Zwolnij za nim”; `chase:move` gracza odmawia w walce.
-- [ ] Widok `SceneVehicleView` / `ChaseSettings`, macierz `campaign-isolation.test.ts`.
-- [ ] Klient: surowa grupa „Pojazd” (kafel auta, krzyżak, „Jedź”) z gotowych kafli belki;
-      Nitro, Manewry i kolczatka jeszcze z menu auta. Bieżnia przewija się z prędkością pościgu
-      i dogania sztywne przesunięcie.
-- [ ] Testy serwera (nowy `chase-drive.test.ts`, przepisane `chase-driving`, `chase-review`,
-      `chase-obstacles`, `chase-ram`), E2E `48-poscig` dostosowane; oględziny w Firefoksie.
-- [ ] `decyzje-i-uproszczenia.md`: nowa zasada jazdy zamiast wpisu 65c; umowy `mapa` i `tura`.
+**Podział (MG 19.11):** 72b okazał się za duży na jedną sesję — **72b1** serwer, **72b2** klient.
+
+#### 72b1 — serwer nowej jazdy (✅ 19.11)
+
+- [x] Migracja Prisma `20261119200000_chase_speed_lanes` (kolumny z punktu 8; `momentum` → `speed`,
+      `driftRound` → `movedRound`, do tego `Scene.chasePursuitSpeed` — `null` poza walką —
+      i `Scene.chaseShiftSq` dla bieżni), przyciągnięcie starych scen do pasów przy starcie
+      (`snapChaseVehiclesToLanes`).
+- [x] `vehicle:drive` (`realtime/chase-drive.ts`): pedał + pas + wybór przy zderzeniu, Akcja Ruchu
+      tylko za pedał albo pas, zderzenie wraca pytaniem przed wydatkiem; MG prowadzi tak auto
+      NPC-a w turze jego kierowcy (decyzja MG 19.11 — kokpit MG już teraz).
+- [x] Ruch automatyczny na koniec tury kierowcy bez „Jedź” (`chaseTurnEnd`): zwolnij, a gdy hamulec
+      nie wystarcza — taran (decyzja MG 19.11).
+- [x] `startChaseRound` w `advanceTurn` (od rundy 1): prędkość pościgu, sztywne przesunięcie kadru,
+      przeszkody, auta bez tury (od rundy 2), odpadanie; zryw na razie zerowy.
+- [x] Automat utraty kontroli (Manewr, odpowiedź na przeszkodę, Test zwykłej jazdy); „Zwolnij za
+      nim”; cofające się auto staje przed autem z tyłu, wybór ma tamten (decyzja MG 19.11);
+      `chase:move` gracza w walce odmawia `USE_COCKPIT`; Nagłe zatrzymanie zbija prędkość do 0.
+- [x] Widok `SceneVehicleView` / `ChaseSettings`, macierz `campaign-isolation.test.ts`.
+- [x] Testy serwera: nowy `chase-drive.test.ts` (z `chase-driving.test.ts`), przepisane
+      `chase-review`, `chase-obstacles`, `chase-ram`, dopisane w `chase.test.ts` i `chase-combat`.
+- [x] `decyzje-i-uproszczenia.md` (nowa zasada jazdy, wpis 65c oznaczony), umowy `mapa` i `tura`,
+      pułapki `mapa` i `tura`.
+- [x] **Poza planem, żeby aplikacja działała między sesjami:** tymczasowy kokpit w menu auta
+      (`VehicleDriveControls`: Gaz, Hamulec, Pas wyżej / niżej, „Jedź”, pytanie o zderzenie
+      paskiem) i bieżnia w walce z prędkością pościgu.
+
+Rozstrzygnięcia z sesji 72b1 (do potwierdzenia przy rozegraniu 72g):
+
+- **Pierwsza runda** ustawia prędkości startowe i przesuwa kadr, ale auta bez tury jeszcze nie
+  jadą (szyk ustawił MG, jak „od rundy 2” w 65c).
+- **Auto, które wyjechało za krawędź w swojej turze, odpada dopiero na początku rundy**, po
+  sztywnym przesunięciu — kamera jedzie za autem kadru, więc liczy się kadr z tej chwili.
+- **Piesi na jezdni nie biorą udziału w sztywnym przesunięciu** (jak dotąd stoją w kadrze).
+- **Nitro tylko przed „Jedź”** (`NITRO_AFTER_DRIVE`) — dokłada `Ruch / 4` do ruchu tej tury.
+- **Słaby kierowca (do 72c) rzuca Test zwykłej jazdy przy każdym „Jedź”**, także jazdy prosto; kto
+  nie wciśnie „Jedź”, nie rzuca — Wyścig to naprawi.
+- **„Drużyna goni / ucieka” nie ma jeszcze przełącznika w UI** (72f); domyślne „goni” stawia auto
+  drużyny na 30% od tyłu, więc scena z autem drużyny na czele potrzebuje `chaseRole: 'flee'`
+  w bazie (testy tak robią).
+
+#### 72b2 — surowa grupa „Pojazd” i bieżnia
+
+- [ ] Klient: surowa grupa „Pojazd” w lewej belce (kafel auta, krzyżak, „Jedź”) z gotowych kafli
+      belki — zastępuje tymczasowe pozycje w menu auta; Nitro, Manewry i kolczatka jeszcze z menu.
+- [ ] Bieżnia dogania sztywne przesunięcie (`ChaseSettings.shiftSq`), a nie tylko przewija się
+      z prędkością pościgu.
+- [ ] E2E `48-poscig` dostosowane (`t65-przeszkody` liczy pozycje sprzed przesunięcia kadru),
+      oględziny w Firefoksie.
 
 ### 72c — Wyścig
 

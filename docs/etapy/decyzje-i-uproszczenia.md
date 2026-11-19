@@ -9,6 +9,49 @@ czytany na starcie każdej sesji został listą zadań, a nie archiwum ustaleń.
 inaczej, niż mówi podręcznik, albo gdy dotykasz wymienionego tu kodu. Jeśli któraś z tych decyzji
 przestanie się bronić, przenieś ją stąd do `POMYSLY.md` jako zadanie — nie odwrotnie.
 
+## Jazda w pościgu: prędkość, pasy i kadr (etap 72b1, 19.11.2026 — zastępuje tempo, dryf i budżet z 65c)
+
+Zasada domowa (decyzje MG z 15.11, projekt `etap-72-poscig-kokpit.md`). Podręcznik opisuje pościg
+tylko Testami i Manewrami (s. 191–192); liczby niżej to VTT.
+
+- **Auto ma prędkość trwającą między turami i pas ruchu.** Prędkość w punktach Ruchu (na ekranie
+  ×5 mil/h), od 0 do Ruchu pojazdu. Gaz +10, hamulec −20 na turę — każdy z nich albo zmiana pasa
+  o jeden kosztuje Akcję Ruchu, jazda prosto nic. Bieg kierowcy dalej odpada.
+- **Auto rusza się raz na rundę, w turze swojego kierowcy**, o `(prędkość − prędkość pościgu) / 4`
+  kratek wzdłuż drogi (+ Nitro: `Ruch / 4`, odpalone przed „Jedź”). Kierowca, który skończy turę
+  bez „Jedź”, jedzie sam: bez pedału i zmiany pasa. Auto bez tury (kierowcy nie ma w kolejce,
+  pusty fotel) jedzie na początku rundy — od rundy 2, pierwszą ustawia MG.
+- **Prędkość pościgu to prędkość auta kadru z początku rundy**, stała przez rundę. Auto kadru:
+  wskazane przez MG (72f), inaczej pierwsze auto drużyny z kierowcą, auto drużyny, najszybsze.
+  Na początku rundy wszystko na drodze (auta, figury w fotelach, przeszkody) przesuwa się sztywno,
+  żeby auto kadru stanęło na 30% długości kadru od tylnej krawędzi („Drużyna goni”) albo od
+  przedniej („Drużyna ucieka”, `Scene.chaseRole`). **Piesi na jezdni się nie przesuwają** — jak
+  przed etapem stoją w kadrze; do oceny przy rozegraniu 72g.
+- **Prędkość startowa (dawne „Tempo”)**: w pierwszej rundzie walki auto z kierowcą i pracującym
+  silnikiem dostaje `min(Ruch, prędkość startowa)`. Bez kierowcy albo ze zgaszonym silnikiem
+  prędkość maleje o połowę co rundę, wrak stoi. Poza walką widok pokazuje prędkość, z którą auto
+  ruszy, a bieżnia jedzie jak przed etapem.
+- **Zderzenie na drodze ruchu pyta kierowcę, zanim cokolwiek wyda**: „Taranuj” (jeden taran na
+  turę), „Zwolnij za nim” (gdy różnica prędkości mieści się w hamulcu, ≤ 100 mil/h — auto staje
+  przy zderzaku i bierze prędkość blokującego), przy zmianie pasa „Zepchnij” (taran bokiem, bez
+  Pługa). Zderzak w zderzak z wolniejszym też jest zderzeniem.
+- **Koniec tury bez „Jedź” przy zderzeniu (MG 19.11):** zwolnij, a gdy hamulec nie wystarcza —
+  taran („kierowca nie zareagował”). Przeszkoda czekająca na odpowiedź, której kierowca nie dał,
+  kończy się tak samo.
+- **Cofające się auto (wolniejsze od pościgu) staje przy zderzaku auta z tyłu bez obrażeń**, a wybór
+  ma tamten kierowca, gdy w swojej turze dojedzie (MG 19.11). Na początku rundy auto bez tury, które
+  cofa się na auto z kontrolą, czeka na jego wybór (`chase:vehicle-answer`), a na auto bez
+  kontroli — zderzenie od razu.
+- **Utrata kontroli to automat zamiast ręki MG**: prędkość od razu −10 (−50 mil/h), a ruch tej
+  rundy (w turze kierowcy albo od razu, gdy stracił kontrolę we własnej turze przed ruchem) jedzie
+  bez pedału z 1k6 na pas (1–2 wyżej, 3–4 prosto, 5–6 niżej; przy krawędzi zostaje); każde
+  zderzenie to taran. Kontrola wraca z nową rundą, „Oddaj kontrolę” MG zostaje.
+- **Nagłe zatrzymanie** udane zbija prędkość do zera od razu.
+- **Auto, które wyjechało za krawędź, odpada dopiero na początku rundy** — po sztywnym przesunięciu,
+  bo kamera jedzie za autem kadru i liczy się kadr z tej chwili.
+- **Do 72c** słaby kierowca rzuca Test zwykłej jazdy przy pierwszym „Jedź” w turze (także jazda
+  prosto); kto nie wciśnie „Jedź”, nie rzuca. Wyścig na początku rundy go zastąpi.
+
 ## Role po weryfikacji (etap 71, 14–18.11.2026)
 
 Etap 71 sprawdził dziewięć Ról (bez Netrunnera — etap 70) regułę po regule wobec podręcznika
@@ -795,7 +838,8 @@ Rozstrzygnięcia bez pytań z projektu etapu (nr 3, 5 i 6) i drobniejsze z sesji
 
 ## Jazda w pościgu (etap 65c, 31.10.2026)
 
-- **Tempo, dryf i budżet `Ruch / 4` to zasada domowa** (decyzja MG 12 z 30.10). Podręcznik
+- **Od 19.11 (etap 72b1) nie obowiązuje — zastępuje go „Jazda w pościgu: prędkość, pasy i kadr”
+  na górze pliku.** Zostaje dla historii: **Tempo, dryf i budżet `Ruch / 4` to zasada domowa** (decyzja MG 12 z 30.10). Podręcznik
   (s. 192) każe kierowcy jechać „jak Akcją Ruchu na piechotę, tylko z Ruchem pojazdu”, czyli
   Ruch × 2 m — na bieżni 40 Ruchu to 80 kratek, więcej niż cała mapa. VTT liczy więc Akcję Ruchu
   kierowcy jako `Ruch / 4` kratek, a każde auto na początku rundy (od drugiej) dryfuje

@@ -12,6 +12,7 @@ import type {
   CombatView,
   CpredCharacterData,
   SceneVehicleView,
+  VehicleDriveResult,
   SceneView,
   SocketAck,
   TokenView,
@@ -276,7 +277,8 @@ describe('przegląd pościgu 03.11', () => {
       await emitAck<SceneView>(gm, 'scene:create', { name: 'Przegląd', kind: 'chase' }),
       'scene:create',
     );
-    // Tempo = Ruch kompaktu: jadące auta stoją w kadrze, stojące dryfują 5 kratek w tył.
+    // Prędkość startowa = Ruch kompaktu: jadące auta stoją w kadrze, stojące droga
+    // zabiera 5 kratek w tył na początku rundy.
     scene = data(
       await emitAck<SceneView>(gm, 'scene:update', {
         sceneId: scene.id,
@@ -379,6 +381,8 @@ describe('przegląd pościgu 03.11', () => {
       'combat:start',
     );
     combatId = started.id;
+    // Auto drużyny na czele — drużyna ucieka, kadr trzyma je na 70% (etap 72).
+    await built.prisma.scene.update({ where: { id: scene.id }, data: { chaseRole: 'flee' } });
     for (const row of started.combatants) {
       await built.prisma.combatant.update({
         where: { id: row.id },
@@ -386,40 +390,44 @@ describe('przegląd pościgu 03.11', () => {
       });
     }
     data(await emitAck<CombatView>(gm, 'combat:next'), 'combat:next runda 1');
+    // Kadr: Vex 1800 → 2100 (70% z 3000), gang 1000 → 1300, wrak 2600 → 2900.
+    expect((await placedRow(carA.id)).x).toBe(2100);
+    expect((await placedRow(carB.id)).x).toBe(1300);
+    expect((await placedRow(carW.id)).x).toBe(2900);
   });
 
-  it('Test zwykłej jazdy idzie w ramach Akcji Ruchu: słaby kierowca odpala Nitro i jedzie', async () => {
+  it('Test zwykłej jazdy idzie w ramach jazdy: raz na turę, a Akcja zostaje wolna', async () => {
     await toVex();
-    expect(
-      (await emitAck<SceneVehicleView>(player, 'vehicle:nitro', { sceneVehicleId: carA.id })).ok,
-    ).toBe(true);
-    // 4 + 2 + 9 = 15 ≥ 10.
+    // 4 + 2 + 9 = 15 > 10. Jazda prosto nic nie kosztuje, ale słaby kierowca rzuca.
     scriptDice([9]);
     const moved = data(
-      await emitAck<SceneVehicleView>(player, 'chase:move', {
+      await emitAck<VehicleDriveResult>(player, 'vehicle:drive', {
         sceneVehicleId: carA.id,
-        x: 2000,
-        y: 1050,
+        pedal: null,
+        laneDelta: 0,
       }),
-      'chase:move po Nitro',
+      'vehicle:drive',
     );
-    expect(moved.x).toBe(2000);
+    expect(moved).toMatchObject({ moved: true, vehicle: { x: 2100, control: 'driver' } });
     expect(await drivingCards()).toBe(1);
-    // Drugi odcinek tej samej tury — bez drugiego Testu.
-    data(
-      await emitAck<SceneVehicleView>(player, 'chase:move', {
+    expect(
+      await emitAck(player, 'vehicle:drive', {
         sceneVehicleId: carA.id,
-        x: 2050,
-        y: 1050,
+        pedal: null,
+        laneDelta: 0,
       }),
-      'chase:move drugi odcinek',
-    );
+    ).toMatchObject({ ok: false, error: 'ALREADY_DROVE' });
+    // Nitro idzie przed „Jedź” — po ruchu odmowa, a Akcja tury dalej wolna.
+    expect(await emitAck(player, 'vehicle:nitro', { sceneVehicleId: carA.id })).toMatchObject({
+      ok: false,
+      error: 'NITRO_AFTER_DRIVE',
+    });
     expect(await drivingCards()).toBe(1);
     const turn = JSON.parse((await vexCombatant()).turnState ?? '{}') as {
       action: { id: string } | null;
       drivingTested?: boolean;
     };
-    expect(turn.action?.id).toBe('vehicle-nitro');
+    expect(turn.action ?? null).toBeNull();
     expect(turn.drivingTested).toBe(true);
   });
 
@@ -427,11 +435,15 @@ describe('przegląd pościgu 03.11', () => {
     await newRound();
     const wreck = await placedRow(carW.id);
     expect(wreck.blockingId).toBe(carA.id);
-    // Przód Vex (2050 + 250) plus połowa wraku.
-    expect(wreck.x).toBeCloseTo(2550, 0);
+    // Przód Vex (2100 + 250) plus połowa wraku.
+    expect(wreck.x).toBeCloseTo(2600, 0);
     await toVex();
     expect(
-      await emitAck(player, 'chase:move', { sceneVehicleId: carA.id, x: 2100, y: 1050 }),
+      await emitAck(player, 'vehicle:drive', {
+        sceneVehicleId: carA.id,
+        pedal: null,
+        laneDelta: 0,
+      }),
     ).toMatchObject({ ok: false, error: 'OBSTACLE_PENDING' });
     // 4 + 2 + 8 = 14 ≥ 13.
     scriptDice([8]);
@@ -445,28 +457,30 @@ describe('przegląd pościgu 03.11', () => {
     expect(view).toMatchObject({ control: 'driver', hp: 45 });
     const after = await placedRow(carW.id);
     expect(after.blockingId).toBeNull();
-    expect(after.x).toBeCloseTo(2050 - 250 - 250 - 5, 0);
+    expect(after.x).toBeCloseTo(2100 - 250 - 250 - 5, 0);
     expect(
       await emitAck(player, 'chase:vehicle-answer', { sceneVehicleId: carW.id, choice: 'ram' }),
     ).toMatchObject({ ok: false, error: 'OBSTACLE_NOT_BLOCKING' });
   });
 
   it('taranowany wrak nie zostaje pod autem — ląduje za tylnym zderzakiem', async () => {
-    await built.prisma.sceneVehicle.update({ where: { id: carW.id }, data: { x: 2550.01 } });
+    // Wrak zderzak w zderzak przed Vex — taran działa i przy samym styku.
+    await built.prisma.sceneVehicle.update({ where: { id: carW.id }, data: { x: 2600.01 } });
     // Test jazdy 9, wrak 6 × 1, auto Vex 6 × 1.
     scriptDice([9, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]);
-    const view = data(
-      await emitAck<SceneVehicleView>(player, 'chase:move', {
+    const result = data(
+      await emitAck<VehicleDriveResult>(player, 'vehicle:drive', {
         sceneVehicleId: carA.id,
-        x: 2350,
-        y: 1050,
-        ram: true,
+        pedal: null,
+        laneDelta: 0,
+        onContact: 'ram',
       }),
-      'chase:move ram',
+      'vehicle:drive ram',
     );
-    expect(view.x).toBeCloseTo(2350, 0);
-    expect(view.hp).toBe(45 - 6);
-    expect((await placedRow(carW.id)).x).toBeCloseTo(2350 - 250 - 250 - 5, 0);
+    if (!result.moved) throw new Error('ram did not move');
+    expect(result.vehicle.x).toBeCloseTo(2110, 0);
+    expect(result.vehicle.hp).toBe(45 - 6);
+    expect((await placedRow(carW.id)).x).toBeCloseTo(result.vehicle.x - 250 - 250 - 5, 0);
   });
 
   it('auto, które weszło w rundę bez kontroli, wjeżdża w przeszkodę samo', async () => {
@@ -484,7 +498,7 @@ describe('przegląd pościgu 03.11', () => {
     // (04.11.2026, osobny test niżej).
     await built.prisma.chaseObstacle.update({
       where: { id: spawned.id },
-      data: { x: 1350, driftRound: 0, kind: 'custom' },
+      data: { x: (await placedRow(carB.id)).x + 350, driftRound: 0, kind: 'custom' },
     });
     // Przeszkoda 6 × 1 (30 → 24), auto gangu 6 × 1 (45 → 39).
     scriptDice([1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]);
@@ -497,6 +511,8 @@ describe('przegląd pościgu 03.11', () => {
   });
 
   it('beton nie ustępuje: auto bez kontroli jest od razu wrakiem, barykada zostaje (04.11.2026)', async () => {
+    // Gang traci kontrolę po swojej turze — wchodzi bez niej w następną rundę.
+    await toVex();
     const before = await placedRow(carB.id);
     const hpBefore = await hpOf(carB.id);
     await built.prisma.sceneVehicle.update({ where: { id: carB.id }, data: { lostControl: true } });
@@ -511,7 +527,7 @@ describe('przegląd pościgu 03.11', () => {
     );
     await built.prisma.chaseObstacle.update({
       where: { id: spawned.id },
-      data: { x: 1350, driftRound: 0 },
+      data: { x: (await placedRow(carB.id)).x + 350, driftRound: 0 },
     });
     await newRound();
     // Bez kości taranowania: auto PUK 0, beton bez szkody.
@@ -551,7 +567,7 @@ describe('przegląd pościgu 03.11', () => {
     );
     await built.prisma.chaseObstacle.update({
       where: { id: spawned.id },
-      data: { x: 1350, driftRound: 0 },
+      data: { x: (await placedRow(carB.id)).x + 350, driftRound: 0 },
     });
     await newRound();
     expect((await obstacle(spawned.id))?.blockingId).toBe(carB.id);
@@ -576,6 +592,8 @@ describe('przegląd pościgu 03.11', () => {
       }),
       'vehicle:engine off',
     );
+    // Gang traci kontrolę po swojej turze — wchodzi bez niej w następną rundę.
+    await toVex();
     await built.prisma.sceneVehicle.update({ where: { id: carB.id }, data: { lostControl: true } });
     // Zgaszone auto 6 × 1 (45 → 39), auto gangu 6 × 1 (39 → 33).
     scriptDice([1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]);
@@ -607,16 +625,29 @@ describe('przegląd pościgu 03.11', () => {
       await built.prisma.character.findUniqueOrThrow({ where: { id: vexId } })
     ).data.split(INJURY_ID).length;
     const hpBefore = await hpOf(carA.id);
+    // Nitro przed „Jedź”: +5 kratek — pieszy stoi na drodze.
+    expect(
+      (await emitAck<SceneVehicleView>(player, 'vehicle:nitro', { sceneVehicleId: carA.id })).ok,
+    ).toBe(true);
+    const asked = data(
+      await emitAck<VehicleDriveResult>(player, 'vehicle:drive', {
+        sceneVehicleId: carA.id,
+        pedal: null,
+        laneDelta: 0,
+      }),
+      'vehicle:drive asks',
+    );
+    expect(asked).toMatchObject({ moved: false, contact: { kind: 'token', name: 'Przechodzień' } });
     // Test jazdy 9, Unik pieszego 2 (porażka), 6k6 w pieszego.
     scriptDice([9, 2, 1, 1, 1, 1, 1, 1]);
     data(
-      await emitAck<SceneVehicleView>(player, 'chase:move', {
+      await emitAck<VehicleDriveResult>(player, 'vehicle:drive', {
         sceneVehicleId: carA.id,
-        x: 2750,
-        y: 1050,
-        ram: true,
+        pedal: null,
+        laneDelta: 0,
+        onContact: 'ram',
       }),
-      'chase:move pieszy',
+      'vehicle:drive ram walker',
     );
     expect(await hpOf(carA.id)).toBe(hpBefore);
     const injuriesAfter = (

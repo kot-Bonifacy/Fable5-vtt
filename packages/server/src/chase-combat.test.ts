@@ -402,7 +402,8 @@ describe('etap 65d1: ostrzał auta i pasażera', () => {
     expect(entry.hp).toMatchObject({ before: 1, after: 0 });
     expect(entry.woundLabel).toMatch(/^Pojazd zniszczony/);
     const view = (await wrecked).vehicles.find((row) => row.id === car.id)!;
-    expect(view).toMatchObject({ hp: 0, status: 'wrecked', moveSq: 0, driftSq: -10 });
+    // Etap 72: wrak stoi — prędkość 0, droga zabiera go w tył na początku rundy.
+    expect(view).toMatchObject({ hp: 0, status: 'wrecked', speed: 0, moving: false });
 
     await emitAck(gm, 'vehicle:engine', { sceneVehicleId: car.id, on: false });
     expect(await emitAck(gm, 'vehicle:engine', { sceneVehicleId: car.id, on: true })).toMatchObject(

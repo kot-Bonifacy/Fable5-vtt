@@ -30,7 +30,7 @@ import { registerArchiveRoutes } from './routes/archive.js';
 import { registerMusicRoutes } from './routes/music.js';
 import { setupRealtime, type RealtimeHandle } from './realtime/index.js';
 import { diceScriptPath } from './realtime/dice-script.js';
-import { reseatChasePassengers } from './realtime/chase.js';
+import { reseatChasePassengers, snapChaseVehiclesToLanes } from './realtime/chase.js';
 import { flushExplorationWrites } from './realtime/exploration.js';
 import { sweepUploadsInBackground } from './uploads-gc.js';
 import { campaignUploadReadable, migrateFlatUploads } from './campaign-uploads.js';
@@ -275,6 +275,9 @@ export async function buildApp(
   await backfillFleetVehicles(prisma, ctx.compendium, ctx.cpred, app.log);
   // Figury w fotelach aut na drogach według bieżącego układu foteli (06.11:
   // furgony za kabiną) — stojące auto nie przesadzi ich samo.
+  // Etap 72: auta stoją środkiem na środku pasa — stare sceny przyciąga do najbliższego.
+  const snapped = await snapChaseVehiclesToLanes(prisma);
+  if (snapped > 0) app.log.info({ vehicles: snapped }, 'chase vehicles snapped to lanes');
   const reseated = await reseatChasePassengers(prisma);
   if (reseated > 0) app.log.info({ tokens: reseated }, 'chase passengers reseated');
   // Pliki, których nikt już nie wymienia (sesja naprawcza 22.08). W tle i po

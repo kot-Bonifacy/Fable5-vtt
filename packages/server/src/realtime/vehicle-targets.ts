@@ -66,7 +66,11 @@ export async function requireTargetVehicle(
   }
   // „Nieruchomy pojazd” (s. 191): stojąca droga albo auto bez własnej prędkości —
   // zgaszone, wrak, bez kierowcy i już wytoczone (05.11.2026).
-  const motion = vehicleMotion(placed, await seatedOnScene(deps.ctx.prisma, [placed]));
+  const motion = vehicleMotion(
+    placed,
+    await seatedOnScene(deps.ctx.prisma, [placed]),
+    placed.scene,
+  );
   return { placed, window: window ?? null, moving: placed.scene.chaseRunning && motion.speed > 0 };
 }
 

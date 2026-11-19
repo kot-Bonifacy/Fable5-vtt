@@ -821,8 +821,12 @@ model SceneVehicle {
   started     Boolean @default(true)
   /** Utrata kontroli (65c): Test zwykłej jazdy oblany; mija z następną rundą. */
   lostControl Boolean @default(false)
-  /** Runda walki, w której auto już dryfowało — dryf raz na rundę (65c). */
-  driftRound  Int     @default(0)
+  /**
+   * Runda walki, w której auto już się przesunęło (etap 72: „Jedź”, ruch
+   * automatyczny na koniec tury kierowcy albo ruch auta bez tury na początku
+   * rundy) — raz na rundę. Do 72b `driftRound` (dryf 65c).
+   */
+  movedRound  Int     @default(0)
   /** Zbiorniki Nitro zużyte w tym pościgu (65c). */
   nitroUsed   Int     @default(0)
   /** Wezwanie MG do Manewru czekające na kierowcę — id manewru systemu (65d2). */
@@ -836,12 +840,20 @@ model SceneVehicle {
    */
   blockingId   String?
   /**
-   * Pęd auta w bieżącej rundzie walki — prędkość w jednostkach Ruchu, z jaką
-   * jechało przy ostatnim dryfie (decyzja MG z 05.11.2026). Auto, z którego
-   * kierowca zniknął albo padł, toczy się nim i co rundę zwalnia o połowę
-   * (`cpredCoastSpeed`). `null` poza walką — auto bez kierowcy wtedy stoi.
+   * Prędkość auta w punktach Ruchu (etap 72, na ekranie mil/h = Ruch × 5) —
+   * trwa między turami: gaz ją podnosi, hamulec zbija. Bez kierowcy albo ze
+   * zgaszonym silnikiem maleje o połowę co rundę (`cpredCoastSpeed`). 0 poza
+   * walką. Do 72b `momentum` (pęd z 05.11).
    */
-  momentum     Int?
+  speed          Int     @default(0)
+  /**
+   * Zamiar auta NPC-a dla autopilota (etap 72e): `manual` | `flee` | `pursue`
+   * | `keep` | `ram` | `block`; cel — `intentTargetId` (id `SceneVehicle`).
+   */
+  intent         String  @default("manual")
+  intentTargetId String?
+  /** Zryw z Wyścigu tej rundy w kratkach (etap 72c) — gaśnie z końcem rundy. */
+  raceBonus      Int     @default(0)
   createdAt DateTime @default(now())
 
   scene      Scene   @relation(fields: [sceneId], references: [id], onDelete: Cascade)
@@ -1078,7 +1090,10 @@ model Scene {
   kind String @default("map")
   /** Kierunek jazdy: `right` | `left` | `up` | `down`. */
   chaseDirection String  @default("right")
-  /** Tempo pościgu (Ruch) — prędkość bieżni u klienta, dryf aut od 65c. */
+  /**
+   * Prędkość startowa (Ruch; do etapu 72 „Tempo”) — przy starcie walki auto
+   * z kierowcą i pracującym silnikiem dostaje `min(Ruch, prędkość startowa)`.
+   */
   chaseTempo     Int     @default(40)
   /** Droga jedzie (bieżnia się przewija) albo stoi. */
   chaseRunning   Boolean @default(true)
@@ -1088,6 +1103,28 @@ model Scene {
    */
   chaseRoadFrom  Int?
   chaseRoadTo    Int?
+  /** Liczba pasów jezdni (etap 72); null — z drogi albo szerokości jezdni (`chaseDefaultLanes`). */
+  chaseLanes        Int?
+  /** Auto kadru wskazane przez MG (etap 72, `chaseAnchorVehicle`); null — reguła domyślna. */
+  chaseAnchorId     String?
+  /** Drużyna goni (`pursue`) albo ucieka (`flee`) — gdzie w kadrze stoi auto kadru. */
+  chaseRole         String  @default("pursue")
+  /** Autopilot aut NPC-ów (etap 72e) — hamulec MG dla całej sceny. */
+  chaseAutopilot    Boolean @default(true)
+  /** Plan rund (etap 72f) — JSON listy zdarzeń. */
+  chasePlan         String  @default("[]")
+  /** Stan Wyścigu bieżącej rundy (etap 72c) — JSON; null — brak. */
+  chaseRace         String?
+  /**
+   * Prędkość pościgu tej rundy (Ruch auta kadru z jej początku) — stała
+   * w rundzie; null poza walką (wtedy bieżnia jedzie jak przed etapem 72).
+   */
+  chasePursuitSpeed Int?
+  /**
+   * Suma sztywnych przesunięć kadru w kratkach (etap 72) — klient przewija
+   * o różnicę teksturę drogi, żeby przesunięcie wyglądało jak najazd kamery.
+   */
+  chaseShiftSq      Float   @default(0)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

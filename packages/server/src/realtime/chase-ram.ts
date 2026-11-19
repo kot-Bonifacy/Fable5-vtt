@@ -118,7 +118,12 @@ export async function firstChaseContact(
   from: ScenePoint,
   to: ScenePoint,
   skip: ReadonlySet<string> = new Set(),
-): Promise<{ centre: ScenePoint; obstacle: ChaseObstacle; front: boolean } | null> {
+): Promise<{
+  centre: ScenePoint;
+  obstacle: ChaseObstacle;
+  front: boolean;
+  axis: 'x' | 'y';
+} | null> {
   const { settings } = chaseGeometry(placed.scene);
   const mover = chaseBodyHalfExtents(
     chaseBodyOf(placed.vehicle),
@@ -139,6 +144,7 @@ export async function firstChaseContact(
     centre: contact.centre,
     obstacle,
     front: chaseHitsWithFront(settings.direction, from, to, contact),
+    axis: contact.axis,
   };
 }
 

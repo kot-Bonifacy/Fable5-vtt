@@ -70,7 +70,7 @@ import {
   type RealtimeDeps,
 } from './registry.js';
 import { containerTokenIds } from './containers.js';
-import { offstageVehicleIds } from './chase-offstage.js';
+import { offstageVehicleIds, resetChaseCombat } from './chase-offstage.js';
 import { campaignRoom, gmRoom, sceneRoom } from './state.js';
 import { requireCampaignScene } from './scenes.js';
 import { INCLUDE_CHAT_NAMES, deliverRollMessage, toChatMessageView } from './chat-io.js';
@@ -1124,11 +1124,8 @@ export const combatStartEvent = defineEvent<CombatStartPayload, CombatView>({
     await deps.ctx.prisma.combat.deleteMany({ where: { sceneId: scene.id } });
     // Księga węzłów Sieci liczy rundy tej walki, a nowa zaczyna od rundy 1 (70c).
     await resetNetLedgersOnScene(deps, scene.id);
-    // Pęd aut pościgu (05.11.2026) żyje tylko w walce — poza nią auto bez kierowcy stoi.
-    await deps.ctx.prisma.sceneVehicle.updateMany({
-      where: { sceneId: scene.id, momentum: { not: null } },
-      data: { momentum: null },
-    });
+    // Prędkość aut pościgu (etap 72) żyje tylko w walce — poza nią to zapowiedź startowej.
+    await resetChaseCombat(deps.ctx.prisma, scene.id);
     const combat = await deps.ctx.prisma.combat.create({
       data: {
         sceneId: scene.id,

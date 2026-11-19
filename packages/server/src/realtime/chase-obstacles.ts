@@ -14,6 +14,7 @@ import {
   CHASE_OBSTACLE_PRESETS,
   CPRED_ACTION_SPIKES,
   CPRED_OBSTACLE_MANEUVER_ID,
+  cpredLostControlSpeed,
   chaseObstacleUnbreakable,
   CPRED_SPIKES_DAMAGE,
   CPRED_SPIKES_DV,
@@ -291,7 +292,11 @@ export const chaseObstacleAnswerEvent = defineEvent<ChaseObstacleAnswerPayload, 
     if (roll?.outcome?.success === true) {
       await letPast(deps, obstacle, placed);
     } else {
-      await prisma.sceneVehicle.update({ where: { id: placed.id }, data: { lostControl: true } });
+      // Etap 72: utrata kontroli zbija prędkość od razu o 10 Ruchu.
+      await prisma.sceneVehicle.update({
+        where: { id: placed.id },
+        data: { lostControl: true, speed: cpredLostControlSpeed(placed.speed) },
+      });
       const line: CombatActionLogEntry = {
         combatantId: '',
         actorName: placed.vehicle.name,
@@ -522,7 +527,11 @@ export const chaseVehicleAnswerEvent = defineEvent<ChaseVehicleAnswerPayload, Sc
     if (roll?.outcome?.success === true) {
       await pushVehicleBehind(deps, campaignId, placed.scene, stalled.id, placed.id);
     } else {
-      await prisma.sceneVehicle.update({ where: { id: placed.id }, data: { lostControl: true } });
+      // Etap 72: utrata kontroli zbija prędkość od razu o 10 Ruchu.
+      await prisma.sceneVehicle.update({
+        where: { id: placed.id },
+        data: { lostControl: true, speed: cpredLostControlSpeed(placed.speed) },
+      });
       const line: CombatActionLogEntry = {
         combatantId: '',
         actorName: placed.vehicle.name,

@@ -1,6 +1,9 @@
 import { useEffect, useState } from 'react';
 import {
   CHASE_CONTROL_LABELS,
+  cpredDriveAdvance,
+  cpredPedalSpeed,
+  cpredSpeedMph,
   cpredMountDefinition,
   cpredVehicleUpgrade,
   VEHICLE_LAYOUTS,
@@ -9,16 +12,20 @@ import {
   type CpredVehicleUpgradeId,
   type SceneVehicleView,
   type TokenView,
+  type VehicleDriveContact,
+  type VehicleDriveContactInfo,
   type VehicleWindowSide,
 } from '@vtt/shared';
 import { useAuthStore } from '../stores/authStore.js';
 import { useChaseStore } from '../stores/chaseStore.js';
 import { useCharacterStore } from '../stores/characterStore.js';
+import { useSceneStore } from '../stores/sceneStore.js';
 import { useSelectionStore } from '../stores/selectionStore.js';
 import { useTokenStore } from '../stores/tokenStore.js';
 import {
   allowVehicleDriver,
   callVehicleManeuver,
+  driveVehicle,
   dropVehicleSpikes,
   fireVehicleNitro,
   performVehicleManeuver,
@@ -80,7 +87,28 @@ export function chaseErrorText(code: string | undefined): string {
     case 'VEHICLE_NOT_STARTED':
       return 'Silnik jest zgaszony — najpierw uruchom auto.';
     case 'VEHICLE_OUT_OF_CONTROL':
-      return 'Kierowca stracił panowanie nad autem — do następnej rundy prowadzi je MG.';
+      return 'Kierowca stracił panowanie nad autem — do końca rundy jedzie samo.';
+    // Etap 72: jazda w turze kierowcy.
+    case 'USE_COCKPIT':
+      return 'W walce auto prowadzi się z menu auta: gaz, hamulec, pas i „Jedź”.';
+    case 'DRIVE_COMBAT_ONLY':
+      return 'Gaz, hamulec i pasy działają w walce — poza nią szyk ustawia MG.';
+    case 'DRIVER_NOT_IN_COMBAT':
+      return 'Kierowcy nie ma w kolejce — auto jedzie samo na początku rundy.';
+    case 'ALREADY_DROVE':
+      return 'Auto przejechało już w tej rundzie.';
+    case 'AT_MAX_SPEED':
+      return 'Auto jedzie już najszybciej, jak umie.';
+    case 'STANDING':
+      return 'Auto stoi — nie ma czego hamować.';
+    case 'LANE_EDGE':
+      return 'Tam kończy się jezdnia.';
+    case 'CANT_SLOW_BEHIND':
+      return 'Zwykły hamulec nie wystarczy — zostaje taran, zmiana pasa albo Manewr.';
+    case 'NITRO_AFTER_DRIVE':
+      return 'Nitro odpala się przed „Jedź” — auto przejechało już w tej rundzie.';
+    case 'NO_MOVE_LEFT':
+      return 'Kierowca wydał już Akcję Ruchu w tej turze — zostaje jazda prosto.';
     case 'RAM_USED':
       return 'Kierowca taranował już w tej turze — jeden taran na turę.';
     case 'NO_NITRO':
@@ -89,8 +117,6 @@ export function chaseErrorText(code: string | undefined): string {
       return 'Nitro odpala się w walce — poza nią auto jedzie bez budżetu.';
     case 'BOT_CANNOT_DRIVE':
       return 'Bot jedzie tylko jako pasażer — nie prowadzi.';
-    case 'NO_MOVE_LEFT':
-      return 'Auto przejechało już cały Ruch tej tury.';
     case 'NOT_YOUR_TURN':
       return 'To nie jest twoja tura.';
     case 'NO_ACTION_LEFT':
@@ -154,6 +180,7 @@ export function ChaseVehicleMenu() {
   const characters = useCharacterStore((s) => s.characters);
   const steeredId = useSelectionStore((s) => s.tokenId);
   const user = useAuthStore((s) => s.user);
+  const scene = useSceneStore((s) => s.scene);
   useManeuverCallNotice(vehicles, tokens, user?.id ?? null);
   // Z Manewrami i bronią pokładową (65d2) menu bywa wyższe od okna — wysokość
   // mierzy się po renderze, jak w menu figury.
@@ -162,6 +189,7 @@ export function ChaseVehicleMenu() {
   useMenuEscape(menu !== null && vehicle !== undefined && user !== null, close);
   if (!menu || !vehicle || !user) return null;
   const isGm = user.role === ROLE_GM;
+  const lanes = scene?.chase.lanes ?? 1;
   const passengers = Object.values(tokens).filter(
     (token) => token.vehicleSeat?.sceneVehicleId === vehicle.id,
   );
@@ -208,8 +236,11 @@ export function ChaseVehicleMenu() {
         aria-label={`Auto: ${vehicle.name}`}
       >
         <p className="context-menu-title">{vehicle.name}</p>
-        <p className="chase-menu-state">{vehicleStateLine(vehicle)}</p>
+        <p className="chase-menu-state">{vehicleStateLine(vehicle, lanes)}</p>
         <VehicleHull vehicle={vehicle} isGm={isGm} />
+        {drives && vehicle.status === 'racing' && (
+          <VehicleDriveControls vehicle={vehicle} close={close} />
+        )}
         {drives && vehicle.status === 'racing' && (
           <button
             type="button"
@@ -224,7 +255,7 @@ export function ChaseVehicleMenu() {
           <button
             type="button"
             className="context-menu-item"
-            title="Za Akcję kierowca dostaje drugi Ruch pojazdu (w walce)."
+            title="Za Akcję, przed „Jedź”: auto przejedzie w tej turze dodatkowo Ruch / 4 kratek (w walce)."
             onClick={() => act(() => fireVehicleNitro(vehicle.id))}
           >
             {`Nitro (${vehicle.nitroLeft})`}
@@ -439,18 +470,14 @@ function VehicleHull({ vehicle, isGm }: { vehicle: SceneVehicleView; isGm: boole
   );
 }
 
-/** „Ruch 5 kratek/turę · dryf −5 · kierowca prowadzi” — stan auta jednym wierszem. */
-function vehicleStateLine(vehicle: SceneVehicleView): string {
+/** „100 mil/h (maks. 200) · pas 2 z 3 · kierowca prowadzi” — stan auta jednym wierszem. */
+function vehicleStateLine(vehicle: SceneVehicleView, lanes: number): string {
   if (vehicle.status === 'behind') return 'Zostało w tyle — poza pościgiem';
   if (vehicle.status === 'escaped') return 'Uciekło — poza pościgiem';
-  if (vehicle.status === 'wrecked') {
-    return `Wrak — stoi, droga zabiera go w tył · dryf −${formatSq(Math.abs(vehicle.driftSq))}/rundę`;
-  }
-  const drift =
-    vehicle.driftSq === 0
-      ? 'bez dryfu'
-      : `dryf ${vehicle.driftSq > 0 ? '+' : '−'}${formatSq(Math.abs(vehicle.driftSq))}/rundę`;
-  const move = vehicle.started ? `${formatSq(vehicle.moveSq)} kratek/turę` : 'silnik zgaszony';
+  const speed = `${cpredSpeedMph(vehicle.speed)} mil/h (maks. ${cpredSpeedMph(vehicle.maxSpeed)})`;
+  const lane = `pas ${vehicle.lane + 1} z ${lanes}`;
+  if (vehicle.status === 'wrecked') return `Wrak — stoi, droga zabiera go w tył · ${lane}`;
+  const engine = vehicle.started ? speed : 'silnik zgaszony';
   // Bez kierowcy auto toczy się i zwalnia, a potem stoi (05.11.2026).
   const control =
     vehicle.control === 'none' && vehicle.started
@@ -458,7 +485,143 @@ function vehicleStateLine(vehicle: SceneVehicleView): string {
         ? 'bez kierowcy — toczy się i zwalnia'
         : 'bez kierowcy — stoi'
       : CHASE_CONTROL_LABELS[vehicle.control];
-  return `${move} · ${drift} · ${control}`;
+  return `${engine} · ${lane} · ${control}`;
+}
+
+/** Zdanie pytania o zderzenie na drodze ruchu (etap 72). */
+function contactQuestion(contact: VehicleDriveContactInfo): string {
+  if (contact.side) return `Na sąsiednim pasie: ${contact.name}. Zepchnąć je bokiem (bez Pługa)?`;
+  if (contact.canSlow) {
+    return `Na drodze: ${contact.name} (${cpredSpeedMph(contact.speed)} mil/h). Taranować czy zwolnić za nim?`;
+  }
+  return `Na drodze: ${contact.name}. Hamulec nie wystarczy — taranować, czy zmienić plan (pas, Manewr)?`;
+}
+
+/**
+ * Tymczasowy kokpit w menu auta (etap 72b1): gaz albo hamulec, pas wyżej albo
+ * niżej i „Jedź”. Docelowo grupa „Pojazd” w lewej belce (72b2 / 72d). Zderzenie
+ * na drodze ruchu wraca z serwera jako pytanie: „Taranuj”, „Zwolnij za nim”
+ * (gdy wystarcza hamulec) albo „Zepchnij” przy zmianie pasa.
+ */
+function VehicleDriveControls({
+  vehicle,
+  close,
+}: {
+  vehicle: SceneVehicleView;
+  close: () => void;
+}) {
+  const [pedal, setPedal] = useState<'gas' | 'brake' | null>(null);
+  const [laneDelta, setLaneDelta] = useState<-1 | 0 | 1>(0);
+  const chase = useSceneStore((s) => s.scene?.chase);
+  const metresPerSquare = useSceneStore((s) => s.scene?.metersPerSquare ?? 1);
+  if (!chase || chase.pursuitSpeed === null) return null;
+  if (!vehicle.started || vehicle.control !== 'driver') return null;
+  if (vehicle.moved) {
+    return <p className="chase-menu-state">Ruch auta w tej rundzie wykonany.</p>;
+  }
+  const after = cpredPedalSpeed(vehicle.speed, vehicle.maxSpeed, pedal);
+  const advance = cpredDriveAdvance({
+    speed: after,
+    pursuitSpeed: chase.pursuitSpeed,
+    raceBonus: vehicle.raceBonus,
+  });
+  const metres = Math.round(advance * metresPerSquare * 10) / 10;
+  const lane = vehicle.lane + laneDelta;
+  const send = (onContact?: VehicleDriveContact) => {
+    void driveVehicle({
+      sceneVehicleId: vehicle.id,
+      pedal,
+      laneDelta,
+      ...(onContact ? { onContact } : {}),
+    }).then((ack) => {
+      if (!ack.ok) {
+        notifyRefusal('chase', chaseErrorText(ack.error));
+        return;
+      }
+      if (ack.data && !ack.data.moved) {
+        const { contact } = ack.data;
+        notifyChoice(
+          'chase',
+          contactQuestion(contact),
+          [
+            { label: contact.side ? 'Zepchnij' : 'Taranuj', run: () => send('ram') },
+            ...(contact.canSlow ? [{ label: 'Zwolnij za nim', run: () => send('slow') }] : []),
+            { label: 'Zmienię plan', run: () => undefined },
+          ],
+          { title: 'Zderzenie' },
+        );
+        return;
+      }
+      clearNotices('chase');
+    });
+    close();
+  };
+  const toggle = (
+    label: string,
+    pressed: boolean,
+    disabled: boolean,
+    onClick: () => void,
+    title: string,
+  ) => (
+    <button
+      type="button"
+      className="context-menu-item"
+      aria-pressed={pressed}
+      disabled={disabled}
+      title={title}
+      onClick={onClick}
+    >
+      {pressed ? `✓ ${label}` : label}
+    </button>
+  );
+  return (
+    <>
+      <p className="context-menu-section">Jazda</p>
+      {toggle(
+        'Gaz (+50 mil/h)',
+        pedal === 'gas',
+        vehicle.speed >= vehicle.maxSpeed,
+        () => setPedal(pedal === 'gas' ? null : 'gas'),
+        'Akcja Ruchu: +50 mil/h, najwyżej do maksimum auta.',
+      )}
+      {toggle(
+        'Hamulec (−100 mil/h)',
+        pedal === 'brake',
+        vehicle.speed <= 0,
+        () => setPedal(pedal === 'brake' ? null : 'brake'),
+        'Akcja Ruchu: −100 mil/h.',
+      )}
+      {toggle(
+        'Pas wyżej',
+        laneDelta === -1,
+        vehicle.lane <= 0,
+        () => setLaneDelta(laneDelta === -1 ? 0 : -1),
+        'Zmiana pasa w tej samej Akcji Ruchu co pedał.',
+      )}
+      {toggle(
+        'Pas niżej',
+        laneDelta === 1,
+        vehicle.lane >= chase.lanes - 1,
+        () => setLaneDelta(laneDelta === 1 ? 0 : 1),
+        'Zmiana pasa w tej samej Akcji Ruchu co pedał.',
+      )}
+      <p className="chase-menu-state">
+        {`Po ruchu: ${cpredSpeedMph(after)} mil/h · ${metres >= 0 ? '+' : '−'}${formatSq(Math.abs(metres))} m · pas ${lane + 1}`}
+      </p>
+      <button
+        type="button"
+        className="context-menu-item"
+        title={
+          pedal || laneDelta
+            ? 'Wykonuje ruch auta za Akcję Ruchu.'
+            : 'Jazda prosto z tą samą prędkością nic nie kosztuje. Bez „Jedź” auto pojedzie samo na koniec tury.'
+        }
+        onClick={() => send()}
+      >
+        Jedź
+      </button>
+    </>
+  );
 }
 
 function formatSq(value: number): string {

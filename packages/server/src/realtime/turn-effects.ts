@@ -52,7 +52,7 @@ import {
   emitTokensOfCharacter,
   requireCampaignToken,
 } from './tokens.js';
-import { driftChaseRound, pointerAfterDrift, startChaseMomentum } from './chase-driving.js';
+import { chaseTurnEnd, pointerAfterDrift, startChaseRound } from './chase-drive.js';
 import { sweepTimedEffects } from './timed-effects.js';
 import { runZonesAtTurnEnd } from './zones.js';
 import { sweepBackupArrivals } from './backup.js';
@@ -116,19 +116,21 @@ export async function advanceTurn(
   user: SessionUser,
 ): Promise<void> {
   const leaving = combat.combatants.find((row) => row.id === combat.activeCombatantId) ?? null;
+  // Etap 72: kierowca, który skończył turę bez „Jedź”, jedzie sam — przed
+  // ogniem i strefami, bo te pytają, gdzie figura stoi na końcu tury.
+  if (leaving && (pointer.activeCombatantId !== leaving.id || pointer.round !== combat.round)) {
+    await chaseTurnEnd(deps, campaignId, scene, leaving, combat.round, user);
+  }
   if (leaving) await runTurnEnd(deps, campaignId, scene, combat, leaving, user);
 
   // The roster is re-read: the end-of-turn hook may have written a carry, and
   // `applyTurnPointer` is what spends it into the fresh budget.
   let refreshed = await loadCombatById(deps.ctx.prisma, combat.id);
-  // Etap 65c: początek rundy na scenie pościgu — auta dryfują, a te, które
-  // wyjechały z kadru, zabierają swoje figury z kolejki. Od rundy 2: pierwszą
-  // ustawia MG.
-  if (pointer.round === 1 && combat.round === 0) {
-    await startChaseMomentum(deps.ctx.prisma, scene);
-  }
-  if (pointer.round > combat.round && pointer.round >= 2) {
-    const dropped = await driftChaseRound(deps, campaignId, scene, refreshed, pointer.round, user);
+  // Etap 72: początek rundy na scenie pościgu — prędkość pościgu, sztywne
+  // przesunięcie kadru, auta bez tury i przeszkody; auta, które wyjechały
+  // z kadru, zabierają swoje figury z kolejki.
+  if (pointer.round > combat.round && pointer.round >= 1) {
+    const dropped = await startChaseRound(deps, campaignId, scene, refreshed, pointer.round, user);
     if (dropped) {
       refreshed = await loadCombatById(deps.ctx.prisma, combat.id);
       pointer = pointerAfterDrift(refreshed, pointer);
