@@ -1,16 +1,30 @@
 import { useEffect, useState, type ChangeEvent, type RefObject } from 'react';
-import type { ChaseDirection, MapUploadResult, SceneView, VehicleView } from '@vtt/shared';
+import type {
+  ChaseDirection,
+  ChaseRole,
+  MapUploadResult,
+  SceneVehicleView,
+  SceneView,
+  VehicleView,
+} from '@vtt/shared';
 import {
   CHASE_DIRECTIONS,
   CHASE_DIRECTION_LABELS,
+  CHASE_LANES_MAX,
+  CHASE_LANES_MIN,
   CHASE_ROADS,
+  CHASE_ROLE_LABELS,
   CHASE_TEMPO_MAX,
-  CHASE_TEMPO_MIN,
+  CPRED_GAS_STEP,
+  CPRED_MPH_PER_MOVE,
   GRID_SIZE_MAX,
   GRID_SIZE_MIN,
   UPLOAD_ACCEPT_ATTRIBUTE,
+  chaseEffectiveLanes,
   chaseFreeSpot,
   chaseIsHorizontal,
+  cpredMphToSpeed,
+  cpredSpeedMph,
   chaseRoadByUrl,
   chaseRoadCells,
   chaseRoadPatch,
@@ -26,7 +40,7 @@ import { useCharacterStore } from '../stores/characterStore.js';
 import { useSceneStore } from '../stores/sceneStore.js';
 import { useVehicleStore } from '../stores/vehicleStore.js';
 import { fileRejectionText, uploadErrorText } from '../uploads.js';
-import { chaseErrorText } from './ChaseVehicleMenu.js';
+import { VehicleIntent, chaseErrorText } from './ChaseVehicleMenu.js';
 import { Segmented } from './Segmented.js';
 import { AddFromCatalog } from './VehiclePanel.js';
 
@@ -73,6 +87,15 @@ function sceneGrid(scene: SceneView) {
     gridOffsetY: scene.grid.offsetY,
   };
 }
+
+/** Liczba pasów szkicu — na żywo z drogi i pasa jezdni, póki MG jej nie wpisał. */
+export function sceneLanes(scene: SceneView): number {
+  return chaseEffectiveLanes(scene.background?.url, scene.chase, sceneGrid(scene));
+}
+
+/** Prędkość startowa w polu MG: mil/h, krok gazu (decyzja MG 20.11). */
+const START_MPH_STEP = CPRED_GAS_STEP * CPRED_MPH_PER_MOVE;
+const START_MPH_MAX = 300;
 
 /** Miniatura tła wgranego przez MG — podgląd z serwera zamiast całej mapy. */
 function ownThumb(url: string): string {
@@ -176,12 +199,16 @@ export function ChaseRoadPicker({ scene }: { scene: SceneView }) {
   );
 }
 
-/** Kierunek jazdy, tempo i „Droga jedzie”. */
+/**
+ * Kierunek jazdy, rola drużyny, prędkość startowa i „Droga jedzie” (etap 72f1:
+ * „Tempo” zastąpiła prędkość startowa w mil/h — kolumna `chaseTempo` w Ruchu).
+ */
 export function ChaseDriveSection({ scene }: { scene: SceneView }) {
   const patchDraft = useSceneStore((s) => s.patchDraft);
   const builtIn = chaseRoadByUrl(scene.background?.url);
   const across =
     builtIn && chaseIsHorizontal(builtIn.direction) !== chaseIsHorizontal(scene.chase.direction);
+  const mph = cpredSpeedMph(scene.chase.tempo);
   return (
     <section className="settings-group">
       <h3 className="settings-group-title">Jazda</h3>
@@ -200,26 +227,52 @@ export function ChaseDriveSection({ scene }: { scene: SceneView }) {
           Ta droga biegnie poziomo — przy jeździe w pionie auta pojadą w poprzek jezdni.
         </p>
       )}
+      <Segmented<ChaseRole>
+        label="Rola drużyny"
+        options={[
+          {
+            id: 'pursue',
+            label: CHASE_ROLE_LABELS.pursue,
+            hint: 'Auto drużyny stoi bliżej tylnej krawędzi kadru — cel widać przed nim.',
+          },
+          {
+            id: 'flee',
+            label: CHASE_ROLE_LABELS.flee,
+            hint: 'Auto drużyny stoi bliżej przedniej krawędzi kadru — pogoń widać za nim.',
+          },
+        ]}
+        value={scene.chase.role}
+        onChange={(role) => patchDraft({ chase: { role } })}
+      />
       <div
         className="settings-row"
-        title="Ruch pościgu: tempo / 4 kratek na rundę. Tyle jedzie droga, a w walce auto wolniejsze od tempa traci dystans."
+        title="Na starcie walki każde auto z kierowcą i pracującym silnikiem jedzie z tą prędkością albo ze swoim maksimum, jeśli jest wolniejsze. Poza walką z tą prędkością przewija się droga."
       >
-        <label className="settings-label" htmlFor="chase-tempo">
-          Tempo (Ruch)
+        <label className="settings-label" htmlFor="chase-start-speed">
+          Prędkość startowa
         </label>
         <input
-          id="chase-tempo"
+          id="chase-start-speed"
           type="number"
           className="scene-number-input"
-          min={CHASE_TEMPO_MIN}
-          max={CHASE_TEMPO_MAX}
-          step={5}
-          value={scene.chase.tempo}
-          onChange={(e) => patchDraft({ chase: { tempo: Number(e.target.value) } })}
+          min={0}
+          max={Math.max(START_MPH_MAX, mph)}
+          step={START_MPH_STEP}
+          value={mph}
+          onChange={(e) =>
+            patchDraft({
+              chase: {
+                tempo: Math.min(CHASE_TEMPO_MAX, cpredMphToSpeed(Number(e.target.value))),
+              },
+            })
+          }
         />
-        <span className="scene-config-unit">{scene.chase.tempo / 4} kratek / rundę</span>
+        <span className="scene-config-unit">mil/h</span>
       </div>
-      <label className="settings-row settings-row--switch">
+      <label
+        className="settings-row settings-row--switch"
+        title="Poza walką droga przewija się pod autami z prędkością startową. Wyłączona — scena zaczyna się na postoju; w walce droga i tak jedzie z autem kadru."
+      >
         <input
           type="checkbox"
           checked={scene.chase.running}
@@ -297,7 +350,54 @@ export function ChaseRoadSection({ scene }: { scene: SceneView }) {
         />
         <span className="scene-config-unit">z {cells}</span>
       </div>
+      <ChaseLanesRow scene={scene} />
     </section>
+  );
+}
+
+/**
+ * Liczba pasów ruchu (etap 72f1). Wbudowana droga ma pasy namalowane, więc
+ * pole jest tylko odczytem (decyzja MG 20.11); na własnej mapie liczba idzie
+ * z szerokości jezdni, póki MG jej nie wpisze. Linie pasów rysują uchwyty
+ * na mapie (`ChaseLayer.drawBandEditor`).
+ */
+function ChaseLanesRow({ scene }: { scene: SceneView }) {
+  const patchDraft = useSceneStore((s) => s.patchDraft);
+  const builtIn = chaseRoadByUrl(scene.background?.url);
+  const lanes = sceneLanes(scene);
+  return (
+    <div
+      className="settings-row"
+      title={
+        builtIn
+          ? `${builtIn.label} ma namalowane pasy (${lanes}) — tej liczby nie zmienisz.`
+          : 'Na ile pasów dzieli się jezdnia. Auto jedzie środkiem pasa i zmienia go strzałkami w kokpicie. Domyślnie szerokość jezdni / 4 kratki.'
+      }
+    >
+      <label className="settings-label" htmlFor="chase-lanes">
+        Liczba pasów
+      </label>
+      <input
+        id="chase-lanes"
+        type="number"
+        className="scene-number-input"
+        min={CHASE_LANES_MIN}
+        max={CHASE_LANES_MAX}
+        step={1}
+        value={lanes}
+        disabled={builtIn !== null}
+        onChange={(e) => {
+          const next = Number(e.target.value);
+          // Szkic liczy pasy z flagi (`sceneLanes`), więc wpis MG ją gasi od razu.
+          if (Number.isFinite(next) && next > 0) {
+            patchDraft({ chase: { lanes: next, lanesFromRoad: false } });
+          }
+        }}
+      />
+      <span className="scene-config-unit">
+        {builtIn ? 'namalowane' : scene.chase.lanesFromRoad ? 'z szerokości jezdni' : ''}
+      </span>
+    </div>
   );
 }
 
@@ -345,13 +445,16 @@ function VehicleRow({
   vehicle,
   owner,
   placed,
+  onRoad,
   disabled,
   onPlace,
   onRemove,
 }: {
   vehicle: VehicleView;
   owner: string | null;
-  placed: boolean;
+  /** Auto na drodze tej sceny; `null` — jeszcze nie stoi. */
+  placed: SceneVehicleView | null;
+  onRoad: readonly SceneVehicleView[];
   disabled: boolean;
   onPlace: () => void;
   onRemove: () => void;
@@ -390,6 +493,15 @@ function VehicleRow({
           Na drogę
         </button>
       )}
+      {/* Zamiar autopilota (72f1) — tylko auto MG i NPC-ów, które stoi na drodze. */}
+      {placed && !placed.party && vehicle.ownerCharacterId === null && (
+        <VehicleIntent
+          vehicle={placed}
+          vehicles={onRoad}
+          className="chase-car-intent"
+          labelClassName="chase-car-intent-label"
+        />
+      )}
     </li>
   );
 }
@@ -408,7 +520,7 @@ export function ChaseVehiclesSection({ blockedReason }: { blockedReason?: string
   if (!saved) return null;
   const scene = saved;
 
-  const placedIds = new Set(onRoad.map((row) => row.vehicleId));
+  const placedBy = new Map(onRoad.map((row) => [row.vehicleId, row]));
   const vehicles = Object.values(all).sort((a, b) => a.name.localeCompare(b.name, 'pl'));
   const party = vehicles.filter((vehicle) => vehicle.ownerCharacterId !== null);
   const loose = vehicles.filter((vehicle) => vehicle.ownerCharacterId === null);
@@ -421,7 +533,7 @@ export function ChaseVehiclesSection({ blockedReason }: { blockedReason?: string
       onRoad
         .filter((row) => row.status === 'racing')
         .map((row) => ({ x: row.x, y: row.y, widthSq: row.widthSq, lengthSq: row.lengthSq })),
-      scene.chase,
+      { ...scene.chase, lanes: sceneLanes(scene) },
       sceneGrid(scene),
     );
     const ack = await placeChaseVehicle({
@@ -450,7 +562,8 @@ export function ChaseVehiclesSection({ blockedReason }: { blockedReason?: string
         owner={
           vehicle.ownerCharacterId ? (characters[vehicle.ownerCharacterId]?.name ?? null) : null
         }
-        placed={placedIds.has(vehicle.id)}
+        placed={placedBy.get(vehicle.id) ?? null}
+        onRoad={onRoad}
         disabled={disabled}
         onPlace={() => void place(vehicle)}
         onRemove={() => void remove(vehicle)}
@@ -477,7 +590,8 @@ export function ChaseVehiclesSection({ blockedReason }: { blockedReason?: string
       <AddFromCatalog ownerCharacterId={null} />
       <p className="settings-hint">
         Auto przestawisz przeciągnięciem po drodze. Figury sadzasz, upuszczając je na fotel; gracze
-        siadają sami, klikając wolny fotel.
+        siadają sami, klikając wolny fotel. Zamiar auta NPC-a mówi autopilotowi, jak jechać w turze
+        kierowcy — graczom go nie widać.
       </p>
     </section>
   );

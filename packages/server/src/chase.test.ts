@@ -26,6 +26,8 @@ import type { ServerConfig } from './config.js';
 import { buildApp, type BuiltApp } from './app.js';
 import { joinUrl } from './test-join.js';
 import { exportCampaign } from './archive.js';
+import { importCampaign } from './archive-campaign.js';
+import { loadCpredRegistry } from './cpred.js';
 import { reseatChasePassengers, snapChaseVehiclesToLanes } from './realtime/chase.js';
 
 /**
@@ -231,6 +233,7 @@ describe('etap 65b: scena pościgu, auta i fotele', () => {
       road: { from: 6, to: 12 },
       // Etap 72: jezdnia 6 kratek bez wbudowanej drogi — round(6 / 4) = 2 pasy.
       lanes: 2,
+      lanesFromRoad: true,
       role: 'pursue',
       anchorId: null,
       pursuitSpeed: null,
@@ -636,5 +639,142 @@ describe('kreator pościgu (03.11): wbudowana droga jako tło', () => {
 
     const file = await exportCampaign(built.prisma, campaignId, { includeChat: false });
     expect(JSON.stringify(file)).toContain('/art/roads/neon-street.webp');
+  });
+});
+
+describe('etap 72f1: pasy, rola drużyny i zamiar w paczce', () => {
+  it('MG wpisuje liczbę pasów na własnej mapie, auta stają na pasach, a paczka niesie wszystko', async () => {
+    const gm = await connect(gmCookie);
+    const created = data(
+      await emitAck<SceneView>(gm, 'scene:create', { name: 'Pasy', kind: 'chase' }),
+      'scene:create',
+    );
+    // Jezdnia 4–16 (12 kratek) bez wbudowanej drogi — round(12 / 4) = 3 pasy.
+    const roadView = data(
+      await emitAck<SceneView>(gm, 'scene:update', {
+        sceneId: created.id,
+        patch: { chase: { direction: 'left', road: { from: 4, to: 16 } } },
+      }),
+      'scene:update road',
+    );
+    expect(roadView.chase).toMatchObject({ lanes: 3, lanesFromRoad: true, role: 'pursue' });
+
+    const vehicleIds: string[] = [];
+    for (const name of ['Furgon', 'Eskorta']) {
+      vehicleIds.push(
+        data(
+          await emitAck<VehicleView>(gm, 'vehicle:create', {
+            catalogId: 'vehicle.sample-kompakt',
+            ownerCharacterId: null,
+            name,
+          }),
+          `vehicle:create ${name}`,
+        ).id,
+      );
+    }
+    const [van, escort] = [
+      data(
+        await emitAck<SceneVehicleView>(gm, 'chase:place', {
+          sceneId: created.id,
+          vehicleId: vehicleIds[0],
+          x: 1000,
+          y: 800,
+        }),
+        'chase:place van',
+      ),
+      data(
+        await emitAck<SceneVehicleView>(gm, 'chase:place', {
+          sceneId: created.id,
+          vehicleId: vehicleIds[1],
+          x: 1800,
+          y: 1500,
+        }),
+        'chase:place escort',
+      ),
+    ];
+
+    // Dwa pasy po 6 kratek: środki 7 i 13 — auta przyciągają się do nich.
+    const twoLanes = data(
+      await emitAck<SceneView>(gm, 'scene:update', {
+        sceneId: created.id,
+        patch: { chase: { lanes: 2, role: 'flee' } },
+      }),
+      'scene:update lanes',
+    );
+    expect(twoLanes.chase).toMatchObject({ lanes: 2, lanesFromRoad: false, role: 'flee' });
+    const rows = await built.prisma.sceneVehicle.findMany({ where: { sceneId: created.id } });
+    expect(rows.find((row) => row.id === van.id)?.y).toBe(700);
+    expect(rows.find((row) => row.id === escort.id)?.y).toBe(1300);
+
+    expect(
+      (
+        await emitAck(gm, 'chase:intent', {
+          sceneVehicleId: escort.id,
+          intent: 'keep',
+          targetId: van.id,
+        })
+      ).ok,
+    ).toBe(true);
+    const file = await exportCampaign(built.prisma, campaignId, { includeChat: false });
+    const packed = file?.payload.scenes.find((row) => row.id === created.id);
+    expect(packed?.scene).toMatchObject({
+      chaseLanes: 2,
+      chaseRole: 'flee',
+      chaseAutopilot: true,
+    });
+    expect(packed?.sceneVehicles?.find((row) => row.id === escort.id)).toMatchObject({
+      intent: 'keep',
+      intentTargetId: van.id,
+      intentGapSq: -8,
+    });
+
+    // Wczytana kampania: zamiar wskazuje nowe auto, pasy i rola zostają.
+    const registry = await loadCpredRegistry(
+      config.dataPublicDir,
+      config.dataPrivateDir,
+      built.app.log,
+    );
+    const { gmId } = await built.prisma.campaign.findUniqueOrThrow({ where: { id: campaignId } });
+    const copyId = `c${randomBytes(8).toString('hex')}`;
+    const imported = await importCampaign(built.prisma, registry, file, {
+      campaignId: copyId,
+      gmId: gmId!,
+      name: 'Pasy — kopia',
+    });
+    expect('code' in imported).toBe(false);
+    const copy = await built.prisma.scene.findFirstOrThrow({
+      where: { campaignId: copyId, name: 'Pasy' },
+      include: { vehicles: { include: { vehicle: true } } },
+    });
+    expect(copy).toMatchObject({ chaseLanes: 2, chaseRole: 'flee' });
+    const copyVan = copy.vehicles.find((row) => row.vehicle.name === 'Furgon')!;
+    const copyEscort = copy.vehicles.find((row) => row.vehicle.name === 'Eskorta')!;
+    expect(copyEscort).toMatchObject({
+      intent: 'keep',
+      intentTargetId: copyVan.id,
+      intentGapSq: -8,
+    });
+
+    // Powrót do „z drogi” i wbudowana droga: pasy namalowane, liczba MG odpada.
+    const auto = data(
+      await emitAck<SceneView>(gm, 'scene:update', {
+        sceneId: created.id,
+        patch: { chase: { lanesFromRoad: true } },
+      }),
+      'scene:update lanesFromRoad',
+    );
+    expect(auto.chase).toMatchObject({ lanes: 3, lanesFromRoad: true });
+    const preset = chaseRoadByUrl('/art/roads/neon-street.webp')!;
+    const neon = data(
+      await emitAck<SceneView>(gm, 'scene:update', {
+        sceneId: created.id,
+        patch: { ...chaseRoadPatch(preset), chase: { ...chaseRoadPatch(preset).chase, lanes: 5 } },
+      }),
+      'scene:update neon',
+    );
+    expect(neon.chase).toMatchObject({ lanes: 3, lanesFromRoad: true });
+    expect(
+      (await built.prisma.scene.findUniqueOrThrow({ where: { id: created.id } })).chaseLanes,
+    ).toBeNull();
   });
 });

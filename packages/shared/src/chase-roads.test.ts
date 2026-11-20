@@ -132,6 +132,27 @@ describe('chaseFreeSpot', () => {
     expect(second.y).toBe(1750);
   });
 
+  it('z liczbą pasów staje na środkach pasów, od środkowego na zewnątrz (72f1)', () => {
+    // Jezdnia 2–16 (14 kratek) na dwa pasy po 7 kratek: środki 5,5 i 12,5.
+    const two = { ...settings, lanes: 2 };
+    const first = chaseFreeSpot(car, [], two, scene);
+    expect(first.y).toBe(550);
+    const second = chaseFreeSpot(car, [{ ...first, ...car }], two, scene);
+    expect(second).toEqual({ x: first.x, y: 1250 });
+    // Trzeci nie mieści się w poprzek — staje dalej wzdłuż drogi na pierwszym pasie.
+    const third = chaseFreeSpot(
+      car,
+      [
+        { ...first, ...car },
+        { ...second, ...car },
+      ],
+      two,
+      scene,
+    );
+    expect(third.y).toBe(550);
+    expect(third.x).not.toBe(first.x);
+  });
+
   it('pełna droga oddaje środek sceny', () => {
     const narrow = { direction: 'right' as const, road: { from: 0, to: 3 } };
     const small = { ...scene, width: 600, height: 300 };

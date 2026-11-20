@@ -1,5 +1,32 @@
 # Dziennik sesji — archiwum
 
+### Sesja 20.11 (czwarta) — etap 72d2: mapa kokpitu i oględziny
+
+**Zrobione (czeka na wdrożenie razem z 72b1–72d1; bez migracji, bez zmian serwera i `shared`):**
+
+- **Decyzje MG z pytań w sesji:** duch, pas i miarka **tylko u kierowcy**; duch **zawsze przed
+  „Jedź”** (także bez pedału); prędkość **drugą linią podpisu** auta; dojazd **~0,6 s**, najazd
+  kadru **~0,8 s**; po pomiarze 900 px — **za kierownicą w walce portret się chowa**.
+- **Duch** (`HudVehicle` → `chaseStore.ghost` → `ChaseLayer.setGhost`): grafika auta w miejscu po
+  ruchu (`chaseDriveStep`, te same liczby co „Po ruchu”), pas docelowy na całej długości kadru,
+  miarka z metrami do celu dystansu (`ghostRuler` w `chase-map-notes.ts`).
+- **Dopiski** (`chase-map-notes.ts`, `setChaseNotes`): „150 mil/h” pod nazwą auta w walce,
+  „16 m · za 2 tury” / „inny pas” / „przy zderzaku” pod przeszkodą — od auta, w którym siedzi
+  gracz, u MG od auta kadru.
+- **Dojazd** (`ChaseLayer.glides`): auta i przeszkody dojeżdżają z miejsca, w którym je widać;
+  przesunięcie kadru przewija drogę płynnie i zabiera ze sobą dojazdy z tej samej chwili. Figury
+  w fotelach jadą z autem (`seatedTokenAt`), kamera gracza idzie za autem klatka po klatce
+  (`setFollowedVehicle` zamiast `panBy`). Dystans do pieszego w „Po ruchu” od środka żetonu.
+
+Testy: klient 526/526 (nowy `chase-map-notes.test.ts` — 10), `shared` i serwer bez zmian
+(3243, 1875); lint, Prettier i `tsc` klienta czyste. E2E `T65e` + `T72b` + `T72c` + `T72d` 17/17
+(przed i po zmianie portretu). **Oglądano tymczasowym specem `99-ogledziny-72d2` (nie w repo)
+przy 1600 × 900:** gracz w **Firefoksie** (duch, pas, miarka, dojazd, najazd rundy 2, dzień
+i noc, z portretem i bez), MG w **Chromium** (dopiski przy barykadzie, kokpit Gangera przy
+przeszkodzie, noc). Duch u MG prowadzącego NPC-a nie wyszedł na zrzucie — Ganger miał akurat
+barykadę przed zderzakiem (kokpit słusznie odmawia). `specs/99-zapomnij/` to dalej cudze
+oględziny z 14.11.
+
 ### Sesja 20.11 (trzecia) — etap 72d1: belka w pełnym kształcie
 
 **Zrobione (czeka na wdrożenie razem z 72b1–72c; nowa migracja `20261120200000_chase_swerve_round`):**

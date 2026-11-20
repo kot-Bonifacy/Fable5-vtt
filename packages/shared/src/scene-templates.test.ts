@@ -41,8 +41,16 @@ describe('readSceneTemplate (etap 66)', () => {
       visibility: 'open',
       playerMove: 'stop',
       ambience: 'car',
-      chase: { direction: 'right', tempo: 30, running: true, road: { from: 2, to: 8 } },
+      chase: {
+        direction: 'right',
+        tempo: 30,
+        running: true,
+        road: { from: 2, to: 8 },
+        lanes: null,
+        role: 'pursue',
+      },
     });
+    expect(template.vehicles[0]!.intent).toBeNull();
     expect(template.figures[0]!.vehicle).toEqual({ key: 'a', seat: 0 });
     expect(sceneTemplatePoint(template.scene, { x: 2, y: 3 })).toEqual({ x: 100, y: 150 });
   });
@@ -89,6 +97,35 @@ describe('readSceneTemplate (etap 66)', () => {
         (raw) => ({ ...raw, vehicles: [{ ...raw.vehicles[0], status: 'escaped' }] }),
       ],
       [
+        'liczba pasów poza granicami',
+        (raw) => ({ ...raw, scene: { ...raw.scene, chase: { ...raw.scene.chase, lanes: 9 } } }),
+      ],
+      [
+        'nieznana rola drużyny',
+        (raw) => ({
+          ...raw,
+          scene: { ...raw.scene, chase: { ...raw.scene.chase, role: 'chase' } },
+        }),
+      ],
+      [
+        'zamiar celujący w nieznane auto',
+        (raw) => ({
+          ...raw,
+          vehicles: [{ ...raw.vehicles[0], intent: { kind: 'pursue', target: 'b' } }],
+        }),
+      ],
+      [
+        'zamiar „Goń” bez celu',
+        (raw) => ({ ...raw, vehicles: [{ ...raw.vehicles[0], intent: { kind: 'pursue' } }] }),
+      ],
+      [
+        'zamiar celujący w siebie',
+        (raw) => ({
+          ...raw,
+          vehicles: [{ ...raw.vehicles[0], intent: { kind: 'ram', target: 'a' } }],
+        }),
+      ],
+      [
         'stan figury, który nie jest id',
         (raw) => ({ ...raw, figures: [{ ...raw.figures[0], statuses: ['Nieprzytomny'] }] }),
       ],
@@ -123,6 +160,28 @@ describe('readSceneTemplate (etap 66)', () => {
       width: neon.width,
       height: neon.height,
     });
+  });
+
+  it('pasy, rola drużyny i zamiary aut (72f1)', () => {
+    const raw = minimal();
+    const template = readSceneTemplate(
+      {
+        ...raw,
+        scene: { ...raw.scene, chase: { ...raw.scene.chase, lanes: 2, role: 'flee' } },
+        vehicles: [
+          { ...raw.vehicles[0], intent: { kind: 'flee' } },
+          { ...raw.vehicles[0], key: 'b', intent: { kind: 'keep', target: 'a' } },
+          { ...raw.vehicles[0], key: 'c', intent: { kind: 'manual' } },
+        ],
+      },
+      'proba',
+    )!;
+    expect(template.scene.chase).toMatchObject({ lanes: 2, role: 'flee' });
+    expect(template.vehicles.map((vehicle) => vehicle.intent)).toEqual([
+      { kind: 'flee', target: null },
+      { kind: 'keep', target: 'a' },
+      null,
+    ]);
   });
 
   it('auto w rezerwie i stany figury (66c)', () => {

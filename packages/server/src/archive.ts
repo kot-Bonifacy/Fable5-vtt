@@ -457,6 +457,11 @@ const SCENE_COLUMNS = {
   chaseRunning: true,
   chaseRoadFrom: true,
   chaseRoadTo: true,
+  // Etap 72f1: pasy, rola drużyny, auto kadru i hamulec autopilota.
+  chaseLanes: true,
+  chaseRole: true,
+  chaseAnchorId: true,
+  chaseAutopilot: true,
 } as const;
 
 export async function exportScene(
@@ -587,7 +592,17 @@ export async function exportScene(
       }),
       prisma.sceneVehicle.findMany({
         where: { sceneId },
-        select: { id: true, vehicleId: true, x: true, y: true, status: true, drivers: true },
+        select: {
+          id: true,
+          vehicleId: true,
+          x: true,
+          y: true,
+          status: true,
+          drivers: true,
+          intent: true,
+          intentTargetId: true,
+          intentGapSq: true,
+        },
         orderBy: { createdAt: 'asc' },
       }),
     ]);
@@ -778,6 +793,9 @@ export async function insertScene(
       chaseRunning: bool(sceneColumns.chaseRunning, true),
       chaseRoadFrom: maybeNum(sceneColumns.chaseRoadFrom),
       chaseRoadTo: maybeNum(sceneColumns.chaseRoadTo),
+      chaseLanes: maybeNum(sceneColumns.chaseLanes),
+      chaseRole: sceneColumns.chaseRole === 'flee' ? 'flee' : 'pursue',
+      chaseAutopilot: bool(sceneColumns.chaseAutopilot, true),
     },
     select: { id: true },
   });
@@ -804,6 +822,31 @@ export async function insertScene(
         select: { id: true },
       });
       placedIds.set(str(row.id), created.id);
+    }
+    // Zamiar autopilota i auto kadru (72f1) wskazują inne auto tej sceny —
+    // dopiero po postawieniu wszystkich; cel, który nie wjechał, gasi zamiar.
+    for (const row of asRows(payload.sceneVehicles)) {
+      const id = placedIds.get(str(row.id));
+      const intent = str(row.intent, 'manual');
+      if (!id || intent === 'manual') continue;
+      const oldTarget = maybeStr(row.intentTargetId);
+      const target = oldTarget ? placedIds.get(oldTarget) : undefined;
+      if (oldTarget && !target) continue;
+      await db.sceneVehicle.update({
+        where: { id },
+        data: {
+          intent,
+          intentTargetId: target ?? null,
+          intentGapSq: maybeNum(row.intentGapSq),
+        },
+      });
+    }
+    const anchor = maybeStr(sceneColumns.chaseAnchorId);
+    if (anchor && placedIds.has(anchor)) {
+      await db.scene.update({
+        where: { id: sceneId },
+        data: { chaseAnchorId: placedIds.get(anchor)! },
+      });
     }
   }
 

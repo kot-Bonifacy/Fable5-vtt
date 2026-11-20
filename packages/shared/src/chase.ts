@@ -15,7 +15,7 @@ import type { ScenePoint } from './measure.js';
 import type { VehicleLayoutId } from './vehicles.js';
 import { VEHICLE_LAYOUTS } from './vehicles.js';
 import type { ChaseObstacleView } from './chase-obstacles.js';
-import type { ChaseIntent, ChaseRole } from './chase-drive.js';
+import type { ChaseIntent } from './chase-drive.js';
 import type { RollBreakdownEntry } from './dice.js';
 
 export const SCENE_KINDS = ['map', 'chase'] as const;
@@ -40,6 +40,24 @@ export const CHASE_DIRECTION_LABELS: Record<ChaseDirection, string> = {
   up: 'w górę',
   down: 'w dół',
 };
+
+/** Najmniej i najwięcej pasów jezdni (pole „Liczba pasów” MG, etap 72). */
+export const CHASE_LANES_MIN = 1;
+export const CHASE_LANES_MAX = 8;
+
+/** Liczba pasów przycięta do granic pola MG. */
+export function clampChaseLanes(lanes: number): number {
+  if (!Number.isFinite(lanes)) return CHASE_LANES_MIN;
+  return Math.min(CHASE_LANES_MAX, Math.max(CHASE_LANES_MIN, Math.round(lanes)));
+}
+
+export const CHASE_ROLES = ['pursue', 'flee'] as const;
+/** Drużyna goni (cel widać z przodu) albo ucieka (pogoń widać z tyłu) — etap 72. */
+export type ChaseRole = (typeof CHASE_ROLES)[number];
+
+export function isChaseRole(value: unknown): value is ChaseRole {
+  return (CHASE_ROLES as readonly unknown[]).includes(value);
+}
 
 export const CHASE_TEMPO_DEFAULT = 40;
 export const CHASE_TEMPO_MIN = 0;
@@ -76,6 +94,12 @@ export interface ChaseSettings {
    * (`chaseDefaultLanes`). Serwer zawsze podaje liczbę już ustaloną.
    */
   lanes: number;
+  /**
+   * Liczba pasów idzie z drogi (etap 72f1): wbudowana niesie namalowaną,
+   * własna mapa — szerokość jezdni / 4 kratki. `false` — MG wpisał ją sam.
+   * Szkic w kreatorze liczy pasy na żywo z tej flagi (`chaseEffectiveLanes`).
+   */
+  lanesFromRoad: boolean;
   /** Drużyna goni albo ucieka — gdzie w kadrze stoi auto kadru (etap 72). */
   role: ChaseRole;
   /** Auto kadru wskazane przez MG; `null` — reguła domyślna (`chaseAnchorVehicle`). */
@@ -170,6 +194,7 @@ export const DEFAULT_CHASE_SETTINGS: ChaseSettings = {
   running: true,
   road: null,
   lanes: 1,
+  lanesFromRoad: true,
   role: 'pursue',
   anchorId: null,
   pursuitSpeed: null,
@@ -699,6 +724,14 @@ export function sanitizeChasePatch(raw: unknown): Partial<ChaseSettings> | null 
     patch.tempo = Math.round(Math.min(CHASE_TEMPO_MAX, Math.max(CHASE_TEMPO_MIN, input.tempo)));
   }
   if (typeof input.running === 'boolean') patch.running = input.running;
+  // Etap 72f1: liczba pasów wpisana przez MG, powrót do „z drogi” i rola drużyny.
+  if (typeof input.lanes === 'number' && Number.isFinite(input.lanes)) {
+    patch.lanes = clampChaseLanes(input.lanes);
+    patch.lanesFromRoad = false;
+  } else if (input.lanesFromRoad === true) {
+    patch.lanesFromRoad = true;
+  }
+  if (isChaseRole(input.role)) patch.role = input.role;
   if ('road' in input) {
     const road = input.road;
     if (road === null) patch.road = null;

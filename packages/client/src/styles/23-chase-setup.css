@@ -179,6 +179,7 @@
 
 .chase-car-row {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 0.5rem;
   padding: 0.25rem 0.4rem;
@@ -230,6 +231,25 @@
   flex: none;
   font-size: 0.72rem;
   color: var(--accent);
+}
+
+/* Zamiar autopilota przy aucie NPC-a (etap 72f1) — drugi wiersz pod nazwą. */
+.chase-car-intent {
+  flex: 1 0 100%;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding-left: 2.7rem;
+}
+
+.chase-car-intent-label {
+  font-size: 0.74rem;
+  color: var(--text-dim);
+}
+
+.chase-car-intent select {
+  flex: 1 1 auto;
+  min-width: 0;
 }
 
 .chase-cars .vehicle-add {

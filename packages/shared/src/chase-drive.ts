@@ -14,11 +14,17 @@
  */
 import type { ScenePoint } from './measure.js';
 import {
+  CHASE_LANES_MAX,
+  CHASE_LANES_MIN,
+  CHASE_ROLES,
   chaseBodyHalfExtents,
   chaseIsHorizontal,
   chaseRoadSpanPx,
   chaseShiftAlong,
+  clampChaseLanes,
+  isChaseRole,
   type ChaseBody,
+  type ChaseRole,
   type ChaseControl,
   type ChaseDirection,
   type ChaseSettings,
@@ -37,21 +43,17 @@ export interface ChaseDriveFrame {
 
 // ───────────────────────── Pasy ─────────────────────────
 
-/** Najmniej i najwięcej pasów jezdni (pole „Liczba pasów” MG). */
-export const CHASE_LANES_MIN = 1;
-export const CHASE_LANES_MAX = 8;
+// Granice liczby pasów i rola drużyny mieszkają w `chase.ts` (łata sceny
+// czyta je w `sanitizeChasePatch`, a `chase.ts` nie może importować tego
+// pliku — cykl wywraca serwer w `tsx`, pułapka `testy` z 15.11).
+export { CHASE_LANES_MAX, CHASE_LANES_MIN, CHASE_ROLES, clampChaseLanes, isChaseRole };
+export type { ChaseRole };
 /**
  * Szerokość pasa w kratkach, z której własna mapa MG zgaduje liczbę pasów:
  * auto ma 3 kratki szerokości (`VEHICLE_BODY_SIZES.car`), a pas Neonowej
  * ulicy — 4.
  */
 export const CHASE_LANE_GUESS_SQ = 4;
-
-/** Liczba pasów przycięta do granic pola MG. */
-export function clampChaseLanes(lanes: number): number {
-  if (!Number.isFinite(lanes)) return CHASE_LANES_MIN;
-  return Math.min(CHASE_LANES_MAX, Math.max(CHASE_LANES_MIN, Math.round(lanes)));
-}
 
 /** Liczba pasów jezdni o tej szerokości w kratkach: `round(kratki / 4)`, co najmniej jeden. */
 export function chaseLanesForWidth(squares: number): number {
@@ -71,6 +73,24 @@ export function chaseDefaultLanes(
   if (preset) return clampChaseLanes(preset.lanes);
   const span = chaseRoadSpanPx(settings, scene);
   return chaseLanesForWidth((span.to - span.from) / scene.gridSizePx);
+}
+
+/**
+ * Liczba pasów, jaką widzi szkic sceny (etap 72f1): flaga `lanesFromRoad`
+ * liczy ją od nowa z drogi i pasa jezdni szkicu (`chaseDefaultLanes`), więc
+ * kreator pokazuje zmianę uchwytów od razu; inaczej — liczba wpisana przez MG.
+ * Serwer liczy to samo w `toChaseSettings`.
+ */
+export function chaseEffectiveLanes(
+  backgroundUrl: string | null | undefined,
+  settings: Pick<ChaseSettings, 'direction' | 'road' | 'lanes' | 'lanesFromRoad'>,
+  scene: ChaseDriveFrame,
+): number {
+  // Wbudowana droga ma pasy namalowane — liczba MG jej nie zmienia (MG 20.11).
+  if (settings.lanesFromRoad || chaseRoadByUrl(backgroundUrl)) {
+    return chaseDefaultLanes(backgroundUrl, settings, scene);
+  }
+  return clampChaseLanes(settings.lanes);
 }
 
 /** Granice pasu w pikselach w poprzek drogi (`from` bliżej krawędzi `road.from`). */
@@ -181,14 +201,6 @@ export function chaseDriveStep(input: ChaseDriveStepInput): ChaseDriveStep {
 }
 
 // ───────────────────────── Kadr ─────────────────────────
-
-export const CHASE_ROLES = ['pursue', 'flee'] as const;
-/** Drużyna goni (cel widać z przodu) albo ucieka (pogoń widać z tyłu). */
-export type ChaseRole = (typeof CHASE_ROLES)[number];
-
-export function isChaseRole(value: unknown): value is ChaseRole {
-  return (CHASE_ROLES as readonly unknown[]).includes(value);
-}
 
 export const CHASE_ROLE_LABELS: Record<ChaseRole, string> = {
   pursue: 'Drużyna goni',

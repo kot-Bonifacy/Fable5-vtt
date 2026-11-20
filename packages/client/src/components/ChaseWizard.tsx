@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { CHASE_DIRECTION_LABELS, chaseRoadByUrl } from '@vtt/shared';
+import { CHASE_DIRECTION_LABELS, chaseRoadByUrl, cpredSpeedMph } from '@vtt/shared';
+import { plural } from '../plural.js';
 import { updateScene } from '../socket.js';
 import { useChaseStore } from '../stores/chaseStore.js';
 import { useSceneStore } from '../stores/sceneStore.js';
@@ -11,6 +12,7 @@ import {
   ChaseRoadPicker,
   ChaseRoadSection,
   ChaseVehiclesSection,
+  sceneLanes,
 } from './ChaseSetup.js';
 import { WindowResizeGrip } from './WindowResizeGrip.js';
 
@@ -18,8 +20,9 @@ import { WindowResizeGrip } from './WindowResizeGrip.js';
  * Kreator sceny pościgu (zlecenie MG z 03.11, wzór: kreatory scen z Foundry
  * i Owlbeara). „Utwórz → Pościg” w panelu scen otwiera go zamiast Edycji sceny
  * i prowadzi przez cztery kroki: **Tło** (wbudowana droga albo własna mapa),
- * **Droga** (kierunek, pas jezdni przeciągany na mapie, tempo), **Auta**
- * (drużyna i wrogowie na wolnych miejscach jezdni) i **Gotowe** (podsumowanie).
+ * **Droga** (pas jezdni przeciągany na mapie, liczba pasów, kierunek, goni /
+ * ucieka, prędkość startowa — od 72f1 zamiast tempa), **Auta** (drużyna
+ * i wrogowie na wolnych miejscach jezdni, zamiar auta NPC-a) i **Gotowe**.
  *
  * Kroki Tło i Droga piszą do szkicu sceny, jak Edycja — mapa pokazuje wybór na
  * żywo. Przejście z „Droga” do „Auta” zapisuje szkic, bo auta stawia serwer
@@ -180,10 +183,15 @@ function ChaseWizardBody() {
               <dt>Kierunek</dt>
               <dd>{CHASE_DIRECTION_LABELS[scene.chase.direction]}</dd>
               <dt>Pas jezdni</dt>
-              <dd>{roadText}</dd>
-              <dt>Tempo</dt>
               <dd>
-                Ruch {scene.chase.tempo} · {scene.chase.running ? 'droga jedzie' : 'droga stoi'}
+                {roadText} · {plural(sceneLanes(scene), 'pas', 'pasy', 'pasów')}
+              </dd>
+              <dt>Drużyna</dt>
+              <dd>{scene.chase.role === 'flee' ? 'ucieka' : 'goni'}</dd>
+              <dt>Prędkość startowa</dt>
+              <dd>
+                {cpredSpeedMph(scene.chase.tempo)} mil/h ·{' '}
+                {scene.chase.running ? 'droga jedzie' : 'droga stoi'}
               </dd>
               <dt>Auta na drodze</dt>
               <dd>{carsOnRoad}</dd>

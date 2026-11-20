@@ -29,6 +29,15 @@ import {
   type ChaseDirection,
 } from './chase.js';
 import { chaseRoadByUrl } from './chase-roads.js';
+import {
+  CHASE_LANES_MAX,
+  CHASE_LANES_MIN,
+  chaseIntentNeedsTarget,
+  isChaseIntent,
+  isChaseRole,
+  type ChaseIntent,
+  type ChaseRole,
+} from './chase-drive.js';
 import { CHASE_AMBIENCE, isAmbiencePreset, type AmbiencePreset } from './music.js';
 import { NOTE_ICONS, NOTE_TEXT_MAX_LENGTH, type NoteIcon } from './notes.js';
 import {
@@ -118,10 +127,18 @@ export interface SceneTemplateSummary {
 
 export interface SceneTemplateChase {
   direction: ChaseDirection;
+  /** Prędkość startowa w punktach Ruchu (`Scene.chaseTempo`; mil/h = Ruch × 5). */
   tempo: number;
   running: boolean;
   /** Pas jezdni w kratkach (jak `Scene.chaseRoadFrom/To`); `null` — cała szerokość. */
   road: { from: number; to: number } | null;
+  /**
+   * Liczba pasów (etap 72f1, `Scene.chaseLanes`); `null` — z drogi albo
+   * z szerokości jezdni. Na wbudowanej drodze pole jest pomijane.
+   */
+  lanes: number | null;
+  /** Drużyna goni albo ucieka (`Scene.chaseRole`), domyślnie goni. */
+  role: ChaseRole;
 }
 
 export interface SceneTemplateScene {
@@ -165,6 +182,11 @@ export interface SceneTemplateVehicle {
   y: number;
   /** `behind` — auto w rezerwie, poza pościgiem do „Przywróć” MG (66c). */
   status: SceneTemplateVehicleStatus;
+  /**
+   * Zamiar autopilota (etap 72f1, `SceneVehicle.intent`); `target` to klucz
+   * innego auta wzorca. Brak — „Ręcznie”.
+   */
+  intent: { kind: ChaseIntent; target: string | null } | null;
   /** Z czego zbudować auto — czyta moduł systemu. */
   system: unknown;
 }
@@ -385,7 +407,19 @@ function readChase(raw: unknown): SceneTemplateChase | null | undefined {
     if (from < 0 || to <= from) return undefined;
     road = { from, to };
   }
-  return { direction, tempo, running: raw.running !== false, road };
+  let lanes: number | null = null;
+  if (raw.lanes !== undefined && raw.lanes !== null) {
+    if (!Number.isInteger(raw.lanes)) return undefined;
+    const count = raw.lanes as number;
+    if (count < CHASE_LANES_MIN || count > CHASE_LANES_MAX) return undefined;
+    lanes = count;
+  }
+  let role: ChaseRole = 'pursue';
+  if (raw.role !== undefined) {
+    if (!isChaseRole(raw.role)) return undefined;
+    role = raw.role;
+  }
+  return { direction, tempo, running: raw.running !== false, road, lanes, role };
 }
 
 function readScene(raw: unknown): SceneTemplateScene | null {
@@ -491,7 +525,20 @@ function readVehicle(raw: unknown): SceneTemplateVehicle | null {
     if (!(SCENE_TEMPLATE_VEHICLE_STATUSES as readonly unknown[]).includes(raw.status)) return null;
     status = raw.status as SceneTemplateVehicleStatus;
   }
-  return { key, name, imageUrl, x: raw.x, y: raw.y, status, system: raw.system ?? null };
+  let intent: SceneTemplateVehicle['intent'] = null;
+  if (raw.intent !== undefined && raw.intent !== null) {
+    if (!isObj(raw.intent) || !isChaseIntent(raw.intent.kind)) return null;
+    const kind = raw.intent.kind;
+    const target =
+      typeof raw.intent.target === 'string' && KEY_PATTERN.test(raw.intent.target)
+        ? raw.intent.target
+        : null;
+    // Cel sprawdza `readSceneTemplate`, gdy zna już klucze wszystkich aut.
+    if (chaseIntentNeedsTarget(kind) !== (target !== null)) return null;
+    if (target === key) return null;
+    intent = kind === 'manual' ? null : { kind, target };
+  }
+  return { key, name, imageUrl, x: raw.x, y: raw.y, status, intent, system: raw.system ?? null };
 }
 
 function readFigure(raw: unknown, vehicleKeys: ReadonlySet<string>): SceneTemplateFigure | null {
@@ -818,6 +865,9 @@ export function readSceneTemplate(raw: unknown, id: string): SceneTemplate | nul
     vehicles.push(vehicle);
   }
   const keys = new Set(vehicles.map((vehicle) => vehicle.key));
+  if (vehicles.some((vehicle) => vehicle.intent?.target && !keys.has(vehicle.intent.target))) {
+    return null;
+  }
   const figures: SceneTemplateFigure[] = [];
   const seats = new Set<string>();
   const figureKeys = new Set<string>();

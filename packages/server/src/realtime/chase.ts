@@ -625,8 +625,14 @@ export async function settleChaseAfterSceneChange(
     return;
   }
   const moved: string[] = [];
+  const { settings, frame } = chaseGeometry(after);
   for (const row of placed) {
-    const centre = clampOnScene(after, chaseBodyOf(row.vehicle), row);
+    // Nowa geometria (pas, liczba pasów, kratka) — auto staje na środku
+    // najbliższego pasa, jak przy starcie serwera (72f1).
+    const clamped = clampOnScene(after, chaseBodyOf(row.vehicle), row);
+    const lane = chaseLaneOf(clamped, settings.lanes, settings, frame);
+    const snapped = chaseSnapToLane(clamped, lane, settings.lanes, settings, frame);
+    const centre = clampOnScene(after, chaseBodyOf(row.vehicle), snapped);
     const current =
       centre.x === row.x && centre.y === row.y
         ? row

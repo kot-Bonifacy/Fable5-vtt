@@ -32,13 +32,6 @@ w `archiwum/tabela-etapow.md`, plik etapu do napisania przy jego starcie). Te sa
 w `roleability.ts` stoją jeszcze w komentarzach `rolls.ts`, `initiative.ts`, `damage.ts`,
 `attacks.ts` (obu pakietów), `itemupgrade.ts` i kilku testów.
 
-**18.11.2026 — `48-poscig/t65-kreator` pada stale: „＋ Dodaj pojazd” w kroku „Auta” jest
-wyszarzony (test „dwa wozy z katalogu stają „Na drogę” obok siebie”, 120 s czekania na
-przycisk).** Wyszło w pełnej suicie `@szybkie` w 71h1 i w osobnym przebiegu; zmiany 71h1 kreatora
-pościgu nie dotykały. **Do etapu 72 (72f przebudowuje kreator — uwaga MG z 18.11)**, nie
-naprawiane osobno. Ten sam przebieg: T9a „konsola bez nowych błędów” raz złapał dwa błędy
-WebSocketu, w powtórce zielony (migotanie).
-
 **18.11.2026 — drugie rozegranie Ról (71h): błąd #88 i drobiazgi czytelności.** Pełna tabela
 — „Rozegrania 71h” w `role-macierz.md`. **#88 (B2, decyzja MG 18.11: naprawa w podetapie 71h2):** gracz-Medyk nie uruchomi
 Chirurgii ani Leczenia na Ranie Krytycznej postaci innego gracza — tylko MG

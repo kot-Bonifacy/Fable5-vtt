@@ -8,6 +8,9 @@ import {
   CONTAINER_PRESET_LOOKS,
   NET_SCENE_CONTROL_DV,
   ROLE_GM,
+  chaseLaneOf,
+  chaseRoadByUrl,
+  chaseSnapToLane,
   clampChaseVehicle,
   cpredKeyRow,
   cpredTemplateContainerSheet,
@@ -47,6 +50,7 @@ import { vehicleBodyColumns, vehicleCatalog } from '../vehicles.js';
 import { emitCharacterUpsert, toCharacterView } from './character-io.js';
 import { npcSheetFrom } from './characters.js';
 import { chaseBodyOf, chaseGeometry } from './chase.js';
+import { chaseKeepGapSq } from './chase-autopilot.js';
 import { campaignEntry } from './compendium.js';
 import { nextRowId } from './economy.js';
 import { emitList as emitNetList } from './netrunning.js';
@@ -286,6 +290,9 @@ export async function instantiateSceneTemplate(
               chaseRunning: t.chase.running,
               chaseRoadFrom: t.chase.road?.from ?? null,
               chaseRoadTo: t.chase.road?.to ?? null,
+              // Etap 72f1: na wbudowanej drodze pasy są namalowane — z drogi.
+              chaseLanes: chaseRoadByUrl(t.backgroundUrl) ? null : t.chase.lanes,
+              chaseRole: t.chase.role,
             }
           : {}),
       },
@@ -306,7 +313,15 @@ export async function instantiateSceneTemplate(
         },
       });
       vehicles.push(vehicle);
-      const centre = clampChaseVehicle(point(spec), chaseBodyOf(vehicle), settings, frame);
+      // Auto staje na środku najbliższego pasa (72f1), jak przy starcie serwera.
+      const clamped = clampChaseVehicle(point(spec), chaseBodyOf(vehicle), settings, frame);
+      const lane = chaseLaneOf(clamped, settings.lanes, settings, frame);
+      const centre = clampChaseVehicle(
+        chaseSnapToLane(clamped, lane, settings.lanes, settings, frame),
+        chaseBodyOf(vehicle),
+        settings,
+        frame,
+      );
       // Auto w rezerwie (66c) stoi w kadrze, ale poza pościgiem: gracz go nie
       // widzi, a MG wprowadza je „Przywróć do pościgu” w tym samym miejscu.
       const row = await tx.sceneVehicle.create({
@@ -319,6 +334,24 @@ export async function instantiateSceneTemplate(
         },
       });
       placed.set(spec.key, { id: row.id, vehicle, x: centre.x, y: centre.y });
+    }
+    // Zamiar autopilota (72f1) — cel wskazuje inne auto wzorca, więc dopiero
+    // po postawieniu wszystkich; „Trzymaj dystans” bierze odstęp z wzorca.
+    for (const { vehicle: spec } of vehicleSpecs) {
+      if (!spec.intent) continue;
+      const self = placed.get(spec.key)!;
+      const target = spec.intent.target ? placed.get(spec.intent.target) : undefined;
+      await tx.sceneVehicle.update({
+        where: { id: self.id },
+        data: {
+          intent: spec.intent.kind,
+          intentTargetId: target?.id ?? null,
+          intentGapSq:
+            spec.intent.kind === 'keep' && target
+              ? chaseKeepGapSq(self, target, scene, settings)
+              : null,
+        },
+      });
     }
 
     const characters: Character[] = [];

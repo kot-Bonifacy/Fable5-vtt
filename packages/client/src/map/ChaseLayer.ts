@@ -9,6 +9,7 @@ import {
   chaseScrollSpeed,
   chaseFrameTempo,
   CHASE_CONTROL_LABELS,
+  chaseEffectiveLanes,
   chaseLaneSpanPx,
   chaseRoadByUrl,
   chaseRoadCells,
@@ -1032,6 +1033,27 @@ export class ChaseLayer {
     shade(0, span.from);
     shade(span.to, extent);
     this.band.fill({ color: 0x000000, alpha: 0.45 });
+
+    // Linie pasów ruchu (72f1): przerywane między pasami, liczba ze szkicu
+    // (własna mapa — z szerokości jezdni na żywo, póki MG jej nie wpisał).
+    const lanes = chaseEffectiveLanes(
+      scene.background?.url,
+      { ...scene.chase, road },
+      this.gridOf(scene),
+    );
+    const laneWidth = (span.to - span.from) / lanes;
+    const dash = grid * 0.8;
+    for (let lane = 1; lane < lanes; lane += 1) {
+      const at = span.from + lane * laneWidth;
+      for (let pos = 0; pos < length; pos += dash * 2) {
+        const end = Math.min(length, pos + dash);
+        if (horizontal) this.band.moveTo(pos, at).lineTo(end, at);
+        else this.band.moveTo(at, pos).lineTo(at, end);
+      }
+    }
+    if (lanes > 1) {
+      this.band.stroke({ color: 0xffffff, width: Math.max(2, grid * 0.05), alpha: 0.75 });
+    }
 
     const edges: ['from' | 'to', number][] = [
       ['from', span.from],

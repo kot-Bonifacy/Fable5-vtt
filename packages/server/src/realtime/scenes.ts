@@ -16,9 +16,8 @@ import {
   CHASE_AMBIENCE,
   ROLE_GM,
   DEFAULT_CHASE_SETTINGS,
-  chaseDefaultLanes,
+  chaseEffectiveLanes,
   chaseRoadByUrl,
-  clampChaseLanes,
   isChaseRole,
   defaultChaseDirection,
   isAmbiencePreset,
@@ -100,17 +99,21 @@ export function chaseSettingsOf(scene: Scene): ChaseSettings {
       ? { from: scene.chaseRoadFrom, to: scene.chaseRoadTo }
       : null;
   // Etap 72: liczba pasów wpisana przez MG albo z drogi (wbudowana niesie
-  // własną, własna mapa — z szerokości jezdni).
-  const lanes =
-    scene.chaseLanes !== null
-      ? clampChaseLanes(scene.chaseLanes)
-      : chaseDefaultLanes(scene.backgroundUrl, { direction, road }, scene);
+  // własną, własna mapa — z szerokości jezdni). Wbudowana droga ma pasy
+  // namalowane, więc liczba MG jej nie zmienia (72f1).
+  const lanesFromRoad = scene.chaseLanes === null;
+  const lanes = chaseEffectiveLanes(
+    scene.backgroundUrl,
+    { direction, road, lanes: scene.chaseLanes ?? 1, lanesFromRoad },
+    scene,
+  );
   return {
     direction,
     tempo: scene.chaseTempo,
     running: scene.chaseRunning,
     road,
     lanes,
+    lanesFromRoad: lanesFromRoad || chaseRoadByUrl(scene.backgroundUrl) !== null,
     role: isChaseRole(scene.chaseRole) ? scene.chaseRole : 'pursue',
     anchorId: scene.chaseAnchorId,
     pursuitSpeed: scene.chasePursuitSpeed,
@@ -333,11 +336,20 @@ export const sceneUpdateEvent = defineEvent<SceneUpdatePayload, SceneView>({
       if (chase.direction !== undefined) data.chaseDirection = chase.direction;
       if (chase.tempo !== undefined) data.chaseTempo = chase.tempo;
       if (chase.running !== undefined) data.chaseRunning = chase.running;
+      if (chase.lanesFromRoad === true) data.chaseLanes = null;
+      else if (chase.lanes !== undefined) data.chaseLanes = chase.lanes;
+      if (chase.role !== undefined) data.chaseRole = chase.role;
       if (chase.road !== undefined) {
         data.chaseRoadFrom = chase.road?.from ?? null;
         data.chaseRoadTo = chase.road?.to ?? null;
       }
     }
+    // Nowe tło to nowa droga: liczba pasów znowu idzie z niej, chyba że łata
+    // sama ją podaje; na wbudowanej drodze pasy są namalowane — zawsze z drogi.
+    const nextBackground =
+      patch.background !== undefined ? (patch.background?.url ?? null) : scene.backgroundUrl;
+    if (patch.background !== undefined && patch.chase?.lanes === undefined) data.chaseLanes = null;
+    if (chaseRoadByUrl(nextBackground)) data.chaseLanes = null;
     if (patch.spawn !== undefined) {
       data.spawnX = patch.spawn === null ? null : patch.spawn.x;
       data.spawnY = patch.spawn === null ? null : patch.spawn.y;
@@ -368,6 +380,8 @@ export const sceneUpdateEvent = defineEvent<SceneUpdatePayload, SceneView>({
       patch.kind !== undefined ||
       patch.chase?.direction !== undefined ||
       patch.chase?.road !== undefined ||
+      patch.chase?.lanes !== undefined ||
+      patch.chase?.lanesFromRoad !== undefined ||
       patch.background !== undefined ||
       patch.grid !== undefined
     ) {

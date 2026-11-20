@@ -232,6 +232,9 @@ describe('etap 66: sceny przykładowe', () => {
       chaseTempo: 40,
       chaseRoadFrom: 3,
       chaseRoadTo: 9,
+      // Etap 72f1: liczba pasów i rola z wzorca.
+      chaseLanes: 2,
+      chaseRole: 'pursue',
       visibility: 'open',
       metersPerSquare: 1,
       backgroundUrl: null,
@@ -249,6 +252,17 @@ describe('etap 66: sceny przykładowe', () => {
     const pickup = placed.find((row) => row.vehicle.name === 'Pickup Maelstromu')!;
     const reserve = placed.find((row) => row.vehicle.name === 'Posiłki Maelstromu')!;
     expect([taxi.status, pickup.status, reserve.status]).toEqual(['racing', 'racing', 'behind']);
+    // Zamiary (72f1): cel to nowe auto sceny, „Trzymaj dystans” z odstępem wzorca
+    // (posiłki 4,5 kratki za pickupem — jazda w lewo).
+    expect(taxi).toMatchObject({ intent: 'manual', intentTargetId: null });
+    expect(pickup).toMatchObject({ intent: 'pursue', intentTargetId: taxi.id, intentGapSq: null });
+    expect(reserve).toMatchObject({ intent: 'keep', intentTargetId: pickup.id });
+    expect(reserve.intentGapSq).toBeCloseTo(-4.5);
+    // Auta stoją na środkach pasów: jezdnia 3–9 na dwa pasy — 4,5 i 7,5 kratki.
+    for (const row of placed) {
+      const lane = row.y / scene.gridSizePx;
+      expect([4.5, 7.5].some((centre) => Math.abs(lane - centre) < 0.01)).toBe(true);
+    }
     expect(taxi.vehicle).toMatchObject({ campaignId, ownerCharacterId: null });
     expect(taxi.vehicle.imageUrl).toBe('/art/vehicles/car-taxi.webp');
     expect(readCpredVehicle(taxi.vehicle.system).upgrades.map((row) => row.upgradeId)).toEqual([

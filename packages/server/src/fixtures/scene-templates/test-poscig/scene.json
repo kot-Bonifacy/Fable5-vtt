@@ -28,7 +28,9 @@
       "road": {
         "from": 3,
         "to": 9
-      }
+      },
+      "lanes": 2,
+      "role": "pursue"
     }
   },
   "vehicles": [
@@ -49,6 +51,7 @@
       "imageUrl": "/art/vehicles/pickup-blue.webp",
       "x": 17,
       "y": 7,
+      "intent": { "kind": "pursue", "target": "taksowka" },
       "system": {
         "catalogIds": ["vehicle.samochod-sportowy", "vehicle.sample-kompakt"],
         "upgrades": ["reinforced", "ram"]
@@ -61,6 +64,7 @@
       "x": 21.5,
       "y": 4.5,
       "status": "behind",
+      "intent": { "kind": "keep", "target": "pickup" },
       "system": {
         "catalogIds": ["vehicle.samochod-sportowy", "vehicle.sample-kompakt"],
         "upgrades": []

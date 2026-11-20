@@ -9,6 +9,21 @@ go czytać.
 albo gdy chcesz sprawdzić, czy pozycja, która wygląda na nową, nie jest wracającą starą.
 Treść wpisów jest niezmieniona — łącznie z datami i odsyłaczami do notatek sesji.
 
+## Zamknięte 2026-11-20, etap 72f1 (kreator pościgu)
+
+**18.11.2026 — `48-poscig/t65-kreator` pada stale: „＋ Dodaj pojazd” w kroku „Auta” jest
+wyszarzony (test „dwa wozy z katalogu stają „Na drogę” obok siebie”, 120 s czekania na
+przycisk).** Wyszło w pełnej suicie `@szybkie` w 71h1 i w osobnym przebiegu; zmiany 71h1 kreatora
+pościgu nie dotykały. **Do etapu 72 (72f przebudowuje kreator — uwaga MG z 18.11)**, nie
+naprawiane osobno. Ten sam przebieg: T9a „konsola bez nowych błędów” raz złapał dwa błędy
+WebSocketu, w powtórce zielony (migotanie).
+
+**Naprawione 20.11 (72f1):** spec był nieaktualny, nie kreator — od 10.11 galeria „＋ Dodaj
+pojazd” niczego nie wybiera z góry (zlecenie MG: dawna lista podsuwała Aerozep), więc przycisk
+czeka na klik w model. `t65-kreator` najpierw wybiera model (kafel galerii albo „Inne
+z podręcznika”), potem dodaje; przy okazji sprawdza nowe pola kroku „Droga” (pasy, prędkość
+startowa, rola) i zamiar w kroku „Auta”. Pełnej suity `@szybkie` (i T9a) w 72f1 nie puszczano — tylko `48-poscig`.
+
 ## Zamknięte 2026-11-18, czwarta sesja („wykonaj kilka zaległości”, bez migracji)
 
 - **15.11 pkt 1 — kubek pisze „Inicjatywa +0” zaraz po wejściu gracza do gry (powtórzone 18.11,

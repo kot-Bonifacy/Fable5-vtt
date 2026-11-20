@@ -420,12 +420,18 @@ function intentValue(intent: ChaseIntent, targetId: string | null): string {
  * w turze kierowcy kokpit i duch pokazują nowy plan. Hamulec całej sceny stoi
  * na pasku narzędzi.
  */
-function VehicleIntent({
+export function VehicleIntent({
   vehicle,
   vehicles,
+  className = 'chase-menu-intent',
+  labelClassName = 'context-menu-section',
 }: {
   vehicle: SceneVehicleView;
   vehicles: readonly SceneVehicleView[];
+  /** Klasa etykiety — menu auta albo wiersz auta w kreatorze (72f1). */
+  className?: string;
+  /** Podpis „Zamiar”: nagłówek sekcji menu albo zwykły podpis wiersza. */
+  labelClassName?: string;
 }) {
   const autopilot = useSceneStore((s) => s.scene?.chase.autopilot ?? true);
   const current = vehicle.intent ?? { intent: 'manual' as const, targetId: null };
@@ -433,14 +439,14 @@ function VehicleIntent({
   const value = intentValue(current.intent, current.targetId);
   return (
     <label
-      className="chase-menu-intent"
+      className={className}
       title={
         autopilot
           ? 'Autopilot dobiera gaz, hamulec i pas w turze kierowcy. Kokpit pokazuje plan — bez „Jedź” auto pojedzie nim na koniec tury.'
           : 'Autopilot sceny jest wyłączony (pasek narzędzi) — auta jadą ręcznie.'
       }
     >
-      <span className="context-menu-section">Zamiar</span>
+      <span className={labelClassName}>Zamiar</span>
       <select
         value={value}
         onChange={(event) => {

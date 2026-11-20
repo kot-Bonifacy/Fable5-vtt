@@ -93,6 +93,19 @@ function alongSq(
   return chaseAlongFromRear(point, settings.direction, scene) / scene.gridSizePx;
 }
 
+/**
+ * Odstęp, który trzyma „Trzymaj dystans” (72e): różnica położeń wzdłuż drogi
+ * w kratkach z chwili nadania zamiaru — `chase:intent` i wzorzec sceny (72f1).
+ */
+export function chaseKeepGapSq(
+  self: { x: number; y: number },
+  target: { x: number; y: number },
+  scene: Pick<Scene, 'width' | 'height' | 'gridSizePx'>,
+  settings: Pick<ChaseSettings, 'direction'>,
+): number {
+  return alongSq(self, scene, settings) - alongSq(target, scene, settings);
+}
+
 /** Bryła na drodze w oczach autopilota: położenie wzdłuż, długość i pasy, na które zachodzi. */
 function pilotBody(
   box: ChaseObstacleBox,
@@ -232,7 +245,7 @@ export const chaseIntentEvent = defineEvent<ChaseIntentPayload, { ok: true }>({
       targetId = target.id;
       if (intent === 'keep') {
         const { settings } = chaseGeometry(placed.scene);
-        gapSq = alongSq(placed, placed.scene, settings) - alongSq(target, placed.scene, settings);
+        gapSq = chaseKeepGapSq(placed, target, placed.scene, settings);
       }
     }
     await prisma.sceneVehicle.update({

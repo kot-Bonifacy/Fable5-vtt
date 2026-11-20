@@ -116,6 +116,17 @@ describe('ustawienia pościgu', () => {
       }),
     ).toEqual({ tempo: 200, running: false });
     expect(sanitizeChasePatch({ road: null })).toEqual({ road: null });
+    // Etap 72f1: liczba pasów MG (przycięta), powrót „z drogi” i rola drużyny.
+    expect(sanitizeChasePatch({ lanes: 4.4, role: 'flee' })).toEqual({
+      lanes: 4,
+      lanesFromRoad: false,
+      role: 'flee',
+    });
+    expect(sanitizeChasePatch({ lanes: 40 })).toEqual({ lanes: 8, lanesFromRoad: false });
+    expect(sanitizeChasePatch({ lanesFromRoad: true, role: 'chase' })).toEqual({
+      lanesFromRoad: true,
+    });
+    expect(sanitizeChasePatch({ lanesFromRoad: false, lanes: 'x' })).toEqual({});
     expect(sanitizeChasePatch({ road: { from: 2, to: 8 } })).toEqual({ road: { from: 2, to: 8 } });
   });
 

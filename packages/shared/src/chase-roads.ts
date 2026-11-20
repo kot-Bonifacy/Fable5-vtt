@@ -169,11 +169,15 @@ export interface ChaseParkedBody {
  * od środka sceny do przodu i do tyłu co długość bryły i kratkę. Pierwsza,
  * w której bryła nie nachodzi na żadne stojące auto (z kratką odstępu), wygrywa.
  * Gdy miejsca nie ma — środek sceny (MG przestawi auto ręką).
+ *
+ * Z `settings.lanes` (etap 72f1) pozycjami w poprzek są środki pasów ruchu,
+ * od środkowego na zewnątrz — auto staje tam, gdzie jazda i tak by je
+ * przyciągnęła.
  */
 export function chaseFreeSpot(
   body: Pick<ChaseBody, 'widthSq' | 'lengthSq'>,
   parked: readonly ChaseParkedBody[],
-  settings: Pick<ChaseSettings, 'direction' | 'road'>,
+  settings: Pick<ChaseSettings, 'direction' | 'road'> & { lanes?: number },
   scene: {
     width: number;
     height: number;
@@ -192,14 +196,25 @@ export function chaseFreeSpot(
 
   const acrossSlots: number[] = [];
   const middle = (span.from + span.to) / 2;
-  const laneStep = halfAcross * 2 + grid;
-  const maxOffset = (span.to - span.from) / 2;
-  for (let k = 0; ; k += 1) {
-    const offset = (k % 2 === 0 ? 1 : -1) * Math.ceil(k / 2) * laneStep;
-    if (Math.abs(offset) > maxOffset) break;
-    const at = middle + offset;
-    if (at - halfAcross >= span.from - 0.5 && at + halfAcross <= span.to + 0.5)
-      acrossSlots.push(at);
+  const lanes =
+    settings.lanes !== undefined && Number.isFinite(settings.lanes)
+      ? Math.max(1, Math.round(settings.lanes))
+      : null;
+  if (lanes !== null) {
+    const width = (span.to - span.from) / lanes;
+    const centres = Array.from({ length: lanes }, (_, i) => span.from + (i + 0.5) * width);
+    centres.sort((a, b) => Math.abs(a - middle) - Math.abs(b - middle) || a - b);
+    acrossSlots.push(...centres);
+  } else {
+    const laneStep = halfAcross * 2 + grid;
+    const maxOffset = (span.to - span.from) / 2;
+    for (let k = 0; ; k += 1) {
+      const offset = (k % 2 === 0 ? 1 : -1) * Math.ceil(k / 2) * laneStep;
+      if (Math.abs(offset) > maxOffset) break;
+      const at = middle + offset;
+      if (at - halfAcross >= span.from - 0.5 && at + halfAcross <= span.to + 0.5)
+        acrossSlots.push(at);
+    }
   }
   if (acrossSlots.length === 0) acrossSlots.push(middle);
 

@@ -3,7 +3,8 @@
 **Faza:** przed betą (zlecenie MG z 15.11 spoza planu) · **Wymaga etapów:** 65 (scena pościgu,
 65a–65e), kreator pościgu z 03.11, 66c i 66d (wzorce pościgu), 69 (lewa belka bez ramek),
 32 (wezwanie do Testu) · **Status:** 🟨 w toku — projekt 15.11, **72a ✅ 19.11**, **72b1 ✅ 19.11**,
-**72b2 ✅ 20.11**, **72c ✅ 20.11**, **72d1 ✅ 20.11**, **72d2 ✅ 20.11**, **72e ✅ 20.11**, następny 72f
+**72b2 ✅ 20.11**, **72c ✅ 20.11**, **72d1 ✅ 20.11**, **72d2 ✅ 20.11**, **72e ✅ 20.11**,
+**72f1 ✅ 20.11**, następny 72f2
 
 ## Skąd ten etap
 
@@ -626,12 +627,69 @@ Rozstrzygnięcia bez pytań (do potwierdzenia przy rozegraniu 72g):
 
 ### 72f — panel „Pościg”, plan rund, kreator
 
-- [ ] Okno „Pościg” (auta, przeszkody na pas i odległość, posiłki, kadr, rola, autopilot).
-- [ ] Plan rund: edycja, pytanie w panelu decyzji MG na początku rundy, wykonanie zdarzenia.
-- [ ] Kreator i zakładka „Pościg”: liczba pasów z liniami na mapie, prędkość startowa w mil/h,
-      goni / ucieka, zamiar przy aucie, krok „Plan”.
-- [ ] Format wzorca (`chase.lanes`, `chase.role`, `chase.plan`, `vehicles[].intent`), paczki
-      i kopie (`kopie`), testy `shared` i serwera, E2E `t65-kreator` dostosowany.
+**Podział (MG 20.11):** cztery kawałki to więcej niż sesja — **72f1** kreator, zakładka, format
+wzorca i paczki; **72f2** okno „Pościg”; **72f3** plan rund z krokiem „Plan”.
+
+#### 72f1 — kreator, zakładka „Pościg”, wzorzec i paczki (✅ 20.11)
+
+- [x] Kreator i zakładka „Pościg” (wspólne sekcje `ChaseSetup.tsx`): „Liczba pasów” w sekcji
+      „Pas jezdni” z liniami pasów na mapie przy edycji (`ChaseLayer.drawBandEditor`), „Prędkość
+      startowa” w mil/h zamiast „Tempa”, „Drużyna goni / ucieka”; podsumowanie kroku „Gotowe”.
+- [x] Zamiar przy aucie NPC-a w kroku „Auta” (ta sama lista co w menu auta, `VehicleIntent`).
+- [x] „Na drogę” stawia auto na środku wolnego pasa (`chaseFreeSpot` z `lanes`); zmiana pasa
+      jezdni, liczby pasów, tła albo kratki przyciąga auta do pasów
+      (`settleChaseAfterSceneChange`).
+- [x] Format wzorca: `chase.lanes`, `chase.role`, `vehicles[].intent` (`{ kind, target }`
+      z kluczem auta wzorca; „Trzymaj dystans” bierze odstęp z położeń we wzorcu); auta wzorca
+      stają na środkach pasów.
+- [x] Paczki i kopie: `chaseLanes`, `chaseRole`, `chaseAnchorId`, `chaseAutopilot`
+      w `SCENE_COLUMNS`, zamiar aut w `sceneVehicles` (cel i auto kadru przez mapę id aut).
+- [x] Testy `shared` (łata, `chaseEffectiveLanes`, `chaseFreeSpot`, wzorzec), serwera
+      (`chase.test.ts` — łata pasów i roli, przyciąganie, paczka w obie strony; fikstura
+      `test-poscig` z pasami i zamiarami), E2E `t65-kreator` naprawiony i rozszerzony.
+
+Decyzje MG z 20.11 (pytania na starcie sesji):
+
+- **72f dzielone na 72f1 (kreator), 72f2 (okno), 72f3 (plan rund).**
+- **Prędkość startowa to pole liczbowe w mil/h krokiem 50** (krok gazu), 0–300; kolumna
+  `Scene.chaseTempo` zostaje w punktach Ruchu (tempo 40 = 200 mil/h).
+- **Na wbudowanej drodze liczba pasów jest zablokowana** (namalowane — Neonowa ulica 3); na
+  własnej mapie idzie z szerokości jezdni, póki MG jej nie wpisze.
+- **„Droga jedzie” zostaje** — poza walką droga przewija się z prędkością startową albo stoi.
+
+Rozstrzygnięcia bez pytań (do potwierdzenia przy rozegraniu 72g):
+
+- **„Liczba pasów z drogi” to flaga widoku** (`ChaseSettings.lanesFromRoad`, `Scene.chaseLanes`
+  `null`), a szkic liczy pasy na żywo (`chaseEffectiveLanes`) — przeciągnięcie krawędzi jezdni
+  na własnej mapie zmienia liczbę i linie od razu. Nowe tło wraca do „z drogi”; liczba MG na
+  wbudowanej drodze jest zerowana na serwerze. Powrotu do „z szerokości jezdni” w UI nie ma
+  (łata `lanesFromRoad: true` jest) — MG po prostu wpisuje liczbę.
+- **Zmiana geometrii przyciąga auta do środków pasów**, także kratki i tła (jak start
+  serwera) — po 72a auta i tak jadą środkiem pasa, a ręcznie postawione krzywo myliły linie.
+- **Zamiar w kreatorze tylko przy aucie bez właściciela** (MG i NPC-e), stojącym na drodze;
+  auto z kierowcą-graczem i tak odmawia (`PLAYER_DRIVES`).
+- **Wzorzec nie niesie prędkości w mil/h** — `chase.tempo` (Ruch) zostaje; „Prędkość startowa”
+  to tylko UI. Wzorzec nie niesie też autopilota ani auta kadru (72f2 / 72g, jeśli potrzeba).
+- **Paczka niesie auto kadru i hamulec autopilota**, choć w UI wybiera się je dopiero w 72f2.
+
+#### 72f2 — okno „Pościg”
+
+- [ ] Okno „Pościg” MG (zastępuje ikonę palety przeszkód): nagłówek (runda, prędkość pościgu,
+      kadr, goni / ucieka, autopilot — przełącznik z paska narzędzi przechodzi tutaj), auta od
+      czoła do ogona (stan, prędkość / maksimum, pas, dystans do kadru, kierowca, PUK, zamiar,
+      „Przywróć do pościgu” z pasem i stroną kadru, „Ucieka”, poprawka prędkości —
+      `chase:set-speed`), przeszkody na pas i odległość przed wybranym autem z prognozą
+      i ostrzeżeniem, lista przeszkód z „Zdejmij”.
+- [ ] Posiłki nie zakładają, że to wyłącznie auta z rezerwy sceny (STR-12, punkt 9).
+- [ ] Testy serwera, E2E (MG w oknie; przeszkoda na pasie w odległości).
+
+#### 72f3 — plan rund
+
+- [ ] Plan rund (`Scene.chasePlan`): edycja w oknie „Pościg”, pytanie w panelu decyzji MG na
+      początku rundy („Wypuść / Pomiń / Odłóż o rundę”), wykonanie zdarzenia (posiłki,
+      przeszkoda, Manewr na wezwanie, notatka).
+- [ ] Krok „Plan” w kreatorze (opcjonalny), `chase.plan` we wzorcu i w paczce.
+- [ ] Testy `shared` i serwera, E2E planu rund.
 
 ### 72g — wzorce, rozegranie, zamknięcie
 
@@ -660,7 +718,7 @@ Rozstrzygnięcia bez pytań (do potwierdzenia przy rozegraniu 72g):
 - [ ] Auto NPC-a z zamiarem jedzie samo, a MG może przejąć je kokpitem i wyłączyć autopilota.
 - [ ] MG prowadzi pościg z panelu „Pościg”: widzi prędkości, pasy i dystanse, wypuszcza
       przeszkodę na pas w odległości, a plan rund pyta go o zdarzenia.
-- [ ] Kreator nie pyta o tempo; pyta o pasy, prędkość startową i rolę drużyny.
+- [x] Kreator nie pyta o tempo; pyta o pasy, prędkość startową i rolę drużyny (72f1, 20.11).
 - [ ] „Ostatni zjazd” i „Zastaw” rozegrane w nowym modelu, balans zatwierdzony przez MG.
 - [ ] Testy `shared`, serwera i klienta, E2E `48-poscig`, oględziny w Firefoksie i Chromium.
 - [ ] Oględziny MG przy stole.

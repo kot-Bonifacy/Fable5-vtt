@@ -6,6 +6,7 @@ import {
   chaseAnchorVehicle,
   chaseDefaultLanes,
   chaseDriveStep,
+  chaseEffectiveLanes,
   chaseLaneCentre,
   chaseLaneOf,
   chaseLanesForWidth,
@@ -52,6 +53,20 @@ describe('pasy', () => {
       chaseDefaultLanes('/uploads/c1/maps/a.webp', { direction: 'left', road: null }, neon),
     ).toBe(6);
     expect(clampChaseLanes(Number.NaN)).toBe(1);
+  });
+
+  it('liczba pasów szkicu: z drogi albo wpisana przez MG, wbudowana zawsze namalowana (72f1)', () => {
+    const own = '/uploads/c1/maps/a.webp';
+    const neonUrl = '/art/roads/neon-street.webp';
+    expect(chaseEffectiveLanes(own, { ...left, lanes: 5, lanesFromRoad: true }, neon)).toBe(3);
+    // Szkic poszerzył jezdnię — liczba z szerokości idzie za nim.
+    const wide = { direction: 'left' as const, road: { from: 2, to: 22 } };
+    expect(chaseEffectiveLanes(own, { ...wide, lanes: 5, lanesFromRoad: true }, neon)).toBe(5);
+    expect(chaseEffectiveLanes(own, { ...wide, lanes: 2, lanesFromRoad: false }, neon)).toBe(2);
+    expect(chaseEffectiveLanes(neonUrl, { ...wide, lanes: 2, lanesFromRoad: false }, neon)).toBe(3);
+    expect(chaseEffectiveLanes(own, { ...left, lanes: 99, lanesFromRoad: false }, neon)).toBe(
+      CHASE_LANES_MAX,
+    );
   });
 
   it('pas punktu: od krawędzi road.from, poza jezdnią — skrajny', () => {
