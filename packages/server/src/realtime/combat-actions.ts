@@ -73,7 +73,7 @@ import { actionEntry, logRefusedAction, logSpentAction, turnRefusalMessage } fro
 import { emitTokenUpsert, requireCampaignToken } from './tokens.js';
 import { clearGrapplesOf } from './grapple-state.js';
 import { advanceTurn, runTurnEnd } from './turn-effects.js';
-import { requireCampaignScene } from './scenes.js';
+import { emitSceneView, requireCampaignScene } from './scenes.js';
 import { releaseSceneTargets } from './target.js';
 import { calmFoe, calmVisibleFoes } from './foe-sighting.js';
 import { endSneak } from './sneak.js';
@@ -902,6 +902,7 @@ export const combatEndEvent = defineEvent({
     await deps.ctx.prisma.combat.deleteMany({ where: { sceneId: scene.id } });
     // Prędkość aut pościgu (etap 72) żyje tylko w walce — poza nią to zapowiedź startowej.
     await resetChaseCombat(deps.ctx.prisma, scene.id);
+    if (scene.kind === 'chase') await emitSceneView(deps, campaignId, scene.id);
     await emitCombatOfScene(deps, campaignId, scene);
     // Księga węzłów liczy rundy tej walki — następna zacznie od rundy 1 (70c).
     await resetNetLedgersOnScene(deps, scene.id);

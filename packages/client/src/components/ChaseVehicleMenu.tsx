@@ -1,8 +1,6 @@
 import { useEffect, useState } from 'react';
 import {
   CHASE_CONTROL_LABELS,
-  cpredDriveAdvance,
-  cpredPedalSpeed,
   cpredSpeedMph,
   cpredMountDefinition,
   cpredVehicleUpgrade,
@@ -12,8 +10,6 @@ import {
   type CpredVehicleUpgradeId,
   type SceneVehicleView,
   type TokenView,
-  type VehicleDriveContact,
-  type VehicleDriveContactInfo,
   type VehicleWindowSide,
 } from '@vtt/shared';
 import { useAuthStore } from '../stores/authStore.js';
@@ -25,7 +21,6 @@ import { useTokenStore } from '../stores/tokenStore.js';
 import {
   allowVehicleDriver,
   callVehicleManeuver,
-  driveVehicle,
   dropVehicleSpikes,
   fireVehicleNitro,
   performVehicleManeuver,
@@ -90,7 +85,7 @@ export function chaseErrorText(code: string | undefined): string {
       return 'Kierowca stracił panowanie nad autem — do końca rundy jedzie samo.';
     // Etap 72: jazda w turze kierowcy.
     case 'USE_COCKPIT':
-      return 'W walce auto prowadzi się z menu auta: gaz, hamulec, pas i „Jedź”.';
+      return 'W walce auto prowadzi się z grupy „Pojazd” w lewej belce: gaz, hamulec, pas i „Jedź”.';
     case 'DRIVE_COMBAT_ONLY':
       return 'Gaz, hamulec i pasy działają w walce — poza nią szyk ustawia MG.';
     case 'DRIVER_NOT_IN_COMBAT':
@@ -238,9 +233,6 @@ export function ChaseVehicleMenu() {
         <p className="context-menu-title">{vehicle.name}</p>
         <p className="chase-menu-state">{vehicleStateLine(vehicle, lanes)}</p>
         <VehicleHull vehicle={vehicle} isGm={isGm} />
-        {drives && vehicle.status === 'racing' && (
-          <VehicleDriveControls vehicle={vehicle} close={close} />
-        )}
         {drives && vehicle.status === 'racing' && (
           <button
             type="button"
@@ -486,146 +478,6 @@ function vehicleStateLine(vehicle: SceneVehicleView, lanes: number): string {
         : 'bez kierowcy — stoi'
       : CHASE_CONTROL_LABELS[vehicle.control];
   return `${engine} · ${lane} · ${control}`;
-}
-
-/** Zdanie pytania o zderzenie na drodze ruchu (etap 72). */
-function contactQuestion(contact: VehicleDriveContactInfo): string {
-  if (contact.side) return `Na sąsiednim pasie: ${contact.name}. Zepchnąć je bokiem (bez Pługa)?`;
-  if (contact.canSlow) {
-    return `Na drodze: ${contact.name} (${cpredSpeedMph(contact.speed)} mil/h). Taranować czy zwolnić za nim?`;
-  }
-  return `Na drodze: ${contact.name}. Hamulec nie wystarczy — taranować, czy zmienić plan (pas, Manewr)?`;
-}
-
-/**
- * Tymczasowy kokpit w menu auta (etap 72b1): gaz albo hamulec, pas wyżej albo
- * niżej i „Jedź”. Docelowo grupa „Pojazd” w lewej belce (72b2 / 72d). Zderzenie
- * na drodze ruchu wraca z serwera jako pytanie: „Taranuj”, „Zwolnij za nim”
- * (gdy wystarcza hamulec) albo „Zepchnij” przy zmianie pasa.
- */
-function VehicleDriveControls({
-  vehicle,
-  close,
-}: {
-  vehicle: SceneVehicleView;
-  close: () => void;
-}) {
-  const [pedal, setPedal] = useState<'gas' | 'brake' | null>(null);
-  const [laneDelta, setLaneDelta] = useState<-1 | 0 | 1>(0);
-  const chase = useSceneStore((s) => s.scene?.chase);
-  const metresPerSquare = useSceneStore((s) => s.scene?.metersPerSquare ?? 1);
-  if (!chase || chase.pursuitSpeed === null) return null;
-  if (!vehicle.started || vehicle.control !== 'driver') return null;
-  if (vehicle.moved) {
-    return <p className="chase-menu-state">Ruch auta w tej rundzie wykonany.</p>;
-  }
-  const after = cpredPedalSpeed(vehicle.speed, vehicle.maxSpeed, pedal);
-  const advance = cpredDriveAdvance({
-    speed: after,
-    pursuitSpeed: chase.pursuitSpeed,
-    raceBonus: vehicle.raceBonus,
-  });
-  const metres = Math.round(advance * metresPerSquare * 10) / 10;
-  const lane = vehicle.lane + laneDelta;
-  const send = (onContact?: VehicleDriveContact) => {
-    void driveVehicle({
-      sceneVehicleId: vehicle.id,
-      pedal,
-      laneDelta,
-      ...(onContact ? { onContact } : {}),
-    }).then((ack) => {
-      if (!ack.ok) {
-        notifyRefusal('chase', chaseErrorText(ack.error));
-        return;
-      }
-      if (ack.data && !ack.data.moved) {
-        const { contact } = ack.data;
-        notifyChoice(
-          'chase',
-          contactQuestion(contact),
-          [
-            { label: contact.side ? 'Zepchnij' : 'Taranuj', run: () => send('ram') },
-            ...(contact.canSlow ? [{ label: 'Zwolnij za nim', run: () => send('slow') }] : []),
-            { label: 'Zmienię plan', run: () => undefined },
-          ],
-          { title: 'Zderzenie' },
-        );
-        return;
-      }
-      clearNotices('chase');
-    });
-    close();
-  };
-  const toggle = (
-    label: string,
-    pressed: boolean,
-    disabled: boolean,
-    onClick: () => void,
-    title: string,
-  ) => (
-    <button
-      type="button"
-      className="context-menu-item"
-      aria-pressed={pressed}
-      disabled={disabled}
-      title={title}
-      onClick={onClick}
-    >
-      {pressed ? `✓ ${label}` : label}
-    </button>
-  );
-  return (
-    <>
-      <p className="context-menu-section">Jazda</p>
-      {toggle(
-        'Gaz (+50 mil/h)',
-        pedal === 'gas',
-        vehicle.speed >= vehicle.maxSpeed,
-        () => setPedal(pedal === 'gas' ? null : 'gas'),
-        'Akcja Ruchu: +50 mil/h, najwyżej do maksimum auta.',
-      )}
-      {toggle(
-        'Hamulec (−100 mil/h)',
-        pedal === 'brake',
-        vehicle.speed <= 0,
-        () => setPedal(pedal === 'brake' ? null : 'brake'),
-        'Akcja Ruchu: −100 mil/h.',
-      )}
-      {toggle(
-        'Pas wyżej',
-        laneDelta === -1,
-        vehicle.lane <= 0,
-        () => setLaneDelta(laneDelta === -1 ? 0 : -1),
-        'Zmiana pasa w tej samej Akcji Ruchu co pedał.',
-      )}
-      {toggle(
-        'Pas niżej',
-        laneDelta === 1,
-        vehicle.lane >= chase.lanes - 1,
-        () => setLaneDelta(laneDelta === 1 ? 0 : 1),
-        'Zmiana pasa w tej samej Akcji Ruchu co pedał.',
-      )}
-      <p className="chase-menu-state">
-        {`Po ruchu: ${cpredSpeedMph(after)} mil/h · ${metres >= 0 ? '+' : '−'}${formatSq(Math.abs(metres))} m · pas ${lane + 1}`}
-      </p>
-      <button
-        type="button"
-        className="context-menu-item"
-        title={
-          pedal || laneDelta
-            ? 'Wykonuje ruch auta za Akcję Ruchu.'
-            : 'Jazda prosto z tą samą prędkością nic nie kosztuje. Bez „Jedź” auto pojedzie samo na koniec tury.'
-        }
-        onClick={() => send()}
-      >
-        Jedź
-      </button>
-    </>
-  );
-}
-
-function formatSq(value: number): string {
-  return Number.isInteger(value) ? String(value) : value.toFixed(1).replace('.', ',');
 }
 
 type MenuAct = (call: () => Promise<{ ok: boolean; error?: string }>) => void;

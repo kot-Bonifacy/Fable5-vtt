@@ -194,6 +194,11 @@ export class ChaseLayer {
     limitPx: number | null;
   } | null = null;
   private destroyed = false;
+  /**
+   * Suma przesunięć kadru, którą droga już przebyła (etap 72b2) — scena
+   * i wartość `ChaseSettings.shiftSq`; nowa różnica przesuwa teksturę.
+   */
+  private shownShift: { sceneId: string; shiftSq: number } | null = null;
 
   constructor() {
     this.road.visible = false;
@@ -210,6 +215,7 @@ export class ChaseLayer {
   setScene(scene: SceneView | null): void {
     this.scene = scene;
     this.bandPreview = null;
+    this.followFrameShift(scene);
     if (!scene || scene.kind !== 'chase' || !scene.background) {
       this.road.visible = false;
       this.roadKey = null;
@@ -270,6 +276,40 @@ export class ChaseLayer {
         });
     }
     this.redraw();
+  }
+
+  /**
+   * Sztywne przesunięcie kadru na początku rundy (etap 72): serwer przestawia
+   * auta, figury w fotelach i przeszkody naraz, a droga przeskakuje o tyle samo
+   * (decyzja MG 20.11: skok razem z autami, jak cięcie kamery) — inaczej auta
+   * wyglądałyby, jakby same przejechały po jezdni. Pierwszy widok sceny tylko
+   * zapamiętuje sumę.
+   */
+  private followFrameShift(scene: SceneView | null): void {
+    if (!scene || scene.kind !== 'chase') {
+      this.shownShift = null;
+      return;
+    }
+    const { shiftSq } = scene.chase;
+    const shown = this.shownShift;
+    this.shownShift = { sceneId: scene.id, shiftSq };
+    if (!shown || shown.sceneId !== scene.id || shown.shiftSq === shiftSq) return;
+    // Dodatnie przesunięcie jedzie w kierunku jazdy, tak jak auta.
+    const px = (shiftSq - shown.shiftSq) * scene.grid.sizePx;
+    switch (scene.chase.direction) {
+      case 'right':
+        this.road.tilePosition.x += px;
+        break;
+      case 'left':
+        this.road.tilePosition.x -= px;
+        break;
+      case 'down':
+        this.road.tilePosition.y += px;
+        break;
+      case 'up':
+        this.road.tilePosition.y -= px;
+        break;
+    }
   }
 
   /** Przewija drogę — woła ticker renderera z czasem klatki w sekundach. */

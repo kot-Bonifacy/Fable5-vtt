@@ -1,5 +1,33 @@
 # Dziennik sesji — archiwum
 
+### Sesja 19.11 — etap 72a: rdzeń modelu jazdy w `shared`, jedna wbudowana droga
+
+**Zrobione (aplikacja działa po staremu poza kreatorem; bez migracji):**
+
+- **Rdzeń `shared/chase-drive.ts`** — pasy, krok ruchu, sztywne przesunięcie kadru, wybór auta
+  kadru, prognoza przeszkody. **System `systems/cpred/chase-drive.ts`** — pedały (+10 / −20
+  Ruchu), mil/h, przesunięcie w turze, Wyścig i zryw, słaby kierowca z Moto (NOM-03, ta sama
+  liczba co planer rzutu), automat utraty kontroli (1k6 na pas), „Zwolnij za nim”. Serwer
+  jeszcze z nich nie korzysta (72b). Umowa na górze `mapa`.
+- **Decyzje MG z sesji:** zostaje **jedna wbudowana droga — Neonowa ulica** (pozostałe cztery
+  usunięte z `CHASE_ROADS`, plików i razem ze skryptem `tools/art/chase-roads.py`; sceny na
+  nich skasować — w `dev.db` była jedna, stare „Ostatni zjazd” na Estakadzie w kampanii
+  „Oględziny 12.09 — do usunięcia”, skasowana; **VPS nie sprawdzany**); **mil/h zostają**, choć
+  polskie wydanie podaje km/h; **jedna skala ×5 także dla łodzi**; **jedno auto w kadrze —
+  rzuca tylko słaby kierowca** (Test zwykłej jazdy bez zrywu). Do tego MG: żadna scena pościgu
+  nie jest dziś dobrze zrobiona, „Ostatni zjazd” i „Zastaw” wkrótce się zmienią (zostanie
+  droga) — zakres 72g ustalić na starcie tej sesji.
+- **Rozstrzygnięcia bez pytań** (lista w pliku etapu pod 72a): słaby kierowca zdaje, gdy wynik
+  przewyższa PT 10; stracił kontrolę — bez zrywu, ale jego wynik zostaje najniższym; „Zwolnij za
+  nim” od prędkości sprzed pedału.
+
+Testy: `shared` 3240 (+48), serwer 1860/1860; lint, Prettier i `tsc` trzech pakietów czyste.
+**Oglądano w czystym Chromium** (Playwright MCP): kreator pościgu pokazuje Neonową ulicę
+i „Wgraj własną mapę”, bez pustych kafli; scena testowa skasowana. **Firefox z Playwright MCP
+nie wystartował** (limit czasu startu przeglądarki — prawdopodobnie otwarty Firefox MG; procesu
+nie zabijano). Zmiana UI to tylko ubyłe kafle, więc oględziny w Firefoksie dołożyć przy 72b.
+E2E nie puszczane (`t65-kreator` i tak czerwony od 18.11, do 72f). `specs/99-zapomnij/` to dalej cudze oględziny z 14.11.
+
 ### Sesja 18.11 (czwarta) — „wykonaj kilka zaległości”
 
 **Zrobione (czeka na wdrożenie, bez migracji):**

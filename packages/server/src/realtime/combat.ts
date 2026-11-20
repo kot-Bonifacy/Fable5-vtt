@@ -72,7 +72,7 @@ import {
 import { containerTokenIds } from './containers.js';
 import { offstageVehicleIds, resetChaseCombat } from './chase-offstage.js';
 import { campaignRoom, gmRoom, sceneRoom } from './state.js';
-import { requireCampaignScene } from './scenes.js';
+import { emitSceneView, requireCampaignScene } from './scenes.js';
 import { INCLUDE_CHAT_NAMES, deliverRollMessage, toChatMessageView } from './chat-io.js';
 import { sanitizeGesture } from './chat.js';
 
@@ -1126,6 +1126,7 @@ export const combatStartEvent = defineEvent<CombatStartPayload, CombatView>({
     await resetNetLedgersOnScene(deps, scene.id);
     // Prędkość aut pościgu (etap 72) żyje tylko w walce — poza nią to zapowiedź startowej.
     await resetChaseCombat(deps.ctx.prisma, scene.id);
+    if (scene.kind === 'chase') await emitSceneView(deps, campaignId, scene.id);
     const combat = await deps.ctx.prisma.combat.create({
       data: {
         sceneId: scene.id,

@@ -1286,6 +1286,190 @@ body:has(.dice-cup--moved) .hud-foot {
   color: var(--accent-ink);
 }
 
+/* --- Grupa „Pojazd” (etap 72b2): kokpit kierowcy z części belki --- */
+
+/* Kafel auta: budowa kafla broni, a w miejscu sylwetki grafika modelu (MG
+   20.11) obrócona przodem w kierunku jazdy. Plama pod nią świeci zawsze
+   (`hud-slot--armed`) — to auto, które prowadzisz. */
+.hud-vehicle-art .hud-vehicle-image {
+  position: relative;
+  width: 1.45rem;
+  height: 3.1rem;
+  object-fit: contain;
+  transform: rotate(var(--hud-vehicle-turn, 0deg));
+}
+
+.hud-vehicle-image--blank {
+  display: block;
+  border: 2px solid currentColor;
+  border-radius: 0.55rem;
+}
+
+.hud-vehicle-speed-next {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--accent-ink);
+}
+
+.hud-vehicle-hp {
+  gap: 0.4rem;
+}
+
+.hud-vehicle-hp .hud-hp-track {
+  height: 0.55rem;
+}
+
+.hud-vehicle-hp .hud-hp-value {
+  font-size: 0.82rem;
+}
+
+.hud-vehicle-hp .hud-hp-max {
+  font-size: 0.68rem;
+}
+
+.hud-vehicle-after {
+  margin-bottom: 0.1rem;
+}
+
+/* Krzyżak ułożony jak na ekranie: na środku gaz i hamulec (albo pasy przy
+   jeździe w pionie), nad i pod nimi pojedyncze kafle. */
+.hud-drive-pad {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-areas:
+    'up up'
+    'left right'
+    'down down';
+  gap: 0.1rem 0.5rem;
+}
+
+.hud-drive-cell {
+  display: flex;
+  min-width: 0;
+}
+
+.hud-drive-cell > .hud-slot {
+  flex: 1;
+  min-width: 0;
+}
+
+.hud-drive-cell--up,
+.hud-drive-cell--down {
+  justify-self: center;
+  width: calc(50% + 2rem);
+}
+
+.hud-drive-cell--up {
+  grid-area: up;
+}
+
+.hud-drive-cell--down {
+  grid-area: down;
+}
+
+.hud-drive-cell--left {
+  grid-area: left;
+}
+
+.hud-drive-cell--right {
+  grid-area: right;
+}
+
+/* Strzałka w prawo stoi za napisem, jak na makiecie. */
+.hud-drive-tile--trailing {
+  flex-direction: row-reverse;
+  text-align: right;
+}
+
+.hud-drive-tile--trailing .hud-slot-cost {
+  justify-content: flex-end;
+}
+
+/* Trójkąt zamiast sylwetki — tusz w kolorze napisu kafla. */
+.hud-drive-arrow {
+  flex: none;
+  width: 1.45rem;
+  height: 1.45rem;
+  background: currentColor;
+}
+
+.hud-drive-arrow--left {
+  clip-path: polygon(12% 50%, 88% 14%, 88% 86%);
+}
+
+.hud-drive-arrow--right {
+  clip-path: polygon(88% 50%, 12% 14%, 12% 86%);
+}
+
+.hud-drive-arrow--up {
+  clip-path: polygon(50% 12%, 86% 88%, 14% 88%);
+}
+
+.hud-drive-arrow--down {
+  clip-path: polygon(50% 88%, 86% 12%, 14% 12%);
+}
+
+/* „Jedź”: napis tuszem z czerwoną kreską, jak „Kończę turę”, koszt po prawej. */
+.hud-drive-go {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  width: 100%;
+  min-height: 2.75rem;
+  margin: 0;
+  padding: 0.25rem 0.35rem 0.25rem 0.2rem;
+  border: none;
+  border-radius: 0.6rem;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  cursor: pointer;
+  transition:
+    background-color 120ms ease-out,
+    color 120ms ease-out;
+}
+
+.hud-drive-go-label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  font-family: var(--font-ui-head);
+  font-size: 1.05rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  line-height: 1;
+}
+
+.hud-drive-go-label::after {
+  content: '';
+  width: 3.6rem;
+  height: 5px;
+  background: var(--accent);
+  -webkit-mask: var(--hud-stroke) center / 100% 100% no-repeat;
+  mask: var(--hud-stroke) center / 100% 100% no-repeat;
+}
+
+.hud-drive-go:hover:not(.hud-drive-go--refused) {
+  color: var(--accent-ink);
+  background: var(--hud-hover);
+}
+
+.hud-drive-go:active:not(.hud-drive-go--refused) {
+  background: var(--hud-press);
+}
+
+.hud-drive-go:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.hud-drive-go--refused {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
 /* The fire mode is a chip, not part of the name: it is the only difference
    between three slots of the same weapon, so it must never be the part that
    gets truncated. */

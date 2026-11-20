@@ -81,7 +81,8 @@ describe('motyw (etap 27e)', () => {
      * Lewy panel (etap 69) ustawia swoje na `.hud-rail`: `--hud-hover`, `--hud-press`
      * i `--hud-track` to domieszki `--text` (same idą za skórą), `--hud-stroke`
      * i `--hud-rag` to kształty pędzla, `--hud-cup` — średnica kubka, a `--hud-tools`
-     * podaje `WeaponTile` (szerokość narzędzi na kaflu broni).
+     * podaje `WeaponTile` (szerokość narzędzi na kaflu broni), `--hud-vehicle-turn`
+     * — `HudVehicle` (obrót grafiki auta w kierunku jazdy, etap 72b2).
      */
     const local = new Set([
       '--chat-kind-icon',
@@ -96,6 +97,7 @@ describe('motyw (etap 27e)', () => {
       '--hud-stroke',
       '--hud-tools',
       '--hud-track',
+      '--hud-vehicle-turn',
       '--map-tools-bottom',
       '--player',
       '--rattle',

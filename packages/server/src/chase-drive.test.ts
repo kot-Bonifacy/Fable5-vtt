@@ -9,6 +9,7 @@ import type {
   CampaignSummary,
   CharacterView,
   ChaseSyncBroadcast,
+  SceneUpdateBroadcast,
   CombatView,
   SceneVehicleView,
   SceneView,
@@ -338,7 +339,16 @@ describe('etap 72: jazda w turze kierowcy — prędkość, pas i kadr', () => {
     const seatedBefore = await built.prisma.token.findUniqueOrThrow({
       where: { id: heroToken.id },
     });
+    // Gracz dowiaduje się o rundzie z widoku sceny (72b2): prędkość pościgu
+    // włącza mu kokpit, suma przesunięć przesuwa drogę razem z autami.
+    const seen = waitForMatch<SceneUpdateBroadcast>(
+      owner,
+      'scene:update',
+      (payload) => payload.scene.id === scene.id && payload.scene.chase.pursuitSpeed !== null,
+    );
     await startCombat(gm, scene.id, [heroToken.id]);
+    expect((await seen).scene.chase).toMatchObject({ pursuitSpeed: 20 });
+    expect((await seen).scene.chase.shiftSq).toBeCloseTo(-11.8);
     // 30% z 2400 px = 720: przesunięcie −11,8 kratki niesie auto i figurę w fotelu.
     expect(await vehicleRow(car.id)).toMatchObject({ x: 720, y: 750, speed: 20 });
     const row = await sceneRow(scene.id);
@@ -491,7 +501,13 @@ describe('etap 72: jazda w turze kierowcy — prędkość, pas i kadr', () => {
   });
 
   it('koniec walki zdejmuje prędkości — poza walką widać prędkość startową', async () => {
+    const seen = waitForMatch<SceneUpdateBroadcast>(
+      owner,
+      'scene:update',
+      (payload) => payload.scene.id === scene.id && payload.scene.chase.pursuitSpeed === null,
+    );
     expect((await emitAck(gm, 'combat:end')).ok).toBe(true);
+    await seen;
     expect(await vehicleRow(car.id)).toMatchObject({ speed: 0, movedRound: 0 });
     expect((await sceneRow(scene.id)).chasePursuitSpeed).toBeNull();
     expect(await viewOf(gm, scene.id, car.id)).toMatchObject({ speed: 20, moved: false });

@@ -73,6 +73,7 @@ import { HudIcon, StatusIcon } from './HudIcon.js';
 import { HudTipLayer, useHudTip, type HudTipContent } from './HudTip.js';
 import { TurnBudget } from './TurnBudget.js';
 import { HudEndTurn, HudEndTurnCompact } from './HudEndTurn.js';
+import { HudVehicle, useCockpitVehicle } from './HudVehicle.js';
 
 /**
  * The combat HUD (stage 16f) — a rail down the left edge of the table.
@@ -894,6 +895,8 @@ export function CombatHud() {
   );
 
   const token = context.token;
+  // Etap 72b2: kierowca w walce na scenie pościgu dostaje grupę „Pojazd”.
+  const cockpit = useCockpitVehicle(token);
   const armed = activeWeaponOf(activeWeapon, token?.id ?? null);
   // Skok wzięty z paska (19.10.2026) — jego slot świeci jak broń w ręku.
   const jumping = jump !== null && jump.tokenId === token?.id;
@@ -1043,7 +1046,9 @@ export function CombatHud() {
       toolsByWeapon.set(owner, [...(toolsByWeapon.get(owner) ?? []), group]);
     } else loose.push(group);
   }
-  const medium = loose.filter((group) => isMediumAction(group.slot));
+  // Grupa „Pojazd” zajmuje miejsce Biegu, Skoku i Skradania — w fotelu
+  // kierowcy i tak odmawiają (etap 72, punkt 5).
+  const medium = cockpit ? [] : loose.filter((group) => isMediumAction(group.slot));
   const small = loose.filter((group) => !isMediumAction(group.slot));
   const isArmedGroup = (group: CpredHotbarWeaponGroup) =>
     armed !== null &&
@@ -1251,6 +1256,10 @@ export function CombatHud() {
               </section>
             )}
 
+            {cockpit && (
+              <HudVehicle token={token} vehicle={cockpit} turnRefusal={context.refusal} />
+            )}
+
             {context.device && (context.device.verbs.length > 0 || context.device.move) && (
               <section className="hud-group">
                 <h3 className="hud-group-title">Urządzenie</h3>
@@ -1298,7 +1307,7 @@ export function CombatHud() {
                 w rękach, a co w plecaku, mówi „Ekwipunek” karty (sekcje „Używane”
                 i „Plecak”). */}
 
-            {loose.length > 0 && (
+            {medium.length + small.length > 0 && (
               <section className="hud-group">
                 <h3 className="hud-group-title">Akcje</h3>
                 <ActionSlots

@@ -109,7 +109,8 @@ test.describe.serial('@szybkie T65e pościg: przeszkody i kolczatka', () => {
     };
     const place = async (vehicleId: string, x: number, y: number) =>
       dataOf<Placed>(await emitAck(gm, 'chase:place', { sceneId, vehicleId, x, y }));
-    // Sportowy: Ruch 40 = tempo, więc auta nie dryfują, a przeszkoda zbliża się 10 kratek na rundę.
+    // Sportowy: Ruch 40 = prędkość startowa, więc auta trzymają odstępy, a przeszkoda
+    // zbliża się 10 kratek na rundę (prędkość pościgu / 4).
     olaCar = await place(await create(undefined, characterId('Iskra')), grid * 12, grid * 11.5);
     gangCar = await place(
       await create({
@@ -209,8 +210,12 @@ test.describe.serial('@szybkie T65e pościg: przeszkody i kolczatka', () => {
   });
 
   test('nowa runda: barykada staje przed autem, a Ola omija ją Gwałtownym skrętem (Firefox)', async () => {
-    dataOf(await emitAck(gm, 'combat:next', undefined));
-    dataOf(await emitAck(gm, 'combat:next', undefined));
+    // Od etapu 72 kadr na początku rundy 1 sztywno stawia auto Iskry na 30 % od
+    // tyłu (x 7,2), więc barykada (x 23,5, 10 kratek na rundę) mija zderzak
+    // dopiero w rundzie 3: dwie tury rundy 1, dwie rundy 2.
+    for (let turn = 0; turn < 4; turn += 1) {
+      dataOf(await emitAck(gm, 'combat:next', undefined));
+    }
     await expect
       .poll(async () => (await obstacles(ola))[0]?.blockingVehicleId ?? null)
       .toBe(olaCar.id);
@@ -230,9 +235,11 @@ test.describe.serial('@szybkie T65e pościg: przeszkody i kolczatka', () => {
       )
       .toBeNull();
     await expect(bar).toBeHidden();
-    // Beton zostaje na drodze (decyzja MG z 04.11) i odpływa dryfem — auto, które
-    // go minęło, nie dostanie już paska.
-    expect((await obstacles(ola))[0]!.x).toBeGreaterThan(olaCar.x);
+    // Beton zostaje na drodze (decyzja MG z 04.11) i odpływa z drogą — auto,
+    // które go minęło, nie dostanie już paska. Auto stoi już gdzie indziej niż
+    // w `chase:place` (przesunięcie kadru), więc porównanie z bieżącym miejscem.
+    const passed = await vehicle(ola, olaCar.id);
+    expect((await obstacles(ola))[0]!.x).toBeGreaterThan(passed!.x);
     expect(await vehicle(ola, olaCar.id)).toMatchObject({ control: 'driver', hp: olaCar.hp });
     await expect(
       ola.page.locator('.chat-row', { hasText: 'Manewr: Gwałtowny skręt' }).last(),

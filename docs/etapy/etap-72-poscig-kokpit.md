@@ -3,7 +3,7 @@
 **Faza:** przed betą (zlecenie MG z 15.11 spoza planu) · **Wymaga etapów:** 65 (scena pościgu,
 65a–65e), kreator pościgu z 03.11, 66c i 66d (wzorce pościgu), 69 (lewa belka bez ramek),
 32 (wezwanie do Testu) · **Status:** 🟨 w toku — projekt 15.11, **72a ✅ 19.11**, **72b1 ✅ 19.11**,
-następny 72b2
+**72b2 ✅ 20.11**, następny 72c
 
 ## Skąd ten etap
 
@@ -414,14 +414,31 @@ Rozstrzygnięcia z sesji 72b1 (do potwierdzenia przy rozegraniu 72g):
   drużyny na 30% od tyłu, więc scena z autem drużyny na czele potrzebuje `chaseRole: 'flee'`
   w bazie (testy tak robią).
 
-#### 72b2 — surowa grupa „Pojazd” i bieżnia
+#### 72b2 — surowa grupa „Pojazd” i bieżnia (✅ 20.11)
 
-- [ ] Klient: surowa grupa „Pojazd” w lewej belce (kafel auta, krzyżak, „Jedź”) z gotowych kafli
-      belki — zastępuje tymczasowe pozycje w menu auta; Nitro, Manewry i kolczatka jeszcze z menu.
-- [ ] Bieżnia dogania sztywne przesunięcie (`ChaseSettings.shiftSq`), a nie tylko przewija się
-      z prędkością pościgu.
-- [ ] E2E `48-poscig` dostosowane (`t65-przeszkody` liczy pozycje sprzed przesunięcia kadru),
-      oględziny w Firefoksie.
+- [x] Klient: surowa grupa „Pojazd” w lewej belce (`HudVehicle.tsx`: kafel auta, wiersz „Po
+      ruchu”, krzyżak, „Jedź”) z gotowych kafli belki — zastąpiła tymczasowe pozycje w menu auta;
+      Nitro, Manewry i kolczatka jeszcze z menu (klik w kafel auta je otwiera).
+- [x] Bieżnia dogania sztywne przesunięcie (`ChaseSettings.shiftSq`, `ChaseLayer.followFrameShift`),
+      a nie tylko przewija się z prędkością pościgu.
+- [x] E2E `48-poscig` dostosowane (`t65-przeszkody` — barykada dojeżdża rundę później, beton
+      porównany z bieżącym miejscem auta; nowy `t72b-kokpit`), oględziny w Firefoksie.
+
+Decyzje MG z 20.11 (pytania na starcie sesji):
+
+- **Droga przeskakuje o przesunięcie kadru razem z autami** (cięcie kamery), a nie dojeżdża płynnie
+  — auta też przeskakują; płynny najazd całej sceny razem z animacją ruchu w 72d.
+- **Na kafelku auta stoi grafika modelu** (obrócona przodem w kierunku jazdy), nie sylwetka-ikona.
+
+Rozstrzygnięcia bez pytań:
+
+- **MG widzi grupę przy każdym zaznaczonym kierowcy** (serwer przyjmuje `vehicle:drive` od MG
+  w turze każdego kierowcy, także gracza — darmowa ręka MG); przy NPC-u w jego turze to kokpit MG.
+- **Odmowa nie wyłącza kafla** (jak broń i akcje belki): wyszarzony, powód w dymku i po kliknięciu
+  w kanale komunikatów. Jeden powód dla całego krzyżaka — cudza tura, ruch wykonany, silnik,
+  utrata kontroli; osobno maksimum gazu, postój przy hamulcu i krawędź jezdni.
+- **Przy jeździe pionowej** gaz i hamulec stoją nad i pod, a pasy to „Pas w lewo / w prawo” (droga
+  pionowa jest poza zakresem, ale krzyżak się nie rozsypuje).
 
 ### 72c — Wyścig
 

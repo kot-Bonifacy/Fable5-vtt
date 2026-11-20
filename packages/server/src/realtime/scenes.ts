@@ -158,6 +158,36 @@ export async function emitSceneList(deps: RealtimeDeps, campaignId: string): Pro
   deps.io.to(gmRoom(campaignId)).emit('scene:list', payload);
 }
 
+/**
+ * Rozsyła widok sceny jej widzom: aktywnej — całej kampanii z `seq`, podglądu
+ * MG — tylko pokojowi sceny. Ta sama ścieżka co `scene:update`; wołają ją też
+ * zmiany, które serwer robi sam (etap 72b2: prędkość pościgu i przesunięcie
+ * kadru na początku rundy, wyzerowanie ich na starcie i końcu walki).
+ */
+export function broadcastSceneView(deps: RealtimeDeps, campaignId: string, scene: Scene): void {
+  const view = toSceneView(scene);
+  if (scene.active) {
+    // Everyone views the active scene — sequenced campaign-wide broadcast.
+    const room = campaignRoom(campaignId);
+    const broadcast: SceneUpdateBroadcast = { seq: deps.seqs.next(room), scene: view };
+    deps.io.to(room).emit('scene:update', broadcast);
+  } else {
+    // GM-only preview — targeted at that scene's viewers, no seq.
+    const broadcast: SceneUpdateBroadcast = { scene: view };
+    deps.io.to(sceneRoom(scene.id)).emit('scene:update', broadcast);
+  }
+}
+
+/** Świeży wiersz sceny z bazy do `broadcastSceneView` (nic, gdy sceny już nie ma). */
+export async function emitSceneView(
+  deps: RealtimeDeps,
+  campaignId: string,
+  sceneId: string,
+): Promise<void> {
+  const scene = await getSceneById(deps.ctx.prisma, sceneId);
+  if (scene) broadcastSceneView(deps, campaignId, scene);
+}
+
 function requireCampaignId(socketData: { campaign: { id: string } | null }): string {
   if (!socketData.campaign) throw new RealtimeError('NO_CAMPAIGN');
   return socketData.campaign.id;
@@ -324,17 +354,7 @@ export const sceneUpdateEvent = defineEvent<SceneUpdatePayload, SceneView>({
 
     const updated = await deps.ctx.prisma.scene.update({ where: { id: scene.id }, data });
     const view = toSceneView(updated);
-
-    if (updated.active) {
-      // Everyone views the active scene — sequenced campaign-wide broadcast.
-      const room = campaignRoom(campaignId);
-      const broadcast: SceneUpdateBroadcast = { seq: deps.seqs.next(room), scene: view };
-      deps.io.to(room).emit('scene:update', broadcast);
-    } else {
-      // GM-only preview — targeted at that scene's viewers, no seq.
-      const broadcast: SceneUpdateBroadcast = { scene: view };
-      deps.io.to(sceneRoom(updated.id)).emit('scene:update', broadcast);
-    }
+    broadcastSceneView(deps, campaignId, updated);
     if (patch.name !== undefined || patch.background !== undefined || patch.spawn !== undefined) {
       await emitSceneList(deps, campaignId);
     }

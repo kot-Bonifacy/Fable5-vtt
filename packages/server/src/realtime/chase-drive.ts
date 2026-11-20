@@ -93,6 +93,7 @@ import { rollServerSkillTest } from './character-rolls.js';
 import { createMixedRng } from './dice-rng.js';
 import { clearGrapplesOf } from './grapple-state.js';
 import { RealtimeError, defineEvent, type RealtimeDeps } from './registry.js';
+import { emitSceneView } from './scenes.js';
 import { emitSceneTokensToPlayers, emitTokensById } from './tokens.js';
 
 /**
@@ -1007,6 +1008,9 @@ export async function startChaseRound(
   }
   if (dropped.length > 0) await dropFromChase(deps, campaignId, user, scene, combat, dropped);
   await emitChase(deps, campaignId, scene.id);
+  // Prędkość pościgu i suma przesunięć kadru jadą w widoku sceny — z nich
+  // klient wie, że walka trwa (kokpit), i przesuwa drogę razem z autami.
+  await emitSceneView(deps, campaignId, scene.id);
   return dropped.length > 0;
 }
 
