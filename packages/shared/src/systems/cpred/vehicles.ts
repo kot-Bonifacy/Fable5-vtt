@@ -855,14 +855,6 @@ export const CPRED_DRIVING_TEST_THRESHOLD = 9;
 export const CPRED_INTERFACE_PLUGS_NAME = 'Złącza interfejsu';
 
 /**
- * Czy kierowca w każdej turze rzuca Test zwykłej jazdy: REF + Umiejętność
- * prowadzenia ≤ 9 (s. 192).
- */
-export function cpredDrivingTestNeeded(ref: number, skill: number): boolean {
-  return ref + skill <= CPRED_DRIVING_TEST_THRESHOLD;
-}
-
-/**
  * Liczby pojazdu w pościgu: kratki na Akcję Ruchu (`Ruch / 4`), dryf na rundę
  * i zbiorniki Nitro, które jeszcze zostały. Zgaszony silnik nie daje ruchu,
  * a droga zabiera auto w tył z pełnym tempem (decyzja MG 12).

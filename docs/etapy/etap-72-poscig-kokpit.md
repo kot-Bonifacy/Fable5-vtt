@@ -3,7 +3,7 @@
 **Faza:** przed betą (zlecenie MG z 15.11 spoza planu) · **Wymaga etapów:** 65 (scena pościgu,
 65a–65e), kreator pościgu z 03.11, 66c i 66d (wzorce pościgu), 69 (lewa belka bez ramek),
 32 (wezwanie do Testu) · **Status:** 🟨 w toku — projekt 15.11, **72a ✅ 19.11**, **72b1 ✅ 19.11**,
-**72b2 ✅ 20.11**, następny 72c
+**72b2 ✅ 20.11**, **72c ✅ 20.11**, następny 72d
 
 ## Skąd ten etap
 
@@ -440,18 +440,51 @@ Rozstrzygnięcia bez pytań:
 - **Przy jeździe pionowej** gaz i hamulec stoją nad i pod, a pasy to „Pas w lewo / w prawo” (droga
   pionowa jest poza zakresem, ale krzyżak się nie rozsypuje).
 
-### 72c — Wyścig
+### 72c — Wyścig (✅ 20.11)
 
-- [ ] Stan Wyścigu rundy, rzut serwera za NPC-ów, wezwanie na kubek kierowcy-gracza
-      (ze Szczęściem), runda czeka; „Rzuć za gracza” i „Pomiń Wyścig” u MG.
-- [ ] Zryw doliczany do ruchu; słaby kierowca traci kontrolę przy wyniku poniżej 10; stary Test
-      zwykłej jazdy usunięty.
-- [ ] Karta czatu „Wyścig — runda N” (grupa kart, umowa `czat`), pasek „czekam na…”.
-- [ ] Kierowca bez karty: sama Cecha + 1k10 (funkcjonariusz Wsparcia — czyste 1k10), bez
-      utraty kontroli z reguły słabego kierowcy; test serwera na statystę i profil Wsparcia.
-- [ ] Testy serwera (`chase-race.test.ts`), E2E ze skryptem kości (`VTT_DICE_SCRIPT`).
-- [ ] Moto Nomady w Wyścigu i w progu słabego kierowcy: test serwera, `role-matrix.test.ts`
+- [x] Stan Wyścigu rundy (`Scene.chaseRace`, `realtime/chase-race.ts`), rzut serwera za NPC-ów,
+      wezwanie na kubek kierowcy-gracza (ze Szczęściem), runda czeka bez tury; „Rzuć za…”
+      i „Pomiń Wyścig” u MG (karta czatu i panel decyzji MG).
+- [x] Zryw doliczany do ruchu; słaby kierowca traci kontrolę przy wyniku nie wyższym niż PT 10;
+      stary Test zwykłej jazdy usunięty (`drivingTestPassed`, `drivingTested`,
+      `cpredDrivingTestNeeded`).
+- [x] Karta czatu „Wyścig — runda N” (rodzaj `chaserace`, siedem miejsc z umowy `czat`), pas
+      inicjatywy „🏁 Wyścig — czekam na: …”.
+- [x] Kierowca bez pełnej karty: statysta REF + 1k10, Wsparcie i figura bez karty czyste 1k10,
+      bez utraty kontroli z reguły słabego kierowcy; test serwera na statystę i profil Wsparcia.
+- [x] Testy serwera (`chase-race.test.ts`), E2E `48-poscig/t72c-wyscig` ze skryptem kości.
+- [x] Moto Nomady w Wyścigu i w progu słabego kierowcy: test serwera, `role-matrix.test.ts`
       „NOM-03” przepisany, wiersze NOM-02 / NOM-03 w `role-macierz.md` (punkt 9).
+
+Decyzje MG z 20.11 (pytania na starcie sesji):
+
+- **Reguła słabego kierowcy dotyczy postaci gracza i NPC-a z pełną kartą** — kartą, która nie
+  mieści się w szybkim edytorze statysty (`cpredStatistQuickFits`); statysta i Wsparcie od samego
+  rzutu kontroli nie tracą (`cpredRaceFullSheet`, `cpredRaceWeakDriver`).
+- **Za NPC-ów jedna karta, bez kości 3D** — kości 3D lecą tylko z kubka gracza.
+- **„Następna tura” MG, gdy runda czeka, pomija brakujących** (zryw 0, bez utraty kontroli,
+  runda rusza) — to samo co „Pomiń Wyścig”.
+- **Przyciski MG na karcie czatu i w panelu decyzji MG** (rodzaj `race` w `GM_DECISION_KINDS`),
+  do czasu panelu „Pościg” z 72f.
+
+Rozstrzygnięcia bez pytań:
+
+- **Runda czeka jako wskaźnik bez tury:** `round = N`, `activeCombatantId = null`; `nextTurn`
+  z takiego stanu daje pierwszego w kolejce tej samej rundy, więc wznowienie
+  (`resumeAfterChaseRace` w `combat-actions.ts`) to świeży budżet i haki początku tury, bez
+  drugiego przemiatania czasu. „Cofnij” MG w tym czasie odmawia (`RACE_PENDING`).
+- **W Wyścigu biorą udział** auta `racing` z pracującym silnikiem, nie wraki, z kierowcą zdolnym
+  do działania, który ma turę w kolejce. Bot w fotelu kierowcy (gdyby MG go tam posadził) rzuca
+  jak NPC — kubek ma tylko gracz.
+- **Pominięty gracz nie wyznacza „najniższego”** — zryw liczy się z tych, którzy rzucili.
+- **Spóźniony kubek** (po „Pomiń” albo po końcu walki) odbija się od zamkniętego wezwania
+  (`CALL_CLOSED`); koniec walki zostawia kartę jako „przerwaną”.
+- **Słaby kierowca, który oblał, traci kontrolę bez natychmiastowego ruchu** (prędkość −10 od
+  razu) — auto jedzie automatem 1k6 na koniec jego tury, jak każde auto bez kontroli.
+- **Wynik NPC-a jest jawny, rozbicie (kości, REF, Umiejętność) tylko u MG** —
+  `redactChatMessage`; karta Wyścigu idzie od początku przez `broadcastRedactedChatMessage`.
+- **Werdykt na karcie rzutu i wezwania** mówi „Wyścig” (bez progu) albo „Panuje nad autem” /
+  „Utrata kontroli” (słaby kierowca, PT 10), nie „Zdane / PT 0”.
 
 ### 72d — kokpit w pełnym kształcie (wariant B)
 

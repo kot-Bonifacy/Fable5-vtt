@@ -534,6 +534,12 @@ export interface CpredRollRequest {
    * nie ukrywa.
    */
   sneakTokenId?: string;
+  /**
+   * Etap 72c — Wyścig rundy pościgu, na który ten Test odpowiada: scena, runda
+   * i auto. Wpisuje je wyłącznie serwer przy wezwaniu na kubek kierowcy
+   * (`startChaseRace`); rzut czyta je z zapisanego wezwania, nigdy z żądania.
+   */
+  chaseRace?: { sceneId: string; round: number; vehicleId: string };
   /** Server-filled: DV read off the target's wound threshold (10/13/15). */
   stabilizeDv?: number;
   /** Server-filled: whose name the card names. */

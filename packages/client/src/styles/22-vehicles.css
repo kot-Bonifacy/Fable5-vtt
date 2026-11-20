@@ -665,3 +665,37 @@ input.vehicle-card-name {
 .trade-workshop-head .trade-column-title {
   margin: 0;
 }
+
+/* --- etap 72c: karta „Wyścig — runda N” --- */
+
+/* Kafle kierowców to kafle celów ataku (`.chat-attack-checks`); zasada pod
+   nagłówkiem drobnym drukiem, jak modyfikator na wezwaniu do Testu. */
+.chat-race-rule {
+  margin: 0.1rem 0 0.2rem;
+  font-size: 0.72rem;
+  color: var(--text-dim);
+}
+
+/* Kierowca, na którego kubek stół czeka (albo pominięty) — przygaszony, bez
+   własnego koloru: stan niesie napis (MG 24.10). */
+.chat-race-row--pending {
+  color: var(--text-dim);
+}
+
+.chat-race-driver {
+  color: var(--text-dim);
+}
+
+/* W panelu decyzji MG (tło mapy, tusz mapy) kafle kierowców nie biorą tła
+   pergaminu — jasny tusz na jasnym kaflu był nieczytelny (oględziny 20.11). */
+.gm-decision .chat-race-rows > li {
+  background: transparent;
+  color: var(--map-ink);
+}
+
+.gm-decision .chat-race-rule,
+.gm-decision .chat-race-driver,
+.gm-decision .chat-race-row--pending {
+  color: var(--map-ink);
+  opacity: 0.85;
+}

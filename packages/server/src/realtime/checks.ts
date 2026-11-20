@@ -238,6 +238,12 @@ export async function createCheckCall(
      * z zapisanej prośby, nie z żądania MG.
      */
     sneakTokenId?: string;
+    /**
+     * Wyścig rundy pościgu (etap 72c) — tak samo po białej liście: wystawia je
+     * tylko `startChaseRace`, więc zgoda MG na zwykłą prośbę o Test
+     * Prowadzenia nie daje zrywu.
+     */
+    chaseRace?: { sceneId: string; round: number; vehicleId: string };
     /** Kto „wzywa” na karcie, gdy nie MG — przy zamku to nazwa pojemnika. */
     calledByName?: string;
   },
@@ -263,6 +269,7 @@ export async function createCheckCall(
       : {}),
     ...(input.lockWallId !== undefined ? { lockWallId: input.lockWallId } : {}),
     ...(input.sneakTokenId ? { sneakTokenId: input.sneakTokenId } : {}),
+    ...(input.chaseRace ? { chaseRace: input.chaseRace } : {}),
   };
   const prompt = typeof input.prompt === 'string' ? input.prompt.trim() : '';
   if (prompt.length > CHECK_CALL_PROMPT_MAX) throw new RealtimeError('BAD_REQUEST');

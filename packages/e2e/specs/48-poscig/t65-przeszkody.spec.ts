@@ -188,6 +188,9 @@ test.describe.serial('@szybkie T65e pościg: przeszkody i kolczatka', () => {
       );
     }
     dataOf(await emitAck(gm, 'combat:next', undefined));
+    // Runda 1 staje na Wyścigu (72c) i czeka na kubek Oli — ten plik jest
+    // o przeszkodach, więc MG go pomija „Następną turą”.
+    dataOf(await emitAck(gm, 'combat:next', undefined));
     await closeNotices(ola.page);
   });
 
@@ -212,8 +215,9 @@ test.describe.serial('@szybkie T65e pościg: przeszkody i kolczatka', () => {
   test('nowa runda: barykada staje przed autem, a Ola omija ją Gwałtownym skrętem (Firefox)', async () => {
     // Od etapu 72 kadr na początku rundy 1 sztywno stawia auto Iskry na 30 % od
     // tyłu (x 7,2), więc barykada (x 23,5, 10 kratek na rundę) mija zderzak
-    // dopiero w rundzie 3: dwie tury rundy 1, dwie rundy 2.
-    for (let turn = 0; turn < 4; turn += 1) {
+    // dopiero w rundzie 3: dwie tury rundy 1, dwie rundy 2. Od 72c każda
+    // nowa runda staje na Wyścigu, który MG pomija jeszcze jednym kliknięciem.
+    for (let turn = 0; turn < 6; turn += 1) {
       dataOf(await emitAck(gm, 'combat:next', undefined));
     }
     await expect

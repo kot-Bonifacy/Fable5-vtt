@@ -3,7 +3,6 @@ import { validateCompendiumEntry, type VehicleEntry } from './compendium.js';
 import { readCpredFleet, cpredFleetProblem } from './roleability.js';
 import {
   cpredDriverIncapable,
-  cpredDrivingTestNeeded,
   cpredCoastSpeed,
   cpredVehicleChase,
   cpredVehicleSpeed,
@@ -439,11 +438,6 @@ describe('pojazd w pościgu (65c)', () => {
     expect(cpredVehicleChase(stats, { tempo: 0, started: true, nitroUsed: 0 })).toMatchObject({
       driftSq: 5,
     });
-  });
-
-  it('Test zwykłej jazdy przy REF + Umiejętność ≤ 9', () => {
-    expect(cpredDrivingTestNeeded(5, 4)).toBe(true);
-    expect(cpredDrivingTestNeeded(6, 4)).toBe(false);
   });
 
   it('Nieprzytomny, Martwy i Śmiertelnie Ranny nie prowadzą', () => {

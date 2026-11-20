@@ -21,7 +21,7 @@ import {
   type CpredFleetRow,
 } from './roleability.js';
 import { planCpredRoll } from './rolls.js';
-import { cpredDrivingTestNeeded } from './vehicles.js';
+import { cpredRaceWeakDriver } from './chase-drive.js';
 
 /**
  * Testy charakteryzujące z audytu Ról (etap 71a). Każdy nosi identyfikator
@@ -38,6 +38,7 @@ const registry: CpredRegistry = buildCpredRegistry(
     skills: [
       { id: 'perception', name: 'Percepcja', stat: 'int' },
       { id: 'human-perception', name: 'Odczytywanie emocji', stat: 'emp' },
+      { id: 'driving', name: 'Prowadzenie pojazdów', stat: 'ref' },
     ],
   },
   {
@@ -204,11 +205,14 @@ describe('Fixer — Wazeliniarz przy awansie (G36)', () => {
 });
 
 describe('Nomada — próg Testu zwykłej jazdy', () => {
-  // Wiersz ❓: próg liczy REF + Umiejętność i nie widzi Moto, choć Moto dokłada
-  // się do samego Testu. Podręcznik nie rozstrzyga — decyzja MG na bramce.
-  it('NOM-03 kierowca z REF 5 i Prowadzeniem 4 rzuca Test jazdy bez względu na Moto', () => {
-    expect(cpredDrivingTestNeeded(5, 4)).toBe(true);
-    expect(cpredDrivingTestNeeded(5, 5)).toBe(false);
+  // Od etapu 72c (decyzja MG z 15.11): próg słabego kierowcy liczy też Moto,
+  // bo Moto dolicza się do samego Testu — rzut Wyścigu słabego kierowcy jest
+  // jego Testem zwykłej jazdy.
+  it('NOM-03 Nomada z REF 5, Prowadzeniem 4 i Moto 1 nie rzuca Testu jazdy, bez Moto — tak', () => {
+    const nomad = sheet('nomad', 1, { skills: { driving: 4 } });
+    expect(cpredRaceWeakDriver(nomad, registry, 'car', true)).toBe(false);
+    const fresh = sheet('nomad', 0, { skills: { driving: 4 } });
+    expect(cpredRaceWeakDriver(fresh, registry, 'car', true)).toBe(true);
   });
 });
 

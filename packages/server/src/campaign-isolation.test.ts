@@ -959,6 +959,9 @@ const CASES: Record<string, Case> = {
     pedal: 'gas',
     laneDelta: 0,
   })),
+  // Wyścig rundy (etap 72c): karta czatu obcej kampanii nie jest Wyścigiem tej
+  'chase:race-roll': foreign((a) => ({ messageId: a.messageId, vehicleId: a.sceneVehicleId })),
+  'chase:race-skip': foreign((a) => ({ messageId: a.messageId })),
   'vehicle:refill': foreign((a) => ({ sceneVehicleId: a.sceneVehicleId })),
   'chase:restore': foreign((a) => ({ sceneVehicleId: a.sceneVehicleId })),
   'chase:escape': foreign((a) => ({ sceneVehicleId: a.sceneVehicleId })),

@@ -4,6 +4,7 @@ import { gmDecisionQueue, type GmAttentionItem, type GmAttentionKind } from '../
 import { useChatStore } from '../stores/chatStore.js';
 import { useGmAttentionStore } from '../stores/gmAttentionStore.js';
 import { CheckRequestDecision, CheckRequestSummary } from './CheckRequest.js';
+import { ChaseRaceDecision, ChaseRaceSummary, chaseRaceTitle } from './ChaseRaceCard.js';
 
 /**
  * Panel decyzji MG (24.10, zlecenie MG): sprawa, którą MG rozstrzyga jednym
@@ -79,6 +80,7 @@ export function GmDecisionPanel({
 
 const GM_DECISION_TITLES: Partial<Record<GmAttentionKind, string>> = {
   request: 'Prośba o Test',
+  race: 'Wyścig czeka',
 };
 
 /** Prośba o Test i o oględziny (etap 40, 41) — to samo, co na karcie czatu. */
@@ -100,8 +102,25 @@ function CheckRequestBody({ item }: { item: GmAttentionItem }) {
   );
 }
 
+/** Wyścig rundy pościgu (etap 72c) — kafle kierowców i „Rzuć za…” / „Pomiń”. */
+function ChaseRaceBody({ item }: { item: GmAttentionItem }) {
+  const message = useChatStore((s) =>
+    s.items.find((row) => row.type === 'message' && row.message.id === item.messageId),
+  );
+  const entry = message?.type === 'message' ? message.message.chaseRace : undefined;
+  if (!entry || entry.status !== 'waiting' || item.messageId === undefined) return null;
+  return (
+    <>
+      <p className="gm-decision-request">{chaseRaceTitle(entry)}</p>
+      <ChaseRaceSummary entry={entry} />
+      <ChaseRaceDecision messageId={item.messageId} entry={entry} />
+    </>
+  );
+}
+
 const GM_DECISION_BODIES: Partial<
   Record<GmAttentionKind, ComponentType<{ item: GmAttentionItem }>>
 > = {
   request: CheckRequestBody,
+  race: ChaseRaceBody,
 };

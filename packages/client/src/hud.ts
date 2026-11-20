@@ -253,6 +253,11 @@ export function hudTurnRefusal(
   combat: CombatView | null,
   tokenId: string | null,
   isGm: boolean,
+  /**
+   * Runda pościgu, która stoi na Wyścigu (72c, `ChaseSettings.race`). Pusty
+   * wskaźnik sam tego nie mówi — gracz dostaje go także w turze ukrytego NPC-a.
+   */
+  raceRound: number | null = useSceneStore.getState().scene?.chase?.race?.round ?? null,
 ): string | null {
   if (!tokenId || isGm || !combat) return null;
   const combatant = combat.combatants.find((row) => row.tokenId === tokenId);
@@ -261,6 +266,9 @@ export function hudTurnRefusal(
   // postaci” brzmiało, jakby ktoś inny już działał.
   if (combat.round === 0) {
     return 'Walka jeszcze się nie zaczęła — poczekaj, aż MG rozpocznie pierwszą rundę.';
+  }
+  if (combat.activeCombatantId === null && raceRound === combat.round) {
+    return 'Runda czeka na Wyścig — kierowcy rzucają, zanim ktokolwiek zagra turę.';
   }
   if (combat.activeCombatantId !== combatant.id) {
     return 'To nie jest tura tej postaci — poczekaj na swoją kolej.';

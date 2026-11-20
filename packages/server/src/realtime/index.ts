@@ -250,6 +250,7 @@ import {
   vehicleRefillEvent,
 } from './chase-driving.js';
 import { vehicleDriveEvent } from './chase-drive.js';
+import { chaseRaceRollEvent, chaseRaceSkipEvent } from './chase-race.js';
 import { vehicleMountReloadEvent } from './vehicle-mounts.js';
 import {
   chaseObstacleAnswerEvent,
@@ -462,6 +463,8 @@ export const EVENTS: RealtimeEvent<never, unknown>[] = [
   chasePlaceEvent,
   chaseMoveEvent,
   vehicleDriveEvent,
+  chaseRaceRollEvent,
+  chaseRaceSkipEvent,
   chaseRestoreEvent,
   chaseEscapeEvent,
   vehicleControlEvent,

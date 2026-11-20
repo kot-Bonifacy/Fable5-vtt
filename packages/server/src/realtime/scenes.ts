@@ -39,6 +39,7 @@ import { placeOwedCreationTokens } from './creation.js';
 import { releaseTargetsOffScene } from './target.js';
 import { endCampaignSneaks } from './sneak.js';
 import { settleChaseAfterSceneChange } from './chase.js';
+import { chaseRaceWaitView } from './chase-offstage.js';
 import { campaignRoom, gmRoom, sceneRoom } from './state.js';
 
 export function toSceneView(scene: Scene): SceneView {
@@ -114,6 +115,7 @@ export function chaseSettingsOf(scene: Scene): ChaseSettings {
     anchorId: scene.chaseAnchorId,
     pursuitSpeed: scene.chasePursuitSpeed,
     shiftSq: scene.chaseShiftSq,
+    race: chaseRaceWaitView(scene),
   };
 }
 

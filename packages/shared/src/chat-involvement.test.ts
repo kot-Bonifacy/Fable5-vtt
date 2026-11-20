@@ -193,6 +193,38 @@ const BY_KIND = {
     ola: null,
     gm: 'mine',
   },
+  // Wyścig (72c) czeka na kubek Kuby i na przyciski MG; Ola już rzuciła.
+  chaserace: {
+    row: message('chaserace', {
+      chaseRace: {
+        sceneId: 's',
+        round: 2,
+        solo: false,
+        status: 'waiting',
+        rows: [
+          {
+            vehicleId: 'a',
+            vehicleName: 'Włóczęga',
+            driverName: 'Rdza',
+            ownerId: KUBA,
+            weak: false,
+          },
+          {
+            vehicleId: 'b',
+            vehicleName: 'Kompakt',
+            driverName: 'Iskra',
+            ownerId: OLA,
+            weak: false,
+            total: 14,
+            by: 'player',
+          },
+        ],
+      },
+    }),
+    kuba: 'awaitingMe',
+    ola: 'forMe',
+    gm: 'awaitingMe',
+  },
 } satisfies Record<
   ChatKind,
   {

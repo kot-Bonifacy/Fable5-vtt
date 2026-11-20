@@ -56,6 +56,7 @@ import { IconNewspaper } from './UiIcons.js';
 import { OpposedRow } from './GrappleControls.js';
 import { DamageApplyControls, DamageRow } from './DamageControls.js';
 import { CheckCallRow } from './CheckCall.js';
+import { ChaseRaceRowCard } from './ChaseRaceCard.js';
 import { CheckRequestRow } from './CheckRequest.js';
 import { InventoryMoveRow } from './InventoryMove.js';
 import { SurgeryRequestRow } from './SurgeryRequest.js';
@@ -871,6 +872,9 @@ function FullMessageRow({
   if ((message.kind === 'rolltable' || message.kind === 'gmrolltable') && message.rolltable) {
     return <RollTableRow message={message} entry={message.rolltable} />;
   }
+  if (message.kind === 'chaserace' && message.chaseRace) {
+    return <ChaseRaceRowCard message={message} entry={message.chaseRace} />;
+  }
   if ((message.kind === 'action' || message.kind === 'gmaction') && message.action) {
     return <CombatActionRow message={message} entry={message.action} isGm={isGm} />;
   }
@@ -1153,6 +1157,9 @@ function isPending(item: ChatItem, myUserId: string, isGm: boolean): boolean {
   if (kind === 'cardsubmission') {
     return cardSubmission !== undefined && isCardSubmissionOpen(cardSubmission);
   }
+  // Wyścig (72c) czeka na kubki graczy — runda stoi, więc karta nie może
+  // zniknąć pod separatorem filtra.
+  if (kind === 'chaserace') return item.message.chaseRace?.status === 'waiting';
   if (kind !== 'proposal' || !proposal || proposal.resolution !== undefined) return false;
   return isGm || proposal.controllerUserId === myUserId;
 }

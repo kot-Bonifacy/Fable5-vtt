@@ -16,6 +16,7 @@ import type { VehicleLayoutId } from './vehicles.js';
 import { VEHICLE_LAYOUTS } from './vehicles.js';
 import type { ChaseObstacleView } from './chase-obstacles.js';
 import type { ChaseRole } from './chase-drive.js';
+import type { RollBreakdownEntry } from './dice.js';
 
 export const SCENE_KINDS = ['map', 'chase'] as const;
 /** `map` — zwykła mapa, `chase` — scena pościgu z bieżnią i autami. */
@@ -89,6 +90,72 @@ export interface ChaseSettings {
    * przesuwa o różnicę teksturę drogi, więc przesunięcie wygląda jak kamera.
    */
   shiftSq: number;
+  /**
+   * Wyścig tej rundy, gdy czeka na kubki kierowców-graczy (etap 72c) — runda
+   * stoi bez tury, a pas inicjatywy pisze „Wyścig — czekam na: …”. `null`
+   * poza walką, bez Wyścigu i po jego rozstrzygnięciu.
+   */
+  race: ChaseRaceWaitView | null;
+}
+
+/** Wyścig czekający na kubki (etap 72c) — tyle, ile pas inicjatywy musi wiedzieć. */
+export interface ChaseRaceWaitView {
+  round: number;
+  /** Karta czatu „Wyścig — runda N”. */
+  messageId: number;
+  /** Kierowcy, na których kubek runda czeka — imiona postaci, nigdy kont. */
+  waitingFor: string[];
+}
+
+/**
+ * Jeden kierowca na karcie „Wyścig — runda N” (etap 72c). Karta jest jawna:
+ * zryw i tak widać na mapie, a gracz ma wiedzieć, z kim przegrał.
+ */
+export interface ChaseRaceRow {
+  vehicleId: string;
+  vehicleName: string;
+  /** Imię kierowcy dla stołu (`tokenTableName`); `''` — figura ukryta. */
+  driverName: string;
+  /** Właściciel karty kierowcy — rzuca kubkiem na wezwanie; `null` — rzuca serwer. */
+  ownerId: string | null;
+  /** Wezwanie na kubek gracza (`check`). */
+  callMessageId?: number;
+  /** Słaby kierowca z pełną kartą — jego rzut jest też Testem zwykłej jazdy (PT 10). */
+  weak: boolean;
+  /** Wynik; brak — rzut jeszcze nie padł. */
+  total?: number;
+  /** Kto rzucił: gracz kubkiem, MG za gracza, serwer za NPC-a. */
+  by?: 'player' | 'gm' | 'npc';
+  /** Kości (1k10 z ewentualnym dorzutem) i to, co do nich doszło — do podpowiedzi. */
+  dice?: number[];
+  breakdown?: RollBreakdownEntry[];
+  /** MG pominął rzut (gracz odszedł od stołu) — bez zrywu, bez utraty kontroli. */
+  skipped?: boolean;
+  /** Po rozstrzygnięciu: zryw w kratkach i utrata kontroli słabego kierowcy. */
+  bonus?: number;
+  lostControl?: boolean;
+}
+
+export const CHASE_RACE_STATUSES = ['waiting', 'done', 'cancelled'] as const;
+export type ChaseRaceStatus = (typeof CHASE_RACE_STATUSES)[number];
+
+/** Karta czatu `chaserace` — Wyścig jednej rundy (etap 72c). */
+export interface ChaseRaceLogEntry {
+  sceneId: string;
+  round: number;
+  /**
+   * Jedno auto z kierowcą w kadrze: Wyścigu nie ma, a rzut słabego kierowcy
+   * jest samym Testem zwykłej jazdy, bez zrywu (decyzja MG z 19.11).
+   */
+  solo: boolean;
+  /** `cancelled` — walka skończyła się, zanim wszyscy rzucili. */
+  status: ChaseRaceStatus;
+  rows: ChaseRaceRow[];
+}
+
+/** Kierowcy, na których kubek Wyścig jeszcze czeka. */
+export function chaseRacePending(entry: Pick<ChaseRaceLogEntry, 'rows'>): ChaseRaceRow[] {
+  return entry.rows.filter((row) => row.total === undefined && row.skipped !== true);
 }
 
 /**
@@ -105,6 +172,7 @@ export const DEFAULT_CHASE_SETTINGS: ChaseSettings = {
   anchorId: null,
   pursuitSpeed: null,
   shiftSq: 0,
+  race: null,
 };
 
 /**

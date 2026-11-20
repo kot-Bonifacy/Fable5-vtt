@@ -234,6 +234,7 @@ describe('etap 65b: scena pościgu, auta i fotele', () => {
       role: 'pursue',
       anchorId: null,
       pursuitSpeed: null,
+      race: null,
       shiftSq: 0,
     });
     const activated = waitForMatch(owner, 'scene:activate', () => true);

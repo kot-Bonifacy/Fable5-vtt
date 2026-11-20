@@ -14,6 +14,7 @@ import {
   type CheckRequestEntry,
 } from './checks.js';
 import { isInventoryMoveOpen, type InventoryMoveView } from './inventory.js';
+import { chaseRacePending, type ChaseRaceLogEntry } from './chase.js';
 // Sam typ: `surgery.ts` czyta cennik CP RED, a rdzeń czatu nie importuje
 // niczego z `systems/cpred` — stan prośby o operację sprawdza się tu wprost.
 import type { SurgeryRequestEntry } from './surgery.js';
@@ -87,7 +88,12 @@ export type ChatKind =
    * rodzaju**, w zapytaniu do bazy — dokładnie tak, jak `roll`/`gmroll` od
    * etapu 06 i `action`/`gmaction` od 14b.
    */
-  | 'gmrolltable';
+  | 'gmrolltable'
+  /**
+   * Wyścig rundy pościgu (etap 72c) — Test przeciwstawny Prowadzenia
+   * wszystkich kierowców; czeka na kubki kierowców-graczy, jawny dla stołu.
+   */
+  | 'chaserace';
 
 /**
  * Co zdany Test Percepcji pokazał na cudzej figurze (etap 41).
@@ -429,6 +435,8 @@ export interface ChatMessageView {
   sighting?: SightingLogEntry;
   /** Wynik losowania — kinds `rolltable` i `gmrolltable` only (etap 34). */
   rolltable?: RandomTableRollEntry;
+  /** Wyścig rundy pościgu — kind `chaserace` only (etap 72c). */
+  chaseRace?: ChaseRaceLogEntry;
   /**
    * Kolor autora (etap 60c) — wspólny dla całego stołu, wpisany przez serwer
    * przy budowie widoku (`chatAuthorColor`). Brak: NPC, karta wystawiona przez
@@ -660,6 +668,10 @@ export function chatCategoryOf(kind: ChatKind): ChatCategory {
     case 'rolltable':
     case 'gmrolltable':
       return 'table';
+    // Wyścig (72c) to Test przeciwstawny kierowców — rzut, nie przebieg walki;
+    // zgaszone „Rzuty” chowają go razem z wezwaniami na kubek, które wystawił.
+    case 'chaserace':
+      return 'dice';
   }
 }
 
@@ -730,8 +742,13 @@ function awaitsMe(
   isGm: boolean,
   tokenIds: ReadonlySet<string>,
 ): boolean {
-  const { check, request, proposal, inventory, surgery, cardSubmission, roll } = message;
+  const { check, request, proposal, inventory, surgery, cardSubmission, roll, chaseRace } = message;
   switch (message.kind) {
+    // Wyścig czeka na kubek kierowcy-gracza (wezwanie ma osobną kartę), a u MG
+    // — na „Rzuć za gracza” albo „Pomiń Wyścig”.
+    case 'chaserace':
+      if (!chaseRace || chaseRace.status !== 'waiting') return false;
+      return isGm || chaseRacePending(chaseRace).some((row) => row.ownerId === userId);
     // MG może rzucić za nieobecnego (`mayAnswerCheckCall`), ale wezwanie czeka
     // na wezwanego — u MG nie ma czego wskazywać.
     case 'check':
@@ -801,6 +818,8 @@ function concernsMe(
   switch (message.kind) {
     case 'damage':
       return damage?.targetOwnerId === userId;
+    case 'chaserace':
+      return message.chaseRace?.rows.some((row) => row.ownerId === userId) === true;
     case 'check':
       return check?.ownerId === userId;
     case 'inventory':

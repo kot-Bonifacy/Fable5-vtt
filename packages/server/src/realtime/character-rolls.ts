@@ -101,6 +101,7 @@ import {
   toChatMessageView,
 } from './chat-io.js';
 import { emitCheckCallUpdate, resolveAnsweredCall } from './checks.js';
+import { settleChaseRaceRoll } from './chase-race.js';
 import { revealSighting } from './sighting.js';
 import { settleLockTest } from './containers.js';
 import { settleOpeningLockTest } from './opening-locks.js';
@@ -1334,6 +1335,7 @@ async function performScopedRoll(
     const sneakTokenId = call
       ? (call.entry.system as { sneakTokenId?: unknown }).sneakTokenId
       : undefined;
+    const raceAddress = call ? (call.entry.system as { chaseRace?: unknown }).chaseRace : undefined;
     if (call && typeof sneakTokenId === 'string') {
       await requireSneakStart(deps, campaignId, user, sneakTokenId);
     }
@@ -1655,6 +1657,21 @@ async function performScopedRoll(
       result.title = `Wezwanie: ${plan.title}`;
       // Test Skradania nie ma progu — jego wynik jest progiem dla patrzących.
       if (typeof sneakTokenId === 'string') result.outcome = cpredSneakOutcome(result.total);
+      // Etap 72c: Wyścig nie ma progu — zryw liczy się z wyników wszystkich
+      // kierowców; słaby kierowca rzuca przy tym Test zwykłej jazdy (PT 10).
+      if (raceAddress !== undefined) {
+        result.outcome =
+          call.entry.dv === undefined
+            ? {
+                success: true,
+                label: 'Wyścig',
+                detail: `${result.total} — zryw po rzutach wszystkich kierowców`,
+              }
+            : {
+                ...result.outcome!,
+                label: result.outcome!.success ? 'Panuje nad autem' : 'Utrata kontroli',
+              };
+      }
     }
 
     const kind = visibility === 'gm' ? 'gmroll' : 'roll';
@@ -1742,6 +1759,12 @@ async function performScopedRoll(
         call.entry.characterId,
         result.outcome.success,
       );
+    }
+    // Etap 72c: rzut Wyścigu z kubka — adres auta tylko z zapisanego wezwania
+    // (wystawia je `startChaseRace`). Po karcie, żeby karta Wyścigu i ruszająca
+    // runda szły za kośćmi.
+    if (call && raceAddress !== undefined) {
+      await settleChaseRaceRoll(deps, campaignId, user, raceAddress, result);
     }
     // Etap 61: wynik Testu Skradania staje się progiem na figurze. Po karcie,
     // żeby rzuty Percepcji, które zaraz padną, szły za nią w dzienniku MG.

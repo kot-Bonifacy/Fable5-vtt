@@ -255,6 +255,17 @@ async function seat(socket: ClientSocket, tokenId: string, sceneVehicleId: strin
   if (!ack.ok) throw new Error(`vehicle:seat failed: ${JSON.stringify(ack)}`);
 }
 
+/**
+ * „Następna tura” MG. Runda z dwoma kierowcami staje na Wyścigu (72c) i czeka
+ * na kubek gracza — te testy nie są o Wyścigu, więc MG go pomija drugim
+ * kliknięciem (zryw 0 dla wszystkich, bez utraty kontroli).
+ */
+async function next(gm: ClientSocket, what: string): Promise<CombatView> {
+  const view = data(await emitAck<CombatView>(gm, 'combat:next'), what);
+  if (view.round < 1 || view.activeCombatantId !== null) return view;
+  return data(await emitAck<CombatView>(gm, 'combat:next'), `${what} — pomija Wyścig`);
+}
+
 async function startCombat(
   gm: ClientSocket,
   sceneId: string,
@@ -270,7 +281,7 @@ async function startCombat(
       data: { initiative: 20 - index },
     });
   }
-  return data(await emitAck<CombatView>(gm, 'combat:next'), 'combat:next round 1');
+  return next(gm, 'combat:next round 1');
 }
 
 describe('etap 72: jazda w turze kierowcy — prędkość, pas i kadr', () => {
@@ -397,14 +408,14 @@ describe('etap 72: jazda w turze kierowcy — prędkość, pas i kadr', () => {
   });
 
   it('runda 2: stojące auto kadru zatrzymuje pościg; kadr przesuwa się raz na rundę', async () => {
-    data(await emitAck<CombatView>(gm, 'combat:next'), 'combat:next round 2');
+    await next(gm, 'combat:next round 2');
     expect(await vehicleRow(car.id)).toMatchObject({ x: 720, y: 1050, speed: 0 });
     const after = await sceneRow(scene.id);
     expect(after.chasePursuitSpeed).toBe(0);
     expect(after.chaseShiftSq).toBeCloseTo(-6.8);
 
     data(await emitAck<CombatView>(gm, 'combat:previous'), 'combat:previous');
-    data(await emitAck<CombatView>(gm, 'combat:next'), 'combat:next round 2 again');
+    await next(gm, 'combat:next round 2 again');
     expect((await vehicleRow(car.id)).x).toBe(720);
     expect((await sceneRow(scene.id)).chaseShiftSq).toBeCloseTo(-6.8);
   });
@@ -420,7 +431,7 @@ describe('etap 72: jazda w turze kierowcy — prędkość, pas i kadr', () => {
     );
     // 0 → 10 Ruchu (50 mil/h): (10 − 0) / 4 = 2,5 kratki do przodu.
     expect(result).toMatchObject({ moved: true, vehicle: { x: 970, speed: 10 } });
-    data(await emitAck<CombatView>(gm, 'combat:next'), 'combat:next round 3');
+    await next(gm, 'combat:next round 3');
     expect(await vehicleRow(car.id)).toMatchObject({ x: 720, speed: 10 });
     expect((await sceneRow(scene.id)).chasePursuitSpeed).toBe(10);
   });
@@ -433,7 +444,7 @@ describe('etap 72: jazda w turze kierowcy — prędkość, pas i kadr', () => {
     expect(
       await emitAck(owner, 'vehicle:drive', { sceneVehicleId: car.id, pedal: null, laneDelta: 0 }),
     ).toMatchObject({ ok: false, error: 'VEHICLE_OUT_OF_CONTROL' });
-    data(await emitAck<CombatView>(gm, 'combat:next'), 'combat:next round 4');
+    await next(gm, 'combat:next round 4');
     const line = await built.prisma.chatMessage.findFirst({
       where: { campaignId, kind: 'action', text: 'Utrata kontroli' },
       orderBy: { id: 'desc' },
@@ -454,7 +465,7 @@ describe('etap 72: jazda w turze kierowcy — prędkość, pas i kadr', () => {
       await emitAck(owner, 'vehicle:drive', { sceneVehicleId: car.id, pedal: null, laneDelta: 0 }),
     ).toMatchObject({ ok: false, error: 'VEHICLE_NOT_STARTED' });
     // Uruchomienie to Akcja, a Akcję tej tury zjadło zgaszenie — następna tura.
-    data(await emitAck<CombatView>(gm, 'combat:next'), 'combat:next round 5');
+    await next(gm, 'combat:next round 5');
     const on = data(
       await emitAck<SceneVehicleView>(owner, 'vehicle:engine', {
         sceneVehicleId: car.id,
@@ -582,7 +593,7 @@ describe('etap 72: koniec tury bez „Jedź”, zderzenie na drodze i auta bez t
       await emitAck(gm, 'vehicle:drive', { sceneVehicleId: chaser.id, pedal: null, laneDelta: 0 }),
     ).toMatchObject({ ok: false, error: 'NOT_YOUR_TURN' });
     // Rdza kończy turę bez „Jedź”: ta sama prędkość co pościg — auto stoi w kadrze.
-    data(await emitAck<CombatView>(gm, 'combat:next'), 'combat:next to Wolt');
+    await next(gm, 'combat:next to Wolt');
     expect(await vehicleRow(party.id)).toMatchObject({ x: 720, movedRound: 1 });
   });
 
@@ -616,11 +627,11 @@ describe('etap 72: koniec tury bez „Jedź”, zderzenie na drodze i auta bez t
 
   it('auto bez tury jedzie na początku rundy: pusty furgon zostaje w tyle i odpada', async () => {
     // Furgon bez kierowcy stoi (0), pościg jedzie 20: −5 kratek na rundę.
-    data(await emitAck<CombatView>(gm, 'combat:next'), 'combat:next round 2');
+    await next(gm, 'combat:next round 2');
     expect(await vehicleRow(wreck.id)).toMatchObject({ x: 220, movedRound: 2 });
     // Rdza — znowu bez „Jedź”; Wolt też: z auta dojeżdżającego wolniejszego nic nie zostaje.
-    data(await emitAck<CombatView>(gm, 'combat:next'), 'combat:next to Wolt');
-    data(await emitAck<CombatView>(gm, 'combat:next'), 'combat:next round 3');
+    await next(gm, 'combat:next to Wolt');
+    await next(gm, 'combat:next round 3');
     expect(await vehicleRow(wreck.id)).toMatchObject({ status: 'behind' });
     const note = await built.prisma.chatMessage.findFirst({
       where: { campaignId, kind: 'action', text: 'Zostaje w tyle' },
@@ -632,8 +643,8 @@ describe('etap 72: koniec tury bez „Jedź”, zderzenie na drodze i auta bez t
     // MG podkręca pościg do 60 (300 mil/h): różnica 40 > 20 — zwykły hamulec nie wystarczy.
     await built.prisma.sceneVehicle.update({ where: { id: chaser.id }, data: { speed: 60 } });
     const hpBefore = (await viewOf(gm, scene.id, party.id)).hp;
-    data(await emitAck<CombatView>(gm, 'combat:next'), 'combat:next to Wolt');
-    data(await emitAck<CombatView>(gm, 'combat:next'), 'combat:next round 4');
+    await next(gm, 'combat:next to Wolt');
+    await next(gm, 'combat:next round 4');
     const card = await built.prisma.chatMessage.findFirst({
       where: { campaignId, kind: 'action', text: 'Taranowanie' },
     });

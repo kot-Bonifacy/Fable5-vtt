@@ -72,7 +72,7 @@ import type { SheetTurnSpend } from '../sheets.js';
 import { actionEntry, logRefusedAction, logSpentAction, turnRefusalMessage } from './combat-log.js';
 import { emitTokenUpsert, requireCampaignToken } from './tokens.js';
 import { clearGrapplesOf } from './grapple-state.js';
-import { advanceTurn, runTurnEnd } from './turn-effects.js';
+import { advanceTurn, runTurnEnd, runTurnStart } from './turn-effects.js';
 import { emitSceneView, requireCampaignScene } from './scenes.js';
 import { releaseSceneTargets } from './target.js';
 import { calmFoe, calmVisibleFoes } from './foe-sighting.js';
@@ -81,7 +81,8 @@ import { emitRunsOnRoundChange, resetNetLedgersOnScene } from './netrun-io.js';
 import { netSilencedTokenIds } from './net-control.js';
 import { playNetFoeTurn } from './net-defense.js';
 import { liftNetFoesToTop } from './net-encounter.js';
-import { resetChaseCombat } from './chase-offstage.js';
+import { chaseRacePaused, resetChaseCombat } from './chase-offstage.js';
+import { cancelChaseRace, provideRaceResume, skipChaseRace } from './chase-race.js';
 
 /**
  * The action economy (stage 14b).
@@ -656,11 +657,51 @@ export const combatNextEvent = defineEvent<CombatNextPayload | undefined, Combat
       if (turnOwesDeathSave(active.turnState)) throw new RealtimeError('DEATH_SAVE_PENDING');
     }
 
+    // Etap 72c: runda stoi na Wyścigu — „Następna tura” MG pomija tych, którzy
+    // jeszcze nie rzucili (decyzja MG z 20.11), a runda rusza sama.
+    if (
+      user.role === ROLE_GM &&
+      combat.activeCombatantId === null &&
+      chaseRacePaused(scene) &&
+      (await skipChaseRace(deps, campaignId, user, scene.id))
+    ) {
+      return emitReloadedFor(deps, campaignId, scene, combat.id, user);
+    }
+
     await stepTurn(deps, campaignId, scene, combat, user);
     await passForfeitedTurns(deps, campaignId, scene, user);
     return emitReloadedFor(deps, campaignId, scene, combat.id, user);
   },
 });
+
+/**
+ * Runda pościgu rusza po Wyścigu (etap 72c): wskaźnik stał na rundzie bez
+ * tury, więc pierwsza tura zaczyna się teraz — świeży budżet, haki początku
+ * tury i oddane tury, jak po „Następnej turze”. Bez haków końca tury i bez
+ * przemiatania czasu: te poszły już przy wejściu w rundę.
+ */
+async function resumeAfterChaseRace(
+  deps: RealtimeDeps,
+  campaignId: string,
+  sceneId: string,
+  user: SessionUser,
+): Promise<void> {
+  const prisma = deps.ctx.prisma;
+  const scene = await prisma.scene.findUnique({ where: { id: sceneId } });
+  const combat = scene ? await loadCombat(prisma, scene.id) : null;
+  if (!scene || !combat || combat.round < 1 || combat.activeCombatantId !== null) return;
+  const pointer = nextTurn(toCombatView(combat));
+  await applyTurnPointer(deps, combat, pointer, true);
+  if (pointer.activeCombatantId !== null) {
+    const started = await loadCombatById(prisma, combat.id);
+    const starting = started.combatants.find((row) => row.id === pointer.activeCombatantId);
+    if (starting) await runTurnStart(deps, campaignId, scene, started, starting, user);
+  }
+  await passForfeitedTurns(deps, campaignId, scene, user);
+  await emitReloadedFor(deps, campaignId, scene, combat.id, null);
+}
+
+provideRaceResume(resumeAfterChaseRace);
 
 /** One step of the queue — what „następna tura" does, minus the permissions. */
 async function stepTurn(
@@ -874,6 +915,11 @@ export const combatPreviousEvent = defineEvent<undefined, CombatView>({
     const scene = await requireCampaignScene(deps.ctx.prisma, campaignId, sceneId);
     const combat = await loadCombat(deps.ctx.prisma, scene.id);
     if (!combat) throw new RealtimeError('COMBAT_NOT_FOUND');
+    // Etap 72c: runda stojąca na Wyścigu nie ma tury, od której by się cofać —
+    // Wyścig tej rundy już się zaczął i drugi raz nie ruszy.
+    if (combat.activeCombatantId === null && chaseRacePaused(scene)) {
+      throw new RealtimeError('RACE_PENDING');
+    }
 
     const pointer = previousTurn(toCombatView(combat));
     await applyTurnPointer(deps, combat, pointer, false);
@@ -889,7 +935,7 @@ export const combatPreviousEvent = defineEvent<undefined, CombatView>({
 export const combatEndEvent = defineEvent({
   name: 'combat:end',
   role: ROLE_GM,
-  handler: async ({ deps, socket }) => {
+  handler: async ({ deps, socket, user }) => {
     const campaignId = requireCampaignId(socket.data);
     const sceneId = socket.data.viewedSceneId;
     const scene = await requireCampaignScene(deps.ctx.prisma, campaignId, sceneId);
@@ -900,6 +946,8 @@ export const combatEndEvent = defineEvent({
     await calmVisibleFoes(deps, campaignId, scene);
     // Ending clears the state completely — round history is not persisted.
     await deps.ctx.prisma.combat.deleteMany({ where: { sceneId: scene.id } });
+    // Wyścig czekający na kubki gaśnie z walką (72c) — karta zostaje jako przerwana.
+    await cancelChaseRace(deps, campaignId, user, scene.id);
     // Prędkość aut pościgu (etap 72) żyje tylko w walce — poza nią to zapowiedź startowej.
     await resetChaseCombat(deps.ctx.prisma, scene.id);
     if (scene.kind === 'chase') await emitSceneView(deps, campaignId, scene.id);

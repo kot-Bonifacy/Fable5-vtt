@@ -1,5 +1,6 @@
 import {
   cardSubmissionHeadline,
+  chaseRacePending,
   isCardSubmissionOpen,
   isCheckRequestOpen,
   type CharacterView,
@@ -30,7 +31,9 @@ export type GmAttentionKind =
   | 'scene'
   | 'spawn'
   | 'player'
-  | 'card';
+  | 'card'
+  /** Wyścig rundy pościgu czeka na kubki graczy (etap 72c). */
+  | 'race';
 
 /** Zakładka panelu bocznego, na której MG podejmuje decyzję. */
 export type GmAttentionTab = 'chat' | 'characters' | 'scenes';
@@ -54,6 +57,7 @@ export interface GmAttentionItem {
  */
 export const GM_DECISION_KINDS: ReadonlySet<GmAttentionKind> = new Set<GmAttentionKind>([
   'request',
+  'race',
 ]);
 
 /**
@@ -133,6 +137,19 @@ export function gmAttentionItems(sources: GmAttentionSources): GmAttentionItem[]
           typeof message.request.system.sneakTokenId === 'string'
             ? `${message.request.characterName} prosi o skradanie`
             : `${message.request.characterName} prosi o Test: ${message.request.rollLabel}`,
+        tab: 'chat',
+        messageId: message.id,
+      });
+    }
+    // Etap 72c: runda pościgu stoi na Wyścigu — MG rzuca za gracza albo go pomija.
+    if (message.kind === 'chaserace' && message.chaseRace?.status === 'waiting') {
+      const waiting = chaseRacePending(message.chaseRace).map(
+        (row) => row.driverName || row.vehicleName,
+      );
+      items.push({
+        key: gmAttentionKey.message(message.id),
+        kind: 'race',
+        text: `Wyścig — runda ${message.chaseRace.round} czeka na: ${waiting.join(', ')}`,
         tab: 'chat',
         messageId: message.id,
       });

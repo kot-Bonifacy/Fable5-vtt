@@ -15,7 +15,10 @@ import {
   cpredPedalProblem,
   cpredPedalSpeed,
   cpredRaceBonuses,
+  cpredRaceFullSheet,
+  cpredRaceRollMode,
   cpredRaceRollers,
+  cpredRaceWeakDriver,
   cpredRoadSquaresPerRound,
   cpredSheetWeakDriver,
   cpredSlowBehindSpeed,
@@ -226,6 +229,47 @@ describe('słaby kierowca — próg z Moto (NOM-03)', () => {
     const sailor = sheet(null, 0, { skills: { driving: 8, 'pilot-sea-vehicle': 1 } });
     expect(cpredSheetWeakDriver(sailor, registry, 'boat')).toBe(true);
     expect(cpredSheetWeakDriver(sailor, registry, 'car')).toBe(false);
+  });
+});
+
+describe('Wyścig — jak rzuca kierowca bez pełnej karty (72c)', () => {
+  /** Karta, która nie mieści się w szybkim edytorze statysty: pancerz spoza jego dwóch rzędów. */
+  const fullNpc = (extra: Record<string, unknown> = {}) =>
+    sheet(null, 0, {
+      armor: [{ id: 'kevlar-row', sp: 7, location: 'body' }] as unknown,
+      ...extra,
+    });
+
+  it('statysta rzuca z karty, a funkcjonariusz Wsparcia (Wartość bojowa) czystym 1k10', () => {
+    expect(cpredRaceRollMode(sheet(null, 0))).toBe('sheet');
+    const backup = sheet(null, 0, {
+      statBlock: { combatValue: 14, weaponSkill: null, noBulletDodge: true, hpMax: 30 },
+    });
+    expect(cpredRaceRollMode(backup)).toBe('die');
+    expect(cpredRaceFullSheet(backup, true)).toBe(false);
+  });
+
+  it('statysta bez Prowadzenia nie podstawia ogólnego poziomu broni — sama Cecha + 1k10', () => {
+    const statist = sheet(null, 0, {
+      statBlock: { combatValue: null, weaponSkill: 6, noBulletDodge: false, hpMax: 20 },
+    });
+    const planned = planCpredRoll(statist, registry, { kind: 'skill', skillId: 'driving' });
+    expect(planned.ok).toBe(true);
+    if (!planned.ok) return;
+    expect(planned.plan.modifierTotal).toBe(statist.stats.ref);
+  });
+
+  it('reguła słabego kierowcy: postać gracza i pełna karta NPC-a, nie statysta (MG 20.11)', () => {
+    const statist = sheet(null, 0);
+    expect(cpredRaceFullSheet(statist, false)).toBe(false);
+    expect(cpredRaceWeakDriver(statist, registry, 'car', false)).toBe(false);
+    // Ta sama pusta karta jako postać gracza — reguła działa.
+    expect(cpredRaceWeakDriver(statist, registry, 'car', true)).toBe(true);
+    expect(cpredRaceFullSheet(fullNpc(), false)).toBe(true);
+    expect(cpredRaceWeakDriver(fullNpc(), registry, 'car', false)).toBe(true);
+    expect(cpredRaceWeakDriver(fullNpc({ skills: { driving: 6 } }), registry, 'car', false)).toBe(
+      false,
+    );
   });
 });
 

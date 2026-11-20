@@ -8,7 +8,6 @@ import { startFromPoT6 } from '../../fixtures/regresja.ts';
 import { DEAD_GATEWAY } from '../../fixtures/security.ts';
 import { emitAck } from '../../fixtures/socket.ts';
 import { closeNotices } from '../../fixtures/table.ts';
-import { scriptDice } from '../../instance/instance.ts';
 
 /**
  * Etap 72b2 — grupa „Pojazd” w lewej belce. Scena pościgu jedzie w lewo, jezdnia
@@ -164,6 +163,9 @@ test.describe.serial('@szybkie T72b kokpit: grupa „Pojazd” w belce', () => {
       );
     }
     dataOf(await emitAck(gm, 'combat:next', undefined));
+    // Runda 1 staje na Wyścigu (72c) — czeka na kubek Oli; ten plik jest
+    // o belce, więc MG Wyścig pomija (o nim jest `t72c-wyscig`).
+    dataOf(await emitAck(gm, 'combat:next', undefined));
     await closeNotices(ola.page);
     await closeNotices(mg.page);
   });
@@ -212,8 +214,8 @@ test.describe.serial('@szybkie T72b kokpit: grupa „Pojazd” w belce', () => {
     await expect(group.getByRole('button', { name: /^Jedź/ })).toContainText('Akcja Ruchu');
     await group.screenshot({ path: test.info().outputPath('pojazd-wybor.png') });
 
-    // Iskra: REF 7 + Prowadzenie 0 — słaby kierowca rzuca Test zwykłej jazdy (do 72c).
-    scriptDice([9]);
+    // Iskra jest słabym kierowcą (REF 7 + Prowadzenie 0), ale od 72c Test
+    // zwykłej jazdy rzuca w Wyścigu na początku rundy, nie przy „Jedź”.
     await group.getByRole('button', { name: /^Jedź/ }).click();
     // +50 mil/h (30 Ruchu) przy prędkości pościgu 20: (30 − 20) / 4 = 2,5 kratki w lewo.
     await expect
@@ -243,6 +245,8 @@ test.describe.serial('@szybkie T72b kokpit: grupa „Pojazd” w belce', () => {
   });
 
   test('runda 2: kadr wraca za autem Iskry, a przesunięcie trafia do sceny (Firefox)', async () => {
+    dataOf(await emitAck(gm, 'combat:next', undefined));
+    // Wyścig rundy 2 — MG pomija (72c).
     dataOf(await emitAck(gm, 'combat:next', undefined));
     // Auto kadru ma 30 Ruchu, więc stoi znów na 16,8; kadr przesunął się o −2,5.
     await expect

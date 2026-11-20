@@ -16,6 +16,7 @@ import type {
   SightingLogEntry,
   JournalLogEntry,
   RandomTableRollEntry,
+  ChaseRaceLogEntry,
   TimeLogEntry,
   RollGesture,
   SessionUser,
@@ -167,6 +168,8 @@ export function toChatMessageView(message: StoredMessage): ChatMessageView {
       for (const step of entry.steps ?? []) step.roll.skin = message.author.diceSkin;
     }
     view.rolltable = entry;
+  } else if (message.kind === 'chaserace' && message.payload) {
+    view.chaseRace = JSON.parse(message.payload) as ChaseRaceLogEntry;
   }
   // Etap 60c: ten sam kolor u każdego widza, więc wpisany tu, przed
   // przycięciem per widz — i w historii, i w każdym dostarczeniu.
@@ -260,6 +263,19 @@ export function redactChatMessage(message: ChatMessageView, user: SessionUser): 
     view = { ...view, inventory: named };
   }
 
+  // Wyścig (72c): wynik kierowcy-NPC-a jest jawny, ale z czego się składa —
+  // REF i Umiejętność z jego karty — wie tylko MG. Kości i rozbicie gracz
+  // dostaje tylko przy kierowcach-graczach.
+  const race = view.chaseRace;
+  if (race && race.rows.some((row) => row.ownerId === null && (row.dice || row.breakdown))) {
+    const rows = race.rows.map((row) => {
+      if (row.ownerId !== null) return row;
+      const { dice: _dice, breakdown: _breakdown, ...bare } = row;
+      return bare;
+    });
+    view = { ...view, chaseRace: { ...race, rows } };
+  }
+
   const damage = view.damage;
   if (!damage) return view;
   if (damage.targetOwnerId && damage.targetOwnerId === user.id) return view;
@@ -347,6 +363,9 @@ export function visibleTo(user: SessionUser) {
               // karta należy do stołu MG, także wystawiona z drugiego konta MG.
               'rolltable',
               'gmrolltable',
+              // Wyścig rundy pościgu (72c) jest jawny — z powodu, dla którego
+              // jest tu `time`: bez wpisu MG widziałby tylko własne karty.
+              'chaserace',
             ],
           },
         },
@@ -381,7 +400,18 @@ export function visibleTo(user: SessionUser) {
       {
         prep: false,
         kind: {
-          in: ['say', 'roll', 'damage', 'action', 'journal', 'time', 'recovery', 'rolltable'],
+          in: [
+            'say',
+            'roll',
+            'damage',
+            'action',
+            'journal',
+            'time',
+            'recovery',
+            'rolltable',
+            // Wyścig (72c): zryw i tak widać na mapie, a gracz ma wiedzieć, z kim przegrał.
+            'chaserace',
+          ],
         },
       },
       { authorId: user.id },

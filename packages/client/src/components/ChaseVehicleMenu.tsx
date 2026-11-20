@@ -114,6 +114,10 @@ export function chaseErrorText(code: string | undefined): string {
       return 'Bot jedzie tylko jako pasażer — nie prowadzi.';
     case 'NOT_YOUR_TURN':
       return 'To nie jest twoja tura.';
+    // Etap 72c: Wyścig na początku rundy.
+    case 'RACE_NOT_WAITING':
+    case 'RACE_NOT_FOUND':
+      return 'Ten Wyścig jest już rozstrzygnięty.';
     case 'NO_ACTION_LEFT':
       return 'Nie masz już Akcji w tej turze.';
     // Etap 65d1: PUK 0.

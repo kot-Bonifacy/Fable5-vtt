@@ -35,6 +35,11 @@ describe('hudTurnRefusal', () => {
   it('MG nie dostaje odmowy nigdy', () => {
     expect(hudTurnRefusal(combat(0, null), 'kruk', true)).toBeNull();
   });
+
+  it('runda stojąca na Wyścigu (72c) mówi o Wyścigu, a tura ukrytego NPC-a — o cudzej turze', () => {
+    expect(hudTurnRefusal(combat(2, null), 'kruk', false, 2)).toMatch(/czeka na Wyścig/);
+    expect(hudTurnRefusal(combat(2, null), 'kruk', false, null)).toMatch(/nie jest tura/);
+  });
 });
 
 /** Zaległość 14.11 (pkt 2): „ODMOWA” na belce urządzenia zaraz po udanym strzale. */

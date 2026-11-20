@@ -240,10 +240,20 @@ describe('etap 65e: przeszkody, ruch uliczny i kolczatka', () => {
   const rollingC = () =>
     built.prisma.sceneVehicle.update({ where: { id: carC.id }, data: { speed: 40 } });
 
+  /**
+   * „Następna tura” MG; runda stojąca na Wyścigu (72c, kubek Vex) — drugie
+   * kliknięcie MG go pomija, bo te testy nie są o Wyścigu.
+   */
+  const next = async (label: string) => {
+    const view = data(await emitAck<CombatView>(gm, 'combat:next'), label);
+    if (view.round < 1 || view.activeCombatantId !== null) return view;
+    return data(await emitAck<CombatView>(gm, 'combat:next'), `${label} — pomija Wyścig`);
+  };
+
   const nextRound = async (label: string) => {
-    data(await emitAck<CombatView>(gm, 'combat:next'), `${label}: Vex`);
+    await next(`${label}: Vex`);
     await rollingC();
-    data(await emitAck<CombatView>(gm, 'combat:next'), `${label}: nowa runda`);
+    await next(`${label}: nowa runda`);
   };
 
   it('stawia scenę: auto Vex na dolnym pasie, auto gangu z wyrzutnią na górnym', async () => {
@@ -397,7 +407,7 @@ describe('etap 65e: przeszkody, ruch uliczny i kolczatka', () => {
         data: { initiative: row.tokenId === gangerToken.id ? 15 : 12 },
       });
     }
-    data(await emitAck<CombatView>(gm, 'combat:next'), 'combat:next round 1');
+    await next('combat:next round 1');
     // Kadr: auto drużyny 1800 → 2100 (70% z 3000), reszta o 3 kratki za nim.
     expect((await placedRow(carA.id)).x).toBe(2100);
     expect((await placedRow(carB.id)).x).toBe(1300);

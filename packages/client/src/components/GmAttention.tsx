@@ -20,6 +20,7 @@ const KIND_ICON: Record<GmAttentionKind, string> = {
   spawn: '🚩',
   player: '👤',
   card: '📂',
+  race: '🏁',
 };
 
 /**

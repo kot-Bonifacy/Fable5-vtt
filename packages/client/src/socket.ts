@@ -1878,6 +1878,13 @@ export function sendCharacterRoll(
 export const callCheck = (payload: CheckCallPayload<CpredRollRequest>) =>
   emitSceneAck<{ messageId: number }>('check:call', payload);
 
+/** „Rzuć za gracza” na karcie Wyścigu (etap 72c, MG) — z karty, bez Szczęścia. */
+export const rollChaseRaceFor = (messageId: number, vehicleId: string) =>
+  emitSceneAck('chase:race-roll', { messageId, vehicleId });
+
+/** „Pomiń Wyścig” (etap 72c, MG) — kto nie rzucił, jedzie bez zrywu; runda rusza. */
+export const skipChaseRace = (messageId: number) => emitSceneAck('chase:race-skip', { messageId });
+
 /** „Odwołaj" na karcie wezwania — działa, dopóki nikt nie potrząsnął kubkiem. */
 export const cancelCheck = (messageId: number) =>
   emitSceneAck('check:cancel', { messageId } satisfies CheckCancelPayload);
@@ -4055,6 +4062,9 @@ export function combatErrorText(code: string): string {
       return 'Nie ma trwającej walki na tej scenie.';
     case 'TURN_MOVED_ON':
       return 'Kolejka poszła już dalej — poczekaj, aż opadną kości, i spójrz, czyja teraz tura.';
+    // Etap 72c: runda pościgu stoi na Wyścigu.
+    case 'RACE_PENDING':
+      return 'Runda czeka na Wyścig — rzuć za gracza albo pomiń go; cofnąć się nie ma do czego.';
     case 'COMBATANT_NOT_FOUND':
       return 'Nie znaleziono uczestnika walki — odśwież stronę.';
     case 'INITIATIVE_ALREADY_ROLLED':

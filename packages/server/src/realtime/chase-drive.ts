@@ -9,10 +9,8 @@ import type {
   VehicleDriveResult,
 } from '@vtt/shared';
 import {
-  CPRED_ACTION_MANEUVER,
   CPRED_ACTION_MOVE,
   CPRED_ACTION_NITRO,
-  CPRED_DRIVING_TEST_DV,
   ROLE_GM,
   chaseAnchorShift,
   chaseAnchorVehicle,
@@ -28,23 +26,17 @@ import {
   cpredCanSlowBehind,
   cpredCoastSpeed,
   cpredDriveAdvance,
-  cpredDrivingTestNeeded,
-  cpredEffectiveStat,
   cpredLostControlLane,
   cpredLostControlNote,
   cpredLostControlSpeed,
-  cpredMarkDrivingTested,
   cpredMarkRammed,
   cpredPedalProblem,
   cpredPedalSpeed,
-  cpredSkillLevel,
   cpredSlowBehindSpeed,
   cpredStartSpeed,
-  cpredVehicleSkillId,
   cpredVehicleWrecked,
   isCpredPedal,
   nextTurn,
-  parseCharacterData,
   readCpredTurn,
   readCpredVehicle,
   sortCombatants,
@@ -69,13 +61,7 @@ import {
   type PlacedVehicle,
 } from './chase.js';
 import { crossSpikes, driftObstaclesRound, obstaclePendingFor } from './chase-obstacles.js';
-import {
-  firstChaseContact,
-  obstacleBoxId,
-  postServerRoll,
-  pushVehicleBehind,
-  resolveRam,
-} from './chase-ram.js';
+import { firstChaseContact, obstacleBoxId, pushVehicleBehind, resolveRam } from './chase-ram.js';
 import {
   applyTurnPointer,
   emitCombatOfScene,
@@ -89,7 +75,6 @@ import {
 } from './combat.js';
 import { requireTurnSpend } from './combat-actions.js';
 import { logSpentAction } from './combat-log.js';
-import { rollServerSkillTest } from './character-rolls.js';
 import { createMixedRng } from './dice-rng.js';
 import { clearGrapplesOf } from './grapple-state.js';
 import { RealtimeError, defineEvent, type RealtimeDeps } from './registry.js';
@@ -214,48 +199,6 @@ async function nitroThisTurn(prisma: PrismaClient, placed: PlacedWithScene): Pro
   return (
     row !== null && readCpredTurn(row.turnState ?? undefined).action?.id === CPRED_ACTION_NITRO
   );
-}
-
-/**
- * „Zwykła jazda” (s. 192): kierowca z REF + Prowadzenie ≤ 9 w każdej swojej
- * Turze rzuca Test PT 10 — serwer rzuca go sam przy pierwszej jeździe w turze,
- * karta rzutu leci do stołu z kośćmi 3D. Test idzie **w ramach Akcji Ruchu**
- * (decyzja MG z 03.11), a turę z rzuconym Testem pamięta `drivingTested`.
- * Zwraca `false`, gdy kierowca go oblał — auto traci kontrolę.
- *
- * Do etapu 72c (Wyścig na początku rundy przejmuje ten rzut).
- */
-async function drivingTestPassed(
-  deps: RealtimeDeps,
-  campaignId: string,
-  placed: PlacedWithScene,
-  driver: Token,
-  combatant: { id: string; turnState: string | null },
-  user: SessionUser,
-): Promise<boolean> {
-  if (!driver.characterId) return true;
-  const character = await deps.ctx.prisma.character.findUnique({
-    where: { id: driver.characterId },
-  });
-  if (!character) return true;
-  const data = parseCharacterData(character.data, deps.ctx.cpred);
-  const skillId = cpredVehicleSkillId(readCpredVehicle(placed.vehicle.system).kind);
-  if (!cpredDrivingTestNeeded(cpredEffectiveStat(data, 'ref'), cpredSkillLevel(data, skillId))) {
-    return true;
-  }
-  const turn = readCpredTurn(combatant.turnState ?? undefined);
-  // Manewr (65d2) to Test prowadzenia trudniejszy od zwykłej jazdy — zastępuje go.
-  if (turn.drivingTested === true || turn.action?.id === CPRED_ACTION_MANEUVER) return true;
-  await deps.ctx.prisma.combatant.update({
-    where: { id: combatant.id },
-    data: { turnState: JSON.stringify(cpredMarkDrivingTested(turn)) },
-  });
-  const roll = await rollServerSkillTest(deps, driver, skillId, CPRED_DRIVING_TEST_DV);
-  if (roll) {
-    roll.title = `Zwykła jazda: ${roll.title ?? ''}`.trim();
-    await postServerRoll(deps, campaignId, user, placed.sceneId, roll);
-  }
-  return roll?.outcome?.success === true;
 }
 
 // ───────────────────────── Jazda z zderzeniami ─────────────────────────
@@ -647,8 +590,8 @@ export const vehicleDriveEvent = defineEvent<VehicleDrivePayload, VehicleDriveRe
         );
       }
     }
-    // Test zwykłej jazdy słabego kierowcy (do 72c) idzie w ramach tej jazdy.
-    const passed = await drivingTestPassed(deps, campaignId, placed, driver, found.combatant, user);
+    // Słaby kierowca rzuca Test zwykłej jazdy w Wyścigu na początku rundy
+    // (72c) — przy „Jedź” już nie; utrata kontroli odmawia wyżej.
     if (costs) {
       await requireTurnSpend(
         deps,
@@ -661,11 +604,7 @@ export const vehicleDriveEvent = defineEvent<VehicleDrivePayload, VehicleDriveRe
         { silent: true },
       );
     }
-    if (!passed) {
-      await loseControl(deps, campaignId, user, placed.id);
-    } else {
-      await executeDrive(deps, campaignId, user, placed, plan, decision, round);
-    }
+    await executeDrive(deps, campaignId, user, placed, plan, decision, round);
     return { moved: true, vehicle: await placedView(prisma, placed.sceneId, placed.id) };
   },
 });

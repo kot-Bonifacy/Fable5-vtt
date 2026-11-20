@@ -17,6 +17,17 @@ import { openCallDialog } from './DiceCup.js';
  * Skutków tu nie ma świadomie: co się stało po nieudanym Teście, rozstrzyga MG
  * ręką (decyzja MG z 02.09.2026). Karta dowozi wyraźny werdykt i tyle.
  */
+/**
+ * Werdykt na karcie wezwania. Wyścig pościgu (72c) nie ma progu — zryw liczy
+ * się z wyników wszystkich kierowców — a słaby kierowca rzuca w nim Test
+ * zwykłej jazdy, więc „Zdane / Niezdane” mówiłoby nie to, co się stało.
+ */
+function checkCallVerdict(entry: CheckCallEntry, success: boolean): string {
+  if (!('chaseRace' in entry.system)) return success ? 'Zdane' : 'Niezdane';
+  if (entry.dv === undefined) return 'Wyścig';
+  return success ? 'Panuje nad autem' : 'Utrata kontroli';
+}
+
 export function CheckCallRow({
   message,
   entry,
@@ -70,7 +81,7 @@ export function CheckCallRow({
               entry.resolved.success ? 'success' : 'failure'
             }`}
           >
-            {entry.resolved.success ? 'Zdane' : 'Niezdane'} · wynik {entry.resolved.total}
+            {checkCallVerdict(entry, entry.resolved.success)} · wynik {entry.resolved.total}
           </span>
           <span className="chat-attack-detail">rzucał: {entry.resolved.byName}</span>
         </div>

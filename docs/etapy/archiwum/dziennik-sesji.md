@@ -1,5 +1,37 @@
 # Dziennik sesji — archiwum
 
+### Sesja 19.11 (druga) — etap 72b1: serwer nowej jazdy, tymczasowy kokpit w menu auta
+
+**Zrobione (czeka na wdrożenie, migracja `20261119200000_chase_speed_lanes`):**
+
+- **Podział 72b (MG):** 72b1 serwer, 72b2 klient (grupa „Pojazd”, bieżnia, E2E, oględziny).
+  Decyzje MG z pytań na starcie: **koniec tury bez „Jedź” przy zderzeniu — zwolnij, a gdy hamulec
+  nie wystarcza, taran**; **cofające się auto staje przed autem z tyłu, wybór ma tamten
+  kierowca**; **kokpit MG dla aut NPC-ów już teraz** (`vehicle:drive` przyjmuje MG w turze
+  kierowcy-NPC-a).
+- **`realtime/chase-drive.ts`**: `vehicle:drive` (zderzenie wraca pytaniem przed wydatkiem),
+  `chaseTurnEnd` (hak `advanceTurn` przed `runTurnEnd`), `startChaseRound` (od rundy 1, zastępuje
+  `driftChaseRound` i `startChaseMomentum`), automat utraty kontroli (`loseControl`, 1k6 na pas),
+  odpadanie na początku rundy, „Ucieka” MG przez `escapeFromChase`. Pomocnicze kierowcy przeniesione
+  z `chase-driving.ts`. Nagłe zatrzymanie zbija prędkość do 0. Umowa na górze `mapa` i `tura`,
+  pułapki tamże (sonda styku przy taranie, hak przy jednym uczestniku i po „Cofnij”).
+- **Widok**: `lane`, `maxSpeed`, `raceBonus`, `moved`; `moveSq` i `driftSq` znikły; `ChaseSettings`
+  z `lanes`, `role`, `anchorId`, `pursuitSpeed`, `shiftSq`. Stare sceny przyciąga do pasów start
+  serwera.
+- **Poza planem, żeby aplikacja działała do 72b2:** gracz w walce nie ciągnie już auta
+  (`USE_COCKPIT`), więc w menu auta stoją tymczasowe pozycje „Jazda” (Gaz, Hamulec, Pas wyżej /
+  niżej, podgląd „Po ruchu”, „Jedź”), a zderzenie pyta paskiem („Taranuj”, „Zwolnij za nim”,
+  „Zepchnij”). Bieżnia w walce jedzie z prędkością pościgu (bez doganiania przesunięcia).
+- Rozstrzygnięcia bez pytań w pliku etapu pod 72b1 (pierwsza runda bez ruchu aut bez tury,
+  odpadanie dopiero na początku rundy, piesi bez przesunięcia, Nitro przed „Jedź”, „goni / ucieka”
+  bez przełącznika do 72f).
+
+Testy: `shared` 3241 (+1), serwer 1865/1865 (pełna suita po ostatnich zmianach — patrz niżej),
+klient 515; lint i `tsc` trzech pakietów czyste. **Nie oglądano w przeglądarce** — oględziny
+(Firefox) należą do 72b2 wg podziału; zmiana UI to tymczasowe pozycje menu auta. **E2E nie
+puszczane: `48-poscig/t65-przeszkody` jest teraz czerwony** (sztywne przesunięcie kadru zmienia
+pozycje, gracz nie ciągnie auta) — do 72b2. `specs/99-zapomnij/` to dalej cudze oględziny z 14.11.
+
 ### Sesja 19.11 — etap 72a: rdzeń modelu jazdy w `shared`, jedna wbudowana droga
 
 **Zrobione (aplikacja działa po staremu poza kreatorem; bez migracji):**

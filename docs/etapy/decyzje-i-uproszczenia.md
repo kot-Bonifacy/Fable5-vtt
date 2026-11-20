@@ -49,8 +49,22 @@ tylko Testami i Manewrami (s. 191–192); liczby niżej to VTT.
 - **Nagłe zatrzymanie** udane zbija prędkość do zera od razu.
 - **Auto, które wyjechało za krawędź, odpada dopiero na początku rundy** — po sztywnym przesunięciu,
   bo kamera jedzie za autem kadru i liczy się kadr z tej chwili.
-- **Do 72c** słaby kierowca rzuca Test zwykłej jazdy przy pierwszym „Jedź” w turze (także jazda
-  prosto); kto nie wciśnie „Jedź”, nie rzuca. Wyścig na początku rundy go zastąpi.
+- **Wyścig (72c, decyzje MG z 15.11 i 20.11)** — na początku każdej rundy walki kierowcy aut
+  w kadrze (z turą w kolejce, z kontrolą, silnikiem i nie we wraku) rzucają Test przeciwstawny
+  Prowadzenia; zryw `⌊(wynik − najniższy) / 2⌋` kratek, najwyżej 5, dolicza się do ruchu w turze.
+  Za NPC-ów rzuca serwer bez kości 3D (jedna karta czatu), gracz — kubkiem na wezwanie,
+  a **runda stoi bez tury**, aż wszyscy gracze rzucą. MG rzuca za gracza (z karty, bez
+  Szczęścia) albo go pomija — „Pomiń Wyścig” albo zwykłą „Następną turą”; pominięty jedzie bez
+  zrywu, bez utraty kontroli, a jego brak wyniku nie jest „najniższym”. Koniec walki przerywa
+  czekający Wyścig. Wynik NPC-a jest jawny, jego rozbicie (REF, Umiejętność) — tylko u MG.
+- **Kto jak rzuca Wyścig:** z karty planerem — REF + Umiejętność prowadzenia **nazwana na
+  karcie** (z czipem i Moto) + 1k10; statysta bez Prowadzenia wychodzi więc na samą Cechę + 1k10
+  (ogólny poziom broni się nie podstawia); figura z Wartością bojową (Wsparcie) i figura bez karty
+  — czyste 1k10. **Słaby kierowca** (REF + Prowadzenie + Moto ≤ 9, NOM-03) to tylko **postać
+  gracza albo NPC z pełną kartą** (taką, która nie mieści się w szybkim edytorze statysty —
+  decyzja MG 20.11); jego rzut Wyścigu jest Testem zwykłej jazdy (PT 10, zdaje się powyżej),
+  porażka to utrata kontroli od razu (prędkość −10), ruch automatem 1k6 na koniec jego tury.
+  Test zwykłej jazdy przy „Jedź” zniknął.
 
 ## Role po weryfikacji (etap 71, 14–18.11.2026)
 

@@ -3,6 +3,7 @@ import type { CpredCharacterData, CpredRegistry } from './character.js';
 import { cpredSkillLevel } from './chromestats.js';
 import { cpredSheetMoto } from './roleability.js';
 import { cpredEffectiveStat } from './stateffects.js';
+import { cpredStatistQuickFits } from './statist.js';
 import {
   CPRED_DRIVING_TEST_DV,
   CPRED_DRIVING_TEST_THRESHOLD,
@@ -155,6 +156,47 @@ export function cpredSheetWeakDriver(
     cpredSkillLevel(data, skillId),
     cpredSheetMoto(data, registry),
   );
+}
+
+/**
+ * Jak kierowca rzuca Wyścig (decyzja MG z 15.11):
+ *
+ * - `sheet` — planerem z karty: REF + Umiejętność prowadzenia **nazwana na
+ *   karcie** (z czipem i Moto) + 1k10, z karami jak każdy Test. Statysta bez
+ *   tej Umiejętności rzuca tak samo, więc wychodzi mu sama Cecha + 1k10 —
+ *   ogólny poziom broni z bloku statystyk pod prowadzenie się nie podstawia;
+ * - `die` — czyste 1k10: figura z Wartością bojową (funkcjonariusz Wsparcia,
+ *   s. 158) nie ma REF w tabeli, a Wartość bojowa do Wyścigu nie wchodzi
+ *   (jak w inicjatywie, decyzja z 30c).
+ */
+export type CpredRaceRollMode = 'sheet' | 'die';
+
+export function cpredRaceRollMode(data: Pick<CpredCharacterData, 'statBlock'>): CpredRaceRollMode {
+  return data.statBlock?.combatValue != null ? 'die' : 'sheet';
+}
+
+/**
+ * Pełna karta w sensie reguły słabego kierowcy (decyzja MG z 20.11): postać
+ * gracza zawsze, NPC — gdy jego karta nie mieści się w szybkim edytorze
+ * statysty (`cpredStatistQuickFits`), czyli ktoś ją wypełnił jak postać.
+ * Statysta i Wsparcie od samego rzutu Wyścigu kontroli nie tracą.
+ */
+export function cpredRaceFullSheet(data: CpredCharacterData, playerOwned: boolean): boolean {
+  if (cpredRaceRollMode(data) === 'die') return false;
+  return playerOwned || !cpredStatistQuickFits(data);
+}
+
+/**
+ * Słaby kierowca Wyścigu: pełna karta (`cpredRaceFullSheet`) i REF +
+ * Umiejętność prowadzenia + Moto ≤ 9 (`cpredSheetWeakDriver`, NOM-03).
+ */
+export function cpredRaceWeakDriver(
+  data: CpredCharacterData,
+  registry: CpredRegistry,
+  kind: CpredVehicleKind,
+  playerOwned: boolean,
+): boolean {
+  return cpredRaceFullSheet(data, playerOwned) && cpredSheetWeakDriver(data, registry, kind);
 }
 
 export interface CpredRaceEntry {

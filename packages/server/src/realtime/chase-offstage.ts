@@ -1,6 +1,11 @@
-import { sceneVehicleOffstage } from '@vtt/shared';
+import {
+  chaseRacePending,
+  sceneVehicleOffstage,
+  type ChaseRaceLogEntry,
+  type ChaseRaceWaitView,
+} from '@vtt/shared';
 import type { PrismaClient } from '../db.js';
-import type { Token } from '../generated/prisma/client.js';
+import type { Scene, Token } from '../generated/prisma/client.js';
 
 /**
  * Załoga auta poza pościgiem (66c) — liść bez zależności od `tokens.ts`
@@ -50,4 +55,46 @@ export async function resetChaseCombat(prisma: PrismaClient, sceneId: string): P
     where: { id: sceneId, kind: 'chase' },
     data: { chasePursuitSpeed: null, chaseRace: null },
   });
+}
+
+// ───────── Wyścig rundy (etap 72c) — stan w `Scene.chaseRace`, czytany też przez widok sceny ─────────
+
+/** Wyścig zapisany w `Scene.chaseRace` — karta czatu i to, czy runda na niego czeka. */
+export interface StoredRace extends ChaseRaceLogEntry {
+  messageId: number;
+  /** Runda stoi bez tury i rusza po ostatnim rzucie. */
+  paused: boolean;
+}
+
+export interface StoredRaceState {
+  round: number;
+  race?: StoredRace;
+}
+
+export function readRaceState(scene: Pick<Scene, 'chaseRace'>): StoredRaceState | null {
+  if (!scene.chaseRace) return null;
+  try {
+    const parsed = JSON.parse(scene.chaseRace) as Partial<StoredRaceState>;
+    if (typeof parsed.round !== 'number') return null;
+    return parsed as StoredRaceState;
+  } catch {
+    return null;
+  }
+}
+
+/** Wyścig sceny, który czeka na kubki — do widoku sceny (pas inicjatywy). */
+export function chaseRaceWaitView(scene: Pick<Scene, 'chaseRace'>): ChaseRaceWaitView | null {
+  const race = readRaceState(scene)?.race;
+  if (!race || race.status !== 'waiting') return null;
+  return {
+    round: race.round,
+    messageId: race.messageId,
+    waitingFor: chaseRacePending(race).map((row) => row.driverName || row.vehicleName),
+  };
+}
+
+/** Czy runda tej sceny stoi na Wyścigu (odmowa „Cofnij”, „Następna tura” = pomiń). */
+export function chaseRacePaused(scene: Pick<Scene, 'chaseRace'>): boolean {
+  const race = readRaceState(scene)?.race;
+  return race !== undefined && race.status === 'waiting' && race.paused;
 }

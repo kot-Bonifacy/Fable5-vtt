@@ -561,13 +561,6 @@ export interface CpredTurnState {
    */
   runBlocked?: boolean;
   /**
-   * The driver already rolled this turn's „Zwykła jazda” Test (przegląd
-   * pościgu 03.11, decyzja MG): the Test is part of the Move Action, not of the
-   * Action, so it is remembered here instead of booking the Action — a weak
-   * driver can still fire one-handed or light the Nitro.
-   */
-  drivingTested?: boolean;
-  /**
    * The driver already rammed something this turn (decyzja MG z 06.11.2026,
    * rozegranie „Zastawu”): one ram per turn. Nitro buys 10 m and every ram
    * pushes the other car only ~2 m, so without the limit a single Move Action
@@ -874,7 +867,6 @@ export function readCpredTurn(raw: unknown): CpredTurnState {
   const blockedMove = typeof raw.blockedMove === 'string' ? raw.blockedMove : null;
   const deathSavePending = raw.deathSavePending === true;
   const runBlocked = raw.runBlocked === true;
-  const drivingTested = raw.drivingTested === true;
   const rammed = raw.rammed === true;
 
   let action: CpredSpentAction | null = null;
@@ -927,14 +919,8 @@ export function readCpredTurn(raw: unknown): CpredTurnState {
     blockedMove,
     deathSavePending,
     ...(runBlocked ? { runBlocked: true } : {}),
-    ...(drivingTested ? { drivingTested: true } : {}),
     ...(rammed ? { rammed: true } : {}),
   };
-}
-
-/** The turn after the driver's „Zwykła jazda” Test — it is not rolled again this turn. */
-export function cpredMarkDrivingTested(state: CpredTurnState): CpredTurnState {
-  return { ...state, drivingTested: true };
 }
 
 /** The turn in which the driver rammed — a second ram waits for the next turn. */

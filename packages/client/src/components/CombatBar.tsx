@@ -291,6 +291,8 @@ export function CombatBar() {
   );
   // RAW: a Mortally Wounded character rolls at the start of each of their turns.
   const deathSave = useDeathSavePrompt();
+  // Etap 72c: runda pościgu stoi bez tury, dopóki kierowcy-gracze nie rzucą Wyścigu.
+  const race = useSceneStore((s) => (s.scene?.kind === 'chase' ? s.scene.chase.race : null));
   useDeathSaveAutoLoad(deathSave);
 
   // „Rozpocznij walkę” bez NPC-a w kolejce (etap 50a): pierwszy klik tylko
@@ -599,6 +601,19 @@ export function CombatBar() {
       )}
       {/* „Następna tura” MG mieszka od 16.10 na dole lewego panelu, obok
           „Kończę turę” gracza (`HudEndTurn`). */}
+      {race && combat.round === race.round && activeId === null && (
+        <span
+          className="combat-bar-reminder combat-bar-race"
+          data-testid="combat-bar-race"
+          title={
+            isGm
+              ? 'Runda czeka na kubki kierowców. „Rzuć za…” i „Pomiń Wyścig” są na karcie Wyścigu; „Następna tura” też go pomija.'
+              : 'Runda rusza, gdy wszyscy kierowcy rzucą Wyścig — kubek świeci u tego, na kogo czekamy.'
+          }
+        >
+          🏁 Wyścig — czekam na: {race.waitingFor.join(', ')}
+        </span>
+      )}
       {/* Etap 20b: przy figurze prowadzonej przez bota. */}
       <BotTurnButton tokenId={acting?.tokenId ?? null} className="combat-bar-bot" />
       {reminders.length > 0 && (
