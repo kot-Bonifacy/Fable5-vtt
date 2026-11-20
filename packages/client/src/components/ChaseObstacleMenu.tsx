@@ -89,6 +89,14 @@ export function ChaseObstacleMenu() {
             <button
               type="button"
               className="context-menu-item"
+              title="Test REF + Prowadzenie przeciw PT 13: auto staje przed przeszkodą. Porażka — utrata kontroli i zderzenie."
+              onClick={() => act(() => answer(obstacle.id, 'stop'))}
+            >
+              Nagłe zatrzymanie (PT 13)
+            </button>
+            <button
+              type="button"
+              className="context-menu-item"
               title={chaseRamText(
                 chaseObstacleUnbreakable(obstacle.kind) ? 'concrete' : 'obstacle',
                 blocked.ramPlow,
@@ -134,50 +142,122 @@ function obstacleStateLine(
   return `${kind} · ${hp}${wait}`;
 }
 
+/** Co stoi przed zderzakiem auta i czeka na wybór jego kierowcy (65e, przegląd 03.11). */
+export interface ChaseBlocker {
+  /** Przeszkoda MG albo stojące auto (wrak, zgaszony silnik). */
+  kind: 'obstacle' | 'vehicle';
+  id: string;
+  name: string;
+  hp: number;
+  /** Beton (04.11.2026): taranowanie i nieudany Manewr robią z auta wrak. */
+  concrete: boolean;
+}
+
+/** To, co czeka przed zderzakiem tego auta — albo nic. */
+export function blockerFor(
+  vehicleId: string,
+  obstacles: readonly ChaseObstacleView[],
+  vehicles: readonly SceneVehicleView[],
+): ChaseBlocker | null {
+  const obstacle = obstacles.find((entry) => entry.blockingVehicleId === vehicleId);
+  if (obstacle) {
+    return {
+      kind: 'obstacle',
+      id: obstacle.id,
+      name: obstacle.name,
+      hp: obstacle.hp,
+      concrete: chaseObstacleUnbreakable(obstacle.kind),
+    };
+  }
+  const stalled = vehicles.find((entry) => entry.blockingVehicleId === vehicleId);
+  return stalled
+    ? { kind: 'vehicle', id: stalled.id, name: stalled.name, hp: stalled.hp, concrete: false }
+    : null;
+}
+
+/** Odpowiedź kierowcy (albo MG za niego) na to, co stoi przed zderzakiem. */
+export function answerBlocker(blocker: ChaseBlocker, choice: ChaseObstacleChoice): void {
+  if (blocker.kind === 'obstacle') {
+    answer(blocker.id, choice);
+    return;
+  }
+  void answerChaseVehicle(blocker.id, choice).then((ack) => {
+    if (!ack.ok) notifyRefusal('chase', chaseErrorText(ack.error));
+  });
+}
+
+/** „Barykada (30 PW)”, „Furgon (stoi na drodze)” — nazwa z tym, co o niej wiadomo. */
+export function blockerLabel(blocker: ChaseBlocker): string {
+  const hp =
+    blocker.kind === 'obstacle'
+      ? blocker.concrete
+        ? ' (beton)'
+        : blocker.hp > 0
+          ? ` (${blocker.hp} PW)`
+          : ''
+      : ` (${blocker.hp > 0 ? 'stoi na drodze' : 'wrak'})`;
+  return `${blocker.name}${hp}`;
+}
+
+/** Co zrobi taran w to, co stoi — przeszkoda trafia zawsze w przód. */
+function blockerRamText(blocker: ChaseBlocker, vehicle: SceneVehicleView): string {
+  return chaseRamText(
+    blocker.kind === 'obstacle' ? (blocker.concrete ? 'concrete' : 'obstacle') : 'vehicle',
+    vehicle.ramPlow,
+    true,
+  );
+}
+
+/**
+ * Trzy odpowiedzi na to, co stoi przed zderzakiem (etap 72d): dwa Manewry
+ * PT 13 i taran. Ta sama lista w pasku i w grupie „Pojazd”.
+ */
+export const BLOCKER_CHOICES: readonly {
+  choice: ChaseObstacleChoice;
+  label: string;
+  cost: string | null;
+}[] = [
+  { choice: 'swerve', label: 'Gwałtowny skręt', cost: 'PT 13' },
+  { choice: 'stop', label: 'Nagłe zatrzymanie', cost: 'PT 13' },
+  { choice: 'ram', label: 'Taranuj', cost: null },
+];
+
+/** Zdanie o skutku jednej odpowiedzi — do dymku w belce. */
+export function blockerChoiceText(
+  blocker: ChaseBlocker,
+  vehicle: SceneVehicleView,
+  choice: ChaseObstacleChoice,
+): string {
+  const crash = blocker.concrete
+    ? 'utrata kontroli i rozbicie auta'
+    : 'utrata kontroli i zderzenie';
+  switch (choice) {
+    case 'swerve':
+      return `Test REF + Prowadzenie przeciw PT 13: auto omija przeszkodę. Porażka — ${crash}.`;
+    case 'stop':
+      return `Test REF + Prowadzenie przeciw PT 13: auto staje przed przeszkodą (0 mil/h). Porażka — ${crash}.`;
+    case 'ram':
+      return blockerRamText(blocker, vehicle);
+  }
+}
+
 /**
  * Pasek „Przeszkoda na drodze” (65e): stoi u kierowcy-gracza, przed którego
  * autem przeszkoda stanęła, a u MG — przy aucie, którego kierowcy nie prowadzi
- * żaden gracz (NPC). Jedna sprawa naraz, jak wezwanie do Manewru.
+ * żaden gracz (NPC). Jedna sprawa naraz, jak wezwanie do Manewru. Od etapu 72d
+ * ta sama decyzja stoi też wierszem w grupie „Pojazd” — pasek jest alarmem
+ * (MG 20.11), a oba miejsca gasną razem, bo czytają ten sam stan.
  */
 export function useObstacleNotice(): void {
   const obstacles = useChaseStore((s) => s.obstacles);
   const vehicles = useChaseStore((s) => s.vehicles);
   const tokens = useTokenStore((s) => s.tokens);
   const user = useAuthStore((s) => s.user);
-  // Przeszkoda MG (65e) albo stojące auto — wrak, zgaszony silnik (przegląd 03.11).
-  type Blocker = {
-    id: string;
-    name: string;
-    hp: number;
-    kind: 'obstacle' | 'vehicle';
-    /** Beton (04.11.2026): taranowanie i nieudany skręt robią z auta wrak. */
-    concrete?: boolean;
-  };
-  const blockers: { blocker: Blocker; vehicleId: string }[] = [
-    ...obstacles
-      .filter((entry) => entry.blockingVehicleId !== null)
-      .map((entry) => ({
-        blocker: {
-          id: entry.id,
-          name: entry.name,
-          hp: entry.hp,
-          kind: 'obstacle' as const,
-          concrete: chaseObstacleUnbreakable(entry.kind),
-        },
-        vehicleId: entry.blockingVehicleId!,
-      })),
-    ...vehicles
-      .filter((entry) => entry.blockingVehicleId !== null)
-      .map((entry) => ({
-        blocker: { id: entry.id, name: entry.name, hp: entry.hp, kind: 'vehicle' as const },
-        vehicleId: entry.blockingVehicleId!,
-      })),
-  ];
-  let call: { blocker: Blocker; vehicle: SceneVehicleView } | null = null;
-  for (const { blocker, vehicleId } of blockers) {
+  let call: { blocker: ChaseBlocker; vehicle: SceneVehicleView } | null = null;
+  for (const vehicle of vehicles) {
     if (!user) break;
-    const vehicle = vehicles.find((entry) => entry.id === vehicleId);
-    if (!vehicle) continue;
+    const blocker = blockerFor(vehicle.id, obstacles, vehicles);
+    if (!blocker) continue;
     const driver = driverOf(tokens, vehicle.id);
     const playerDriven = typeof driver?.ownerId === 'string' && driver.ownerId.length > 0;
     const mine =
@@ -194,35 +274,16 @@ export function useObstacleNotice(): void {
       return;
     }
     const { blocker, vehicle } = call;
-    const run = (choice: ChaseObstacleChoice) =>
-      blocker.kind === 'obstacle'
-        ? answer(blocker.id, choice)
-        : void answerChaseVehicle(blocker.id, choice).then((ack) => {
-            if (!ack.ok) notifyRefusal('chase', chaseErrorText(ack.error));
-          });
-    const hp =
-      blocker.kind === 'obstacle'
-        ? blocker.concrete
-          ? ' (beton)'
-          : blocker.hp > 0
-            ? ` (${blocker.hp} PW)`
-            : ''
-        : ` (${blocker.hp > 0 ? 'stoi na drodze' : 'wrak'})`;
-    // Stojąca przeszkoda trafia zawsze w przód (dryf na zderzak).
-    const ram = chaseRamText(
-      blocker.kind === 'obstacle' ? (blocker.concrete ? 'concrete' : 'obstacle') : 'vehicle',
-      vehicle.ramPlow,
-      true,
-    );
+    const crash = blocker.concrete
+      ? 'utrata kontroli i rozbicie auta'
+      : 'utrata kontroli i zderzenie';
     notifyChoice(
       'obstacle',
-      blocker.concrete
-        ? `Na drodze: ${blocker.name}${hp}. Gwałtowny skręt to Test PT 13 — porażka to utrata kontroli i rozbicie auta. Taranuj: ${ram}`
-        : `Na drodze: ${blocker.name}${hp}. Gwałtowny skręt to Test PT 13 — porażka to utrata kontroli i zderzenie. Taranuj: ${ram}`,
-      [
-        { label: 'Gwałtowny skręt', run: () => run('swerve') },
-        { label: 'Taranuj', run: () => run('ram') },
-      ],
+      `Na drodze: ${blockerLabel(blocker)}. Gwałtowny skręt i Nagłe zatrzymanie to Test PT 13 — porażka to ${crash}. Taranuj: ${blockerRamText(blocker, vehicle)}`,
+      BLOCKER_CHOICES.map(({ choice, label }) => ({
+        label,
+        run: () => answerBlocker(blocker, choice),
+      })),
       { title: vehicle.name },
     );
     // Klucz mówi wszystko, co pasek pokazuje — nowa przeszkoda to nowy pasek.

@@ -138,7 +138,7 @@ export function chaseErrorText(code: string | undefined): string {
     case 'OBSTACLE_COMBAT_ONLY':
       return 'Przeszkody wypuszcza się w walce — poza nią nie ma rund, więc droga ich nie przesuwa.';
     case 'OBSTACLE_PENDING':
-      return 'Przed autem stoi przeszkoda — najpierw Gwałtowny skręt albo taranowanie.';
+      return 'Przed autem stoi przeszkoda — najpierw Gwałtowny skręt, Nagłe zatrzymanie albo taranowanie.';
     case 'OBSTACLE_NOT_BLOCKING':
       return 'Ta przeszkoda już na nikogo nie czeka.';
     case 'OBSTACLE_NOT_FOUND':
@@ -199,6 +199,11 @@ export function ChaseVehicleMenu() {
   const mayGrantWheel = isGm || ownsVehicle;
   const driver = bySeat.get(0);
   const drives = isGm || (driver !== undefined && driver.ownerId === user.id);
+  // Etap 72d (MG 20.11): w walce kierowca-gracz ma akcje auta wyłącznie
+  // w grupie „Pojazd” lewej belki — menu zostaje informacją, fotelami
+  // i kierownicą. MG ma tu wszystko jak dotąd.
+  const inCombat = scene?.kind === 'chase' && scene.chase.pursuitSpeed !== null;
+  const acts = drives && (isGm || !inCombat);
   // Stojące auto przed czyimś zderzakiem (przegląd 03.11) — MG odpowiada za kierowcę.
   const blockedVehicle = vehicle.blockingVehicleId
     ? vehicles.find((entry) => entry.id === vehicle.blockingVehicleId)
@@ -237,7 +242,12 @@ export function ChaseVehicleMenu() {
         <p className="context-menu-title">{vehicle.name}</p>
         <p className="chase-menu-state">{vehicleStateLine(vehicle, lanes)}</p>
         <VehicleHull vehicle={vehicle} isGm={isGm} />
-        {drives && vehicle.status === 'racing' && (
+        {drives && !acts && vehicle.status === 'racing' && (
+          <p className="chase-menu-state">
+            Nitro, Manewry, kolczatka i silnik — w grupie „Pojazd” w lewej belce.
+          </p>
+        )}
+        {acts && vehicle.status === 'racing' && (
           <button
             type="button"
             className="context-menu-item"
@@ -247,7 +257,7 @@ export function ChaseVehicleMenu() {
             {vehicle.started ? 'Zgaś silnik' : 'Uruchom silnik'}
           </button>
         )}
-        {drives && vehicle.status === 'racing' && vehicle.nitroLeft > 0 && (
+        {acts && vehicle.status === 'racing' && vehicle.nitroLeft > 0 && (
           <button
             type="button"
             className="context-menu-item"
@@ -257,7 +267,7 @@ export function ChaseVehicleMenu() {
             {`Nitro (${vehicle.nitroLeft})`}
           </button>
         )}
-        {drives && vehicle.status === 'racing' && vehicle.spikesLeft > 0 && (
+        {acts && vehicle.status === 'racing' && vehicle.spikesLeft > 0 && (
           <button
             type="button"
             className="context-menu-item"
@@ -268,13 +278,7 @@ export function ChaseVehicleMenu() {
           </button>
         )}
         {vehicle.status === 'racing' && (
-          <VehicleManeuvers
-            vehicle={vehicle}
-            driver={driver}
-            isGm={isGm}
-            drives={drives}
-            act={act}
-          />
+          <VehicleManeuvers vehicle={vehicle} driver={driver} isGm={isGm} drives={acts} act={act} />
         )}
         {drives && vehicle.mounts.length > 0 && <VehicleMounts vehicle={vehicle} act={act} />}
         {isGm && vehicle.status === 'racing' && (
@@ -316,6 +320,14 @@ export function ChaseVehicleMenu() {
               onClick={() => act(() => answerChaseVehicle(vehicle.id, 'swerve'))}
             >
               Gwałtowny skręt (PT 13)
+            </button>
+            <button
+              type="button"
+              className="context-menu-item"
+              title="Test REF + Prowadzenie przeciw PT 13: auto staje przed stojącym autem. Porażka — utrata kontroli i zderzenie."
+              onClick={() => act(() => answerChaseVehicle(vehicle.id, 'stop'))}
+            >
+              Nagłe zatrzymanie (PT 13)
             </button>
             <button
               type="button"

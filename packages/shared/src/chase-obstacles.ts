@@ -164,7 +164,11 @@ export interface ChaseObstacleRemovePayload {
   obstacleId: string;
 }
 
-export const CHASE_OBSTACLE_CHOICES = ['swerve', 'ram'] as const;
+/**
+ * Odpowiedź na przeszkodę przed zderzakiem: Gwałtowny skręt (PT 13), taranowanie
+ * albo — od etapu 72d — Nagłe zatrzymanie (PT 13): auto staje przed przeszkodą.
+ */
+export const CHASE_OBSTACLE_CHOICES = ['swerve', 'stop', 'ram'] as const;
 export type ChaseObstacleChoice = (typeof CHASE_OBSTACLE_CHOICES)[number];
 
 /** `chase:obstacle-answer` — kierowca (albo MG) wybiera Manewr albo taranowanie. */

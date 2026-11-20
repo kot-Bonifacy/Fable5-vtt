@@ -364,12 +364,17 @@ export const vehicleManeuverEvent = defineEvent<VehicleManeuverPayload, SceneVeh
       await postServerRoll(deps, campaignId, user, placed.sceneId, roll);
     }
     const failed = roll?.outcome?.success !== true;
+    const round = chaseRoundOf(placed.scene);
     await deps.ctx.prisma.sceneVehicle.update({
       where: { id: placed.id },
       data: {
         maneuverCall: null,
         // Nagłe zatrzymanie (etap 72): udane zbija prędkość do zera od razu.
         ...(!failed && maneuver.id === CPRED_SUDDEN_STOP_ID ? { speed: 0 } : {}),
+        // Gwałtowny skręt (etap 72d): w tej rundzie „Jedź” zmieni pas o dwa naraz.
+        ...(!failed && maneuver.id === CPRED_OBSTACLE_MANEUVER_ID && round !== null
+          ? { swerveRound: round }
+          : {}),
       },
     });
     if (failed) {

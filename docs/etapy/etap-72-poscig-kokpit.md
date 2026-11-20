@@ -3,7 +3,7 @@
 **Faza:** przed betą (zlecenie MG z 15.11 spoza planu) · **Wymaga etapów:** 65 (scena pościgu,
 65a–65e), kreator pościgu z 03.11, 66c i 66d (wzorce pościgu), 69 (lewa belka bez ramek),
 32 (wezwanie do Testu) · **Status:** 🟨 w toku — projekt 15.11, **72a ✅ 19.11**, **72b1 ✅ 19.11**,
-**72b2 ✅ 20.11**, **72c ✅ 20.11**, następny 72d
+**72b2 ✅ 20.11**, **72c ✅ 20.11**, **72d1 ✅ 20.11**, następny 72d2
 
 ## Skąd ten etap
 
@@ -488,13 +488,69 @@ Rozstrzygnięcia bez pytań:
 
 ### 72d — kokpit w pełnym kształcie (wariant B)
 
-- [ ] Grupa „Pojazd” wg punktu 5: wiersz „Po ruchu”, ikony Nitro / Manewr (szuflada) /
-      Kolczatka / Silnik, dymki `HudTip`, powody odmowy, decyzje kierowcy w belce.
+**Podział (MG 20.11):** belka i mapa to więcej niż jedna sesja — **72d1** belka, **72d2** mapa.
+
+#### 72d1 — belka: akcje auta i decyzje kierowcy (✅ 20.11)
+
+- [x] Grupa „Pojazd” wg punktu 5: rządek ikon pod „Jedź” — Nitro (liczba zbiorników w rogu,
+      zalane po odpaleniu), Manewr (szuflada z listą i PT, jak szuflada trybów ognia), Kolczatka
+      (liczba), Silnik (Uruchom / Zgaś); dymki `HudTip`, powody odmowy jak w reszcie belki.
+- [x] Decyzje kierowcy w belce, wierszem pod kaflem auta: to, co stoi przed zderzakiem
+      (Gwałtowny skręt / **Nagłe zatrzymanie** / Taranuj), wezwanie MG do Manewru („Wykonaj
+      Manewr”), zderzenie na drodze ruchu (Taranuj albo Zepchnij / Zwolnij za nim / Zmienię plan).
+- [x] „Po ruchu” z dystansem do celu (trwały cel `T` albo najbliższe auto drugiej strony)
+      i z Nitro, gdy odpalone w tej turze (`SceneVehicleView.nitroArmed`).
+- [x] **Nagłe zatrzymanie (PT 13) jako trzecia odpowiedź na przeszkodę** (`CHASE_OBSTACLE_CHOICES`,
+      `chase:obstacle-answer`, `chase:vehicle-answer`): auto staje (0 mil/h), przeszkoda przestaje
+      czekać; stojącego auta nic już nie najeżdża — przeszkoda i auto cofające się bez tury stają
+      przy jego zderzaku bez pytania.
+- [x] **Gwałtowny skręt o dwa pasy:** udany Manewr z szuflady zapisuje rundę
+      (`SceneVehicle.swerveRound`, migracja `20261120200000_chase_swerve_round`), a „Jedź” w tej
+      rundzie przyjmuje `laneDelta` ±2 (`swerveReady`; bez skrętu `SWERVE_NEEDED`). W krzyżaku drugi
+      klik w kafel pasa — „o dwa pasy”.
+- [x] Usunięte: pasek „Zderzenie” po „Jedź” (wiersz w belce), licznik metrów kierowcy
+      (`drivingMoveBudget` daje budżet w całych Akcjach Ruchu, bez paska dystansu i bez Biegu).
+      Przeciąganie auta przez gracza w walce odmawiało już od 72b1 (`USE_COCKPIT`).
+- [x] Menu auta: w walce u kierowcy-gracza bez Nitro, Manewrów, kolczatki i silnika (zdanie
+      odsyła do belki); MG ma w menu wszystko jak dotąd. Poza walką bez zmian.
+- [x] Testy serwera (`chase-cockpit.test.ts`), E2E `48-poscig/t72d-belka`, oględziny w Firefoksie.
+
+Decyzje MG z 20.11 (pytania na starcie sesji):
+
+- **72d dzielone na 72d1 (belka) i 72d2 (mapa).**
+- **Menu auta w walce u gracza tylko informacyjne** — akcje kierowcy wyłącznie w belce; poza walką
+  menu dalej ma „Uruchom silnik”; MG ma w menu wszystko, łącznie z „Wezwij do Manewru”.
+- **Pasek zostaje jako alarm** przy przeszkodzie przed zderzakiem i przy wezwaniu do Manewru —
+  obok wiersza w belce; oba miejsca czytają ten sam stan i gasną razem. Zderzenie po „Jedź”
+  wyłącznie w belce.
+- **Gwałtowny skręt o dwa pasy i Nagłe zatrzymanie przy przeszkodzie — oba w 72d1.**
+
+Rozstrzygnięcia bez pytań (do potwierdzenia przy rozegraniu 72g):
+
+- **Decyzje stoją zaraz pod kaflem auta**, nad „Po ruchu” (w punkcie 5 były na końcu grupy) —
+  przeszkoda przed zderzakiem odmawia jazdy (`OBSTACLE_PENDING`), więc ma być pierwsza.
+- **Udane Nagłe zatrzymanie przy przeszkodzie zostawia ją przy zderzaku**, bez czekania na wybór.
+  Ogólniej: **auto o prędkości 0 stoi na drodze jak przeszkoda** — przeszkoda, która dojedzie do
+  jego zderzaka, staje bez pytania, a auto cofające się bez tury zatrzymuje się przed nim. Dalej
+  kierowca zmienia pas albo rusza gazem (wtedy pyta „Zderzenie” w belce).
+- **Wezwanie do Manewru ma wiersz w belce tylko u gracza** — MG odwołuje je w menu auta.
+- **Nitro i kolczatka znikają z rzędu, gdy nic nie zostało** (widok nie odróżnia pustej wyrzutni od
+  jej braku) — Nitro odpalone w tej turze stoi zalane do „Jedź”, także z ostatniego zbiornika;
+  Silnik stoi zawsze.
+- **Przeszkoda czekająca przed zderzakiem wyszarza krzyżak i „Jedź”** z powodem `OBSTACLE_PENDING`
+  (serwer i tak odmawia) — najpierw odpowiedź w wierszu „Na drodze”.
+- **Dystans w „Po ruchu”** to odstęp zderzaków wzdłuż drogi po ruchu („Wóz Maelstromu: 4 m przed
+  tobą / za tobą”); cel w tym samym aucie — bez dystansu.
+- **Ikony** z game-icons (CC BY 3.0, `ATTRIBUTION.md`): Nitro — Afterburn, Manewr — Steering
+  wheel, Kolczatka — Caltrops, Silnik — Car key.
+
+#### 72d2 — mapa i oględziny
+
 - [ ] Mapa: duch auta, podświetlony pas, miarka do celu, prędkość przy autach, „N m · za N tur”
-      przy przeszkodach, animacja ruchu.
-- [ ] Usunięte: przeciąganie auta przez gracza, licznik metrów, pasek „Zderzenie”.
+      przy przeszkodach, animacja ruchu i płynny najazd kadru (MG 20.11, z 72b2).
 - [ ] Oględziny: Firefox i Chromium, dzień i noc, 900 px wysokości (czy grupa mieści się bez
-      przewijania), porównanie z belką pieszej figury obok.
+      przewijania — teraz z rzędem ikon i wierszami decyzji), porównanie z belką pieszej figury
+      obok; niższy portret na czas jazdy, jeśli grupa się nie mieści.
 
 ### 72e — auta NPC-ów
 

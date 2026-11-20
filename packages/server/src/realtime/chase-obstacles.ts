@@ -1,5 +1,6 @@
 import type {
   ChaseObstacleAnswerPayload,
+  ChaseObstacleChoice,
   ChaseObstacleRemovePayload,
   ChaseObstacleSpawnPayload,
   ChaseObstacleView,
@@ -14,6 +15,7 @@ import {
   CHASE_OBSTACLE_PRESETS,
   CPRED_ACTION_SPIKES,
   CPRED_OBSTACLE_MANEUVER_ID,
+  CPRED_SUDDEN_STOP_ID,
   cpredLostControlSpeed,
   chaseObstacleUnbreakable,
   CPRED_SPIKES_DAMAGE,
@@ -253,12 +255,78 @@ async function collide(
   await letPast(deps, obstacle, placed);
 }
 
+/** Wybór odpowiedzi na przeszkodę albo odmowa. */
+function readObstacleChoice(raw: unknown): ChaseObstacleChoice {
+  if (raw === 'swerve' || raw === 'stop' || raw === 'ram') return raw;
+  throw new RealtimeError('BAD_REQUEST');
+}
+
+/**
+ * Manewr w odpowiedzi na przeszkodę (Gwałtowny skręt albo — od 72d — Nagłe
+ * zatrzymanie, oba PT 13): Test REF + Umiejętność prowadzenia rzucony przez
+ * serwer. Udany — `passed`; porażka — utrata kontroli (prędkość −10 od razu),
+ * wpis w dzienniku i `crash` (zderzenie z tym, co stoi).
+ */
+async function answerWithManeuver(
+  deps: RealtimeDeps,
+  campaignId: string,
+  user: SessionUser,
+  placed: Placed,
+  driver: Token | null,
+  choice: 'swerve' | 'stop',
+  blockerName: string,
+  outcome: { passed: () => Promise<void>; crash: () => Promise<void> },
+): Promise<void> {
+  const prisma = deps.ctx.prisma;
+  if (!driver) throw new RealtimeError('NOT_DRIVER');
+  if (!driverCapable(driver)) throw new RealtimeError('DRIVER_INCAPABLE');
+  const maneuver = cpredVehicleManeuver(
+    choice === 'stop' ? CPRED_SUDDEN_STOP_ID : CPRED_OBSTACLE_MANEUVER_ID,
+  )!;
+  const skillId = cpredVehicleSkillId(readCpredVehicle(placed.vehicle.system).kind);
+  const roll = await rollServerSkillTest(deps, driver, skillId, maneuver.dv);
+  if (roll) {
+    roll.title = `${cpredManeuverTitle(maneuver)} — ${roll.title ?? ''}`.trim();
+    await postServerRoll(deps, campaignId, user, placed.sceneId, roll);
+  }
+  if (roll?.outcome?.success === true) {
+    await outcome.passed();
+    return;
+  }
+  // Etap 72: utrata kontroli zbija prędkość od razu o 10 Ruchu.
+  await prisma.sceneVehicle.update({
+    where: { id: placed.id },
+    data: { lostControl: true, speed: cpredLostControlSpeed(placed.speed) },
+  });
+  const line: CombatActionLogEntry = {
+    combatantId: '',
+    actorName: placed.vehicle.name,
+    actionId: 'chase-lost-control',
+    actionName: 'Utrata kontroli',
+    note: `${maneuver.name} nieudany — wjeżdża w: ${blockerName}`,
+  };
+  await logSpentAction(deps, campaignId, user, line);
+  await outcome.crash();
+}
+
+/**
+ * Udane Nagłe zatrzymanie przed tym, co stoi (etap 72d): auto staje (prędkość
+ * 0) zderzak w zderzak, a przeszkoda przestaje na nie czekać. Stojącego auta
+ * nic już nie najedzie — przeszkoda i auto stoją na drodze, więc kadr zabiera
+ * je w tył razem (`driftObstaclesRound` zatrzymuje przeszkodę przy zderzaku
+ * auta, które stoi). Dalej kierowca zmienia pas albo taranuje gazem.
+ */
+async function stopBefore(deps: RealtimeDeps, placed: Placed): Promise<void> {
+  await deps.ctx.prisma.sceneVehicle.update({ where: { id: placed.id }, data: { speed: 0 } });
+}
+
 /**
  * `chase:obstacle-answer` — kierowca auta, przed którym stanęła przeszkoda,
- * wybiera: Gwałtowny skręt (Test REF + Prowadzenie PT 13 rzucony przez serwer,
- * porażka — utrata kontroli i zderzenie) albo taranowanie. Odpowiedź nic nie
- * kosztuje (przeszkoda przychodzi na początku rundy, poza czyjąkolwiek turą).
- * MG odpowiada za każde auto — także za kierowcę-NPC-a.
+ * wybiera: Gwałtowny skręt albo Nagłe zatrzymanie (Test REF + Prowadzenie
+ * PT 13 rzucony przez serwer, porażka — utrata kontroli i zderzenie) albo
+ * taranowanie. Odpowiedź nic nie kosztuje (przeszkoda przychodzi na początku
+ * rundy, poza czyjąkolwiek turą). MG odpowiada za każde auto — także za
+ * kierowcę-NPC-a.
  */
 export const chaseObstacleAnswerEvent = defineEvent<ChaseObstacleAnswerPayload, SceneVehicleView>({
   name: 'chase:obstacle-answer',
@@ -266,8 +334,7 @@ export const chaseObstacleAnswerEvent = defineEvent<ChaseObstacleAnswerPayload, 
     const campaignId = requireChaseCampaignId(socket.data);
     const prisma = deps.ctx.prisma;
     const obstacle = await requireObstacle(prisma, campaignId, payload?.obstacleId);
-    const choice = payload?.choice;
-    if (choice !== 'swerve' && choice !== 'ram') throw new RealtimeError('BAD_REQUEST');
+    const choice = readObstacleChoice(payload?.choice);
     if (!obstacle.blockingId) throw new RealtimeError('OBSTACLE_NOT_BLOCKING');
     const placed = await requirePlaced(prisma, campaignId, obstacle.blockingId);
     const driver = await driverOf(prisma, placed.id);
@@ -280,33 +347,20 @@ export const chaseObstacleAnswerEvent = defineEvent<ChaseObstacleAnswerPayload, 
       return placedView(prisma, placed.sceneId, placed.id);
     }
 
-    if (!driver) throw new RealtimeError('NOT_DRIVER');
-    if (!driverCapable(driver)) throw new RealtimeError('DRIVER_INCAPABLE');
-    const maneuver = cpredVehicleManeuver(CPRED_OBSTACLE_MANEUVER_ID)!;
-    const skillId = cpredVehicleSkillId(readCpredVehicle(placed.vehicle.system).kind);
-    const roll = await rollServerSkillTest(deps, driver, skillId, maneuver.dv);
-    if (roll) {
-      roll.title = `${cpredManeuverTitle(maneuver)} — ${roll.title ?? ''}`.trim();
-      await postServerRoll(deps, campaignId, user, placed.sceneId, roll);
-    }
-    if (roll?.outcome?.success === true) {
-      await letPast(deps, obstacle, placed);
-    } else {
-      // Etap 72: utrata kontroli zbija prędkość od razu o 10 Ruchu.
-      await prisma.sceneVehicle.update({
-        where: { id: placed.id },
-        data: { lostControl: true, speed: cpredLostControlSpeed(placed.speed) },
-      });
-      const line: CombatActionLogEntry = {
-        combatantId: '',
-        actorName: placed.vehicle.name,
-        actionId: 'chase-lost-control',
-        actionName: 'Utrata kontroli',
-        note: `${maneuver.name} nieudany — wjeżdża w: ${obstacle.name}`,
-      };
-      await logSpentAction(deps, campaignId, user, line);
-      await collide(deps, campaignId, user, placed, obstacle);
-    }
+    await answerWithManeuver(deps, campaignId, user, placed, driver, choice, obstacle.name, {
+      passed: async () => {
+        if (choice === 'swerve') {
+          await letPast(deps, obstacle, placed);
+          return;
+        }
+        await stopBefore(deps, placed);
+        await prisma.chaseObstacle.update({
+          where: { id: obstacle.id },
+          data: { blockingId: null },
+        });
+      },
+      crash: () => collide(deps, campaignId, user, placed, obstacle),
+    });
     await emitChase(deps, campaignId, placed.sceneId);
     return placedView(prisma, placed.sceneId, placed.id);
   },
@@ -491,8 +545,7 @@ export const chaseVehicleAnswerEvent = defineEvent<ChaseVehicleAnswerPayload, Sc
     const campaignId = requireChaseCampaignId(socket.data);
     const prisma = deps.ctx.prisma;
     const stalled = await requirePlaced(prisma, campaignId, payload?.sceneVehicleId);
-    const choice = payload?.choice;
-    if (choice !== 'swerve' && choice !== 'ram') throw new RealtimeError('BAD_REQUEST');
+    const choice = readObstacleChoice(payload?.choice);
     if (!stalled.blockingId) throw new RealtimeError('OBSTACLE_NOT_BLOCKING');
     const placed = await requirePlaced(prisma, campaignId, stalled.blockingId);
     const driver = await driverOf(prisma, placed.id);
@@ -515,33 +568,17 @@ export const chaseVehicleAnswerEvent = defineEvent<ChaseVehicleAnswerPayload, Sc
       await emitChase(deps, campaignId, placed.sceneId);
       return placedView(prisma, placed.sceneId, placed.id);
     }
-    if (!driver) throw new RealtimeError('NOT_DRIVER');
-    if (!driverCapable(driver)) throw new RealtimeError('DRIVER_INCAPABLE');
-    const maneuver = cpredVehicleManeuver(CPRED_OBSTACLE_MANEUVER_ID)!;
-    const skillId = cpredVehicleSkillId(readCpredVehicle(placed.vehicle.system).kind);
-    const roll = await rollServerSkillTest(deps, driver, skillId, maneuver.dv);
-    if (roll) {
-      roll.title = `${cpredManeuverTitle(maneuver)} — ${roll.title ?? ''}`.trim();
-      await postServerRoll(deps, campaignId, user, placed.sceneId, roll);
-    }
-    if (roll?.outcome?.success === true) {
-      await pushVehicleBehind(deps, campaignId, placed.scene, stalled.id, placed.id);
-    } else {
-      // Etap 72: utrata kontroli zbija prędkość od razu o 10 Ruchu.
-      await prisma.sceneVehicle.update({
-        where: { id: placed.id },
-        data: { lostControl: true, speed: cpredLostControlSpeed(placed.speed) },
-      });
-      const line: CombatActionLogEntry = {
-        combatantId: '',
-        actorName: placed.vehicle.name,
-        actionId: 'chase-lost-control',
-        actionName: 'Utrata kontroli',
-        note: `${maneuver.name} nieudany — wjeżdża w: ${stalled.vehicle.name}`,
-      };
-      await logSpentAction(deps, campaignId, user, line);
-      await crash();
-    }
+    await answerWithManeuver(deps, campaignId, user, placed, driver, choice, stalled.vehicle.name, {
+      passed: async () => {
+        if (choice === 'swerve') {
+          await pushVehicleBehind(deps, campaignId, placed.scene, stalled.id, placed.id);
+          return;
+        }
+        await stopBefore(deps, placed);
+        await prisma.sceneVehicle.update({ where: { id: stalled.id }, data: { blockingId: null } });
+      },
+      crash,
+    });
     await emitChase(deps, campaignId, placed.sceneId);
     return placedView(prisma, placed.sceneId, placed.id);
   },
@@ -640,10 +677,13 @@ export async function driftObstaclesRound(
           !vehicle.lostControl &&
           !lostBefore.has(vehicle.id) &&
           vehicle.started;
-        if (controlled) {
+        // Auto, które stoi (prędkość 0 — np. po Nagłym zatrzymaniu, etap 72d),
+        // stoi na drodze tak jak przeszkoda: nic na nie nie najeżdża. Przeszkoda
+        // staje przy zderzaku (`centre`) bez czekania na wybór kierowcy.
+        if (vehicle.speed > 0 && controlled) {
           blockingId = vehicle.id;
           blocked.push({ vehicle, obstacle });
-        } else crashes.push({ vehicle, obstacle });
+        } else if (vehicle.speed > 0) crashes.push({ vehicle, obstacle });
       }
     }
     if (!blockingId && chaseObstacleGone(centre, obstacle, settings.direction, frame)) {

@@ -1,5 +1,34 @@
 # Dziennik sesji — archiwum
 
+### Sesja 20.11 — etap 72b2: grupa „Pojazd” w lewej belce, bieżnia za kadrem
+
+**Zrobione (czeka na wdrożenie razem z 72b1 i jego migracją `20261119200000_chase_speed_lanes`):**
+
+- **Decyzje MG z pytań na starcie:** droga **przeskakuje** o przesunięcie kadru razem z autami (jak
+  cięcie kamery; płynny najazd całej sceny z animacją ruchu w 72d), a na kaflu auta stoi
+  **grafika modelu** obrócona przodem w kierunku jazdy, nie sylwetka-ikona.
+- **`HudVehicle.tsx`** — grupa „Pojazd” w `CombatHud` po „Broni”, gdy figura siedzi w fotelu
+  kierowcy auta w pościgu w walce: kafel auta (prędkość „100 → 150 mil/h · maks. 200”, PUK, klik
+  otwiera menu auta), „Po ruchu” (metry, pas, zryw), krzyżak ze średnich kafli ułożony wg
+  `chase.direction` (makieta B), „Jedź” jak „Kończę turę” ze znaczkiem Akcji Ruchu albo „za
+  darmo”. Zabiera miejsce Biegu, Skoku i Skradania. Odmowy jak w reszcie belki (wyszarzone,
+  powód w dymku i po kliknięciu). MG widzi grupę przy zaznaczonym kierowcy (kokpit NPC-a).
+  Tymczasowe pozycje „Jazda” zniknęły z menu auta; zderzenie dalej pyta paskiem (do 72d).
+- **Bieżnia** (`ChaseLayer.followFrameShift`) przesuwa teksturę o różnicę `chase.shiftSq`.
+- **Błąd z 72b1 naprawiony:** `startChaseRound` i zerowanie stanu na starcie / końcu walki nie
+  rozsyłały sceny, więc klient do przeładowania widział `pursuitSpeed: null` (brak kokpitu, bieżnia
+  w tempie startowym). `broadcastSceneView` / `emitSceneView` w `scenes.ts` (ta sama ścieżka co
+  `scene:update`), test serwera czeka na `scene:update` u gracza. Pułapka na górze `mapa`.
+- **E2E:** `t65-przeszkody` dostosowany (barykada dojeżdża w rundzie 3, beton porównany z bieżącym
+  miejscem auta), nowy `t72b-kokpit` (Ola w Firefoksie: Gaz + Pas wyżej + „Jedź”, krzyżak gaśnie;
+  MG w Chromium hamuje autem NPC-a; runda 2 — kadr i `shiftSq`).
+
+Testy: serwer 1865/1865, klient 515/515, `shared` bez zmian; lint, Prettier i `tsc` czyste. E2E
+`T65e` + `T72b` 8/8. **Oglądano w Firefoksie** (zrzuty z `t72b-kokpit`: grupa przed wyborem,
+z wyborem, po ruchu, cały stół gracza przy 1600 × 1000 — grupa mieści się bez przewijania),
+MG w Chromium tylko funkcjonalnie. Dzień i noc oraz 900 px wysokości — w 72d. `specs/99-zapomnij/`
+to dalej cudze oględziny z 14.11.
+
 ### Sesja 19.11 (druga) — etap 72b1: serwer nowej jazdy, tymczasowy kokpit w menu auta
 
 **Zrobione (czeka na wdrożenie, migracja `20261119200000_chase_speed_lanes`):**

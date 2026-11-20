@@ -773,6 +773,16 @@ export interface SceneVehicleView {
   maxSpeed: number;
   /** Zryw z Wyścigu tej rundy w kratkach (etap 72c); 0 bez Wyścigu. */
   raceBonus: number;
+  /**
+   * Udany Gwałtowny skręt w tej rundzie, a auto jeszcze nie jechało (etap 72d):
+   * „Jedź” może zmienić pas o dwa naraz.
+   */
+  swerveReady: boolean;
+  /**
+   * Kierowca odpalił Nitro w trwającej turze, a auto jeszcze nie jechało
+   * (etap 72d): „Jedź” doliczy `Ruch / 4` kratek.
+   */
+  nitroArmed: boolean;
   /** Auto już przesunęło się w tej rundzie walki (etap 72: „Jedź” albo ruch serwera). */
   moved: boolean;
   /** Zbiorniki Nitro, które jeszcze zostały na ten pościg. */
@@ -840,7 +850,7 @@ export interface SceneVehicleView {
 export interface ChaseVehicleAnswerPayload {
   /** Auto stojące na drodze — to, które blokuje. */
   sceneVehicleId: string;
-  choice: 'swerve' | 'ram';
+  choice: 'swerve' | 'stop' | 'ram';
 }
 
 /** Manewr pojazdu na liście menu auta: id systemu i podpis z PT. */
@@ -895,6 +905,9 @@ export interface ChaseMovePayload {
 /** Co auto zrobi na drodze ruchu, gdy coś na niej stoi (etap 72). */
 export type VehicleDriveContact = 'ram' | 'slow';
 
+/** Zmiana pasa w jednym „Jedź”: o jeden, a po udanym Gwałtownym skręcie o dwa (etap 72d). */
+export type ChaseLaneDelta = -2 | -1 | 0 | 1 | 2;
+
 /**
  * `vehicle:drive` — ruch auta w turze jego kierowcy (etap 72): pedał (gaz,
  * hamulec albo nic), zmiana pasa o jeden i — gdy na drodze ruchu coś stoi —
@@ -906,8 +919,11 @@ export interface VehicleDrivePayload {
   sceneVehicleId: string;
   /** `gas` (+10 Ruchu), `brake` (−20 Ruchu) albo `null` — ta sama prędkość. */
   pedal: 'gas' | 'brake' | null;
-  /** −1 — pas wyżej (w stronę `road.from`), 0 — ten sam, +1 — pas niżej. */
-  laneDelta: -1 | 0 | 1;
+  /**
+   * −1 — pas wyżej (w stronę `road.from`), 0 — ten sam, +1 — pas niżej; ±2 tylko
+   * po udanym Gwałtownym skręcie w tej turze (`swerveReady`, etap 72d).
+   */
+  laneDelta: ChaseLaneDelta;
   /** Odpowiedź na zderzenie z poprzedniej próby (`contact` w wyniku). */
   onContact?: VehicleDriveContact;
 }

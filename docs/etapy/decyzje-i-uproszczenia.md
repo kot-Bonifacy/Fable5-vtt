@@ -46,7 +46,17 @@ tylko Testami i Manewrami (s. 191–192); liczby niżej to VTT.
   rundy (w turze kierowcy albo od razu, gdy stracił kontrolę we własnej turze przed ruchem) jedzie
   bez pedału z 1k6 na pas (1–2 wyżej, 3–4 prosto, 5–6 niżej; przy krawędzi zostaje); każde
   zderzenie to taran. Kontrola wraca z nową rundą, „Oddaj kontrolę” MG zostaje.
-- **Nagłe zatrzymanie** udane zbija prędkość do zera od razu.
+- **Nagłe zatrzymanie** udane zbija prędkość do zera od razu. Od 72d1 (MG 20.11) jest też trzecią
+  odpowiedzią na to, co stoi przed zderzakiem (obok Gwałtownego skrętu i taranu, PT 13): auto
+  staje, przeszkoda przestaje czekać.
+- **Auto o prędkości 0 stoi na drodze jak przeszkoda (72d1)** — nic na nie nie najeżdża: przeszkoda,
+  która dojedzie do jego zderzaka, i auto cofające się bez tury stają przy nim bez pytania i bez
+  zderzenia. Ruszyć można zmianą pasa albo gazem (wtedy pyta „Zderzenie”).
+- **Gwałtowny skręt o dwa pasy (72d1, MG 20.11)** — udany Manewr zadeklarowany w turze pozwala
+  w tej rundzie zmienić pas o dwa w jednym „Jedź” (Akcja na Manewr, Akcja Ruchu na jazdę); dalej
+  też omija przeszkodę tuż przed zderzakiem.
+- **Kierowca nie liczy metrów (72d1)** — w jego turze Akcja Ruchu to sam żeton „gaz, hamulec albo
+  pas”, bez paska dystansu i bez Biegu.
 - **Auto, które wyjechało za krawędź, odpada dopiero na początku rundy** — po sztywnym przesunięciu,
   bo kamera jedzie za autem kadru i liczy się kadr z tej chwili.
 - **Wyścig (72c, decyzje MG z 15.11 i 20.11)** — na początku każdej rundy walki kierowcy aut

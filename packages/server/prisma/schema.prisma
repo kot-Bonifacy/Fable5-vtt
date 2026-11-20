@@ -854,6 +854,11 @@ model SceneVehicle {
   intentTargetId String?
   /** Zryw z Wyścigu tej rundy w kratkach (etap 72c) — gaśnie z końcem rundy. */
   raceBonus      Int     @default(0)
+  /**
+   * Runda walki z udanym Gwałtownym skrętem (etap 72d): w tej rundzie „Jedź”
+   * może zmienić pas o dwa naraz. 0 — nigdy.
+   */
+  swerveRound    Int     @default(0)
   createdAt DateTime @default(now())
 
   scene      Scene   @relation(fields: [sceneId], references: [id], onDelete: Cascade)

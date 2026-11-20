@@ -1470,6 +1470,48 @@ body:has(.dice-cup--moved) .hud-foot {
   cursor: not-allowed;
 }
 
+/* Etap 72d: dystans do celu w „Po ruchu” stoi w drugiej linii. */
+.hud-vehicle-gap {
+  flex-basis: 100%;
+}
+
+/* Decyzja czekająca na kierowcę: dopisek jak „W ręku” i odpowiedzi w szufladzie
+   pod nim (te same `.hud-mode`, co tryby ognia), wcięte pod nazwę auta. */
+.hud-vehicle-decision {
+  margin: 0 0 0.35rem;
+}
+
+/* Klasa grupy w selektorze: `.hud-armed` i `.hud-modes` stoją w pliku niżej
+   i z tą samą wagą nadpisałyby marginesy. */
+.hud-vehicle .hud-vehicle-decision-text {
+  margin: 0 0 0.15rem 3.95rem;
+}
+
+.hud-vehicle .hud-vehicle-decision-choices {
+  margin: 0 0 0 3.95rem;
+}
+
+/* Rząd rzadkich akcji auta pod „Jedź” i szuflada Manewrów pod nim. */
+.hud-vehicle-tools {
+  margin-top: 0.15rem;
+}
+
+.hud-vehicle-maneuvers {
+  margin-left: 0.2rem;
+}
+
+/* Ile zostało (zbiorniki Nitro, kolczatki) — cyfra w górnym rogu ikony. */
+.hud-slot-count {
+  position: absolute;
+  top: 0.15rem;
+  right: 0.25rem;
+  font-size: 0.62rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  color: var(--text-dim);
+}
+
 /* The fire mode is a chip, not part of the name: it is the only difference
    between three slots of the same weapon, so it must never be the part that
    gets truncated. */

@@ -129,3 +129,12 @@ Licencja: CC BY 3.0.
 | `hud/crossed-swords.svg` | Crossed swords   | Lorc       | filtr czatu „Walka”   |
 | `hud/notebook.svg`       | Notebook         | Delapouite | filtr czatu „Stół”    |
 | `hud/person.svg`         | Person           | Delapouite | filtr czatu „Ja”      |
+
+## Akcje auta w grupie „Pojazd” lewej belki (`hud/`, etap 72d, 20.11.2026)
+
+| Plik                       | Oryginalna ikona | Autor      | Gdzie używana               |
+| -------------------------- | ---------------- | ---------- | --------------------------- |
+| `hud/nitro.svg`            | Afterburn        | Lorc       | Nitro                       |
+| `hud/steering-wheel.svg`   | Steering wheel   | Delapouite | Manewr (szuflada Manewrów)  |
+| `hud/spikes.svg`           | Caltrops         | Delapouite | Zrzuć kolczatkę             |
+| `hud/engine.svg`           | Car key          | Delapouite | Uruchom / Zgaś silnik       |

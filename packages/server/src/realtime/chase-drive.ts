@@ -1,4 +1,5 @@
 import type {
+  ChaseLaneDelta,
   CombatActionLogEntry,
   ScenePoint,
   SessionUser,
@@ -280,7 +281,7 @@ type DriveMode = 'driver' | 'auto' | 'lost';
 
 interface DriveOrder {
   pedal: CpredPedal | null;
-  laneDelta: -1 | 0 | 1;
+  laneDelta: ChaseLaneDelta;
   mode: DriveMode;
 }
 
@@ -504,9 +505,9 @@ function readPedal(raw: unknown): CpredPedal | null {
   return raw;
 }
 
-function readLaneDelta(raw: unknown): -1 | 0 | 1 {
+function readLaneDelta(raw: unknown): ChaseLaneDelta {
   if (raw === undefined || raw === 0) return 0;
-  if (raw === -1 || raw === 1) return raw;
+  if (raw === -1 || raw === 1 || raw === -2 || raw === 2) return raw;
   throw new RealtimeError('BAD_REQUEST');
 }
 
@@ -550,6 +551,10 @@ export const vehicleDriveEvent = defineEvent<VehicleDrivePayload, VehicleDriveRe
     }
     requireControllable(placed);
     if (placed.movedRound >= round) throw new RealtimeError('ALREADY_DROVE');
+    // Dwa pasy naraz tylko po udanym Gwałtownym skręcie w tej rundzie (etap 72d).
+    if (Math.abs(laneDelta) === 2 && placed.swerveRound !== round) {
+      throw new RealtimeError('SWERVE_NEEDED');
+    }
     // Przeszkoda przed zderzakiem (65e) czeka na odpowiedź — najpierw Manewr albo taranowanie.
     if (await obstaclePendingFor(prisma, placed.id)) throw new RealtimeError('OBSTACLE_PENDING');
     const stats = readCpredVehicle(placed.vehicle.system);
@@ -852,6 +857,8 @@ export async function startChaseRound(
       if (!contact) continue;
       if (advance < 0) {
         // Auto cofa się na to, co jedzie za nim — to tamto dojeżdża do niego.
+        // Stojące auto (prędkość 0, etap 72d) do niczego nie dojeżdża — oba stoją.
+        if (speeds.get(contact.id) === 0 && byId.has(contact.id)) continue;
         if (await controlled(contact.id)) {
           blockings.set(row.id, contact.id);
           blockedNow.push({ stalled: row.id, driven: contact.id });

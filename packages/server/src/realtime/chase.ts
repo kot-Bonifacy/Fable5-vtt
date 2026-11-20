@@ -27,6 +27,8 @@ import {
   cpredVehicleSpikesLeft,
   isChaseObstacleKind,
   readCpredVehicle,
+  readCpredTurn,
+  CPRED_ACTION_NITRO,
   chaseBodyContains,
   chaseIsHorizontal,
   chaseLaneOf,
@@ -157,6 +159,8 @@ function toSceneVehicleView(
     maxSpeed: Math.max(0, stats.move),
     raceBonus: row.raceBonus,
     moved: round !== null && row.movedRound >= round,
+    swerveReady: round !== null && row.swerveRound === round && row.movedRound < round,
+    nitroArmed: false,
     nitroLeft: Math.max(0, derived.nitroTanks - row.nitroUsed),
     spikesLeft: cpredVehicleSpikesLeft(stats, row.spikesUsed),
     refillable:
@@ -305,9 +309,39 @@ export async function placedViews(
         });
   const seated = await seatedOnScene(prisma, rows);
   const motions = sceneMotion(rows, seated, scene);
-  return rows.map((row) =>
-    toSceneVehicleView(row, { scene, driverTokens: tokens, motion: motions.get(row.id)! }),
-  );
+  const nitro = scene.chasePursuitSpeed !== null ? await nitroArmedVehicle(prisma, sceneId) : null;
+  return rows.map((row) => {
+    const view = toSceneVehicleView(row, {
+      scene,
+      driverTokens: tokens,
+      motion: motions.get(row.id)!,
+    });
+    return { ...view, nitroArmed: row.id === nitro && !view.moved };
+  });
+}
+
+/**
+ * Auto, którego kierowca w trwającej turze odpalił Nitro (Akcja tury to Nitro,
+ * etap 72d) — kokpit dolicza wtedy `Ruch / 4` do „Po ruchu”, jak serwer do
+ * „Jedź” (`nitroThisTurn`). `null` — nikt.
+ */
+async function nitroArmedVehicle(prisma: PrismaClient, sceneId: string): Promise<string | null> {
+  const combat = await prisma.combat.findUnique({
+    where: { sceneId },
+    select: { activeCombatantId: true },
+  });
+  if (!combat?.activeCombatantId) return null;
+  const row = await prisma.combatant.findUnique({
+    where: { id: combat.activeCombatantId },
+    select: { tokenId: true, turnState: true },
+  });
+  if (!row?.tokenId) return null;
+  if (readCpredTurn(row.turnState ?? undefined).action?.id !== CPRED_ACTION_NITRO) return null;
+  const token = await prisma.token.findUnique({
+    where: { id: row.tokenId },
+    select: { sceneVehicleId: true, vehicleSeat: true },
+  });
+  return token?.vehicleSeat === 0 ? token.sceneVehicleId : null;
 }
 
 /** Widok jednego auta tej sceny — odpowiedź zdarzeń, które je zmieniły. */
