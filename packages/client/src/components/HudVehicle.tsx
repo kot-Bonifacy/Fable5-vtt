@@ -1,5 +1,6 @@
 import { useEffect, useState, type CSSProperties, type ReactNode } from 'react';
 import {
+  chaseDriveStep,
   chaseIsHorizontal,
   chaseLaneTarget,
   cpredDriveAdvance,
@@ -11,6 +12,7 @@ import {
   tokenHpShareOf,
   type ChaseDirection,
   type ChaseLaneDelta,
+  type ScenePoint,
   type SceneVehicleView,
   type TokenView,
   type VehicleDriveContact,
@@ -28,7 +30,7 @@ import {
 } from '../socket.js';
 import { chaseRamText } from '../chase-ram.js';
 import { useAuthStore } from '../stores/authStore.js';
-import { useChaseStore } from '../stores/chaseStore.js';
+import { useChaseStore, type ChaseGhost } from '../stores/chaseStore.js';
 import { useSceneStore } from '../stores/sceneStore.js';
 import { useTargetStore } from '../stores/targetStore.js';
 import { useTokenStore } from '../stores/tokenStore.js';
@@ -40,6 +42,7 @@ import {
   blockerLabel,
 } from './ChaseObstacleMenu.js';
 import { chaseErrorText } from './ChaseVehicleMenu.js';
+import { ghostRuler, type TargetGap } from '../chase-map-notes.js';
 import { HudIcon } from './HudIcon.js';
 import { useHudTip } from './HudTip.js';
 
@@ -403,26 +406,26 @@ function useTargetGap(
   advanceSq: number,
   direction: ChaseDirection,
   gridPx: number,
-): { name: string; gapSq: number } | null {
+): TargetGap | null {
   const vehicles = useChaseStore((s) => s.vehicles);
   const targetId = useTargetStore((s) => s.targets[token.id] ?? null);
   const target = useTokenStore((s) => (targetId ? s.tokens[targetId] : undefined));
   const mine = alongPx(vehicle, direction) + advanceSq * gridPx;
-  const measure = (name: string, at: number, halfLengthPx: number) => {
-    const centre = (at - mine) / gridPx;
+  const measure = (name: string, at: ScenePoint, halfLengthPx: number): TargetGap => {
+    const centre = (alongPx(at, direction) - mine) / gridPx;
     const reach = vehicle.lengthSq / 2 + halfLengthPx / gridPx;
     const gap = Math.max(0, Math.abs(centre) - reach);
-    return { name, gapSq: centre >= 0 ? gap : -gap };
+    return { name, gapSq: centre >= 0 ? gap : -gap, at, halfLengthPx };
   };
   if (target && target.sceneId === vehicle.sceneId) {
     const carried = target.vehicleSeat
       ? vehicles.find((entry) => entry.id === target.vehicleSeat!.sceneVehicleId)
       : undefined;
     if (carried && carried.id === vehicle.id) return null;
-    if (carried) {
-      return measure(carried.name, alongPx(carried, direction), (carried.lengthSq * gridPx) / 2);
-    }
-    return measure(target.name, alongPx(target, direction), 0);
+    if (carried) return measure(carried.name, carried, (carried.lengthSq * gridPx) / 2);
+    // Pieszy: dotąd dystans liczył się od lewego górnego rogu żetonu.
+    const half = (target.size * gridPx) / 2;
+    return measure(target.name, { x: target.x + half, y: target.y + half }, 0);
   }
   let nearest: SceneVehicleView | null = null;
   for (const other of vehicles) {
@@ -436,9 +439,7 @@ function useTargetGap(
       nearest = other;
     }
   }
-  return nearest
-    ? measure(nearest.name, alongPx(nearest, direction), (nearest.lengthSq * gridPx) / 2)
-    : null;
+  return nearest ? measure(nearest.name, nearest, (nearest.lengthSq * gridPx) / 2) : null;
 }
 
 /** Zmiana pasa po kliknięciu kafla: o jeden, a po Gwałtownym skręcie drugi klik — o dwa. */
@@ -466,8 +467,9 @@ export function HudVehicle({
   /** Odmowa całej belki („nie twoja tura”) albo `null`. */
   turnRefusal: string | null;
 }) {
-  const chase = useSceneStore((s) => s.scene?.chase);
-  const gridPx = useSceneStore((s) => s.scene?.grid.sizePx ?? 1);
+  const scene = useSceneStore((s) => s.scene);
+  const chase = scene?.chase;
+  const gridPx = scene?.grid.sizePx ?? 1;
   const metresPerSquare = useSceneStore((s) => s.scene?.metersPerSquare ?? 1);
   const obstacles = useChaseStore((s) => s.obstacles);
   const vehicles = useChaseStore((s) => s.vehicles);
@@ -497,7 +499,6 @@ export function HudVehicle({
   });
   const direction = chase?.direction ?? 'right';
   const gap = useTargetGap(token, vehicle, vehicle.moved ? 0 : advance, direction, gridPx);
-  if (!chase || chase.pursuitSpeed === null) return null;
 
   const mayDrive = isGm || (user !== null && token.ownerId === user.id);
   // To, co stoi przed zderzakiem, czeka na odpowiedź — do niej jazda odmawia.
@@ -505,8 +506,53 @@ export function HudVehicle({
   const refusal =
     cockpitRefusal(vehicle, turnRefusal, mayDrive) ??
     (blocker ? chaseErrorText('OBSTACLE_PENDING') : null);
-  const metres = advance * metresPerSquare;
   const lane = vehicle.lane + laneDelta;
+
+  // Duch auta (72d2, decyzja MG 20.11): u tego, kto trzyma kokpit, zawsze,
+  // gdy „Jedź” ruszyłoby auto — także bez pedału, bo różnica prędkości i zryw
+  // i tak je przesuwają. Te same liczby co „Po ruchu”.
+  let ghost: ChaseGhost | null = null;
+  if (scene && chase && chase.pursuitSpeed !== null && refusal === null) {
+    const step = chaseDriveStep({
+      centre: vehicle,
+      lane,
+      advanceSq: advance,
+      lanes: chase.lanes,
+      settings: chase,
+      scene: {
+        width: scene.width,
+        height: scene.height,
+        gridSizePx: gridPx,
+        gridOffsetX: scene.grid.offsetX,
+        gridOffsetY: scene.grid.offsetY,
+      },
+    });
+    if (Math.hypot(step.to.x - vehicle.x, step.to.y - vehicle.y) > 0.5) {
+      ghost = {
+        sceneVehicleId: vehicle.id,
+        centre: step.to,
+        lane,
+        ruler: gap
+          ? ghostRuler(
+              step.to,
+              (vehicle.lengthSq * gridPx) / 2,
+              gap,
+              direction,
+              formatMetres(Math.abs(gap.gapSq) * metresPerSquare),
+            )
+          : null,
+      };
+    }
+  }
+  // Klucz niesie całą treść ducha: nowy obiekt z tymi samymi liczbami nic nie zmienia.
+  const ghostKey = ghost ? JSON.stringify(ghost) : '';
+  useEffect(() => {
+    useChaseStore.getState().setGhost(ghost);
+  }, [ghostKey]);
+  useEffect(() => () => useChaseStore.getState().setGhost(null), []);
+
+  if (!chase || chase.pursuitSpeed === null) return null;
+  const metres = advance * metresPerSquare;
   const horizontal = chaseIsHorizontal(chase.direction);
   const forward: Arrow = chase.direction;
   // Pas „wyżej” to krok w stronę `road.from`: przy jeździe poziomej w górę

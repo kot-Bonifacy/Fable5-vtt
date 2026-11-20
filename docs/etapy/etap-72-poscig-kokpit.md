@@ -3,7 +3,7 @@
 **Faza:** przed betą (zlecenie MG z 15.11 spoza planu) · **Wymaga etapów:** 65 (scena pościgu,
 65a–65e), kreator pościgu z 03.11, 66c i 66d (wzorce pościgu), 69 (lewa belka bez ramek),
 32 (wezwanie do Testu) · **Status:** 🟨 w toku — projekt 15.11, **72a ✅ 19.11**, **72b1 ✅ 19.11**,
-**72b2 ✅ 20.11**, **72c ✅ 20.11**, **72d1 ✅ 20.11**, następny 72d2
+**72b2 ✅ 20.11**, **72c ✅ 20.11**, **72d1 ✅ 20.11**, **72d2 ✅ 20.11**, następny 72e
 
 ## Skąd ten etap
 
@@ -544,13 +544,43 @@ Rozstrzygnięcia bez pytań (do potwierdzenia przy rozegraniu 72g):
 - **Ikony** z game-icons (CC BY 3.0, `ATTRIBUTION.md`): Nitro — Afterburn, Manewr — Steering
   wheel, Kolczatka — Caltrops, Silnik — Car key.
 
-#### 72d2 — mapa i oględziny
+#### 72d2 — mapa i oględziny (✅ 20.11)
 
-- [ ] Mapa: duch auta, podświetlony pas, miarka do celu, prędkość przy autach, „N m · za N tur”
+- [x] Mapa: duch auta, podświetlony pas, miarka do celu, prędkość przy autach, „N m · za N tur”
       przy przeszkodach, animacja ruchu i płynny najazd kadru (MG 20.11, z 72b2).
-- [ ] Oględziny: Firefox i Chromium, dzień i noc, 900 px wysokości (czy grupa mieści się bez
+- [x] Oględziny: Firefox i Chromium, dzień i noc, 900 px wysokości (czy grupa mieści się bez
       przewijania — teraz z rzędem ikon i wierszami decyzji), porównanie z belką pieszej figury
       obok; niższy portret na czas jazdy, jeśli grupa się nie mieści.
+
+Decyzje MG z 20.11 (pytania w sesji):
+
+- **Ducha, pas i miarkę widzi tylko kierowca** (ten, kto trzyma kokpit — gracz albo MG przy
+  NPC-u); reszta stołu widzi dopiero dojazd po „Jedź”. Bez nowego zdarzenia gniazda.
+- **Duch stoi zawsze przed „Jedź”**, gdy kokpit przyjąłby ruch — także bez pedału, bo różnica
+  prędkości i zryw i tak przesuwają auto; nie ma go tylko, gdy auto zostałoby w miejscu.
+- **Prędkość druga linią podpisu auta** („150 mil/h”, mniejszym drukiem), tylko w walce,
+  bez wraków i aut poza kadrem.
+- **Dojazd ~0,6 s, najazd kadru ~0,8 s**; `prefers-reduced-motion` — skok.
+- **Za kierownicą w walce portret się chowa** (karta jak postaci bez portretu; twarz zastępuje
+  kafel auta). Zmierzone przy 900 px w Firefoksie: z portretem 16:15 „Jedź” i ikony auta
+  lądowały pod krawędzią, bez niego grupa kończy się ~25 px nad „Kończę turę” (nocą ~10 px);
+  wiersz decyzji wypycha rządek ikon pod pasek — wtedy belka się przewija.
+
+Rozstrzygnięcia bez pytań (do potwierdzenia przy rozegraniu 72g):
+
+- **„N m · za N tur” liczy się od auta patrzącego** — u gracza auto, w którym siedzi jego figura,
+  u MG auto kadru (`chaseAnchorVehicle`). Przeszkoda na innym pasie: „N m · inny pas”, minięta —
+  bez dopisku, auto stojące — same metry, styk — „przy zderzaku”.
+- **Miarka ducha** biegnie od zderzaka ducha do zderzaka celu z „Po ruchu” (trwały cel `T` albo
+  najbliższe auto drugiej strony), z tymi samymi metrami; cel na innym pasie — skośnie.
+- **Figury w fotelach jadą z autem na ekranie** (renderer stawia je w fotelach auta takiego, jakie
+  widać — tak samo przy ciągnięciu auta przez MG), a kamera gracza idzie za swoim autem klatka po
+  klatce, więc u kierowcy dojazd wygląda jak przesuwająca się pod autem droga.
+- **Dojazdy przychodzące tuż przed albo po zmianie `shiftSq`** (serwer rozsyła figury, auta
+  i widok sceny osobno) dostają czas najazdu kadru — inaczej auta i droga rozjeżdżałyby się.
+- **Dystans do pieszego w „Po ruchu”** liczy się od środka żetonu (dotąd od lewego górnego rogu).
+- Logika „N m · za N tur” i prędkości w mil/h mieszka poza `map/` (`chase-map-notes.ts`) —
+  warstwa mapy to rdzeń, dostaje gotowe zdania.
 
 ### 72e — auta NPC-ów
 

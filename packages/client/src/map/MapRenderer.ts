@@ -14,6 +14,7 @@ import {
 import { Viewport } from 'pixi-viewport';
 import { MapFxLayer } from './MapFxLayer.js';
 import { ChaseLayer } from './ChaseLayer.js';
+import type { ChaseGhost } from '../stores/chaseStore.js';
 import { stackedTargetsAt } from './stacked-targets.js';
 import { DESTROY_TREE, releasePooledGraphicsData } from './pixi-destroy.js';
 import {
@@ -3656,9 +3657,72 @@ export class MapRenderer {
    * zapętlona tekstura jest gotowa — do tego czasu stoi pod nią jak zawsze.
    */
   private readonly tickChase = (ticker: { deltaMS: number }): void => {
+    const gliding = this.chase.gliding;
     this.chase.tick(ticker.deltaMS / 1000);
     this.background.renderable = !this.chase.road.visible;
+    // Dojazd aut (72d2): figury w fotelach i obrączki jadą z autem takim, jakie
+    // widać — także w klatce, w której dojazd się kończy. Kamera gracza idzie
+    // za autem w każdej klatce, więc i skok bez dojazdu (`prefers-reduced-motion`).
+    if (gliding) this.followChaseGlide();
+    else this.followCamera();
   };
+
+  /** Auto, za którym jedzie kamera gracza (65c; od 72d2 płynnie) i jego ostatni widoczny środek. */
+  private followedVehicle: { id: string; at: ScenePoint | null } | null = null;
+
+  /**
+   * Kamera gracza jedzie za autem, w którym siedzi jego figura (65c): o tyle,
+   * o ile przesunęło się auto na ekranie, więc stoi ono w tym samym miejscu.
+   * `null` — kamera stoi (MG, pieszy).
+   */
+  setFollowedVehicle(id: string | null): void {
+    if (this.followedVehicle?.id === id) return;
+    this.followedVehicle = id ? { id, at: this.chase.shownVehicleCentre(id) } : null;
+  }
+
+  /** Przesuwa kamerę za śledzonym autem o jego ruch na ekranie od ostatniej klatki. */
+  private followCamera(): void {
+    const followed = this.followedVehicle;
+    const viewport = this.viewport;
+    if (!followed || !viewport) return;
+    const at = this.chase.shownVehicleCentre(followed.id);
+    const was = followed.at;
+    followed.at = at;
+    // Ciągnięcia nie śledzimy — kamera uciekałaby spod kursora.
+    if (!at || !was || this.chase.isDragging(followed.id)) return;
+    const dx = at.x - was.x;
+    const dy = at.y - was.y;
+    if (dx === 0 && dy === 0) return;
+    const { x, y } = viewport.center;
+    viewport.moveCenter(x + dx, y + dy);
+  }
+
+  /** Klatka dojazdu: figury w fotelach, kamera i obrączki za autami. */
+  private followChaseGlide(): void {
+    this.placeSeatedTokens();
+    this.followCamera();
+    if (!this.chase.gliding) {
+      this.refreshOverlays();
+      return;
+    }
+    this.drawSelectionRing();
+    this.drawGroupRings();
+    this.drawAimReticle();
+  }
+
+  /**
+   * Figury w fotelach stoją w fotelach auta takiego, jakie widać (72d2) — na
+   * miejscu to dokładnie pozycja z serwera, w dojeździe jadą z autem.
+   */
+  private placeSeatedTokens(): void {
+    if (this.drag) return;
+    for (const node of this.tokenNodes.values()) {
+      const seat = node.token.vehicleSeat;
+      if (!seat || this.march?.node === node) continue;
+      const at = this.chase.seatedTokenAt(seat, node.token.size);
+      if (at) node.position.set(at.x, at.y);
+    }
+  }
 
   private readonly tickPing = (): void => {
     if (this.pings.length === 0) return;
@@ -7045,16 +7109,16 @@ export class MapRenderer {
     this.chase.setVehicles(vehicles, occupied, showRoadBand);
   }
 
-  /**
-   * Kamera jedzie za autem gracza (65c): przesuwa widok o tyle, o ile
-   * przesunęło się auto, więc to stoi w tym samym miejscu ekranu.
-   */
-  panBy(dx: number, dy: number): void {
-    const viewport = this.viewport;
-    if (this.destroyed || !viewport || (dx === 0 && dy === 0)) return;
-    const { x, y } = viewport.center;
-    viewport.moveCenter(x + dx, y + dy);
-    this.refreshOverlays();
+  /** Dopiski pod podpisami aut i przeszkód (72d2: prędkość, „16 m · za 2 tury”). */
+  setChaseNotes(notes: { vehicles: Map<string, string>; obstacles: Map<string, string> }): void {
+    if (this.destroyed) return;
+    this.chase.setNotes(notes);
+  }
+
+  /** Duch auta z kokpitu kierowcy (72d2) albo `null`. */
+  setChaseGhost(ghost: ChaseGhost | null): void {
+    if (this.destroyed) return;
+    this.chase.setGhost(ghost);
   }
 
   /**

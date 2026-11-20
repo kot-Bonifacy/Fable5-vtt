@@ -1,5 +1,12 @@
 # Pomysły poza zakresem etapów
 
+**20.11.2026 (etap 72d2) — duch auta ostrzega przed zderzeniem.** Duch pokazuje miejsce po
+„Jedź” bez przeszkód; gdy na drodze ruchu stoi auto albo przeszkoda, i tak pyta dopiero serwer
+(wiersz „Zderzenie” po „Jedź”). Duch mógłby od razu zmienić kolor i stanąć przy zderzaku tego,
+co trafi (`chaseFirstContact` na odcinku `chaseDriveStep` u klienta, jak `chaseObstacleAhead`),
+z nazwą w miarce. Przy okazji: „Po ruchu” przy styku mówi „0 m przed tobą” — lepiej „styk”.
+Wycena S.
+
 **18.11.2026 (etap 71g2) — tabele liczb Ról do `data/private`.** Po parafrazie zdań
 `roleability.ts` niesie dalej liczby z podręcznika: sześć wierszy Cech dla każdego z pięciu
 zawodów pracowników Korpo (s. 155–157), bloki statystyk sześciu grup Wsparcia (s. 158–159),

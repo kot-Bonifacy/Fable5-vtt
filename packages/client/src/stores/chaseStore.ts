@@ -2,9 +2,26 @@ import { create } from 'zustand';
 import type {
   ChaseObstacleKind,
   ChaseObstacleView,
+  ScenePoint,
   SceneVehicleView,
   StateSyncPayload,
 } from '@vtt/shared';
+
+/**
+ * Duch auta (etap 72d2): gdzie auto stanie po „Jedź” przy obecnym wyborze
+ * pedału i pasa. Stan wyłącznie u tego, kto trzyma kokpit (decyzja MG 20.11:
+ * reszta stołu widzi dopiero ruch) — liczy go grupa „Pojazd” (`HudVehicle`),
+ * rysuje `ChaseLayer`.
+ */
+export interface ChaseGhost {
+  sceneVehicleId: string;
+  /** Środek bryły po ruchu. */
+  centre: ScenePoint;
+  /** Pas docelowy (podświetlony na mapie). */
+  lane: number;
+  /** Miarka od zderzaka ducha do celu dystansu z „Po ruchu” albo `null`. */
+  ruler: { from: ScenePoint; to: ScenePoint; label: string } | null;
+}
 
 /**
  * Auta na oglądanej scenie pościgu (etap 65b) — już przycięte przez serwer:
@@ -25,6 +42,8 @@ interface ChaseState {
   armed: { kind: ChaseObstacleKind; name?: string; hp?: number; imageUrl?: string } | null;
   /** Rząd palety „Przeszkody” pod paskiem narzędzi MG. */
   palette: boolean;
+  /** Duch auta z kokpitu (72d2) albo `null`. */
+  ghost: ChaseGhost | null;
 
   applySync: (payload: StateSyncPayload) => void;
   setVehicles: (
@@ -38,6 +57,7 @@ interface ChaseState {
   closeObstacleMenu: () => void;
   arm: (armed: ChaseState['armed']) => void;
   setPalette: (open: boolean) => void;
+  setGhost: (ghost: ChaseGhost | null) => void;
 }
 
 export const useChaseStore = create<ChaseState>((set) => ({
@@ -47,6 +67,7 @@ export const useChaseStore = create<ChaseState>((set) => ({
   obstacleMenu: null,
   armed: null,
   palette: false,
+  ghost: null,
 
   applySync: (payload) =>
     set({
@@ -80,4 +101,5 @@ export const useChaseStore = create<ChaseState>((set) => ({
   closeObstacleMenu: () => set({ obstacleMenu: null }),
   arm: (armed) => set({ armed }),
   setPalette: (palette) => set(palette ? { palette } : { palette, armed: null }),
+  setGhost: (ghost) => set({ ghost }),
 }));

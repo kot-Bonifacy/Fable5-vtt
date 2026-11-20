@@ -1,5 +1,35 @@
 # Dziennik sesji — archiwum
 
+### Sesja 20.11 (druga) — etap 72c: Wyścig na początku rundy
+
+**Zrobione (czeka na wdrożenie razem z 72b1–72b2; bez nowej migracji — stan w `Scene.chaseRace`):**
+
+- **Decyzje MG z pytań na starcie:** reguła słabego kierowcy dotyczy **postaci gracza i NPC-a
+  z pełną kartą** (nie statysty ani Wsparcia); za NPC-ów **jedna karta bez kości 3D**; „Następna
+  tura” MG przy czekającym Wyścigu **pomija** brakujących; przyciski MG na karcie czatu
+  i w **panelu decyzji MG**.
+- **`realtime/chase-race.ts`**: `startChaseRace` w `advanceTurn` po `startChaseRound` — NPC-e
+  rzucają od razu (planer z karty albo czyste 1k10 dla Wsparcia i figur bez karty), gracz dostaje
+  wezwanie na kubek z adresem `chaseRace` (PT 10 tylko u słabego kierowcy), runda stoi na
+  wskaźniku bez tury; `settleRace` pisze zryw / utratę kontroli i wznawia rundę
+  (`resumeAfterChaseRace` w `combat-actions.ts`). MG: `chase:race-roll`, `chase:race-skip`,
+  „Następna tura” = pomiń, „Cofnij” odmawia `RACE_PENDING`, koniec walki przerywa Wyścig.
+- **Shared:** `cpredRaceRollMode`, `cpredRaceFullSheet`, `cpredRaceWeakDriver`; rodzaj czatu
+  `chaserace` (`ChaseRaceLogEntry`), `ChaseSettings.race`. Stary Test zwykłej jazdy przy „Jedź”
+  usunięty (`drivingTested`, `cpredDrivingTestNeeded`). **NOM-03 ✅** (macierz, `role-matrix.test.ts`).
+- **Klient:** karta „Wyścig — runda N” (`ChaseRaceCard.tsx`), rodzaj `race` w „Czeka na MG”
+  z panelem decyzji, „🏁 Wyścig — czekam na: …” na pasie inicjatywy, belka gracza mówi „Runda
+  czeka na Wyścig” zamiast „poczekaj na swoją kolej”, werdykt „Wyścig” / „Panuje nad autem” /
+  „Utrata kontroli” na karcie rzutu i wezwania. Rozbicie rzutu NPC-a przycina `redactChatMessage`.
+- **Testy dostosowane:** serwer `chase-drive`, `chase-obstacles`, `chase-review`, `chase`
+  (drugie `combat:next` pomija Wyścig), E2E `t65-przeszkody` i `t72b-kokpit` tak samo.
+
+Testy: `shared` 3243/3243, serwer 1870/1870 (nowy `chase-race.test.ts` — 6), klient 516/516;
+lint, Prettier i `tsc` trzech pakietów czyste. E2E `T65e` + `T72b` + nowy `T72c` 12/12. **Oglądano w Firefoksie** (gracz:
+pas, karta, wezwanie, kubek) **i Chromium** (panel decyzji MG — po oględzinach poprawiony
+kontrast kafli na tle mapy i numer rundy w panelu). `specs/99-zapomnij/` to dalej cudze oględziny
+z 14.11.
+
 ### Sesja 20.11 — etap 72b2: grupa „Pojazd” w lewej belce, bieżnia za kadrem
 
 **Zrobione (czeka na wdrożenie razem z 72b1 i jego migracją `20261119200000_chase_speed_lanes`):**

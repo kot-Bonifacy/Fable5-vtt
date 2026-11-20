@@ -9,11 +9,13 @@ import {
   chaseScrollSpeed,
   chaseFrameTempo,
   CHASE_CONTROL_LABELS,
+  chaseLaneSpanPx,
   chaseRoadByUrl,
   chaseRoadCells,
   chaseRoadSpanPx,
   clampChaseVehicle,
   defaultVehicleArt,
+  seatedTokenPosition,
   vehicleSeatCentre,
   type ChaseDirection,
   type ChaseObstacleView,
@@ -21,6 +23,7 @@ import {
   type SceneView,
   type ScenePoint,
 } from '@vtt/shared';
+import type { ChaseGhost } from '../stores/chaseStore.js';
 import { DESTROY_TREE } from './pixi-destroy.js';
 
 /**
@@ -36,7 +39,17 @@ import { DESTROY_TREE } from './pixi-destroy.js';
  *
  * **Auto** to obrazek rysowany przodem do góry, obrócony do kierunku jazdy,
  * z podpisem i znacznikami wolnych foteli. Figury w fotelach są zwykłymi
- * żetonami nad autem — ich pozycje przelicza serwer.
+ * żetonami nad autem — ich pozycje przelicza serwer, a w czasie dojazdu
+ * renderer stawia je w fotelach auta takiego, jakie widać (`seatedTokenAt`).
+ *
+ * **Dojazd (etap 72d2):** zmiana miejsca auta albo przeszkody nie przeskakuje,
+ * tylko dojeżdża (`DRIVE_GLIDE_MS`); sztywne przesunięcie kadru na początku
+ * rundy jedzie dłużej (`FRAME_GLIDE_MS`) razem z drogą — dojazdy zaczęte tuż
+ * przed albo po zmianie `shiftSq` dostają jego czas, bo serwer rozsyła auta
+ * i widok sceny osobno. `prefers-reduced-motion` — skok jak dotąd.
+ *
+ * **Duch auta (72d2):** u tego, kto trzyma kokpit — miejsce po „Jedź”,
+ * podświetlony pas docelowy i miarka do celu dystansu (`setGhost`).
  */
 
 /** Ułamek prędkości bieżni przy `prefers-reduced-motion` — droga jedzie, ale wolno. */
@@ -45,6 +58,38 @@ const SEAT_FREE_COLOR = 0x7fe7ff;
 const SEAT_DRIVER_COLOR = 0xffb547;
 const BODY_FILL = 0x1b2230;
 const BODY_EDGE = 0x7fe7ff;
+/** Dopiski pod nazwą (prędkość, prognoza przeszkody) — jaśniejsza szarość. */
+const NOTE_COLOR = 0xc9d4e3;
+/** Przezroczystość grafiki ducha auta. */
+const GHOST_ALPHA = 0.4;
+
+/** Dojazd auta po „Jedź” i każda inna zmiana miejsca (decyzja MG 20.11: ~0,6 s). */
+export const DRIVE_GLIDE_MS = 600;
+/** Najazd kadru na początku rundy — razem z drogą (MG 20.11: ~0,8 s). */
+export const FRAME_GLIDE_MS = 800;
+/** Dojazd zaczęty tyle przed albo po zmianie `shiftSq` należy do najazdu kadru. */
+const FRAME_SYNC_MS = 250;
+
+/** Łagodny start i koniec dojazdu. */
+function easeInOut(t: number): number {
+  return t < 0.5 ? 2 * t * t : 1 - (-2 * t + 2) ** 2 / 2;
+}
+
+/** Dojazd jednego węzła: skąd, dokąd i kiedy. */
+interface Glide {
+  from: ScenePoint;
+  to: ScenePoint;
+  t0: number;
+  duration: number;
+}
+
+/** Przewinięcie drogi o przesunięcie kadru rozłożone na czas najazdu. */
+interface RoadGlide {
+  dx: number;
+  dy: number;
+  applied: number;
+  t0: number;
+}
 
 interface ObstacleNode {
   root: Container;
@@ -52,7 +97,30 @@ interface ObstacleNode {
   sprite: Sprite | null;
   shape: Graphics;
   label: Text;
+  note: Text;
   imageUrl: string | null;
+}
+
+interface GhostNode {
+  root: Container;
+  body: Container;
+  sprite: Sprite | null;
+  outline: Graphics;
+  imageUrl: string | null;
+}
+
+function noteText(fontSize: number): Text {
+  const text = new Text({
+    text: '',
+    style: {
+      fontFamily: 'system-ui, sans-serif',
+      fontSize,
+      fill: NOTE_COLOR,
+      stroke: { color: 0x000000, width: 4 },
+    },
+  });
+  text.anchor.set(0.5, 1);
+  return text;
 }
 
 /** Obrys przeszkody, która czeka na wybór kierowcy (65e). */
@@ -66,6 +134,7 @@ interface VehicleNode {
   placeholder: Graphics;
   seats: Graphics;
   label: Text;
+  note: Text;
   imageUrl: string | null;
 }
 
@@ -152,6 +221,19 @@ function vehicleCaption(vehicle: SceneVehicleView): string {
   return vehicle.name;
 }
 
+/**
+ * Podpis nad bryłą: nazwa, a pod nią — gdy jest — dopisek mniejszym drukiem
+ * (72d2: prędkość auta, prognoza przeszkody). Oba stoją nad bryłą, dopisek
+ * bliżej niej.
+ */
+function placeCaption(label: Text, note: Text, text: string, bottom: number, size: number): void {
+  note.text = text;
+  note.visible = text !== '';
+  note.style.fontSize = size;
+  note.position.set(0, bottom);
+  label.position.set(0, note.visible ? bottom - note.height : bottom);
+}
+
 /** Szarość wraku (65d1) — mnożona przez grafikę auta. */
 const WRECK_TINT = 0x6b6b6b;
 
@@ -199,12 +281,41 @@ export class ChaseLayer {
    * i wartość `ChaseSettings.shiftSq`; nowa różnica przesuwa teksturę.
    */
   private shownShift: { sceneId: string; shiftSq: number } | null = null;
+  /** Dojazdy aut (`v:id`) i przeszkód (`o:id`) w toku (72d2). */
+  private readonly glides = new Map<string, Glide>();
+  private roadGlide: RoadGlide | null = null;
+  /** Kiedy przyszła ostatnia zmiana `shiftSq` — do zgrania dojazdów z najazdem kadru. */
+  private frameAt: number | null = null;
+  /** Dopiski pod podpisami (prędkość aut, prognoza przeszkód). */
+  private notes: { vehicles: Map<string, string>; obstacles: Map<string, string> } = {
+    vehicles: new Map(),
+    obstacles: new Map(),
+  };
+  private ghost: ChaseGhost | null = null;
+  /** Pas docelowy ducha — pod przeszkodami i autami. */
+  private readonly laneGlow = new Graphics();
+  /** Duch auta i miarka — nad przeszkodami, pod autami. */
+  private readonly ghostLayer = new Container();
+  private ghostNode: GhostNode | null = null;
+  private readonly ruler = new Graphics();
+  private readonly rulerLabel = new Text({
+    text: '',
+    style: {
+      fontFamily: 'system-ui, sans-serif',
+      fontSize: 24,
+      fill: 0xffffff,
+      stroke: { color: 0x000000, width: 5 },
+    },
+  });
 
   constructor() {
     this.road.visible = false;
     this.road.eventMode = 'none';
     this.layer.eventMode = 'none';
-    this.layer.addChild(this.band, this.obstacleLayer);
+    this.rulerLabel.anchor.set(0.5, 1);
+    this.rulerLabel.visible = false;
+    this.ghostLayer.addChild(this.ruler, this.rulerLabel);
+    this.layer.addChild(this.band, this.laneGlow, this.obstacleLayer, this.ghostLayer);
   }
 
   /** Czy bieżnia zastępuje tło (scena pościgu z tłem). */
@@ -280,40 +391,179 @@ export class ChaseLayer {
 
   /**
    * Sztywne przesunięcie kadru na początku rundy (etap 72): serwer przestawia
-   * auta, figury w fotelach i przeszkody naraz, a droga przeskakuje o tyle samo
-   * (decyzja MG 20.11: skok razem z autami, jak cięcie kamery) — inaczej auta
-   * wyglądałyby, jakby same przejechały po jezdni. Pierwszy widok sceny tylko
-   * zapamiętuje sumę.
+   * auta, figury w fotelach i przeszkody naraz, a droga jedzie o tyle samo —
+   * inaczej auta wyglądałyby, jakby same przejechały po jezdni. Od 72d2 (MG
+   * 20.11) to płynny najazd: droga i wszystko na niej dojeżdżają razem
+   * w `FRAME_GLIDE_MS`. Pierwszy widok sceny tylko zapamiętuje sumę.
    */
   private followFrameShift(scene: SceneView | null): void {
     if (!scene || scene.kind !== 'chase') {
       this.shownShift = null;
+      this.finishGlides();
       return;
     }
     const { shiftSq } = scene.chase;
     const shown = this.shownShift;
     this.shownShift = { sceneId: scene.id, shiftSq };
-    if (!shown || shown.sceneId !== scene.id || shown.shiftSq === shiftSq) return;
+    if (!shown || shown.sceneId !== scene.id) {
+      this.finishGlides();
+      return;
+    }
+    if (shown.shiftSq === shiftSq) return;
     // Dodatnie przesunięcie jedzie w kierunku jazdy, tak jak auta.
     const px = (shiftSq - shown.shiftSq) * scene.grid.sizePx;
-    switch (scene.chase.direction) {
-      case 'right':
-        this.road.tilePosition.x += px;
-        break;
-      case 'left':
-        this.road.tilePosition.x -= px;
-        break;
-      case 'down':
-        this.road.tilePosition.y += px;
-        break;
-      case 'up':
-        this.road.tilePosition.y -= px;
-        break;
+    const step = { right: [1, 0], left: [-1, 0], down: [0, 1], up: [0, -1] }[scene.chase.direction];
+    this.finishRoadGlide();
+    if (prefersReducedMotion()) {
+      this.road.tilePosition.x += step[0]! * px;
+      this.road.tilePosition.y += step[1]! * px;
+      return;
+    }
+    const now = performance.now();
+    this.frameAt = now;
+    this.roadGlide = { dx: step[0]! * px, dy: step[1]! * px, applied: 0, t0: now };
+    // Auta i przeszkody przyszły tuż przed widokiem sceny — dojadą razem z drogą.
+    for (const [key, glide] of this.glides) {
+      if (now - glide.t0 > FRAME_SYNC_MS) continue;
+      this.glides.set(key, {
+        from: this.glidePoint(glide, now),
+        to: glide.to,
+        t0: now,
+        duration: FRAME_GLIDE_MS,
+      });
+    }
+  }
+
+  /** Domyka przewinięcie drogi, które jeszcze trwa (nowy najazd albo nowa scena). */
+  private finishRoadGlide(): void {
+    const glide = this.roadGlide;
+    if (!glide) return;
+    const rest = 1 - glide.applied;
+    this.road.tilePosition.x += glide.dx * rest;
+    this.road.tilePosition.y += glide.dy * rest;
+    this.roadGlide = null;
+  }
+
+  private finishGlides(): void {
+    this.finishRoadGlide();
+    this.glides.clear();
+    this.frameAt = null;
+  }
+
+  private glidePoint(glide: Glide, now: number): ScenePoint {
+    const t = glide.duration <= 0 ? 1 : Math.min(1, Math.max(0, (now - glide.t0) / glide.duration));
+    const k = easeInOut(t);
+    return {
+      x: glide.from.x + (glide.to.x - glide.from.x) * k,
+      y: glide.from.y + (glide.to.y - glide.from.y) * k,
+    };
+  }
+
+  /** Gdzie węzeł stoi teraz na ekranie — w trakcie dojazdu albo na miejscu z serwera. */
+  private shownAt(key: string, target: ScenePoint): ScenePoint {
+    const glide = this.glides.get(key);
+    return glide ? this.glidePoint(glide, performance.now()) : { x: target.x, y: target.y };
+  }
+
+  /**
+   * Nowe miejsca z serwera: węzeł, który już stał gdzie indziej, dojeżdża
+   * z miejsca, w którym go teraz widać. Nowy węzeł staje od razu.
+   */
+  private startGlides(
+    prefix: 'v' | 'o',
+    before: ReadonlyMap<string, ScenePoint>,
+    next: readonly { id: string; x: number; y: number }[],
+  ): void {
+    const now = performance.now();
+    const reduced = prefersReducedMotion();
+    const live = new Set<string>();
+    for (const item of next) {
+      const key = `${prefix}:${item.id}`;
+      live.add(key);
+      const was = before.get(item.id);
+      if (!was || (was.x === item.x && was.y === item.y)) continue;
+      if (reduced || this.dragging?.id === item.id) {
+        this.glides.delete(key);
+        continue;
+      }
+      const glide = this.glides.get(key);
+      const from = glide ? this.glidePoint(glide, now) : was;
+      const frame = this.frameAt !== null && now - this.frameAt < FRAME_SYNC_MS;
+      this.glides.set(key, {
+        from,
+        to: { x: item.x, y: item.y },
+        t0: frame ? this.frameAt! : now,
+        duration: frame ? FRAME_GLIDE_MS : DRIVE_GLIDE_MS,
+      });
+    }
+    for (const key of this.glides.keys()) {
+      if (key.startsWith(`${prefix}:`) && !live.has(key)) this.glides.delete(key);
+    }
+  }
+
+  /** Czy to auto jest właśnie ciągnięte myszą. */
+  isDragging(id: string): boolean {
+    return this.dragging?.id === id;
+  }
+
+  /** Czy coś na drodze jeszcze dojeżdża — renderer prowadzi wtedy figury w fotelach. */
+  get gliding(): boolean {
+    return this.glides.size > 0 || this.roadGlide !== null;
+  }
+
+  /** Środek auta tak, jak go teraz widać (ciągnięte, w dojeździe albo na miejscu). */
+  shownVehicleCentre(id: string): ScenePoint | null {
+    const vehicle = this.vehicles.find((entry) => entry.id === id);
+    if (!vehicle) return null;
+    if (this.dragging?.id === id) return this.dragging.centre;
+    return this.shownAt(`v:${id}`, vehicle);
+  }
+
+  /**
+   * Lewy górny róg figury w fotelu auta tak, jak auto widać — te same wzory co
+   * `seatPosition` na serwerze, więc na miejscu wychodzi dokładnie pozycja z bazy.
+   */
+  seatedTokenAt(seat: { sceneVehicleId: string; seat: number }, size: number): ScenePoint | null {
+    const scene = this.scene;
+    const vehicle = this.vehicles.find((entry) => entry.id === seat.sceneVehicleId);
+    const centre = this.shownVehicleCentre(seat.sceneVehicleId);
+    if (!scene || scene.kind !== 'chase' || !vehicle || !centre) return null;
+    const at = vehicleSeatCentre(
+      centre,
+      vehicle,
+      seat.seat,
+      scene.chase.direction,
+      scene.grid.sizePx,
+    );
+    return at ? seatedTokenPosition(at, size, scene.grid.sizePx) : null;
+  }
+
+  /** Dojazdy aut i przeszkód w tej klatce; po końcu węzeł stoi w miejscu z serwera. */
+  private tickGlides(now: number): void {
+    if (this.roadGlide) {
+      const glide = this.roadGlide;
+      const k = easeInOut(Math.min(1, (now - glide.t0) / FRAME_GLIDE_MS));
+      this.road.tilePosition.x += glide.dx * (k - glide.applied);
+      this.road.tilePosition.y += glide.dy * (k - glide.applied);
+      glide.applied = k;
+      if (k >= 1) this.roadGlide = null;
+    }
+    for (const [key, glide] of this.glides) {
+      const id = key.slice(2);
+      const node = key.startsWith('v:') ? this.nodes.get(id) : this.obstacleNodes.get(id);
+      const at = this.glidePoint(glide, now);
+      if (key.startsWith('v:') && this.dragging?.id === id) {
+        this.glides.delete(key);
+        continue;
+      }
+      node?.root.position.set(at.x, at.y);
+      if (now - glide.t0 >= glide.duration) this.glides.delete(key);
     }
   }
 
   /** Przewija drogę — woła ticker renderera z czasem klatki w sekundach. */
   tick(seconds: number): void {
+    if (this.gliding) this.tickGlides(performance.now());
     const scene = this.scene;
     if (!scene || !this.road.visible || !scene.chase.running) return;
     // W walce droga jedzie z prędkością pościgu (etap 72, auto kadru z początku
@@ -346,16 +596,32 @@ export class ChaseLayer {
     occupied: Map<string, Set<number>>,
     showBand = this.showBand,
   ): void {
+    const before = new Map(this.vehicles.map((vehicle) => [vehicle.id, vehicle as ScenePoint]));
     this.vehicles = vehicles;
     this.occupied = occupied;
     this.showBand = showBand;
+    this.startGlides('v', before, vehicles);
     this.redraw();
   }
 
   /** Przeszkody sceny (65e). */
   setObstacles(obstacles: ChaseObstacleView[]): void {
+    const before = new Map(this.obstacles.map((obstacle) => [obstacle.id, obstacle as ScenePoint]));
     this.obstacles = obstacles;
+    this.startGlides('o', before, obstacles);
     this.redraw();
+  }
+
+  /** Dopiski pod podpisami aut i przeszkód (72d2) — gotowe zdania od klienta. */
+  setNotes(notes: { vehicles: Map<string, string>; obstacles: Map<string, string> }): void {
+    this.notes = notes;
+    this.redraw();
+  }
+
+  /** Duch auta z kokpitu (72d2) albo `null`. */
+  setGhost(ghost: ChaseGhost | null): void {
+    this.ghost = ghost;
+    this.drawGhost();
   }
 
   /** Przeszkoda pod punktem sceny — z wierzchu, czyli z końca listy. */
@@ -460,6 +726,107 @@ export class ChaseLayer {
       this.obstacleNodes.delete(id);
       node.root.destroy(DESTROY_TREE);
     }
+    this.drawGhost();
+  }
+
+  /**
+   * Duch auta (72d2): grafika auta w miejscu po ruchu, pas docelowy
+   * podświetlony przez całą długość kadru i miarka od zderzaka ducha do celu.
+   */
+  private drawGhost(): void {
+    if (this.destroyed) return;
+    const scene = this.scene;
+    const ghost = this.ghost;
+    const vehicle = ghost ? this.vehicles.find((entry) => entry.id === ghost.sceneVehicleId) : null;
+    this.laneGlow.clear();
+    this.ruler.clear();
+    this.rulerLabel.visible = false;
+    if (!scene || scene.kind !== 'chase' || !ghost || !vehicle) {
+      if (this.ghostNode) this.ghostNode.root.visible = false;
+      return;
+    }
+    const grid = scene.grid.sizePx;
+    const direction = scene.chase.direction;
+    const horizontal = chaseIsHorizontal(direction);
+
+    const lane = chaseLaneSpanPx(ghost.lane, scene.chase.lanes, scene.chase, this.gridOf(scene));
+    const length = horizontal ? scene.width : scene.height;
+    if (horizontal) this.laneGlow.rect(0, lane.from, length, lane.to - lane.from);
+    else this.laneGlow.rect(lane.from, 0, lane.to - lane.from, length);
+    this.laneGlow.fill({ color: SEAT_FREE_COLOR, alpha: 0.1 });
+    for (const at of [lane.from, lane.to]) {
+      if (horizontal) this.laneGlow.moveTo(0, at).lineTo(length, at);
+      else this.laneGlow.moveTo(at, 0).lineTo(at, length);
+    }
+    this.laneGlow.stroke({ color: SEAT_FREE_COLOR, width: Math.max(2, grid * 0.04), alpha: 0.45 });
+
+    let node = this.ghostNode;
+    if (!node) {
+      const root = new Container();
+      const body = new Container();
+      const outline = new Graphics();
+      body.addChild(outline);
+      root.addChild(body);
+      this.ghostLayer.addChildAt(root, 0);
+      node = { root, body, sprite: null, outline, imageUrl: null };
+      this.ghostNode = node;
+    }
+    node.root.visible = true;
+    node.root.position.set(ghost.centre.x, ghost.centre.y);
+    node.body.rotation = (chaseHeadingDeg(direction) * Math.PI) / 180;
+    const width = vehicle.widthSq * grid;
+    const bodyLength = vehicle.lengthSq * grid;
+    const art = vehicle.imageUrl ?? defaultVehicleArt(vehicle.layout);
+    if (node.imageUrl !== art) {
+      node.imageUrl = art;
+      node.sprite?.destroy();
+      node.sprite = null;
+      if (art) {
+        const target = node;
+        void Assets.load<Texture>(art)
+          .then((texture) => {
+            if (this.destroyed || target.imageUrl !== art || target.root.destroyed) return;
+            const sprite = new Sprite(texture);
+            sprite.anchor.set(0.5);
+            sprite.alpha = GHOST_ALPHA;
+            target.sprite = sprite;
+            target.body.addChildAt(sprite, 0);
+            this.drawGhost();
+          })
+          .catch(() => undefined);
+      }
+    }
+    if (node.sprite) {
+      const texture = node.sprite.texture;
+      const along = bodyLength / texture.height;
+      node.sprite.scale.set(Math.min(along, width / texture.width), along);
+    }
+    node.outline
+      .clear()
+      .roundRect(-width / 2, -bodyLength / 2, width, bodyLength, Math.min(width, bodyLength) * 0.18)
+      .fill({ color: SEAT_FREE_COLOR, alpha: node.sprite ? 0.06 : 0.18 })
+      .stroke({ color: SEAT_FREE_COLOR, width: Math.max(2, grid * 0.05), alpha: 0.85 });
+
+    const ruler = ghost.ruler;
+    if (!ruler) return;
+    const tick = grid * 0.35;
+    // Kreski na końcach w poprzek drogi — jak na miarce z narzędzi mapy.
+    const across = horizontal ? { x: 0, y: tick } : { x: tick, y: 0 };
+    this.ruler
+      .moveTo(ruler.from.x, ruler.from.y)
+      .lineTo(ruler.to.x, ruler.to.y)
+      .moveTo(ruler.from.x - across.x, ruler.from.y - across.y)
+      .lineTo(ruler.from.x + across.x, ruler.from.y + across.y)
+      .moveTo(ruler.to.x - across.x, ruler.to.y - across.y)
+      .lineTo(ruler.to.x + across.x, ruler.to.y + across.y)
+      .stroke({ color: 0xffffff, width: Math.max(2, grid * 0.05), alpha: 0.9 });
+    this.rulerLabel.text = ruler.label;
+    this.rulerLabel.style.fontSize = Math.max(12, grid * 0.24);
+    this.rulerLabel.position.set(
+      (ruler.from.x + ruler.to.x) / 2 - across.x * 0.4,
+      (ruler.from.y + ruler.to.y) / 2 - across.y * 0.4,
+    );
+    this.rulerLabel.visible = true;
   }
 
   /**
@@ -485,16 +852,18 @@ export class ChaseLayer {
         },
       });
       label.anchor.set(0.5, 1);
+      const note = noteText(20);
       body.addChild(shape);
-      root.addChild(body, label);
+      root.addChild(body, label, note);
       this.obstacleLayer.addChild(root);
-      node = { root, body, sprite: null, shape, label, imageUrl: null };
+      node = { root, body, sprite: null, shape, label, note, imageUrl: null };
       this.obstacleNodes.set(obstacle.id, node);
     }
     const width = obstacle.widthSq * grid;
     const length = obstacle.lengthSq * grid;
     const direction = scene.chase.direction;
-    node.root.position.set(obstacle.x, obstacle.y);
+    const shown = this.shownAt(`o:${obstacle.id}`, obstacle);
+    node.root.position.set(shown.x, shown.y);
     node.body.rotation = (chaseHeadingDeg(direction) * Math.PI) / 180;
     node.body.tint = obstacle.wreckTint ? WRECK_TINT : 0xffffff;
 
@@ -549,7 +918,13 @@ export class ChaseLayer {
         : `${obstacle.name} · ${obstacle.hp} PW`;
     node.label.style.fontSize = Math.max(11, grid * 0.18);
     const horizontal = chaseIsHorizontal(direction);
-    node.label.position.set(0, -(horizontal ? width : length) / 2 - grid * 0.06);
+    placeCaption(
+      node.label,
+      node.note,
+      this.notes.obstacles.get(obstacle.id) ?? '',
+      -(horizontal ? width : length) / 2 - grid * 0.06,
+      Math.max(10, grid * 0.16),
+    );
   }
 
   /** Włącza i wyłącza uchwyty pasa jezdni (tylko MG, tylko na scenie pościgu). */
@@ -727,15 +1102,20 @@ export class ChaseLayer {
         },
       });
       label.anchor.set(0.5, 1);
+      const note = noteText(22);
       body.addChild(placeholder);
-      root.addChild(body, seats, label);
+      root.addChild(body, seats, label, note);
       this.layer.addChild(root);
-      node = { root, body, sprite: null, placeholder, seats, label, imageUrl: null };
+      node = { root, body, sprite: null, placeholder, seats, label, note, imageUrl: null };
       this.nodes.set(vehicle.id, node);
     }
     const width = vehicle.widthSq * grid;
     const length = vehicle.lengthSq * grid;
-    const centre = this.dragging?.id === vehicle.id ? this.dragging.centre : vehicle;
+    // Znaczniki foteli rysują się względem środka, więc wystarczy środek z dojazdu.
+    const centre =
+      this.dragging?.id === vehicle.id
+        ? this.dragging.centre
+        : this.shownAt(`v:${vehicle.id}`, vehicle);
     const direction = scene.chase.direction;
     node.root.position.set(centre.x, centre.y);
     node.body.rotation = (chaseHeadingDeg(direction) * Math.PI) / 180;
@@ -809,7 +1189,13 @@ export class ChaseLayer {
     node.label.text = vehicleCaption(vehicle);
     node.label.style.fontSize = Math.max(12, grid * 0.22);
     const horizontal = chaseIsHorizontal(direction);
-    node.label.position.set(0, -(horizontal ? width : length) / 2 - grid * 0.08);
+    placeCaption(
+      node.label,
+      node.note,
+      this.notes.vehicles.get(vehicle.id) ?? '',
+      -(horizontal ? width : length) / 2 - grid * 0.08,
+      Math.max(10, grid * 0.18),
+    );
   }
 
   destroy(): void {
@@ -818,6 +1204,9 @@ export class ChaseLayer {
     this.nodes.clear();
     for (const node of this.obstacleNodes.values()) node.root.destroy(DESTROY_TREE);
     this.obstacleNodes.clear();
+    this.ghostNode = null;
+    this.glides.clear();
+    this.roadGlide = null;
     this.roadTexture?.destroy(true);
     this.roadTexture = null;
   }

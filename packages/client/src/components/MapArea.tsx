@@ -189,6 +189,7 @@ import { useFoesDefeatedNotice } from '../foes-defeated.js';
 import { useSightingNotice } from '../foe-sighting.js';
 import { clearNotices, noteAck, notifyChoice, notifyInfo, notifyRefusal } from '../notices.js';
 import { chaseObstacleAhead, chaseRamUsedThisTurn } from '../chase-ram.js';
+import { chaseMapNotes, chaseViewerVehicle } from '../chase-map-notes.js';
 import { PLAYER_MOVE_PACE_NOTE, PLAYER_MOVE_STOP_NOTE } from '../map/player-move.js';
 import { MAP_TOOL_KEYS } from '../shortcuts.js';
 import {
@@ -2417,53 +2418,66 @@ export function MapArea() {
 
   // Auta na scenie pościgu (65b) z zajętymi fotelami — fotel zajmuje figura,
   // więc lista jedzie od nowa także po każdej zmianie figur. Od 65c kamera
-  // gracza jedzie za autem, w którym siedzi jego figura.
+  // gracza jedzie za autem, w którym siedzi jego figura — od 72d2 klatka po
+  // klatce za autem takim, jakie widać (`setFollowedVehicle`). Od 72d2 także
+  // dopiski pod podpisami (prędkość aut, prognoza przeszkód) i duch auta.
   useEffect(() => {
     if (!ready) return;
-    const followOwnVehicle = (next: SceneVehicleView[], before: SceneVehicleView[]) => {
+    const pushNotes = () => {
       const user = useAuthStore.getState().user;
-      if (!user || user.role === ROLE_GM) return;
+      const scene = useSceneStore.getState().scene;
+      const { vehicles, obstacles } = useChaseStore.getState();
       const tokens = Object.values(useTokenStore.getState().tokens);
-      const ridden = next.find((vehicle) =>
-        tokens.some(
-          (token) => token.ownerId === user.id && token.vehicleSeat?.sceneVehicleId === vehicle.id,
-        ),
-      );
-      const was = ridden && before.find((vehicle) => vehicle.id === ridden.id);
-      if (!ridden || !was) return;
-      rendererRef.current?.panBy(ridden.x - was.x, ridden.y - was.y);
+      const viewer = chaseViewerVehicle(vehicles, tokens, user, scene?.chase.anchorId ?? null);
+      rendererRef.current?.setChaseNotes(chaseMapNotes(scene, vehicles, obstacles, viewer));
     };
     const push = () => {
       const occupied = new Map<string, Set<number>>();
-      for (const token of Object.values(useTokenStore.getState().tokens)) {
+      const tokens = Object.values(useTokenStore.getState().tokens);
+      for (const token of tokens) {
         const seat = token.vehicleSeat;
         if (!seat) continue;
         const taken = occupied.get(seat.sceneVehicleId) ?? new Set<number>();
         taken.add(seat.seat);
         occupied.set(seat.sceneVehicleId, taken);
       }
-      rendererRef.current?.setChaseVehicles(
-        useChaseStore.getState().vehicles,
-        occupied,
-        useAuthStore.getState().user?.role === ROLE_GM,
-      );
+      const user = useAuthStore.getState().user;
+      const vehicles = useChaseStore.getState().vehicles;
+      rendererRef.current?.setChaseVehicles(vehicles, occupied, user?.role === ROLE_GM);
+      const ridden =
+        user && user.role !== ROLE_GM
+          ? vehicles.find((vehicle) =>
+              tokens.some(
+                (token) =>
+                  token.ownerId === user.id && token.vehicleSeat?.sceneVehicleId === vehicle.id,
+              ),
+            )
+          : undefined;
+      rendererRef.current?.setFollowedVehicle(ridden?.id ?? null);
+      pushNotes();
     };
     push();
     rendererRef.current?.setChaseObstacles(useChaseStore.getState().obstacles);
+    rendererRef.current?.setChaseGhost(useChaseStore.getState().ghost);
     const offChase = useChaseStore.subscribe((state, previous) => {
+      if (state.ghost !== previous.ghost) rendererRef.current?.setChaseGhost(state.ghost);
       if (state.obstacles !== previous.obstacles) {
         rendererRef.current?.setChaseObstacles(state.obstacles);
+        if (state.vehicles === previous.vehicles) pushNotes();
       }
       if (state.vehicles === previous.vehicles) return;
       push();
-      followOwnVehicle(state.vehicles, previous.vehicles);
     });
     const offTokens = useTokenStore.subscribe((state, previous) => {
       if (state.tokens !== previous.tokens) push();
     });
+    const offScene = useSceneStore.subscribe((state, previous) => {
+      if (state.scene !== previous.scene) pushNotes();
+    });
     return () => {
       offChase();
       offTokens();
+      offScene();
     };
   }, [ready]);
 

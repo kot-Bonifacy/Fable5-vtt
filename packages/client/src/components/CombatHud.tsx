@@ -1097,10 +1097,12 @@ export function CombatHud() {
             {/* Klucz figury (17.10): bez niego pasek PW pamiętał poprzednią
                 figurę i przełączenie panelu pokazywało jej różnicę („+5”)
                 jak leczenie. */}
+            {/* Za kierownicą w walce portret się chowa (MG 20.11, 72d2): twarz
+                zastępuje kafel auta, a grupa „Pojazd” mieści się przy 900 px. */}
             <IdentityCard
               key={token.id}
               name={token.name}
-              imageUrl={token.imageUrl}
+              imageUrl={cockpit ? null : token.imageUrl}
               hp={context.device ? context.device.hp : token.hp}
               vitals={context.vitals}
               container={token.container}
