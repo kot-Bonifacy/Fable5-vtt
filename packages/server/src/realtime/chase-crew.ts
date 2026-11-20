@@ -30,6 +30,22 @@ export function seatedDriverOnChase(
   return scene.kind === 'chase' && token.sceneVehicleId !== null && token.vehicleSeat === 0;
 }
 
+/**
+ * Rozsyła auta sceny pościgu po zmianie tury (etap 72e): plan autopilota
+ * i Nitro w widoku zależą od tego, czyja jest tura, a zmiana wskaźnika nie
+ * rusza żadnego auta. Woła tracker (`applyTurnPointer`), który nie może
+ * importować `chase.ts`.
+ */
+export async function refreshChaseOnTurn(deps: RealtimeDeps, sceneId: string): Promise<void> {
+  if (!emitter) return;
+  const scene = await deps.ctx.prisma.scene.findUnique({
+    where: { id: sceneId },
+    select: { kind: true, campaignId: true },
+  });
+  if (scene?.kind !== 'chase') return;
+  await emitter(deps, scene.campaignId, sceneId);
+}
+
 /** Rozsyła auta sceny po zmianie figury w fotelu kierowcy. */
 export async function refreshChaseForDriver(
   deps: RealtimeDeps,

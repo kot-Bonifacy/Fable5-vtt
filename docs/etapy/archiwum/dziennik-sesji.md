@@ -1,5 +1,33 @@
 # Dziennik sesji — archiwum
 
+### Sesja 20.11 (trzecia) — etap 72d1: belka w pełnym kształcie
+
+**Zrobione (czeka na wdrożenie razem z 72b1–72c; nowa migracja `20261120200000_chase_swerve_round`):**
+
+- **Decyzje MG z pytań na starcie:** 72d dzielone na **72d1 belka** i **72d2 mapa**; menu auta
+  w walce u gracza tylko informacyjne (MG ma wszystko); pasek przy przeszkodzie i wezwaniu do
+  Manewru **zostaje jako alarm** obok wiersza w belce; **Gwałtowny skręt o dwa pasy i Nagłe
+  zatrzymanie przy przeszkodzie — oba teraz**.
+- **Serwer:** trzecia odpowiedź na przeszkodę i stojące auto `stop` (PT 13, wspólne
+  `answerWithManeuver`); auto o prędkości 0 stoi jak przeszkoda (przeszkoda i auto bez tury stają
+  przy jego zderzaku bez pytania); `swerveRound` + `laneDelta` ±2 (`SWERVE_NEEDED`); widok
+  `swerveReady` i `nitroArmed`; kierowca bez metrów w turze (`drivingMoveBudget` → całe Akcje Ruchu).
+- **Klient:** `HudVehicle` — wiersze decyzji (`DecisionRow`, części szuflady trybów ognia),
+  rządek ikon (`ToolSlot`; nowe ikony game-icons w `public/icons/hud/` z wpisem w
+  `ATTRIBUTION.md`), szuflada Manewrów, drugi klik w kafel pasa po skręcie — „o dwa pasy”,
+  dystans do celu i Nitro w „Po ruchu”, przeszkoda wyszarza krzyżak. Pasek „Zderzenie” po „Jedź”
+  zniknął; `blockerFor` / `answerBlocker` / `BLOCKER_CHOICES` w `ChaseObstacleMenu.tsx` karmią
+  i pasek, i belkę. Menu auta (`acts`) i menu przeszkody MG z „Nagłym zatrzymaniem”.
+- **Znalezione oględzinami i naprawione:** Nitro z ostatniego zbiornika znikało z rzędu po
+  odpaleniu (rząd chował ikonę przy `nitroLeft` 0); wiersz decyzji nie był wcięty pod nazwę auta
+  (`.hud-armed` / `.hud-modes` stoją w CSS niżej — selektor z `.hud-vehicle`).
+
+Testy: `shared` 3243/3243, serwer 1875/1875 (nowy `chase-cockpit.test.ts` — 5), klient 516/516;
+lint, Prettier i `tsc` trzech pakietów czyste. E2E `T65e` + `T72b` + `T72c` + nowy `T72d` 16/16
+(`T72d` powtórzony po poprawkach). **Oglądano w Firefoksie** (Ola: ikony, wiersz „Zderzenie”,
+dwa pasy, wiersz „Na drodze”) i **Chromium** (stół MG z belką Iskry przy zatrzymanym aucie).
+Dzień i noc, 900 px i mapa — w 72d2. `specs/99-zapomnij/` to dalej cudze oględziny z 14.11.
+
 ### Sesja 20.11 (druga) — etap 72c: Wyścig na początku rundy
 
 **Zrobione (czeka na wdrożenie razem z 72b1–72b2; bez nowej migracji — stan w `Scene.chaseRace`):**

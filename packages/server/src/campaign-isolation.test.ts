@@ -959,6 +959,9 @@ const CASES: Record<string, Case> = {
     pedal: 'gas',
     laneDelta: 0,
   })),
+  // autopilot aut NPC-ów (etap 72e): zamiar i hamulec sceny
+  'chase:intent': foreign((a) => ({ sceneVehicleId: a.sceneVehicleId, intent: 'flee' })),
+  'chase:autopilot': foreign((a) => ({ sceneId: a.sceneId, on: false })),
   // Wyścig rundy (etap 72c): karta czatu obcej kampanii nie jest Wyścigiem tej
   'chase:race-roll': foreign((a) => ({ messageId: a.messageId, vehicleId: a.sceneVehicleId })),
   'chase:race-skip': foreign((a) => ({ messageId: a.messageId })),

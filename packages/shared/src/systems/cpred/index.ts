@@ -80,5 +80,6 @@ export * from './vehicle-models.js';
 export * from './vehicle-upgrade-shop.js';
 export * from './vehiclecombat.js';
 export * from './chase-drive.js';
+export * from './chase-autopilot.js';
 export * from './mountrows.js';
 export * from './fleet.js';

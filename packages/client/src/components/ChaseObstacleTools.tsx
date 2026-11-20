@@ -14,7 +14,10 @@ import { useAuthStore } from '../stores/authStore.js';
 import { useChaseStore } from '../stores/chaseStore.js';
 import { useCombatStore } from '../stores/combatStore.js';
 import { useSceneStore } from '../stores/sceneStore.js';
-import { IconRoadBarrier } from './MapIcons.js';
+import { notifyRefusal } from '../notices.js';
+import { setChaseAutopilot } from '../socket.js';
+import { chaseErrorText } from './ChaseVehicleMenu.js';
+import { IconAutopilot, IconRoadBarrier } from './MapIcons.js';
 
 /**
  * Przeszkody i ruch uliczny (etap 65e) — przycisk na pasku narzędzi MG, tylko
@@ -31,6 +34,38 @@ function useObstacleToolsShown(): boolean {
   const isGm = useAuthStore((s) => s.user?.role === ROLE_GM);
   const chase = useSceneStore((s) => s.effectiveScene?.kind === 'chase');
   return isGm && chase;
+}
+
+/**
+ * Hamulec autopilota całej sceny (etap 72e, decyzja MG 20.11: na pasku
+ * narzędzi obok przeszkód; w 72f przejdzie do nagłówka panelu „Pościg”).
+ * Wciśnięty — auta NPC-ów z zamiarem jadą same; zwolniony — wszystkie ręcznie.
+ */
+export function ChaseAutopilotButton() {
+  const shown = useObstacleToolsShown();
+  const sceneId = useSceneStore((s) => s.effectiveScene?.id ?? null);
+  const on = useSceneStore((s) => s.effectiveScene?.chase.autopilot ?? true);
+  if (!shown || !sceneId) return null;
+  return (
+    <button
+      type="button"
+      className={`map-tool${on ? ' map-tool--active' : ''}`}
+      title={
+        on
+          ? 'Autopilot włączony — auta NPC-ów z zamiarem (menu auta) jadą same w turze kierowcy. Kliknij, żeby wszystkie jechały ręcznie.'
+          : 'Autopilot wyłączony — auta NPC-ów jadą ręcznie. Kliknij, żeby auta z zamiarem znowu jechały same.'
+      }
+      aria-label="Autopilot"
+      aria-pressed={on}
+      onClick={() => {
+        void setChaseAutopilot(sceneId, !on).then((ack) => {
+          if (!ack.ok) notifyRefusal('chase', chaseErrorText(ack.error));
+        });
+      }}
+    >
+      <IconAutopilot />
+    </button>
+  );
 }
 
 export function ChaseObstacleButton() {

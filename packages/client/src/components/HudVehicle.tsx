@@ -475,15 +475,21 @@ export function HudVehicle({
   const vehicles = useChaseStore((s) => s.vehicles);
   const user = useAuthStore((s) => s.user);
   const isGm = user?.role === ROLE_GM;
-  const [pedal, setPedal] = useState<Pedal>(null);
-  const [laneDelta, setLaneDelta] = useState<ChaseLaneDelta>(0);
+  // Wybór kierowcy; `null` — MG jeszcze nie ruszył krzyżaka, więc stoi plan
+  // autopilota (etap 72e), a bez autopilota — jazda prosto.
+  const [chosen, setChosen] = useState<{ pedal: Pedal; laneDelta: ChaseLaneDelta } | null>(null);
   const [contact, setContact] = useState<VehicleDriveContactInfo | null>(null);
   const [maneuversOpen, setManeuversOpen] = useState(false);
+  // Plan autopilota przychodzi tylko do MG, w turze kierowcy auta z zamiarem.
+  const pilot = vehicle.intent?.plan ?? null;
+  const pedal: Pedal = chosen ? chosen.pedal : (pilot?.pedal ?? null);
+  const laneDelta: ChaseLaneDelta = chosen ? chosen.laneDelta : (pilot?.laneDelta ?? 0);
+  const setPedal = (next: Pedal) => setChosen({ pedal: next, laneDelta });
+  const setLaneDelta = (next: ChaseLaneDelta) => setChosen({ pedal, laneDelta: next });
   // Wybór należy do jednego ruchu: zmiana auta, wykonany ruch albo nowa runda
   // (prędkość pościgu) go zdejmują — razem z pytaniem o zderzenie.
   useEffect(() => {
-    setPedal(null);
-    setLaneDelta(0);
+    setChosen(null);
     setContact(null);
     setManeuversOpen(false);
   }, [vehicle.id, vehicle.moved, chase?.pursuitSpeed]);
@@ -761,7 +767,17 @@ export function HudVehicle({
       {decisions}
       {!vehicle.moved && (
         <p className="hud-armed hud-vehicle-after">
-          <span className="hud-armed-tag">Po ruchu</span>
+          {/* Plan autopilota, którego MG nie ruszył: bez „Jedź” auto pojedzie tak samo. */}
+          <span
+            className="hud-armed-tag"
+            title={
+              pilot && !chosen
+                ? 'Plan autopilota — bez „Jedź” auto pojedzie tak na koniec tury. Krzyżak go nadpisuje.'
+                : undefined
+            }
+          >
+            {pilot && !chosen ? 'Autopilot' : 'Po ruchu'}
+          </span>
           <span className="hud-armed-aim">
             {`${metres >= 0 ? '+' : '−'}${formatMetres(Math.abs(metres))} · pas ${lane + 1} z ${chase.lanes}`}
             {vehicle.raceBonus > 0 &&

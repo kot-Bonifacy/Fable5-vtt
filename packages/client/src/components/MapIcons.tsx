@@ -500,6 +500,17 @@ export function IconCrate(props: IconProps) {
   );
 }
 
+/** Autopilot aut NPC-ów (etap 72e) — kierownica z piastą i trzema ramionami. */
+export function IconAutopilot(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <circle cx="12" cy="12" r="8.5" />
+      <circle cx="12" cy="12" r="2.2" />
+      <path d="M3.8 10.6l6-0.4M14.2 10.2l6 0.4M12 14.2v6.2" />
+    </Svg>
+  );
+}
+
 /** Przeszkoda na drodze pościgu (etap 65e) — barierka w pasy na dwóch nogach. */
 export function IconRoadBarrier(props: IconProps) {
   return (

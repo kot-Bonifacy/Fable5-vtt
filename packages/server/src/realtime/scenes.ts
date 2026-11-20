@@ -116,6 +116,7 @@ export function chaseSettingsOf(scene: Scene): ChaseSettings {
     pursuitSpeed: scene.chasePursuitSpeed,
     shiftSq: scene.chaseShiftSq,
     race: chaseRaceWaitView(scene),
+    autopilot: scene.chaseAutopilot,
   };
 }
 

@@ -71,6 +71,7 @@ import {
 } from './registry.js';
 import { containerTokenIds } from './containers.js';
 import { offstageVehicleIds, resetChaseCombat } from './chase-offstage.js';
+import { refreshChaseOnTurn } from './chase-crew.js';
 import { campaignRoom, gmRoom, sceneRoom } from './state.js';
 import { emitSceneView, requireCampaignScene } from './scenes.js';
 import { INCLUDE_CHAT_NAMES, deliverRollMessage, toChatMessageView } from './chat-io.js';
@@ -665,6 +666,19 @@ export async function renumberOrder(prisma: PrismaClient, combat: CombatRow): Pr
  * pointer, not replaying the turn. „Zwróć turę" is the button for that.
  */
 export async function applyTurnPointer(
+  deps: RealtimeDeps,
+  combat: CombatRow,
+  pointer: TurnPointer,
+  startTurn: boolean,
+): Promise<void> {
+  await writeTurnPointer(deps, combat, pointer, startTurn);
+  // Etap 72e: widok aut pościgu (plan autopilota MG, Nitro) zależy od tury.
+  if (pointer.activeCombatantId !== combat.activeCombatantId || pointer.round !== combat.round) {
+    await refreshChaseOnTurn(deps, combat.sceneId);
+  }
+}
+
+async function writeTurnPointer(
   deps: RealtimeDeps,
   combat: CombatRow,
   pointer: TurnPointer,

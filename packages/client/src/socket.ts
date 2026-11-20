@@ -323,6 +323,7 @@ import type {
   VehicleRenamePayload,
   ChaseObstacleChoice,
   ChaseObstacleSpawnPayload,
+  ChaseIntent,
   ChaseObstacleView,
   ChasePlacePayload,
   ChaseSyncBroadcast,
@@ -3615,6 +3616,14 @@ export const restoreChaseVehicle = (sceneVehicleId: string) =>
 /** MG: auto ucieka z pościgu (zaległość z 04.11) — jak wyjazd za przednią krawędź. */
 export const escapeChaseVehicle = (sceneVehicleId: string) =>
   emitSceneAck<SceneVehicleView>('chase:escape', { sceneVehicleId });
+/** MG (etap 72e): zamiar auta NPC-a dla autopilota i hamulec autopilota sceny. */
+export const setChaseIntent = (
+  sceneVehicleId: string,
+  intent: ChaseIntent,
+  targetId: string | null = null,
+) => emitSceneAck('chase:intent', { sceneVehicleId, intent, targetId });
+export const setChaseAutopilot = (sceneId: string, on: boolean) =>
+  emitSceneAck('chase:autopilot', { sceneId, on });
 export const restoreVehicleControl = (sceneVehicleId: string) =>
   emitSceneAck<SceneVehicleView>('vehicle:control', { sceneVehicleId });
 /** Etap 65d2: Manewr kierowcy, wezwanie MG do Manewru, przeładowanie broni pokładowej. */

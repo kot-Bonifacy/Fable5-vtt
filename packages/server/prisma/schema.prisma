@@ -852,6 +852,11 @@ model SceneVehicle {
    */
   intent         String  @default("manual")
   intentTargetId String?
+  /**
+   * „Trzymaj dystans” (etap 72e): odstęp środków wzdłuż drogi w kratkach
+   * z chwili nadania zamiaru (dodatni — to auto jest przed celem).
+   */
+  intentGapSq    Float?
   /** Zryw z Wyścigu tej rundy w kratkach (etap 72c) — gaśnie z końcem rundy. */
   raceBonus      Int     @default(0)
   /**

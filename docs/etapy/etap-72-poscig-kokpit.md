@@ -3,7 +3,7 @@
 **Faza:** przed betą (zlecenie MG z 15.11 spoza planu) · **Wymaga etapów:** 65 (scena pościgu,
 65a–65e), kreator pościgu z 03.11, 66c i 66d (wzorce pościgu), 69 (lewa belka bez ramek),
 32 (wezwanie do Testu) · **Status:** 🟨 w toku — projekt 15.11, **72a ✅ 19.11**, **72b1 ✅ 19.11**,
-**72b2 ✅ 20.11**, **72c ✅ 20.11**, **72d1 ✅ 20.11**, **72d2 ✅ 20.11**, następny 72e
+**72b2 ✅ 20.11**, **72c ✅ 20.11**, **72d1 ✅ 20.11**, **72d2 ✅ 20.11**, **72e ✅ 20.11**, następny 72f
 
 ## Skąd ten etap
 
@@ -582,12 +582,47 @@ Rozstrzygnięcia bez pytań (do potwierdzenia przy rozegraniu 72g):
 - Logika „N m · za N tur” i prędkości w mil/h mieszka poza `map/` (`chase-map-notes.ts`) —
   warstwa mapy to rdzeń, dostaje gotowe zdania.
 
-### 72e — auta NPC-ów
+### 72e — auta NPC-ów (✅ 20.11)
 
-- [ ] `cpredChaseAutopilot` (`shared`, testy każdego zamiaru), `chase:intent`, ruch autopilota
-      na początku tury NPC-a, hamulec sceny.
-- [ ] Zamiar w menu auta MG; kokpit MG w belce zaznaczonego kierowcy-NPC-a.
-- [ ] Testy serwera, E2E (auto z zamiarem „Goń” dogania, „Uciekaj” przyspiesza do maksimum).
+- [x] `cpredChaseAutopilot` (`systems/cpred/chase-autopilot.ts`, testy każdego zamiaru),
+      `chase:intent`, ruch autopilota **na koniec tury** kierowcy-NPC-a (decyzja MG niżej),
+      hamulec sceny `chase:autopilot`.
+- [x] Zamiar w menu auta MG (jedna lista „Zamiar”); kokpit MG w belce zaznaczonego
+      kierowcy-NPC-a z planem autopilota wybranym z góry i duchem na mapie.
+- [x] Testy serwera (`chase-autopilot.test.ts`), E2E `48-poscig/t72e-autopilot` („Goń”
+      dogania, „Uciekaj” przyspiesza do maksimum, przełącznik gasi plan, gracz nie widzi zamiaru).
+
+Decyzje MG z 20.11 (pytania na starcie sesji):
+
+- **Autopilot jedzie na koniec tury, nie na początku** — przez całą turę NPC-a MG widzi plan
+  w kokpicie (krzyżak wybrany z góry, „Autopilot” zamiast „Po ruchu”) i duchem na mapie, może go
+  nadpisać krzyżakiem i „Jedź”; bez tego przy „Następnej turze” auto jedzie planem zamiast
+  prosto. Strzał MG pada przed ruchem. Zmiana zamiaru działa od razu.
+- **„Trzymaj dystans” trzyma odstęp z chwili nadania zamiaru** (migracja
+  `20261120230000_chase_intent_gap`, `SceneVehicle.intentGapSq`).
+- **„Goń” siada tuż za celem, na jego pasie** (zderzak ~2 m za nim); gdy cel zwalnia, autopilot
+  hamuje za nim i nie taranuje.
+- **Przełącznik „Autopilot” na pasku narzędzi MG** obok przeszkód (w 72f do nagłówka panelu).
+
+Rozstrzygnięcia bez pytań (do potwierdzenia przy rozegraniu 72g):
+
+- **Plan to mały przegląd naprzód** — dla każdego pedału i pasa tej tury dwie kolejne rundy
+  z najlepszymi pedałami (pas stały); cel i inne auta jadą dalej swoją prędkością. Kroki gazu
+  (+50) i hamulca (−100 mil/h) nie pozwalają wyrównać prędkości co do mili, więc „Goń” zwykle
+  staje 4–8 m za celem, a nie 2 m — do oceny w 72g razem z krokami pedałów.
+- **Autopilot taranuje wyłącznie cel zamiaru „Taranuj”** (także bokiem — „Zepchnij”); inne
+  zderzenie rozstrzyga jak jazda bez „Jedź”: zwolnij, a gdy hamulec nie wystarcza — taran.
+  „Blokuj” zajeżdża drogę przed celem z jego prędkością; kary za to, że cel wjedzie mu w tył,
+  nie ma — to cel zamiaru.
+- **Autopilot nie odpala Nitro, Manewrów ani kolczatki** i nie odpowiada na przeszkodę przed
+  zderzakiem (wtedy nie prowadzi wcale). Kolczatki nie omija — nie ma jej w bryłach na drodze.
+- **Zamiar jest tajemnicą MG:** graczom nie jedzie w `chase:sync` ani w odpowiedziach zdarzeń.
+  Auto z figurą gracza za kierownicą zamiaru nie dostaje (`PLAYER_DRIVES`); auto NPC-a z zamiarem,
+  do którego gracz przesiądzie się za kierownicę, jedzie jego kokpitem.
+- **Zamiar bez kierowcy** da się nadać (kierowca może siąść później); autopilot rusza dopiero
+  z kierowcą-NPC-em zdolnym do działania.
+- **Cel, który wypadł z kadru**, zostaje w liście jako „(poza pościgiem)”, a autopilot bez celu
+  nie prowadzi — auto jedzie prosto.
 
 ### 72f — panel „Pościg”, plan rund, kreator
 

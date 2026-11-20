@@ -62,6 +62,7 @@ import {
   type PlacedVehicle,
 } from './chase.js';
 import { crossSpikes, driftObstaclesRound, obstaclePendingFor } from './chase-obstacles.js';
+import { autopilotPlan } from './chase-autopilot.js';
 import { firstChaseContact, obstacleBoxId, pushVehicleBehind, resolveRam } from './chase-ram.js';
 import {
   applyTurnPointer,
@@ -276,18 +277,25 @@ export async function driveWithContacts(
 
 // ───────────────────────── Plan ruchu ─────────────────────────
 
-/** Jak auto jedzie: kierowca wybrał, serwer za niego (koniec tury) albo automat bez kontroli. */
-type DriveMode = 'driver' | 'auto' | 'lost';
+/**
+ * Jak auto jedzie: kierowca wybrał, serwer za niego (koniec tury), automat bez
+ * kontroli albo autopilot zamiaru (etap 72e, koniec tury kierowcy-NPC-a).
+ */
+type DriveMode = 'driver' | 'auto' | 'lost' | 'pilot';
 
 interface DriveOrder {
   pedal: CpredPedal | null;
   laneDelta: ChaseLaneDelta;
   mode: DriveMode;
+  /** Autopilot „Taranuj”: auto, w które zderzenie jest celem (taran bez pytania). */
+  ramTargetId?: string | null;
 }
 
 /** Zderzenie na drodze ruchu, które czeka na wybór (albo rozstrzyga je tryb). */
 interface PlannedContact {
   info: VehicleDriveContactInfo;
+  /** Auto, w które trafia ruch; `null` — przeszkoda albo pieszy. */
+  vehicleId: string | null;
   /** Środek auta przy zderzaku blokującego. */
   centre: ScenePoint;
   /** Auto cofa się (wolniejsze od pościgu) i staje przed tym, co jedzie za nim. */
@@ -362,6 +370,7 @@ async function planDrive(
   const side = !contact.front && contact.axis !== alongAxis;
   const rear = !contact.front && !side;
   plan.contact = {
+    vehicleId: contact.obstacle.kind === 'vehicle' ? contact.obstacle.id : null,
     centre: contact.centre,
     rear,
     ramTo: real ? step.to : probeTo,
@@ -386,15 +395,20 @@ function contactDecision(
   plan: DrivePlan,
   mode: DriveMode,
   chosen: VehicleDriveContact | undefined,
+  ramTargetId: string | null = null,
 ): 'stop' | VehicleDriveContact | null {
   const contact = plan.contact;
   if (!contact) return null;
   if (contact.rear) return 'stop';
+  // Autopilot taranuje wyłącznie cel zamiaru „Taranuj” (projekt, punkt 6) —
+  // także bokiem; resztę rozstrzyga jak jazda bez „Jedź”.
+  if (mode === 'pilot' && ramTargetId !== null && contact.vehicleId === ramTargetId) return 'ram';
   // Automat utraty kontroli: „co stanie na drodze, rozstrzyga resolveRam”.
   if (mode === 'lost') return 'ram';
   // Koniec tury bez „Jedź” (decyzja MG 19.11): zwolnij, a gdy hamulec nie
   // wystarcza — uderz, bo kierowca nie zareagował.
-  if (mode === 'auto') return contact.info.side ? 'stop' : contact.info.canSlow ? 'slow' : 'ram';
+  if (mode === 'auto' || mode === 'pilot')
+    return contact.info.side ? 'stop' : contact.info.canSlow ? 'slow' : 'ram';
   if (!chosen) return null;
   if (chosen === 'slow' && !contact.info.canSlow) throw new RealtimeError('CANT_SLOW_BEHIND');
   return chosen;
@@ -650,14 +664,29 @@ export async function chaseTurnEnd(
     await lostControlDrive(deps, campaignId, user, placed.id, round);
     return;
   }
-  const plan = await planDrive(prisma, placed, { pedal: null, laneDelta: 0, mode: 'auto' });
+  // Etap 72e: auto NPC-a z zamiarem jedzie planem autopilota (ten sam, który
+  // MG widział w kokpicie i duchem na mapie), reszta — prosto.
+  const nitro = await nitroThisTurn(prisma, placed);
+  const pilot = await autopilotPlan(
+    prisma,
+    placed,
+    nitro ? Math.max(0, readCpredVehicle(placed.vehicle.system).move) : 0,
+  );
+  const order: DriveOrder = pilot
+    ? {
+        ...pilot,
+        mode: 'pilot',
+        ramTargetId: placed.intent === 'ram' ? placed.intentTargetId : null,
+      }
+    : { pedal: null, laneDelta: 0, mode: 'auto' };
+  const plan = await planDrive(prisma, placed, order);
   await executeDrive(
     deps,
     campaignId,
     user,
     placed,
     plan,
-    contactDecision(plan, 'auto', undefined),
+    contactDecision(plan, order.mode, undefined, order.ramTargetId ?? null),
     round,
   );
 }

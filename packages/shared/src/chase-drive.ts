@@ -316,3 +316,37 @@ export function chaseObstacleEta(
   const rounds = gapSq === 0 ? 0 : step > 0 ? Math.ceil(gapSq / step) : null;
   return { gapSq, rounds, sameLane };
 }
+
+// ───────────────────────── Zamiar auta (autopilot, etap 72e) ─────────────────────────
+
+/**
+ * Zamiar auta NPC-a (etap 72e, decyzja MG 10): `manual` — MG prowadzi sam
+ * kokpitem, reszta — autopilot dobiera pedał i pas w turze kierowcy. Zamiar
+ * jest tajemnicą MG: do graczy nie jedzie (`SceneVehicleView.intent`).
+ */
+export const CHASE_INTENTS = ['manual', 'flee', 'pursue', 'keep', 'ram', 'block'] as const;
+export type ChaseIntent = (typeof CHASE_INTENTS)[number];
+
+export function isChaseIntent(value: unknown): value is ChaseIntent {
+  return (CHASE_INTENTS as readonly unknown[]).includes(value);
+}
+
+export const CHASE_INTENT_LABELS: Record<ChaseIntent, string> = {
+  manual: 'Ręcznie',
+  flee: 'Uciekaj',
+  pursue: 'Goń',
+  keep: 'Trzymaj dystans',
+  ram: 'Taranuj',
+  block: 'Blokuj',
+};
+
+/** Zamiary, które jadą względem innego auta (`targetId`). */
+export function chaseIntentNeedsTarget(intent: ChaseIntent): boolean {
+  return intent !== 'manual' && intent !== 'flee';
+}
+
+/** Podpis zamiaru: „Goń: Włóczęga”, „Uciekaj”. */
+export function chaseIntentLabel(intent: ChaseIntent, targetName: string | null): string {
+  const label = CHASE_INTENT_LABELS[intent];
+  return chaseIntentNeedsTarget(intent) && targetName ? `${label}: ${targetName}` : label;
+}

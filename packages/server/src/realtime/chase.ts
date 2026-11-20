@@ -57,6 +57,7 @@ import { campaignRoom, gmRoom } from './state.js';
 import { provideChaseEmitter } from './chase-crew.js';
 import { emitTokensById, requireCampaignToken } from './tokens.js';
 import { requireTurnSpend } from './combat-actions.js';
+import { autopilotPlan, intentViewOf, playerVehicleView } from './chase-autopilot.js';
 
 /**
  * Scena pościgu (etap 65b): auta na bieżni i figury w fotelach.
@@ -290,10 +291,14 @@ export function sceneMotion(
   return new Map(rows.map((row) => [row.id, vehicleMotion(row, seated, scene)] as const));
 }
 
-/** Auta sceny jako widoki, z figurami, którym wolno prowadzić, i kierowcami. */
+/**
+ * Auta sceny jako widoki, z figurami, którym wolno prowadzić, i kierowcami.
+ * `gm` dokłada zamiar auta i plan autopilota (etap 72e) — tylko do widoku MG.
+ */
 export async function placedViews(
   prisma: PrismaClient,
   sceneId: string,
+  options: { gm?: boolean } = {},
 ): Promise<SceneVehicleView[]> {
   const rows = await placedOnScene(prisma, sceneId);
   if (rows.length === 0) return [];
@@ -309,23 +314,43 @@ export async function placedViews(
         });
   const seated = await seatedOnScene(prisma, rows);
   const motions = sceneMotion(rows, seated, scene);
-  const nitro = scene.chasePursuitSpeed !== null ? await nitroArmedVehicle(prisma, sceneId) : null;
+  const active =
+    scene.chasePursuitSpeed !== null ? await activeDriverVehicle(prisma, sceneId) : null;
+  const nitro = active?.nitro ? active.vehicleId : null;
+  // Plan autopilota liczy się tylko dla auta, którego kierowca ma turę.
+  const pilotRow =
+    options.gm && active ? rows.find((row) => row.id === active.vehicleId) : undefined;
+  const plan = pilotRow
+    ? await autopilotPlan(
+        prisma,
+        { ...pilotRow, scene },
+        active?.nitro ? Math.max(0, readCpredVehicle(pilotRow.vehicle.system).move) : 0,
+      )
+    : null;
   return rows.map((row) => {
     const view = toSceneVehicleView(row, {
       scene,
       driverTokens: tokens,
       motion: motions.get(row.id)!,
     });
-    return { ...view, nitroArmed: row.id === nitro && !view.moved };
+    return {
+      ...view,
+      nitroArmed: row.id === nitro && !view.moved,
+      ...(options.gm ? { intent: intentViewOf(row, row.id === pilotRow?.id ? plan : null) } : {}),
+    };
   });
 }
 
 /**
- * Auto, którego kierowca w trwającej turze odpalił Nitro (Akcja tury to Nitro,
- * etap 72d) — kokpit dolicza wtedy `Ruch / 4` do „Po ruchu”, jak serwer do
- * „Jedź” (`nitroThisTurn`). `null` — nikt.
+ * Auto, którego kierowca ma trwającą turę, i czy odpalił w niej Nitro (Akcja
+ * tury to Nitro, etap 72d) — kokpit dolicza wtedy `Ruch / 4` do „Po ruchu”,
+ * jak serwer do „Jedź” (`nitroThisTurn`); autopilot (72e) liczy plan właśnie
+ * dla tego auta. `null` — nikt w fotelu kierowcy nie ma tury.
  */
-async function nitroArmedVehicle(prisma: PrismaClient, sceneId: string): Promise<string | null> {
+async function activeDriverVehicle(
+  prisma: PrismaClient,
+  sceneId: string,
+): Promise<{ vehicleId: string; nitro: boolean } | null> {
   const combat = await prisma.combat.findUnique({
     where: { sceneId },
     select: { activeCombatantId: true },
@@ -336,12 +361,15 @@ async function nitroArmedVehicle(prisma: PrismaClient, sceneId: string): Promise
     select: { tokenId: true, turnState: true },
   });
   if (!row?.tokenId) return null;
-  if (readCpredTurn(row.turnState ?? undefined).action?.id !== CPRED_ACTION_NITRO) return null;
   const token = await prisma.token.findUnique({
     where: { id: row.tokenId },
     select: { sceneVehicleId: true, vehicleSeat: true },
   });
-  return token?.vehicleSeat === 0 ? token.sceneVehicleId : null;
+  if (token?.vehicleSeat !== 0 || !token.sceneVehicleId) return null;
+  return {
+    vehicleId: token.sceneVehicleId,
+    nitro: readCpredTurn(row.turnState ?? undefined).action?.id === CPRED_ACTION_NITRO,
+  };
 }
 
 /** Widok jednego auta tej sceny — odpowiedź zdarzeń, które je zmieniły. */
@@ -376,8 +404,9 @@ export async function fetchSceneVehiclesFor(
   sceneId: string,
   user: SessionUser,
 ): Promise<SceneVehicleView[]> {
-  const views = await placedViews(prisma, sceneId);
-  return user.role === ROLE_GM ? views : views.filter(visibleToPlayers);
+  const gm = user.role === ROLE_GM;
+  const views = await placedViews(prisma, sceneId, { gm });
+  return gm ? views : views.filter(visibleToPlayers);
 }
 
 function visibleToPlayers(view: SceneVehicleView): boolean {
@@ -424,12 +453,13 @@ export async function emitChase(
   campaignId: string,
   sceneId: string,
 ): Promise<void> {
-  const views = await placedViews(deps.ctx.prisma, sceneId);
+  const views = await placedViews(deps.ctx.prisma, sceneId, { gm: true });
   const obstacles = await obstacleViews(deps.ctx.prisma, sceneId);
   deps.io
     .to(gmRoom(campaignId))
     .emit('chase:sync', { sceneId, vehicles: views, obstacles } satisfies ChaseSyncBroadcast);
-  const players = views.filter(visibleToPlayers);
+  // Zamiar auta NPC-a (72e) to tajemnica MG — graczom jedzie widok bez niego.
+  const players = views.filter(visibleToPlayers).map(playerVehicleView);
   const sockets = await deps.io.in(campaignRoom(campaignId)).fetchSockets();
   for (const member of sockets) {
     const data = member.data as { user: SessionUser; viewedSceneId: string | null };

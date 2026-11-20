@@ -236,6 +236,7 @@ describe('etap 65b: scena pościgu, auta i fotele', () => {
       pursuitSpeed: null,
       race: null,
       shiftSq: 0,
+      autopilot: true,
     });
     const activated = waitForMatch(owner, 'scene:activate', () => true);
     await emitAck(gm, 'scene:activate', { sceneId: scene.id });

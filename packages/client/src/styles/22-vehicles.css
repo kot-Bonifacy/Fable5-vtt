@@ -537,6 +537,17 @@ input.vehicle-card-name {
   color: var(--text-dim);
 }
 
+/* Zamiar auta NPC-a (etap 72e): nagłówek sekcji i jedna lista na całą szerokość menu. */
+.chase-menu-intent {
+  display: block;
+}
+
+.chase-menu-intent select {
+  display: block;
+  width: calc(100% - 1rem);
+  margin: 0 0.5rem 0.35rem;
+}
+
 /* Broń pokładowa spoza katalogu (03.11) — ostrzeżenie dla MG w menu auta i w oknie pojazdu. */
 .chase-menu-state.chase-menu-warning,
 .vehicle-hint.vehicle-warning {

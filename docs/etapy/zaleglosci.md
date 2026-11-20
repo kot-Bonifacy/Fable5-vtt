@@ -6,6 +6,13 @@ w `POMYSLY.md` („Do sprawdzenia przy stole”), decyzje MG — w `decyzje-i-up
 
 ## Otwarte
 
+**20.11.2026 — `48-poscig/t65-przeszkody` migocze: pusta mapa MG w pierwszym teście (72e).**
+W przebiegu `--grep "T72e|T72b|T72c|T72d|T65e"` zaraz po buildzie test „MG wypuszcza barykadę
+z palety…” padł na `clickWorld`: „E2E: the map is not on screen (no __vttE2E camera)” — u MG
+sama siatka bez tła „Wiaduktu”, choć scena aktywna i widziana. `T65e` osobno zaraz potem 4/4.
+Przy następnym czerwonym przebiegu obejrzeć `MG-ramki.txt` (czy `scene:view` przyszło przed
+`scene:activate`) i dodać czekanie na kamerę w `beforeAll`, jeśli to wyścig wczytania tła.
+
 **19.11.2026 — po 72a: Firefox i sceny na usuniętych drogach na VPS.** (1) Kreator pościgu
 z jedną wbudowaną drogą obejrzany tylko w czystym Chromium — Firefox z Playwright MCP nie
 wystartował; obejrzeć w Firefoksie przy 72b. (2) Po wdrożeniu sprawdzić na VPS sceny z tłem

@@ -75,6 +75,19 @@ tylko Testami i Manewrami (s. 191–192); liczby niżej to VTT.
   decyzja MG 20.11); jego rzut Wyścigu jest Testem zwykłej jazdy (PT 10, zdaje się powyżej),
   porażka to utrata kontroli od razu (prędkość −10), ruch automatem 1k6 na koniec jego tury.
   Test zwykłej jazdy przy „Jedź” zniknął.
+- **Autopilot aut NPC-ów (72e, decyzje MG z 15.11 i 20.11)** — MG nadaje autowi NPC-a zamiar
+  w menu auta: Ręcznie, Uciekaj, Goń X, Trzymaj dystans do X, Taranuj X, Blokuj X. W turze
+  kierowcy-NPC-a serwer liczy plan (pedał i pas o najwyżej jeden), MG widzi go w kokpicie
+  i duchem na mapie i może go nadpisać krzyżakiem; **bez „Jedź” auto jedzie planem na koniec
+  tury** zamiast jazdy prosto. „Goń” siada celowi na ogonie, na jego pasie (zderzak ~2 m za nim,
+  przy krokach hamulca 100 mil/h zwykle staje 4–8 m za nim); „Trzymaj dystans” trzyma odstęp
+  z chwili nadania zamiaru; „Blokuj” zajeżdża drogę przed celem z jego prędkością. Autopilot
+  taranuje tylko cel zamiaru „Taranuj” (także bokiem); inne zderzenie rozstrzyga jak jazda bez
+  „Jedź” (zwolnij, a gdy hamulec nie wystarcza — taran). Nie odpowiada na przeszkodę przed
+  zderzakiem, nie odpala Nitro, Manewrów ani kolczatki — to wybór MG — i nie omija kolczatki.
+  Cel i inne auta „jadą dalej swoją prędkością” — autopilot nie zgaduje cudzych pedałów. Auto
+  z figurą gracza za kierownicą zamiaru nie dostaje, zamiaru gracze nie widzą, a przełącznik
+  „Autopilot” na pasku narzędzi MG wyłącza go dla całej sceny.
 
 ## Role po weryfikacji (etap 71, 14–18.11.2026)
 

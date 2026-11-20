@@ -15,7 +15,7 @@ import type { ScenePoint } from './measure.js';
 import type { VehicleLayoutId } from './vehicles.js';
 import { VEHICLE_LAYOUTS } from './vehicles.js';
 import type { ChaseObstacleView } from './chase-obstacles.js';
-import type { ChaseRole } from './chase-drive.js';
+import type { ChaseIntent, ChaseRole } from './chase-drive.js';
 import type { RollBreakdownEntry } from './dice.js';
 
 export const SCENE_KINDS = ['map', 'chase'] as const;
@@ -96,6 +96,8 @@ export interface ChaseSettings {
    * poza walką, bez Wyścigu i po jego rozstrzygnięciu.
    */
   race: ChaseRaceWaitView | null;
+  /** Autopilot aut NPC-ów działa na tej scenie (etap 72e) — hamulec MG. */
+  autopilot: boolean;
 }
 
 /** Wyścig czekający na kubki (etap 72c) — tyle, ile pas inicjatywy musi wiedzieć. */
@@ -173,6 +175,7 @@ export const DEFAULT_CHASE_SETTINGS: ChaseSettings = {
   pursuitSpeed: null,
   shiftSq: 0,
   race: null,
+  autopilot: true,
 };
 
 /**
@@ -841,6 +844,52 @@ export interface SceneVehicleView {
    * z 65e (przegląd 03.11). `null` — nikogo nie blokuje.
    */
   blockingVehicleId: string | null;
+  /**
+   * Zamiar auta i plan autopilota (etap 72e) — **tylko w widoku MG**: graczom
+   * serwer go nie wysyła (zamiar NPC-a to tajemnica MG). Brak — gracz.
+   */
+  intent?: ChaseIntentView;
+}
+
+/** Zamiar auta w widoku MG (etap 72e). */
+export interface ChaseIntentView {
+  intent: ChaseIntent;
+  /** Auto, względem którego jedzie zamiar (`chaseIntentNeedsTarget`); `null` — brak. */
+  targetId: string | null;
+  /**
+   * „Trzymaj dystans” — odstęp środków wzdłuż drogi z chwili nadania zamiaru
+   * w kratkach (dodatni — to auto jest przed celem). `null` przy innych.
+   */
+  gapSq: number | null;
+  /**
+   * Plan autopilota na tę turę: tylko w turze kierowcy tego auta, póki nie
+   * jechało, przy włączonym autopilocie sceny. Bez „Jedź” auto pojedzie tak
+   * na koniec tury (decyzja MG 20.11). `null` — autopilot nie prowadzi.
+   */
+  plan: ChaseAutopilotPlan | null;
+}
+
+/** Wybór autopilota: pedał i zmiana pasa o najwyżej jeden (etap 72e). */
+export interface ChaseAutopilotPlan {
+  pedal: 'gas' | 'brake' | null;
+  laneDelta: -1 | 0 | 1;
+}
+
+/**
+ * MG: `chase:intent` — zamiar auta NPC-a (etap 72e). Zamiar z celem wymaga
+ * `targetId` innego auta w kadrze; „Trzymaj dystans” zapamiętuje odstęp z tej
+ * chwili. Auto prowadzone przez figurę gracza zamiaru nie dostaje.
+ */
+export interface ChaseIntentPayload {
+  sceneVehicleId: string;
+  intent: ChaseIntent;
+  targetId?: string | null;
+}
+
+/** MG: `chase:autopilot` — hamulec autopilota całej sceny (etap 72e). */
+export interface ChaseAutopilotPayload {
+  sceneId: string;
+  on: boolean;
 }
 
 /**

@@ -1,12 +1,16 @@
 import { useEffect, useState } from 'react';
 import {
   CHASE_CONTROL_LABELS,
+  CHASE_INTENT_LABELS,
+  chaseIntentLabel,
+  chaseIntentNeedsTarget,
   cpredSpeedMph,
   cpredMountDefinition,
   cpredVehicleUpgrade,
   VEHICLE_LAYOUTS,
   VEHICLE_WINDOW_SIDES,
   ROLE_GM,
+  type ChaseIntent,
   type CpredVehicleUpgradeId,
   type SceneVehicleView,
   type TokenView,
@@ -31,6 +35,7 @@ import {
   restoreChaseVehicle,
   restoreVehicleControl,
   seatInVehicle,
+  setChaseIntent,
   setVehicleEngine,
   updateVehicle,
   answerChaseVehicle,
@@ -147,6 +152,11 @@ export function chaseErrorText(code: string | undefined): string {
       return 'W wyrzutni nie zostało kolczatek na ten pościg.';
     case 'SPIKES_COMBAT_ONLY':
       return 'Kolczatkę zrzuca się w walce, z tury kierowcy.';
+    // Etap 72e: zamiar i autopilot.
+    case 'PLAYER_DRIVES':
+      return 'Za kierownicą siedzi postać gracza — to auto prowadzi gracz, nie autopilot.';
+    case 'INTENT_TARGET_NEEDED':
+      return 'Ten zamiar potrzebuje innego auta w pościgu jako celu.';
     default:
       return `Nie udało się: ${code ?? 'nieznany błąd'}.`;
   }
@@ -281,6 +291,9 @@ export function ChaseVehicleMenu() {
           <VehicleManeuvers vehicle={vehicle} driver={driver} isGm={isGm} drives={acts} act={act} />
         )}
         {drives && vehicle.mounts.length > 0 && <VehicleMounts vehicle={vehicle} act={act} />}
+        {isGm && vehicle.status === 'racing' && !driver?.ownerId && (
+          <VehicleIntent vehicle={vehicle} vehicles={vehicles} />
+        )}
         {isGm && vehicle.status === 'racing' && (
           <button
             type="button"
@@ -393,6 +406,68 @@ export function ChaseVehicleMenu() {
         )}
       </div>
     </>
+  );
+}
+
+/** Wartość listy „Zamiar”: zamiar i cel w jednym polu („pursue|id”). */
+function intentValue(intent: ChaseIntent, targetId: string | null): string {
+  return chaseIntentNeedsTarget(intent) && targetId ? `${intent}|${targetId}` : intent;
+}
+
+/**
+ * Zamiar auta NPC-a dla autopilota (etap 72e) — jedna lista z zamiarem i celem
+ * razem („Goń: Włóczęga”), żeby MG miał jedną kontrolkę. Zmiana działa od razu:
+ * w turze kierowcy kokpit i duch pokazują nowy plan. Hamulec całej sceny stoi
+ * na pasku narzędzi.
+ */
+function VehicleIntent({
+  vehicle,
+  vehicles,
+}: {
+  vehicle: SceneVehicleView;
+  vehicles: readonly SceneVehicleView[];
+}) {
+  const autopilot = useSceneStore((s) => s.scene?.chase.autopilot ?? true);
+  const current = vehicle.intent ?? { intent: 'manual' as const, targetId: null };
+  const targets = vehicles.filter((entry) => entry.id !== vehicle.id && entry.status === 'racing');
+  const value = intentValue(current.intent, current.targetId);
+  return (
+    <label
+      className="chase-menu-intent"
+      title={
+        autopilot
+          ? 'Autopilot dobiera gaz, hamulec i pas w turze kierowcy. Kokpit pokazuje plan — bez „Jedź” auto pojedzie nim na koniec tury.'
+          : 'Autopilot sceny jest wyłączony (pasek narzędzi) — auta jadą ręcznie.'
+      }
+    >
+      <span className="context-menu-section">Zamiar</span>
+      <select
+        value={value}
+        onChange={(event) => {
+          const [intent, targetId] = event.target.value.split('|') as [ChaseIntent, string?];
+          void setChaseIntent(vehicle.id, intent, targetId ?? null).then((ack) => {
+            if (!ack.ok) notifyRefusal('chase', chaseErrorText(ack.error));
+          });
+        }}
+      >
+        <option value="manual">{CHASE_INTENT_LABELS.manual}</option>
+        <option value="flee">{CHASE_INTENT_LABELS.flee}</option>
+        {targets.flatMap((target) =>
+          (['pursue', 'keep', 'ram', 'block'] as const).map((intent) => (
+            <option key={`${intent}|${target.id}`} value={intentValue(intent, target.id)}>
+              {chaseIntentLabel(intent, target.name)}
+            </option>
+          )),
+        )}
+        {/* Cel, który wypadł z kadru, zostaje widoczny, póki MG nie zmieni zamiaru. */}
+        {chaseIntentNeedsTarget(current.intent) &&
+          !targets.some((target) => target.id === current.targetId) && (
+            <option
+              value={value}
+            >{`${CHASE_INTENT_LABELS[current.intent]}: (poza pościgiem)`}</option>
+          )}
+      </select>
+    </label>
   );
 }
 
