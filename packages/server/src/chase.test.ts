@@ -541,6 +541,26 @@ describe('etap 65b: scena pościgu, auta i fotele', () => {
     expect(await tokenRow(heroToken.id)).toMatchObject({ sceneVehicleId: null, vehicleSeat: null });
   });
 
+  it('portret upuszczony z panelu na wolny fotel sadza nową figurę (21.11)', async () => {
+    // Fotel nie leży na kratce: z samego przyciągnięcia do kratki figura
+    // stawała obok auta i nie siadała.
+    const seat = vehicleSeatCentre(npcCar, npcCar, 2, 'right', 100)!;
+    const created = data(
+      await emitAck<TokenView>(gm, 'token:create', {
+        sceneId: scene.id,
+        name: 'Pasażer z panelu',
+        x: seat.x - 50 + 7,
+        y: seat.y - 50 - 9,
+      }),
+      'token:create',
+    );
+    expect(created.vehicleSeat).toEqual({ sceneVehicleId: npcCar.id, seat: 2 });
+    const row = await tokenRow(created.id);
+    expect(row).toMatchObject({ sceneVehicleId: npcCar.id, vehicleSeat: 2 });
+    expect({ x: row.x, y: row.y }).toEqual(seatedTokenPosition(seat, 1, 100));
+    await built.prisma.token.delete({ where: { id: created.id } });
+  });
+
   it('kampania w paczce niesie auta na scenie i fotele', async () => {
     const file = await exportCampaign(built.prisma, campaignId, { includeChat: false });
     const chaseScene = file?.payload.scenes.find((row) => row.id === scene.id);

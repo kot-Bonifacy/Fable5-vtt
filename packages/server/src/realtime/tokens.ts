@@ -1189,6 +1189,17 @@ export const tokenCreateEvent = defineEvent<TokenCreatePayload, TokenView>({
       : token;
     await emitTokenUpsert(deps, campaignId, scene, placed, linked);
     await adoptSceneDeviceLive(deps, campaignId, scene.id, placed.glyph);
+    // Scena pościgu (21.11, zgłoszenie MG): portret upuszczony na wolny fotel
+    // sadza figurę w aucie, jak przeciągnięcie figury z mapy (`token:move`).
+    if (scene.kind === 'chase') {
+      const half = (size * scene.gridSizePx) / 2;
+      await settleSeatAfterGmDrop(deps, campaignId, scene, placed.id, {
+        x: payload.x + half,
+        y: payload.y + half,
+      });
+      const seated = await deps.ctx.prisma.token.findUnique({ where: { id: placed.id } });
+      return toTokenView(seated ?? placed, true, linked, scene);
+    }
     return toTokenView(placed, true, linked, scene);
   },
 });

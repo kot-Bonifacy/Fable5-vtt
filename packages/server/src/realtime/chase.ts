@@ -1030,18 +1030,22 @@ export const vehicleAllowDriverEvent = defineEvent<VehicleAllowDriverPayload, Sc
 /**
  * MG upuścił figurę na scenie pościgu (65b): na wolnym fotelu — figura siada
  * (także w innym aucie), poza fotelem — wysiada na jezdnię tam, gdzie stanęła.
- * Wołane po zapisanym lądowaniu z ręki MG (`token:move`, `final`).
+ * Wołane po zapisanym lądowaniu z ręki MG (`token:move`, `final`) i po
+ * postawieniu nowej figury (`token:create`, z punktem upuszczenia).
  */
 export async function settleSeatAfterGmDrop(
   deps: RealtimeDeps,
   campaignId: string,
   scene: Scene,
   tokenId: string,
+  dropCentre?: ScenePoint,
 ): Promise<void> {
   if (scene.kind !== 'chase') return;
   const token = await deps.ctx.prisma.token.findUnique({ where: { id: tokenId } });
   if (!token) return;
-  const centre = {
+  // Nowa figura z panelu (21.11): fotel liczy się z punktu upuszczenia, nie z pola
+  // po przyciągnięciu do kratki — fotele nie leżą na kratkach.
+  const centre = dropCentre ?? {
     x: token.x + (token.size * scene.gridSizePx) / 2,
     y: token.y + (token.size * scene.gridSizePx) / 2,
   };
