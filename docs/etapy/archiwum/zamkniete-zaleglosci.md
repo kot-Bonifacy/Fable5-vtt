@@ -9,6 +9,28 @@ go czytać.
 albo gdy chcesz sprawdzić, czy pozycja, która wygląda na nową, nie jest wracającą starą.
 Treść wpisów jest niezmieniona — łącznie z datami i odsyłaczami do notatek sesji.
 
+## Zamknięte 2026-11-21, etap 72g1 (wzorce 66c i 66d skasowane)
+
+MG skasował oba wzorce jako testowe i niezweryfikowane; ich miejsce zajęła scena „Reklamacja” w nowym
+modelu jazdy (`etap-72g-reklamacja.md`). Treść wpisów w chwili zamknięcia:
+
+**06.11.2026 — „Zastaw” (66d): stół MG i wdrożenie.** Rozegrany 06.11 (piąta sesja): pościg
+skończył się w rundzie 3 przez trzy tarany w jednej turze — od 06.11 (szósta sesja, decyzja MG)
+jeden taran na turę, wpis w archiwum. Zostaje do oceny przy stole propozycja 2 z „Wniosków
+z balansu” w `etap-66d-zastaw.md`: Śrubka dostaje Ranę ze skryptowego auta cywilnego w R2, zanim
+gracze coś wybiorą (auto cywilne na pasie kombi zamiast furgonu?). Bez migracji.
+
+**04.11.2026 — „Ostatni zjazd” (66c): przebieg przy stole i wdrożenie.** Technicznie przejechany
+specem oględzin (MG w Chromium, Marek i Ola w Firefoksie, `data/private`), a 04.11 (czwarta
+sesja) rozegrany w przeglądarce 7 rund na `dev.db` — wynik balansu w pliku etapu
+(„Rozegranie w przeglądarce”). Decyzje balansu MG wprowadzone we wzorcu tego samego dnia (Rydwan
+bez karabinu, pistolet w schowku Wozu, NPC-e celniejsi). Zostaje dla MG: balans przy
+prawdziwym stole, wygląd podpisów i portrety. Na VPS
+wzorzec jedzie z repo (bez migracji); kopie skasowanego „Pościgu na wiadukcie” w kampaniach na
+VPS — nie sprawdzone (zostaną bez tła). Reguła „załoga auta poza pościgiem” (umowa na górze
+`mapa`) dotyczy też aut, które odpadły w zwykłym pościgu — warto rzucić okiem przy stole, czy
+nikogo nie dziwi, że załoga znika razem z autem.
+
 ## Zamknięte 2026-11-20, etap 72f1 (kreator pościgu)
 
 **18.11.2026 — `48-poscig/t65-kreator` pada stale: „＋ Dodaj pojazd” w kroku „Auta” jest

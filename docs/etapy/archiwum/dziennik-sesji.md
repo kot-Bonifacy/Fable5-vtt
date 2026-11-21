@@ -1,5 +1,36 @@
 # Dziennik sesji — archiwum
 
+### Sesja 21.11 — etap 72f2: okno „Pościg” MG
+
+**Zrobione (czeka na wdrożenie razem z 72b1–72f1; nowa migracja `20261121100000_chase_start_speed`):**
+
+- **Decyzje MG z pytań na starcie:** przeszkoda **tylko z pól okna** (klik w drogę zniknął),
+  **zawsze w kadrze**; poprawka prędkości **także przed walką** (własna prędkość startowa auta);
+  posiłki z **polem prędkości, domyślnie prędkość pościgu**.
+- **`shared`:** `chaseObstacleDropCentre` / `chaseObstacleMaxGapSq` (pas + odstęp od zderzaka,
+  przycięte do przedniej krawędzi), `chaseEntryCentre` (wjazd na pas przy krawędzi, kratka po
+  kratce do wolnego miejsca), `chasePointAlong`; ładunki `chase:set-speed`, `chase:anchor`,
+  `chase:restore` z `lane` / `side` / `speed`, `chase:obstacle-spawn` z `lane` / `beforeId` /
+  `gapSq` (bez `x`, `y`); `SceneVehicleView.startSpeed`; wzorzec `vehicles[].startSpeed`.
+- **Serwer:** `SceneVehicle.startSpeed` (start walki i zapowiedź: `startSpeed ?? chaseTempo`),
+  `chase:set-speed` (w walce prędkość trwała, przed walką startowa), `chase:anchor`,
+  `chase:restore` z pasem, stroną i prędkością (posiłki to każde auto poza kadrem — STR-12),
+  `OBSTACLE_NO_ROOM`; paczka i wzorzec niosą `startSpeed`.
+- **Klient:** `ChaseWindow.tsx` (ikona prędkościomierza na pasku MG zamiast palety przeszkód
+  i ikony autopilota): nagłówek z rundą, kadrem, goni / ucieka i „Autopilot”; auta od czoła
+  z polem prędkości, pasem, odstępem do kadru, kierowcą, PUK, zamiarem i „Ucieka”; posiłki
+  z pasem, stroną i prędkością; przeszkody z prognozą „dojedzie za N tur” i ostrzeżeniem,
+  lista z „Zdejmij”. `ChaseObstacleTools.tsx` usunięty, klik w przeszkodę dalej otwiera jej menu.
+
+Testy: `shared` 3269/3269, serwer 1888/1888 (nowy `chase-panel.test.ts` — 6; stare testy
+przeszkód przepięte z `x`, `y` na pasy; pierwszy pełny przebieg miał jeden migający test,
+dwa następne czyste), klient 526/526; `tsc` czterech pakietów, lint i Prettier na zmienionych
+plikach czyste. E2E: cały `48-poscig` **30/30** (nowy `t72f2-okno` — 4; `t65-przeszkody`
+i `t72e-autopilot` przepięte na okno). **Oglądano zrzuty okna w Chromium i w Firefoksie**
+(ten sam spec z MG w Firefoksie, jednorazowo): przed walką, przeszkoda, posiłki; poprawione
+łamanie „Drużyna goni / ucieka” w dwie linie. Gracz okna nie ma (Ola w Firefoksie).
+`specs/99-zapomnij/` to dalej cudze oględziny z 14.11.
+
 ### Sesja 20.11 (szósta) — etap 72f1: kreator bez tempa, wzorzec i paczki
 
 **Zrobione (czeka na wdrożenie razem z 72b1–72e; bez migracji — kolumny są od 72b1):**

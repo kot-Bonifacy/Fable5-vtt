@@ -661,8 +661,11 @@ export function HudVehicle({
     { node: laneTile(1), at: OPPOSITE[towardFrom] },
   ];
 
-  // Decyzje czekające na kierowcę — u tego, kto może prowadzić.
-  const call = mayDrive && !isGm ? vehicle.maneuverCall : null;
+  // Decyzje czekające na kierowcę — u tego, kto może prowadzić. Wezwanie do
+  // Manewru odpowiada gracz za swoją figurę, a MG za kierowcę-NPC-a: plan rund
+  // (72f3) wzywa także auta NPC-ów, a bez tego wiersza nikt by nie rzucił
+  // (rozegranie „Reklamacji”, 21.11.2026).
+  const call = mayDrive && (!isGm || token.ownerId === null) ? vehicle.maneuverCall : null;
   const decisions: ReactNode[] = [];
   if (blocker) {
     decisions.push(

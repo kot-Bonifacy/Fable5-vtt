@@ -1,0 +1,323 @@
+{
+  "schemaVersion": 1,
+  "name": "Reklamacja",
+  "category": "examples",
+  "description": "Pościg na 2 graczy na Neonowej ulicy w nowym modelu jazdy: prędkości, pasy, Wyścig co rundę, autopilot aut NPC-ów i plan rund. Drużyna kombi z dziupli goni furgon Militechu, który wiezie skutego Tłoka — właściciela dziupli i handlarza broni, który montował w swoich autach kradziony sprzęt Militechu. Kompakt na kompakt: dystans zmienia Wyścig, Nitro, przeszkody i kolczatka. W rundzie 3 od tyłu wjeżdża radiowóz NCPD opłacony przez Militech.",
+  "scene": {
+    "kind": "chase",
+    "backgroundUrl": "/art/roads/neon-street.webp",
+    "gridSizePx": 100,
+    "gridOffsetX": 0,
+    "gridOffsetY": 0,
+    "gridVisible": true,
+    "gridPlayers": false,
+    "metersPerSquare": 1,
+    "visibility": "open",
+    "playerMove": "stop",
+    "ambience": "car",
+    "spawn": {
+      "x": 29.5,
+      "y": 16
+    },
+    "chase": {
+      "direction": "left",
+      "tempo": 20,
+      "running": true,
+      "road": {
+        "from": 6,
+        "to": 18
+      },
+      "role": "pursue",
+      "plan": [
+        {
+          "id": "r2-cywil",
+          "round": 2,
+          "kind": "obstacle",
+          "obstacle": "civilian-car",
+          "lane": 1,
+          "beforeId": "furgon",
+          "gapSq": null,
+          "text": "Auto cywilne na środkowym pasie. Wektor zjeżdża sam (autopilot), kombi za nim trafi na nie rundę później."
+        },
+        {
+          "id": "r3-ncpd",
+          "round": 3,
+          "kind": "reinforce",
+          "vehicleId": "radiowoz",
+          "lane": 2,
+          "side": "rear",
+          "speed": 40,
+          "text": "Syreny. Gil przez megafon: „NCPD! Kombi, do krawężnika!” Zamiar radiowozu: Blokuj kombi."
+        },
+        {
+          "id": "r4-kolczatka",
+          "round": 4,
+          "kind": "note",
+          "text": "Kolczatka: gdy kombi jedzie za furgonem na jego pasie, zaznacz Wektora i odpal Kolczatkę z kokpitu (Akcja). Kombi: Prowadzenie PT 17 albo 4k6 w słaby punkt."
+        },
+        {
+          "id": "r5-tlok",
+          "round": 5,
+          "kind": "note",
+          "text": "Tłok zrywa skutymi rękami kabel wtrysku, który sam zakładał. W oknie „Pościg” zbij prędkość furgonu do 50 mil/h. Kamień w tej turze bije Tłoka zamiast strzelać."
+        },
+        {
+          "id": "r6-roboty",
+          "round": 6,
+          "kind": "obstacle",
+          "obstacle": "roadwork",
+          "lane": 0,
+          "beforeId": "furgon",
+          "gapSq": null,
+          "text": "Roboty drogowe na górnym pasie."
+        },
+        {
+          "id": "r6-barykada",
+          "round": 6,
+          "kind": "obstacle",
+          "obstacle": "barricade",
+          "lane": 2,
+          "beforeId": "furgon",
+          "gapSq": null,
+          "text": "Betonowa zapora na dolnym pasie. Został środkowy — wszyscy się w nim zmieszczą?"
+        }
+      ]
+    }
+  },
+  "vehicles": [
+    {
+      "key": "kombi",
+      "name": "Kombi z dziupli",
+      "imageUrl": "/art/vehicles/wloczega.webp",
+      "x": 24.5,
+      "y": 12,
+      "system": {
+        "catalogIds": ["vehicle.wloczega", "vehicle.samochod-kompaktowy", "vehicle.sample-kompakt"],
+        "upgrades": ["ram", "nitro"]
+      }
+    },
+    {
+      "key": "furgon",
+      "name": "Furgon Militechu",
+      "imageUrl": "/art/vehicles/militech-furgon.webp",
+      "x": 12,
+      "y": 12,
+      "intent": { "kind": "flee", "target": null },
+      "system": {
+        "catalogIds": [
+          "vehicle.militech-furgon",
+          "vehicle.samochod-kompaktowy",
+          "vehicle.sample-kompakt"
+        ],
+        "upgrades": ["armoredHull", "bulletproofGlass", "nitro", "spikes"]
+      }
+    },
+    {
+      "key": "radiowoz",
+      "name": "Radiowóz NCPD",
+      "imageUrl": "/art/vehicles/radiowoz.webp",
+      "x": 32.5,
+      "y": 8,
+      "status": "behind",
+      "intent": { "kind": "block", "target": "kombi" },
+      "system": {
+        "catalogIds": ["vehicle.radiowoz", "vehicle.samochod-sportowy", "vehicle.sample-kompakt"],
+        "upgrades": []
+      }
+    }
+  ],
+  "figures": [
+    {
+      "name": "Wektor",
+      "vehicle": { "key": "furgon", "seat": 0 },
+      "disposition": "hostile",
+      "system": {
+        "stats": {
+          "int": 5,
+          "ref": 7,
+          "dex": 6,
+          "tech": 5,
+          "cool": 6,
+          "will": 5,
+          "luck": 3,
+          "move": 5,
+          "body": 6,
+          "emp": 3
+        },
+        "skills": {
+          "driving": 6,
+          "handgun": 5,
+          "evasion": 4,
+          "perception": 4,
+          "athletics": 3
+        },
+        "weapons": [["weapon.heavy-pistol", "weapon.zgrzyt-9"]],
+        "armorBody": ["armor.light-armorjack", "armor.kurtka-warsztatowa"]
+      }
+    },
+    {
+      "name": "Kamień",
+      "vehicle": { "key": "furgon", "seat": 1 },
+      "disposition": "hostile",
+      "system": {
+        "stats": {
+          "int": 5,
+          "ref": 8,
+          "dex": 7,
+          "tech": 4,
+          "cool": 7,
+          "will": 6,
+          "luck": 3,
+          "move": 6,
+          "body": 8,
+          "emp": 3
+        },
+        "skills": {
+          "shoulder-arms": 6,
+          "handgun": 6,
+          "brawling": 6,
+          "evasion": 6,
+          "perception": 6,
+          "athletics": 5,
+          "tactics": 4,
+          "interrogation": 4
+        },
+        "weapons": [
+          ["weapon.submachine-gun", "weapon.zardzewiak"],
+          ["weapon.heavy-pistol", "weapon.zgrzyt-9"]
+        ],
+        "armorBody": ["armor.light-armorjack", "armor.kurtka-warsztatowa"],
+        "armorHead": ["armor.light-armorjack", "armor.helm-kurierski"]
+      }
+    },
+    {
+      "name": "Tłok",
+      "vehicle": { "key": "furgon", "seat": 5 },
+      "disposition": "neutral",
+      "statuses": ["immobilized"],
+      "system": {
+        "stats": {
+          "int": 7,
+          "ref": 6,
+          "dex": 6,
+          "tech": 8,
+          "cool": 6,
+          "will": 6,
+          "luck": 5,
+          "move": 6,
+          "body": 5,
+          "emp": 5
+        },
+        "skills": {
+          "basic-tech": 6,
+          "land-vehicle-tech": 6,
+          "weaponstech": 6,
+          "trading": 5,
+          "streetwise": 5,
+          "driving": 4,
+          "handgun": 4,
+          "perception": 4,
+          "evasion": 3,
+          "athletics": 3
+        },
+        "gear": [
+          {
+            "name": "Kajdanki Militechu",
+            "notes": "Na nadgarstkach Tłoka. Zdejmuje je Elektronika/zabezpieczenia PT 15 albo klucz Kamienia."
+          }
+        ]
+      }
+    },
+    {
+      "name": "Gil",
+      "vehicle": { "key": "radiowoz", "seat": 0 },
+      "disposition": "hostile",
+      "system": {
+        "stats": {
+          "int": 5,
+          "ref": 7,
+          "dex": 6,
+          "tech": 4,
+          "cool": 6,
+          "will": 5,
+          "luck": 3,
+          "move": 6,
+          "body": 6,
+          "emp": 4
+        },
+        "skills": {
+          "driving": 5,
+          "handgun": 5,
+          "evasion": 4,
+          "perception": 5,
+          "persuasion": 4,
+          "interrogation": 4,
+          "human-perception": 3
+        },
+        "weapons": [["weapon.heavy-pistol", "weapon.zgrzyt-9"]],
+        "armorBody": ["armor.light-armorjack", "armor.kurtka-warsztatowa"]
+      }
+    },
+    {
+      "name": "Szpak",
+      "vehicle": { "key": "radiowoz", "seat": 1 },
+      "disposition": "hostile",
+      "system": {
+        "stats": {
+          "int": 4,
+          "ref": 6,
+          "dex": 6,
+          "tech": 3,
+          "cool": 5,
+          "will": 5,
+          "luck": 2,
+          "move": 6,
+          "body": 7,
+          "emp": 4
+        },
+        "skills": {
+          "shoulder-arms": 6,
+          "handgun": 5,
+          "brawling": 4,
+          "evasion": 4,
+          "perception": 4,
+          "athletics": 4
+        },
+        "weapons": [["weapon.shotgun", "weapon.huk-12"]],
+        "armorBody": ["armor.light-armorjack", "armor.kurtka-warsztatowa"]
+      }
+    }
+  ],
+  "notes": [
+    {
+      "x": 3,
+      "y": 20,
+      "icon": "📌",
+      "text": "REKLAMACJA — o co chodzi\n\nTłok prowadzi dziuplę samochodową, a na zapleczu handluje bronią. Od roku wstawiał do przerabianych aut sprzęt Militechu z kradzionych transportów: pancerne płyty, wtryskiwacze, szyby, celowniki. Militech namierzył numery seryjne w trzech autach z jego dziupli i nie poszedł na policję. Dziś rano furgon konwojowy zabrał Tłoka z warsztatu — skutego, „do wyjaśnienia”. Jego ludzie dzwonią do drużyny (dopasuj do kampanii: dług, stały klient, zlecenie).\n\nWygrana: furgon stoi (kierowca padł, wrak, zderzenie, utrata kontroli na przeszkodzie), a Tłok żyje.\nPorażka: kombi jest wrakiem albo zostaje w tyle — furgon wyjeżdża przednią (lewą) krawędzią kadru. Zegara nie ma.\n\nObsada (karty NPC-ów w kampanii, statystyki wymyślone):\n• Furgon Militechu (zamiar: Uciekaj) — Wektor (kierowca, REF + Prowadzenie 13, ciężki pistolet), Kamień (ochroniarz w pierwszym rzędzie, pistolet maszynowy i ciężki pistolet), Tłok (skuty w tylnym rzędzie).\n• Radiowóz NCPD (w rezerwie, wjeżdża z planu w rundzie 3, zamiar: Blokuj kombi) — sierżant Gil (kierowca, ciężki pistolet), posterunkowy Szpak (strzelba). Militech zapłacił im za „eskortę”.\n\nKompakt na kompakt: kombi i furgon jadą najwyżej 100 mil/h i startują z tą prędkością. Gaz niczego nie da — dystans zmieniają Wyścig na początku każdej rundy (zryw do 5 m dla lepszego kierowcy), Nitro (po jednym zbiorniku), przeszkody, kolczatka, utrata kontroli i radiowóz (200 mil/h).\n\nHaczyk: furgon ma opancerzony kadłub i kuloodporne szyby. Strzał w kadłub nic nie daje, granat trafi też Tłoka. Drogi do celu: rozbić szybę i zdjąć Wektora, taranować Pługiem (każdy w furgonie, także Tłok, ryzykuje Ranę krytyczną) albo zepchnąć furgon na przeszkodę."
+    },
+    {
+      "x": 9,
+      "y": 20,
+      "icon": "❓",
+      "text": "ZANIM RUSZYCIE\n\n1. Skalowanie. 2 postacie — bez zmian. Mocna drużyna (pancerze) — daj Kamieniowi na karcie karabin szturmowy (5k6). 3 postacie — w oknie „Pościg” → Plan rund przenieś posiłki na rundę 2, a furgonowi dołóż Wzmocnioną konstrukcję (okno pojazdu → Ulepszenia). 2 postacie + bot — bot w tylnym fotelu kombi, posiłki w rundzie 2.\n2. Kierowca drużyny decyduje o scenie: Wyścig to REF + Prowadzenie (+ Moto Nomady) + 1k10 przeciw 13 + 1k10 Wektora. Kierowca z 15+ dogania furgon w 3–4 rundy, z 13 trzyma dystans, z 10 traci 1–2 m na rundę. Nomada z Moto 3–4 (17+) wygrywa Wyścig prawie co rundę i zdaje kolczatkę — chcesz trudniej, daj Wektorowi Prowadzenie 8 (Wyścig 15). Słaby kierowca (≤ 9) traci kontrolę już na Wyścigu — wtedy dołóż drużynie drugi zbiornik Nitro.\n3. Portrety NPC-ów dołóż na kartach (wzorzec ich nie niesie).\n4. Własny kompakt drużyny? Zdejmij „Kombi z dziupli”, postaw swoje auto przez „Na drogę” na środkowym pasie i dołóż mu w oknie pojazdu Pług i Nitro z dziupli Tłoka.\n5. Aktywuj scenę i przeciągnij postacie na dolny pas za kombi (miejsce startu). Gracze klikają wolne fotele. Kierownicę daje MG: menu kombi → „Może prowadzić” przy figurze kierowcy, potem ten gracz klika fotel kierowcy.\n6. Tłok jest Unieruchomiony (skuty) i nie wchodzi do kolejki. Jego jedyna pomoc przychodzi z planu (R5). Stan zdejmij, gdy ktoś zdejmie kajdanki.\n7. Radiowóz stoi w rezerwie (gracze go nie widzą). Plan rund zapyta o niego w rundzie 3 w panelu decyzji: „Wypuść” wprowadza auto od tyłu na dolny pas z prędkością 200 mil/h; dopisz Gila i Szpaka do walki.\n8. Włącz tryb turowy i w Walka → „Dołącz do walki” dodaj drużynę, Wektora i Kamienia (bez Tłoka, Gila i Szpaka). Na początku każdej rundy kierowcy rzucają Wyścig — gracz kubkiem z wezwania, NPC-e od serwera.\n9. Okno „Pościg” (prędkościomierz na pasku narzędzi): prędkości, pasy, dystanse do kadru, przeszkody na pas i plan rund. Autopilot jedzie furgonem i radiowozem sam na koniec tury NPC-a; strzał MG pada przed ruchem."
+    },
+    {
+      "x": 15,
+      "y": 20,
+      "icon": "⚠️",
+      "text": "PRZEBIEG RUND — plan rund pyta sam (okno „Pościg”)\n\nR1 — Kamień odwraca się w fotelu i strzela przez tylną szybę furgonu w kierowcę kombi (przednia szyba kombi nie jest kuloodporna). Wektor jedzie prosto 100 mil/h (Uciekaj przy maksimum = jazda prosto). Kadłub furgonu nic nie bierze: „Kule odbijają się od blach”.\nR2 — plan: auto cywilne przy przedniej krawędzi na środkowym pasie. Autopilot zjeżdża na wolny pas; kombi za nim ma rundę na zmianę pasa krzyżakiem (mapa pisze „N m · za N tur”). Kto nie zjedzie, wybiera przed zderzakiem: Gwałtowny skręt, Nagłe zatrzymanie albo Taranuj.\nR3 — plan: radiowóz od tyłu na dolny pas z 200 mil/h. Gil dogania kombi i zajeżdża mu drogę na jego pasie. Szpak strzela w opony (słaby punkt) albo w ludzi.\nR4 — plan: kolczatka. Wektor zrzuca ją, gdy kombi jedzie za furgonem na jego pasie; jeśli nie, poczekaj rundę.\nR5 — plan: Tłok zrywa kabel wtrysku. W oknie „Pościg” wpisz furgonowi 50 mil/h: w tej rundzie kombi zyskuje 2,5 m, a autopilot wraca do 100 mil/h dopiero w następnej turze Wektora. Kamień w tej turze bije Tłoka zamiast strzelać — runda oddechu.\nR6 — plan: roboty drogowe na górnym i barykada na dolnym pasie przy przedniej krawędzi. Został środkowy: radiowóz, kombi i furgon w jednym pasie — moment na taran albo wjazd w zaporę.\nR7+ — co rundę jedna przeszkoda z okna „Pościg” na pasie furgonu albo kombi, aż furgon stanie, kombi będzie wrakiem albo furgon ucieknie.\n\nMORALE\n• Wektor pada → furgon bez kierowcy traci połowę prędkości co rundę. Kamień w swojej turze przesiada się za kierownicę (przeciągnij figurę). Drużyna ma jedną turę.\n• Gil albo Szpak Poważnie ranny albo radiowóz z PUK ≤ 20 → „To nie nasza wojna!”: w oknie „Pościg” zamiar radiowozu na Ręcznie i „Ucieka”.\n• Kamień nie strzela serią w kombi — jedna seria w kadłub to prawie wrak.\n\nFurgonu nie wbijaj w ścianę — Tłok by zginął."
+    },
+    {
+      "x": 21,
+      "y": 20,
+      "icon": "💬",
+      "text": "WSTĘP I OKRZYKI\n\nWstęp (przeczytaj przed rundą 1):\n„Dziupla Tłoka pachnie spawem i spalonym olejem. Na podnośniku wisi kombi z otwartą maską, w kanale leży wyrwana z zawiasów brama. Młody mechanik z rozciętym łukiem brwiowym mówi szybko: »Biały furgon, Militech. Skuli go przy wszystkich i wywieźli arterią na wschód. Szukali numerów na płytach.« Kopie zderzak kombi z przyspawanym pługiem. »Bierzcie. Pod tylnym siedzeniem jest butla. Tylko nie rozwalcie furgonu — on siedzi z tyłu.« Pięć minut później arteria tnie dzielnicę jak neonowa blizna: trzy pasy mokrego asfaltu, za barierami chodniki pod magentowymi i cyjanowymi szyldami. Przed wami, w smugach neonu, biała pancerka jedzie równo, sto na godzinę — jak ktoś, kto wie, że nikt go nie zatrzyma.”\n\nOkrzyki (wiadomość MG na czacie albo na głos):\n• Kamień, runda 1: „Ogon. Kombi z naszym pługiem. Jedź równo, zdejmę ich.”\n• Wektor przez radio: „Baza, mamy towar i reklamację. Dwadzieścia minut.”\n• Tłok, gdy padnie tylna szyba: „Ten pług to mój! Celujcie w kabinę, nie w pakę!”\n• Gil przez megafon, runda 3: „NCPD! Kombi, zjechać do krawężnika, natychmiast!”\n• Szpak, celując w koła: „Celuję w opony!”\n• Tłok, runda 5: „Sam ci ten wtrysk zakładałem, kolego…”\n• Kamień, gdy furgon stanie: „Jeszcze krok i wasz mechanik ma dziurę w głowie!”\n• Gil, gdy odpuszcza: „To nie nasza wojna. Wracamy.”"
+    },
+    {
+      "x": 32,
+      "y": 20,
+      "icon": "💰",
+      "text": "ZATRZYMANIE I ZAKOŃCZENIA\n\nFurgon stoi (Wektor padł, a Kamień się nie przesiadł, wrak albo zderzenie)? Wyłącz „Droga jedzie” w Edycji sceny → Pościg: walka toczy się dalej na stojącej ulicy. Figury z aut wysadzasz przeciągnięciem.\n\n• Kamień wysiada z Tłokiem jako tarczą. Kto strzela w Kamienia i chybi o 1–2 oczka, trafia Tłoka (rozstrzygasz ręcznie). Perswazja albo Zastraszanie PT 15 kończy sprawę bez strzału.\n• Radiowóz, jeśli jeszcze jedzie, staje za kombi: „NCPD, ręce na maskę!”. Tłok sprzedawał Gilowi broń bez numerów — powie to, a Ulica PT 13 też to wyciągnie. Perswazja PT 13 albo łapówka wg cennika kampanii: NCPD „niczego nie widziało”. Inaczej walka.\n• Wektor, jeśli żyje, poddaje się, gdy Kamień padnie albo się podda.\n\nZAKOŃCZENIA\n• Pełny sukces — Tłok cały, bez Rany krytycznej. Płaci stawkę wg kampanii, a jego dziupla robi drużynie jedno ulepszenie z pasma 3000 ed i naprawę za darmo (zamontuj w oknie pojazdu). Ma też dla nich broń po cenie hurtowej.\n• Sukces z kosztem — Tłok żywy, ale z Raną krytyczną albo postrzelony. Trzeba go zawieźć do ripperdoka, a NCPD spisało numery kombi — Militech wie, kogo szukać.\n• Porażka — furgon odjeżdża albo kombi jest wrakiem. Tłok trafia do placówki Militechu. Haki: odbić go stamtąd (scena skradania) albo oddać Militechowi resztę kradzionych płyt w zamian za niego.\n\nŁUP: pistolet maszynowy i pancerze Kamienia i Wektora, w schowku furgonu tablet z listą „reklamacji” Militechu — innych warsztatów, które kupowały ich sprzęt (hak na kolejne zlecenia)."
+    }
+  ]
+}

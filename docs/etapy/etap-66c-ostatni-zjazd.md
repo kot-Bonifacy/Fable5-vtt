@@ -1,5 +1,9 @@
 # Etap 66c — Scena przykładowa „Ostatni zjazd” (pościg na 2–3 graczy)
 
+> **⛔ Wycofany 21.11.2026 (decyzja MG):** wzorzec był testowy i nigdy niezweryfikowany przy stole —
+> skasowany z `data/public/scenes/` razem z testem. Jego miejsce zajęła scena przykładowa
+> „Reklamacja” w nowym modelu jazdy (`etap-72g-reklamacja.md`). Plik zostaje jako zapis historii.
+
 **Faza:** przed betą (zlecenie MG z 04.11 spoza planu) · **Wymaga etapów:** 66 (wzorce scen),
 65 (scena pościgu, w tym kreator z wbudowanymi drogami z 03.11) · **Stan:** 🟨 wzorzec
 `data/public/scenes/ostatni-zjazd/` zrobiony 04.11 (druga sesja); przebieg w przeglądarce

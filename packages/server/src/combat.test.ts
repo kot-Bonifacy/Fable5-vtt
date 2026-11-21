@@ -683,4 +683,39 @@ describe('combat tracker', () => {
     expect(state).toMatchObject({ round: 2, activeCombatantId: id('Ziti') });
     expect((await emitAck(gm, 'combat:end')).ok).toBe(true);
   });
+
+  it('an initiative rolled in its own turn does not hand round 1 back to someone who played (21.11.2026)', async () => {
+    let state = data(
+      await emitAck<CombatView>(gm, 'combat:add', { tokenIds: [npcTokenId, hiddenTokenId] }),
+      'combat:add',
+    );
+    const id = (name: string) => state.combatants.find((c) => c.name === name)!.id;
+    const setInit = async (name: string, initiative: number) => {
+      state = data(
+        await emitAck<CombatView>(gm, 'combat:set-initiative', {
+          combatantId: id(name),
+          initiative,
+        }),
+        `combat:set-initiative ${name}`,
+      );
+    };
+    await setInit('Snajper', 16);
+    await setInit('Bandzior', 13);
+    state = data(await emitAck<CombatView>(gm, 'combat:next'), 'combat:next start');
+    state = data(await emitAck<CombatView>(gm, 'combat:next'), 'combat:next Bandzior');
+    // Ziti bez inicjatywy siedzi na końcu i dostaje swoją turę bez rzutu.
+    state = data(await emitAck<CombatView>(gm, 'combat:next'), 'combat:next Ziti');
+    expect(state).toMatchObject({ round: 1, activeCombatantId: id('Ziti') });
+    // Rzuca w swojej turze — i wyżej niż Bandzior, który już grał.
+    const rolled = data(
+      await emitAck<{ initiative: number }>(player, 'combat:roll', { combatantId: id('Ziti') }),
+      'combat:roll',
+    );
+    expect(rolled.initiative).toBeGreaterThan(8);
+    await setInit('Ziti', 14);
+    state = data(await emitAck<CombatView>(gm, 'combat:next'), 'combat:next after Ziti');
+    // Runda 2 od góry, a nie druga tura Bandziora w rundzie 1.
+    expect(state).toMatchObject({ round: 2, activeCombatantId: id('Snajper') });
+    expect((await emitAck(gm, 'combat:end')).ok).toBe(true);
+  });
 });

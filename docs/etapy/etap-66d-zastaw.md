@@ -1,5 +1,9 @@
 # Etap 66d — Scena przykładowa „Zastaw” (pościg na 2 graczy)
 
+> **⛔ Wycofany 21.11.2026 (decyzja MG):** wzorzec był testowy i nigdy niezweryfikowany przy stole —
+> skasowany z `data/public/scenes/` razem z testem. Jego miejsce zajęła scena przykładowa
+> „Reklamacja” w nowym modelu jazdy (`etap-72g-reklamacja.md`). Plik zostaje jako zapis historii.
+
 **Faza:** przed betą (zlecenie MG z 06.11 spoza planu) · **Wymaga etapów:** 66 (wzorce scen),
 65 (pościg), 66c (auto w rezerwie, stany figur we wzorcu, tło z wbudowanej drogi), 67 (modele aut
 z grafikami MG) · **Stan:** 🟨 projekt i wzorzec `data/public/scenes/zastaw/` zrobione 06.11,

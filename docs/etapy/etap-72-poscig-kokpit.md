@@ -4,7 +4,8 @@
 65a–65e), kreator pościgu z 03.11, 66c i 66d (wzorce pościgu), 69 (lewa belka bez ramek),
 32 (wezwanie do Testu) · **Status:** 🟨 w toku — projekt 15.11, **72a ✅ 19.11**, **72b1 ✅ 19.11**,
 **72b2 ✅ 20.11**, **72c ✅ 20.11**, **72d1 ✅ 20.11**, **72d2 ✅ 20.11**, **72e ✅ 20.11**,
-**72f1 ✅ 20.11**, **72f2 ✅ 21.11**, **72f3 ✅ 21.11**, następny 72g (zakres z MG)
+**72f1 ✅ 20.11**, **72f2 ✅ 21.11**, **72f3 ✅ 21.11**, **72g1 ✅ 21.11** (nowa scena „Reklamacja”,
+`etap-72g-reklamacja.md`), następny **72g2**
 
 ## Skąd ten etap
 
@@ -759,21 +760,35 @@ Rozstrzygnięcia bez pytań (do potwierdzenia przy rozegraniu 72g):
 - **Karta jest kontem MG kampanii** (`campaignGmUser`), także gdy rundę ruszył gracz końcem tury —
   inaczej trafiłaby mu do historii jako własny wiersz.
 
-### 72g — wzorce, rozegranie, zamknięcie
+### 72g — wzorzec, rozegranie, zamknięcie
 
 > **MG 19.11:** dziś żadna scena pościgu nie jest dobrze zrobiona, a obie obecne („Ostatni zjazd”,
-> „Zastaw”) wkrótce się zmienią — zostanie z nich tylko grafika drogi (Neonowa ulica). Zakres
-> 72g ustalić z MG na starcie sesji, zanim przepisze się wzorce.
+> „Zastaw”) wkrótce się zmienią — zostanie z nich tylko grafika drogi (Neonowa ulica).
+>
+> **MG 21.11:** oba stare wzorce skasować (były testowe, nigdy nie zweryfikowane); w ich miejsce
+> jedna **nowa scena przykładowa pościgu** — odbicie właściciela dziupli i handlarza broni
+> z furgonu Militechu. **Podział:** 72g1 — skasowanie starych, nowa scena, test, rozegranie;
+> 72g2 — stały E2E i sprzątanie. Projekt i rozegranie: `etap-72g-reklamacja.md`.
 
-- [ ] „Ostatni zjazd” i „Zastaw” przepisane: pasy, prędkości startowe, zamiary, plan rund
-      z notatek ⚠️ (kolczatka, posiłki, roboty drogowe, barykada), notatki MG pod nowe UI.
-- [ ] Rozegranie obu wzorców w przeglądarce (MG + gracze w dwóch silnikach), wnioski z balansu
-      do decyzji MG: skala zrywu, kroki gazu i hamulca, automat utraty kontroli.
-- [ ] W jednym z rozegrań kierowcą drużyny jest **Nomada z Moto** (zastępuje pościgową część
-      scenki Nomady z etapu 71, punkt 9).
-- [ ] Stały E2E `48-poscig/t72-*` (jazda, Wyścig, przeszkoda z prognozą, autopilot, plan rund;
-      kierowca-Nomada — Moto w Wyścigu i Manewrze, NOM-02).
-- [ ] Sprzątanie starego kodu i wpisów (`umowy-kodu.md`, `pulapki-dev.md`, `zaleglosci.md`).
+#### 72g1 — „Reklamacja”: nowa scena i rozegranie (✅ 21.11)
+
+- [x] „Ostatni zjazd” i „Zastaw” skasowane z `data/public/scenes/` i z `scene-templates.test.ts`
+      (66c i 66d ⛔); nowy wzorzec `reklamacja`: pasy z drogi, prędkość startowa 100 mil/h, rola
+      „goni”, zamiary (furgon Uciekaj, radiowóz Blokuj kombi), plan rund (przeszkody, posiłki,
+      kolczatka, pomoc więźnia), notatki MG pod nowe UI.
+- [x] Rozegranie w przeglądarce (MG Chromium, kierowca-gracz w **Firefoksie**, drugi gracz
+      w Chromium `[::1]`), wnioski z balansu we wzorcu, pytania do MG w pliku sceny.
+- [x] Kierowcą drużyny była **Nomada z Moto 4** (Koleina z `role-start`): Moto w Wyścigu, w rzucie
+      MG za gracza i w Teście kolczatki — punkt 9 (scenka Nomady z etapu 71) zamknięty.
+- [x] Błędy z rozegrania naprawione: spóźniona inicjatywa we własnej turze (`combat.test.ts`),
+      Manewr na wezwanie auta NPC-a w kokpicie MG.
+
+#### 72g2 — stały E2E i sprzątanie
+
+- [ ] Stały E2E `48-poscig/t72-*` na wzorcu „Reklamacja” (jazda, Wyścig, przeszkoda z prognozą,
+      autopilot, plan rund; kierowca-Nomada — Moto w Wyścigu i Manewrze, NOM-02).
+- [ ] Sprzątanie starego kodu i wpisów (`umowy-kodu.md`, `pulapki-dev.md`, `zaleglosci.md`),
+      decyzje MG z „Do decyzji” w `etap-72g-reklamacja.md`.
 
 ## Kryteria ukończenia
 
@@ -787,7 +802,8 @@ Rozstrzygnięcia bez pytań (do potwierdzenia przy rozegraniu 72g):
 - [x] MG prowadzi pościg z panelu „Pościg”: widzi prędkości, pasy i dystanse, wypuszcza
       przeszkodę na pas w odległości (72f2 ✅ 21.11), a plan rund pyta go o zdarzenia (72f3 ✅ 21.11).
 - [x] Kreator nie pyta o tempo; pyta o pasy, prędkość startową i rolę drużyny (72f1, 20.11).
-- [ ] „Ostatni zjazd” i „Zastaw” rozegrane w nowym modelu, balans zatwierdzony przez MG.
+- [ ] Scena przykładowa pościgu („Reklamacja”, w miejsce „Ostatniego zjazdu” i „Zastawu” — MG
+      21.11) rozegrana w nowym modelu (✅ 21.11), balans zatwierdzony przez MG.
 - [ ] Testy `shared`, serwera i klienta, E2E `48-poscig`, oględziny w Firefoksie i Chromium.
 - [ ] Oględziny MG przy stole.
 

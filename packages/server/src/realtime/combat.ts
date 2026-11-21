@@ -1244,6 +1244,29 @@ export const combatRerollTieEvent = defineEvent<CombatRerollTiePayload, CombatVi
 });
 
 /**
+ * Inicjatywa rzucona albo wpisana figurze, która **właśnie gra swoją turę**
+ * (21.11.2026, rozegranie „Reklamacji”): gracz, którego tura przyszła bez
+ * inicjatywy (MG ruszył walkę przed kubkiem), rzuca ją w tej turze i siada
+ * wyżej w kolejce. `nextTurn` liczyłby potem od nowego miejsca i oddał turę
+ * komuś, kto w tej rundzie już grał. Kolejka zapamiętuje więc przed zapisem,
+ * dokąd i tak szła (`resume`, jak `lateRoundOneTurn` i Wstrzymana Akcja).
+ */
+async function keepQueueForActiveSeat(
+  prisma: PrismaClient,
+  combat: CombatRow,
+  combatantId: string,
+): Promise<void> {
+  if (combat.round < 1 || combat.activeCombatantId !== combatantId) return;
+  if (combat.resumeCombatantId !== null) return;
+  const pointer = nextTurn(toCombatView(combat));
+  if (pointer.activeCombatantId === null) return;
+  await prisma.combat.update({
+    where: { id: combat.id },
+    data: { resumeCombatantId: pointer.activeCombatantId, resumeRound: pointer.round },
+  });
+}
+
+/**
  * One participant rolls their own initiative — the path behind the dice cup,
  * so a player's initiative keeps the physical gesture and lands on chat like
  * any other roll (stage 08: rolls that matter always go through the cup).
@@ -1286,6 +1309,7 @@ export const combatRollEvent = defineEvent<CombatRollPayload, { initiative: numb
     if (gesture && gesture.strength > 0) result.tossStrength = gesture.strength;
     if (gesture?.toss) result.toss = gesture.toss;
 
+    await keepQueueForActiveSeat(deps.ctx.prisma, combat, combatant.id);
     await deps.ctx.prisma.combatant.update({
       where: { id: combatant.id },
       data: { initiative: result.total, tieBreak: inputs.tieBreak },
@@ -1331,6 +1355,7 @@ export const combatSetInitiativeEvent = defineEvent<CombatInitiativePayload, Com
         throw new RealtimeError('BAD_REQUEST');
       }
     }
+    await keepQueueForActiveSeat(deps.ctx.prisma, combat, combatant.id);
     await deps.ctx.prisma.combatant.update({
       where: { id: combatant.id },
       data: { initiative: value },

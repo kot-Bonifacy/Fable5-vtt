@@ -401,124 +401,23 @@ describe('etap 66: sceny przykładowe', () => {
   });
 });
 
-describe('etap 66c: „Ostatni zjazd”', () => {
-  it('staje na Neonowej ulicy bez braków: cztery auta, osiem NPC-ów, Rydwan w rezerwie, drużyna bez figur', async () => {
+describe('etap 72g: „Reklamacja” — scena przykładowa pościgu w modelu prędkości i pasów', () => {
+  it('staje na Neonowej ulicy bez braków: kombi, furgon z zamiarem, radiowóz w rezerwie, plan rund, Tłok skuty', async () => {
     const gm = await connect(gmCookie);
     const list = data(await emitAck<SceneTemplateSummary[]>(gm, 'scene:templates'), 'templates');
-    expect(list.find((row) => row.id === 'ostatni-zjazd')).toMatchObject({
-      name: 'Ostatni zjazd',
-      kind: 'chase',
-      backgroundUrl: '/art/roads/neon-street.webp',
-      vehicles: 4,
-      figures: 8,
-    });
-    const result = data(
-      await emitAck<SceneTemplateCreateResult>(gm, 'scene:from-template', {
-        templateId: 'ostatni-zjazd',
-      }),
-      'from-template',
-    );
-    expect(result.missing).toEqual([]);
-
-    const scene = await built.prisma.scene.findUniqueOrThrow({ where: { id: result.sceneId } });
-    expect(scene).toMatchObject({
-      kind: 'chase',
-      backgroundUrl: '/art/roads/neon-street.webp',
-      backgroundWidth: 3500,
-      backgroundHeight: 2400,
-      width: 3500,
-      height: 2400,
-      gridSizePx: 100,
-      chaseDirection: 'left',
-      chaseTempo: 40,
-      chaseRunning: true,
-      chaseRoadFrom: 6,
-      chaseRoadTo: 18,
-      spawnX: 3300,
-      spawnY: 1600,
-    });
-
-    const placed = await built.prisma.sceneVehicle.findMany({
-      where: { sceneId: scene.id },
-      include: { vehicle: true },
-    });
-    const byName = new Map(placed.map((row) => [row.vehicle.name, row]));
-    expect([...byName.keys()].sort()).toEqual(
-      ['Eskorta', 'Furgon Halcyonu', 'Rydwan', 'Wóz od Matyldy'].sort(),
-    );
-    const van = byName.get('Furgon Halcyonu')!;
-    // Furgon to model MG (06.11): sześć foteli w rzędach furgonu, grafika Militechu.
-    expect(van.vehicle).toMatchObject({
-      layout: 'van-6',
-      widthSq: 3,
-      lengthSq: 7,
-      imageUrl: '/art/vehicles/militech-furgon.webp',
-    });
-    expect(readCpredVehicle(van.vehicle.system)).toMatchObject({
-      catalogId: 'vehicle.militech-furgon',
-      seats: 6,
-      van: true,
-    });
-    expect(readCpredVehicle(van.vehicle.system).upgrades.map((row) => row.upgradeId)).toEqual([
-      'reinforced',
-      'armoredHull',
-      'bulletproofGlass',
-      'nitro',
-    ]);
-    expect(byName.get('Rydwan')!.status).toBe('behind');
-    expect(
-      placed
-        .filter((row) => row.status === 'racing')
-        .map((row) => row.vehicle.name)
-        .sort(),
-    ).toEqual(['Eskorta', 'Furgon Halcyonu', 'Wóz od Matyldy'].sort());
-    // Furgon z przodu (jazda w lewo), Wóz drużyny z tyłu.
-    expect(van.x).toBeLessThan(byName.get('Eskorta')!.x);
-    expect(byName.get('Eskorta')!.x).toBeLessThan(byName.get('Wóz od Matyldy')!.x);
-
-    const tokens = await built.prisma.token.findMany({ where: { sceneId: scene.id } });
-    expect(tokens).toHaveLength(8);
-    // Drużyna siada sama — w Wozie od Matyldy nie ma nikogo.
-    expect(tokens.some((row) => row.sceneVehicleId === byName.get('Wóz od Matyldy')!.id)).toBe(
-      false,
-    );
-    const seats = Object.fromEntries(
-      tokens.map((row) => [
-        row.name,
-        [placed.find((car) => car.id === row.sceneVehicleId)?.vehicle.name, row.vehicleSeat],
-      ]),
-    );
-    expect(seats).toEqual({
-      Wolt: ['Furgon Halcyonu', 0],
-      Kłoda: ['Furgon Halcyonu', 4],
-      Iskra: ['Furgon Halcyonu', 5],
-      Mewa: ['Eskorta', 0],
-      Szron: ['Eskorta', 1],
-      Lutka: ['Eskorta', 3],
-      Grot: ['Rydwan', 0],
-      Kabel: ['Rydwan', 1],
-    });
-    const iskra = tokens.find((row) => row.name === 'Iskra')!;
-    expect(iskra.disposition).toBe('neutral');
-    expect(JSON.parse(iskra.statuses)).toEqual(['unconscious']);
-    expect(await built.prisma.mapNote.count({ where: { sceneId: scene.id } })).toBe(5);
-  });
-});
-
-describe('etap 66d: „Zastaw”', () => {
-  it('staje na Neonowej ulicy bez braków: kombi, furgon Militechu, radiowóz w rezerwie, Śrubka skrępowany', async () => {
-    const gm = await connect(gmCookie);
-    const list = data(await emitAck<SceneTemplateSummary[]>(gm, 'scene:templates'), 'templates');
-    expect(list.find((row) => row.id === 'zastaw')).toMatchObject({
-      name: 'Zastaw',
+    expect(list.find((row) => row.id === 'reklamacja')).toMatchObject({
+      name: 'Reklamacja',
       kind: 'chase',
       backgroundUrl: '/art/roads/neon-street.webp',
       vehicles: 3,
       figures: 5,
     });
+    // Stare wzorce pościgu zniknęły (MG 21.11).
+    expect(list.map((row) => row.id)).not.toContain('zastaw');
+    expect(list.map((row) => row.id)).not.toContain('ostatni-zjazd');
     const result = data(
       await emitAck<SceneTemplateCreateResult>(gm, 'scene:from-template', {
-        templateId: 'zastaw',
+        templateId: 'reklamacja',
       }),
       'from-template',
     );
@@ -529,11 +428,15 @@ describe('etap 66d: „Zastaw”', () => {
       kind: 'chase',
       backgroundUrl: '/art/roads/neon-street.webp',
       chaseDirection: 'left',
-      chaseTempo: 40,
+      // Prędkość startowa 100 mil/h — oba kompakty od razu przy maksimum.
+      chaseTempo: 20,
       chaseRunning: true,
       chaseRoadFrom: 6,
       chaseRoadTo: 18,
-      spawnX: 2600,
+      chaseRole: 'pursue',
+      // Neonowa ulica niesie trzy namalowane pasy — wzorzec nie wpisuje liczby.
+      chaseLanes: null,
+      spawnX: 2950,
       spawnY: 1600,
     });
 
@@ -543,9 +446,11 @@ describe('etap 66d: „Zastaw”', () => {
     });
     const byName = new Map(placed.map((row) => [row.vehicle.name, row]));
     expect([...byName.keys()].sort()).toEqual(
-      ['Furgon Militechu', 'Kombi drużyny', 'Radiowóz NCPD'].sort(),
+      ['Furgon Militechu', 'Kombi z dziupli', 'Radiowóz NCPD'].sort(),
     );
     const van = byName.get('Furgon Militechu')!;
+    const party = byName.get('Kombi z dziupli')!;
+    const police = byName.get('Radiowóz NCPD')!;
     expect(van.vehicle).toMatchObject({
       layout: 'van-6',
       imageUrl: '/art/vehicles/militech-furgon.webp',
@@ -554,17 +459,35 @@ describe('etap 66d: „Zastaw”', () => {
       'armoredHull',
       'bulletproofGlass',
       'nitro',
+      'spikes',
     ]);
-    const party = byName.get('Kombi drużyny')!;
     expect(readCpredVehicle(party.vehicle.system)).toMatchObject({ catalogId: 'vehicle.wloczega' });
     expect(readCpredVehicle(party.vehicle.system).upgrades.map((row) => row.upgradeId)).toEqual([
       'ram',
       'nitro',
     ]);
-    expect(byName.get('Radiowóz NCPD')!.status).toBe('behind');
-    // Furgon z przodu (jazda w lewo), kombi drużyny za nim, radiowóz za kadrem z tyłu.
-    expect(van.x).toBeLessThan(party.x);
-    expect(party.x).toBeLessThan(byName.get('Radiowóz NCPD')!.x);
+    // Zamiary: furgon ucieka, radiowóz blokuje kombi; auto drużyny prowadzi gracz.
+    expect(van).toMatchObject({ status: 'racing', intent: 'flee', intentTargetId: null });
+    expect(party).toMatchObject({ status: 'racing', intent: 'manual' });
+    expect(police).toMatchObject({ status: 'behind', intent: 'block', intentTargetId: party.id });
+    // Furgon z przodu (jazda w lewo) na środkowym pasie, kombi w miejscu kadru
+    // (30% od tylnej krawędzi), radiowóz w rezerwie na górnym pasie.
+    expect(van.x).toBe(1200);
+    expect(van.y).toBe(1200);
+    expect(party.x).toBe(2450);
+    expect(party.y).toBe(1200);
+    expect(police.y).toBe(800);
+
+    // Plan rund: klucze aut wzorca zamienione na auta sceny, po rundach.
+    expect(parseChasePlan(scene.chasePlan)).toMatchObject([
+      { id: 'r2-cywil', round: 2, kind: 'obstacle', obstacle: 'civilian-car', beforeId: van.id },
+      // Posiłki z 200 mil/h — z prędkością pościgu zostawały za kadrem (rozegranie 21.11).
+      { id: 'r3-ncpd', round: 3, kind: 'reinforce', vehicleId: police.id, lane: 2, speed: 40 },
+      { id: 'r4-kolczatka', round: 4, kind: 'note' },
+      { id: 'r5-tlok', round: 5, kind: 'note' },
+      { id: 'r6-roboty', round: 6, kind: 'obstacle', obstacle: 'roadwork', lane: 0 },
+      { id: 'r6-barykada', round: 6, kind: 'obstacle', obstacle: 'barricade', lane: 2 },
+    ]);
 
     const tokens = await built.prisma.token.findMany({ where: { sceneId: scene.id } });
     expect(tokens).toHaveLength(5);
@@ -576,15 +499,24 @@ describe('etap 66d: „Zastaw”', () => {
       ]),
     );
     expect(seats).toEqual({
-      Brzoza: ['Furgon Militechu', 0],
-      Hak: ['Furgon Militechu', 1],
-      Śrubka: ['Furgon Militechu', 5],
-      Wronka: ['Radiowóz NCPD', 0],
-      Lis: ['Radiowóz NCPD', 1],
+      Wektor: ['Furgon Militechu', 0],
+      Kamień: ['Furgon Militechu', 1],
+      Tłok: ['Furgon Militechu', 5],
+      Gil: ['Radiowóz NCPD', 0],
+      Szpak: ['Radiowóz NCPD', 1],
     });
-    const boy = tokens.find((row) => row.name === 'Śrubka')!;
-    expect(boy.disposition).toBe('neutral');
-    expect(JSON.parse(boy.statuses)).toEqual(['immobilized']);
+    const hostage = tokens.find((row) => row.name === 'Tłok')!;
+    expect(hostage.disposition).toBe('neutral');
+    expect(JSON.parse(hostage.statuses)).toEqual(['immobilized']);
+    // MG 21.11 (72g2): Kamień z pistoletem maszynowym, a nie z karabinem — karabin 5k6
+    // robił z dwóch startowych postaci bez pancerza Poważnie rannych jednym trafieniem.
+    const guard = await built.prisma.token.findFirstOrThrow({
+      where: { sceneId: scene.id, name: 'Kamień' },
+      include: { character: true },
+    });
+    const guardSheet = JSON.parse(guard.character!.data) as CpredCharacterData;
+    expect(guardSheet.weapons.map((row) => row.compendiumId)).not.toContain('weapon.assault-rifle');
+    expect(guardSheet.weapons.map((row) => row.name)).not.toContain('Grzechotnik');
     expect(await built.prisma.mapNote.count({ where: { sceneId: scene.id } })).toBe(5);
   });
 });

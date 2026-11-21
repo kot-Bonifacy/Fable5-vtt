@@ -6,6 +6,17 @@ w `POMYSLY.md` („Do sprawdzenia przy stole”), decyzje MG — w `decyzje-i-up
 
 ## Otwarte
 
+**21.11.2026 — drobiazgi z rozegrania „Reklamacji” (72g1).** (1) Smuga strzału Kamienia
+z furgonu do kombi (R1, MG w Chromium) poleciała w górę mapy, a nie w cel — trafienie policzone
+dobrze, zła tylko animacja; sprawdzić, czy smuga bierze położenie z przed przesunięcia kadru.
+(2) „Cel za szybą”: przy strzale w figurę za kuloodporną szybą pierwsze potrząśnięcie kubkiem
+otwiera okienko wyboru zamiast rzutu, a okienko zostaje otwarte po „Kończę turę” i wisi w następnej
+turze gracza. (3) „Po ruchu” w kokpicie mierzy do najbliższego wrogiego auta — przy „Drużyna goni”
+podawało radiowóz 2,5 m z tyłu zamiast furgonu, który drużyna goni; do decyzji MG, czy przy
+gonieniu brać najpierw auta z przodu (bez trwałego celu `T`). (4) Gracz po wejściu do gry ma kadr
+tak przybliżony, że furgon 8 m przed kombi jest poza ekranem — trzeba oddalić kółkiem (kadr bez
+zmian od decyzji MG z 06.11, tylko do oceny przy stole).
+
 **21.11.2026 — okno „Pościg” w domyślnym miejscu zasłania panel decyzji (72f3).** Okno staje
 przy prawej krawędzi (`x = szerokość − 560`, `y = 120`), a panel decyzji siedzi w prawym górnym
 rogu mapy — pytanie planu rund wyskakuje pod oknem (widać z niego lewą połowę). Wiersz „pyta
@@ -139,23 +150,6 @@ w menu auta MG (auto `escaped`, przygasa u MG), rezerwa lewego panelu przy liczn
 tarczy na pasku HUD (tylko testy), darmowa ręka MG w turze figury (test serwera), otarcie aut
 o włos i wrak za autem z autem z tyłu (testy `shared`). Przy stole: wysiadka NPC-a ręką MG w jego
 turze nie zjada metrów, a marsz klikiem dalej płaci.
-
-**06.11.2026 — „Zastaw” (66d): stół MG i wdrożenie.** Rozegrany 06.11 (piąta sesja): pościg
-skończył się w rundzie 3 przez trzy tarany w jednej turze — od 06.11 (szósta sesja, decyzja MG)
-jeden taran na turę, wpis w archiwum. Zostaje do oceny przy stole propozycja 2 z „Wniosków
-z balansu” w `etap-66d-zastaw.md`: Śrubka dostaje Ranę ze skryptowego auta cywilnego w R2, zanim
-gracze coś wybiorą (auto cywilne na pasie kombi zamiast furgonu?). Bez migracji.
-
-**04.11.2026 — „Ostatni zjazd” (66c): przebieg przy stole i wdrożenie.** Technicznie przejechany
-specem oględzin (MG w Chromium, Marek i Ola w Firefoksie, `data/private`), a 04.11 (czwarta
-sesja) rozegrany w przeglądarce 7 rund na `dev.db` — wynik balansu w pliku etapu
-(„Rozegranie w przeglądarce”). Decyzje balansu MG wprowadzone we wzorcu tego samego dnia (Rydwan
-bez karabinu, pistolet w schowku Wozu, NPC-e celniejsi). Zostaje dla MG: balans przy
-prawdziwym stole, wygląd podpisów i portrety. Na VPS
-wzorzec jedzie z repo (bez migracji); kopie skasowanego „Pościgu na wiadukcie” w kampaniach na
-VPS — nie sprawdzone (zostaną bez tła). Reguła „załoga auta poza pościgiem” (umowa na górze
-`mapa`) dotyczy też aut, które odpadły w zwykłym pościgu — warto rzucić okiem przy stole, czy
-nikogo nie dziwi, że załoga znika razem z autem.
 
 **03.11.2026 — kreator pościgu: oględziny przy stole, wdrożenie.** Od 06.11 stały E2E
 `48-poscig/t65-kreator` (MG w Firefoksie, gracz w Chromium; wpis w archiwum). Przy stole: „Utwórz → Pościg” — kreator, każda z czterech dróg
