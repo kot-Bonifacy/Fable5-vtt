@@ -1,5 +1,30 @@
 # Dziennik sesji — archiwum
 
+### Sesja 21.11 (siódma) — zlecenie MG: portrety NPC-ów „Reklamacji” i lista NPC sceny
+
+**Zrobione (bez migracji; czeka na wdrożenie):**
+
+- **Portrety we wzorcu sceny:** figura wzorca ma `portrait` — plik z zestawu przykładowych
+  portretów (umowa na górze `mapa`). Serwer bierze twarz z puli kampanii po nazwie („Avatar 21”),
+  a gdy jej nie ma, kopiuje plik i zakłada wiersz puli; karta i figura dostają ten sam adres.
+  „Reklamacja”: **Wektor 14, Kamień 44, Tłok 21, Gil 45 (tylko MG), Szpak 49** — dobrane
+  z arkusza miniatur, do zmiany jednym słowem MG. Istniejące kopie „Reklamacji” w kampaniach
+  portretów nie dostaną (MG ustawia je w karcie NPC-a: wybór z puli pod ramką portretu).
+- **Lista NPC w „Postaciach”:** karty NPC-ów są kampanijne, więc każda scena przykładowa
+  dokładała swoich do jednej listy. Grupa „NPC” pokazuje teraz tylko NPC-ów z figurą na
+  oglądanej scenie albo z otwartym sklepem zdalnym; reszta w zwiniętej „NPC poza sceną”
+  (umowa na górze `ui`). Dopisek „· na mapie” został tylko przy Drużynie. Pomocnik E2E
+  `dragCharacterToMap` rozwija zwiniętą grupę sam.
+
+Testy: `shared` 3277/3277 (nowe przypadki `portrait` w `scene-templates.test.ts`), serwer
+1898/1898 (`scene-templates.test.ts` 9/9 z nowym testem powrotu portretu do puli), klient
+527/527; `tsc` czterech pakietów, lint i Prettier czyste. E2E nie puszczane (`t5a` i `t8c`
+przeciągają postacie pomocnikiem — warto przy następnym pełnym przebiegu). **Oglądano
+w czystym Chromium (Playwright):** zakładka „Postacie” MG na scenie „Oględziny 12.09” — NPC (5),
+zwinięte „NPC poza sceną (18)”. **Firefox z Playwright nie wstał** (timeout uruchomienia, jak
+przy otwartym Firefoksie MG) — oględziny w Firefoksie do dołożenia. Portrety sprawdzone testem
+serwera, nie w przeglądarce (bez zakładania kolejnej „Reklamacji” w kampanii dev MG).
+
 ### Sesja 21.11 (szósta) — zlecenie MG: nowe grafiki aut i przykładowe portrety
 
 **Zrobione (dwie migracje: `20261121180000_vehicle_art_mg_only`, `20261121181000_sample_portraits`;

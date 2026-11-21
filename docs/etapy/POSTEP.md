@@ -144,7 +144,7 @@ a nie do tego pliku.
 
 | obszar      | co obejmuje                                                    | umów | pułapek |
 | ----------- | -------------------------------------------------------------- | ---- | ------- |
-| `mapa`      | figury, zaznaczanie, narzędzia, obiekty sceny, ściany, efekty, zamek drzwi, ukryta figura zauważona, ikony urządzeń, wspólny widok drużyny, okienko strefy przy marszu gracza, scena pościgu, jazda kierowcy i dryf, Manewr i taranowanie, przeszkody pościgu, sceny przykładowe, wzorzec zwykłej mapy, ulepszenia pojazdu, stojące auto na drodze, kreator pościgu i wbudowane drogi, załoga auta poza pościgiem, rama pościgu i pęd auta bez kierowcy, długa pętla drogi, ucieczka auta ręką MG, otarcie brył, wrak za autem, podpis w fotelu, furgon z wyglądu (`van-6`), przesadzanie foteli przy starcie, skręt z menu przed przeszkodą, wysiadka tylko przeciągnięciem, światła, zamki, strefy i pojemniki we wzorcu, obszar straży we wzorcu, model jazdy etapu 72 (`chase-drive.ts`), jazda 72 na serwerze (`realtime/chase-drive.ts`) i sonda styku, widok sceny po rundzie pościgu (`emitSceneView`), Wyścig rundy (`realtime/chase-race.ts`), auto o prędkości 0 i skręt o dwa pasy, mapa kokpitu (duch, dopiski, dojazd), autopilot aut NPC-ów (`chase-autopilot.ts`), pasy, rola i prędkość startowa w kreatorze (`chaseEffectiveLanes`), okno „Pościg” MG (`ChaseWindow.tsx`, `startSpeed`, posiłki, przeszkoda na pas), plan rund pościgu (`chase-plan.ts`, karta `chaseplan`), portret figury wzorca (`figures[].portrait`) | 106  | 33      |
+| `mapa`      | figury, zaznaczanie, narzędzia, obiekty sceny, ściany, efekty, zamek drzwi, ukryta figura zauważona, ikony urządzeń, wspólny widok drużyny, okienko strefy przy marszu gracza, scena pościgu, jazda kierowcy i dryf, Manewr i taranowanie, przeszkody pościgu, sceny przykładowe, wzorzec zwykłej mapy, ulepszenia pojazdu, stojące auto na drodze, kreator pościgu i wbudowane drogi, załoga auta poza pościgiem, rama pościgu i pęd auta bez kierowcy, długa pętla drogi, ucieczka auta ręką MG, otarcie brył, wrak za autem, podpis w fotelu, furgon z wyglądu (`van-6`), przesadzanie foteli przy starcie, skręt z menu przed przeszkodą, wysiadka tylko przeciągnięciem, światła, zamki, strefy i pojemniki we wzorcu, obszar straży we wzorcu, model jazdy etapu 72 (`chase-drive.ts`), jazda 72 na serwerze (`realtime/chase-drive.ts`) i sonda styku, widok sceny po rundzie pościgu (`emitSceneView`), Wyścig rundy (`realtime/chase-race.ts`), auto o prędkości 0 i skręt o dwa pasy, mapa kokpitu (duch, dopiski, dojazd), autopilot aut NPC-ów (`chase-autopilot.ts`), pasy, rola i prędkość startowa w kreatorze (`chaseEffectiveLanes`), okno „Pościg” MG (`ChaseWindow.tsx`, `startSpeed`, posiłki, przeszkoda na pas), plan rund pościgu (`chase-plan.ts`, karta `chaseplan`), portret figury wzorca (`figures[].portrait`) | 107  | 33      |
 | `czat`      | rodzaje wierszy, `visibleTo`, filtr, `seq`, `gmrecovery`, „to dotyczy mnie”, grupy kart, kolor gracza, czyszczenie, gęsta karta rzutu, przebieg ataku, `/jako` za NPC-a, karta rzutu bez konta, karta Wyścigu (`chaserace`), karta planu rund tylko dla MG (`chaseplan`) | 19   | 3       |
 | `serwer`    | Prisma i migracje, zdarzenia gniazda, zapisy karty, uploady, przykładowe portrety | 27   | 21      |
 | `ui`        | okna pływające, `z-index`, motyw, skróty, dostępność, wejście, panel decyzji MG, kubek przestawiany i jego menu (Szczęście jako żetony), lewa belka bez ramek i dymek `HudTip`, grupa „Pojazd” w belce (`HudVehicle.tsx`) i jej decyzje kierowcy, portret za kierownicą, NPC-e sceny w „Postaciach” | 46   | 16      |
@@ -168,6 +168,24 @@ a nie do tego pliku.
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
 
+### Sesja 21.11 (dziewiąta) — zlecenie MG: dwuklik w figurę w fotelu otwiera kartę
+
+**Zrobione (bez migracji; czeka na wdrożenie):**
+
+- **Pościg: dwuklik w figurę w fotelu otwiera kartę postaci**, jak na zwykłej mapie. Przyczyna:
+  pierwszy klik w figurę w fotelu szedł też do `onMapClick` → `vehicleClickAt` i od razu otwierał
+  menu auta, którego tło (`context-menu-backdrop`) zjadało drugi klik. Teraz (decyzje MG
+  z pytań) klik w **zajęty fotel** otwiera menu auta po `DOUBLE_CLICK_MS` (350 ms, wyeksportowane
+  z `MapRenderer`), a dwuklik je zdejmuje (`cancelVehicleMenu` w `onTokenActivate`). Klik
+  w kadłub, wolny fotel i strzał z bronią działają bez opóźnienia. W rendererze flaga
+  `tokenActivateSpent`: puszczenie dwukliku na figurze nie jest już klikiem w mapę (żyje jeden gest).
+  Umowa na górze `mapa`.
+
+Testy: klient 527/527; `tsc` klienta, ESLint i Prettier czyste. **Oglądano w czystym Chromium
+(Playwright)** na scenie „Oględziny 12.09”: dwuklik w Kosę w kombi otworzył jej kartę bez menu,
+pojedynczy klik otworzył menu auta „Kombi drużyny”. **Firefox z Playwright nie wstał** (timeout
+nawigacji, jak przy otwartym Firefoksie MG). Oględziny w Firefoksie do dołożenia.
+
 ### Sesja 21.11 (ósma) — zlecenie MG: Piotrówna zamiast Tłoka, Avatar 34 tylko dla MG
 
 **Zrobione (migracja danych `20261121200000_sample_portrait_34_gm_only`; czeka na wdrożenie):**
@@ -190,28 +208,3 @@ Testy: serwer 1899/1899 (`sample-portraits.test.ts` 4/4 z nowym testem migracji)
 (Playwright):** biblioteka portretów MG — Avatar 34 w „NPC — tylko MG (12)”, zniknął z „Dla
 graczy”. Firefox nadal niesprawdzony (patrz sesja niżej); kadru na żetonie nie oglądano
 w przeglądarce — tylko podgląd tym samym rachunkiem co `portraitCropPlacement`.
-
-### Sesja 21.11 (siódma) — zlecenie MG: portrety NPC-ów „Reklamacji” i lista NPC sceny
-
-**Zrobione (bez migracji; czeka na wdrożenie):**
-
-- **Portrety we wzorcu sceny:** figura wzorca ma `portrait` — plik z zestawu przykładowych
-  portretów (umowa na górze `mapa`). Serwer bierze twarz z puli kampanii po nazwie („Avatar 21”),
-  a gdy jej nie ma, kopiuje plik i zakłada wiersz puli; karta i figura dostają ten sam adres.
-  „Reklamacja”: **Wektor 14, Kamień 44, Tłok 21, Gil 45 (tylko MG), Szpak 49** — dobrane
-  z arkusza miniatur, do zmiany jednym słowem MG. Istniejące kopie „Reklamacji” w kampaniach
-  portretów nie dostaną (MG ustawia je w karcie NPC-a: wybór z puli pod ramką portretu).
-- **Lista NPC w „Postaciach”:** karty NPC-ów są kampanijne, więc każda scena przykładowa
-  dokładała swoich do jednej listy. Grupa „NPC” pokazuje teraz tylko NPC-ów z figurą na
-  oglądanej scenie albo z otwartym sklepem zdalnym; reszta w zwiniętej „NPC poza sceną”
-  (umowa na górze `ui`). Dopisek „· na mapie” został tylko przy Drużynie. Pomocnik E2E
-  `dragCharacterToMap` rozwija zwiniętą grupę sam.
-
-Testy: `shared` 3277/3277 (nowe przypadki `portrait` w `scene-templates.test.ts`), serwer
-1898/1898 (`scene-templates.test.ts` 9/9 z nowym testem powrotu portretu do puli), klient
-527/527; `tsc` czterech pakietów, lint i Prettier czyste. E2E nie puszczane (`t5a` i `t8c`
-przeciągają postacie pomocnikiem — warto przy następnym pełnym przebiegu). **Oglądano
-w czystym Chromium (Playwright):** zakładka „Postacie” MG na scenie „Oględziny 12.09” — NPC (5),
-zwinięte „NPC poza sceną (18)”. **Firefox z Playwright nie wstał** (timeout uruchomienia, jak
-przy otwartym Firefoksie MG) — oględziny w Firefoksie do dołożenia. Portrety sprawdzone testem
-serwera, nie w przeglądarce (bez zakładania kolejnej „Reklamacji” w kampanii dev MG).

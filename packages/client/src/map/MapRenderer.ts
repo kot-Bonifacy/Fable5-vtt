@@ -444,7 +444,7 @@ const MAX_ZOOM = MAP_MAX_ZOOM;
 /** Screen-pixel distance that turns a click into a drag. */
 const DRAG_THRESHOLD_PX = 4;
 /** Max gap between two clicks on a token to count as a double-click. */
-const DOUBLE_CLICK_MS = 350;
+export const DOUBLE_CLICK_MS = 350;
 /** Ile pikseli ekranu wolno drgnąć ręce, żeby gest liczył się jeszcze jako klik. */
 const TAP_SLOP_PX = 6;
 
@@ -1194,6 +1194,13 @@ export class MapRenderer {
   private readonly background = new Sprite();
   /** Scena pościgu (etap 65b): bieżnia zamiast tła i auta pod figurami. */
   private readonly chase = new ChaseLayer();
+  /**
+   * Drugi klik dwukliku w figurę otworzył kartę (21.11.2026) — ten sam gest
+   * nie jest już klikiem w mapę. Bez tego puszczenie dwukliku na figurze
+   * w fotelu szło do `onMapClick` jako klik w auto i otwierało jego menu.
+   * Żyje jeden gest: zeruje go każde następne naciśnięcie i `clicked`.
+   */
+  private tokenActivateSpent = false;
   /** Auto ciągnięte przez MG (65b): skąd chwycone i czy już ruszyło. */
   private vehicleGrab: {
     id: string;
@@ -2064,6 +2071,10 @@ export class MapRenderer {
       // (27k). Bez tego klik w istniejącą pinezkę zaznaczyłby ją i od razu wbił
       // obok drugą, bo notatka stawia się dopiero tutaj.
       if (this.layerPickSpent) return;
+      if (this.tokenActivateSpent) {
+        this.tokenActivateSpent = false;
+        return;
+      }
       if (this.notePlacing) {
         this.onNotePlace?.(Math.round(event.world.x), Math.round(event.world.y));
         return;
@@ -2598,6 +2609,9 @@ export class MapRenderer {
     viewport.eventMode = 'static';
 
     viewport.on('pointerdown', (event: FederatedPointerEvent) => {
+      // Figura dostaje `pointerdown` przed widokiem — tamten gest sam ustawił
+      // flagę dwukliku, a każdy inny ją zdejmuje.
+      if (!isTokenTarget(event.target)) this.tokenActivateSpent = false;
       // Right button on bare map drops the selection (stage 16e) — the same
       // „never mind" every game of this shape uses, and it never competes with
       // the GM's token menu, which is a right click *on a figure*.
@@ -8272,6 +8286,7 @@ export class MapRenderer {
         return;
       }
       if (event.button !== 0) return;
+      this.tokenActivateSpent = false;
       // A token under the crosshair is a target, not something to pick up —
       // whether the crosshair came from a sheet (16b) or from the weapon in the
       // action bar (16f). The caller decides which of the two is firing.
@@ -8339,6 +8354,7 @@ export class MapRenderer {
       const now = performance.now();
       if (now - lastClickAt < DOUBLE_CLICK_MS) {
         lastClickAt = 0;
+        this.tokenActivateSpent = true;
         this.onTokenActivate?.(node.tokenId);
         return;
       }
