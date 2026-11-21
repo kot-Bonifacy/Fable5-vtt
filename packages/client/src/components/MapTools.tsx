@@ -36,11 +36,7 @@ import { useNetStore } from '../stores/netStore.js';
 import { useNetRunStore } from '../stores/netRunStore.js';
 import { useTokenStore } from '../stores/tokenStore.js';
 import { ZoneSystemPicker } from './ZoneSystemPicker.js';
-import {
-  ChaseAutopilotButton,
-  ChaseObstacleButton,
-  ChaseObstaclePalette,
-} from './ChaseObstacleTools.js';
+import { ChaseWindowButton } from './ChaseWindow.js';
 import {
   fetchNetArchitectures,
   clearCovers,
@@ -521,8 +517,7 @@ export function MapTools() {
           >
             <IconCrate />
           </button>
-          <ChaseObstacleButton />
-          <ChaseAutopilotButton />
+          <ChaseWindowButton />
         </>
       )}
 
@@ -1068,8 +1063,6 @@ export function MapTools() {
           </button>
         </div>
       )}
-
-      <ChaseObstaclePalette />
 
       {isGm && (containerMenu || armedContainer) && (
         <div className="map-tool-options" role="group" aria-label="Rodzaj pojemnika">

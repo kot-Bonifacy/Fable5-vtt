@@ -15,7 +15,6 @@ import {
   chaseIsHorizontal,
   chaseOffscreen,
   chaseShiftAlong,
-  clampChaseVehicle,
   type ChaseSettings,
 } from './chase.js';
 
@@ -150,9 +149,15 @@ export interface ChaseObstacleView {
 export interface ChaseObstacleSpawnPayload {
   sceneId: string;
   kind: ChaseObstacleKind;
-  /** Punkt kliknięcia — z niego liczy się tylko położenie w poprzek drogi. */
-  x: number;
-  y: number;
+  /** Pas jezdni (od krawędzi `road.from`, od zera) — etap 72f2, okno „Pościg”. */
+  lane: number;
+  /**
+   * Auto, przed którym staje przeszkoda, i odstęp od jego przedniego zderzaka
+   * w kratkach. Bez auta — przy przedniej krawędzi kadru; za daleko —
+   * przycięta do przedniej krawędzi (przeszkoda zawsze stoi w kadrze).
+   */
+  beforeId?: string;
+  gapSq?: number;
   /** Własna nazwa, PW i grafika (`custom`; przy innych zastępują domyślne). */
   name?: string;
   hp?: number;
@@ -175,36 +180,6 @@ export type ChaseObstacleChoice = (typeof CHASE_OBSTACLE_CHOICES)[number];
 export interface ChaseObstacleAnswerPayload {
   obstacleId: string;
   choice: ChaseObstacleChoice;
-}
-
-type Frame = {
-  width: number;
-  height: number;
-  gridSizePx: number;
-  gridOffsetX: number;
-  gridOffsetY: number;
-};
-
-/**
- * Środek nowej przeszkody: wzdłuż drogi — tuż przy przedniej krawędzi kadru
- * (cała w kadrze), w poprzek — tam, gdzie MG kliknął, przycięta do pasa jezdni.
- */
-export function chaseObstacleSpawnCentre(
-  point: ScenePoint,
-  body: { widthSq: number; lengthSq: number },
-  settings: Pick<ChaseSettings, 'direction' | 'road'>,
-  scene: Frame,
-): ScenePoint {
-  const { hx, hy } = chaseBodyHalfExtents(body, settings.direction, scene.gridSizePx);
-  const front: ScenePoint =
-    settings.direction === 'right'
-      ? { x: scene.width - hx, y: point.y }
-      : settings.direction === 'left'
-        ? { x: hx, y: point.y }
-        : settings.direction === 'down'
-          ? { x: point.x, y: scene.height - hy }
-          : { x: point.x, y: hy };
-  return clampChaseVehicle(front, body, settings, scene);
 }
 
 /** Kratki, o które przeszkoda jedzie w kadrze na początku rundy — w tył, `tempo / 4`. */

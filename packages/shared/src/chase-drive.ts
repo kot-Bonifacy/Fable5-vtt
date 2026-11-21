@@ -22,15 +22,17 @@ import {
   chaseRoadSpanPx,
   chaseShiftAlong,
   clampChaseLanes,
+  clampChaseVehicle,
   isChaseRole,
   type ChaseBody,
+  type ChaseEntrySide,
   type ChaseRole,
   type ChaseControl,
   type ChaseDirection,
   type ChaseSettings,
   type SceneVehicleStatus,
 } from './chase.js';
-import { chaseRoadByUrl } from './chase-roads.js';
+import { chaseRoadByUrl, type ChaseParkedBody } from './chase-roads.js';
 
 /** Wymiary sceny, z których liczy się jezdnia (pola `Scene`). */
 export interface ChaseDriveFrame {
@@ -327,6 +329,142 @@ export function chaseObstacleEta(
   const step = Math.max(0, roadSqPerRound);
   const rounds = gapSq === 0 ? 0 : step > 0 ? Math.ceil(gapSq / step) : null;
   return { gapSq, rounds, sameLane };
+}
+
+// ───────────────────────── Okno „Pościg” (etap 72f2) ─────────────────────────
+
+/** Punkt sceny z położenia wzdłuż drogi (od tylnej krawędzi kadru) i w poprzek. */
+export function chasePointAlong(
+  along: number,
+  across: number,
+  direction: ChaseDirection,
+  scene: { width: number; height: number },
+): ScenePoint {
+  switch (direction) {
+    case 'right':
+      return { x: along, y: across };
+    case 'left':
+      return { x: scene.width - along, y: across };
+    case 'down':
+      return { x: across, y: along };
+    case 'up':
+      return { x: across, y: scene.height - along };
+  }
+}
+
+/** Auto, przed którym MG stawia przeszkodę — środek i bryła. */
+export interface ChaseDropBefore {
+  centre: ScenePoint;
+  body: Pick<ChaseBody, 'widthSq' | 'lengthSq'>;
+}
+
+/** Pół długości bryły wzdłuż drogi w pikselach. */
+function halfAlongPx(
+  body: Pick<ChaseBody, 'widthSq' | 'lengthSq'>,
+  direction: ChaseDirection,
+  grid: number,
+): number {
+  const { hx, hy } = chaseBodyHalfExtents(body, direction, grid);
+  return chaseIsHorizontal(direction) ? hx : hy;
+}
+
+/**
+ * Najdalszy odstęp przeszkody od przedniego zderzaka auta w kratkach, przy
+ * którym przeszkoda stoi jeszcze cała w kadrze (decyzja MG 21.11: tylko
+ * w kadrze). Ujemny — przed autem nie ma na nią miejsca.
+ */
+export function chaseObstacleMaxGapSq(
+  before: ChaseDropBefore,
+  body: Pick<ChaseBody, 'widthSq' | 'lengthSq'>,
+  direction: ChaseDirection,
+  scene: { width: number; height: number; gridSizePx: number },
+): number {
+  const grid = scene.gridSizePx;
+  const length = chaseIsHorizontal(direction) ? scene.width : scene.height;
+  const carFront =
+    chaseAlongFromRear(before.centre, direction, scene) + halfAlongPx(before.body, direction, grid);
+  return (length - carFront - 2 * halfAlongPx(body, direction, grid)) / grid;
+}
+
+/**
+ * Środek przeszkody wypuszczonej z okna „Pościg” (etap 72f2): w poprzek — na
+ * środku pasa, wzdłuż — `gapSq` kratek przed przednim zderzakiem auta
+ * `before`, a bez auta przy przedniej krawędzi kadru. Za daleko — przycięta
+ * do przedniej krawędzi: przeszkoda zawsze stoi cała w kadrze.
+ */
+export function chaseObstacleDropCentre(input: {
+  lane: number;
+  lanes: number;
+  body: Pick<ChaseBody, 'widthSq' | 'lengthSq'>;
+  settings: Pick<ChaseSettings, 'direction' | 'road'>;
+  scene: ChaseDriveFrame;
+  before?: (ChaseDropBefore & { gapSq: number }) | null;
+}): ScenePoint {
+  const { direction } = input.settings;
+  const grid = input.scene.gridSizePx;
+  const length = chaseIsHorizontal(direction) ? input.scene.width : input.scene.height;
+  const half = halfAlongPx(input.body, direction, grid);
+  const front = length - half;
+  let along = front;
+  if (input.before) {
+    const carFront =
+      chaseAlongFromRear(input.before.centre, direction, input.scene) +
+      halfAlongPx(input.before.body, direction, grid);
+    along = carFront + Math.max(0, input.before.gapSq) * grid + half;
+  }
+  along = Math.min(front, Math.max(half, along));
+  const across = chaseLaneCentre(input.lane, input.lanes, input.settings, input.scene);
+  return clampChaseVehicle(
+    chasePointAlong(along, across, direction, input.scene),
+    input.body,
+    input.settings,
+    input.scene,
+  );
+}
+
+/**
+ * Miejsce wjazdu auta przywróconego do pościgu (etap 72f2): środek pasa,
+ * możliwie najbliżej wybranej krawędzi kadru (cała bryła w kadrze), krokiem
+ * jednej kratki w głąb, póki nie nachodzi na stojące auto (z pół kratki
+ * odstępu, jak `chaseFreeSpot`). Brak miejsca — sama krawędź (MG poprawi).
+ */
+export function chaseEntryCentre(input: {
+  lane: number;
+  lanes: number;
+  side: ChaseEntrySide;
+  body: Pick<ChaseBody, 'widthSq' | 'lengthSq'>;
+  parked: readonly ChaseParkedBody[];
+  settings: Pick<ChaseSettings, 'direction' | 'road'>;
+  scene: ChaseDriveFrame;
+}): ScenePoint {
+  const { direction } = input.settings;
+  const grid = input.scene.gridSizePx;
+  const length = chaseIsHorizontal(direction) ? input.scene.width : input.scene.height;
+  const half = halfAlongPx(input.body, direction, grid);
+  const own = chaseBodyHalfExtents(input.body, direction, grid);
+  const across = chaseLaneCentre(input.lane, input.lanes, input.settings, input.scene);
+  const at = (along: number) =>
+    clampChaseVehicle(
+      chasePointAlong(along, across, direction, input.scene),
+      input.body,
+      input.settings,
+      input.scene,
+    );
+  const free = (centre: ScenePoint) =>
+    !input.parked.some((other) => {
+      const o = chaseBodyHalfExtents(other, direction, grid);
+      return (
+        Math.abs(centre.x - other.x) < own.hx + o.hx + grid * 0.5 &&
+        Math.abs(centre.y - other.y) < own.hy + o.hy + grid * 0.5
+      );
+    });
+  const edge = input.side === 'rear' ? half : length - half;
+  const step = input.side === 'rear' ? grid : -grid;
+  for (let along = edge; along >= half - 0.5 && along <= length - half + 0.5; along += step) {
+    const centre = at(along);
+    if (free(centre)) return centre;
+  }
+  return at(edge);
 }
 
 // ───────────────────────── Zamiar auta (autopilot, etap 72e) ─────────────────────────

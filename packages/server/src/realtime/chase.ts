@@ -184,6 +184,7 @@ function toSceneVehicleView(
       })),
     moving: scene.chaseRunning && motion.speed > 0,
     speed: motion.speed,
+    startSpeed: row.startSpeed,
     party: motion.party,
     blockingVehicleId: row.blockingId,
   };
@@ -260,7 +261,7 @@ export function vehicleMotion(
   const speed =
     scene.chasePursuitSpeed !== null
       ? Math.max(0, row.speed)
-      : cpredStartSpeed(stats.move, scene.chaseTempo, {
+      : cpredStartSpeed(stats.move, row.startSpeed ?? scene.chaseTempo, {
           started: row.started,
           driven: control !== 'none',
           wrecked: cpredVehicleWrecked(stats),

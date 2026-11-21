@@ -382,8 +382,7 @@ describe('etap 65e: przeszkody, ruch uliczny i kolczatka', () => {
       await emitAck(gm, 'chase:obstacle-spawn', {
         sceneId: scene.id,
         kind: 'barricade',
-        x: 500,
-        y: 1050,
+        lane: 1,
       }),
     ).toMatchObject({ ok: false, error: 'OBSTACLE_COMBAT_ONLY' });
     expect(await emitAck(gm, 'vehicle:spikes', { sceneVehicleId: carB.id })).toMatchObject({
@@ -417,8 +416,7 @@ describe('etap 65e: przeszkody, ruch uliczny i kolczatka', () => {
       await emitAck(player, 'chase:obstacle-spawn', {
         sceneId: scene.id,
         kind: 'barricade',
-        x: 500,
-        y: 1050,
+        lane: 1,
       }),
     ).toMatchObject({ ok: false });
 
@@ -428,8 +426,7 @@ describe('etap 65e: przeszkody, ruch uliczny i kolczatka', () => {
         kind: 'civilian-car',
         name: 'Furgon',
         hp: 10,
-        x: 500,
-        y: 1050,
+        lane: 1,
       }),
       'chase:obstacle-spawn',
     );
@@ -504,8 +501,7 @@ describe('etap 65e: przeszkody, ruch uliczny i kolczatka', () => {
         kind: 'civilian-car',
         name: 'Dostawczak',
         hp: 10,
-        x: 500,
-        y: 1050,
+        lane: 1,
       }),
       'chase:obstacle-spawn menu',
     );
@@ -539,8 +535,7 @@ describe('etap 65e: przeszkody, ruch uliczny i kolczatka', () => {
         kind: 'civilian-car',
         name: 'Taksówka',
         hp: 10,
-        x: 500,
-        y: 1050,
+        lane: 1,
       }),
       'chase:obstacle-spawn 2',
     );
@@ -619,8 +614,7 @@ describe('etap 65e: przeszkody, ruch uliczny i kolczatka', () => {
         sceneId: scene.id,
         kind: 'civilian-car',
         hp: 50,
-        x: 500,
-        y: 750,
+        lane: 0,
       }),
       'chase:obstacle-spawn 3',
     );

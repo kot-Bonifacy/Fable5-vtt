@@ -65,6 +65,7 @@
       "y": 4.5,
       "status": "behind",
       "intent": { "kind": "keep", "target": "pickup" },
+      "startSpeed": 30,
       "system": {
         "catalogIds": ["vehicle.samochod-sportowy", "vehicle.sample-kompakt"],
         "upgrades": []

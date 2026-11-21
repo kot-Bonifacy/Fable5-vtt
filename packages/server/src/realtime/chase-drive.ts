@@ -801,7 +801,7 @@ export async function startChaseRound(
     if (wreck) wrecked.add(row.id);
     const control = motions.get(row.id)!.control;
     const speed = first
-      ? cpredStartSpeed(stats.move, scene.chaseTempo, {
+      ? cpredStartSpeed(stats.move, row.startSpeed ?? scene.chaseTempo, {
           started: row.started,
           driven: control !== 'none',
           wrecked: wreck,

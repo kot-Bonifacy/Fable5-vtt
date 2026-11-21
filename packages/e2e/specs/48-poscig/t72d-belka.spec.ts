@@ -284,8 +284,7 @@ test.describe.serial('@szybkie T72d belka: akcje auta i decyzje kierowcy w grupi
       await emitAck(gm, 'chase:obstacle-spawn', {
         sceneId,
         kind: 'barricade',
-        x: grid * 6,
-        y: grid * 14,
+        lane: (await vehicle(ola, olaCar.id))!.lane,
       }),
     );
     // Tura po turze, aż barykada stanie przy zderzaku (początek rundy) — po

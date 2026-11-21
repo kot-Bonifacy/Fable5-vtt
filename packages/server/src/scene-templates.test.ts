@@ -258,6 +258,9 @@ describe('etap 66: sceny przykładowe', () => {
     expect(pickup).toMatchObject({ intent: 'pursue', intentTargetId: taxi.id, intentGapSq: null });
     expect(reserve).toMatchObject({ intent: 'keep', intentTargetId: pickup.id });
     expect(reserve.intentGapSq).toBeCloseTo(-4.5);
+    // Własna prędkość startowa (72f2) — tylko w aucie, które ją ma we wzorcu.
+    expect(reserve.startSpeed).toBe(30);
+    expect(taxi.startSpeed).toBeNull();
     // Auta stoją na środkach pasów: jezdnia 3–9 na dwa pasy — 4,5 i 7,5 kratki.
     for (const row of placed) {
       const lane = row.y / scene.gridSizePx;

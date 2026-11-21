@@ -104,7 +104,6 @@ import {
   inventoryErrorText,
   moveChaseVehicle,
   placeChaseVehicle,
-  spawnChaseObstacle,
   seatInVehicle,
 } from '../socket.js';
 import { loadAttackAtToken } from '../attack-targeting.js';
@@ -267,9 +266,9 @@ function openSheetOfToken(tokenId: string): void {
  * do posadzenia (prowadzona albo jedyna własna) — siada; reszta auta — menu.
  */
 /**
- * Przeszkody na scenie pościgu (etap 65e): przeszkoda w ręku MG wypuszcza się
- * klikiem w drogę (przy przedniej krawędzi, na pasie pod kursorem), a klik MG
- * w przeszkodę otwiera jej menu. Gracz przeszkody nie klika — widzi ją i tyle.
+ * Przeszkody na scenie pościgu (etap 65e): klik MG w przeszkodę otwiera jej
+ * menu. Wypuszcza się je z okna „Pościg” (72f2, pas i odległość — decyzja MG
+ * 21.11: bez klikania w drogę). Gracz przeszkody nie klika — widzi ją i tyle.
  */
 function obstacleClickAt(
   worldX: number,
@@ -280,21 +279,10 @@ function obstacleClickAt(
   const scene = useSceneStore.getState().scene;
   if (!scene || scene.kind !== 'chase') return false;
   if (useAuthStore.getState().user?.role !== ROLE_GM) return false;
-  const chase = useChaseStore.getState();
-  if (chase.armed) {
-    const armed = chase.armed;
-    // Jedna przeszkoda na klik (05.11): ręka MG pustoszeje, bo następny klik
-    // bywa celem strzału, a nie kolejną barykadą. Paleta zostaje otwarta.
-    chase.arm(null);
-    void spawnChaseObstacle({ sceneId: scene.id, x: worldX, y: worldY, ...armed }).then((ack) => {
-      if (!ack.ok) notifyRefusal('chase', chaseErrorText(ack.error));
-    });
-    return true;
-  }
   const obstacle = obstacleAt(worldX, worldY);
   if (!obstacle) return false;
   const client = toClient({ x: worldX, y: worldY });
-  if (client) chase.openObstacleMenu(obstacle.id, client.x, client.y);
+  if (client) useChaseStore.getState().openObstacleMenu(obstacle.id, client.x, client.y);
   return true;
 }
 

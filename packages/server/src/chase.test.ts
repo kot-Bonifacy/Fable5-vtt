@@ -715,6 +715,11 @@ describe('etap 72f1: pasy, rola drużyny i zamiar w paczce', () => {
         })
       ).ok,
     ).toBe(true);
+    // Własna prędkość startowa auta (72f2) jedzie w paczce.
+    data(
+      await emitAck(gm, 'chase:set-speed', { sceneVehicleId: van.id, speed: 30 }),
+      'chase:set-speed',
+    );
     const file = await exportCampaign(built.prisma, campaignId, { includeChat: false });
     const packed = file?.payload.scenes.find((row) => row.id === created.id);
     expect(packed?.scene).toMatchObject({
@@ -754,6 +759,8 @@ describe('etap 72f1: pasy, rola drużyny i zamiar w paczce', () => {
       intentTargetId: copyVan.id,
       intentGapSq: -8,
     });
+    expect(copyVan.startSpeed).toBe(30);
+    expect(copyEscort.startSpeed).toBeNull();
 
     // Powrót do „z drogi” i wbudowana droga: pasy namalowane, liczba MG odpada.
     const auto = data(

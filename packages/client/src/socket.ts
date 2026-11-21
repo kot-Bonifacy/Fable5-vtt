@@ -323,6 +323,7 @@ import type {
   VehicleRenamePayload,
   ChaseObstacleChoice,
   ChaseObstacleSpawnPayload,
+  ChaseRestorePayload,
   ChaseIntent,
   ChaseObstacleView,
   ChasePlacePayload,
@@ -3611,8 +3612,17 @@ export const fireVehicleNitro = (sceneVehicleId: string) =>
 /** MG (03.11): pełne zbiorniki Nitro i pełna wyrzutnia kolczatki. */
 export const refillVehicle = (sceneVehicleId: string) =>
   emitSceneAck<SceneVehicleView>('vehicle:refill', { sceneVehicleId });
-export const restoreChaseVehicle = (sceneVehicleId: string) =>
-  emitSceneAck<SceneVehicleView>('chase:restore', { sceneVehicleId });
+/** MG: auto wraca do pościgu — z okna „Pościg” (72f2) na pasie, przy krawędzi, z prędkością. */
+export const restoreChaseVehicle = (
+  sceneVehicleId: string,
+  entry: Omit<ChaseRestorePayload, 'sceneVehicleId'> = {},
+) => emitSceneAck<SceneVehicleView>('chase:restore', { sceneVehicleId, ...entry });
+/** MG (72f2): prędkość auta w walce albo jego własna prędkość startowa przed walką. */
+export const setChaseSpeed = (sceneVehicleId: string, speed: number | null) =>
+  emitSceneAck<SceneVehicleView>('chase:set-speed', { sceneVehicleId, speed });
+/** MG (72f2): auto, którego trzyma się kadr (`null` — reguła domyślna). */
+export const setChaseAnchor = (sceneId: string, vehicleId: string | null) =>
+  emitSceneAck('chase:anchor', { sceneId, vehicleId });
 /** MG: auto ucieka z pościgu (zaległość z 04.11) — jak wyjazd za przednią krawędź. */
 export const escapeChaseVehicle = (sceneVehicleId: string) =>
   emitSceneAck<SceneVehicleView>('chase:escape', { sceneVehicleId });

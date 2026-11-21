@@ -7,12 +7,16 @@ import {
   chaseDefaultLanes,
   chaseDriveStep,
   chaseEffectiveLanes,
+  chaseEntryCentre,
   chaseLaneCentre,
   chaseLaneOf,
   chaseLanesForWidth,
   chaseLaneSpanPx,
   chaseLaneTarget,
+  chaseObstacleDropCentre,
   chaseObstacleEta,
+  chaseObstacleMaxGapSq,
+  chasePointAlong,
   chaseSnapToLane,
   clampChaseLanes,
   isChaseRole,
@@ -265,5 +269,72 @@ describe('prognoza przeszkody', () => {
         10,
       ),
     ).toBeNull();
+  });
+});
+
+describe('okno „Pościg” (72f2)', () => {
+  const barricade = { widthSq: 4, lengthSq: 1 };
+  // Auto jedzie w lewo: środek 2450 → 1050 px od tylnej krawędzi, zderzak na 1300.
+  const before = { centre: { x: 2450, y: 1200 }, body: car };
+
+  it('punkt z położenia wzdłuż drogi w każdym kierunku', () => {
+    expect(chasePointAlong(300, 800, 'left', neon)).toEqual({ x: 3200, y: 800 });
+    expect(chasePointAlong(300, 800, 'right', neon)).toEqual({ x: 300, y: 800 });
+    expect(chasePointAlong(300, 800, 'up', neon)).toEqual({ x: 800, y: 2100 });
+    expect(chasePointAlong(300, 800, 'down', neon)).toEqual({ x: 800, y: 300 });
+  });
+
+  it('przeszkoda staje na środku pasa N kratek przed zderzakiem auta', () => {
+    expect(
+      chaseObstacleDropCentre({
+        lane: 0,
+        lanes: 3,
+        body: barricade,
+        settings: left,
+        scene: neon,
+        before: { ...before, gapSq: 6 },
+      }),
+    ).toEqual({ x: 1550, y: 800 });
+  });
+
+  it('za daleko — przycięta do przedniej krawędzi; bez auta — przy krawędzi', () => {
+    expect(chaseObstacleMaxGapSq(before, barricade, 'left', neon)).toBe(21);
+    const far = chaseObstacleDropCentre({
+      lane: 2,
+      lanes: 3,
+      body: barricade,
+      settings: left,
+      scene: neon,
+      before: { ...before, gapSq: 50 },
+    });
+    expect(far).toEqual({ x: 50, y: 1600 });
+    expect(
+      chaseObstacleDropCentre({ lane: 2, lanes: 3, body: barricade, settings: left, scene: neon }),
+    ).toEqual(far);
+  });
+
+  it('auto przy samej przedniej krawędzi nie ma miejsca na przeszkodę', () => {
+    expect(
+      chaseObstacleMaxGapSq({ centre: { x: 300, y: 1200 }, body: car }, barricade, 'left', neon),
+    ).toBeLessThan(0);
+  });
+
+  it('wjazd przy tylnej krawędzi, a gdy zajęte — kratka po kratce w głąb', () => {
+    const entry = (side: 'front' | 'rear', parked = [] as { x: number; y: number }[]) =>
+      chaseEntryCentre({
+        lane: 1,
+        lanes: 3,
+        side,
+        body: car,
+        parked: parked.map((at) => ({ ...at, ...car })),
+        settings: left,
+        scene: neon,
+      });
+    expect(entry('rear')).toEqual({ x: 3250, y: 1200 });
+    expect(entry('front')).toEqual({ x: 250, y: 1200 });
+    // Auto na tym samym miejscu — bryły z pół kratki odstępu, krokiem kratki: 6 kratek dalej.
+    expect(entry('rear', [{ x: 3250, y: 1200 }])).toEqual({ x: 2650, y: 1200 });
+    // Auto na sąsiednim pasie nie przeszkadza.
+    expect(entry('rear', [{ x: 3250, y: 800 }])).toEqual({ x: 3250, y: 1200 });
   });
 });

@@ -4,7 +4,7 @@
 65a–65e), kreator pościgu z 03.11, 66c i 66d (wzorce pościgu), 69 (lewa belka bez ramek),
 32 (wezwanie do Testu) · **Status:** 🟨 w toku — projekt 15.11, **72a ✅ 19.11**, **72b1 ✅ 19.11**,
 **72b2 ✅ 20.11**, **72c ✅ 20.11**, **72d1 ✅ 20.11**, **72d2 ✅ 20.11**, **72e ✅ 20.11**,
-**72f1 ✅ 20.11**, następny 72f2
+**72f1 ✅ 20.11**, **72f2 ✅ 21.11**, następny 72f3
 
 ## Skąd ten etap
 
@@ -672,16 +672,48 @@ Rozstrzygnięcia bez pytań (do potwierdzenia przy rozegraniu 72g):
   to tylko UI. Wzorzec nie niesie też autopilota ani auta kadru (72f2 / 72g, jeśli potrzeba).
 - **Paczka niesie auto kadru i hamulec autopilota**, choć w UI wybiera się je dopiero w 72f2.
 
-#### 72f2 — okno „Pościg”
+#### 72f2 — okno „Pościg” (✅ 21.11)
 
-- [ ] Okno „Pościg” MG (zastępuje ikonę palety przeszkód): nagłówek (runda, prędkość pościgu,
-      kadr, goni / ucieka, autopilot — przełącznik z paska narzędzi przechodzi tutaj), auta od
-      czoła do ogona (stan, prędkość / maksimum, pas, dystans do kadru, kierowca, PUK, zamiar,
-      „Przywróć do pościgu” z pasem i stroną kadru, „Ucieka”, poprawka prędkości —
-      `chase:set-speed`), przeszkody na pas i odległość przed wybranym autem z prognozą
+- [x] Okno „Pościg” MG (`ChaseWindow.tsx`, ikona prędkościomierza na pasku narzędzi zamiast
+      palety przeszkód i przełącznika autopilota): nagłówek (runda, prędkość pościgu, „Kadr
+      trzyma się” — `chase:anchor`, goni / ucieka, „Autopilot”), auta od czoła do ogona (stan,
+      prędkość / maksimum polem w mil/h — `chase:set-speed`, pas, dystans do kadru, kierowca
+      i kontrola, PUK, zamiar, „Ucieka”), posiłki („Przywróć do pościgu” z pasem, stroną kadru
+      i prędkością), przeszkody na pas i odległość przed wybranym autem z prognozą
       i ostrzeżeniem, lista przeszkód z „Zdejmij”.
-- [ ] Posiłki nie zakładają, że to wyłącznie auta z rezerwy sceny (STR-12, punkt 9).
-- [ ] Testy serwera, E2E (MG w oknie; przeszkoda na pasie w odległości).
+- [x] Posiłki nie zakładają, że to wyłącznie auta z rezerwy sceny (STR-12, punkt 9): okno
+      i `chase:restore` biorą każde auto sceny poza kadrem (`behind` / `escaped`).
+- [x] Testy `shared` (`chaseObstacleDropCentre`, `chaseObstacleMaxGapSq`, `chaseEntryCentre`,
+      `startSpeed` we wzorcu), serwera (`chase-panel.test.ts`, paczka i wzorzec z `startSpeed`,
+      stare testy przeszkód na pasach, macierz izolacji), E2E `t72f2-okno` (MG w oknie: prędkość
+      startowa i w walce, przeszkoda 20 m przed autem, posiłki od tyłu; gracz bez okna),
+      `t65-przeszkody` i `t72e-autopilot` przepięte na okno.
+
+Decyzje MG z 21.11 (pytania na starcie sesji):
+
+- **Przeszkoda tylko z pól okna** — klik w drogę (paleta z 65e) zniknął.
+- **Przeszkoda zawsze w kadrze** — odległość najwyżej do przedniej krawędzi kadru (puste pole
+  — przy krawędzi); okno ostrzega, gdy kierowca nie zdąży zareagować, ale nie blokuje.
+- **Poprawka prędkości także przed walką** — każde auto może mieć własną prędkość startową
+  (`SceneVehicle.startSpeed`, migracja `20261121100000_chase_start_speed`, pole wzorca
+  `vehicles[].startSpeed` w punktach Ruchu); w walce pole zmienia prędkość trwałą.
+- **Posiłki z polem prędkości, domyślnie prędkość pościgu** — puste pole: auto trzyma się kadru.
+
+Rozstrzygnięcia bez pytań (do potwierdzenia przy rozegraniu 72g):
+
+- **„Za blisko” to dojazd najpóźniej na początku następnej rundy** (odstęp ≤ jedna runda jazdy
+  auta) — wtedy kierowca dostaje wybór przed zderzakiem bez tury na zmianę pasa.
+- **Dystans do kadru liczy się od środka do środka** auta wzdłuż drogi (+ przed, − za), jak
+  odstęp „Trzymaj dystans”; prognoza przeszkody — od przedniego zderzaka, jak dopiski na mapie.
+- **Auto kadru wybrane w oknie działa od następnej rundy** (prędkość pościgu jest stała
+  w rundzie); auto, które wypadło z kadru, zostaje na liście jako „(poza pościgiem)”, a kadr
+  trzyma się wtedy reguły domyślnej.
+- **Posiłki wjeżdżają na pierwsze wolne miejsce od wybranej krawędzi** (kratka po kratce w głąb,
+  pół kratki odstępu od innych aut); zryw Wyścigu przywróconego auta gaśnie (0).
+- **Menu auta zostaje** z „Ucieka”, „Przywróć do pościgu” (bez wyboru pasa — jak dawniej),
+  zamiarem i resztą; okno go nie zastępuje, tylko zbiera stan w jednym miejscu.
+- **Pola prędkości wysyłają po Enterze albo wyjściu z pola**, krokiem strzałek 50 mil/h;
+  wpisana liczba zaokrągla się do 5 mil/h (1 punkt Ruchu).
 
 #### 72f3 — plan rund
 
@@ -717,7 +749,7 @@ Rozstrzygnięcia bez pytań (do potwierdzenia przy rozegraniu 72g):
 - [ ] Nitro, Manewry, kolczatka i silnik są w belce; zderzenie i przeszkoda pytają w belce.
 - [ ] Auto NPC-a z zamiarem jedzie samo, a MG może przejąć je kokpitem i wyłączyć autopilota.
 - [ ] MG prowadzi pościg z panelu „Pościg”: widzi prędkości, pasy i dystanse, wypuszcza
-      przeszkodę na pas w odległości, a plan rund pyta go o zdarzenia.
+      przeszkodę na pas w odległości (72f2 ✅ 21.11), a plan rund pyta go o zdarzenia (72f3).
 - [x] Kreator nie pyta o tempo; pyta o pasy, prędkość startową i rolę drużyny (72f1, 20.11).
 - [ ] „Ostatni zjazd” i „Zastaw” rozegrane w nowym modelu, balans zatwierdzony przez MG.
 - [ ] Testy `shared`, serwera i klienta, E2E `48-poscig`, oględziny w Firefoksie i Chromium.

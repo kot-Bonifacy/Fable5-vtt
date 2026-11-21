@@ -255,3 +255,150 @@
 .chase-cars .vehicle-add {
   margin-top: 0.2rem;
 }
+
+/* Okno „Pościg” MG (etap 72f2): nagłówek z rundą i kadrem, auta od czoła do
+   ogona, posiłki i przeszkody. Wiersze tuszem z kreską, jak listy okien. */
+
+.chase-window {
+  width: min(520px, calc(100vw - 24px));
+}
+
+.chase-window-body {
+  gap: 0.35rem;
+  overflow-y: auto;
+}
+
+.chase-window-head {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding-bottom: 0.4rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.chase-window-status {
+  margin: 0;
+  font-weight: 600;
+}
+
+.chase-window-row,
+.chase-window-car-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem 0.5rem;
+}
+
+.chase-window-field,
+.chase-window-intent {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.82rem;
+}
+
+.chase-window-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.82rem;
+  margin-left: auto;
+}
+
+.chase-window-section {
+  margin: 0.5rem 0 0.1rem;
+  font-size: 0.66rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-dim);
+}
+
+.chase-window-label {
+  font-size: 0.82rem;
+  color: var(--text-dim);
+}
+
+.chase-window-cars,
+.chase-window-obstacles {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.chase-window-car,
+.chase-window-obstacle {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 0.35rem 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.chase-window-car.is-anchor .chase-window-car-name {
+  color: var(--accent);
+}
+
+.chase-window-car--off .chase-window-car-name {
+  color: var(--text-dim);
+}
+
+.chase-window-car-name {
+  font-weight: 600;
+  min-width: 0;
+}
+
+.chase-window-gap {
+  font-variant-numeric: tabular-nums;
+  color: var(--text-dim);
+}
+
+.chase-window-tag,
+.chase-window-driver,
+.chase-window-unit {
+  font-size: 0.8rem;
+  color: var(--text-dim);
+}
+
+.chase-window-speed {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.chase-window-speed input {
+  width: 4.6rem;
+}
+
+.chase-window-text {
+  width: 8rem;
+}
+
+.chase-window-btn {
+  margin-left: auto;
+  font-size: 0.8rem;
+}
+
+.chase-window-btn--main {
+  font-weight: 600;
+}
+
+.chase-window-hint {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--text-dim);
+}
+
+.chase-window-hint--warn {
+  color: var(--warn);
+}
+
+.chase-window-obstacle-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem 0.5rem;
+  padding: 0.3rem 0;
+  border-bottom: 1px solid var(--border);
+}

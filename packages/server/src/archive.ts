@@ -602,6 +602,7 @@ export async function exportScene(
           intent: true,
           intentTargetId: true,
           intentGapSq: true,
+          startSpeed: true,
         },
         orderBy: { createdAt: 'asc' },
       }),
@@ -700,6 +701,9 @@ export const maybeStr = (value: unknown): string | null =>
   typeof value === 'string' ? value : null;
 export const maybeNum = (value: unknown): number | null =>
   typeof value === 'number' && Number.isFinite(value) ? value : null;
+/** Nieujemna liczba całkowita albo `null` (np. prędkość startowa auta, 72f2). */
+const maybeCount = (value: unknown): number | null =>
+  typeof value === 'number' && Number.isFinite(value) ? Math.max(0, Math.round(value)) : null;
 
 /**
  * Ruch graczy sceny z archiwum (etap 45). Plik sprzed etapu niesie logiczne
@@ -818,6 +822,7 @@ export async function insertScene(
           y: num(row.y),
           status: str(row.status, 'racing'),
           drivers: stringifyJsonColumn(remap(row.drivers), '[]'),
+          startSpeed: maybeCount(row.startSpeed),
         },
         select: { id: true },
       });

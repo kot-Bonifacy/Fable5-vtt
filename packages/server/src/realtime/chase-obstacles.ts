@@ -25,7 +25,8 @@ import {
   chaseHeadingDeg,
   chaseObstacleDrifted,
   chaseObstacleGone,
-  chaseObstacleSpawnCentre,
+  chaseObstacleDropCentre,
+  chaseObstacleMaxGapSq,
   chaseObstacleSweep,
   chaseSpikesCrossed,
   chaseSpikesDropCentre,
@@ -53,7 +54,6 @@ import {
   readDrivers,
   requireChaseCampaignId,
   requirePlaced,
-  requirePoint,
   toObstacleView,
   type PlacedVehicle,
 } from './chase.js';
@@ -126,9 +126,20 @@ async function requireObstacle(
   return row;
 }
 
+/** Pas z ładunku: liczba całkowita w granicach jezdni albo odmowa. */
+function requireLane(raw: unknown, lanes: number): number {
+  if (typeof raw !== 'number' || !Number.isInteger(raw) || raw < 0 || raw >= lanes) {
+    throw new RealtimeError('BAD_REQUEST');
+  }
+  return raw;
+}
+
 /**
- * MG: `chase:obstacle-spawn` — przeszkoda przy przedniej krawędzi na pasie pod
- * kursorem. Tylko w walce: poza nią nie ma rund, więc przeszkoda by nie jechała.
+ * MG: `chase:obstacle-spawn` — przeszkoda z okna „Pościg” (etap 72f2): rodzaj,
+ * pas i odległość przed wybranym autem (bez auta — przy przedniej krawędzi).
+ * Zawsze w kadrze (decyzja MG 21.11): za daleko — przycięta do przedniej
+ * krawędzi, auto bez miejsca przed sobą — `OBSTACLE_NO_ROOM`. Tylko w walce:
+ * poza nią nie ma rund, więc przeszkoda by nie jechała.
  */
 export const chaseObstacleSpawnEvent = defineEvent<ChaseObstacleSpawnPayload, ChaseObstacleView>({
   name: 'chase:obstacle-spawn',
@@ -139,18 +150,41 @@ export const chaseObstacleSpawnEvent = defineEvent<ChaseObstacleSpawnPayload, Ch
     const scene = await requireCampaignScene(prisma, campaignId, payload?.sceneId);
     if (scene.kind !== 'chase') throw new RealtimeError('NOT_A_CHASE');
     if (!isChaseObstacleKind(payload?.kind)) throw new RealtimeError('BAD_REQUEST');
-    const point = requirePoint(payload);
+    const { settings, frame } = chaseGeometry(scene);
+    const lane = requireLane(payload.lane, settings.lanes);
+    const preset = CHASE_OBSTACLE_PRESETS[payload.kind];
+    const body = { widthSq: preset.widthSq, lengthSq: preset.lengthSq };
+    let before: { centre: ScenePoint; body: ReturnType<typeof chaseBodyOf>; gapSq: number } | null =
+      null;
+    if (payload.beforeId !== undefined) {
+      const car = await requirePlaced(prisma, campaignId, payload.beforeId);
+      if (car.sceneId !== scene.id || car.status !== 'racing') {
+        throw new RealtimeError('VEHICLE_NOT_FOUND');
+      }
+      const gapSq = payload.gapSq;
+      if (typeof gapSq !== 'number' || !Number.isFinite(gapSq) || gapSq < 0) {
+        throw new RealtimeError('BAD_REQUEST');
+      }
+      before = { centre: { x: car.x, y: car.y }, body: chaseBodyOf(car.vehicle), gapSq };
+      if (chaseObstacleMaxGapSq(before, body, settings.direction, frame) < 0) {
+        throw new RealtimeError('OBSTACLE_NO_ROOM');
+      }
+    }
     const combat = await loadCombat(prisma, scene.id);
     if (!combat) throw new RealtimeError('OBSTACLE_COMBAT_ONLY');
-    const preset = CHASE_OBSTACLE_PRESETS[payload.kind];
     const name = readChaseObstacleName(payload.name) ?? preset.label;
     const hp = payload.kind === 'spikes' ? 0 : (readChaseObstacleHp(payload.hp) ?? preset.hp);
     const own = await obstacleImage(prisma, campaignId, payload.imageUrl);
     // Kilka grafik (ruch uliczny) — byle jaka z nich; nic na tym nie polega.
     const art = own ?? preset.art[Math.floor(Math.random() * preset.art.length)] ?? null;
-    const { settings, frame } = chaseGeometry(scene);
-    const body = { widthSq: preset.widthSq, lengthSq: preset.lengthSq };
-    const centre = chaseObstacleSpawnCentre(point, body, settings, frame);
+    const centre = chaseObstacleDropCentre({
+      lane,
+      lanes: settings.lanes,
+      body,
+      settings,
+      scene: frame,
+      before,
+    });
     const created = await prisma.chaseObstacle.create({
       data: {
         sceneId: scene.id,

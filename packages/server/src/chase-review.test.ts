@@ -450,8 +450,7 @@ describe('przegląd pościgu 03.11', () => {
       await emitAck<ChaseObstacleView>(gm, 'chase:obstacle-spawn', {
         sceneId: scene.id,
         kind: 'barricade',
-        x: 500,
-        y: 750,
+        lane: 0,
       }),
       'chase:obstacle-spawn',
     );
@@ -481,8 +480,7 @@ describe('przegląd pościgu 03.11', () => {
       await emitAck<ChaseObstacleView>(gm, 'chase:obstacle-spawn', {
         sceneId: scene.id,
         kind: 'barricade',
-        x: 500,
-        y: 750,
+        lane: 0,
       }),
       'chase:obstacle-spawn',
     );
@@ -521,8 +519,7 @@ describe('przegląd pościgu 03.11', () => {
       await emitAck<ChaseObstacleView>(gm, 'chase:obstacle-spawn', {
         sceneId: scene.id,
         kind: 'barricade',
-        x: 500,
-        y: 750,
+        lane: 0,
       }),
       'chase:obstacle-spawn',
     );

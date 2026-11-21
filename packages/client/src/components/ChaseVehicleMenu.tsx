@@ -148,6 +148,8 @@ export function chaseErrorText(code: string | undefined): string {
       return 'Ta przeszkoda już na nikogo nie czeka.';
     case 'OBSTACLE_NOT_FOUND':
       return 'Tej przeszkody już nie ma na drodze.';
+    case 'OBSTACLE_NO_ROOM':
+      return 'Przed tym autem nie ma już kadru — przeszkoda stanęłaby za przednią krawędzią.';
     case 'NO_SPIKES':
       return 'W wyrzutni nie zostało kolczatek na ten pościg.';
     case 'SPIKES_COMBAT_ONLY':

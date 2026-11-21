@@ -184,6 +184,16 @@ describe('readSceneTemplate (etap 66)', () => {
     ]);
   });
 
+  it('własna prędkość startowa auta (72f2)', () => {
+    const raw = minimal();
+    const read = (startSpeed: unknown) =>
+      readSceneTemplate({ ...raw, vehicles: [{ ...raw.vehicles[0], startSpeed }] }, 'proba');
+    expect(read(40)!.vehicles[0]!.startSpeed).toBe(40);
+    expect(read(undefined)!.vehicles[0]!.startSpeed).toBeNull();
+    expect(read(-5)).toBeNull();
+    expect(read('szybko')).toBeNull();
+  });
+
   it('auto w rezerwie i stany figury (66c)', () => {
     const raw = minimal();
     const template = readSceneTemplate(

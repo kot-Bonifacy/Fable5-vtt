@@ -500,24 +500,14 @@ export function IconCrate(props: IconProps) {
   );
 }
 
-/** Autopilot aut NPC-ów (etap 72e) — kierownica z piastą i trzema ramionami. */
-export function IconAutopilot(props: IconProps) {
+/** Okno „Pościg” MG (etap 72f2) — prędkościomierz: łuk tarczy, kreski i wskazówka. */
+export function IconChase(props: IconProps) {
   return (
     <Svg {...props}>
-      <circle cx="12" cy="12" r="8.5" />
-      <circle cx="12" cy="12" r="2.2" />
-      <path d="M3.8 10.6l6-0.4M14.2 10.2l6 0.4M12 14.2v6.2" />
-    </Svg>
-  );
-}
-
-/** Przeszkoda na drodze pościgu (etap 65e) — barierka w pasy na dwóch nogach. */
-export function IconRoadBarrier(props: IconProps) {
-  return (
-    <Svg {...props}>
-      <path d="M3 8h18v6H3z" />
-      <path d="M7 8l-3 6M12 8l-3 6M17 8l-3 6M21 9l-2.5 5" />
-      <path d="M6 14v6M18 14v6" />
+      <path d="M4.2 17.5a8.5 8.5 0 1 1 15.6 0" />
+      <path d="M6.3 9.3l1.2 1M12 5.5v1.6M17.7 9.3l-1.2 1" />
+      <path d="M12 15l4.2-4.6" />
+      <circle cx="12" cy="15" r="1.4" />
     </Svg>
   );
 }

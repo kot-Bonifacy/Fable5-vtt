@@ -1,6 +1,5 @@
 import { create } from 'zustand';
 import type {
-  ChaseObstacleKind,
   ChaseObstacleView,
   ScenePoint,
   SceneVehicleView,
@@ -35,13 +34,8 @@ interface ChaseState {
   menu: { sceneVehicleId: string; clientX: number; clientY: number } | null;
   /** Menu przeszkody u MG (65e) albo `null`. */
   obstacleMenu: { obstacleId: string; clientX: number; clientY: number } | null;
-  /**
-   * Przeszkoda w ręku MG (65e): rodzaj z palety „Przeszkody”, a dla własnej —
-   * nazwa i PW. Klik w drogę wypuszcza ją przy przedniej krawędzi.
-   */
-  armed: { kind: ChaseObstacleKind; name?: string; hp?: number; imageUrl?: string } | null;
-  /** Rząd palety „Przeszkody” pod paskiem narzędzi MG. */
-  palette: boolean;
+  /** Okno „Pościg” MG (72f2) otwarte ikoną z paska narzędzi sceny pościgu. */
+  windowOpen: boolean;
   /** Duch auta z kokpitu (72d2) albo `null`. */
   ghost: ChaseGhost | null;
 
@@ -55,8 +49,7 @@ interface ChaseState {
   closeMenu: () => void;
   openObstacleMenu: (obstacleId: string, clientX: number, clientY: number) => void;
   closeObstacleMenu: () => void;
-  arm: (armed: ChaseState['armed']) => void;
-  setPalette: (open: boolean) => void;
+  setWindowOpen: (open: boolean) => void;
   setGhost: (ghost: ChaseGhost | null) => void;
 }
 
@@ -65,8 +58,7 @@ export const useChaseStore = create<ChaseState>((set) => ({
   obstacles: [],
   menu: null,
   obstacleMenu: null,
-  armed: null,
-  palette: false,
+  windowOpen: false,
   ghost: null,
 
   applySync: (payload) =>
@@ -99,7 +91,6 @@ export const useChaseStore = create<ChaseState>((set) => ({
   openObstacleMenu: (obstacleId, clientX, clientY) =>
     set({ obstacleMenu: { obstacleId, clientX, clientY } }),
   closeObstacleMenu: () => set({ obstacleMenu: null }),
-  arm: (armed) => set({ armed }),
-  setPalette: (palette) => set(palette ? { palette } : { palette, armed: null }),
+  setWindowOpen: (windowOpen) => set({ windowOpen }),
   setGhost: (ghost) => set({ ghost }),
 }));

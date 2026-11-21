@@ -1,5 +1,32 @@
 # Dziennik sesji — archiwum
 
+### Sesja 20.11 (piąta) — etap 72e: autopilot aut NPC-ów
+
+**Zrobione (czeka na wdrożenie razem z 72b1–72d2; nowa migracja `20261120230000_chase_intent_gap`):**
+
+- **Decyzje MG z pytań na starcie:** autopilot jedzie **na koniec tury** (MG widzi plan w kokpicie
+  i duchem, może nadpisać krzyżakiem; bez „Jedź” auto jedzie planem); „Trzymaj dystans” trzyma
+  odstęp **z chwili nadania zamiaru**; „Goń” siada **tuż za celem, na jego pasie**; przełącznik
+  „Autopilot” **na pasku narzędzi MG** obok przeszkód.
+- **`shared`:** zamiary w rdzeniu (`CHASE_INTENTS`, `chaseIntentLabel`), `cpredChaseAutopilot`
+  (przegląd trzech rund: koszt położenia względem celu, kary za zderzenie i za to, co stoi na
+  pasie). Widok: `SceneVehicleView.intent` (tylko MG), `ChaseSettings.autopilot`.
+- **Serwer (`realtime/chase-autopilot.ts`):** `chase:intent`, `chase:autopilot`, `autopilotPlan`
+  (ten sam plan w widoku MG i w `chaseTurnEnd`, tryb `pilot`: taran tylko w cel „Taranuj”);
+  graczom zamiar nie jedzie (`playerVehicleView`, `placedView` bez niego); `applyTurnPointer`
+  rozsyła auta po zmianie tury (`refreshChaseOnTurn`), bo plan zależy od tury.
+- **Klient:** lista „Zamiar” w menu auta MG (zamiar i cel jedną kontrolką), kokpit z planem
+  wybranym z góry i tagiem „Autopilot”, ikona kierownicy `ChaseAutopilotButton` na pasku.
+
+Testy: `shared` 3261/3261 (nowy `chase-autopilot.test.ts` — 18), serwer 1881/1881 (nowy
+`chase-autopilot.test.ts` — 6, `chase.test.ts` z polem `autopilot`, macierz izolacji), klient
+526/526; lint i `tsc` trzech pakietów czyste, Prettier na zmienionych plikach czysty. E2E: nowy
+`T72e` 4/4 (dwa razy), `T72b` + `T72c` + `T72d` zielone; `T65e` w tym samym przebiegu padł raz na
+pustej mapie MG, osobno 4/4 (zaległość z 20.11). **Oglądano zrzuty E2E w Chromium (MG):**
+kokpit z planem i duchem, menu z „Zamiarem”, ikona na pasku. Ola w **Firefoksie** tylko w asercji
+(zamiaru nie dostaje); UI gracza się nie zmienił. „Goń” przy krokach pedałów staje zwykle 4–8 m za
+celem, nie 2 m — do oceny w 72g. `specs/99-zapomnij/` to dalej cudze oględziny z 14.11.
+
 ### Sesja 20.11 (czwarta) — etap 72d2: mapa kokpitu i oględziny
 
 **Zrobione (czeka na wdrożenie razem z 72b1–72d1; bez migracji, bez zmian serwera i `shared`):**

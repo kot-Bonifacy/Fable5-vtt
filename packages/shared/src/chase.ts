@@ -869,6 +869,12 @@ export interface SceneVehicleView {
    * ramę (`chaseFrameTempo`).
    */
   speed: number;
+  /**
+   * Własna prędkość startowa auta w punktach Ruchu (etap 72f2, okno „Pościg”):
+   * na starcie walki auto rusza z nią zamiast z prędkości startowej sceny.
+   * `null` — ze sceny (`ChaseSettings.tempo`).
+   */
+  startSpeed: number | null;
   /** Auto wiezie drużynę: karta gracza jest jego właścicielem albo figura gracza siedzi w fotelu. */
   party: boolean;
   /**
@@ -1074,6 +1080,40 @@ export interface VehicleRefillPayload {
 /** MG: `chase:restore` — auto, które odpadło z pościgu, wraca na drogę (65c). */
 export interface ChaseRestorePayload {
   sceneVehicleId: string;
+  /**
+   * Okno „Pościg” (etap 72f2): pas i strona kadru, przy której auto wjeżdża
+   * (najbliższe wolne miejsce od krawędzi). Bez nich — przy krawędzi, za
+   * którą wypadło, w tym samym miejscu w poprzek.
+   */
+  lane?: number;
+  side?: ChaseEntrySide;
+  /**
+   * Prędkość wjazdu w punktach Ruchu (tylko w walce; najwyżej Ruch auta).
+   * Brak — prędkość pościgu tej rundy: auto trzyma się kadru.
+   */
+  speed?: number;
+}
+
+/** Strona kadru, przy której wjeżdża auto przywrócone do pościgu (72f2). */
+export type ChaseEntrySide = 'front' | 'rear';
+
+/**
+ * MG: `chase:set-speed` — poprawka prędkości auta bez kosztu (etap 72f2).
+ * W walce zmienia prędkość trwałą (0…Ruch), przed walką — własną prędkość
+ * startową auta (`null` — wraca do prędkości startowej sceny).
+ */
+export interface ChaseSetSpeedPayload {
+  sceneVehicleId: string;
+  speed: number | null;
+}
+
+/**
+ * MG: `chase:anchor` — auto, którego trzyma się kadr (etap 72f2). Działa od
+ * początku następnej rundy; `null` — reguła domyślna (`chaseAnchorVehicle`).
+ */
+export interface ChaseAnchorPayload {
+  sceneId: string;
+  vehicleId: string | null;
 }
 
 /**

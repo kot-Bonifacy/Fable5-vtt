@@ -331,6 +331,7 @@ export async function instantiateSceneTemplate(
           x: centre.x,
           y: centre.y,
           status: spec.status,
+          startSpeed: spec.startSpeed,
         },
       });
       placed.set(spec.key, { id: row.id, vehicle, x: centre.x, y: centre.y });

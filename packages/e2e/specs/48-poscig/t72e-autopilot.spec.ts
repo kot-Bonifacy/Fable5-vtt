@@ -20,7 +20,7 @@ import { scriptDice } from '../../instance/instance.ts';
  *   zamiast „Po ruchu”); po „Następnej turze” auto jedzie nim samo i w trzech
  *   rundach dogania Iskrę;
  * - „Uciekaj” dodaje gazu co turę aż do maksimum;
- * - przełącznik „Autopilot” na pasku narzędzi gasi plan;
+ * - przełącznik „Autopilot” w oknie „Pościg” (od 72f2) gasi plan;
  * - Ola (**Firefox**) zamiaru aut gangu nie dostaje.
  *
  * Wyścig: Olę MG pomija, a dwaj kierowcy-NPC-e rzucają te same kości
@@ -263,11 +263,14 @@ test.describe.serial('@szybkie T72e autopilot: auta NPC-ów jadą same z zamiare
       .toBe(40);
   });
 
-  test('przełącznik „Autopilot” na pasku MG gasi plan w kokpicie (Chromium)', async () => {
-    const toggle = mg.page.getByRole('button', { name: 'Autopilot', exact: true });
-    await expect(toggle).toHaveAttribute('aria-pressed', 'true');
+  test('przełącznik „Autopilot” w oknie „Pościg” gasi plan w kokpicie (Chromium)', async () => {
+    await mg.page.getByRole('button', { name: 'Pościg', exact: true }).click();
+    const toggle = mg.page
+      .getByRole('region', { name: 'Pościg' })
+      .getByRole('checkbox', { name: 'Autopilot' });
+    await expect(toggle).toBeChecked();
     await toggle.click();
-    await expect(toggle).toHaveAttribute('aria-pressed', 'false');
+    await expect(toggle).not.toBeChecked();
     // Tura Iskry, potem Pogoni: planu nie ma, krzyżak stoi pusty.
     await next();
     const turn = await next();
@@ -276,7 +279,7 @@ test.describe.serial('@szybkie T72e autopilot: auta NPC-ów jadą same z zamiare
     await expect(group.locator('.hud-vehicle-after .hud-armed-tag')).toHaveText('Po ruchu');
     expect((await vehicle(mg, chaserCar.id))?.intent?.plan).toBeNull();
     await toggle.click();
-    await expect(toggle).toHaveAttribute('aria-pressed', 'true');
+    await expect(toggle).toBeChecked();
     await expect
       .poll(async () => (await vehicle(mg, chaserCar.id))?.intent?.plan ?? null)
       .not.toBeNull();

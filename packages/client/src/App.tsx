@@ -22,6 +22,7 @@ import { PortraitCropEditor } from './components/PortraitCropEditor.js';
 import { CheckRequestDialog } from './components/CheckRequestDialog.js';
 import { NpcCreateWindow } from './components/NpcCreateWindow.js';
 import { ClockWindow } from './components/ClockWindow.js';
+import { ChaseWindow } from './components/ChaseWindow.js';
 import { ChaseWizard } from './components/ChaseWizard.js';
 import { SceneConfigWindow } from './components/SceneConfigWindow.js';
 import { SettingsWindow } from './components/SettingsWindow.js';
@@ -147,6 +148,7 @@ function GameView() {
       <ClockWindow />
       <SceneConfigWindow />
       <ChaseWizard />
+      <ChaseWindow />
       <NpcCreateWindow />
       <ShortcutsWindow />
       <EvasionPrompt />

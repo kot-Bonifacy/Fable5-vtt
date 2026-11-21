@@ -1,7 +1,9 @@
 import type {
+  ChaseAnchorPayload,
   ChaseEscapePayload,
   ChaseMovePayload,
   ChaseRestorePayload,
+  ChaseSetSpeedPayload,
   SceneVehicleView,
   VehicleControlPayload,
   VehicleEnginePayload,
@@ -17,7 +19,10 @@ import {
   CPRED_ACTION_NITRO,
   CPRED_ACTION_VEHICLE_START,
   CPRED_ACTION_VEHICLE_STOP,
+  CHASE_TEMPO_MAX,
+  CHASE_TEMPO_MIN,
   ROLE_GM,
+  chaseEntryCentre,
   clampChaseVehicle,
   cpredManeuverTitle,
   cpredManeuversFor,
@@ -36,6 +41,7 @@ import {
   driverCapable,
   emitChase,
   moveSceneVehicle,
+  placedOnScene,
   placedView,
   requireChaseCampaignId,
   requirePlaced,
@@ -65,6 +71,7 @@ import { requireTurnSpend } from './combat-actions.js';
 import { logSpentAction } from './combat-log.js';
 import { rollServerSkillTest } from './character-rolls.js';
 import { RealtimeError, defineEvent } from './registry.js';
+import { emitSceneView, requireCampaignScene } from './scenes.js';
 import { emitSceneTokensToPlayers, emitTokensById } from './tokens.js';
 
 /**
@@ -244,24 +251,81 @@ export const vehicleRefillEvent = defineEvent<VehicleRefillPayload, SceneVehicle
   },
 });
 
-/** MG: auto, które odpadło z pościgu, wraca przy krawędzi, za którą wypadło. */
+/** Prędkość z ładunku w punktach Ruchu: liczba skończona, zaokrąglona, nieujemna. */
+function readSpeed(raw: unknown): number {
+  if (typeof raw !== 'number' || !Number.isFinite(raw) || raw < 0) {
+    throw new RealtimeError('BAD_REQUEST');
+  }
+  return Math.round(raw);
+}
+
+/**
+ * MG: auto, które odpadło z pościgu (także rezerwa wzorca i posiłki spoza
+ * sceny, które trafiły na nią poza kadrem — STR-12), wraca do kadru. Z okna
+ * „Pościg” (72f2) — na wybranym pasie przy wybranej krawędzi (pierwsze wolne
+ * miejsce w głąb), w walce z prędkością z pola albo prędkością pościgu. Bez
+ * pasa i strony — przy krawędzi, za którą wypadło (menu auta).
+ */
 export const chaseRestoreEvent = defineEvent<ChaseRestorePayload, SceneVehicleView>({
   name: 'chase:restore',
   role: ROLE_GM,
   handler: async ({ deps, socket, payload }) => {
     const campaignId = requireChaseCampaignId(socket.data);
-    const placed = await requirePlaced(deps.ctx.prisma, campaignId, payload?.sceneVehicleId);
+    const prisma = deps.ctx.prisma;
+    const placed = await requirePlaced(prisma, campaignId, payload?.sceneVehicleId);
     if (placed.status !== 'behind' && placed.status !== 'escaped') {
-      return placedView(deps.ctx.prisma, placed.sceneId, placed.id);
+      return placedView(prisma, placed.sceneId, placed.id);
     }
     const { scene, ...row } = placed;
     const { settings, frame } = chaseGeometry(scene);
-    const centre = clampChaseVehicle(row, chaseBodyOf(row.vehicle), settings, frame);
-    const updated = await deps.ctx.prisma.sceneVehicle.update({
+    const body = chaseBodyOf(row.vehicle);
+    const side = payload?.side;
+    const lane = payload?.lane;
+    let centre: { x: number; y: number };
+    if (side !== undefined || lane !== undefined) {
+      if (side !== 'front' && side !== 'rear') throw new RealtimeError('BAD_REQUEST');
+      if (
+        typeof lane !== 'number' ||
+        !Number.isInteger(lane) ||
+        lane < 0 ||
+        lane >= settings.lanes
+      ) {
+        throw new RealtimeError('BAD_REQUEST');
+      }
+      const parked = (await placedOnScene(prisma, scene.id))
+        .filter(
+          (other) => other.id !== row.id && other.status !== 'behind' && other.status !== 'escaped',
+        )
+        .map((other) => ({ x: other.x, y: other.y, ...chaseBodyOf(other.vehicle) }));
+      centre = chaseEntryCentre({
+        lane,
+        lanes: settings.lanes,
+        side,
+        body,
+        parked,
+        settings,
+        scene: frame,
+      });
+    } else {
+      centre = clampChaseVehicle(row, body, settings, frame);
+    }
+    // W walce auto wjeżdża z prędkością: z pola okna albo prędkością pościgu
+    // (trzyma się kadru) — bez tego rezerwa ze wzorca miałaby 0 i odpadła od razu.
+    const pursuit = scene.chasePursuitSpeed;
+    const max = Math.max(0, readCpredVehicle(row.vehicle.system).move);
+    const speed =
+      pursuit === null
+        ? undefined
+        : Math.min(max, payload?.speed !== undefined ? readSpeed(payload.speed) : pursuit);
+    const updated = await prisma.sceneVehicle.update({
       where: { id: row.id },
-      data: { ...centre, status: 'racing' },
+      data: {
+        ...centre,
+        status: 'racing',
+        ...(speed !== undefined ? { speed, raceBonus: 0 } : {}),
+      },
     });
-    const moved = await carryPassengers(deps.ctx.prisma, scene, {
+    const moved = await carryPassengers(prisma, scene, {
       ...updated,
       vehicle: row.vehicle,
     });
@@ -270,7 +334,66 @@ export const chaseRestoreEvent = defineEvent<ChaseRestorePayload, SceneVehicleVi
     // Załoga wraca graczom z autem (66c) — także wtedy, gdy auto w rezerwie
     // stało już w kadrze i nikt się nie ruszył.
     await emitSceneTokensToPlayers(deps, campaignId, scene);
-    return placedView(deps.ctx.prisma, scene.id, row.id);
+    return placedView(prisma, scene.id, row.id);
+  },
+});
+
+/**
+ * MG: `chase:set-speed` — poprawka prędkości auta bez kosztu (etap 72f2, okno
+ * „Pościg”). W walce to prędkość trwała (0…Ruch auta; ruch tej rundy liczy się
+ * od niej, prędkość pościgu zostaje do końca rundy), przed walką — własna
+ * prędkość startowa auta (decyzja MG 21.11), `null` — ze sceny.
+ */
+export const chaseSetSpeedEvent = defineEvent<ChaseSetSpeedPayload, SceneVehicleView>({
+  name: 'chase:set-speed',
+  role: ROLE_GM,
+  handler: async ({ deps, socket, payload }) => {
+    const campaignId = requireChaseCampaignId(socket.data);
+    const prisma = deps.ctx.prisma;
+    const placed = await requirePlaced(prisma, campaignId, payload?.sceneVehicleId);
+    if (placed.scene.kind !== 'chase') throw new RealtimeError('NOT_A_CHASE');
+    const stats = readCpredVehicle(placed.vehicle.system);
+    if (placed.scene.chasePursuitSpeed !== null) {
+      if (payload?.speed === null) throw new RealtimeError('BAD_REQUEST');
+      if (cpredVehicleWrecked(stats)) throw new RealtimeError('VEHICLE_WRECKED');
+      const speed = Math.min(Math.max(0, stats.move), readSpeed(payload?.speed));
+      await prisma.sceneVehicle.update({ where: { id: placed.id }, data: { speed } });
+    } else {
+      const startSpeed =
+        payload?.speed === null
+          ? null
+          : Math.min(CHASE_TEMPO_MAX, Math.max(CHASE_TEMPO_MIN, readSpeed(payload?.speed)));
+      await prisma.sceneVehicle.update({ where: { id: placed.id }, data: { startSpeed } });
+    }
+    await emitChase(deps, campaignId, placed.sceneId);
+    // Bieżnia poza walką jedzie prędkością auta kadru (`chaseFrameTempo`).
+    await emitSceneView(deps, campaignId, placed.sceneId);
+    return placedView(prisma, placed.sceneId, placed.id);
+  },
+});
+
+/**
+ * MG: `chase:anchor` — auto, którego trzyma się kadr (etap 72f2). Serwer czyta
+ * wybór na początku rundy (`startChaseRound`), więc w walce działa od
+ * następnej; auto poza kadrem nic nie zmienia (reguła domyślna).
+ */
+export const chaseAnchorEvent = defineEvent<ChaseAnchorPayload, { ok: true }>({
+  name: 'chase:anchor',
+  role: ROLE_GM,
+  handler: async ({ deps, socket, payload }) => {
+    const campaignId = requireChaseCampaignId(socket.data);
+    const prisma = deps.ctx.prisma;
+    const scene = await requireCampaignScene(prisma, campaignId, payload?.sceneId);
+    if (scene.kind !== 'chase') throw new RealtimeError('NOT_A_CHASE');
+    let anchorId: string | null = null;
+    if (payload?.vehicleId !== null) {
+      const car = await requirePlaced(prisma, campaignId, payload?.vehicleId);
+      if (car.sceneId !== scene.id) throw new RealtimeError('VEHICLE_NOT_FOUND');
+      anchorId = car.id;
+    }
+    await prisma.scene.update({ where: { id: scene.id }, data: { chaseAnchorId: anchorId } });
+    await emitSceneView(deps, campaignId, scene.id);
+    return { ok: true };
   },
 });
 

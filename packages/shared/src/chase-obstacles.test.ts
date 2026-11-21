@@ -6,7 +6,6 @@ import {
   chaseObstacleGone,
   chaseObstaclePastVehicle,
   chaseFreeSpotPastVehicle,
-  chaseObstacleSpawnCentre,
   chaseObstacleSweep,
   chaseSpikesCrossed,
   chaseSpikesDropCentre,
@@ -27,27 +26,6 @@ function car(id: string, from: { x: number; y: number }, to = from) {
 }
 
 describe('wypuszczenie przeszkody (65e)', () => {
-  it('staje przy przedniej krawędzi, w poprzek tam, gdzie kliknął MG, w pasie jezdni', () => {
-    // Bryła barykady w prawo: 1 kratka wzdłuż (hx 50), 4 w poprzek (hy 200).
-    expect(chaseObstacleSpawnCentre({ x: 300, y: 900 }, BARRICADE, RIGHT, FRAME)).toEqual({
-      x: 2350,
-      y: 900,
-    });
-    // Klik poza pasem — przycięta do pasa 400…1400.
-    expect(chaseObstacleSpawnCentre({ x: 300, y: 100 }, BARRICADE, RIGHT, FRAME)).toEqual({
-      x: 2350,
-      y: 600,
-    });
-    expect(
-      chaseObstacleSpawnCentre(
-        { x: 700, y: 900 },
-        BARRICADE,
-        { direction: 'up', road: null },
-        FRAME,
-      ),
-    ).toEqual({ x: 700, y: 50 });
-  });
-
   it('dryf rundy: w tył o tempo / 4 kratek, droga stoi — przeszkoda też', () => {
     expect(chaseObstacleDrifted({ x: 2000, y: 900 }, RIGHT, GRID)).toEqual({ x: 1000, y: 900 });
     expect(chaseObstacleDrifted({ x: 2000, y: 900 }, { ...RIGHT, running: false }, GRID)).toEqual({

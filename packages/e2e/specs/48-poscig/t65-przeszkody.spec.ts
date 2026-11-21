@@ -13,8 +13,9 @@ import { scriptDice } from '../../instance/instance.ts';
 
 /**
  * Etap 65e „Przeszkody i ruch uliczny” na scenie pościgu z mapą wiaduktu. MG
- * (Chromium) wypuszcza barykadę z palety „Przeszkody” — poza walką przycisk
- * jest wyszarzony. Na początku rundy barykada dojeżdża do auta Iskry (Ola,
+ * (Chromium) wypuszcza barykadę z okna „Pościg” (od 72f2: rodzaj, pas
+ * i odległość; puste pole — przy przedniej krawędzi) — poza walką okno mówi,
+ * że przeszkody są tylko w walce. Na początku rundy barykada dojeżdża do auta Iskry (Ola,
  * **Firefox**) i staje przy zderzaku, a Ola dostaje pasek z „Gwałtowny skręt /
  * Taranuj”. Udany skręt (kości skryptowane) zostawia beton na drodze, ale auto
  * go minęło. Auto gangu zrzuca kolczatkę, a ta odpływa na auto kuriera za nim:
@@ -37,6 +38,7 @@ interface Placed {
   y: number;
   hp: number;
   control: string;
+  lane: number;
 }
 interface Obstacle {
   id: string;
@@ -174,7 +176,9 @@ test.describe.serial('@szybkie T65e pościg: przeszkody i kolczatka', () => {
     await closeNotices(mg.page);
     await mg.page.getByRole('button', { name: 'Sceny', exact: true }).click();
     await sceneListRow(mg.page, 'Wiadukt').getByRole('button', { name: 'Pokaż' }).click();
-    await expect(mg.page.getByRole('button', { name: 'Przeszkody' })).toBeDisabled();
+    await mg.page.getByRole('button', { name: 'Pościg', exact: true }).click();
+    const panel = mg.page.getByRole('region', { name: 'Pościg' });
+    await expect(panel).toContainText('Przeszkody wypuszcza się w walce');
 
     const combat = dataOf<{ combatants: { id: string; tokenId: string }[] }>(
       await emitAck(gm, 'combat:start', { sceneId, tokenIds: [iskra.id, ganger.id] }),
@@ -198,18 +202,22 @@ test.describe.serial('@szybkie T65e pościg: przeszkody i kolczatka', () => {
     await cast.closeAll();
   });
 
-  test('MG wypuszcza barykadę z palety przy przedniej krawędzi pasa Iskry', async () => {
-    const button = mg.page.getByRole('button', { name: 'Przeszkody' });
-    await expect(button).toBeEnabled();
-    await button.click();
-    const palette = mg.page.getByRole('group', { name: 'Rodzaj przeszkody' });
-    await palette.getByRole('button', { name: 'Barykada' }).click();
-    await clickWorld(mg.page, { x: grid * 6, y: grid * 11.5 });
+  test('MG wypuszcza barykadę z okna „Pościg” przy przedniej krawędzi pasa Iskry', async () => {
+    const panel = mg.page.getByRole('region', { name: 'Pościg' });
+    await panel.getByRole('combobox', { name: 'Rodzaj przeszkody' }).selectOption('barricade');
+    const lane = (await vehicle(mg, olaCar.id))!.lane;
+    await panel.getByRole('combobox', { name: 'Pas przeszkody' }).selectOption(String(lane));
+    await panel.getByRole('combobox', { name: 'Przed którym autem' }).selectOption(olaCar.id);
+    // Puste pole odległości — przy przedniej krawędzi; prognoza dla auta Iskry.
+    await expect(panel.locator('.chase-window-obstacle .chase-window-hint')).toContainText(
+      'dojedzie',
+    );
+    await panel.getByRole('button', { name: 'Wypuść' }).click();
     await expect.poll(async () => (await obstacles(ola)).length).toBe(1);
     const [barricade] = await obstacles(ola);
     expect(barricade).toMatchObject({ kind: 'barricade', blockingVehicleId: null });
     expect(barricade!.x).toBeCloseTo(grid * 23.5, 0);
-    await mg.page.keyboard.press('Escape');
+    await expect(panel.locator('.chase-window-obstacle-row')).toContainText('Barykada');
   });
 
   test('nowa runda: barykada staje przed autem, a Ola omija ją Gwałtownym skrętem (Firefox)', async () => {

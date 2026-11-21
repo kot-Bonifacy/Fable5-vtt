@@ -187,6 +187,11 @@ export interface SceneTemplateVehicle {
    * innego auta wzorca. Brak — „Ręcznie”.
    */
   intent: { kind: ChaseIntent; target: string | null } | null;
+  /**
+   * Własna prędkość startowa auta w punktach Ruchu (etap 72f2,
+   * `SceneVehicle.startSpeed`); brak — prędkość startowa sceny (`chase.tempo`).
+   */
+  startSpeed: number | null;
   /** Z czego zbudować auto — czyta moduł systemu. */
   system: unknown;
 }
@@ -538,7 +543,23 @@ function readVehicle(raw: unknown): SceneTemplateVehicle | null {
     if (target === key) return null;
     intent = kind === 'manual' ? null : { kind, target };
   }
-  return { key, name, imageUrl, x: raw.x, y: raw.y, status, intent, system: raw.system ?? null };
+  let startSpeed: number | null = null;
+  if (raw.startSpeed !== undefined && raw.startSpeed !== null) {
+    if (!finite(raw.startSpeed)) return null;
+    startSpeed = Math.round(raw.startSpeed);
+    if (startSpeed < CHASE_TEMPO_MIN || startSpeed > CHASE_TEMPO_MAX) return null;
+  }
+  return {
+    key,
+    name,
+    imageUrl,
+    x: raw.x,
+    y: raw.y,
+    status,
+    intent,
+    startSpeed,
+    system: raw.system ?? null,
+  };
 }
 
 function readFigure(raw: unknown, vehicleKeys: ReadonlySet<string>): SceneTemplateFigure | null {

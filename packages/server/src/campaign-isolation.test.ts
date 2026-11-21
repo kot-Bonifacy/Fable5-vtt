@@ -968,6 +968,9 @@ const CASES: Record<string, Case> = {
   'vehicle:refill': foreign((a) => ({ sceneVehicleId: a.sceneVehicleId })),
   'chase:restore': foreign((a) => ({ sceneVehicleId: a.sceneVehicleId })),
   'chase:escape': foreign((a) => ({ sceneVehicleId: a.sceneVehicleId })),
+  // okno „Pościg” (etap 72f2): poprawka prędkości i auto kadru
+  'chase:set-speed': foreign((a) => ({ sceneVehicleId: a.sceneVehicleId, speed: 0 })),
+  'chase:anchor': foreign((a) => ({ sceneId: a.sceneId, vehicleId: null })),
   'vehicle:control': foreign((a) => ({ sceneVehicleId: a.sceneVehicleId })),
   'vehicle:maneuver': foreign((a) => ({ sceneVehicleId: a.sceneVehicleId, maneuverId: 'swerve' })),
   'vehicle:maneuver-call': foreign((a) => ({
@@ -976,7 +979,7 @@ const CASES: Record<string, Case> = {
   })),
   'vehicle:mount-reload': foreign((a) => ({ sceneVehicleId: a.sceneVehicleId, upgradeRowId: 'x' })),
   // przeszkody i kolczatka (etap 65e)
-  'chase:obstacle-spawn': foreign((a) => ({ sceneId: a.sceneId, kind: 'barricade', x: 1, y: 1 })),
+  'chase:obstacle-spawn': foreign((a) => ({ sceneId: a.sceneId, kind: 'barricade', lane: 0 })),
   'chase:obstacle-remove': foreign((a) => ({ obstacleId: a.obstacleId })),
   'chase:obstacle-answer': foreign((a) => ({ obstacleId: a.obstacleId, choice: 'ram' })),
   'chase:vehicle-answer': foreign((a) => ({ sceneVehicleId: a.sceneVehicleId, choice: 'ram' })),

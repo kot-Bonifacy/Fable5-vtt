@@ -359,8 +359,7 @@ describe('etap 72d: Nagłe zatrzymanie, skręt o dwa pasy, kierowca bez metrów'
         kind: 'civilian-car',
         name: 'Furgon',
         hp: 10,
-        x: 500,
-        y: 1500,
+        lane: 2,
       }),
       'chase:obstacle-spawn',
     );
