@@ -404,7 +404,7 @@ describe('etap 66: sceny przykładowe', () => {
 });
 
 describe('etap 72g: „Reklamacja” — scena przykładowa pościgu w modelu prędkości i pasów', () => {
-  it('staje na Neonowej ulicy bez braków: kombi, furgon z zamiarem, radiowóz w rezerwie, plan rund, Tłok skuty', async () => {
+  it('staje na Neonowej ulicy bez braków: kombi, furgon z zamiarem, radiowóz w rezerwie, plan rund, Piotrówna skuta', async () => {
     const gm = await connect(gmCookie);
     const list = data(await emitAck<SceneTemplateSummary[]>(gm, 'scene:templates'), 'templates');
     expect(list.find((row) => row.id === 'reklamacja')).toMatchObject({
@@ -503,11 +503,11 @@ describe('etap 72g: „Reklamacja” — scena przykładowa pościgu w modelu pr
     expect(seats).toEqual({
       Wektor: ['Furgon Militechu', 0],
       Kamień: ['Furgon Militechu', 1],
-      Tłok: ['Furgon Militechu', 5],
+      Piotrówna: ['Furgon Militechu', 5],
       Gil: ['Radiowóz NCPD', 0],
       Szpak: ['Radiowóz NCPD', 1],
     });
-    const hostage = tokens.find((row) => row.name === 'Tłok')!;
+    const hostage = tokens.find((row) => row.name === 'Piotrówna')!;
     expect(hostage.disposition).toBe('neutral');
     expect(JSON.parse(hostage.statuses)).toEqual(['immobilized']);
     // MG 21.11 (72g2): Kamień z pistoletem maszynowym, a nie z karabinem — karabin 5k6
@@ -539,15 +539,15 @@ describe('etap 72g: „Reklamacja” — scena przykładowa pościgu w modelu pr
     ).toEqual({
       Wektor: [pool.get('Avatar 14'), pool.get('Avatar 14')],
       Kamień: [pool.get('Avatar 44'), pool.get('Avatar 44')],
-      Tłok: [pool.get('Avatar 21'), pool.get('Avatar 21')],
+      Piotrówna: [pool.get('Avatar 34'), pool.get('Avatar 34')],
       Gil: [pool.get('Avatar 45'), pool.get('Avatar 45')],
       Szpak: [pool.get('Avatar 49'), pool.get('Avatar 49')],
     });
   });
 
-  it('portret, którego pula już nie ma, wraca do niej kopią z zestawu', async () => {
+  it('portret, którego pula już nie ma, wraca do niej kopią z zestawu — z kadrem i „tylko MG”', async () => {
     const gm = await connect(gmCookie);
-    await built.prisma.portraitAsset.deleteMany({ where: { campaignId, name: 'Avatar 21' } });
+    await built.prisma.portraitAsset.deleteMany({ where: { campaignId, name: 'Avatar 34' } });
     const result = data(
       await emitAck<SceneTemplateCreateResult>(gm, 'scene:from-template', {
         templateId: 'reklamacja',
@@ -556,12 +556,19 @@ describe('etap 72g: „Reklamacja” — scena przykładowa pościgu w modelu pr
     );
     expect(result.missing).toEqual([]);
     const restored = await built.prisma.portraitAsset.findMany({
-      where: { campaignId, name: 'Avatar 21' },
+      where: { campaignId, name: 'Avatar 34' },
     });
     expect(restored).toHaveLength(1);
-    expect(restored[0]).toMatchObject({ gmOnly: false, retired: false });
+    // Piotrówna (MG 21.11): głowa i ramiona, twarz tylko dla MG.
+    expect(restored[0]).toMatchObject({
+      gmOnly: true,
+      retired: false,
+      cropX: 0.465,
+      cropY: 0.19,
+      cropZoom: 1.9,
+    });
     const hostage = await built.prisma.token.findFirstOrThrow({
-      where: { sceneId: result.sceneId, name: 'Tłok' },
+      where: { sceneId: result.sceneId, name: 'Piotrówna' },
       include: { character: true },
     });
     expect(hostage.imageUrl).toBe(restored[0]!.url);

@@ -236,9 +236,14 @@
     {
       "file": "34.webp",
       "name": "Avatar 34",
-      "gmOnly": false,
+      "gmOnly": true,
       "width": 647,
-      "height": 862
+      "height": 862,
+      "crop": {
+        "x": 0.465,
+        "y": 0.19,
+        "zoom": 1.9
+      }
     },
     {
       "file": "35.webp",

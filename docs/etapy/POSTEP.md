@@ -33,7 +33,7 @@ Pełna tabela z nazwami i datami: `archiwum/tabela-etapow.md`.
 19–21.11); czeka na wdrożenie i stół MG** (otwarte kryteria: balans „Reklamacji” i oględziny
 przy stole). Stary model jazdy (dryf, budżet `Ruch / 4`, pęd) jest usunięty także z `shared`. **Jedyna scena przykładowa pościgu to „Reklamacja”**
 (`data/public/scenes/reklamacja/`, decyzja MG 21.11: „Ostatni zjazd” i „Zastaw” skasowane):
-drużyna kombi z dziupli goni furgon Militechu ze skutym Tłokiem, radiowóz NCPD z planu rund;
+drużyna kombi z dziupli goni furgon Militechu ze skutą Piotrówną, radiowóz NCPD z planu rund;
 stały E2E `48-poscig/t72g-reklamacja` (punkt `role-start`, Nomada Koleina za kierownicą).
 Plik `etap-72-poscig-kokpit.md`. **Serwer jeździ nowym modelem**
 (`realtime/chase-drive.ts`, umowa na górze `mapa`): auto ma prędkość trwającą między turami i pas,
@@ -168,6 +168,29 @@ a nie do tego pliku.
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
 
+### Sesja 21.11 (ósma) — zlecenie MG: Piotrówna zamiast Tłoka, Avatar 34 tylko dla MG
+
+**Zrobione (migracja danych `20261121200000_sample_portrait_34_gm_only`; czeka na wdrożenie):**
+
+- **„Reklamacja”: Tłok → Piotrówna** (decyzje MG z pytań): córka zastrzelonego lata temu Piotra,
+  która po ojcu przejęła dziuplę, długi, kontakty i proceder z kradzionym sprzętem Militechu.
+  Wszystkie teksty wzorca w rodzaju żeńskim; śmierć Piotra jako hak bez zmiany przebiegu —
+  zdanie w „O co chodzi”, mechanik („Starego już nam zabrali”), nowy okrzyk Kamienia („Tatuś też
+  liczył, że ktoś po niego przyjedzie”) i dziupla Piotra na liście „reklamacji” w łupie. Punkt
+  o portretach zniknął z „Zanim ruszycie” (notatka miała 2106 znaków przy limicie 2000 —
+  pułapka z 72), reszta przenumerowana. `etap-72g-reklamacja.md` poprawiony.
+- **Avatar 34 tylko dla MG, z kadrem „głowa i ramiona”** (x 0,465, y 0,19, przybliżenie 1,9;
+  dobrany podglądem krążka): `GM_ONLY` i nowe `CROPS` w `tools/art/sample-portraits.py`, `crop`
+  w `manifest.json` (pliki WebP nietknięte), kadr przy zakładaniu puli i przy kopii z wzorca,
+  a stare kampanie — migracją (umowa `serwer` zaktualizowana). Na dev.db: 11 kampanii, 10 z nowym
+  kadrem, w jednej został ręczny kadr MG.
+
+Testy: serwer 1899/1899 (`sample-portraits.test.ts` 4/4 z nowym testem migracji);
+`shared` szablony 28/28; `tsc` serwera, ruff i Prettier czyste. **Oglądano w czystym Chromium
+(Playwright):** biblioteka portretów MG — Avatar 34 w „NPC — tylko MG (12)”, zniknął z „Dla
+graczy”. Firefox nadal niesprawdzony (patrz sesja niżej); kadru na żetonie nie oglądano
+w przeglądarce — tylko podgląd tym samym rachunkiem co `portraitCropPlacement`.
+
 ### Sesja 21.11 (siódma) — zlecenie MG: portrety NPC-ów „Reklamacji” i lista NPC sceny
 
 **Zrobione (bez migracji; czeka na wdrożenie):**
@@ -192,34 +215,3 @@ w czystym Chromium (Playwright):** zakładka „Postacie” MG na scenie „Ogl�
 zwinięte „NPC poza sceną (18)”. **Firefox z Playwright nie wstał** (timeout uruchomienia, jak
 przy otwartym Firefoksie MG) — oględziny w Firefoksie do dołożenia. Portrety sprawdzone testem
 serwera, nie w przeglądarce (bez zakładania kolejnej „Reklamacji” w kampanii dev MG).
-
-### Sesja 21.11 (szósta) — zlecenie MG: nowe grafiki aut i przykładowe portrety
-
-**Zrobione (dwie migracje: `20261121180000_vehicle_art_mg_only`, `20261121181000_sample_portraits`;
-wdrożone na VPS 21.11 razem z etapami 71g1–71h1 i 72a–72g2, commit `ea0287c1`):**
-
-- **Auta (`C:/AI/materialy/auta`, `tools/art/vehicle-models.py`):** nowy wygląd `kagero`
-  (teraz **„Ametyst”**, grafitowy z fioletowymi neonami), `nocny-neon` (**„Lazur”**,
-  turkusowy) i `taksowka` — id modeli bez zmian, nowe nazwy i opisy (decyzja MG). Nowe
-  `auto2.png` to osobny model **„Furia”** (`vehicle.furia`, sport, 15 000 ed); **„Rajdówka 77”
-  zostaje w starej grafice** — MG przypadkiem skasował jej źródło, plik jest w repo bez skryptu.
-- **Paczka CC0 aut usunięta** (8 plików, `VEHICLE_ART_LEGACY`): przeszkody „Auto cywilne”
-  i „Wrak” biorą auta MG, scena `test-poscig` i E2E pościgu też; migracja przepisuje stare
-  adresy w `Vehicle`, `Token` i `ChaseObstacle` (na VPS nic ich nie używało — sprawdzone
-  odczytem bazy; w dev.db 12 aut).
-- **Przykładowe portrety (`C:/AI/materialy/avatary`, `tools/art/sample-portraits.py`):** 49
-  avatarów, „Avatar 01”…„Avatar 49” (MG: same numery; numerowane `avatarN` po N, reszta
-  alfabetycznie), WebP do 1024 px — 3,4 MB zamiast 49 MB. Tylko MG: 01, 16, 23, 24, 27, 28,
-  29, 45, 48 (lista MG; „strażnik” zostaje dla graczy — decyzja MG). Pula **każdej** kampanii
-  dostaje kopie: nowa przy założeniu, istniejące raz przy starcie serwera (umowa na górze
-  `serwer`). W kampaniach z ręcznie wgranymi avatarami będą dublety — MG wybrał ten wariant.
-  Na dev.db start serwera dołożył zestaw do wszystkich 11 kampanii.
-- **Wdrożenie 21.11 (`deploy.sh`, bez trwającej sesji):** migracje przeszły, wszystkie 16 kampanii
-  na VPS ma 49 przykładowych portretów (9 tylko MG), stare sprite'y CC0 nie są już serwowane
-  (kopia bazy sprzed: `backups/snapshot-2026-11-21-1600`).
-
-Testy: `shared` 3277/3277, serwer 1897/1897 (nowy `sample-portraits.test.ts` 3/3; dwa testy
-`gametime.test.ts` padły raz pod obciążeniem serwera dev i przeszły osobno), klient 527/527;
-E2E `48-poscig` 39/39; `tsc` czterech pakietów, lint, Prettier i ruff czyste. **Oglądano
-w Firefoksie (Playwright):** biblioteka portretów MG (przykładowe pod własnymi, 9 w „NPC — tylko
-MG”), lista modeli na karcie pojazdu (Ametyst, Lazur, Furia) i scena pościgu z autem po migracji.

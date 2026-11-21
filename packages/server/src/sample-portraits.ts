@@ -2,7 +2,12 @@ import { randomBytes } from 'node:crypto';
 import { copyFile, readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import type { FastifyBaseLogger } from 'fastify';
-import { PORTRAIT_NAME_MAX_LENGTH, SAMPLE_PORTRAIT_FILE_PATTERN } from '@vtt/shared';
+import {
+  PORTRAIT_NAME_MAX_LENGTH,
+  SAMPLE_PORTRAIT_FILE_PATTERN,
+  sanitizePortraitCrop,
+  type PortraitCrop,
+} from '@vtt/shared';
 import type { PrismaClient } from './db.js';
 import { campaignUploadTarget } from './campaign-uploads.js';
 
@@ -26,23 +31,39 @@ export interface SamplePortrait {
   gmOnly: boolean;
   width: number;
   height: number;
+  /** Kadr żetonu z zestawu (Avatar 34 — Piotrówna, 21.11); `null` — na środek. */
+  crop: PortraitCrop | null;
 }
 
 function readSample(raw: unknown): SamplePortrait | null {
   if (typeof raw !== 'object' || raw === null) return null;
   const row = raw as Record<string, unknown>;
-  const { file, name, gmOnly, width, height } = row;
+  const { file, name, gmOnly, width, height, crop } = row;
   if (typeof file !== 'string' || !SAMPLE_PORTRAIT_FILE_PATTERN.test(file)) return null;
   if (typeof name !== 'string' || name.trim() === '') return null;
   if (!Number.isInteger(width) || !Number.isInteger(height)) return null;
   if ((width as number) <= 0 || (height as number) <= 0) return null;
+  const size = { width: width as number, height: height as number };
   return {
     file,
     name: name.trim().slice(0, PORTRAIT_NAME_MAX_LENGTH),
     gmOnly: gmOnly === true,
-    width: width as number,
-    height: height as number,
+    ...size,
+    crop: crop === undefined ? null : sanitizePortraitCrop(crop, size),
   };
+}
+
+interface CropColumns {
+  cropX: number;
+  cropY: number;
+  cropZoom: number;
+}
+
+/** Kolumny kadru `PortraitAsset` z kadru zestawu; bez kadru — wartości domyślne bazy. */
+function cropColumns(sample: SamplePortrait): Partial<CropColumns> {
+  return sample.crop
+    ? { cropX: sample.crop.x, cropY: sample.crop.y, cropZoom: sample.crop.zoom }
+    : {};
 }
 
 /** Zestaw z `manifest.json`; brak katalogu albo zły plik — pusty zestaw. */
@@ -86,15 +107,7 @@ export async function seedSamplePortraits(
   // Bez zestawu (testy, brak katalogu) flaga zostaje zgaszona — kampania
   // dostanie portrety, gdy zestaw się pojawi.
   if (!samplesDir || samples.length === 0) return 0;
-  const rows: {
-    campaignId: string;
-    name: string;
-    url: string;
-    width: number;
-    height: number;
-    gmOnly: boolean;
-    createdAt: Date;
-  }[] = [];
+  const rows: (PendingPortraitRow & { createdAt: Date })[] = [];
   // Galeria układa pulę od najnowszego (`createdAt desc`): „Avatar 01” dostaje
   // najpóźniejszą chwilę, każdy następny o milisekundę wcześniejszą — a całość
   // ląduje pod portretami, które MG wgrał wcześniej sam (starsze kampanie).
@@ -119,6 +132,7 @@ export async function seedSamplePortraits(
       width: sample.width,
       height: sample.height,
       gmOnly: sample.gmOnly,
+      ...cropColumns(sample),
       createdAt: new Date(base - rows.length),
     });
   }
@@ -161,6 +175,9 @@ export interface PendingPortraitRow {
   width: number;
   height: number;
   gmOnly: boolean;
+  cropX?: number;
+  cropY?: number;
+  cropZoom?: number;
 }
 
 /**
@@ -212,6 +229,7 @@ export async function prepareTemplatePortraits(
       width: sample.width,
       height: sample.height,
       gmOnly: sample.gmOnly,
+      ...cropColumns(sample),
     });
   }
   return { urls, rows, missing };

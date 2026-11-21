@@ -27,19 +27,22 @@ to zabrał go, ponieważ montował w swoich autach sprzęt Militechu nielegalnie
 | plan rund        | przeszkody na pasach, kolczatka z furgonu                                                  |
 | zakres sesji     | 72g1: skasować stare, scena, test, rozegranie; stały E2E i sprzątanie w 72g2               |
 
-**Rozstrzygnięte bez pytań (do zmiany jednym słowem MG):** nazwa „Reklamacja”, imiona (Tłok,
-Wektor, Kamień, Gil, Szpak), auto drużyny „Kombi z dziupli” (Włóczęga z Pługiem i Nitro — sprzęt
-z dziupli Tłoka), nagroda (stawka + ulepszenie z pasma 3000 ed i naprawa w dziupli + broń po cenie
+**Rozstrzygnięte bez pytań (do zmiany jednym słowem MG):** nazwa „Reklamacja”, imiona (Tłok —
+od 21.11 **Piotrówna**, decyzja MG — Wektor, Kamień, Gil, Szpak), auto drużyny „Kombi z dziupli”
+(Włóczęga z Pługiem i Nitro — sprzęt z dziupli Piotrówny), nagroda (stawka + ulepszenie z pasma 3000 ed i naprawa w dziupli + broń po cenie
 hurtowej — spina się z etapem 68).
 
 ## Pomysł w jednym akapicie
 
-**Tłok** prowadzi dziuplę samochodową, a na zapleczu handluje bronią. Od roku wstawiał do
-przerabianych aut sprzęt Militechu z kradzionych transportów. Militech namierzył numery seryjne
-i nie poszedł na policję: dziś rano furgon konwojowy zabrał Tłoka z warsztatu, skutego, „do
+**Piotrówna** (do 21.11 Tłok — MG zmienił imię i historię) prowadzi dziuplę samochodową po ojcu,
+Piotrze, a na zapleczu handluje bronią. Sprzęt Militechu z kradzionych transportów wstawiał do
+przerabianych aut jeszcze Piotr; córka przejęła po nim kontakty, długi i ten proceder. Piotra
+zastrzelono lata temu na progu zakładu — sprawców nie znaleziono, a okrzyk Kamienia i tablet
+w łupie podpowiadają, że to też była „reklamacja” Militechu. Militech namierzył numery seryjne
+i nie poszedł na policję: dziś rano furgon konwojowy zabrał Piotrównę z warsztatu, skutą, „do
 wyjaśnienia”. Drużyna (dwie postacie) rusza za furgonem kombi z dziupli, z pługiem i butlą nitro.
 W kabinie furgonu jadą kierowca **Wektor** i ochroniarz **Kamień** z pistoletem maszynowym,
-z tyłu skuty Tłok. W rundzie 3 od tyłu wjeżdża radiowóz NCPD (sierżant **Gil**, posterunkowy
+z tyłu skuta Piotrówna. W rundzie 3 od tyłu wjeżdża radiowóz NCPD (sierżant **Gil**, posterunkowy
 **Szpak**), któremu Militech zapłacił za „eskortę”.
 
 **Co pokazuje z etapu 72:** kompakt na kompakt (oba 100 mil/h od startu, gaz niczego nie daje),
@@ -76,9 +79,10 @@ Odstęp na starcie: 6,5 m zderzak do zderzaka. Furgon ucieka, gdy straci kombi o
 
 Statystyki wymyślone. Wektor: REF 7, Prowadzenie 6 (Wyścig 13 + 1k10), ciężki pistolet. Kamień:
 pistolet maszynowy (od 72g2, decyzja MG; wcześniej karabin szturmowy) i ciężki pistolet, lekki
-pancerz z hełmem. Tłok: Unieruchomiony (skuty),
+pancerz z hełmem. Piotrówna (do 21.11 Tłok): Unieruchomiona (skuta),
 TECH 8, Naprawa pojazdów 6, Naprawa broni 6, Handel 5; „Kajdanki Militechu” w ekwipunku. Gil:
-REF 7, Prowadzenie 5, ciężki pistolet. Szpak: strzelba. Notatki MG (📌 ❓ ⚠️ 💬 💰) — jak
+REF 7, Prowadzenie 5, ciężki pistolet. Szpak: strzelba. Portrety (21.11, `figures[].portrait`): Wektor — Avatar 14, Kamień — 44,
+Piotrówna — 34 (tylko MG, kadr głowa i ramiona), Gil — 45, Szpak — 49. Notatki MG (📌 ❓ ⚠️ 💬 💰) — jak
 w poprzednich wzorcach: o co chodzi, zanim ruszycie (skalowanie, kierowca drużyny), przebieg
 rund, wstęp i okrzyki, zatrzymanie i zakończenia.
 

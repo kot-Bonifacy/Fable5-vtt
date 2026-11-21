@@ -49,6 +49,15 @@ GM_ONLY: set[str] = {
     "avatar27",
     "avatar20",
     "avatar1",
+    # Avatar 34 — Piotrówna z „Reklamacji” (MG 21.11.2026).
+    "ChatGPT Image 13 wrz 2026, 19_54_20",
+}
+
+# Token crop for a source stem — `PortraitCrop` in `packages/shared/src/portrait-crop.ts`
+# (point on the image at the disc centre, zoom over "cover"). Without one: centre.
+CROPS: dict[str, dict[str, float]] = {
+    # Avatar 34 — head and shoulders (Piotrówna, MG 21.11.2026).
+    "ChatGPT Image 13 wrz 2026, 19_54_20": {"x": 0.465, "y": 0.19, "zoom": 1.9},
 }
 
 NUMBERED = re.compile(r"^avatar(\d+)")
@@ -71,9 +80,9 @@ def main() -> None:
         (p for p in source.iterdir() if p.suffix.lower() in {".png", ".jpg", ".jpeg", ".webp"}),
         key=order_key,
     )
-    missing = GM_ONLY - {p.stem for p in files}
+    missing = (GM_ONLY | CROPS.keys()) - {p.stem for p in files}
     if missing:
-        raise SystemExit(f"GM-only sources not found: {sorted(missing)}")
+        raise SystemExit(f"GM-only or cropped sources not found: {sorted(missing)}")
 
     out.mkdir(parents=True, exist_ok=True)
     for old in out.glob("*.webp"):
@@ -94,15 +103,16 @@ def main() -> None:
         size = target.stat().st_size
         total += size
         gm_only = path.stem in GM_ONLY
-        portraits.append(
-            {
-                "file": target.name,
-                "name": f"Avatar {number}",
-                "gmOnly": gm_only,
-                "width": image.width,
-                "height": image.height,
-            }
-        )
+        row = {
+            "file": target.name,
+            "name": f"Avatar {number}",
+            "gmOnly": gm_only,
+            "width": image.width,
+            "height": image.height,
+        }
+        if path.stem in CROPS:
+            row["crop"] = CROPS[path.stem]
+        portraits.append(row)
         flag = " (MG)" if gm_only else ""
         print(f"{path.name} -> {target.name}{flag} {image.size} {size // 1024} KB")
 

@@ -1,5 +1,36 @@
 # Dziennik sesji — archiwum
 
+### Sesja 21.11 (szósta) — zlecenie MG: nowe grafiki aut i przykładowe portrety
+
+**Zrobione (dwie migracje: `20261121180000_vehicle_art_mg_only`, `20261121181000_sample_portraits`;
+wdrożone na VPS 21.11 razem z etapami 71g1–71h1 i 72a–72g2, commit `ea0287c1`):**
+
+- **Auta (`C:/AI/materialy/auta`, `tools/art/vehicle-models.py`):** nowy wygląd `kagero`
+  (teraz **„Ametyst”**, grafitowy z fioletowymi neonami), `nocny-neon` (**„Lazur”**,
+  turkusowy) i `taksowka` — id modeli bez zmian, nowe nazwy i opisy (decyzja MG). Nowe
+  `auto2.png` to osobny model **„Furia”** (`vehicle.furia`, sport, 15 000 ed); **„Rajdówka 77”
+  zostaje w starej grafice** — MG przypadkiem skasował jej źródło, plik jest w repo bez skryptu.
+- **Paczka CC0 aut usunięta** (8 plików, `VEHICLE_ART_LEGACY`): przeszkody „Auto cywilne”
+  i „Wrak” biorą auta MG, scena `test-poscig` i E2E pościgu też; migracja przepisuje stare
+  adresy w `Vehicle`, `Token` i `ChaseObstacle` (na VPS nic ich nie używało — sprawdzone
+  odczytem bazy; w dev.db 12 aut).
+- **Przykładowe portrety (`C:/AI/materialy/avatary`, `tools/art/sample-portraits.py`):** 49
+  avatarów, „Avatar 01”…„Avatar 49” (MG: same numery; numerowane `avatarN` po N, reszta
+  alfabetycznie), WebP do 1024 px — 3,4 MB zamiast 49 MB. Tylko MG: 01, 16, 23, 24, 27, 28,
+  29, 45, 48 (lista MG; „strażnik” zostaje dla graczy — decyzja MG). Pula **każdej** kampanii
+  dostaje kopie: nowa przy założeniu, istniejące raz przy starcie serwera (umowa na górze
+  `serwer`). W kampaniach z ręcznie wgranymi avatarami będą dublety — MG wybrał ten wariant.
+  Na dev.db start serwera dołożył zestaw do wszystkich 11 kampanii.
+- **Wdrożenie 21.11 (`deploy.sh`, bez trwającej sesji):** migracje przeszły, wszystkie 16 kampanii
+  na VPS ma 49 przykładowych portretów (9 tylko MG), stare sprite'y CC0 nie są już serwowane
+  (kopia bazy sprzed: `backups/snapshot-2026-11-21-1600`).
+
+Testy: `shared` 3277/3277, serwer 1897/1897 (nowy `sample-portraits.test.ts` 3/3; dwa testy
+`gametime.test.ts` padły raz pod obciążeniem serwera dev i przeszły osobno), klient 527/527;
+E2E `48-poscig` 39/39; `tsc` czterech pakietów, lint, Prettier i ruff czyste. **Oglądano
+w Firefoksie (Playwright):** biblioteka portretów MG (przykładowe pod własnymi, 9 w „NPC — tylko
+MG”), lista modeli na karcie pojazdu (Ametyst, Lazur, Furia) i scena pościgu z autem po migracji.
+
 ### Sesja 21.11 (piąta) — poprawka: wezwanie do Manewru u auta bez kontroli
 
 **Zrobione (bez migracji; czeka na wdrożenie razem z 72b1–72g2):**

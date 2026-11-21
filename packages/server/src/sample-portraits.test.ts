@@ -67,7 +67,7 @@ afterAll(async () => {
 });
 
 describe('przykładowe portrety', () => {
-  it('zestaw w repo: 49 avatarów z numerami, 9 tylko dla MG', async () => {
+  it('zestaw w repo: 49 avatarów z numerami, 10 tylko dla MG, Avatar 34 z kadrem', async () => {
     const samples = await loadSamplePortraits(SAMPLES);
     expect(samples).toHaveLength(49);
     expect(samples[0]).toMatchObject({ file: '01.webp', name: 'Avatar 01', gmOnly: true });
@@ -79,10 +79,20 @@ describe('przykładowe portrety', () => {
       'Avatar 27',
       'Avatar 28',
       'Avatar 29',
+      'Avatar 34',
       'Avatar 45',
       'Avatar 48',
     ]);
     for (const sample of samples) expect(existsSync(join(SAMPLES, sample.file))).toBe(true);
+    // Piotrówna z „Reklamacji” (MG 21.11): głowa i ramiona; reszta na środek.
+    expect(samples.filter((sample) => sample.crop).map((sample) => sample.name)).toEqual([
+      'Avatar 34',
+    ]);
+    expect(samples.find((sample) => sample.name === 'Avatar 34')!.crop).toEqual({
+      x: 0.465,
+      y: 0.19,
+      zoom: 1.9,
+    });
   });
 
   it('nowa kampania dostaje własne kopie w puli, od „Avatar 01” u góry galerii', async () => {
@@ -101,6 +111,13 @@ describe('przykładowe portrety', () => {
     expect(pool).toHaveLength(49);
     expect(pool[0]).toMatchObject({ name: 'Avatar 01', gmOnly: true });
     expect(pool[1]).toMatchObject({ name: 'Avatar 02', gmOnly: false });
+    expect(pool.find((row) => row.name === 'Avatar 34')).toMatchObject({
+      gmOnly: true,
+      cropX: 0.465,
+      cropY: 0.19,
+      cropZoom: 1.9,
+    });
+    expect(pool.find((row) => row.name === 'Avatar 33')).toMatchObject({ cropX: 0.5, cropZoom: 1 });
     expect(pool.at(-1)!.name).toBe('Avatar 49');
     const first = pool[0]!;
     expect(first.url).toMatch(new RegExp(`^/uploads/campaigns/${campaignId}/portraits/`));
@@ -137,5 +154,52 @@ describe('przykładowe portrety', () => {
     expect(pool).toHaveLength(50);
     expect(pool[0]!.id).toBe(own.id);
     expect(pool[1]!.name).toBe('Avatar 01');
+  });
+
+  it('migracja 21.11: Avatar 34 z zestawu przechodzi do MG, kadr tylko tam, gdzie MG go nie ruszał', async () => {
+    const p = built.prisma;
+    const campaign = await p.campaign.create({ data: { name: 'Przed Piotrówną' } });
+    const row = (name: string, extra: Record<string, number> = {}) =>
+      p.portraitAsset.create({
+        data: {
+          campaignId: campaign.id,
+          name,
+          url: `/uploads/campaigns/${campaign.id}/portraits/${name.replace(' ', '-')}.webp`,
+          width: 647,
+          height: 862,
+          ...extra,
+        },
+      });
+    const untouched = await row('Avatar 34');
+    const cropped = await row('Avatar 34', { cropX: 0.3, cropY: 0.1, cropZoom: 2 });
+    const other = await row('Avatar 33');
+    const sql = readFileSync(
+      resolve(
+        import.meta.dirname,
+        '../prisma/migrations/20261121200000_sample_portrait_34_gm_only/migration.sql',
+      ),
+      'utf8',
+    );
+    for (const statement of sql
+      .replace(/^--.*$/gm, '')
+      .split(';')
+      .map((part) => part.trim())
+      .filter(Boolean)) {
+      await p.$executeRawUnsafe(statement);
+    }
+    const after = async (id: string) => p.portraitAsset.findUniqueOrThrow({ where: { id } });
+    expect(await after(untouched.id)).toMatchObject({
+      gmOnly: true,
+      cropX: 0.465,
+      cropY: 0.19,
+      cropZoom: 1.9,
+    });
+    expect(await after(cropped.id)).toMatchObject({
+      gmOnly: true,
+      cropX: 0.3,
+      cropY: 0.1,
+      cropZoom: 2,
+    });
+    expect(await after(other.id)).toMatchObject({ gmOnly: false, cropX: 0.5 });
   });
 });
