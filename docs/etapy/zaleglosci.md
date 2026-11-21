@@ -11,17 +11,10 @@ z furgonu do kombi (R1, MG w Chromium) poleciała w górę mapy, a nie w cel —
 dobrze, zła tylko animacja; sprawdzić, czy smuga bierze położenie z przed przesunięcia kadru.
 (2) „Cel za szybą”: przy strzale w figurę za kuloodporną szybą pierwsze potrząśnięcie kubkiem
 otwiera okienko wyboru zamiast rzutu, a okienko zostaje otwarte po „Kończę turę” i wisi w następnej
-turze gracza. (3) „Po ruchu” w kokpicie mierzy do najbliższego wrogiego auta — przy „Drużyna goni”
-podawało radiowóz 2,5 m z tyłu zamiast furgonu, który drużyna goni; do decyzji MG, czy przy
-gonieniu brać najpierw auta z przodu (bez trwałego celu `T`). (4) Gracz po wejściu do gry ma kadr
+turze gracza. ~~(3) „Po ruchu” mierzy do najbliższego wrogiego auta, także z tyłu~~ — MG 21.11 (72g2):
+zostaje najbliższe, inny cel gracz ustawia trwałym celem `T`. (4) Gracz po wejściu do gry ma kadr
 tak przybliżony, że furgon 8 m przed kombi jest poza ekranem — trzeba oddalić kółkiem (kadr bez
 zmian od decyzji MG z 06.11, tylko do oceny przy stole).
-
-**21.11.2026 — okno „Pościg” w domyślnym miejscu zasłania panel decyzji (72f3).** Okno staje
-przy prawej krawędzi (`x = szerokość − 560`, `y = 120`), a panel decyzji siedzi w prawym górnym
-rogu mapy — pytanie planu rund wyskakuje pod oknem (widać z niego lewą połowę). Wiersz „pyta
-teraz” w oknie ma te same przyciski, a okno da się przesunąć, więc nic nie blokuje. Do decyzji
-MG przy 72g: inne domyślne miejsce okna albo panel nad oknem.
 
 **20.11.2026 — `48-poscig/t65-przeszkody` migocze: pusta mapa MG w pierwszym teście (72e).**
 W przebiegu `--grep "T72e|T72b|T72c|T72d|T65e"` zaraz po buildzie test „MG wypuszcza barykadę
@@ -134,14 +127,6 @@ przeszkodą…” w oknie Sieci (zwrot Akcji Sieciowej widać w bazie, tekst wyn
 ~~(3) wyłączony w Sieci dron bez znacznika~~ — zamknięte etapem 70 (naklejka „Wyłączony” 70c,
 od założenia sceny i z przeszukaniem 70f).
 
-**05.11.2026 — rama pościgu i auto bez kierowcy: wdrożenie (migracja
-`20261105180000_chase_vehicle_momentum`) i oględziny przy stole.** Oglądane w Firefoksie i Chromium
-na `dev.db`: bez kierowcy Wozu droga stoi u MG i graczy, rusza po siadaniu za kierownicę, menu
-auta „bez dryfu · bez kierowcy — stoi”; w dogrywce furgon bez Wolta miał pęd 20 → 10 (dryf −7,5)
-i wjechał w barykadę jako wrak. Luka ze stanem kierowcy zamknięta 05.11
-(trzecia sesja, `archiwum/zamkniete-zaleglosci.md`). E2E `48-poscig` puszczone 06.11 (szósta
-sesja): `t65-przeszkody` dostosowany (kolczatkę bierze auto z kurierem, bo puste stoi), 8/8.
-
 **05.11.2026 (czwarta sesja) — zaległości 66c zamknięte w kodzie: wdrożenie i oglądanie przy stole.**
 Bez migracji. Oglądane w **Firefoksie** tymczasowym specem E2E (MG, wzorzec „Ostatni zjazd”,
 `po-T6`, skasowany): furgon wypełnia bryłę, podpisy górnego rzędu Eskorty nad figurami, „Ucieka”
@@ -150,19 +135,6 @@ w menu auta MG (auto `escaped`, przygasa u MG), rezerwa lewego panelu przy liczn
 tarczy na pasku HUD (tylko testy), darmowa ręka MG w turze figury (test serwera), otarcie aut
 o włos i wrak za autem z autem z tyłu (testy `shared`). Przy stole: wysiadka NPC-a ręką MG w jego
 turze nie zjada metrów, a marsz klikiem dalej płaci.
-
-**03.11.2026 — kreator pościgu: oględziny przy stole, wdrożenie.** Od 06.11 stały E2E
-`48-poscig/t65-kreator` (MG w Firefoksie, gracz w Chromium; wpis w archiwum). Przy stole: „Utwórz → Pościg” — kreator, każda z czterech dróg
-w kafelku i na mapie (czy przewija się bez szwu na żywo i czy wygląd pasuje do stołu), „Wgraj
-własną mapę”, przeciągnięcie obu krawędzi pasa w kroku „Droga”, „Na drogę” dla trzech aut
-(nie lądują na sobie), „Pełna edycja sceny…” otwiera zakładkę „Pościg”. Na VPS pliki
-`/art/roads/*.webp` jadą w obrazie klienta (bez migracji).
-
-**03.11.2026 — przegląd mechanik pościgu: wdrożenie (migracja
-`20261103210000_chase_vehicle_blocking`) i resztka oględzin.** Stojące auto NPC-a przed autem
-gracza, „Za kierowcę” w menu MG i słaby kierowca z Nitro obejrzane 07.11 (Ola w Firefoksie,
-wpis w archiwum). **Nie widziane w przeglądarce:** wrak (PUK 0) dryfujący przed zderzak — sprawdza
-go `chase-review.test.ts`.
 
 **03.11.2026 — przegląd ulepszeń pojazdów: wdrożenie (bez migracji).** Oględziny zamknięte 07.11
 (okno pojazdu MG, „Uzupełnij Nitro i kolczatki”, broń pokładowa w katalogu lokalnie i na VPS —

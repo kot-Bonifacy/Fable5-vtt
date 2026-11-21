@@ -5,7 +5,8 @@
 32 (wezwanie do Testu) · **Status:** 🟨 w toku — projekt 15.11, **72a ✅ 19.11**, **72b1 ✅ 19.11**,
 **72b2 ✅ 20.11**, **72c ✅ 20.11**, **72d1 ✅ 20.11**, **72d2 ✅ 20.11**, **72e ✅ 20.11**,
 **72f1 ✅ 20.11**, **72f2 ✅ 21.11**, **72f3 ✅ 21.11**, **72g1 ✅ 21.11** (nowa scena „Reklamacja”,
-`etap-72g-reklamacja.md`), następny **72g2**
+`etap-72g-reklamacja.md`), **72g2 ✅ 21.11** (stały E2E, sprzątanie) — wszystkie podetapy
+zrobione, czeka na wdrożenie i stół MG
 
 ## Skąd ten etap
 
@@ -409,10 +410,10 @@ Rozstrzygnięcia z sesji 72b1 (do potwierdzenia przy rozegraniu 72g):
 - **Auto, które wyjechało za krawędź w swojej turze, odpada dopiero na początku rundy**, po
   sztywnym przesunięciu — kamera jedzie za autem kadru, więc liczy się kadr z tej chwili.
 - **Piesi na jezdni nie biorą udziału w sztywnym przesunięciu** (jak dotąd stoją w kadrze).
-- **Nitro tylko przed „Jedź”** (`NITRO_AFTER_DRIVE`) — dokłada `Ruch / 4` do ruchu tej tury.
-- **Słaby kierowca (do 72c) rzuca Test zwykłej jazdy przy każdym „Jedź”**, także jazdy prosto; kto
+- **Nitro tylko przed „Jedź”** _(widziane w rozegraniu 21.11)_ (`NITRO_AFTER_DRIVE`) — dokłada `Ruch / 4` do ruchu tej tury.
+- **Słaby kierowca (do 72c) rzuca Test zwykłej jazdy przy każdym „Jedź”** _(nieaktualne od 72c — Test rzuca się z Wyścigiem na początku rundy)_, także jazdy prosto; kto
   nie wciśnie „Jedź”, nie rzuca — Wyścig to naprawi.
-- **„Drużyna goni / ucieka” nie ma jeszcze przełącznika w UI** (72f); domyślne „goni” stawia auto
+- **„Drużyna goni / ucieka” nie ma jeszcze przełącznika w UI** _(nieaktualne od 72f1 — przełącznik w kreatorze i zakładce „Pościg”)_ (72f); domyślne „goni” stawia auto
   drużyny na 30% od tyłu, więc scena z autem drużyny na czele potrzebuje `chaseRole: 'flee'`
   w bazie (testy tak robią).
 
@@ -434,7 +435,7 @@ Decyzje MG z 20.11 (pytania na starcie sesji):
 
 Rozstrzygnięcia bez pytań:
 
-- **MG widzi grupę przy każdym zaznaczonym kierowcy** (serwer przyjmuje `vehicle:drive` od MG
+- **MG widzi grupę przy każdym zaznaczonym kierowcy** _(widziane w rozegraniu 21.11 — kolczatka Wektora z kokpitu MG)_ (serwer przyjmuje `vehicle:drive` od MG
   w turze każdego kierowcy, także gracza — darmowa ręka MG); przy NPC-u w jego turze to kokpit MG.
 - **Odmowa nie wyłącza kafla** (jak broń i akcje belki): wyszarzony, powód w dymku i po kliknięciu
   w kanale komunikatów. Jeden powód dla całego krzyżaka — cudza tura, ruch wykonany, silnik,
@@ -471,7 +472,7 @@ Decyzje MG z 20.11 (pytania na starcie sesji):
 
 Rozstrzygnięcia bez pytań:
 
-- **Runda czeka jako wskaźnik bez tury:** `round = N`, `activeCombatantId = null`; `nextTurn`
+- **Runda czeka jako wskaźnik bez tury:** _(widziane w rozegraniu 21.11 i w E2E `t72g-reklamacja`)_ `round = N`, `activeCombatantId = null`; `nextTurn`
   z takiego stanu daje pierwszego w kolejce tej samej rundy, więc wznowienie
   (`resumeAfterChaseRace` w `combat-actions.ts`) to świeży budżet i haki początku tury, bez
   drugiego przemiatania czasu. „Cofnij” MG w tym czasie odmawia (`RACE_PENDING`).
@@ -529,13 +530,13 @@ Decyzje MG z 20.11 (pytania na starcie sesji):
 
 Rozstrzygnięcia bez pytań (do potwierdzenia przy rozegraniu 72g):
 
-- **Decyzje stoją zaraz pod kaflem auta**, nad „Po ruchu” (w punkcie 5 były na końcu grupy) —
+- **Decyzje stoją zaraz pod kaflem auta** _(widziane w rozegraniu 21.11 — „Taranuj / Zwolnij za nim / Zmienię plan”)_, nad „Po ruchu” (w punkcie 5 były na końcu grupy) —
   przeszkoda przed zderzakiem odmawia jazdy (`OBSTACLE_PENDING`), więc ma być pierwsza.
 - **Udane Nagłe zatrzymanie przy przeszkodzie zostawia ją przy zderzaku**, bez czekania na wybór.
   Ogólniej: **auto o prędkości 0 stoi na drodze jak przeszkoda** — przeszkoda, która dojedzie do
   jego zderzaka, staje bez pytania, a auto cofające się bez tury zatrzymuje się przed nim. Dalej
   kierowca zmienia pas albo rusza gazem (wtedy pyta „Zderzenie” w belce).
-- **Wezwanie do Manewru ma wiersz w belce tylko u gracza** — MG odwołuje je w menu auta.
+- **Wezwanie do Manewru ma wiersz w belce tylko u gracza** _(zmienione 21.11 w 72g1 — MG widzi wiersz przy kierowcy-NPC-u, bo Manewr na wezwanie z planu rund nie miał przycisku)_ — MG odwołuje je w menu auta.
 - **Nitro i kolczatka znikają z rzędu, gdy nic nie zostało** (widok nie odróżnia pustej wyrzutni od
   jej braku) — Nitro odpalone w tej turze stoi zalane do „Jedź”, także z ostatniego zbiornika;
   Silnik stoi zawsze.
@@ -573,7 +574,7 @@ Rozstrzygnięcia bez pytań (do potwierdzenia przy rozegraniu 72g):
 - **„N m · za N tur” liczy się od auta patrzącego** — u gracza auto, w którym siedzi jego figura,
   u MG auto kadru (`chaseAnchorVehicle`). Przeszkoda na innym pasie: „N m · inny pas”, minięta —
   bez dopisku, auto stojące — same metry, styk — „przy zderzaku”.
-- **Miarka ducha** biegnie od zderzaka ducha do zderzaka celu z „Po ruchu” (trwały cel `T` albo
+- **Miarka ducha** _(widziane w rozegraniu 21.11, Firefox)_ biegnie od zderzaka ducha do zderzaka celu z „Po ruchu” (trwały cel `T` albo
   najbliższe auto drugiej strony), z tymi samymi metrami; cel na innym pasie — skośnie.
 - **Figury w fotelach jadą z autem na ekranie** (renderer stawia je w fotelach auta takiego, jakie
   widać — tak samo przy ciągnięciu auta przez MG), a kamera gracza idzie za swoim autem klatka po
@@ -608,7 +609,7 @@ Decyzje MG z 20.11 (pytania na starcie sesji):
 
 Rozstrzygnięcia bez pytań (do potwierdzenia przy rozegraniu 72g):
 
-- **Plan to mały przegląd naprzód** — dla każdego pedału i pasa tej tury dwie kolejne rundy
+- **Plan to mały przegląd naprzód** _(omijanie przeszkód i zmiana pasa przy „Uciekaj” widziane w rozegraniu 21.11 i w E2E `t72g-reklamacja`; odstęp „Goń” nie grany)_ — dla każdego pedału i pasa tej tury dwie kolejne rundy
   z najlepszymi pedałami (pas stały); cel i inne auta jadą dalej swoją prędkością. Kroki gazu
   (+50) i hamulca (−100 mil/h) nie pozwalają wyrównać prędkości co do mili, więc „Goń” zwykle
   staje 4–8 m za celem, a nie 2 m — do oceny w 72g razem z krokami pedałów.
@@ -616,9 +617,9 @@ Rozstrzygnięcia bez pytań (do potwierdzenia przy rozegraniu 72g):
   zderzenie rozstrzyga jak jazda bez „Jedź”: zwolnij, a gdy hamulec nie wystarcza — taran.
   „Blokuj” zajeżdża drogę przed celem z jego prędkością; kary za to, że cel wjedzie mu w tył,
   nie ma — to cel zamiaru.
-- **Autopilot nie odpala Nitro, Manewrów ani kolczatki** i nie odpowiada na przeszkodę przed
+- **Autopilot nie odpala Nitro, Manewrów ani kolczatki** _(widziane w rozegraniu 21.11 — kolczatkę zrzuca MG z kokpitu, notatka planu R4)_ i nie odpowiada na przeszkodę przed
   zderzakiem (wtedy nie prowadzi wcale). Kolczatki nie omija — nie ma jej w bryłach na drodze.
-- **Zamiar jest tajemnicą MG:** graczom nie jedzie w `chase:sync` ani w odpowiedziach zdarzeń.
+- **Zamiar jest tajemnicą MG:** _(E2E `t72e-autopilot` i `t72g-reklamacja`)_ graczom nie jedzie w `chase:sync` ani w odpowiedziach zdarzeń.
   Auto z figurą gracza za kierownicą zamiaru nie dostaje (`PLAYER_DRIVES`); auto NPC-a z zamiarem,
   do którego gracz przesiądzie się za kierownicę, jedzie jego kokpitem.
 - **Zamiar bez kierowcy** da się nadać (kierowca może siąść później); autopilot rusza dopiero
@@ -669,7 +670,7 @@ Rozstrzygnięcia bez pytań (do potwierdzenia przy rozegraniu 72g):
   serwera) — po 72a auta i tak jadą środkiem pasa, a ręcznie postawione krzywo myliły linie.
 - **Zamiar w kreatorze tylko przy aucie bez właściciela** (MG i NPC-e), stojącym na drodze;
   auto z kierowcą-graczem i tak odmawia (`PLAYER_DRIVES`).
-- **Wzorzec nie niesie prędkości w mil/h** — `chase.tempo` (Ruch) zostaje; „Prędkość startowa”
+- **Wzorzec nie niesie prędkości w mil/h** _(widziane 21.11 — „Reklamacja” niesie `chase.tempo` 20)_ — `chase.tempo` (Ruch) zostaje; „Prędkość startowa”
   to tylko UI. Wzorzec nie niesie też autopilota ani auta kadru (72f2 / 72g, jeśli potrzeba).
 - **Paczka niesie auto kadru i hamulec autopilota**, choć w UI wybiera się je dopiero w 72f2.
 
@@ -709,7 +710,7 @@ Rozstrzygnięcia bez pytań (do potwierdzenia przy rozegraniu 72g):
 - **Auto kadru wybrane w oknie działa od następnej rundy** (prędkość pościgu jest stała
   w rundzie); auto, które wypadło z kadru, zostaje na liście jako „(poza pościgiem)”, a kadr
   trzyma się wtedy reguły domyślnej.
-- **Posiłki wjeżdżają na pierwsze wolne miejsce od wybranej krawędzi** (kratka po kratce w głąb,
+- **Posiłki wjeżdżają na pierwsze wolne miejsce od wybranej krawędzi** _(widziane w rozegraniu 21.11 — radiowóz z planu)_ (kratka po kratce w głąb,
   pół kratki odstępu od innych aut); zryw Wyścigu przywróconego auta gaśnie (0).
 - **Menu auta zostaje** z „Ucieka”, „Przywróć do pościgu” (bez wyboru pasa — jak dawniej),
   zamiarem i resztą; okno go nie zastępuje, tylko zbiera stan w jednym miejscu.
@@ -744,9 +745,9 @@ Rozstrzygnięcia bez pytań (do potwierdzenia przy rozegraniu 72g):
 - **Wiersza nie edytuje się w miejscu** — „Usuń” i dopisanie nowego. Wiersz, o który karta
   właśnie pyta, nie da się ani zmienić, ani usunąć (najpierw odpowiedź); ma w oknie te same
   przyciski co karta.
-- **Kilka zdarzeń w jednej rundzie — osobna karta na każde** (panel: „+N czeka”), w kolejności
+- **Kilka zdarzeń w jednej rundzie — osobna karta na każde** _(widziane w rozegraniu 21.11 — roboty i barykada w R6)_ (panel: „+N czeka”), w kolejności
   wpisania. Zdarzenie wpisane w walce na rundę, która minęła, zapyta najbliższa runda.
-- **Przeszkody planu tylko z palety** (bez „Własnej” z grafiką — ta zostaje w oknie). „Przed
+- **Przeszkody planu tylko z palety** _(widziane w rozegraniu 21.11)_ (bez „Własnej” z grafiką — ta zostaje w oknie). „Przed
   autem” — auto z planu, a gdy wypadło z kadru — auto kadru; puste pole odległości — przy
   przedniej krawędzi.
 - **Manewr „wszystkie auta z kierowcą”** — każde auto w kadrze z kimkolwiek za kierownicą (gracz
@@ -783,28 +784,55 @@ Rozstrzygnięcia bez pytań (do potwierdzenia przy rozegraniu 72g):
 - [x] Błędy z rozegrania naprawione: spóźniona inicjatywa we własnej turze (`combat.test.ts`),
       Manewr na wezwanie auta NPC-a w kokpicie MG.
 
-#### 72g2 — stały E2E i sprzątanie
+#### 72g2 — stały E2E i sprzątanie (✅ 21.11)
 
-- [ ] Stały E2E `48-poscig/t72-*` na wzorcu „Reklamacja” (jazda, Wyścig, przeszkoda z prognozą,
-      autopilot, plan rund; kierowca-Nomada — Moto w Wyścigu i Manewrze, NOM-02).
-- [ ] Sprzątanie starego kodu i wpisów (`umowy-kodu.md`, `pulapki-dev.md`, `zaleglosci.md`),
-      decyzje MG z „Do decyzji” w `etap-72g-reklamacja.md`.
+- [x] Stały E2E `48-poscig/t72g-reklamacja` na wzorcu „Reklamacja” (Wyścig, Gwałtowny skręt,
+      kolczatka, przeszkoda z planu, autopilot, posiłki z planu; kierowca-Nomada — Moto
+      w Wyścigu, Manewrze i Teście kolczatki, NOM-02).
+- [x] Sprzątanie starego kodu i wpisów (`umowy-kodu.md` `mapa` i `tura`, `zaleglosci.md`;
+      w `pulapki-dev.md` nic o starym modelu nie zostało), decyzje MG z „Do decyzji”
+      w `etap-72g-reklamacja.md`; rozstrzygnięcia 72a–72f3 widziane w rozegraniu 21.11
+      oznaczone przy wpisach.
+
+Decyzje MG z 21.11 (pytania w sesji 72g2):
+
+- **Kamień z pistoletem maszynowym na stałe**, **Wektor zostaje przy 13**, **radiowóz zostaje
+  jak jest** (szczegóły w `etap-72g-reklamacja.md`).
+- **Okno „Pościg” staje przy pierwszym otwarciu po lewej** (za lewą belką, pod paskiem narzędzi)
+  — prawy górny róg mapy należy do panelu decyzji.
+- **„Po ruchu” mierzy dalej do najbliższego wrogiego auta**, także z tyłu; inny cel gracz
+  ustawia trwałym celem `T`.
+
+Rozstrzygnięcia bez pytań:
+
+- **Usunięty tylko kod bez żadnego wołającego poza testami** (dryf, budżet `Ruch / 4`, dawne
+  „Przywróć” przy krawędzi, kompozyt `cpredLostControlMove`). `chase-budget.ts` zostaje (tura
+  kierowcy w Akcjach Ruchu, ręka na kierownicy), `chaseFrameTempo` też — bieżnia poza walką.
+- **Kolumny `SceneVehicle.blockingId` i `ChaseObstacle.driftRound` zostają** — obie dalej żyją
+  w nowym modelu (blokada stojącego auta, strażnik dryfu przeszkód raz na rundę); nazwa
+  `driftRound` przeszkody to dryf przeszkody z kadrem, nie stary dryf aut.
 
 ## Kryteria ukończenia
 
-- [ ] Kierowca-gracz prowadzi wyłącznie z grupy „Pojazd” w lewej belce: gaz, hamulec, zmiana
-      pasa i „Jedź”; prędkość widzi w mil/h; belka wygląda jak reszta HUD z etapu 69.
-- [ ] Auto rusza się tylko w turze swojego kierowcy; prędkość trwa między turami; nic nie
-      „wraca samo”.
-- [ ] Na początku rundy kierowcy rzucają Wyścig (gracz kubkiem), a zryw zmienia dystans.
-- [ ] Nitro, Manewry, kolczatka i silnik są w belce; zderzenie i przeszkoda pytają w belce.
-- [ ] Auto NPC-a z zamiarem jedzie samo, a MG może przejąć je kokpitem i wyłączyć autopilota.
+- [x] Kierowca-gracz prowadzi wyłącznie z grupy „Pojazd” w lewej belce: gaz, hamulec, zmiana
+      pasa i „Jedź”; prędkość widzi w mil/h; belka wygląda jak reszta HUD z etapu 69 (72b2–72d2,
+      E2E `t72b`, `t72d`, `t72g`; oględziny Firefox i Chromium 20.11).
+- [x] Auto rusza się tylko w turze swojego kierowcy; prędkość trwa między turami; nic nie
+      „wraca samo” (72b1, rozegranie 21.11).
+- [x] Na początku rundy kierowcy rzucają Wyścig (gracz kubkiem), a zryw zmienia dystans (72c,
+      E2E `t72c`, `t72g`).
+- [x] Nitro, Manewry, kolczatka i silnik są w belce; zderzenie i przeszkoda pytają w belce (72d1,
+      E2E `t72d`).
+- [x] Auto NPC-a z zamiarem jedzie samo, a MG może przejąć je kokpitem i wyłączyć autopilota
+      (72e, E2E `t72e`, `t72g`).
 - [x] MG prowadzi pościg z panelu „Pościg”: widzi prędkości, pasy i dystanse, wypuszcza
       przeszkodę na pas w odległości (72f2 ✅ 21.11), a plan rund pyta go o zdarzenia (72f3 ✅ 21.11).
 - [x] Kreator nie pyta o tempo; pyta o pasy, prędkość startową i rolę drużyny (72f1, 20.11).
 - [ ] Scena przykładowa pościgu („Reklamacja”, w miejsce „Ostatniego zjazdu” i „Zastawu” — MG
-      21.11) rozegrana w nowym modelu (✅ 21.11), balans zatwierdzony przez MG.
-- [ ] Testy `shared`, serwera i klienta, E2E `48-poscig`, oględziny w Firefoksie i Chromium.
+      21.11) rozegrana w nowym modelu (✅ 21.11), balans zatwierdzony przez MG (trzy pytania
+      z rozegrania rozstrzygnięte 21.11 w 72g2; całość — przy stole).
+- [x] Testy `shared`, serwera i klienta, E2E `48-poscig`, oględziny w Firefoksie i Chromium
+      (72g2: `48-poscig` 39/39).
 - [ ] Oględziny MG przy stole.
 
 ## Rozstrzygnięcia projektu bez pytań (do potwierdzenia w trakcie)

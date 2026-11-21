@@ -1,11 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
   chaseBodyContains,
-  chaseDriftSquares,
-  chaseDriftedCentre,
   chaseFrameTempo,
   chaseLimitMove,
-  chaseMoveSquares,
   chaseOffscreen,
   chaseShiftAlong,
   chaseRoadSpanPx,
@@ -140,22 +137,9 @@ describe('ustawienia pościgu', () => {
 });
 
 describe('jazda w pościgu (65c)', () => {
-  it('budżet to Ruch / 4 kratek, dryf (Ruch − tempo) / 4', () => {
-    expect(chaseMoveSquares(40)).toBe(10);
-    expect(chaseDriftSquares(40, 20)).toBe(-5);
-    expect(chaseDriftSquares(40, 40)).toBe(0);
-    expect(chaseDriftSquares(40, 60)).toBe(5);
-  });
-
   it('przesuwa środek wzdłuż kierunku jazdy', () => {
     expect(chaseShiftAlong({ x: 500, y: 500 }, 'right', -2, 100)).toEqual({ x: 300, y: 500 });
     expect(chaseShiftAlong({ x: 500, y: 500 }, 'up', 3, 100)).toEqual({ x: 500, y: 200 });
-  });
-
-  it('dryf nie przycina wzdłuż drogi, ale trzyma pas w poprzek', () => {
-    const settings = { direction: 'right' as const, road: { from: 6, to: 12 } };
-    const drifted = chaseDriftedCentre({ x: 200, y: 100 }, CAR, settings, SCENE, -5);
-    expect(drifted).toEqual({ x: -300, y: 750 });
   });
 
   it('odpada dopiero bryła cała za krawędzią: w tyle albo ucieka', () => {

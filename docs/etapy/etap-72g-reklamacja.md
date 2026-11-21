@@ -2,9 +2,9 @@
 
 **Faza:** przed betą (zlecenie MG z 21.11, część etapu 72) · **Wymaga:** 72a–72f3 (model prędkości
 i pasów, Wyścig, kokpit, autopilot, okno „Pościg”, plan rund), 66 (wzorce scen), 67 (modele aut)
-· **Stan:** 🟨 72g1 — wzorzec `data/public/scenes/reklamacja/` zrobiony i rozegrany w przeglądarce
-21.11 (8 rund, wnioski wprowadzone); czeka na decyzje MG z „Do decyzji”, 72g2 (stały E2E,
-sprzątanie) i stół MG
+· **Stan:** 🟨 72g1 ✅ 21.11 — wzorzec `data/public/scenes/reklamacja/` zrobiony i rozegrany
+w przeglądarce (8 rund, wnioski wprowadzone); **72g2 ✅ 21.11** — decyzje MG, stały E2E
+`48-poscig/t72g-reklamacja`, sprzątanie starego kodu jazdy; czeka na stół MG
 
 ## Skąd ten etap
 
@@ -38,7 +38,7 @@ hurtowej — spina się z etapem 68).
 przerabianych aut sprzęt Militechu z kradzionych transportów. Militech namierzył numery seryjne
 i nie poszedł na policję: dziś rano furgon konwojowy zabrał Tłoka z warsztatu, skutego, „do
 wyjaśnienia”. Drużyna (dwie postacie) rusza za furgonem kombi z dziupli, z pługiem i butlą nitro.
-W kabinie furgonu jadą kierowca **Wektor** i ochroniarz **Kamień** z karabinem szturmowym,
+W kabinie furgonu jadą kierowca **Wektor** i ochroniarz **Kamień** z pistoletem maszynowym,
 z tyłu skuty Tłok. W rundzie 3 od tyłu wjeżdża radiowóz NCPD (sierżant **Gil**, posterunkowy
 **Szpak**), któremu Militech zapłacił za „eskortę”.
 
@@ -75,7 +75,8 @@ Odstęp na starcie: 6,5 m zderzak do zderzaka. Furgon ucieka, gdy straci kombi o
 ## Postacie niezależne
 
 Statystyki wymyślone. Wektor: REF 7, Prowadzenie 6 (Wyścig 13 + 1k10), ciężki pistolet. Kamień:
-karabin szturmowy i ciężki pistolet, lekki pancerz z hełmem. Tłok: Unieruchomiony (skuty),
+pistolet maszynowy (od 72g2, decyzja MG; wcześniej karabin szturmowy) i ciężki pistolet, lekki
+pancerz z hełmem. Tłok: Unieruchomiony (skuty),
 TECH 8, Naprawa pojazdów 6, Naprawa broni 6, Handel 5; „Kajdanki Militechu” w ekwipunku. Gil:
 REF 7, Prowadzenie 5, ciężki pistolet. Szpak: strzelba. Notatki MG (📌 ❓ ⚠️ 💬 💰) — jak
 w poprzednich wzorcach: o co chodzi, zanim ruszycie (skalowanie, kierowca drużyny), przebieg
@@ -131,20 +132,32 @@ przejeździe, „Cel za szybą” przy strzale w kabinę, auto bez „Jedź” j
   trafieniach). Notatka „Zanim ruszycie” mówi: postacie bez pancerza — Kamień z pistoletu.
 - **Rezerwa radiowozu na górnym pasie** — na dolnym stała na fladze startu drużyny.
 
-**Do decyzji MG:**
+**Decyzje MG (21.11, 72g2)** — pytania z rozegrania, w nawiasach odpowiedź:
 
 - Karabin Kamienia przy dwóch startowych postaciach — zostawić z notatką czy dać mu na stałe
-  pistolet maszynowy?
+  pistolet maszynowy? (**pistolet maszynowy na stałe**; notatka „Zanim ruszycie”: mocnej
+  drużynie MG daje Kamieniowi karabin na karcie)
 - Nomada z Moto 4 wygrywa Wyścig z Wektorem (17 przeciw 13) średnio o 2 m na rundę i zdaje
   kolczatkę (PT 17) prawie zawsze — dla drużyny z Nomadą scena jest łatwa na drodze, trudna
   w strzelaniu. Notatka „Zanim ruszycie” tłumaczy skalę kierowcy; podnieść Wektora?
+  (**Wektor zostaje przy 13**; notatka „Zanim ruszycie” podpowiada Prowadzenie 8 — Wyścig 15 —
+  przy drużynie z Nomadą)
 - Radiowóz z zamiarem „Blokuj” nie przebił się na pas kombi (środkowy zajmowała taksówka,
   autopilot zmienia pas o jeden na turę) — wystarczy, czy plan ma go wpuszczać na pas kombi?
+  (**zostaje jak jest** — gdy radiowóz nie zdąży, to też wynik sceny)
 
-## 72g2 — co zostało w etapie 72
+## 72g2 — stały E2E i sprzątanie (✅ 21.11)
 
-- [ ] Stały E2E `48-poscig/t72-*` na wzorcu „Reklamacja” (Wyścig z Nomadą — Moto w rozkładzie,
-      przeszkoda z planu, autopilot omija, posiłki z planu, kolczatka).
-- [ ] Sprzątanie starego kodu pościgu i wpisów (`umowy-kodu.md`, `pulapki-dev.md`,
-      `zaleglosci.md`), decyzje MG z listy wyżej.
+- [x] Stały E2E `48-poscig/t72g-reklamacja` na wzorcu (punkt `role-start`, Koleina-Nomada
+      w Firefoksie, MG w Chromium): Wyścig z Moto 4 w rozkładzie i zrywem w kombi, Gwałtowny
+      skręt z Moto (NOM-02), kolczatka z kokpitu MG i Test PT 17 z Moto przy dryfie na początku
+      rundy 2, auto cywilne z planu na pasie furgonu i autopilot „Uciekaj”, który z niego
+      zjeżdża, radiowóz z planu od tyłu na dolny pas z 200 mil/h; gracz bez planu i zamiarów.
+- [x] Sprzątanie: martwy kod starej jazdy (`chaseMoveSquares`, `chaseDriftSquares`,
+      `chaseDriftedCentre`, `chaseReturnCentre`, `cpredVehicleChase`, `cpredVehicleSpeed`,
+      `cpredLostControlMove`) i jego testy; umowy `mapa` i `tura` przepisane pod etap 72;
+      wpisy oględzin dryfu i czterech dróg w `zaleglosci.md` zamknięte jako zdezaktualizowane;
+      podpowiedź „Zwykła jazda” w katalogu akcji mówi o Wyścigu.
+- [x] Decyzje MG z listy wyżej wprowadzone we wzorcu; dwie zaległości z 21.11 rozstrzygnięte
+      (okno „Pościg” domyślnie po lewej, „Po ruchu” bez zmian).
 - [ ] Oględziny MG przy stole.

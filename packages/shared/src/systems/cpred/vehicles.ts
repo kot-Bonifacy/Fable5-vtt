@@ -855,35 +855,6 @@ export const CPRED_DRIVING_TEST_THRESHOLD = 9;
 export const CPRED_INTERFACE_PLUGS_NAME = 'Złącza interfejsu';
 
 /**
- * Liczby pojazdu w pościgu: kratki na Akcję Ruchu (`Ruch / 4`), dryf na rundę
- * i zbiorniki Nitro, które jeszcze zostały. Zgaszony silnik nie daje ruchu,
- * a droga zabiera auto w tył z pełnym tempem (decyzja MG 12).
- */
-export function cpredVehicleChase(
-  stats: CpredVehicleStats,
-  chase: {
-    tempo: number;
-    started: boolean;
-    nitroUsed: number;
-    /**
-     * Własna prędkość auta w tej rundzie (`cpredVehicleSpeed`) — bez niej auto
-     * z pracującym silnikiem jedzie swoim Ruchem. Dryf liczy się z niej, a `tempo`
-     * to wtedy prędkość ramy (`chaseFrameTempo`), nie ustawienie sceny.
-     */
-    speed?: number;
-  },
-): { moveSq: number; driftSq: number; nitroLeft: number } {
-  // Wrak nie jedzie (65d1): droga zabiera go w tył z pełnym tempem, jak zgaszone auto.
-  const own = chase.started && !cpredVehicleWrecked(stats) ? stats.move : 0;
-  const speed = chase.speed ?? own;
-  return {
-    moveSq: Math.max(0, own) / 4,
-    driftSq: (Math.max(0, speed) - Math.max(0, chase.tempo)) / 4,
-    nitroLeft: Math.max(0, cpredVehicleDerived(stats).nitroTanks - chase.nitroUsed),
-  };
-}
-
-/**
  * Najmniejsza prędkość toczącego się auta bez kierowcy — poniżej staje
  * (decyzja MG z 05.11.2026): mniej niż kratka na rundę to już postój.
  */
@@ -898,21 +869,6 @@ export const CPRED_COAST_MIN_SPEED = 4;
 export function cpredCoastSpeed(speed: number): number {
   const next = Math.floor(Math.max(0, speed) / 2);
   return next < CPRED_COAST_MIN_SPEED ? 0 : next;
-}
-
-/**
- * Własna prędkość auta (decyzja MG z 05.11.2026): z kierowcą — Ruch pojazdu,
- * bez kierowcy — pęd, z którym jeszcze się toczy (`momentum`, `null` = stał),
- * zgaszone i wrak — 0. „Z kierowcą” to także utrata kontroli: kierowca jest,
- * tylko auto mu ucieka.
- */
-export function cpredVehicleSpeed(
-  stats: CpredVehicleStats,
-  state: { started: boolean; driven: boolean; momentum: number | null },
-): number {
-  if (!state.started || cpredVehicleWrecked(stats)) return 0;
-  if (state.driven) return Math.max(0, stats.move);
-  return Math.min(Math.max(0, stats.move), Math.max(0, state.momentum ?? 0));
 }
 
 /**

@@ -4,8 +4,6 @@ import { readCpredFleet, cpredFleetProblem } from './roleability.js';
 import {
   cpredDriverIncapable,
   cpredCoastSpeed,
-  cpredVehicleChase,
-  cpredVehicleSpeed,
   CPRED_VEHICLE_FALLBACK,
   cpredFleetRowLevel,
   cpredGuessFleetVehicle,
@@ -385,59 +383,12 @@ describe('Tabor Rodziny', () => {
 });
 
 describe('pojazd w pościgu (65c)', () => {
-  const stats = readCpredVehicle({ kind: 'car', hpMax: 50, seats: 4, move: 20 });
-
-  it('liczy budżet, dryf i zbiorniki Nitro; zgaszony silnik daje pełny dryf w tył', () => {
-    expect(cpredVehicleChase(stats, { tempo: 40, started: true, nitroUsed: 0 })).toEqual({
-      moveSq: 5,
-      driftSq: -5,
-      nitroLeft: 0,
-    });
-    const nitro = readCpredVehicle({
-      kind: 'car',
-      hpMax: 50,
-      seats: 4,
-      move: 40,
-      upgrades: [
-        { id: 'a', upgradeId: 'nitro' },
-        { id: 'b', upgradeId: 'nitro' },
-      ],
-    });
-    expect(cpredVehicleChase(nitro, { tempo: 40, started: false, nitroUsed: 1 })).toEqual({
-      moveSq: 0,
-      driftSq: -10,
-      nitroLeft: 1,
-    });
-  });
-
   it('bez kierowcy auto powoli zwalnia: połowa na rundę, poniżej 4 stoi (05.11)', () => {
     expect(cpredCoastSpeed(40)).toBe(20);
     expect(cpredCoastSpeed(20)).toBe(10);
     expect(cpredCoastSpeed(10)).toBe(5);
     expect(cpredCoastSpeed(5)).toBe(0);
     expect(cpredCoastSpeed(0)).toBe(0);
-  });
-
-  it('własna prędkość: kierowca — Ruch, bez kierowcy — pęd, zgaszone i wrak — 0 (05.11)', () => {
-    expect(cpredVehicleSpeed(stats, { started: true, driven: true, momentum: null })).toBe(20);
-    expect(cpredVehicleSpeed(stats, { started: true, driven: false, momentum: null })).toBe(0);
-    expect(cpredVehicleSpeed(stats, { started: true, driven: false, momentum: 10 })).toBe(10);
-    // Pęd nie przekracza Ruchu auta.
-    expect(cpredVehicleSpeed(stats, { started: true, driven: false, momentum: 40 })).toBe(20);
-    expect(cpredVehicleSpeed(stats, { started: false, driven: true, momentum: 20 })).toBe(0);
-    const wreck = readCpredVehicle({ kind: 'car', hpMax: 50, hp: 0, seats: 4, move: 20 });
-    expect(cpredVehicleSpeed(wreck, { started: true, driven: true, momentum: 20 })).toBe(0);
-  });
-
-  it('dryf liczy się z podanej prędkości i ramy, budżet kierowcy zostaje z Ruchu (05.11)', () => {
-    // Auto bez kierowcy toczy się 10 na drodze 40: −7,5 kratki; budżet bez zmian.
-    expect(cpredVehicleChase(stats, { tempo: 40, started: true, nitroUsed: 0, speed: 10 })).toEqual(
-      { moveSq: 5, driftSq: -7.5, nitroLeft: 0 },
-    );
-    // Auto drużyny stoi — rama 0, auto z kierowcą odjeżdża do przodu.
-    expect(cpredVehicleChase(stats, { tempo: 0, started: true, nitroUsed: 0 })).toMatchObject({
-      driftSq: 5,
-    });
   });
 
   it('Nieprzytomny, Martwy i Śmiertelnie Ranny nie prowadzą', () => {
@@ -491,13 +442,9 @@ describe('walka pojazdów (etap 65d1, s. 191)', () => {
     expect(read.windows).toEqual({ rear: 3 });
   });
 
-  it('wrak nie jedzie: dryf z pełnym tempem, jak zgaszone auto', () => {
-    const wreck = { ...armored, hp: 0 };
-    expect(cpredVehicleWrecked(wreck)).toBe(true);
-    expect(cpredVehicleChase(wreck, { tempo: 40, started: true, nitroUsed: 0 })).toMatchObject({
-      moveSq: 0,
-      driftSq: -10,
-    });
+  it('auto bez PUK to wrak', () => {
+    expect(cpredVehicleWrecked({ ...armored, hp: 0 })).toBe(true);
+    expect(cpredVehicleWrecked(armored)).toBe(false);
   });
 
   it('Ulepszone zespolenie: motocykl, złącza interfejsu i REF 8+ (s. 165)', () => {

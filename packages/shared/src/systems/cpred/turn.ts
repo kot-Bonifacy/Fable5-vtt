@@ -167,8 +167,9 @@ export const CPRED_ACTION_COAT_BLADE = 'coat-blade';
 
 /**
  * Pojazd w pościgu (etap 65c, s. 191–192): uruchomienie i zatrzymanie są
- * Akcją, zwykła jazda słabego kierowcy zabiera Akcję na Test, a Nitro za Akcję
- * daje drugi Ruch pojazdu. Wszystkie rozstrzyga `realtime/chase-driving.ts`.
+ * Akcją, a Nitro za Akcję dokłada ruchu. Rozstrzyga je `realtime/chase-driving.ts`.
+ * Test zwykłej jazdy słabego kierowcy od etapu 72c rzuca się na początku rundy
+ * razem z Wyścigiem (`realtime/chase-race.ts`) — wpis katalogu zostaje do nazwy.
  */
 export const CPRED_ACTION_VEHICLE_ENTER = 'vehicle-enter';
 export const CPRED_ACTION_VEHICLE_START = 'vehicle-start';
@@ -352,7 +353,7 @@ export const CPRED_ACTIONS: readonly CpredActionDefinition[] = [
     id: CPRED_ACTION_DRIVE_TEST,
     name: 'Zwykła jazda',
     cost: 'move',
-    hint: 'Kierowca z REF + Prowadzenie ≤ 9 rzuca w każdej turze Test PT 10 w ramach Akcji Ruchu, inaczej traci kontrolę.',
+    hint: 'Kierowca z REF + Prowadzenie (+ Moto) ≤ 9 rzuca na początku każdej rundy Test PT 10 razem z Wyścigiem — porażka to utrata kontroli.',
     handledElsewhere: true,
   },
   {

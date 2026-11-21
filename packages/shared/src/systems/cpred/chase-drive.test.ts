@@ -7,7 +7,6 @@ import {
   CPRED_RACE_BONUS_MAX,
   cpredCanSlowBehind,
   cpredDriveAdvance,
-  cpredLostControlMove,
   cpredLostControlLane,
   cpredLostControlNote,
   cpredLostControlSpeed,
@@ -277,16 +276,17 @@ describe('utrata kontroli', () => {
   const fixed = (value: number) => () => value;
 
   it('prędkość −10 Ruchu, 1k6: 1–2 pas wyżej, 3–4 prosto, 5–6 pas niżej', () => {
-    expect(cpredLostControlMove(30, fixed(1))).toEqual({ speed: 20, laneDelta: -1, die: 1 });
-    expect(cpredLostControlMove(30, fixed(2)).laneDelta).toBe(-1);
-    expect(cpredLostControlMove(30, fixed(3)).laneDelta).toBe(0);
-    expect(cpredLostControlMove(30, fixed(4)).laneDelta).toBe(0);
-    expect(cpredLostControlMove(30, fixed(5)).laneDelta).toBe(1);
-    expect(cpredLostControlMove(30, fixed(6)).laneDelta).toBe(1);
+    expect(cpredLostControlSpeed(30)).toBe(20);
+    expect(cpredLostControlLane(fixed(1))).toEqual({ laneDelta: -1, die: 1 });
+    expect(cpredLostControlLane(fixed(2)).laneDelta).toBe(-1);
+    expect(cpredLostControlLane(fixed(3)).laneDelta).toBe(0);
+    expect(cpredLostControlLane(fixed(4)).laneDelta).toBe(0);
+    expect(cpredLostControlLane(fixed(5)).laneDelta).toBe(1);
+    expect(cpredLostControlLane(fixed(6)).laneDelta).toBe(1);
   });
 
   it('prędkość nie spada poniżej zera', () => {
-    expect(cpredLostControlMove(5, fixed(3)).speed).toBe(0);
+    expect(cpredLostControlSpeed(5)).toBe(0);
   });
 
   it('prędkość i tor osobno: spadek od razu, 1k6 dopiero przy ruchu', () => {
@@ -301,7 +301,7 @@ describe('utrata kontroli', () => {
   it('rzuca dokładnie jedną kością k6 z wstrzykniętego RNG', () => {
     const sides: number[] = [];
     const rng = createSeededRng(7);
-    const outcome = cpredLostControlMove(20, (n) => {
+    const outcome = cpredLostControlLane((n) => {
       sides.push(n);
       return rng(n);
     });

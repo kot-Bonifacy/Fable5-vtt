@@ -123,9 +123,12 @@ function ChaseWindowBody({ scene }: { scene: SceneView }) {
   const round = useCombatStore((s) =>
     s.combat && s.combat.sceneId === scene.id ? s.combat.round : null,
   );
+  // Pierwsze otwarcie: przy lewej krawędzi mapy, za lewą belką i pod paskiem
+  // narzędzi — prawy górny róg mapy należy do panelu decyzji MG, w którym pytają
+  // plan rund i Wyścig (decyzja MG 21.11, 72g2). Przesunięte okno pamięta miejsce.
   const placement = useWindowPlacement('chase', () => ({
-    x: Math.max(16, window.innerWidth - 560),
-    y: 120,
+    x: Math.round(document.querySelector('.hud-rail')?.getBoundingClientRect().right ?? 272) + 16,
+    y: 176,
   }));
   const inCombat = scene.chase.pursuitSpeed !== null;
   const anchorId = chaseAnchorVehicle(vehicles, scene.chase.anchorId);

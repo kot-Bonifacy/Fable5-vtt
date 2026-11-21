@@ -370,24 +370,6 @@ export function clampChaseVehicle(
   };
 }
 
-/**
- * Kratki, o które auto o tej szybkości jedzie w jednej Akcji Ruchu kierowcy
- * (decyzja MG 12: `Ruch / 4`) — zasada domowa, opisana
- * w `decyzje-i-uproszczenia.md`. Ta sama miara, co prędkość bieżni.
- */
-export function chaseMoveSquares(speed: number): number {
-  return Math.max(0, speed) / 4;
-}
-
-/**
- * Dryf auta na początku rundy w kratkach wzdłuż kierunku jazdy (decyzja MG 12):
- * auto wolniejsze od tempa pościgu traci `(tempo − Ruch) / 4`, szybsze tyle
- * zyskuje. Ujemny — w tył.
- */
-export function chaseDriftSquares(tempo: number, speed: number): number {
-  return (Math.max(0, speed) - Math.max(0, tempo)) / 4;
-}
-
 /** Środek przesunięty wzdłuż kierunku jazdy o `squares` kratek (ujemne — w tył). */
 export function chaseShiftAlong(
   centre: ScenePoint,
@@ -437,49 +419,6 @@ export function chaseOffscreen(
       if (centre.y + hy <= 0) return 'escaped';
       return null;
   }
-}
-
-/**
- * Środek auta po dryfie: wzdłuż kierunku bez przycięcia do sceny (auto może
- * z niej wyjechać — wtedy odpada z pościgu), w poprzek — w pasie jezdni.
- */
-export function chaseDriftedCentre(
-  centre: ScenePoint,
-  body: Pick<ChaseBody, 'widthSq' | 'lengthSq'>,
-  settings: Pick<ChaseSettings, 'direction' | 'road'>,
-  scene: {
-    width: number;
-    height: number;
-    gridSizePx: number;
-    gridOffsetX: number;
-    gridOffsetY: number;
-  },
-  squares: number,
-): ScenePoint {
-  const shifted = chaseShiftAlong(centre, settings.direction, squares, scene.gridSizePx);
-  const across = clampChaseVehicle(shifted, body, settings, scene);
-  return chaseIsHorizontal(settings.direction)
-    ? { x: shifted.x, y: across.y }
-    : { x: across.x, y: shifted.y };
-}
-
-/**
- * Auto wraca do pościgu (MG, „Przywróć”): stawia się przy krawędzi, za którą
- * wypadło — `behind` przy tylnej, `escaped` przy przedniej — w pasie jezdni.
- */
-export function chaseReturnCentre(
-  centre: ScenePoint,
-  body: Pick<ChaseBody, 'widthSq' | 'lengthSq'>,
-  settings: Pick<ChaseSettings, 'direction' | 'road'>,
-  scene: {
-    width: number;
-    height: number;
-    gridSizePx: number;
-    gridOffsetX: number;
-    gridOffsetY: number;
-  },
-): ScenePoint {
-  return clampChaseVehicle(centre, body, settings, scene);
 }
 
 /**

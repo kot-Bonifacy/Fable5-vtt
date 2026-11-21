@@ -1,5 +1,36 @@
 # Dziennik sesji — archiwum
 
+### Sesja 21.11 (druga) — etap 72f3: plan rund pościgu
+
+**Zrobione (czeka na wdrożenie razem z 72b1–72f2; bez migracji — `Scene.chasePlan` jest od 72b1):**
+
+- **Decyzje MG z pytań na starcie:** runda **nie stoi** na pytaniu planu; zdarzenie bez
+  odpowiedzi **czeka dalej**; ślad to **karta czatu tylko dla MG**; cztery rodzaje — posiłki,
+  przeszkoda, Manewr na wezwanie, notatka.
+- **`shared`:** `chase-plan.ts` (rdzeń) — zdarzenia i stan wiersza, `readChasePlanEvents`,
+  `mergeChasePlan` (otwarte pytanie nietykalne), `chasePlanDue`, `resetChasePlan`,
+  `remapChasePlan`, `chasePlanTitle`; rodzaj czatu `chaseplan` (rubryka „Walka”); wzorzec
+  `chase.plan` z kluczami aut i opcjonalnym `id`.
+- **Serwer (`realtime/chase-plan.ts`):** `chase:plan`, `chase:plan-answer`, `askChasePlan`
+  w `advanceTurn` (po kadrze, przed Wyścigiem), `cancelChasePlanCards` na końcu i starcie walki;
+  wykonanie przez wydzielone `restoreToChase`, `spawnObstacleOnLane`, `callManeuver` (te same,
+  co w oknie). Plan tylko do MG (`chase:sync`, `scenePlan`), wzorzec i paczka z planem.
+- **Klient:** `ChasePlanEditor.tsx` (sekcja „Plan rund” w oknie „Pościg” i krok „Plan”
+  w kreatorze — lista z R-numerem, stanem, „Usuń” albo przyciskami odpowiedzi), karta
+  `ChasePlanCard.tsx` na czacie i w panelu decyzji (rodzaj `plan`, ikona 📜). Podpowiedź kroku
+  „Gotowe” kreatora mówiła jeszcze o palecie przeszkód — poprawiona na okno „Pościg”.
+
+Testy: `shared` 3282/3282 (nowy `chase-plan.test.ts` — 12), serwer 1894/1894 (nowy
+`chase-plan.test.ts` — 6 na żywych gniazdach; plan w paczce `chase.test.ts` i we wzorcu
+`test-poscig`, macierz izolacji), klient 527/527; `tsc` czterech pakietów, lint i Prettier na
+zmienionych plikach czyste. E2E: cały `48-poscig` **34/34** — nowy `t72f3-plan` (3: MG wpisuje
+plan w oknie, panel decyzji pyta w rundzie 1 i 2, „Wypuść” przywraca Radiowóz; gracz nie dostaje
+ani planu, ani karty) i krok „Plan” w `t65-kreator` (MG w Firefoksie). **Oglądano zrzuty
+w Chromium i w Firefoksie** (`t72f3-plan` jednorazowo także z MG w Firefoksie).
+Uwaga do stołu: domyślne miejsce okna „Pościg” zasłania panel decyzji w prawym górnym rogu mapy —
+wiersz „pyta teraz” w oknie ma te same przyciski, a okno da się przesunąć (zaległość z 21.11).
+`specs/99-zapomnij/` to dalej cudze oględziny z 14.11.
+
 ### Sesja 21.11 — etap 72f2: okno „Pościg” MG
 
 **Zrobione (czeka na wdrożenie razem z 72b1–72f1; nowa migracja `20261121100000_chase_start_speed`):**

@@ -271,14 +271,11 @@ export interface CpredLostControlMove {
 /**
  * Automat utraty kontroli (zasada domowa w miejsce „MG wyznacza ruch”):
  * prędkość −10 Ruchu, a 1k6 wybiera tor — 1–2 pas wyżej, 3–4 prosto, 5–6 pas
- * niżej. Auto przy krawędzi jezdni zostaje na pasie — przycina wołający
- * (`chaseLaneTarget`), bo tylko on zna liczbę pasów.
+ * niżej (`cpredLostControlLane`). Auto przy krawędzi jezdni zostaje na pasie —
+ * przycina wołający (`chaseLaneTarget`), bo tylko on zna liczbę pasów.
+ *
+ * Prędkość zaraz po utracie kontroli — spada od razu, zanim auto pojedzie.
  */
-export function cpredLostControlMove(speed: number, rng: DiceRng): CpredLostControlMove {
-  return { speed: cpredLostControlSpeed(speed), ...cpredLostControlLane(rng) };
-}
-
-/** Prędkość zaraz po utracie kontroli — spada od razu, zanim auto pojedzie. */
 export function cpredLostControlSpeed(speed: number): number {
   return Math.max(0, speed - CPRED_LOST_CONTROL_SLOWDOWN);
 }

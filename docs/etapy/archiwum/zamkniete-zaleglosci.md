@@ -9,6 +9,49 @@ go czytać.
 albo gdy chcesz sprawdzić, czy pozycja, która wygląda na nową, nie jest wracającą starą.
 Treść wpisów jest niezmieniona — łącznie z datami i odsyłaczami do notatek sesji.
 
+## Zamknięte 2026-11-21, etap 72g2 (sprzątanie pościgu)
+
+**Okno „Pościg” zasłaniało panel decyzji — naprawione.** Decyzja MG (21.11, 72g2): okno staje
+przy pierwszym otwarciu przy lewej krawędzi mapy, za lewą belką i pod paskiem narzędzi
+(`ChaseWindow.tsx`, `useWindowPlacement('chase', …)`: `x` = prawa krawędź `.hud-rail` + 16,
+`y` = 176), więc prawy górny róg zostaje panelowi decyzji. Okno raz przesunięte przez MG pamięta
+swoje miejsce (stara pozycja w przeglądarce MG zostaje, dopóki jej nie przesunie). Wpis
+w chwili zamknięcia:
+
+**21.11.2026 — okno „Pościg” w domyślnym miejscu zasłania panel decyzji (72f3).** Okno staje
+przy prawej krawędzi (`x = szerokość − 560`, `y = 120`), a panel decyzji siedzi w prawym górnym
+rogu mapy — pytanie planu rund wyskakuje pod oknem (widać z niego lewą połowę). Wiersz „pyta
+teraz” w oknie ma te same przyciski, a okno da się przesunąć, więc nic nie blokuje. Do decyzji
+MG przy 72g: inne domyślne miejsce okna albo panel nad oknem.
+
+**Oględziny starego modelu jazdy — zdezaktualizowane etapem 72.** Trzy wpisy opisywały oględziny
+dryfu, tempa, pędu i czterech dróg kreatora, których od etapu 72 (72a–72b1, sprzątanie 72g2)
+już nie ma: jazda to prędkość i pasy (`realtime/chase-drive.ts`), wbudowana droga jest jedna
+(Neonowa ulica), a stojące auto przed zderzakiem zakłada `startChaseRound`. Migracje z tych
+wpisów (`20261103210000_chase_vehicle_blocking`, `20261105180000_chase_vehicle_momentum`) stoją
+na liście migracji w `POSTEP.md` i wjadą z `./deploy.sh`. Treść wpisów w chwili zamknięcia:
+
+**05.11.2026 — rama pościgu i auto bez kierowcy: wdrożenie (migracja
+`20261105180000_chase_vehicle_momentum`) i oględziny przy stole.** Oglądane w Firefoksie i Chromium
+na `dev.db`: bez kierowcy Wozu droga stoi u MG i graczy, rusza po siadaniu za kierownicę, menu
+auta „bez dryfu · bez kierowcy — stoi”; w dogrywce furgon bez Wolta miał pęd 20 → 10 (dryf −7,5)
+i wjechał w barykadę jako wrak. Luka ze stanem kierowcy zamknięta 05.11
+(trzecia sesja, `archiwum/zamkniete-zaleglosci.md`). E2E `48-poscig` puszczone 06.11 (szósta
+sesja): `t65-przeszkody` dostosowany (kolczatkę bierze auto z kurierem, bo puste stoi), 8/8.
+
+**03.11.2026 — kreator pościgu: oględziny przy stole, wdrożenie.** Od 06.11 stały E2E
+`48-poscig/t65-kreator` (MG w Firefoksie, gracz w Chromium; wpis w archiwum). Przy stole: „Utwórz → Pościg” — kreator, każda z czterech dróg
+w kafelku i na mapie (czy przewija się bez szwu na żywo i czy wygląd pasuje do stołu), „Wgraj
+własną mapę”, przeciągnięcie obu krawędzi pasa w kroku „Droga”, „Na drogę” dla trzech aut
+(nie lądują na sobie), „Pełna edycja sceny…” otwiera zakładkę „Pościg”. Na VPS pliki
+`/art/roads/*.webp` jadą w obrazie klienta (bez migracji).
+
+**03.11.2026 — przegląd mechanik pościgu: wdrożenie (migracja
+`20261103210000_chase_vehicle_blocking`) i resztka oględzin.** Stojące auto NPC-a przed autem
+gracza, „Za kierowcę” w menu MG i słaby kierowca z Nitro obejrzane 07.11 (Ola w Firefoksie,
+wpis w archiwum). **Nie widziane w przeglądarce:** wrak (PUK 0) dryfujący przed zderzak — sprawdza
+go `chase-review.test.ts`.
+
 ## Zamknięte 2026-11-21, etap 72g1 (wzorce 66c i 66d skasowane)
 
 MG skasował oba wzorce jako testowe i niezweryfikowane; ich miejsce zajęła scena „Reklamacja” w nowym
