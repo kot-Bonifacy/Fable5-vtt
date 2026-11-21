@@ -39,7 +39,6 @@ import {
   type TokenView,
 } from '@vtt/shared';
 import {
-  DOUBLE_CLICK_MS,
   MapRenderer,
   type LightMarker,
   type MoveAllowance,
@@ -312,15 +311,6 @@ function vehicleMenuAt(worldX: number, worldY: number, clientX: number, clientY:
   return true;
 }
 
-/** Menu auta po kliku w figurę w fotelu, czekające na ewentualny dwuklik. */
-let pendingVehicleMenu: ReturnType<typeof setTimeout> | null = null;
-
-function cancelVehicleMenu(): void {
-  if (pendingVehicleMenu === null) return;
-  clearTimeout(pendingVehicleMenu);
-  pendingVehicleMenu = null;
-}
-
 function vehicleClickAt(
   worldX: number,
   worldY: number,
@@ -347,7 +337,6 @@ function vehicleClickAt(
     isGm,
   );
   const free = seat !== null && !taken && figure !== null;
-  cancelVehicleMenu();
   const sit = () => {
     void seatInVehicle({ tokenId: figure!.id, sceneVehicleId: vehicle.id, seat: seat! }).then(
       (ack) => {
@@ -365,18 +354,10 @@ function vehicleClickAt(
   if (client) useAimMenuStore.getState().placeAt(client.x, client.y);
   if (shootVehicleAt(vehicle.id)) return true;
   if (free) return sit();
-  if (!client) return true;
-  // Klik w figurę w fotelu (21.11.2026, decyzja MG): menu auta czeka okno
-  // dwukliku, bo jego tło zjadało drugi klik i karta postaci się nie otwierała.
-  // Dwuklik w figurę zdejmuje czekające menu (`onTokenActivate`).
-  if (taken) {
-    pendingVehicleMenu = setTimeout(() => {
-      pendingVehicleMenu = null;
-      useChaseStore.getState().openMenu(vehicle.id, client.x, client.y);
-    }, DOUBLE_CLICK_MS);
-    return true;
-  }
-  useChaseStore.getState().openMenu(vehicle.id, client.x, client.y);
+  // Menu auta tylko z prawego przycisku (`vehicleMenuAt`, decyzja MG 21.11):
+  // lewy w figurę w fotelu ją zaznacza, a dwuklik otwiera kartę — jak na każdej
+  // scenie. Lewy w kadłub nic nie robi, ale klik jest zużyty, żeby prowadzona
+  // figura nie ruszyła marszem na pole auta.
   return true;
 }
 
@@ -1076,8 +1057,9 @@ export function MapArea() {
         return true;
       }
       // Auto na scenie pościgu (65b): klik w wolny fotel sadza w nim figurę,
-      // klik w resztę auta otwiera jego menu. Przed granatem i skokiem nie —
-      // to one rozbrajają się klikiem obok, a auto jest dużym celem.
+      // w resztę auta nic nie robi (menu auta — prawy przycisk, 21.11). Przed
+      // granatem i skokiem nie — to one rozbrajają się klikiem obok, a auto jest
+      // dużym celem.
       if (
         vehicleClickAt(worldX, worldY, (point) => rendererRef.current?.worldToClient(point) ?? null)
       ) {
@@ -1286,10 +1268,7 @@ export function MapArea() {
     renderer.onTokenMenu = (tokenId, clientX, clientY) => {
       setMenu({ tokenId, x: clientX, y: clientY });
     };
-    renderer.onTokenActivate = (tokenId) => {
-      cancelVehicleMenu();
-      openSheetOfToken(tokenId);
-    };
+    renderer.onTokenActivate = (tokenId) => openSheetOfToken(tokenId);
     renderer.onTokenTarget = fireAtToken;
     // Kilka celów na jednym polu (03.11, zlecenie MG): pytanie przy kursorze,
     // wybór wraca przez `fireAtToken` jak klik w pojedynczą figurę.

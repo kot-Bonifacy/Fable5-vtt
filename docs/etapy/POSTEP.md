@@ -168,23 +168,26 @@ a nie do tego pliku.
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
 
-### Sesja 21.11 (dziewiąta) — zlecenie MG: dwuklik w figurę w fotelu otwiera kartę
+### Sesja 21.11 (dziewiąta) — zlecenie MG: pościg klika jak zwykła scena (karta dwuklikiem, menu auta z PPM)
 
 **Zrobione (bez migracji; czeka na wdrożenie):**
 
-- **Pościg: dwuklik w figurę w fotelu otwiera kartę postaci**, jak na zwykłej mapie. Przyczyna:
-  pierwszy klik w figurę w fotelu szedł też do `onMapClick` → `vehicleClickAt` i od razu otwierał
-  menu auta, którego tło (`context-menu-backdrop`) zjadało drugi klik. Teraz (decyzje MG
-  z pytań) klik w **zajęty fotel** otwiera menu auta po `DOUBLE_CLICK_MS` (350 ms, wyeksportowane
-  z `MapRenderer`), a dwuklik je zdejmuje (`cancelVehicleMenu` w `onTokenActivate`). Klik
-  w kadłub, wolny fotel i strzał z bronią działają bez opóźnienia. W rendererze flaga
-  `tokenActivateSpent`: puszczenie dwukliku na figurze nie jest już klikiem w mapę (żyje jeden gest).
+- **Lewy przycisk w aucie pościgu już nie otwiera menu auta** (decyzje MG z pytań, dwie rundy):
+  LPM w figurę w fotelu ją zaznacza, dwuklik otwiera kartę postaci, PPM w figurę daje menu
+  figury, a **menu auta jest tylko pod PPM w kadłub** (`vehicleMenuAt`, jak od 04.11). LPM
+  w kadłub nic nie robi (klik zużyty, bez marszu na pole auta); wolny fotel dalej sadza, broń
+  w ręku dalej strzela w auto. Przyczyna zgłoszenia: klik w figurę w fotelu szedł też do
+  `onMapClick` → `vehicleClickAt` i otwierał menu auta, którego tło zjadało drugi klik
+  dwukliku. Pierwsza próba (menu z opóźnieniem 350 ms, commit `9687a28e`) odrzucona przez MG:
+  pojedynczy LPM ma zaznaczać, jak na innych scenach. W rendererze została flaga
+  `tokenActivateSpent`: puszczenie dwukliku na figurze nie jest klikiem w mapę (żyje jeden gest).
   Umowa na górze `mapa`.
 
 Testy: klient 527/527; `tsc` klienta, ESLint i Prettier czyste. **Oglądano w czystym Chromium
-(Playwright)** na scenie „Oględziny 12.09”: dwuklik w Kosę w kombi otworzył jej kartę bez menu,
-pojedynczy klik otworzył menu auta „Kombi drużyny”. **Firefox z Playwright nie wstał** (timeout
-nawigacji, jak przy otwartym Firefoksie MG). Oględziny w Firefoksie do dołożenia.
+(Playwright)** na scenie „Oględziny 12.09”, kombi drużyny: LPM w Kosę zaznacza bez menu,
+dwuklik — jej karta, PPM w kadłub — menu „Kombi drużyny”, PPM w Kosę — menu figury.
+**Firefox z Playwright nie wstał** (timeout uruchomienia, jak przy otwartym Firefoksie MG).
+Oględziny w Firefoksie do dołożenia.
 
 ### Sesja 21.11 (ósma) — zlecenie MG: Piotrówna zamiast Tłoka, Avatar 34 tylko dla MG
 

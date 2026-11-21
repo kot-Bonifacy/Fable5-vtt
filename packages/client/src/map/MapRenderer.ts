@@ -444,7 +444,7 @@ const MAX_ZOOM = MAP_MAX_ZOOM;
 /** Screen-pixel distance that turns a click into a drag. */
 const DRAG_THRESHOLD_PX = 4;
 /** Max gap between two clicks on a token to count as a double-click. */
-export const DOUBLE_CLICK_MS = 350;
+const DOUBLE_CLICK_MS = 350;
 /** Ile pikseli ekranu wolno drgnąć ręce, żeby gest liczył się jeszcze jako klik. */
 const TAP_SLOP_PX = 6;
 
@@ -1197,7 +1197,7 @@ export class MapRenderer {
   /**
    * Drugi klik dwukliku w figurę otworzył kartę (21.11.2026) — ten sam gest
    * nie jest już klikiem w mapę. Bez tego puszczenie dwukliku na figurze
-   * w fotelu szło do `onMapClick` jako klik w auto i otwierało jego menu.
+   * w fotelu szło do `onMapClick` jako klik w auto.
    * Żyje jeden gest: zeruje go każde następne naciśnięcie i `clicked`.
    */
   private tokenActivateSpent = false;
@@ -2668,7 +2668,8 @@ export class MapRenderer {
 
       // Auto na scenie pościgu (65b): MG chwyta je i przeciąga po drodze. Figura
       // siedząca w aucie bierze klik sama (jej menu, zaznaczenie, przeciąganie
-      // do innego fotela), a gest bez ruchu zostaje kliknięciem — menu auta.
+      // do innego fotela), a gest bez ruchu zostaje kliknięciem (`onMapClick`;
+      // menu auta jest od 21.11 tylko pod prawym przyciskiem).
       // Od 65c także kierowca swoje auto — z limitem budżetu tury w walce.
       const grabbed =
         !this.mapToolArmed && !isTokenTarget(event.target) ? this.chase.pick(point) : null;
