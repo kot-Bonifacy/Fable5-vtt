@@ -10,6 +10,7 @@ import type {
   VehicleSeatPayload,
 } from '@vtt/shared';
 import {
+  parseChasePlan,
   CPRED_ACTION_MOVE,
   CPRED_ACTION_VEHICLE_ENTER,
   ROLE_GM,
@@ -456,9 +457,18 @@ export async function emitChase(
 ): Promise<void> {
   const views = await placedViews(deps.ctx.prisma, sceneId, { gm: true });
   const obstacles = await obstacleViews(deps.ctx.prisma, sceneId);
-  deps.io
-    .to(gmRoom(campaignId))
-    .emit('chase:sync', { sceneId, vehicles: views, obstacles } satisfies ChaseSyncBroadcast);
+  // Plan rund (72f3) to tajemnica MG — jedzie wyłącznie do pokoju MG.
+  const scene = await deps.ctx.prisma.scene.findUnique({
+    where: { id: sceneId },
+    select: { chasePlan: true },
+  });
+  const plan = parseChasePlan(scene?.chasePlan);
+  deps.io.to(gmRoom(campaignId)).emit('chase:sync', {
+    sceneId,
+    vehicles: views,
+    obstacles,
+    plan,
+  } satisfies ChaseSyncBroadcast);
   // Zamiar auta NPC-a (72e) to tajemnica MG — graczom jedzie widok bez niego.
   const players = views.filter(visibleToPlayers).map(playerVehicleView);
   const sockets = await deps.io.in(campaignRoom(campaignId)).fetchSockets();

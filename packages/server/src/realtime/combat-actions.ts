@@ -83,6 +83,7 @@ import { playNetFoeTurn } from './net-defense.js';
 import { liftNetFoesToTop } from './net-encounter.js';
 import { chaseRacePaused, resetChaseCombat } from './chase-offstage.js';
 import { cancelChaseRace, provideRaceResume, skipChaseRace } from './chase-race.js';
+import { cancelChasePlanCards } from './chase-plan.js';
 
 /**
  * The action economy (stage 14b).
@@ -948,6 +949,8 @@ export const combatEndEvent = defineEvent({
     await deps.ctx.prisma.combat.deleteMany({ where: { sceneId: scene.id } });
     // Wyścig czekający na kubki gaśnie z walką (72c) — karta zostaje jako przerwana.
     await cancelChaseRace(deps, campaignId, user, scene.id);
+    // Otwarte pytania planu rund (72f3) też — plan zaczyna się od nowa z walką.
+    await cancelChasePlanCards(deps, campaignId, scene.id);
     // Prędkość aut pościgu (etap 72) żyje tylko w walce — poza nią to zapowiedź startowej.
     await resetChaseCombat(deps.ctx.prisma, scene.id);
     if (scene.kind === 'chase') await emitSceneView(deps, campaignId, scene.id);

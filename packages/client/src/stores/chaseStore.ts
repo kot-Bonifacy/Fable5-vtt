@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import type {
   ChaseObstacleView,
+  ChasePlanEntry,
   ScenePoint,
   SceneVehicleView,
   StateSyncPayload,
@@ -30,6 +31,8 @@ export interface ChaseGhost {
 interface ChaseState {
   vehicles: SceneVehicleView[];
   obstacles: ChaseObstacleView[];
+  /** Plan rund sceny (72f3) — tylko u MG; gracz ma zawsze pustą listę. */
+  plan: ChasePlanEntry[];
   /** Menu auta otwarte kliknięciem (id auta na scenie) albo `null`. */
   menu: { sceneVehicleId: string; clientX: number; clientY: number } | null;
   /** Menu przeszkody u MG (65e) albo `null`. */
@@ -44,7 +47,9 @@ interface ChaseState {
     sceneId: string,
     vehicles: SceneVehicleView[],
     obstacles?: ChaseObstacleView[],
+    plan?: ChasePlanEntry[],
   ) => void;
+  setPlan: (plan: ChasePlanEntry[]) => void;
   openMenu: (sceneVehicleId: string, clientX: number, clientY: number) => void;
   closeMenu: () => void;
   openObstacleMenu: (obstacleId: string, clientX: number, clientY: number) => void;
@@ -56,6 +61,7 @@ interface ChaseState {
 export const useChaseStore = create<ChaseState>((set) => ({
   vehicles: [],
   obstacles: [],
+  plan: [],
   menu: null,
   obstacleMenu: null,
   windowOpen: false,
@@ -65,15 +71,17 @@ export const useChaseStore = create<ChaseState>((set) => ({
     set({
       vehicles: payload.sceneVehicles ?? [],
       obstacles: payload.sceneObstacles ?? [],
+      plan: payload.scenePlan ?? [],
       menu: null,
       obstacleMenu: null,
     }),
-  setVehicles: (_sceneId, vehicles, obstacles) =>
+  setVehicles: (_sceneId, vehicles, obstacles, plan) =>
     set((state) => {
       const nextObstacles = obstacles ?? state.obstacles;
       return {
         vehicles,
         obstacles: nextObstacles,
+        plan: plan ?? state.plan,
         menu:
           state.menu && vehicles.some((vehicle) => vehicle.id === state.menu?.sceneVehicleId)
             ? state.menu
@@ -93,4 +101,5 @@ export const useChaseStore = create<ChaseState>((set) => ({
   closeObstacleMenu: () => set({ obstacleMenu: null }),
   setWindowOpen: (windowOpen) => set({ windowOpen }),
   setGhost: (ghost) => set({ ghost }),
+  setPlan: (plan) => set({ plan }),
 }));

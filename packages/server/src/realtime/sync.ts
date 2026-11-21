@@ -14,7 +14,7 @@ import type {
   StateSyncPayload,
   WallView,
 } from '@vtt/shared';
-import { GAME_TIME_DEFAULT, ROLE_GM, SHOP_TIER_MIN } from '@vtt/shared';
+import { GAME_TIME_DEFAULT, ROLE_GM, SHOP_TIER_MIN, parseChasePlan } from '@vtt/shared';
 import { defineEvent, type RealtimeDeps } from './registry.js';
 import { computePresence } from './presence.js';
 import { fetchHistoryPage } from './chat-io.js';
@@ -83,6 +83,7 @@ export async function buildStateSync(
       vehicles: [],
       sceneVehicles: [],
       sceneObstacles: [],
+      scenePlan: [],
       bots: [],
       ai: syncedAiStatus(deps, socket, user, null),
       compendium: await buildCompendiumSync(deps, null),
@@ -278,6 +279,11 @@ export async function buildStateSync(
     vehicles,
     sceneVehicles,
     sceneObstacles: viewedSceneId ? await obstacleViews(deps.ctx.prisma, viewedSceneId) : [],
+    // Plan rund (72f3) — tajemnica MG; gracz dostaje pustą listę.
+    scenePlan:
+      viewedScene && viewedScene.kind === 'chase' && user.role === ROLE_GM
+        ? parseChasePlan(viewedScene.chasePlan)
+        : [],
     bots,
     ai: syncedAiStatus(deps, socket, user, campaign.id),
     compendium,

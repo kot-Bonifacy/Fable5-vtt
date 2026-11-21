@@ -7,6 +7,9 @@ import type {
   PlayerMoveMode,
 } from '@vtt/shared';
 import {
+  parseChasePlan,
+  remapChasePlan,
+  resetChasePlan,
   ARCHIVE_APP,
   ARCHIVE_VERSION,
   archiveRefusal,
@@ -462,6 +465,8 @@ const SCENE_COLUMNS = {
   chaseRole: true,
   chaseAnchorId: true,
   chaseAutopilot: true,
+  // Etap 72f3: plan rund (auta przez mapę id przy wczytaniu).
+  chasePlan: true,
 } as const;
 
 export async function exportScene(
@@ -853,6 +858,18 @@ export async function insertScene(
         data: { chaseAnchorId: placedIds.get(anchor)! },
       });
     }
+  }
+
+  // Plan rund (72f3) wskazuje auta tej sceny — nowe id; wiersz bez auta
+  // wypada, a stan zaczyna od nowa (karty czatu nie jadą z paczką sceny).
+  const plan = parseChasePlan(maybeStr(sceneColumns.chasePlan));
+  if (plan.length > 0) {
+    await db.scene.update({
+      where: { id: sceneId },
+      data: {
+        chasePlan: JSON.stringify(resetChasePlan(remapChasePlan(plan, placedIds))),
+      },
+    });
   }
 
   const seatColumns = (row: Record<string, unknown>) => {

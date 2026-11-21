@@ -38,6 +38,13 @@ import {
   type ChaseIntent,
   type ChaseRole,
 } from './chase-drive.js';
+import {
+  CHASE_PLAN_MAX,
+  chasePlanVehicleRefs,
+  readChasePlanEvent,
+  sortChasePlan,
+  type ChasePlanEvent,
+} from './chase-plan.js';
 import { CHASE_AMBIENCE, isAmbiencePreset, type AmbiencePreset } from './music.js';
 import { NOTE_ICONS, NOTE_TEXT_MAX_LENGTH, type NoteIcon } from './notes.js';
 import {
@@ -139,6 +146,11 @@ export interface SceneTemplateChase {
   lanes: number | null;
   /** Drużyna goni albo ucieka (`Scene.chaseRole`), domyślnie goni. */
   role: ChaseRole;
+  /**
+   * Plan rund (etap 72f3, `Scene.chasePlan`): auta wskazuje się kluczami aut
+   * wzorca, `id` wiersza można pominąć (`p1`, `p2`…). Brak — pusty plan.
+   */
+  plan: ChasePlanEvent[];
 }
 
 export interface SceneTemplateScene {
@@ -424,7 +436,20 @@ function readChase(raw: unknown): SceneTemplateChase | null | undefined {
     if (!isChaseRole(raw.role)) return undefined;
     role = raw.role;
   }
-  return { direction, tempo, running: raw.running !== false, road, lanes, role };
+  let plan: ChasePlanEvent[] = [];
+  if (raw.plan !== undefined && raw.plan !== null) {
+    if (!Array.isArray(raw.plan) || raw.plan.length > CHASE_PLAN_MAX) return undefined;
+    const ids = new Set<string>();
+    for (const [index, row] of raw.plan.entries()) {
+      const id = isObj(row) && typeof row.id === 'string' ? row.id : `p${index + 1}`;
+      const event = readChasePlanEvent(row, id);
+      if (!event || ids.has(event.id) || !/^[A-Za-z0-9_-]{1,40}$/.test(event.id)) return undefined;
+      ids.add(event.id);
+      plan.push(event);
+    }
+    plan = sortChasePlan(plan);
+  }
+  return { direction, tempo, running: raw.running !== false, road, lanes, role, plan };
 }
 
 function readScene(raw: unknown): SceneTemplateScene | null {
@@ -887,6 +912,10 @@ export function readSceneTemplate(raw: unknown, id: string): SceneTemplate | nul
   }
   const keys = new Set(vehicles.map((vehicle) => vehicle.key));
   if (vehicles.some((vehicle) => vehicle.intent?.target && !keys.has(vehicle.intent.target))) {
+    return null;
+  }
+  // Plan rund (72f3) wskazuje auta kluczami wzorca.
+  if (scene.chase && chasePlanVehicleRefs(scene.chase.plan).some((ref) => !keys.has(ref))) {
     return null;
   }
   const figures: SceneTemplateFigure[] = [];

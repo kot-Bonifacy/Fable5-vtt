@@ -30,7 +30,26 @@
         "to": 9
       },
       "lanes": 2,
-      "role": "pursue"
+      "role": "pursue",
+      "plan": [
+        {
+          "round": 3,
+          "kind": "reinforce",
+          "vehicleId": "posilki",
+          "lane": 1,
+          "side": "rear",
+          "text": "Maelstrom wzywa wsparcie"
+        },
+        {
+          "round": 2,
+          "kind": "obstacle",
+          "obstacle": "roadwork",
+          "lane": 0,
+          "beforeId": "taksowka",
+          "gapSq": 6
+        },
+        { "round": 4, "kind": "note", "text": "Pickup strzela z okna" }
+      ]
     }
   },
   "vehicles": [

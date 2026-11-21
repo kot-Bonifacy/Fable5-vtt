@@ -21,7 +21,7 @@ w plikach obok — czytaj je **na żądanie, nigdy rutynowo**:
 
 | stan         | etapy                                                                                          |
 | ------------ | ---------------------------------------------------------------------------------------------- |
-| ⬜ otwarty   | **72** Przebudowa pościgu: prędkość, pasy ruchu i kokpit kierowcy (🟨 projekt 15.11, `etap-72-poscig-kokpit.md`; **72a ✅ 19.11** rdzeń w `shared`, **72b1 ✅ 19.11** serwer nowej jazdy z migracją `20261119200000_chase_speed_lanes`, **72b2 ✅ 20.11** grupa „Pojazd” w belce i bieżnia, **72c ✅ 20.11** Wyścig, **72d1 ✅ 20.11** belka w pełnym kształcie z migracją `20261120200000_chase_swerve_round`, **72d2 ✅ 20.11** mapa kokpitu, **72e ✅ 20.11** autopilot aut NPC-ów z migracją `20261120230000_chase_intent_gap`, **72f1 ✅ 20.11** kreator: pasy, prędkość startowa, goni / ucieka, zamiar, wzorzec i paczki, **72f2 ✅ 21.11** okno „Pościg” z migracją `20261121100000_chase_start_speed`, następny **72f3** plan rund, potem 72g); **73** Parafraza zdań podręcznika w reszcie kodu (⬜ decyzja MG 18.11, ~535 ciągów, plik etapu do napisania); **70** Przebudowa netrunningu: okno jednego piętra i przejęte urządzenia na mapie (🟨 zrobione 12–14.11, `etap-70-siec-przebudowa.md`: **70a** okno jednego piętra, **70b** przejęta wieżyczka i kamera, **70c** dron, oczy, pasek, **70d** obszar straży, Sieć ze sceny wg rodzaju, okienko strefy, **70e** automat LOD-u i Demona z hamulcem, **70f ✅ 14.11** wzorce 66b/66e pod nowe reguły i rozegranie; czeka na wdrożenie (70d z migracją `20261113180000_net_scene_installations`) i stół MG); **69** Lewa belka bez ramek (🟨 zrobione 11.11, czeka na wdrożenie i oględziny MG przy stole); **68** Warsztat: ulepszenia auta za ed i naprawa (🟨 zrobione 06.11, czeka na wdrożenie i oględziny MG przy stole); **67** Zakup pojazdu (🟨 zrobione 06.11, czeka na wdrożenie i oględziny MG przy stole); **66e** Scena przykładowa „Po zamknięciu” (🟨 zrobione 07.11, obejrzane w Firefoksie; rozegrana w przeglądarce do końca 07.11 — znaleziska w `zaleglosci.md` (27; pkt 18 i 19 nie, decyzja MG; 13 naprawionych 07.11); czeka na naprawę reszty, stół MG i wdrożenie); **66d** Scena przykładowa „Zastaw” (🟨 wzorzec zrobiony i rozegrany w przeglądarce 06.11; od 06.11 jeden taran na turę (decyzja MG); czeka na stół MG i wdrożenie); **66** Sceny przykładowe (🟨 zrobione 31.10, czeka na oględziny MG przy stole i wdrożenie; **66b** „Fabryka dronów” 🟨 zrobione 31.10, tak samo (netrunner obejrzany w przeglądarce 07.11, poprawki czekają na wdrożenie); **66c** „Ostatni zjazd” 🟨 wzorzec zrobiony, rozegrany w przeglądarce 04.11 i ponownie 05.11 po rebalansie (porażka o włos, balans zatwierdzony przez MG) — zaległości z przebiegów zamknięte 05.11, Esc na kubku MG 07.11 — czeka na stół MG i wdrożenie); **65** Scena pościgu i walka pojazdów (🟨 65a–65e ✅ 30–31.10, czeka na oględziny MG przy stole); **62** Sieć ze sceny (🟨 zrobione, czeka na oględziny MG na VPS po wdrożeniu); **61** Skradanie się (🟨 zrobione, czeka na słowo MG o rozstrzygnięciach); **28** Wdrożenie na VPS (🟨 działa na `https://vtt.tatanga.eu` z botami od 18.10; zostały off-site, utwardzenie, monitoring); **43b**, **43c** (UI walki); **60** Czytelny czat (zlecenie MG z 24.10; 🟨 60a–60c ✅, czeka na oględziny MG z pierwszego kryterium); T10; refaktoryzacja odłożona (MG 18.10) |
+| ⬜ otwarty   | **72** Przebudowa pościgu: prędkość, pasy ruchu i kokpit kierowcy (🟨 projekt 15.11, `etap-72-poscig-kokpit.md`; **72a ✅ 19.11** rdzeń w `shared`, **72b1 ✅ 19.11** serwer nowej jazdy z migracją `20261119200000_chase_speed_lanes`, **72b2 ✅ 20.11** grupa „Pojazd” w belce i bieżnia, **72c ✅ 20.11** Wyścig, **72d1 ✅ 20.11** belka w pełnym kształcie z migracją `20261120200000_chase_swerve_round`, **72d2 ✅ 20.11** mapa kokpitu, **72e ✅ 20.11** autopilot aut NPC-ów z migracją `20261120230000_chase_intent_gap`, **72f1 ✅ 20.11** kreator: pasy, prędkość startowa, goni / ucieka, zamiar, wzorzec i paczki, **72f2 ✅ 21.11** okno „Pościg” z migracją `20261121100000_chase_start_speed`, **72f3 ✅ 21.11** plan rund (bez migracji), następny **72g** — zakres ustalić z MG); **73** Parafraza zdań podręcznika w reszcie kodu (⬜ decyzja MG 18.11, ~535 ciągów, plik etapu do napisania); **70** Przebudowa netrunningu: okno jednego piętra i przejęte urządzenia na mapie (🟨 zrobione 12–14.11, `etap-70-siec-przebudowa.md`: **70a** okno jednego piętra, **70b** przejęta wieżyczka i kamera, **70c** dron, oczy, pasek, **70d** obszar straży, Sieć ze sceny wg rodzaju, okienko strefy, **70e** automat LOD-u i Demona z hamulcem, **70f ✅ 14.11** wzorce 66b/66e pod nowe reguły i rozegranie; czeka na wdrożenie (70d z migracją `20261113180000_net_scene_installations`) i stół MG); **69** Lewa belka bez ramek (🟨 zrobione 11.11, czeka na wdrożenie i oględziny MG przy stole); **68** Warsztat: ulepszenia auta za ed i naprawa (🟨 zrobione 06.11, czeka na wdrożenie i oględziny MG przy stole); **67** Zakup pojazdu (🟨 zrobione 06.11, czeka na wdrożenie i oględziny MG przy stole); **66e** Scena przykładowa „Po zamknięciu” (🟨 zrobione 07.11, obejrzane w Firefoksie; rozegrana w przeglądarce do końca 07.11 — znaleziska w `zaleglosci.md` (27; pkt 18 i 19 nie, decyzja MG; 13 naprawionych 07.11); czeka na naprawę reszty, stół MG i wdrożenie); **66d** Scena przykładowa „Zastaw” (🟨 wzorzec zrobiony i rozegrany w przeglądarce 06.11; od 06.11 jeden taran na turę (decyzja MG); czeka na stół MG i wdrożenie); **66** Sceny przykładowe (🟨 zrobione 31.10, czeka na oględziny MG przy stole i wdrożenie; **66b** „Fabryka dronów” 🟨 zrobione 31.10, tak samo (netrunner obejrzany w przeglądarce 07.11, poprawki czekają na wdrożenie); **66c** „Ostatni zjazd” 🟨 wzorzec zrobiony, rozegrany w przeglądarce 04.11 i ponownie 05.11 po rebalansie (porażka o włos, balans zatwierdzony przez MG) — zaległości z przebiegów zamknięte 05.11, Esc na kubku MG 07.11 — czeka na stół MG i wdrożenie); **65** Scena pościgu i walka pojazdów (🟨 65a–65e ✅ 30–31.10, czeka na oględziny MG przy stole); **62** Sieć ze sceny (🟨 zrobione, czeka na oględziny MG na VPS po wdrożeniu); **61** Skradanie się (🟨 zrobione, czeka na słowo MG o rozstrzygnięciach); **28** Wdrożenie na VPS (🟨 działa na `https://vtt.tatanga.eu` z botami od 18.10; zostały off-site, utwardzenie, monitoring); **43b**, **43c** (UI walki); **60** Czytelny czat (zlecenie MG z 24.10; 🟨 60a–60c ✅, czeka na oględziny MG z pierwszego kryterium); T10; refaktoryzacja odłożona (MG 18.10) |
 | ✅ ukończone | 01–11, 13–20b, 23a–27f, 27h–27l, 29a–30d, 31–35, 37–42c, 43a, 44a–44d, 45, 46a1, 46a2, 46c1, 46c2, 46b1, 46b2, 47a, 47b, 48a, 48b, 48c, 49a, 49b, 50a, 50b, 50c, 51, 52, 53, 54, 55, 56, 57 (57a–57c), 58 (58a–58d), 59 (59a–59c), 63 (63a–63b; 63c wycofane 29.10), 64 (64a–64c), 71 (71a–71h2) (ostatni zamknięty: 71, 2026-11-18) |
 | ⛔ wycofane  | 12, 21, 22 (głos), 27g (wydajność), 36 (makra); 27, 29, 30, 38 rozdzielone na etapy literowane |
 
@@ -30,9 +30,8 @@ Pełna tabela z nazwami i datami: `archiwum/tabela-etapow.md`.
 ## Od czego zacząć
 
 **Przebudowa pościgu (etap 72, zlecenie MG z 15.11) — 72a, 72b1 (19.11), 72b2, 72c, 72d1,
-72d2, 72e, 72f1 (20.11) i 72f2 (21.11) zrobione, następny 72f3 (plan rund `Scene.chasePlan`:
-edycja w oknie „Pościg”, pytanie w panelu decyzji MG na początku rundy, krok „Plan” w kreatorze,
-`chase.plan` we wzorcu i w paczce), potem 72g (zakres ustalić z MG).**
+72d2, 72e, 72f1 (20.11), 72f2 i 72f3 (21.11) zrobione, następny 72g: wzorce 66c / 66d
+przepisane, rozegranie, stały E2E, sprzątanie — zakres ustalić z MG na starcie sesji.**
 Plik `etap-72-poscig-kokpit.md`. **Serwer jeździ nowym modelem**
 (`realtime/chase-drive.ts`, umowa na górze `mapa`): auto ma prędkość trwającą między turami i pas,
 rusza się raz na rundę w turze kierowcy (`vehicle:drive` — gaz +50 / hamulec −100 mil/h, pas
@@ -62,6 +61,12 @@ goni / ucieka, „Autopilot”; auta od czoła z polem prędkości (`chase:set-s
 przed walką własna prędkość startowa `SceneVehicle.startSpeed`), posiłki z pasem, stroną kadru
 i prędkością (`chase:restore`), **przeszkody wyłącznie z okna** — pas i odległość przed autem,
 zawsze w kadrze (klik w drogę zniknął).
+**Plan rund** (`realtime/chase-plan.ts`, `shared/chase-plan.ts`, umowa na górze `mapa`): MG
+wpisuje „runda N → posiłki / przeszkoda / Manewr na wezwanie / notatka” w oknie „Pościg” albo
+w kroku „Plan” kreatora (`chase:plan`, `Scene.chasePlan`); na początku rundy serwer pyta kartą
+czatu `chaseplan` **tylko dla MG**, którą panel decyzji pokazuje od razu („Wypuść / Odłóż o rundę
+/ Pomiń”), a **runda nie stoi**; bez odpowiedzi zdarzenie czeka dalej. Nowa walka zaczyna plan od
+nowa; wzorzec zna `chase.plan` (auta kluczami), paczka niesie plan bez stanu.
 **Kreator i zakładka „Pościg” bez tempa** (`ChaseSetup.tsx`, umowa na górze `mapa`): „Liczba
 pasów” (na Neonowej ulicy zablokowana — 3 namalowane; na własnej mapie z szerokości jezdni,
 linie pasów na mapie przy edycji), „Prędkość startowa” w mil/h, „Drużyna goni / ucieka”, zamiar
@@ -74,7 +79,7 @@ na: …”), aż rzuci; MG rzuca za gracza albo pomija go (karta, panel decyzji,
 Zryw dolicza się do „Jedź”; słaby kierowca z pełną kartą (próg z Moto, NOM-03 ✅) oblewając traci
 kontrolę. Testy z dwoma kierowcami, które nie są o Wyścigu, pomijają go drugim `combat:next`
 (pułapka na górze `mapa`). Wbudowana droga jest jedna: Neonowa ulica (3 pasy). Wzorce 66c/66d
-MG wkrótce przerobi — zakres 72g ustalić z MG. E2E: cały `48-poscig` zielony (30/30 — od 72f2 także `t72f2-okno`).
+MG wkrótce przerobi — zakres 72g ustalić z MG. E2E: cały `48-poscig` zielony (34/34 — od 72f3 także `t72f3-plan` i krok „Plan” w `t65-kreator`).
 
 **Weryfikacja Ról (etap 71) — ✅ 18.11.** Stan Ról: `role-macierz.md`, co zostało prozą —
 `decyzje-i-uproszczenia.md` („Role po weryfikacji”). Testy Zdolności: `52-role/t71-<rola>`.
@@ -82,7 +87,7 @@ Parafraza zdań podręcznika w reszcie kodu — **etap 73** (plik do napisania).
 
 **Na VPS czeka dużo (ostatnie pełne opisy zmian: `archiwum/od-czego-zaczac.md`, „Stan na
 20.11”).** Prawie wszystko od początku listopada jest „zrobione, czeka na wdrożenie”: etapy
-65–72f2, sceny przykładowe 66–66e, Sieć 70, zaległości 03–18.11. Przed wdrożeniem porównaj
+65–72f3, sceny przykładowe 66–66e, Sieć 70, zaległości 03–18.11. Przed wdrożeniem porównaj
 `git log` na VPS z `main`. **Migracje listopada** (które już są na VPS — sprawdzić; od 72d1
 także `20261120200000_chase_swerve_round`, od 72e `20261120230000_chase_intent_gap`, od 72f2
 `20261121100000_chase_start_speed`):
@@ -115,7 +120,7 @@ Oględziny MG przy stole czekają przy etapach wymienionych w tabeli stanu wyże
 - **Git:** push publikuje całą historię — przed każdym `git log --name-only --format= origin/main..HEAD`
   nie może pokazać `data/private/`, `uploads/`, `.env` ani baz.
 - **Nie puszczaj `pnpm format` na `POSTEP.md`, `POMYSLY.md` ani `00-przeglad.md`.**
-- Liczby testów — w notatce ostatniej sesji niżej (21.11: `shared` 3269, serwer 1888, klient 526).
+- Liczby testów — w notatce ostatniej sesji niżej (21.11: `shared` 3282, serwer 1894, klient 527).
   Sumy w starszych notatkach są zaniżone, nie poprawiaj ich w dół.
 
 ## Zanim dotkniesz obszaru — co przeczytać
@@ -136,8 +141,8 @@ a nie do tego pliku.
 
 | obszar      | co obejmuje                                                    | umów | pułapek |
 | ----------- | -------------------------------------------------------------- | ---- | ------- |
-| `mapa`      | figury, zaznaczanie, narzędzia, obiekty sceny, ściany, efekty, zamek drzwi, ukryta figura zauważona, ikony urządzeń, wspólny widok drużyny, okienko strefy przy marszu gracza, scena pościgu, jazda kierowcy i dryf, Manewr i taranowanie, przeszkody pościgu, sceny przykładowe, wzorzec zwykłej mapy, ulepszenia pojazdu, stojące auto na drodze, kreator pościgu i wbudowane drogi, załoga auta poza pościgiem, rama pościgu i pęd auta bez kierowcy, długa pętla drogi, ucieczka auta ręką MG, otarcie brył, wrak za autem, podpis w fotelu, furgon z wyglądu (`van-6`), przesadzanie foteli przy starcie, skręt z menu przed przeszkodą, wysiadka tylko przeciągnięciem, światła, zamki, strefy i pojemniki we wzorcu, obszar straży we wzorcu, model jazdy etapu 72 (`chase-drive.ts`), jazda 72 na serwerze (`realtime/chase-drive.ts`) i sonda styku, widok sceny po rundzie pościgu (`emitSceneView`), Wyścig rundy (`realtime/chase-race.ts`), auto o prędkości 0 i skręt o dwa pasy, mapa kokpitu (duch, dopiski, dojazd), autopilot aut NPC-ów (`chase-autopilot.ts`), pasy, rola i prędkość startowa w kreatorze (`chaseEffectiveLanes`), okno „Pościg” MG (`ChaseWindow.tsx`, `startSpeed`, posiłki, przeszkoda na pas) | 104  | 31      |
-| `czat`      | rodzaje wierszy, `visibleTo`, filtr, `seq`, `gmrecovery`, „to dotyczy mnie”, grupy kart, kolor gracza, czyszczenie, gęsta karta rzutu, przebieg ataku, `/jako` za NPC-a, karta rzutu bez konta, karta Wyścigu (`chaserace`) | 18   | 3       |
+| `mapa`      | figury, zaznaczanie, narzędzia, obiekty sceny, ściany, efekty, zamek drzwi, ukryta figura zauważona, ikony urządzeń, wspólny widok drużyny, okienko strefy przy marszu gracza, scena pościgu, jazda kierowcy i dryf, Manewr i taranowanie, przeszkody pościgu, sceny przykładowe, wzorzec zwykłej mapy, ulepszenia pojazdu, stojące auto na drodze, kreator pościgu i wbudowane drogi, załoga auta poza pościgiem, rama pościgu i pęd auta bez kierowcy, długa pętla drogi, ucieczka auta ręką MG, otarcie brył, wrak za autem, podpis w fotelu, furgon z wyglądu (`van-6`), przesadzanie foteli przy starcie, skręt z menu przed przeszkodą, wysiadka tylko przeciągnięciem, światła, zamki, strefy i pojemniki we wzorcu, obszar straży we wzorcu, model jazdy etapu 72 (`chase-drive.ts`), jazda 72 na serwerze (`realtime/chase-drive.ts`) i sonda styku, widok sceny po rundzie pościgu (`emitSceneView`), Wyścig rundy (`realtime/chase-race.ts`), auto o prędkości 0 i skręt o dwa pasy, mapa kokpitu (duch, dopiski, dojazd), autopilot aut NPC-ów (`chase-autopilot.ts`), pasy, rola i prędkość startowa w kreatorze (`chaseEffectiveLanes`), okno „Pościg” MG (`ChaseWindow.tsx`, `startSpeed`, posiłki, przeszkoda na pas), plan rund pościgu (`chase-plan.ts`, karta `chaseplan`) | 105  | 31      |
+| `czat`      | rodzaje wierszy, `visibleTo`, filtr, `seq`, `gmrecovery`, „to dotyczy mnie”, grupy kart, kolor gracza, czyszczenie, gęsta karta rzutu, przebieg ataku, `/jako` za NPC-a, karta rzutu bez konta, karta Wyścigu (`chaserace`), karta planu rund tylko dla MG (`chaseplan`) | 19   | 3       |
 | `serwer`    | Prisma i migracje, zdarzenia gniazda, zapisy karty, uploady    | 26   | 21      |
 | `ui`        | okna pływające, `z-index`, motyw, skróty, dostępność, wejście, panel decyzji MG, kubek przestawiany i jego menu (Szczęście jako żetony), lewa belka bez ramek i dymek `HudTip`, grupa „Pojazd” w belce (`HudVehicle.tsx`) i jej decyzje kierowcy, portret za kierownicą | 45   | 16      |
 | `kosci`     | kubek, `rollFormula`, wezwania i prośby o Test, tabele losowe, PT od MG, wezwanie Wyścigu | 25   | 2       |
@@ -159,6 +164,37 @@ a nie do tego pliku.
 ## Notatki z dwóch ostatnich sesji
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
+
+### Sesja 21.11 (druga) — etap 72f3: plan rund pościgu
+
+**Zrobione (czeka na wdrożenie razem z 72b1–72f2; bez migracji — `Scene.chasePlan` jest od 72b1):**
+
+- **Decyzje MG z pytań na starcie:** runda **nie stoi** na pytaniu planu; zdarzenie bez
+  odpowiedzi **czeka dalej**; ślad to **karta czatu tylko dla MG**; cztery rodzaje — posiłki,
+  przeszkoda, Manewr na wezwanie, notatka.
+- **`shared`:** `chase-plan.ts` (rdzeń) — zdarzenia i stan wiersza, `readChasePlanEvents`,
+  `mergeChasePlan` (otwarte pytanie nietykalne), `chasePlanDue`, `resetChasePlan`,
+  `remapChasePlan`, `chasePlanTitle`; rodzaj czatu `chaseplan` (rubryka „Walka”); wzorzec
+  `chase.plan` z kluczami aut i opcjonalnym `id`.
+- **Serwer (`realtime/chase-plan.ts`):** `chase:plan`, `chase:plan-answer`, `askChasePlan`
+  w `advanceTurn` (po kadrze, przed Wyścigiem), `cancelChasePlanCards` na końcu i starcie walki;
+  wykonanie przez wydzielone `restoreToChase`, `spawnObstacleOnLane`, `callManeuver` (te same,
+  co w oknie). Plan tylko do MG (`chase:sync`, `scenePlan`), wzorzec i paczka z planem.
+- **Klient:** `ChasePlanEditor.tsx` (sekcja „Plan rund” w oknie „Pościg” i krok „Plan”
+  w kreatorze — lista z R-numerem, stanem, „Usuń” albo przyciskami odpowiedzi), karta
+  `ChasePlanCard.tsx` na czacie i w panelu decyzji (rodzaj `plan`, ikona 📜). Podpowiedź kroku
+  „Gotowe” kreatora mówiła jeszcze o palecie przeszkód — poprawiona na okno „Pościg”.
+
+Testy: `shared` 3282/3282 (nowy `chase-plan.test.ts` — 12), serwer 1894/1894 (nowy
+`chase-plan.test.ts` — 6 na żywych gniazdach; plan w paczce `chase.test.ts` i we wzorcu
+`test-poscig`, macierz izolacji), klient 527/527; `tsc` czterech pakietów, lint i Prettier na
+zmienionych plikach czyste. E2E: cały `48-poscig` **34/34** — nowy `t72f3-plan` (3: MG wpisuje
+plan w oknie, panel decyzji pyta w rundzie 1 i 2, „Wypuść” przywraca Radiowóz; gracz nie dostaje
+ani planu, ani karty) i krok „Plan” w `t65-kreator` (MG w Firefoksie). **Oglądano zrzuty
+w Chromium i w Firefoksie** (`t72f3-plan` jednorazowo także z MG w Firefoksie).
+Uwaga do stołu: domyślne miejsce okna „Pościg” zasłania panel decyzji w prawym górnym rogu mapy —
+wiersz „pyta teraz” w oknie ma te same przyciski, a okno da się przesunąć (zaległość z 21.11).
+`specs/99-zapomnij/` to dalej cudze oględziny z 14.11.
 
 ### Sesja 21.11 — etap 72f2: okno „Pościg” MG
 
@@ -191,33 +227,3 @@ i `t72e-autopilot` przepięte na okno). **Oglądano zrzuty okna w Chromium i w F
 łamanie „Drużyna goni / ucieka” w dwie linie. Gracz okna nie ma (Ola w Firefoksie).
 `specs/99-zapomnij/` to dalej cudze oględziny z 14.11.
 
-### Sesja 20.11 (szósta) — etap 72f1: kreator bez tempa, wzorzec i paczki
-
-**Zrobione (czeka na wdrożenie razem z 72b1–72e; bez migracji — kolumny są od 72b1):**
-
-- **Decyzje MG z pytań na starcie:** 72f dzielone na **72f1 kreator**, **72f2 okno „Pościg”**,
-  **72f3 plan rund**; prędkość startowa to **pole w mil/h krokiem 50**; liczba pasów na
-  wbudowanej drodze **zablokowana**; „Droga jedzie” **zostaje**.
-- **`shared`:** `ChaseSettings.lanesFromRoad`, łata `lanes` / `lanesFromRoad` / `role`
-  (`sanitizeChasePatch`), `chaseEffectiveLanes` (serwer i szkic jedną funkcją), `chaseFreeSpot`
-  na środkach pasów; wzorzec: `chase.lanes`, `chase.role`, `vehicles[].intent`. Granice pasów
-  i rola przeniesione do `chase.ts` (re-eksport z `chase-drive.ts`), żeby nie robić cyklu.
-- **Serwer:** `scene:update` pisze `chaseLanes` i `chaseRole` (nowe tło i wbudowana droga zerują
-  pasy), zmiana geometrii przyciąga auta do pasów, wzorzec stawia auta na pasach z zamiarami
-  (`chaseKeepGapSq`), paczka niesie pasy, rolę, kadr, autopilota i zamiary (drugi przebieg
-  przepina id aut).
-- **Klient:** sekcje `ChaseSetup.tsx` — „Liczba pasów”, „Prędkość startowa” (mil/h), „Drużyna
-  goni / ucieka”, zamiar przy aucie NPC-a w kroku „Auta” (`VehicleIntent`); linie pasów na mapie
-  przy edycji jezdni; podsumowanie „Gotowe” z pasami, rolą i prędkością.
-- **Zaległość z 18.11 zamknięta:** `t65-kreator` był nieaktualny (od 10.11 galeria niczego nie
-  wybiera z góry) — spec wybiera model i sprawdza nowe pola.
-
-Testy: `shared` 3264/3264, serwer 1882/1882 (`chase.test.ts` — łata pasów i roli, przyciąganie,
-paczka w obie strony; fikstura `test-poscig` z pasami i zamiarami), klient 526/526; `tsc` trzech
-pakietów, lint i Prettier na zmienionych plikach czyste; serwer startuje w `tsx` (próba z pułapki
-`testy`). E2E: cały `48-poscig` 26/26, `t65-kreator` 5/5 po poprawkach. **Oglądano w Firefoksie**
-(tymczasowy spec, MG, 1600 × 900): krok „Droga” na Neonowej ulicy (linie pasów zgodne
-z namalowanymi), krok „Auta” z zamiarem, „Gotowe”, zakładka „Pościg” własnej mapy z 4 → 5 pasami
-— **znaleziony i naprawiony błąd szkicu** (wpis pasów nie gasił „z drogi”, pułapka na górze
-`mapa`) i ciemna etykieta „Zamiar”. UI gracza bez zmian (Ola w Chromium w asercji E2E: zamiaru
-nie dostaje). `specs/99-zapomnij/` to dalej cudze oględziny z 14.11.

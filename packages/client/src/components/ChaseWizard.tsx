@@ -15,6 +15,7 @@ import {
   sceneLanes,
 } from './ChaseSetup.js';
 import { WindowResizeGrip } from './WindowResizeGrip.js';
+import { ChasePlanEditor } from './ChasePlanEditor.js';
 
 /**
  * Kreator sceny pościgu (zlecenie MG z 03.11, wzór: kreatory scen z Foundry
@@ -22,7 +23,9 @@ import { WindowResizeGrip } from './WindowResizeGrip.js';
  * i prowadzi przez cztery kroki: **Tło** (wbudowana droga albo własna mapa),
  * **Droga** (pas jezdni przeciągany na mapie, liczba pasów, kierunek, goni /
  * ucieka, prędkość startowa — od 72f1 zamiast tempa), **Auta** (drużyna
- * i wrogowie na wolnych miejscach jezdni, zamiar auta NPC-a) i **Gotowe**.
+ * i wrogowie na wolnych miejscach jezdni, zamiar auta NPC-a), **Plan**
+ * (od 72f3, opcjonalny: plan rund — posiłki, przeszkody, Manewry, notatki)
+ * i **Gotowe**.
  *
  * Kroki Tło i Droga piszą do szkicu sceny, jak Edycja — mapa pokazuje wybór na
  * żywo. Przejście z „Droga” do „Auta” zapisuje szkic, bo auta stawia serwer
@@ -30,12 +33,13 @@ import { WindowResizeGrip } from './WindowResizeGrip.js';
  * przerwał w połowie, nie traci drogi.
  */
 
-type Step = 'background' | 'road' | 'cars' | 'done';
+type Step = 'background' | 'road' | 'cars' | 'plan' | 'done';
 
 const STEPS: { id: Step; label: string }[] = [
   { id: 'background', label: 'Tło' },
   { id: 'road', label: 'Droga' },
   { id: 'cars', label: 'Auta' },
+  { id: 'plan', label: 'Plan' },
   { id: 'done', label: 'Gotowe' },
 ];
 
@@ -54,6 +58,7 @@ function ChaseWizardBody() {
   const setEditorOpen = useSceneStore((s) => s.setEditorOpen);
   const setBandEdit = useSceneStore((s) => s.setChaseBandEdit);
   const carsOnRoad = useChaseStore((s) => s.vehicles.length);
+  const planRows = useChaseStore((s) => s.plan.length);
   const [step, setStep] = useState<Step>('background');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -174,6 +179,18 @@ function ChaseWizardBody() {
 
         {step === 'cars' && <ChaseVehiclesSection />}
 
+        {step === 'plan' && (
+          <section className="settings-group">
+            <h3 className="settings-group-title">Plan rund (opcjonalnie)</h3>
+            <p className="settings-hint">
+              Co ma się stać w której rundzie: posiłki z rezerwy, przeszkoda, wezwanie do Manewru
+              albo przypomnienie. Na początku rundy serwer zapyta cię o to w panelu decyzji — gracze
+              nic nie widzą, a bez twojego „Wypuść” nic się nie stanie.
+            </p>
+            <ChasePlanEditor scene={scene} round={null} />
+          </section>
+        )}
+
         {step === 'done' && (
           <section className="settings-group">
             <h3 className="settings-group-title">Scena gotowa</h3>
@@ -195,11 +212,15 @@ function ChaseWizardBody() {
               </dd>
               <dt>Auta na drodze</dt>
               <dd>{carsOnRoad}</dd>
+              <dt>Plan rund</dt>
+              <dd>
+                {planRows > 0 ? plural(planRows, 'zdarzenie', 'zdarzenia', 'zdarzeń') : 'brak'}
+              </dd>
             </dl>
             <p className="settings-hint">
-              Graczom pokażesz scenę przyciskiem aktywacji na liście scen. Przeszkody wypuszczasz w
-              walce paletą „Przeszkody” na pasku narzędzi, a wszystko z tych kroków poprawisz
-              później w Edycji sceny → zakładka „Pościg”.
+              Graczom pokażesz scenę przyciskiem aktywacji na liście scen. W walce prowadzisz pościg
+              z okna „Pościg” (prędkościomierz na pasku narzędzi): prędkości, posiłki, przeszkody i
+              plan rund. Drogę i auta poprawisz później w Edycji sceny → zakładka „Pościg”.
             </p>
           </section>
         )}

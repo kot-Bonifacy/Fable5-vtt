@@ -6,6 +6,12 @@ w `POMYSLY.md` („Do sprawdzenia przy stole”), decyzje MG — w `decyzje-i-up
 
 ## Otwarte
 
+**21.11.2026 — okno „Pościg” w domyślnym miejscu zasłania panel decyzji (72f3).** Okno staje
+przy prawej krawędzi (`x = szerokość − 560`, `y = 120`), a panel decyzji siedzi w prawym górnym
+rogu mapy — pytanie planu rund wyskakuje pod oknem (widać z niego lewą połowę). Wiersz „pyta
+teraz” w oknie ma te same przyciski, a okno da się przesunąć, więc nic nie blokuje. Do decyzji
+MG przy 72g: inne domyślne miejsce okna albo panel nad oknem.
+
 **20.11.2026 — `48-poscig/t65-przeszkody` migocze: pusta mapa MG w pierwszym teście (72e).**
 W przebiegu `--grep "T72e|T72b|T72c|T72d|T65e"` zaraz po buildzie test „MG wypuszcza barykadę
 z palety…” padł na `clickWorld`: „E2E: the map is not on screen (no __vttE2E camera)” — u MG

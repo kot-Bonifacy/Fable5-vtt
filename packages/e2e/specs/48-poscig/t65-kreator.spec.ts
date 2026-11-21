@@ -12,8 +12,9 @@ import { closeNotices } from '../../fixtures/table.ts';
  * (wbudowana „Neonowa ulica”), Drogę (pas jezdni z drogi, jazda w lewo, trzy
  * namalowane pasy, prędkość startowa w mil/h i „Drużyna goni / ucieka” — od
  * 72f1 zamiast tempa), Auta (dwa wozy z katalogu „Na drogę” — nie lądują na
- * sobie, stoją na środkach pasów, a jeden dostaje zamiar „Goń” drugiego)
- * i Gotowe, a „Pełna edycja sceny…” otwiera Edycję na zakładce „Pościg”. Ola
+ * sobie, stoją na środkach pasów, a jeden dostaje zamiar „Goń” drugiego),
+ * Plan (od 72f3: notatka na rundę 2) i Gotowe, a „Pełna edycja sceny…”
+ * otwiera Edycję na zakładce „Pościg”. Ola
  * (Chromium) po aktywacji widzi drogę i oba auta, ale nie zamiar.
  *
  * Geometrię wolnego miejsca sprawdza `chaseFreeSpot` w `shared`, przewijanie
@@ -160,6 +161,19 @@ test.describe.serial('@szybkie T65 kreator pościgu', () => {
       .toEqual(['manual', 'pursue']);
   });
 
+  test('krok „Plan” (72f3): MG dopisuje notatkę na rundę 2', async () => {
+    await wizard().getByRole('button', { name: 'Dalej →' }).click();
+    const editor = wizard().getByTestId('chase-plan-editor');
+    await expect(editor).toContainText('Planu nie ma');
+    const form = editor.getByTestId('chase-plan-form');
+    await form.getByRole('spinbutton', { name: 'Runda zdarzenia' }).fill('2');
+    await form.getByRole('combobox', { name: 'Rodzaj zdarzenia' }).selectOption('note');
+    await form.getByRole('textbox', { name: 'Treść notatki' }).fill('Syrena za zakrętem');
+    await form.getByRole('button', { name: 'Dodaj do planu' }).click();
+    await expect(editor.locator('.chase-plan-row')).toContainText('Notatka: Syrena za zakrętem');
+    await wizard().screenshot({ path: test.info().outputPath('kreator-plan.png') });
+  });
+
   test('„Gotowe” podsumowuje scenę, a „Pełna edycja sceny…” otwiera zakładkę „Pościg”', async () => {
     await wizard().getByRole('button', { name: 'Dalej →' }).click();
     const summary = wizard().locator('.chase-wizard-summary');
@@ -167,7 +181,8 @@ test.describe.serial('@szybkie T65 kreator pościgu', () => {
     await expect(summary).toContainText('wiersze 6–18 · 3 pasy');
     await expect(summary).toContainText('ucieka');
     await expect(summary).toContainText('150 mil/h');
-    await expect(summary.locator('dd').last()).toHaveText('2');
+    await expect(summary.locator('dd').nth(-2)).toHaveText('2');
+    await expect(summary.locator('dd').last()).toHaveText('1 zdarzenie');
     await wizard().getByRole('button', { name: 'Pełna edycja sceny…' }).click();
     await expect(wizard()).toBeHidden();
     const editor = mg.page.getByRole('region', { name: 'Edycja sceny' });

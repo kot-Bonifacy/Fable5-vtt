@@ -328,6 +328,11 @@ import type {
   ChaseObstacleView,
   ChasePlacePayload,
   ChaseSyncBroadcast,
+  ChasePlanAnswer,
+  ChasePlanAnswerPayload,
+  ChasePlanEntry,
+  ChasePlanEvent,
+  ChasePlanPayload,
   SceneKind,
   SceneTemplateCreateResult,
   SceneTemplateSummary,
@@ -1626,7 +1631,7 @@ export function connectSocket(userId: string): Socket {
     if (viewingScene(broadcast.sceneId)) {
       useChaseStore
         .getState()
-        .setVehicles(broadcast.sceneId, broadcast.vehicles, broadcast.obstacles);
+        .setVehicles(broadcast.sceneId, broadcast.vehicles, broadcast.obstacles, broadcast.plan);
     }
   });
   onPresented('smoke:sync', (broadcast: SmokeSyncBroadcast & { seq?: number }) => {
@@ -3623,6 +3628,15 @@ export const setChaseSpeed = (sceneVehicleId: string, speed: number | null) =>
 /** MG (72f2): auto, którego trzyma się kadr (`null` — reguła domyślna). */
 export const setChaseAnchor = (sceneId: string, vehicleId: string | null) =>
   emitSceneAck('chase:anchor', { sceneId, vehicleId });
+/** MG (etap 72f3): cały plan rund sceny — odpowiedź niesie go ze stanem. */
+export const setChasePlan = (sceneId: string, plan: ChasePlanEvent[]) =>
+  emitSceneAck<{ plan: ChasePlanEntry[] }>('chase:plan', {
+    sceneId,
+    plan,
+  } satisfies ChasePlanPayload);
+/** MG (etap 72f3): „Wypuść”, „Pomiń” albo „Odłóż o rundę” na karcie planu. */
+export const answerChasePlan = (messageId: number, answer: ChasePlanAnswer) =>
+  emitSceneAck('chase:plan-answer', { messageId, answer } satisfies ChasePlanAnswerPayload);
 /** MG: auto ucieka z pościgu (zaległość z 04.11) — jak wyjazd za przednią krawędź. */
 export const escapeChaseVehicle = (sceneVehicleId: string) =>
   emitSceneAck<SceneVehicleView>('chase:escape', { sceneVehicleId });

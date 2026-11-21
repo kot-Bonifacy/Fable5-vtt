@@ -1,5 +1,36 @@
 # Dziennik sesji — archiwum
 
+### Sesja 20.11 (szósta) — etap 72f1: kreator bez tempa, wzorzec i paczki
+
+**Zrobione (czeka na wdrożenie razem z 72b1–72e; bez migracji — kolumny są od 72b1):**
+
+- **Decyzje MG z pytań na starcie:** 72f dzielone na **72f1 kreator**, **72f2 okno „Pościg”**,
+  **72f3 plan rund**; prędkość startowa to **pole w mil/h krokiem 50**; liczba pasów na
+  wbudowanej drodze **zablokowana**; „Droga jedzie” **zostaje**.
+- **`shared`:** `ChaseSettings.lanesFromRoad`, łata `lanes` / `lanesFromRoad` / `role`
+  (`sanitizeChasePatch`), `chaseEffectiveLanes` (serwer i szkic jedną funkcją), `chaseFreeSpot`
+  na środkach pasów; wzorzec: `chase.lanes`, `chase.role`, `vehicles[].intent`. Granice pasów
+  i rola przeniesione do `chase.ts` (re-eksport z `chase-drive.ts`), żeby nie robić cyklu.
+- **Serwer:** `scene:update` pisze `chaseLanes` i `chaseRole` (nowe tło i wbudowana droga zerują
+  pasy), zmiana geometrii przyciąga auta do pasów, wzorzec stawia auta na pasach z zamiarami
+  (`chaseKeepGapSq`), paczka niesie pasy, rolę, kadr, autopilota i zamiary (drugi przebieg
+  przepina id aut).
+- **Klient:** sekcje `ChaseSetup.tsx` — „Liczba pasów”, „Prędkość startowa” (mil/h), „Drużyna
+  goni / ucieka”, zamiar przy aucie NPC-a w kroku „Auta” (`VehicleIntent`); linie pasów na mapie
+  przy edycji jezdni; podsumowanie „Gotowe” z pasami, rolą i prędkością.
+- **Zaległość z 18.11 zamknięta:** `t65-kreator` był nieaktualny (od 10.11 galeria niczego nie
+  wybiera z góry) — spec wybiera model i sprawdza nowe pola.
+
+Testy: `shared` 3264/3264, serwer 1882/1882 (`chase.test.ts` — łata pasów i roli, przyciąganie,
+paczka w obie strony; fikstura `test-poscig` z pasami i zamiarami), klient 526/526; `tsc` trzech
+pakietów, lint i Prettier na zmienionych plikach czyste; serwer startuje w `tsx` (próba z pułapki
+`testy`). E2E: cały `48-poscig` 26/26, `t65-kreator` 5/5 po poprawkach. **Oglądano w Firefoksie**
+(tymczasowy spec, MG, 1600 × 900): krok „Droga” na Neonowej ulicy (linie pasów zgodne
+z namalowanymi), krok „Auta” z zamiarem, „Gotowe”, zakładka „Pościg” własnej mapy z 4 → 5 pasami
+— **znaleziony i naprawiony błąd szkicu** (wpis pasów nie gasił „z drogi”, pułapka na górze
+`mapa`) i ciemna etykieta „Zamiar”. UI gracza bez zmian (Ola w Chromium w asercji E2E: zamiaru
+nie dostaje). `specs/99-zapomnij/` to dalej cudze oględziny z 14.11.
+
 ### Sesja 20.11 (piąta) — etap 72e: autopilot aut NPC-ów
 
 **Zrobione (czeka na wdrożenie razem z 72b1–72d2; nowa migracja `20261120230000_chase_intent_gap`):**

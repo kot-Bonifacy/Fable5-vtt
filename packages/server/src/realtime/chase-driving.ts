@@ -70,7 +70,7 @@ import {
 import { requireTurnSpend } from './combat-actions.js';
 import { logSpentAction } from './combat-log.js';
 import { rollServerSkillTest } from './character-rolls.js';
-import { RealtimeError, defineEvent } from './registry.js';
+import { RealtimeError, defineEvent, type RealtimeDeps } from './registry.js';
 import { emitSceneView, requireCampaignScene } from './scenes.js';
 import { emitSceneTokensToPlayers, emitTokensById } from './tokens.js';
 
@@ -276,67 +276,80 @@ export const chaseRestoreEvent = defineEvent<ChaseRestorePayload, SceneVehicleVi
     if (placed.status !== 'behind' && placed.status !== 'escaped') {
       return placedView(prisma, placed.sceneId, placed.id);
     }
-    const { scene, ...row } = placed;
-    const { settings, frame } = chaseGeometry(scene);
-    const body = chaseBodyOf(row.vehicle);
-    const side = payload?.side;
-    const lane = payload?.lane;
-    let centre: { x: number; y: number };
-    if (side !== undefined || lane !== undefined) {
-      if (side !== 'front' && side !== 'rear') throw new RealtimeError('BAD_REQUEST');
-      if (
-        typeof lane !== 'number' ||
-        !Number.isInteger(lane) ||
-        lane < 0 ||
-        lane >= settings.lanes
-      ) {
-        throw new RealtimeError('BAD_REQUEST');
-      }
-      const parked = (await placedOnScene(prisma, scene.id))
-        .filter(
-          (other) => other.id !== row.id && other.status !== 'behind' && other.status !== 'escaped',
-        )
-        .map((other) => ({ x: other.x, y: other.y, ...chaseBodyOf(other.vehicle) }));
-      centre = chaseEntryCentre({
-        lane,
-        lanes: settings.lanes,
-        side,
-        body,
-        parked,
-        settings,
-        scene: frame,
-      });
-    } else {
-      centre = clampChaseVehicle(row, body, settings, frame);
-    }
-    // W walce auto wjeżdża z prędkością: z pola okna albo prędkością pościgu
-    // (trzyma się kadru) — bez tego rezerwa ze wzorca miałaby 0 i odpadła od razu.
-    const pursuit = scene.chasePursuitSpeed;
-    const max = Math.max(0, readCpredVehicle(row.vehicle.system).move);
-    const speed =
-      pursuit === null
-        ? undefined
-        : Math.min(max, payload?.speed !== undefined ? readSpeed(payload.speed) : pursuit);
-    const updated = await prisma.sceneVehicle.update({
-      where: { id: row.id },
-      data: {
-        ...centre,
-        status: 'racing',
-        ...(speed !== undefined ? { speed, raceBonus: 0 } : {}),
-      },
+    await restoreToChase(deps, campaignId, placed, {
+      ...(payload?.side !== undefined ? { side: payload.side } : {}),
+      ...(payload?.lane !== undefined ? { lane: payload.lane } : {}),
+      ...(payload?.speed !== undefined ? { speed: payload.speed } : {}),
     });
-    const moved = await carryPassengers(prisma, scene, {
-      ...updated,
-      vehicle: row.vehicle,
-    });
-    await emitChase(deps, campaignId, scene.id);
-    await emitTokensById(deps, campaignId, moved, { moved: true });
-    // Załoga wraca graczom z autem (66c) — także wtedy, gdy auto w rezerwie
-    // stało już w kadrze i nikt się nie ruszył.
-    await emitSceneTokensToPlayers(deps, campaignId, scene);
-    return placedView(prisma, scene.id, row.id);
+    return placedView(prisma, placed.sceneId, placed.id);
   },
 });
+
+/**
+ * Auto spoza kadru wraca do pościgu — `chase:restore` i posiłki z planu rund
+ * (72f3). Pas i strona razem albo wcale; prędkość w punktach Ruchu (tylko
+ * w walce, brak — prędkość pościgu).
+ */
+export async function restoreToChase(
+  deps: RealtimeDeps,
+  campaignId: string,
+  placed: PlacedWithScene,
+  entry: { lane?: unknown; side?: unknown; speed?: unknown },
+): Promise<void> {
+  const prisma = deps.ctx.prisma;
+  const { scene, ...row } = placed;
+  const { settings, frame } = chaseGeometry(scene);
+  const body = chaseBodyOf(row.vehicle);
+  const { side, lane } = entry;
+  let centre: { x: number; y: number };
+  if (side !== undefined || lane !== undefined) {
+    if (side !== 'front' && side !== 'rear') throw new RealtimeError('BAD_REQUEST');
+    if (typeof lane !== 'number' || !Number.isInteger(lane) || lane < 0 || lane >= settings.lanes) {
+      throw new RealtimeError('BAD_REQUEST');
+    }
+    const parked = (await placedOnScene(prisma, scene.id))
+      .filter(
+        (other) => other.id !== row.id && other.status !== 'behind' && other.status !== 'escaped',
+      )
+      .map((other) => ({ x: other.x, y: other.y, ...chaseBodyOf(other.vehicle) }));
+    centre = chaseEntryCentre({
+      lane,
+      lanes: settings.lanes,
+      side,
+      body,
+      parked,
+      settings,
+      scene: frame,
+    });
+  } else {
+    centre = clampChaseVehicle(row, body, settings, frame);
+  }
+  // W walce auto wjeżdża z prędkością: z pola okna albo prędkością pościgu
+  // (trzyma się kadru) — bez tego rezerwa ze wzorca miałaby 0 i odpadła od razu.
+  const pursuit = scene.chasePursuitSpeed;
+  const max = Math.max(0, readCpredVehicle(row.vehicle.system).move);
+  const speed =
+    pursuit === null
+      ? undefined
+      : Math.min(max, entry.speed !== undefined ? readSpeed(entry.speed) : pursuit);
+  const updated = await prisma.sceneVehicle.update({
+    where: { id: row.id },
+    data: {
+      ...centre,
+      status: 'racing',
+      ...(speed !== undefined ? { speed, raceBonus: 0 } : {}),
+    },
+  });
+  const moved = await carryPassengers(prisma, scene, {
+    ...updated,
+    vehicle: row.vehicle,
+  });
+  await emitChase(deps, campaignId, scene.id);
+  await emitTokensById(deps, campaignId, moved, { moved: true });
+  // Załoga wraca graczom z autem (66c) — także wtedy, gdy auto w rezerwie
+  // stało już w kadrze i nikt się nie ruszył.
+  await emitSceneTokensToPlayers(deps, campaignId, scene);
+}
 
 /**
  * MG: `chase:set-speed` — poprawka prędkości auta bez kosztu (etap 72f2, okno
@@ -537,16 +550,24 @@ export const vehicleManeuverCallEvent = defineEvent<VehicleManeuverCallPayload, 
   handler: async ({ deps, socket, payload }) => {
     const campaignId = requireChaseCampaignId(socket.data);
     const placed = await requirePlaced(deps.ctx.prisma, campaignId, payload?.sceneVehicleId);
-    const maneuverCall =
-      payload?.maneuverId === null ? null : requireManeuver(placed, payload?.maneuverId).id;
-    if (maneuverCall && !(await driverOf(deps.ctx.prisma, placed.id))) {
-      throw new RealtimeError('NOT_DRIVER');
-    }
-    await deps.ctx.prisma.sceneVehicle.update({
-      where: { id: placed.id },
-      data: { maneuverCall },
-    });
+    await callManeuver(deps.ctx.prisma, placed, payload?.maneuverId);
     await emitChase(deps, campaignId, placed.sceneId);
     return placedView(deps.ctx.prisma, placed.sceneId, placed.id);
   },
 });
+
+/**
+ * Wezwanie do Manewru na aucie (`null` — odwołane) — `vehicle:maneuver-call`
+ * i plan rund (72f3). Bez rozsyłania: woła je ten, kto zmienia więcej aut.
+ */
+export async function callManeuver(
+  prisma: PrismaClient,
+  placed: PlacedWithScene,
+  maneuverId: unknown,
+): Promise<void> {
+  const maneuverCall = maneuverId === null ? null : requireManeuver(placed, maneuverId).id;
+  if (maneuverCall && !(await driverOf(prisma, placed.id))) {
+    throw new RealtimeError('NOT_DRIVER');
+  }
+  await prisma.sceneVehicle.update({ where: { id: placed.id }, data: { maneuverCall } });
+}

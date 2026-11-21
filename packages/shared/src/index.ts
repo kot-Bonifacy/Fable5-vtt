@@ -10,6 +10,7 @@ export * from './chase.js';
 export * from './chase-obstacles.js';
 export * from './chase-roads.js';
 export * from './chase-drive.js';
+export * from './chase-plan.js';
 export * from './chat.js';
 export * from './checks.js';
 export * from './combat.js';

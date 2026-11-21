@@ -33,7 +33,9 @@ export type GmAttentionKind =
   | 'player'
   | 'card'
   /** Wyścig rundy pościgu czeka na kubki graczy (etap 72c). */
-  | 'race';
+  | 'race'
+  /** Zdarzenie planu rund pościgu czeka na „Wypuść / Pomiń / Odłóż” (etap 72f3). */
+  | 'plan';
 
 /** Zakładka panelu bocznego, na której MG podejmuje decyzję. */
 export type GmAttentionTab = 'chat' | 'characters' | 'scenes';
@@ -58,6 +60,7 @@ export interface GmAttentionItem {
 export const GM_DECISION_KINDS: ReadonlySet<GmAttentionKind> = new Set<GmAttentionKind>([
   'request',
   'race',
+  'plan',
 ]);
 
 /**
@@ -150,6 +153,16 @@ export function gmAttentionItems(sources: GmAttentionSources): GmAttentionItem[]
         key: gmAttentionKey.message(message.id),
         kind: 'race',
         text: `Wyścig — runda ${message.chaseRace.round} czeka na: ${waiting.join(', ')}`,
+        tab: 'chat',
+        messageId: message.id,
+      });
+    }
+    // Etap 72f3: plan rund pyta MG o zdarzenie rundy — runda przy tym idzie dalej.
+    if (message.kind === 'chaseplan' && message.chasePlan?.status === 'waiting') {
+      items.push({
+        key: gmAttentionKey.message(message.id),
+        kind: 'plan',
+        text: `Plan rundy ${message.chasePlan.round}: ${message.chasePlan.title}`,
         tab: 'chat',
         messageId: message.id,
       });

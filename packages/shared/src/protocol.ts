@@ -37,6 +37,7 @@ import type {
 } from './vehicles.js';
 import type { SceneVehicleView } from './chase.js';
 import type { ChaseObstacleView } from './chase-obstacles.js';
+import type { ChasePlanEntry } from './chase-plan.js';
 import type { ExchangeCounterpartKind, ExchangeUnavailable } from './exchange.js';
 import type { ContainerLock, ContainerPreset } from './containers.js';
 import type {
@@ -192,6 +193,8 @@ export interface StateSyncPayload {
   sceneVehicles: SceneVehicleView[];
   /** Przeszkody na oglądanej scenie pościgu (etap 65e) — jawne dla całego stołu. */
   sceneObstacles: ChaseObstacleView[];
+  /** Plan rund oglądanej sceny pościgu (etap 72f3) — tylko MG, gracz: pusto. */
+  scenePlan: ChasePlanEntry[];
   /** Bot profiles — GM only (they carry secrets), always empty for players. */
   bots: BotView[];
   /** Bot availability, filtered by role (players get no diagnostics). */

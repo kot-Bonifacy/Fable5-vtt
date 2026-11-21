@@ -15,6 +15,7 @@ import type { ScenePoint } from './measure.js';
 import type { VehicleLayoutId } from './vehicles.js';
 import { VEHICLE_LAYOUTS } from './vehicles.js';
 import type { ChaseObstacleView } from './chase-obstacles.js';
+import type { ChasePlanEntry } from './chase-plan.js';
 import type { ChaseIntent } from './chase-drive.js';
 import type { RollBreakdownEntry } from './dice.js';
 
@@ -963,6 +964,8 @@ export interface ChaseSyncBroadcast {
   vehicles: SceneVehicleView[];
   /** Przeszkody tej sceny (65e) — wszyscy widzą wszystkie. */
   obstacles: ChaseObstacleView[];
+  /** Plan rund (72f3) — tylko MG; gracze dostają zdarzenie bez tego pola. */
+  plan?: ChasePlanEntry[];
 }
 
 /** MG: `chase:place` — auto kampanii na drogę tej sceny (albo przestawienie). */

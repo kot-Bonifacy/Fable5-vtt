@@ -71,6 +71,7 @@ import {
 } from './registry.js';
 import { containerTokenIds } from './containers.js';
 import { offstageVehicleIds, resetChaseCombat } from './chase-offstage.js';
+import { cancelChasePlanCards } from './chase-plan.js';
 import { refreshChaseOnTurn } from './chase-crew.js';
 import { campaignRoom, gmRoom, sceneRoom } from './state.js';
 import { emitSceneView, requireCampaignScene } from './scenes.js';
@@ -1138,6 +1139,8 @@ export const combatStartEvent = defineEvent<CombatStartPayload, CombatView>({
     await deps.ctx.prisma.combat.deleteMany({ where: { sceneId: scene.id } });
     // Księga węzłów Sieci liczy rundy tej walki, a nowa zaczyna od rundy 1 (70c).
     await resetNetLedgersOnScene(deps, scene.id);
+    // Pytania planu rund z poprzedniej walki gasną (72f3), plan zaczyna od nowa.
+    await cancelChasePlanCards(deps, campaignId, scene.id);
     // Prędkość aut pościgu (etap 72) żyje tylko w walce — poza nią to zapowiedź startowej.
     await resetChaseCombat(deps.ctx.prisma, scene.id);
     if (scene.kind === 'chase') await emitSceneView(deps, campaignId, scene.id);

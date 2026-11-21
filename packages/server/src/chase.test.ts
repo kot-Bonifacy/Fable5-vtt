@@ -19,6 +19,7 @@ import type {
 import {
   chaseRoadByUrl,
   chaseRoadPatch,
+  parseChasePlan,
   seatedTokenPosition,
   vehicleSeatCentre,
 } from '@vtt/shared';
@@ -720,6 +721,26 @@ describe('etap 72f1: pasy, rola drużyny i zamiar w paczce', () => {
       await emitAck(gm, 'chase:set-speed', { sceneVehicleId: van.id, speed: 30 }),
       'chase:set-speed',
     );
+    // Plan rund (72f3) wskazuje auta tej sceny — w kopii wskaże nowe.
+    data(
+      await emitAck(gm, 'chase:plan', {
+        sceneId: created.id,
+        plan: [
+          {
+            id: 'p1',
+            round: 2,
+            text: null,
+            kind: 'reinforce',
+            vehicleId: escort.id,
+            lane: 0,
+            side: 'front',
+            speed: 20,
+          },
+          { id: 'p2', round: 3, text: 'syrena', kind: 'note' },
+        ],
+      }),
+      'chase:plan',
+    );
     const file = await exportCampaign(built.prisma, campaignId, { includeChat: false });
     const packed = file?.payload.scenes.find((row) => row.id === created.id);
     expect(packed?.scene).toMatchObject({
@@ -761,6 +782,10 @@ describe('etap 72f1: pasy, rola drużyny i zamiar w paczce', () => {
     });
     expect(copyVan.startSpeed).toBe(30);
     expect(copyEscort.startSpeed).toBeNull();
+    expect(parseChasePlan(copy.chasePlan)).toMatchObject([
+      { id: 'p1', vehicleId: copyEscort.id, speed: 20, status: 'planned' },
+      { id: 'p2', text: 'syrena' },
+    ]);
 
     // Powrót do „z drogi” i wbudowana droga: pasy namalowane, liczba MG odpada.
     const auto = data(

@@ -225,6 +225,23 @@ const BY_KIND = {
     ola: 'forMe',
     gm: 'awaitingMe',
   },
+  // Plan rund (72f3) czeka tylko na MG — gracz tej karty i tak nie dostaje.
+  chaseplan: {
+    row: message('chaseplan', {
+      chasePlan: {
+        sceneId: 's',
+        round: 3,
+        entryId: 'p1',
+        kind: 'note',
+        title: 'Notatka: megafon',
+        text: 'megafon',
+        status: 'waiting',
+      },
+    }),
+    kuba: null,
+    ola: null,
+    gm: 'awaitingMe',
+  },
 } satisfies Record<
   ChatKind,
   {

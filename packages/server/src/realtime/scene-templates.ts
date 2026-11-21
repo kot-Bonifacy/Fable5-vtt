@@ -9,6 +9,8 @@ import {
   NET_SCENE_CONTROL_DV,
   ROLE_GM,
   chaseLaneOf,
+  freshChasePlanEntry,
+  remapChasePlan,
   chaseRoadByUrl,
   chaseSnapToLane,
   clampChaseVehicle,
@@ -351,6 +353,18 @@ export async function instantiateSceneTemplate(
             spec.intent.kind === 'keep' && target
               ? chaseKeepGapSq(self, target, scene, settings)
               : null,
+        },
+      });
+    }
+    // Plan rund (72f3) wskazuje auta kluczami wzorca.
+    if (template.scene.chase && template.scene.chase.plan.length > 0) {
+      const ids = new Map([...placed].map(([key, row]) => [key, row.id]));
+      await tx.scene.update({
+        where: { id: scene.id },
+        data: {
+          chasePlan: JSON.stringify(
+            remapChasePlan(template.scene.chase.plan, ids).map(freshChasePlanEntry),
+          ),
         },
       });
     }

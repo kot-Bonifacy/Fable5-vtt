@@ -15,6 +15,7 @@ import {
 } from './checks.js';
 import { isInventoryMoveOpen, type InventoryMoveView } from './inventory.js';
 import { chaseRacePending, type ChaseRaceLogEntry } from './chase.js';
+import { chasePlanCardOpen, type ChasePlanLogEntry } from './chase-plan.js';
 // Sam typ: `surgery.ts` czyta cennik CP RED, a rdzeń czatu nie importuje
 // niczego z `systems/cpred` — stan prośby o operację sprawdza się tu wprost.
 import type { SurgeryRequestEntry } from './surgery.js';
@@ -93,7 +94,13 @@ export type ChatKind =
    * Wyścig rundy pościgu (etap 72c) — Test przeciwstawny Prowadzenia
    * wszystkich kierowców; czeka na kubki kierowców-graczy, jawny dla stołu.
    */
-  | 'chaserace';
+  | 'chaserace'
+  /**
+   * Pytanie planu rund pościgu (etap 72f3) — „Plan rundy 3: posiłki…”,
+   * wyłącznie dla MG (plan jest tajemnicą MG), czeka na „Wypuść / Pomiń /
+   * Odłóż o rundę”.
+   */
+  | 'chaseplan';
 
 /**
  * Co zdany Test Percepcji pokazał na cudzej figurze (etap 41).
@@ -437,6 +444,8 @@ export interface ChatMessageView {
   rolltable?: RandomTableRollEntry;
   /** Wyścig rundy pościgu — kind `chaserace` only (etap 72c). */
   chaseRace?: ChaseRaceLogEntry;
+  /** Pytanie planu rund pościgu — kind `chaseplan` only (etap 72f3), tylko MG. */
+  chasePlan?: ChasePlanLogEntry;
   /**
    * Kolor autora (etap 60c) — wspólny dla całego stołu, wpisany przez serwer
    * przy budowie widoku (`chatAuthorColor`). Brak: NPC, karta wystawiona przez
@@ -672,6 +681,9 @@ export function chatCategoryOf(kind: ChatKind): ChatCategory {
     // zgaszone „Rzuty” chowają go razem z wezwaniami na kubek, które wystawił.
     case 'chaserace':
       return 'dice';
+    // Plan rund (72f3) to reżyseria walki — przy „Walce”, obok tego, co z niej wyjdzie.
+    case 'chaseplan':
+      return 'combat';
   }
 }
 
@@ -742,8 +754,21 @@ function awaitsMe(
   isGm: boolean,
   tokenIds: ReadonlySet<string>,
 ): boolean {
-  const { check, request, proposal, inventory, surgery, cardSubmission, roll, chaseRace } = message;
+  const {
+    check,
+    request,
+    proposal,
+    inventory,
+    surgery,
+    cardSubmission,
+    roll,
+    chaseRace,
+    chasePlan,
+  } = message;
   switch (message.kind) {
+    // Plan rund (72f3) czeka wyłącznie na MG — gracz tej karty nie dostaje.
+    case 'chaseplan':
+      return isGm && chasePlan !== undefined && chasePlanCardOpen(chasePlan);
     // Wyścig czeka na kubek kierowcy-gracza (wezwanie ma osobną kartę), a u MG
     // — na „Rzuć za gracza” albo „Pomiń Wyścig”.
     case 'chaserace':

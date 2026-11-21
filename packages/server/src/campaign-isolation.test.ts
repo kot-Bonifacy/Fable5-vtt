@@ -971,6 +971,9 @@ const CASES: Record<string, Case> = {
   // okno „Pościg” (etap 72f2): poprawka prędkości i auto kadru
   'chase:set-speed': foreign((a) => ({ sceneVehicleId: a.sceneVehicleId, speed: 0 })),
   'chase:anchor': foreign((a) => ({ sceneId: a.sceneId, vehicleId: null })),
+  // plan rund (etap 72f3): cudza scena i cudza karta czatu
+  'chase:plan': foreign((a) => ({ sceneId: a.sceneId, plan: [] })),
+  'chase:plan-answer': foreign((a) => ({ messageId: a.messageId, answer: 'skip' })),
   'vehicle:control': foreign((a) => ({ sceneVehicleId: a.sceneVehicleId })),
   'vehicle:maneuver': foreign((a) => ({ sceneVehicleId: a.sceneVehicleId, maneuverId: 'swerve' })),
   'vehicle:maneuver-call': foreign((a) => ({

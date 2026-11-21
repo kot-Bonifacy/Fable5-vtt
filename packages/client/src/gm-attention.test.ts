@@ -1,6 +1,7 @@
 import { expect, it } from 'vitest';
 import type { ChatMessageView, CreationPermitRow, CreationRankDraft } from '@vtt/shared';
 import {
+  GM_DECISION_KINDS,
   gmAttentionItems,
   gmAttentionTitle,
   gmDecisionQueue,
@@ -219,4 +220,39 @@ it('keeps the decision queue in announce order, without matters already settled 
   const item = (key: string): GmAttentionItem => ({ key, kind: 'request', text: key, tab: 'chat' });
   const queue = gmDecisionQueue(['msg:3', 'msg:1', 'msg:9'], [item('msg:1'), item('msg:3')]);
   expect(queue.map((row) => row.key)).toEqual(['msg:3', 'msg:1']);
+});
+
+it('lists an open question of the chase round plan as a decision, until the GM answers (72f3)', () => {
+  const card = (id: number, status: 'waiting' | 'released') =>
+    message({
+      id,
+      kind: 'chaseplan',
+      authorId: 'gm',
+      chasePlan: {
+        sceneId: 's',
+        round: 3,
+        entryId: `p${id}`,
+        kind: 'reinforce',
+        title: 'Posiłki: Radiowóz — pas 2, od tyłu, prędkość pościgu',
+        text: null,
+        status,
+      },
+    });
+  const items = gmAttentionItems({
+    ...empty,
+    chat: [
+      { type: 'message', message: card(1, 'waiting') },
+      { type: 'message', message: card(2, 'released') },
+    ],
+  });
+  expect(items).toEqual([
+    {
+      key: 'msg:1',
+      kind: 'plan',
+      text: 'Plan rundy 3: Posiłki: Radiowóz — pas 2, od tyłu, prędkość pościgu',
+      tab: 'chat',
+      messageId: 1,
+    },
+  ]);
+  expect(GM_DECISION_KINDS.has('plan')).toBe(true);
 });

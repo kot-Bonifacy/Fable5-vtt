@@ -1,5 +1,7 @@
 import {
   chaseRacePending,
+  parseChasePlan,
+  resetChasePlan,
   sceneVehicleOffstage,
   type ChaseRaceLogEntry,
   type ChaseRaceWaitView,
@@ -55,6 +57,17 @@ export async function resetChaseCombat(prisma: PrismaClient, sceneId: string): P
     where: { id: sceneId, kind: 'chase' },
     data: { chasePursuitSpeed: null, chaseRace: null },
   });
+  // Plan rund (72f3) zaczyna się z każdą walką od nowa: odłożenia i odpowiedzi znikają.
+  const scene = await prisma.scene.findUnique({
+    where: { id: sceneId },
+    select: { kind: true, chasePlan: true },
+  });
+  if (scene?.kind === 'chase') {
+    await prisma.scene.update({
+      where: { id: sceneId },
+      data: { chasePlan: JSON.stringify(resetChasePlan(parseChasePlan(scene.chasePlan))) },
+    });
+  }
 }
 
 // ───────── Wyścig rundy (etap 72c) — stan w `Scene.chaseRace`, czytany też przez widok sceny ─────────

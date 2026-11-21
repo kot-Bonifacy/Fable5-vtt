@@ -44,6 +44,7 @@ import { useTokenStore } from '../stores/tokenStore.js';
 import { useWindowPlacement } from '../window-placement.js';
 import { chaseRoundsText } from '../chase-map-notes.js';
 import { VehicleIntent, chaseErrorText } from './ChaseVehicleMenu.js';
+import { ChasePlanEditor } from './ChasePlanEditor.js';
 import { IconChase } from './MapIcons.js';
 import { Segmented } from './Segmented.js';
 import { WindowResizeGrip } from './WindowResizeGrip.js';
@@ -56,7 +57,7 @@ import { WindowResizeGrip } from './WindowResizeGrip.js';
  * kierowcą, PUK i zamiarem; posiłki (każde auto poza kadrem — rezerwa wzorca
  * i to, co odpadło) z pasem, stroną kadru i prędkością; przeszkody na pas
  * i odległość przed wybranym autem (tylko w kadrze, decyzja MG 21.11)
- * z prognozą i listą do zdjęcia.
+ * z prognozą i listą do zdjęcia; od 72f3 — plan rund (`ChasePlanEditor`).
  */
 
 const ROLE_OPTIONS: { id: ChaseRole; label: string; hint: string }[] = [
@@ -225,6 +226,14 @@ function ChaseWindowBody({ scene }: { scene: SceneView }) {
             Przeszkody wypuszcza się w walce — poza nią nie ma rund, więc droga ich nie przesuwa.
           </p>
         )}
+
+        <p
+          className="chase-window-section"
+          title="Co ma się stać w której rundzie. Na początku rundy serwer pyta o to MG w panelu decyzji (gracze nic nie widzą); runda przy tym nie stoi."
+        >
+          Plan rund
+        </p>
+        <ChasePlanEditor scene={scene} round={inCombat ? round : null} />
       </div>
       <WindowResizeGrip resizeProps={placement.resizeProps} />
     </section>

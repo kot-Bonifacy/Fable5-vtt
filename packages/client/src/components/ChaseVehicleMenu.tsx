@@ -123,6 +123,14 @@ export function chaseErrorText(code: string | undefined): string {
     case 'RACE_NOT_WAITING':
     case 'RACE_NOT_FOUND':
       return 'Ten Wyścig jest już rozstrzygnięty.';
+    // Etap 72f3: plan rund.
+    case 'PLAN_NOT_WAITING':
+    case 'PLAN_NOT_FOUND':
+      return 'To zdarzenie planu jest już rozstrzygnięte.';
+    case 'PLAN_ALREADY_IN_CHASE':
+      return 'To auto jest już w pościgu — pomiń zdarzenie albo odłóż je o rundę.';
+    case 'PLAN_NO_DRIVERS':
+      return 'W kadrze nie ma auta z kierowcą, które zna ten Manewr.';
     case 'NO_ACTION_LEFT':
       return 'Nie masz już Akcji w tej turze.';
     // Etap 65d1: PUK 0.

@@ -54,6 +54,7 @@ import {
 } from './tokens.js';
 import { chaseTurnEnd, pointerAfterDrift, startChaseRound } from './chase-drive.js';
 import { startChaseRace } from './chase-race.js';
+import { askChasePlan } from './chase-plan.js';
 import { sweepTimedEffects } from './timed-effects.js';
 import { runZonesAtTurnEnd } from './zones.js';
 import { sweepBackupArrivals } from './backup.js';
@@ -136,6 +137,9 @@ export async function advanceTurn(
       refreshed = await loadCombatById(deps.ctx.prisma, combat.id);
       pointer = pointerAfterDrift(refreshed, pointer);
     }
+    // Etap 72f3: plan rund pyta MG o zdarzenia tej rundy (panel decyzji) —
+    // runda przy tym nie stoi (decyzja MG z 21.11).
+    await askChasePlan(deps, campaignId, scene.id, pointer.round);
     // Etap 72c: Wyścig rundy. Gdy czeka na kubki kierowców-graczy, runda stoi
     // bez tury — rusza `resumeAfterChaseRace` po ostatnim rzucie albo „Pomiń”.
     if (await startChaseRace(deps, campaignId, scene, refreshed, pointer.round, user)) {

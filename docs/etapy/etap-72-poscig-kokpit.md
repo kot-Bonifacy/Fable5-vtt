@@ -4,7 +4,7 @@
 65a–65e), kreator pościgu z 03.11, 66c i 66d (wzorce pościgu), 69 (lewa belka bez ramek),
 32 (wezwanie do Testu) · **Status:** 🟨 w toku — projekt 15.11, **72a ✅ 19.11**, **72b1 ✅ 19.11**,
 **72b2 ✅ 20.11**, **72c ✅ 20.11**, **72d1 ✅ 20.11**, **72d2 ✅ 20.11**, **72e ✅ 20.11**,
-**72f1 ✅ 20.11**, **72f2 ✅ 21.11**, następny 72f3
+**72f1 ✅ 20.11**, **72f2 ✅ 21.11**, **72f3 ✅ 21.11**, następny 72g (zakres z MG)
 
 ## Skąd ten etap
 
@@ -715,13 +715,49 @@ Rozstrzygnięcia bez pytań (do potwierdzenia przy rozegraniu 72g):
 - **Pola prędkości wysyłają po Enterze albo wyjściu z pola**, krokiem strzałek 50 mil/h;
   wpisana liczba zaokrągla się do 5 mil/h (1 punkt Ruchu).
 
-#### 72f3 — plan rund
+#### 72f3 — plan rund (✅ 21.11)
 
-- [ ] Plan rund (`Scene.chasePlan`): edycja w oknie „Pościg”, pytanie w panelu decyzji MG na
-      początku rundy („Wypuść / Pomiń / Odłóż o rundę”), wykonanie zdarzenia (posiłki,
-      przeszkoda, Manewr na wezwanie, notatka).
-- [ ] Krok „Plan” w kreatorze (opcjonalny), `chase.plan` we wzorcu i w paczce.
-- [ ] Testy `shared` i serwera, E2E planu rund.
+- [x] Plan rund (`Scene.chasePlan`, kolumna od 72b1 — bez migracji): edycja w oknie „Pościg”
+      (`ChasePlanEditor.tsx`, sekcja „Plan rund”), pytanie w panelu decyzji MG na początku rundy
+      („Wypuść / Odłóż o rundę / Pomiń”, przy notatce „Zrobione”) kartą czatu `chaseplan`
+      wyłącznie dla MG, wykonanie zdarzenia (posiłki — `restoreToChase`, przeszkoda —
+      `spawnObstacleOnLane`, Manewr na wezwanie — `callManeuver`, notatka).
+- [x] Krok „Plan” w kreatorze (opcjonalny, między „Auta” a „Gotowe”), `chase.plan` we wzorcu
+      (auta kluczami wzorca, `id` wiersza opcjonalne) i w paczce (auta przez mapę id).
+- [x] Testy `shared` (`chase-plan.test.ts` — 12), serwera (`chase-plan.test.ts` — 6, paczka
+      w `chase.test.ts`, wzorzec `test-poscig` z planem, macierz izolacji), klienta
+      (`gm-attention.test.ts` — rodzaj `plan`), E2E `t72f3-plan` i krok „Plan” w `t65-kreator`.
+
+Decyzje MG z 21.11 (pytania na starcie sesji):
+
+- **Runda nie stoi** — pytanie wyskakuje w panelu decyzji, a runda rusza normalnie (Wyścig
+  dalej stoi, jak stał); posiłki i przeszkoda wchodzą w chwili „Wypuść”.
+- **Zdarzenie bez odpowiedzi czeka dalej** — zostaje w panelu, w „Czeka na MG” i w oknie, aż MG
+  odpowie; nic nie dzieje się samo.
+- **Ślad — karta czatu tylko dla MG** (`chaseplan`, rubryka „Walka”, plakietka „tylko MG”);
+  z niej czyta panel decyzji.
+- **Cztery rodzaje:** posiłki, przeszkoda, Manewr na wezwanie, notatka.
+
+Rozstrzygnięcia bez pytań (do potwierdzenia przy rozegraniu 72g):
+
+- **Wiersza nie edytuje się w miejscu** — „Usuń” i dopisanie nowego. Wiersz, o który karta
+  właśnie pyta, nie da się ani zmienić, ani usunąć (najpierw odpowiedź); ma w oknie te same
+  przyciski co karta.
+- **Kilka zdarzeń w jednej rundzie — osobna karta na każde** (panel: „+N czeka”), w kolejności
+  wpisania. Zdarzenie wpisane w walce na rundę, która minęła, zapyta najbliższa runda.
+- **Przeszkody planu tylko z palety** (bez „Własnej” z grafiką — ta zostaje w oknie). „Przed
+  autem” — auto z planu, a gdy wypadło z kadru — auto kadru; puste pole odległości — przy
+  przedniej krawędzi.
+- **Manewr „wszystkie auta z kierowcą”** — każde auto w kadrze z kimkolwiek za kierownicą (gracz
+  i NPC), które zna ten Manewr; nikogo takiego — odmowa `PLAN_NO_DRIVERS`.
+- **Posiłki, gdy auto jest już w kadrze** (MG przywrócił je ręką) — odmowa
+  `PLAN_ALREADY_IN_CHASE`; MG pomija zdarzenie.
+- **„Odłóż o rundę”** — następna po bieżącej rundzie walki (karta z rundy 2 odłożona w rundzie 4
+  zapyta w 5).
+- **Nowa walka zaczyna plan od nowa** (odłożenia i odpowiedzi znikają), koniec walki gasi otwarte
+  karty jako „Przerwane”; paczka i wzorzec niosą plan bez stanu.
+- **Karta jest kontem MG kampanii** (`campaignGmUser`), także gdy rundę ruszył gracz końcem tury —
+  inaczej trafiłaby mu do historii jako własny wiersz.
 
 ### 72g — wzorce, rozegranie, zamknięcie
 
@@ -748,8 +784,8 @@ Rozstrzygnięcia bez pytań (do potwierdzenia przy rozegraniu 72g):
 - [ ] Na początku rundy kierowcy rzucają Wyścig (gracz kubkiem), a zryw zmienia dystans.
 - [ ] Nitro, Manewry, kolczatka i silnik są w belce; zderzenie i przeszkoda pytają w belce.
 - [ ] Auto NPC-a z zamiarem jedzie samo, a MG może przejąć je kokpitem i wyłączyć autopilota.
-- [ ] MG prowadzi pościg z panelu „Pościg”: widzi prędkości, pasy i dystanse, wypuszcza
-      przeszkodę na pas w odległości (72f2 ✅ 21.11), a plan rund pyta go o zdarzenia (72f3).
+- [x] MG prowadzi pościg z panelu „Pościg”: widzi prędkości, pasy i dystanse, wypuszcza
+      przeszkodę na pas w odległości (72f2 ✅ 21.11), a plan rund pyta go o zdarzenia (72f3 ✅ 21.11).
 - [x] Kreator nie pyta o tempo; pyta o pasy, prędkość startową i rolę drużyny (72f1, 20.11).
 - [ ] „Ostatni zjazd” i „Zastaw” rozegrane w nowym modelu, balans zatwierdzony przez MG.
 - [ ] Testy `shared`, serwera i klienta, E2E `48-poscig`, oględziny w Firefoksie i Chromium.

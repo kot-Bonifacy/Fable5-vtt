@@ -17,6 +17,7 @@ import type {
   JournalLogEntry,
   RandomTableRollEntry,
   ChaseRaceLogEntry,
+  ChasePlanLogEntry,
   TimeLogEntry,
   RollGesture,
   SessionUser,
@@ -170,6 +171,8 @@ export function toChatMessageView(message: StoredMessage): ChatMessageView {
     view.rolltable = entry;
   } else if (message.kind === 'chaserace' && message.payload) {
     view.chaseRace = JSON.parse(message.payload) as ChaseRaceLogEntry;
+  } else if (message.kind === 'chaseplan' && message.payload) {
+    view.chasePlan = JSON.parse(message.payload) as ChasePlanLogEntry;
   }
   // Etap 60c: ten sam kolor u każdego widza, więc wpisany tu, przed
   // przycięciem per widz — i w historii, i w każdym dostarczeniu.
@@ -366,6 +369,9 @@ export function visibleTo(user: SessionUser) {
               // Wyścig rundy pościgu (72c) jest jawny — z powodu, dla którego
               // jest tu `time`: bez wpisu MG widziałby tylko własne karty.
               'chaserace',
+              // Plan rund (72f3) jest tylko dla MG — wzorem `gmrolltable`: należy
+              // do stołu MG, a graczom (gałąź niżej) nie wchodzi nigdy.
+              'chaseplan',
             ],
           },
         },

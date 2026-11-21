@@ -16,7 +16,12 @@ import type {
   SocketAck,
 } from '@vtt/shared';
 import type { CpredCharacterData } from '@vtt/shared';
-import { readCpredVehicle, seatedTokenPosition, vehicleSeatCentre } from '@vtt/shared';
+import {
+  parseChasePlan,
+  readCpredVehicle,
+  seatedTokenPosition,
+  vehicleSeatCentre,
+} from '@vtt/shared';
 import type { ServerConfig } from './config.js';
 import { buildApp, type BuiltApp } from './app.js';
 import { joinUrl } from './test-join.js';
@@ -261,6 +266,12 @@ describe('etap 66: sceny przykładowe', () => {
     // Własna prędkość startowa (72f2) — tylko w aucie, które ją ma we wzorcu.
     expect(reserve.startSpeed).toBe(30);
     expect(taxi.startSpeed).toBeNull();
+    // Plan rund (72f3): klucze aut wzorca zamienione na auta sceny, po rundach.
+    expect(parseChasePlan(scene.chasePlan)).toMatchObject([
+      { id: 'p2', round: 2, kind: 'obstacle', beforeId: taxi.id, status: 'planned', dueRound: 2 },
+      { id: 'p1', round: 3, kind: 'reinforce', vehicleId: reserve.id, lane: 1, side: 'rear' },
+      { id: 'p3', round: 4, kind: 'note', text: 'Pickup strzela z okna' },
+    ]);
     // Auta stoją na środkach pasów: jezdnia 3–9 na dwa pasy — 4,5 i 7,5 kratki.
     for (const row of placed) {
       const lane = row.y / scene.gridSizePx;

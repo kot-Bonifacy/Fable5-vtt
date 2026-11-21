@@ -21,6 +21,7 @@ const KIND_ICON: Record<GmAttentionKind, string> = {
   player: '👤',
   card: '📂',
   race: '🏁',
+  plan: '📜',
 };
 
 /**

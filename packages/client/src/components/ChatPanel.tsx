@@ -57,6 +57,7 @@ import { OpposedRow } from './GrappleControls.js';
 import { DamageApplyControls, DamageRow } from './DamageControls.js';
 import { CheckCallRow } from './CheckCall.js';
 import { ChaseRaceRowCard } from './ChaseRaceCard.js';
+import { ChasePlanRowCard } from './ChasePlanCard.js';
 import { CheckRequestRow } from './CheckRequest.js';
 import { InventoryMoveRow } from './InventoryMove.js';
 import { SurgeryRequestRow } from './SurgeryRequest.js';
@@ -875,6 +876,9 @@ function FullMessageRow({
   if (message.kind === 'chaserace' && message.chaseRace) {
     return <ChaseRaceRowCard message={message} entry={message.chaseRace} />;
   }
+  if (message.kind === 'chaseplan' && message.chasePlan) {
+    return <ChasePlanRowCard message={message} entry={message.chasePlan} />;
+  }
   if ((message.kind === 'action' || message.kind === 'gmaction') && message.action) {
     return <CombatActionRow message={message} entry={message.action} isGm={isGm} />;
   }
@@ -1160,6 +1164,8 @@ function isPending(item: ChatItem, myUserId: string, isGm: boolean): boolean {
   // Wyścig (72c) czeka na kubki graczy — runda stoi, więc karta nie może
   // zniknąć pod separatorem filtra.
   if (kind === 'chaserace') return item.message.chaseRace?.status === 'waiting';
+  // Plan rund (72f3) czeka na MG, choć runda idzie dalej — z tego samego powodu.
+  if (kind === 'chaseplan') return item.message.chasePlan?.status === 'waiting';
   if (kind !== 'proposal' || !proposal || proposal.resolution !== undefined) return false;
   return isGm || proposal.controllerUserId === myUserId;
 }
