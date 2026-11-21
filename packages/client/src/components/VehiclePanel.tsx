@@ -5,7 +5,6 @@ import {
   CPRED_VEHICLE_UPGRADE_PROBLEMS,
   ROLE_GM,
   VEHICLE_ART,
-  VEHICLE_ART_LEGACY,
   VEHICLE_LAYOUT_IDS,
   VEHICLE_LAYOUT_LABELS,
   VEHICLE_SIZE_MAX,
@@ -320,7 +319,6 @@ function VehicleArtPicker({ vehicle, isGm }: { vehicle: VehicleView; isGm: boole
   });
   if (!isGm && gallery.length === 0) return null;
   const builtIn = gallery.some((art) => art.url === vehicle.imageUrl);
-  const legacy = VEHICLE_ART_LEGACY.some((art) => art.url === vehicle.imageUrl);
 
   async function pick(value: string) {
     const model = value ? modelOf(value) : undefined;
@@ -351,11 +349,7 @@ function VehicleArtPicker({ vehicle, isGm }: { vehicle: VehicleView; isGm: boole
         <option value="">domyślna</option>
         {vehicle.imageUrl && !builtIn ? (
           <option value={vehicle.imageUrl} disabled>
-            {legacy
-              ? 'poprzednia grafika'
-              : VEHICLE_ART.some((art) => art.url === vehicle.imageUrl)
-                ? 'od MG'
-                : 'własna MG'}
+            {VEHICLE_ART.some((art) => art.url === vehicle.imageUrl) ? 'od MG' : 'własna MG'}
           </option>
         ) : null}
         {gallery.map((art) => (

@@ -242,7 +242,7 @@ describe('compendium', () => {
     const gm = createSocket(gmCookie);
     const sync = await gm.firstSync;
     // A kind the payload below knows how to fill — the alphabetical first entry
-    // is a car model since etap 67 („Arasaka „Kagerō”").
+    // is a car model since etap 67 („Ametyst”, dawniej „Kagerō”).
     const imported = sync.compendium.entries.find(
       (entry) => !entry.custom && ['weapon', 'armor', 'gear'].includes(entry.category),
     );

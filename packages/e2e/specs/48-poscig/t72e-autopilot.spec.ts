@@ -138,17 +138,13 @@ test.describe.serial('@szybkie T72e autopilot: auta NPC-ów jadą same z zamiare
       dataOf<Placed>(await emitAck(gm, 'chase:place', { sceneId, vehicleId, x, y }));
     // Iskra stoi już tam, gdzie trzyma ją kadr (30% od tylnej, prawej krawędzi).
     iskraCar = await place(
-      await create('Strzała Iskry', '/art/vehicles/car-red.webp', characterId('Iskra')),
+      await create('Strzała Iskry', '/art/vehicles/furia.webp', characterId('Iskra')),
       grid * 33.6,
       grid * 6,
     );
-    chaserCar = await place(
-      await create('Pogoń', '/art/vehicles/car-black-viper.webp'),
-      grid * 45,
-      grid * 6,
-    );
+    chaserCar = await place(await create('Pogoń', '/art/vehicles/widmo.webp'), grid * 45, grid * 6);
     runnerCar = await place(
-      await create('Ucieczka', '/art/vehicles/car-black-viper.webp'),
+      await create('Ucieczka', '/art/vehicles/widmo.webp'),
       grid * 12,
       grid * 14,
     );

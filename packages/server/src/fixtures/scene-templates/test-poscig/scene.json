@@ -56,7 +56,7 @@
     {
       "key": "taksowka",
       "name": "Kradziona taksówka",
-      "imageUrl": "/art/vehicles/car-taxi.webp",
+      "imageUrl": "/art/vehicles/taksowka.webp",
       "x": 6.5,
       "y": 4.5,
       "system": {
@@ -67,7 +67,7 @@
     {
       "key": "pickup",
       "name": "Pickup Maelstromu",
-      "imageUrl": "/art/vehicles/pickup-blue.webp",
+      "imageUrl": "/art/vehicles/ranczer.webp",
       "x": 17,
       "y": 7,
       "intent": { "kind": "pursue", "target": "taksowka" },
@@ -79,7 +79,7 @@
     {
       "key": "posilki",
       "name": "Posiłki Maelstromu",
-      "imageUrl": "/art/vehicles/car-red.webp",
+      "imageUrl": "/art/vehicles/furia.webp",
       "x": 21.5,
       "y": 4.5,
       "status": "behind",

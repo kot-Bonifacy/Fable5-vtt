@@ -245,7 +245,7 @@ describe('etap 65a: pojazd jako własność postaci', () => {
     ).toMatchObject({ ok: false, error: 'FORBIDDEN' });
     // 10.11: gracz dostaje tylko wygląd modelu swojej klasy z tymi samymi
     // fotelami — supersamochód na kompakcie kłamałby o liczbach.
-    for (const imageUrl of ['/art/vehicles/kagero.webp', '/art/vehicles/car-red.webp']) {
+    for (const imageUrl of ['/art/vehicles/kagero.webp', '/art/vehicles/zadlo.webp']) {
       expect(await emitAck(player, 'vehicle:rename', { vehicleId: carId, imageUrl })).toEqual({
         ok: false,
         error: 'VEHICLE_LOOK_LOCKED',

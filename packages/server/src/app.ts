@@ -42,6 +42,7 @@ import { loadCompendium } from './compendium.js';
 import { loadShopRules } from './shop-rules.js';
 import { loadCpredRegistry } from './cpred.js';
 import { loadCoverCatalogue } from './covers.js';
+import { loadSamplePortraits, seedPendingSamplePortraits } from './sample-portraits.js';
 import { LoginAttemptLimiter, REGISTRATION_WINDOW_MS, REGISTRATIONS_MAX } from './rate-limit.js';
 
 export interface BuiltApp {
@@ -270,6 +271,16 @@ export async function buildApp(
   // Kule, śrut i strzały się nie kończą (zasada domowa MG z 23.10.2026) —
   // ich pudełka i „Licz amunicję” schodzą z kart w bazie, nie tylko w odczycie.
   await dropBottomlessAmmo(prisma, app.log);
+  // Przykładowe portrety (MG 21.11.2026) do puli kampanii sprzed zestawu — raz.
+  await seedPendingSamplePortraits(
+    prisma,
+    {
+      uploadsDir: config.uploadsDir,
+      samplesDir: config.samplePortraitsDir,
+      samples: await loadSamplePortraits(config.samplePortraitsDir, app.log),
+    },
+    app.log,
+  );
   // Etap 65a (decyzja MG 10 z 30.10): wiersze „Pojazd” Taboru sprzed etapu
   // dostają prawdziwe pojazdy — raz, przed pierwszym żądaniem.
   await backfillFleetVehicles(prisma, ctx.compendium, ctx.cpred, app.log);

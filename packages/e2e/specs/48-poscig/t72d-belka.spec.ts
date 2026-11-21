@@ -126,7 +126,7 @@ test.describe.serial('@szybkie T72d belka: akcje auta i decyzje kierowcy w grupi
     olaCar = await place(
       await create(
         {
-          imageUrl: '/art/vehicles/car-red.webp',
+          imageUrl: '/art/vehicles/furia.webp',
           system: { upgrades: [{ id: 'u-nitro', upgradeId: 'nitro', notes: '' }] },
         },
         characterId('Iskra'),

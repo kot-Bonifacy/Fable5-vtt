@@ -168,6 +168,10 @@ model Campaign {
   /// name out loud when it is NOT one. Deliberately not a permission — the GM
   /// is not to be stopped from doing anything, only told where they are.
   sandbox   Boolean  @default(false)
+  /// Did the pool already get the sample portraits (MG 21.11.2026,
+  /// `src/sample-portraits.ts`)? New campaigns get them on creation, older
+  /// ones once at server start; deleted samples never come back.
+  samplePortraitsSeeded Boolean @default(false)
   /// Zegar świata (etap 37): minuty od epoki uniksowej, liczone w UTC.
   ///
   /// Liczba, nie `DateTime`, i UTC, nie czas lokalny — pora dnia w Night City

@@ -64,7 +64,7 @@ function cleanEnv(): NodeJS.ProcessEnv {
   const env = { ...process.env };
   for (const key of Object.keys(env)) {
     if (
-      /^(DATABASE_URL|UPLOADS_DIR|BACKUP_|GM_|COOKIE_SECRET|DATA_P|AI_GATEWAY|BOT_DECISION_LOG|AUDIO_PYTHON|NODE_ENV|VTT_DICE_SCRIPT|PORT|HOST|CLIENT_ORIGIN|SESSION_TTL|RATE_LIMITS|TRUST_PROXY|VTT_SESSION|VTT_MAX_SESSIONS|VTT_AI_OWNER|VTT_ADMIN|VTT_REGISTRATION)/.test(
+      /^(DATABASE_URL|UPLOADS_DIR|BACKUP_|GM_|COOKIE_SECRET|DATA_P|AI_GATEWAY|BOT_DECISION_LOG|AUDIO_PYTHON|NODE_ENV|VTT_DICE_SCRIPT|PORT|HOST|CLIENT_ORIGIN|SESSION_TTL|RATE_LIMITS|TRUST_PROXY|VTT_SESSION|VTT_MAX_SESSIONS|VTT_AI_OWNER|VTT_ADMIN|VTT_REGISTRATION|SAMPLE_PORTRAITS)/.test(
         key,
       )
     ) {
@@ -93,6 +93,9 @@ function serverEnv(extra: NodeJS.ProcessEnv = {}): NodeJS.ProcessEnv {
     COOKIE_SECRET: cookieSecret,
     UPLOADS_DIR: P.UPLOADS_DIR,
     DATA_PUBLIC_DIR: join(P.REPO_DIR, 'data/public'),
+    // Przykładowe portrety (21.11) wyłączone: suita liczy pule od zera, a zestaw
+    // sprawdza `sample-portraits.test.ts` w serwerze.
+    SAMPLE_PORTRAITS_DIR: '',
     DATA_PRIVATE_DIR: process.env.E2E_DATA_PRIVATE_DIR ?? P.DATA_PRIVATE_DIR,
     BACKUP_DIR: P.BACKUP_DIR,
     // Kopia z harmonogramu tylko tam, gdzie test o nią prosi (6.9).

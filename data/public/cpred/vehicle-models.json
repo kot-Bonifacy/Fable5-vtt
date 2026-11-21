@@ -4,13 +4,13 @@
   "models": [
     {
       "id": "vehicle.kagero",
-      "name": "Arasaka „Kagerō”",
+      "name": "„Ametyst”",
       "class": "super",
       "art": "/art/vehicles/kagero.webp",
       "price": 30000,
       "tier": 4,
       "forSale": true,
-      "description": "Korporacyjny supersamochód w barwach Arasaki. Dwa fotele, silnik, który słychać przecznicę dalej, i lakier, który mówi „mam ochronę”."
+      "description": "Kanciasty grafitowy supersamochód z fioletowymi neonami wzdłuż maski i progów. Dwa fotele, silnik, który słychać przecznicę dalej, i światła, których nie da się przeoczyć."
     },
     {
       "id": "vehicle.widmo",
@@ -33,14 +33,24 @@
       "description": "Czarno-żółta wyścigówka z numerem 77 na dachu i szachownicą na tylnym błotniku. Cztery fotele, nielegalne wyścigi w cenie."
     },
     {
+      "id": "vehicle.furia",
+      "name": "„Furia”",
+      "class": "sport",
+      "art": "/art/vehicles/furia.webp",
+      "price": 15000,
+      "tier": 2,
+      "forSale": true,
+      "description": "Czerwony muscle car z dwoma białymi pasami przez maskę, dach i bagażnik. Cztery fotele, trochę rdzy na progach i silnik, który wszystko wybacza."
+    },
+    {
       "id": "vehicle.nocny-neon",
-      "name": "„Nocny Neon”",
+      "name": "„Lazur”",
       "class": "sport",
       "art": "/art/vehicles/nocny-neon.webp",
       "price": 15000,
       "tier": 2,
       "forSale": true,
-      "description": "Sportowe coupé w różowym neonie z napisem „Night City” na klapie. Cztery fotele, widać je z każdego wiaduktu."
+      "description": "Turkusowe sportowe coupé o ostrych krawędziach, z czarnym dachem i błękitnymi światłami. Cztery fotele i lakier, który widać z każdego wiaduktu."
     },
     {
       "id": "vehicle.bastion",
@@ -175,7 +185,7 @@
       "class": "compact",
       "art": "/art/vehicles/taksowka.webp",
       "forSale": false,
-      "description": "Żółta taksówka miejska z szachownicą na dachu. Pojazd MG."
+      "description": "Żółta, porysowana taksówka miejska w szachownicę, z pomarańczowym kogutem na dachu. Pojazd MG."
     },
     {
       "id": "vehicle.radiowoz",

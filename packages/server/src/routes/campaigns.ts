@@ -24,6 +24,7 @@ import { notifyAdmins } from '../realtime/admin-room.js';
 import type { RealtimeDeps } from '../realtime/registry.js';
 import { campaignRoom, lobbyRoom } from '../realtime/state.js';
 import { playerNameTaken, sanitizePlayerName, toInvitationSummary } from '../invitations.js';
+import { loadSamplePortraits, seedSamplePortraits } from '../sample-portraits.js';
 import {
   getUserActiveCampaign,
   ownCampaign as ownCampaignOf,
@@ -161,6 +162,23 @@ export function registerCampaignRoutes(app: FastifyInstance, ctx: AppContext): v
       }
       return created;
     });
+    // Przykładowe portrety MG (21.11) w puli od pierwszej chwili. Gdyby kopiowanie
+    // padło, kampania i tak powstaje — flaga zostaje zgaszona i start serwera
+    // dołoży zestaw później.
+    const samplesDir = ctx.config.samplePortraitsDir;
+    try {
+      await seedSamplePortraits(
+        ctx.prisma,
+        {
+          uploadsDir: ctx.config.uploadsDir,
+          samplesDir,
+          samples: await loadSamplePortraits(samplesDir, request.log),
+        },
+        campaign.id,
+      );
+    } catch (error) {
+      request.log.error({ err: error, campaignId: campaign.id }, 'sample portraits failed');
+    }
     // Brama AI (44d) zna kampanie z pamięci — nowa musi do niej trafić.
     await ctx.ai.refresh();
     return reply.code(201).send(toCampaignSummary(campaign));

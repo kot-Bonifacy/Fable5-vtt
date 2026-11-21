@@ -294,15 +294,17 @@ export interface VehicleArtEntry {
  * Wbudowane grafiki aut, rysowane przodem do góry. Od etapu 67 (MG 06.11.2026)
  * to grafiki MG (`tools/art/vehicle-models.py`) — po jednej na model auta
  * z `vehicle-models.json`; `gmOnly` — służby, których gracz nie dostaje
- * w galerii. Grafiki z paczki CC0 (65b, `VEHICLE_ART_LEGACY`) leżą dalej
- * w `/art/vehicles/` dla przeszkód pościgu i scen zapisanych przed 67.
- * Furgony i motocykle — druga dostawa MG z 06.11.
+ * w galerii. Furgony i motocykle — druga dostawa MG z 06.11. Od 21.11 (MG) to
+ * jedyne grafiki aut: paczkę CC0 z etapu 65b usunięto, przeszkody pościgu też
+ * biorą auta MG, a stare adresy w bazie przepisała migracja
+ * `20261121180000_vehicle_art_mg_only`.
  */
 export const VEHICLE_ART: readonly VehicleArtEntry[] = [
-  { url: '/art/vehicles/kagero.webp', label: 'Arasaka „Kagerō”', lengthM: 4.6 },
+  { url: '/art/vehicles/kagero.webp', label: '„Ametyst”', lengthM: 4.6 },
   { url: '/art/vehicles/widmo.webp', label: '„Widmo”', lengthM: 4.7 },
   { url: '/art/vehicles/rajdowka-77.webp', label: '„Rajdówka 77”', lengthM: 4.4 },
-  { url: '/art/vehicles/nocny-neon.webp', label: '„Nocny Neon”', lengthM: 4.5 },
+  { url: '/art/vehicles/nocny-neon.webp', label: '„Lazur”', lengthM: 4.5 },
+  { url: '/art/vehicles/furia.webp', label: '„Furia”', lengthM: 4.6 },
   { url: '/art/vehicles/bastion.webp', label: '„Bastion” (SUV)', lengthM: 5.2 },
   { url: '/art/vehicles/ranczer.webp', label: '„Ranczer” (pickup)', lengthM: 5.6 },
   { url: '/art/vehicles/rdzawiec.webp', label: '„Rdzawiec” (stary pickup)', lengthM: 5.4 },
@@ -326,18 +328,6 @@ export const VEHICLE_ART: readonly VehicleArtEntry[] = [
     lengthM: 6.0,
     gmOnly: true,
   },
-];
-
-/** Grafiki z paczki CC0 sprzed etapu 67 — przeszkody pościgu i stare sceny. */
-export const VEHICLE_ART_LEGACY: readonly VehicleArtEntry[] = [
-  { url: '/art/vehicles/car-red.webp', label: 'Czerwone sportowe', lengthM: 4.5 },
-  { url: '/art/vehicles/car-black-viper.webp', label: 'Czarne w pasy', lengthM: 4.6 },
-  { url: '/art/vehicles/car-orange.webp', label: 'Pomarańczowy muscle car', lengthM: 4.8 },
-  { url: '/art/vehicles/car-taxi.webp', label: 'Taksówka (stara)', lengthM: 4.8 },
-  { url: '/art/vehicles/car-police.webp', label: 'Radiowóz (stary)', lengthM: 5.0 },
-  { url: '/art/vehicles/pickup-blue.webp', label: 'Pickup', lengthM: 5.5 },
-  { url: '/art/vehicles/van-ambulance.webp', label: 'Karetka (stara)', lengthM: 6.2 },
-  { url: '/art/vehicles/van-white.webp', label: 'Furgon', lengthM: 6.0 },
 ];
 
 /**
@@ -367,9 +357,7 @@ export const VEHICLE_ART_FRAME_M = 6.4;
  * (wgranej przez MG) — z bryły układu foteli.
  */
 export function vehicleArtLengthM(url: string | null, layout?: VehicleLayoutId): number {
-  const art = url
-    ? [...VEHICLE_ART, ...VEHICLE_ART_LEGACY].find((entry) => entry.url === url)
-    : undefined;
+  const art = url ? VEHICLE_ART.find((entry) => entry.url === url) : undefined;
   if (art) return art.lengthM;
   const body: VehicleBody = layout?.startsWith('bike')
     ? 'bike'

@@ -147,17 +147,17 @@ test.describe.serial('@szybkie T72f3 plan rund: okno, panel decyzji, posiłki', 
       dataOf<Placed>(await emitAck(gm, 'chase:place', { sceneId, vehicleId, x, y }));
     // Iskra stoi już tam, gdzie trzyma ją kadr (30% od tylnej, prawej krawędzi).
     iskraCar = await place(
-      await create('Strzała Iskry', '/art/vehicles/car-red.webp', characterId('Iskra')),
+      await create('Strzała Iskry', '/art/vehicles/furia.webp', characterId('Iskra')),
       grid * 33.6,
       grid * 6,
     );
     vanCar = await place(
-      await create('Furgon gangu', '/art/vehicles/car-black-viper.webp'),
+      await create('Furgon gangu', '/art/vehicles/widmo.webp'),
       grid * 42,
       grid * 10,
     );
     policeCar = await place(
-      await create('Radiowóz', '/art/vehicles/car-black-viper.webp'),
+      await create('Radiowóz', '/art/vehicles/widmo.webp'),
       grid * 20,
       grid * 14,
     );

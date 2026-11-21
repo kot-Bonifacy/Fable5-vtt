@@ -146,7 +146,7 @@ a nie do tego pliku.
 | ----------- | -------------------------------------------------------------- | ---- | ------- |
 | `mapa`      | figury, zaznaczanie, narzędzia, obiekty sceny, ściany, efekty, zamek drzwi, ukryta figura zauważona, ikony urządzeń, wspólny widok drużyny, okienko strefy przy marszu gracza, scena pościgu, jazda kierowcy i dryf, Manewr i taranowanie, przeszkody pościgu, sceny przykładowe, wzorzec zwykłej mapy, ulepszenia pojazdu, stojące auto na drodze, kreator pościgu i wbudowane drogi, załoga auta poza pościgiem, rama pościgu i pęd auta bez kierowcy, długa pętla drogi, ucieczka auta ręką MG, otarcie brył, wrak za autem, podpis w fotelu, furgon z wyglądu (`van-6`), przesadzanie foteli przy starcie, skręt z menu przed przeszkodą, wysiadka tylko przeciągnięciem, światła, zamki, strefy i pojemniki we wzorcu, obszar straży we wzorcu, model jazdy etapu 72 (`chase-drive.ts`), jazda 72 na serwerze (`realtime/chase-drive.ts`) i sonda styku, widok sceny po rundzie pościgu (`emitSceneView`), Wyścig rundy (`realtime/chase-race.ts`), auto o prędkości 0 i skręt o dwa pasy, mapa kokpitu (duch, dopiski, dojazd), autopilot aut NPC-ów (`chase-autopilot.ts`), pasy, rola i prędkość startowa w kreatorze (`chaseEffectiveLanes`), okno „Pościg” MG (`ChaseWindow.tsx`, `startSpeed`, posiłki, przeszkoda na pas), plan rund pościgu (`chase-plan.ts`, karta `chaseplan`) | 105  | 33      |
 | `czat`      | rodzaje wierszy, `visibleTo`, filtr, `seq`, `gmrecovery`, „to dotyczy mnie”, grupy kart, kolor gracza, czyszczenie, gęsta karta rzutu, przebieg ataku, `/jako` za NPC-a, karta rzutu bez konta, karta Wyścigu (`chaserace`), karta planu rund tylko dla MG (`chaseplan`) | 19   | 3       |
-| `serwer`    | Prisma i migracje, zdarzenia gniazda, zapisy karty, uploady    | 26   | 21      |
+| `serwer`    | Prisma i migracje, zdarzenia gniazda, zapisy karty, uploady, przykładowe portrety | 27   | 21      |
 | `ui`        | okna pływające, `z-index`, motyw, skróty, dostępność, wejście, panel decyzji MG, kubek przestawiany i jego menu (Szczęście jako żetony), lewa belka bez ramek i dymek `HudTip`, grupa „Pojazd” w belce (`HudVehicle.tsx`) i jej decyzje kierowcy, portret za kierownicą | 45   | 16      |
 | `kosci`     | kubek, `rollFormula`, wezwania i prośby o Test, tabele losowe, PT od MG, wezwanie Wyścigu | 25   | 2       |
 | `tura`      | budżet Akcji i metrów, kolejka, trasa, ruch przez ściany, skok, walka z zauważenia, inicjatywa rzucona we własnej turze, pytanie MG o przekroczenie, Percepcja w drodze (z linią wzroku), ukryte figury, skradanie, kropki ataków, kierowca bez Biegu, Test jazdy w Akcji Ruchu, darmowa ręka MG, napis wiersza Akcji, taran raz na turę, spóźniona inicjatywa rundy 1, krok planera w jednym oku, „Następna tura” z widzianą turą, kierowca: Akcja Ruchu w `vehicle:drive` i hak końca tury, runda bez tury (Wyścig), kierowca bez metrów | 46   | 9       |
@@ -168,6 +168,34 @@ a nie do tego pliku.
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
 
+### Sesja 21.11 (szósta) — zlecenie MG: nowe grafiki aut i przykładowe portrety
+
+**Zrobione (dwie migracje: `20261121180000_vehicle_art_mg_only`, `20261121181000_sample_portraits`;
+czeka na wdrożenie):**
+
+- **Auta (`C:/AI/materialy/auta`, `tools/art/vehicle-models.py`):** nowy wygląd `kagero`
+  (teraz **„Ametyst”**, grafitowy z fioletowymi neonami), `nocny-neon` (**„Lazur”**,
+  turkusowy) i `taksowka` — id modeli bez zmian, nowe nazwy i opisy (decyzja MG). Nowe
+  `auto2.png` to osobny model **„Furia”** (`vehicle.furia`, sport, 15 000 ed); **„Rajdówka 77”
+  zostaje w starej grafice** — MG przypadkiem skasował jej źródło, plik jest w repo bez skryptu.
+- **Paczka CC0 aut usunięta** (8 plików, `VEHICLE_ART_LEGACY`): przeszkody „Auto cywilne”
+  i „Wrak” biorą auta MG, scena `test-poscig` i E2E pościgu też; migracja przepisuje stare
+  adresy w `Vehicle`, `Token` i `ChaseObstacle` (na VPS nic ich nie używało — sprawdzone
+  odczytem bazy; w dev.db 12 aut).
+- **Przykładowe portrety (`C:/AI/materialy/avatary`, `tools/art/sample-portraits.py`):** 49
+  avatarów, „Avatar 01”…„Avatar 49” (MG: same numery; numerowane `avatarN` po N, reszta
+  alfabetycznie), WebP do 1024 px — 3,4 MB zamiast 49 MB. Tylko MG: 01, 16, 23, 24, 27, 28,
+  29, 45, 48 (lista MG; „strażnik” zostaje dla graczy — decyzja MG). Pula **każdej** kampanii
+  dostaje kopie: nowa przy założeniu, istniejące raz przy starcie serwera (umowa na górze
+  `serwer`). W kampaniach z ręcznie wgranymi avatarami będą dublety — MG wybrał ten wariant.
+  Na dev.db start serwera dołożył zestaw do wszystkich 11 kampanii.
+
+Testy: `shared` 3277/3277, serwer 1897/1897 (nowy `sample-portraits.test.ts` 3/3; dwa testy
+`gametime.test.ts` padły raz pod obciążeniem serwera dev i przeszły osobno), klient 527/527;
+E2E `48-poscig` 39/39; `tsc` czterech pakietów, lint, Prettier i ruff czyste. **Oglądano
+w Firefoksie (Playwright):** biblioteka portretów MG (przykładowe pod własnymi, 9 w „NPC — tylko
+MG”), lista modeli na karcie pojazdu (Ametyst, Lazur, Furia) i scena pościgu z autem po migracji.
+
 ### Sesja 21.11 (piąta) — poprawka: wezwanie do Manewru u auta bez kontroli
 
 **Zrobione (bez migracji; czeka na wdrożenie razem z 72b1–72g2):**
@@ -187,35 +215,3 @@ Starsze — w całości w `archiwum/dziennik-sesji.md`.
 
 Testy: serwer 1894/1894; `tsc` serwera i klienta, lint i Prettier na zmienionych plikach czyste.
 **Nieoglądane w przeglądarce** — serwer dev nie działał, a gracz Morte wchodzi z zaproszenia.
-
-### Sesja 21.11 (czwarta) — etap 72g2: stały E2E „Reklamacji” i sprzątanie pościgu
-
-**Zrobione (bez migracji; czeka na wdrożenie razem z 72b1–72g1):**
-
-- **Commit 72g1** — poprzednia sesja zostawiła 72g1 bez commita; zacommitowany na starcie
-  (`53793b11`) razem z pierwszą decyzją MG niżej.
-- **Decyzje MG (pytania w sesji):** Kamień z **pistoletem maszynowym** na stałe (karabin — notatka
-  dla mocnej drużyny), **Wektor zostaje przy 13** (notatka: Prowadzenie 8 przy Nomadzie),
-  **radiowóz bez zmian**; okno „Pościg” **domyślnie po lewej** (`ChaseWindow.tsx` — x za
-  `.hud-rail`, y 176), **„Po ruchu” mierzy dalej do najbliższego** auta. Notatka „Zanim ruszycie”
-  ma 1998 / 2000 znaków — dłuższa wypada z listy wzorców (`readSceneTemplate` → `null`).
-- **E2E `48-poscig/t72g-reklamacja`** (5 testów, `role-start`, Damian/Koleina w **Firefoksie**,
-  MG w Chromium): Wyścig z Moto 4 w rozkładzie i zrywem, Gwałtowny skręt z Moto (NOM-02),
-  kolczatka z kokpitu MG i Test PT 17 z Moto przy dryfie, auto cywilne z planu i autopilot,
-  który zjeżdża z pasa, radiowóz z planu (200 mil/h); gracz bez planu i zamiarów.
-- **Sprzątanie:** usunięte `chaseMoveSquares`, `chaseDriftSquares`, `chaseDriftedCentre`,
-  `chaseReturnCentre`, `cpredVehicleChase`, `cpredVehicleSpeed`, `cpredLostControlMove` (bez
-  wołających poza testami) z testami; podpowiedź „Zwykła jazda” w katalogu akcji; umowy `mapa`
-  (rama i pęd, blokada stojącego auta, zdarzenia `chase-driving.ts`) i `tura` (Test zwykłej
-  jazdy) przepisane pod etap 72; z `zaleglosci.md` zamknięte okno „Pościg”, punkt (3) „Po
-  ruchu” i trzy wpisy oględzin starego modelu (`archiwum/zamkniete-zaleglosci.md`).
-- **Rozstrzygnięcia 72a–72f3** widziane w rozegraniu 21.11 oznaczone przy wpisach w pliku etapu
-  (dwa jako nieaktualne); kryteria ukończenia 1–5 odhaczone.
-
-Testy: `shared` 3277/3277, serwer 1894/1894, klient 527/527; `tsc` czterech pakietów, lint
-i Prettier na zmienionych plikach czyste. E2E: cały `48-poscig` **39/39** (także `t72g`
-5/5 osobno i `t72f3` jednorazowo z MG w Firefoksie). **Oglądano zrzuty E2E** — gracz
-w Firefoksie (kokpit, karta kolczatki z „Moto 4”), MG w Chromium (karta Kamienia z pistoletem
-maszynowym, autopilot) i okno „Pościg” po lewej z odsłoniętym panelem decyzji w **Chromium
-i Firefoksie**. Na 1600 px okno zakrywa teraz przód kadru (jazda w lewo) — do oceny przy stole.
-`specs/99-zapomnij/` to dalej cudze oględziny z 14.11.

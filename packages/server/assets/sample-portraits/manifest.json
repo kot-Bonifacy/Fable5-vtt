@@ -1,0 +1,349 @@
+{
+  "schemaVersion": 1,
+  "source": "Przykładowe portrety MG (21.11.2026): tools/art/sample-portraits.py.",
+  "portraits": [
+    {
+      "file": "01.webp",
+      "name": "Avatar 01",
+      "gmOnly": true,
+      "width": 418,
+      "height": 416
+    },
+    {
+      "file": "02.webp",
+      "name": "Avatar 02",
+      "gmOnly": false,
+      "width": 418,
+      "height": 419
+    },
+    {
+      "file": "03.webp",
+      "name": "Avatar 03",
+      "gmOnly": false,
+      "width": 800,
+      "height": 800
+    },
+    {
+      "file": "04.webp",
+      "name": "Avatar 04",
+      "gmOnly": false,
+      "width": 446,
+      "height": 887
+    },
+    {
+      "file": "05.webp",
+      "name": "Avatar 05",
+      "gmOnly": false,
+      "width": 442,
+      "height": 887
+    },
+    {
+      "file": "06.webp",
+      "name": "Avatar 06",
+      "gmOnly": false,
+      "width": 440,
+      "height": 887
+    },
+    {
+      "file": "07.webp",
+      "name": "Avatar 07",
+      "gmOnly": false,
+      "width": 443,
+      "height": 887
+    },
+    {
+      "file": "08.webp",
+      "name": "Avatar 08",
+      "gmOnly": false,
+      "width": 629,
+      "height": 742
+    },
+    {
+      "file": "09.webp",
+      "name": "Avatar 09",
+      "gmOnly": false,
+      "width": 624,
+      "height": 743
+    },
+    {
+      "file": "10.webp",
+      "name": "Avatar 10",
+      "gmOnly": false,
+      "width": 625,
+      "height": 738
+    },
+    {
+      "file": "11.webp",
+      "name": "Avatar 11",
+      "gmOnly": false,
+      "width": 629,
+      "height": 744
+    },
+    {
+      "file": "12.webp",
+      "name": "Avatar 12",
+      "gmOnly": false,
+      "width": 569,
+      "height": 1024
+    },
+    {
+      "file": "13.webp",
+      "name": "Avatar 13",
+      "gmOnly": false,
+      "width": 438,
+      "height": 781
+    },
+    {
+      "file": "14.webp",
+      "name": "Avatar 14",
+      "gmOnly": false,
+      "width": 502,
+      "height": 900
+    },
+    {
+      "file": "15.webp",
+      "name": "Avatar 15",
+      "gmOnly": false,
+      "width": 503,
+      "height": 893
+    },
+    {
+      "file": "16.webp",
+      "name": "Avatar 16",
+      "gmOnly": true,
+      "width": 503,
+      "height": 895
+    },
+    {
+      "file": "17.webp",
+      "name": "Avatar 17",
+      "gmOnly": false,
+      "width": 500,
+      "height": 882
+    },
+    {
+      "file": "18.webp",
+      "name": "Avatar 18",
+      "gmOnly": false,
+      "width": 475,
+      "height": 803
+    },
+    {
+      "file": "19.webp",
+      "name": "Avatar 19",
+      "gmOnly": false,
+      "width": 475,
+      "height": 840
+    },
+    {
+      "file": "20.webp",
+      "name": "Avatar 20",
+      "gmOnly": false,
+      "width": 464,
+      "height": 920
+    },
+    {
+      "file": "21.webp",
+      "name": "Avatar 21",
+      "gmOnly": false,
+      "width": 627,
+      "height": 627
+    },
+    {
+      "file": "22.webp",
+      "name": "Avatar 22",
+      "gmOnly": false,
+      "width": 627,
+      "height": 627
+    },
+    {
+      "file": "23.webp",
+      "name": "Avatar 23",
+      "gmOnly": true,
+      "width": 625,
+      "height": 627
+    },
+    {
+      "file": "24.webp",
+      "name": "Avatar 24",
+      "gmOnly": true,
+      "width": 625,
+      "height": 626
+    },
+    {
+      "file": "25.webp",
+      "name": "Avatar 25",
+      "gmOnly": false,
+      "width": 624,
+      "height": 626
+    },
+    {
+      "file": "26.webp",
+      "name": "Avatar 26",
+      "gmOnly": false,
+      "width": 626,
+      "height": 627
+    },
+    {
+      "file": "27.webp",
+      "name": "Avatar 27",
+      "gmOnly": true,
+      "width": 629,
+      "height": 628
+    },
+    {
+      "file": "28.webp",
+      "name": "Avatar 28",
+      "gmOnly": true,
+      "width": 627,
+      "height": 627
+    },
+    {
+      "file": "29.webp",
+      "name": "Avatar 29",
+      "gmOnly": true,
+      "width": 625,
+      "height": 626
+    },
+    {
+      "file": "30.webp",
+      "name": "Avatar 30",
+      "gmOnly": false,
+      "width": 502,
+      "height": 1002
+    },
+    {
+      "file": "31.webp",
+      "name": "Avatar 31",
+      "gmOnly": false,
+      "width": 853,
+      "height": 1024
+    },
+    {
+      "file": "32.webp",
+      "name": "Avatar 32",
+      "gmOnly": false,
+      "width": 371,
+      "height": 1024
+    },
+    {
+      "file": "33.webp",
+      "name": "Avatar 33",
+      "gmOnly": false,
+      "width": 673,
+      "height": 841
+    },
+    {
+      "file": "34.webp",
+      "name": "Avatar 34",
+      "gmOnly": false,
+      "width": 647,
+      "height": 862
+    },
+    {
+      "file": "35.webp",
+      "name": "Avatar 35",
+      "gmOnly": false,
+      "width": 673,
+      "height": 841
+    },
+    {
+      "file": "36.webp",
+      "name": "Avatar 36",
+      "gmOnly": false,
+      "width": 673,
+      "height": 841
+    },
+    {
+      "file": "37.webp",
+      "name": "Avatar 37",
+      "gmOnly": false,
+      "width": 508,
+      "height": 763
+    },
+    {
+      "file": "38.webp",
+      "name": "Avatar 38",
+      "gmOnly": false,
+      "width": 509,
+      "height": 765
+    },
+    {
+      "file": "39.webp",
+      "name": "Avatar 39",
+      "gmOnly": false,
+      "width": 853,
+      "height": 1024
+    },
+    {
+      "file": "40.webp",
+      "name": "Avatar 40",
+      "gmOnly": false,
+      "width": 853,
+      "height": 1024
+    },
+    {
+      "file": "41.webp",
+      "name": "Avatar 41",
+      "gmOnly": false,
+      "width": 853,
+      "height": 1024
+    },
+    {
+      "file": "42.webp",
+      "name": "Avatar 42",
+      "gmOnly": false,
+      "width": 853,
+      "height": 1024
+    },
+    {
+      "file": "43.webp",
+      "name": "Avatar 43",
+      "gmOnly": false,
+      "width": 819,
+      "height": 1024
+    },
+    {
+      "file": "44.webp",
+      "name": "Avatar 44",
+      "gmOnly": false,
+      "width": 819,
+      "height": 1024
+    },
+    {
+      "file": "45.webp",
+      "name": "Avatar 45",
+      "gmOnly": true,
+      "width": 786,
+      "height": 1024
+    },
+    {
+      "file": "46.webp",
+      "name": "Avatar 46",
+      "gmOnly": false,
+      "width": 819,
+      "height": 1024
+    },
+    {
+      "file": "47.webp",
+      "name": "Avatar 47",
+      "gmOnly": false,
+      "width": 810,
+      "height": 1024
+    },
+    {
+      "file": "48.webp",
+      "name": "Avatar 48",
+      "gmOnly": true,
+      "width": 816,
+      "height": 1024
+    },
+    {
+      "file": "49.webp",
+      "name": "Avatar 49",
+      "gmOnly": false,
+      "width": 819,
+      "height": 1024
+    }
+  ]
+}

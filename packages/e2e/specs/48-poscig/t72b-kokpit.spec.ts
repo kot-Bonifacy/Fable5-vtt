@@ -110,7 +110,7 @@ test.describe.serial('@szybkie T72b kokpit: grupa „Pojazd” w belce', () => {
     // Auto Iskry na środkowym pasie, auto gangu przed nim (w lewo) na dolnym.
     // Grafika modelu stoi na kaflu auta w belce (MG 20.11).
     olaCar = await place(
-      await create({ imageUrl: '/art/vehicles/car-red.webp' }, characterId('Iskra')),
+      await create({ imageUrl: '/art/vehicles/furia.webp' }, characterId('Iskra')),
       grid * 12,
       grid * 10,
     );

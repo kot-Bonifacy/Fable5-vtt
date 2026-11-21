@@ -36,7 +36,6 @@ from PIL import Image
 MODELS: dict[str, str] = {
     "auto1": "kagero",
     "auto11": "widmo",
-    "auto2": "rajdowka-77",
     "auto4": "nocny-neon",
     "auto12": "bastion",
     "auto5": "ranczer",
@@ -56,6 +55,10 @@ MODELS: dict[str, str] = {
     "skuter-wodny": "fala",
     "motorowka": "barakuda",
     "lodz-kabinowa": "perla",
+    # 21.11, czwarta dostawa MG: nowe auto1, auto4 i auto6 (te same modele w nowym
+    # wyglądzie) i nowy plik auto2 — osobny model „Furia”. Źródło „Rajdówki 77”
+    # (stare auto2) przepadło, więc `rajdowka-77.webp` zostaje w repo bez skryptu.
+    "auto2": "furia",
 }
 
 # Sources already drawn nose UP (the rest come nose left and get a quarter turn).

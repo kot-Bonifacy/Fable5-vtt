@@ -52,8 +52,8 @@ export interface ChaseObstaclePreset {
 }
 
 /**
- * Wbudowane przeszkody. Grafiki: auta z paczki z 65b (Unlucky Studio, CC0),
- * barierki, pachołki i beczki z Kenney Racing Pack (CC0), kolczatka z ikony
+ * Wbudowane przeszkody. Grafiki: auta MG z `/art/vehicles/` (od 21.11; wcześniej
+ * paczka CC0 z 65b), barierki, pachołki i beczki z Kenney Racing Pack (CC0), kolczatka z ikony
  * „Caltrops” (game-icons.net, CC BY 3.0) — `public/art/obstacles/ATTRIBUTION.md`.
  */
 export const CHASE_OBSTACLE_PRESETS: Record<ChaseObstacleKind, ChaseObstaclePreset> = {
@@ -63,10 +63,10 @@ export const CHASE_OBSTACLE_PRESETS: Record<ChaseObstacleKind, ChaseObstaclePres
     lengthSq: 5,
     hp: 25,
     art: [
-      '/art/vehicles/car-taxi.webp',
-      '/art/vehicles/pickup-blue.webp',
-      '/art/vehicles/car-orange.webp',
-      '/art/vehicles/van-white.webp',
+      '/art/vehicles/taksowka.webp',
+      '/art/vehicles/ranczer.webp',
+      '/art/vehicles/wloczega.webp',
+      '/art/vehicles/graty.webp',
     ],
   },
   barricade: {
@@ -89,7 +89,7 @@ export const CHASE_OBSTACLE_PRESETS: Record<ChaseObstacleKind, ChaseObstaclePres
     widthSq: 3,
     lengthSq: 5,
     hp: 40,
-    art: ['/art/vehicles/car-black-viper.webp', '/art/vehicles/car-police.webp'],
+    art: ['/art/vehicles/rdzawiec.webp', '/art/vehicles/radiowoz.webp'],
     wreckTint: true,
   },
   spikes: {

@@ -351,6 +351,9 @@ export async function importCampaign(
             name,
             gmId: options.gmId,
             sandbox: bool(source.sandbox),
+            // Pula przychodzi z paczki — przykładowe portrety (21.11) dostała
+            // już kampania źródłowa, a dołożone drugi raz byłyby duplikatami.
+            samplePortraitsSeeded: true,
             ...gameColumns,
           },
         });

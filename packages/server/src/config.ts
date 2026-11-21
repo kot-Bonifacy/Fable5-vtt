@@ -27,6 +27,11 @@ export interface ServerConfig {
    * scenes the repo currently ships.
    */
   sceneTemplatesDir?: string;
+  /**
+   * Sample portraits every campaign pool gets (MG 21.11.2026,
+   * `src/sample-portraits.ts`); absent — none. Server tests leave it out.
+   */
+  samplePortraitsDir?: string;
   /** Absolute directory of gitignored rulebook-derived data; may not exist. */
   dataPrivateDir: string;
   /** Base URL of the Python AI gateway (localhost in dev, tailnet address in prod). */
@@ -159,6 +164,12 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): ServerConfig {
     // Defaults assume cwd = packages/server (dev scripts) → repo-root dirs.
     uploadsDir: resolve(env.UPLOADS_DIR ?? '../../uploads'),
     dataPublicDir: resolve(env.DATA_PUBLIC_DIR ?? '../../data/public'),
+    // Outside `data/public` (served to anyone): GM-only faces among them.
+    // An empty value turns the samples off (the E2E suite counts pools).
+    samplePortraitsDir:
+      env.SAMPLE_PORTRAITS_DIR === ''
+        ? undefined
+        : resolve(env.SAMPLE_PORTRAITS_DIR ?? 'assets/sample-portraits'),
     dataPrivateDir: resolve(env.DATA_PRIVATE_DIR ?? '../../data/private'),
     aiGatewayUrl: (env.AI_GATEWAY_URL ?? 'http://127.0.0.1:8100').replace(/\/$/, ''),
     aiGatewayApiKey: env.AI_GATEWAY_API_KEY ?? '',

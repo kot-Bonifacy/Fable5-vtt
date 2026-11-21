@@ -2,7 +2,7 @@
 
 Przeszkody sceny pościgu widziane z góry, przodem do góry — szerokość obrazka to szerokość
 w poprzek drogi, tak jak u aut (`ChaseLayer` obraca je do kierunku jazdy). Auto cywilne i wrak
-biorą grafiki aut z `/art/vehicles/` (Unlucky Studio, CC0 — `../vehicles/ATTRIBUTION.md`).
+biorą grafiki aut MG z `/art/vehicles/` (od 21.11 — `../vehicles/ATTRIBUTION.md`).
 
 ## Kenney — Racing Pack (CC0)
 

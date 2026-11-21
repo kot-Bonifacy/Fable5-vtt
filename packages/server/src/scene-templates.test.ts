@@ -278,7 +278,7 @@ describe('etap 66: sceny przykładowe', () => {
       expect([4.5, 7.5].some((centre) => Math.abs(lane - centre) < 0.01)).toBe(true);
     }
     expect(taxi.vehicle).toMatchObject({ campaignId, ownerCharacterId: null });
-    expect(taxi.vehicle.imageUrl).toBe('/art/vehicles/car-taxi.webp');
+    expect(taxi.vehicle.imageUrl).toBe('/art/vehicles/taksowka.webp');
     expect(readCpredVehicle(taxi.vehicle.system).upgrades.map((row) => row.upgradeId)).toEqual([
       'spikes',
     ]);

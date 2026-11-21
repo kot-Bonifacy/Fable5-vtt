@@ -1,5 +1,37 @@
 # Dziennik sesji — archiwum
 
+### Sesja 21.11 (czwarta) — etap 72g2: stały E2E „Reklamacji” i sprzątanie pościgu
+
+**Zrobione (bez migracji; czeka na wdrożenie razem z 72b1–72g1):**
+
+- **Commit 72g1** — poprzednia sesja zostawiła 72g1 bez commita; zacommitowany na starcie
+  (`53793b11`) razem z pierwszą decyzją MG niżej.
+- **Decyzje MG (pytania w sesji):** Kamień z **pistoletem maszynowym** na stałe (karabin — notatka
+  dla mocnej drużyny), **Wektor zostaje przy 13** (notatka: Prowadzenie 8 przy Nomadzie),
+  **radiowóz bez zmian**; okno „Pościg” **domyślnie po lewej** (`ChaseWindow.tsx` — x za
+  `.hud-rail`, y 176), **„Po ruchu” mierzy dalej do najbliższego** auta. Notatka „Zanim ruszycie”
+  ma 1998 / 2000 znaków — dłuższa wypada z listy wzorców (`readSceneTemplate` → `null`).
+- **E2E `48-poscig/t72g-reklamacja`** (5 testów, `role-start`, Damian/Koleina w **Firefoksie**,
+  MG w Chromium): Wyścig z Moto 4 w rozkładzie i zrywem, Gwałtowny skręt z Moto (NOM-02),
+  kolczatka z kokpitu MG i Test PT 17 z Moto przy dryfie, auto cywilne z planu i autopilot,
+  który zjeżdża z pasa, radiowóz z planu (200 mil/h); gracz bez planu i zamiarów.
+- **Sprzątanie:** usunięte `chaseMoveSquares`, `chaseDriftSquares`, `chaseDriftedCentre`,
+  `chaseReturnCentre`, `cpredVehicleChase`, `cpredVehicleSpeed`, `cpredLostControlMove` (bez
+  wołających poza testami) z testami; podpowiedź „Zwykła jazda” w katalogu akcji; umowy `mapa`
+  (rama i pęd, blokada stojącego auta, zdarzenia `chase-driving.ts`) i `tura` (Test zwykłej
+  jazdy) przepisane pod etap 72; z `zaleglosci.md` zamknięte okno „Pościg”, punkt (3) „Po
+  ruchu” i trzy wpisy oględzin starego modelu (`archiwum/zamkniete-zaleglosci.md`).
+- **Rozstrzygnięcia 72a–72f3** widziane w rozegraniu 21.11 oznaczone przy wpisach w pliku etapu
+  (dwa jako nieaktualne); kryteria ukończenia 1–5 odhaczone.
+
+Testy: `shared` 3277/3277, serwer 1894/1894, klient 527/527; `tsc` czterech pakietów, lint
+i Prettier na zmienionych plikach czyste. E2E: cały `48-poscig` **39/39** (także `t72g`
+5/5 osobno i `t72f3` jednorazowo z MG w Firefoksie). **Oglądano zrzuty E2E** — gracz
+w Firefoksie (kokpit, karta kolczatki z „Moto 4”), MG w Chromium (karta Kamienia z pistoletem
+maszynowym, autopilot) i okno „Pościg” po lewej z odsłoniętym panelem decyzji w **Chromium
+i Firefoksie**. Na 1600 px okno zakrywa teraz przód kadru (jazda w lewo) — do oceny przy stole.
+`specs/99-zapomnij/` to dalej cudze oględziny z 14.11.
+
 ### Sesja 21.11 (trzecia) — etap 72g1: scena przykładowa „Reklamacja”
 
 **Zrobione (bez migracji; czeka na wdrożenie razem z 72b1–72f3):**
