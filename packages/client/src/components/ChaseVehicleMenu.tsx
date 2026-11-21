@@ -689,7 +689,8 @@ function useManeuverCallNotice(
 ): void {
   let call: { vehicle: SceneVehicleView; id: string; label: string } | null = null;
   for (const vehicle of vehicles) {
-    if (!vehicle.maneuverCall || !userId) continue;
+    // Auto bez kontroli Manewru nie wykona — pasek z odmową na klik tylko myli.
+    if (!vehicle.maneuverCall || !userId || vehicle.control === 'lost') continue;
     const driver = Object.values(tokens).find(
       (token) => token.vehicleSeat?.sceneVehicleId === vehicle.id && token.vehicleSeat.seat === 0,
     );

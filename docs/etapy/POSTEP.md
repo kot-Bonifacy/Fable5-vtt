@@ -144,7 +144,7 @@ a nie do tego pliku.
 
 | obszar      | co obejmuje                                                    | umów | pułapek |
 | ----------- | -------------------------------------------------------------- | ---- | ------- |
-| `mapa`      | figury, zaznaczanie, narzędzia, obiekty sceny, ściany, efekty, zamek drzwi, ukryta figura zauważona, ikony urządzeń, wspólny widok drużyny, okienko strefy przy marszu gracza, scena pościgu, jazda kierowcy i dryf, Manewr i taranowanie, przeszkody pościgu, sceny przykładowe, wzorzec zwykłej mapy, ulepszenia pojazdu, stojące auto na drodze, kreator pościgu i wbudowane drogi, załoga auta poza pościgiem, rama pościgu i pęd auta bez kierowcy, długa pętla drogi, ucieczka auta ręką MG, otarcie brył, wrak za autem, podpis w fotelu, furgon z wyglądu (`van-6`), przesadzanie foteli przy starcie, skręt z menu przed przeszkodą, wysiadka tylko przeciągnięciem, światła, zamki, strefy i pojemniki we wzorcu, obszar straży we wzorcu, model jazdy etapu 72 (`chase-drive.ts`), jazda 72 na serwerze (`realtime/chase-drive.ts`) i sonda styku, widok sceny po rundzie pościgu (`emitSceneView`), Wyścig rundy (`realtime/chase-race.ts`), auto o prędkości 0 i skręt o dwa pasy, mapa kokpitu (duch, dopiski, dojazd), autopilot aut NPC-ów (`chase-autopilot.ts`), pasy, rola i prędkość startowa w kreatorze (`chaseEffectiveLanes`), okno „Pościg” MG (`ChaseWindow.tsx`, `startSpeed`, posiłki, przeszkoda na pas), plan rund pościgu (`chase-plan.ts`, karta `chaseplan`) | 105  | 32      |
+| `mapa`      | figury, zaznaczanie, narzędzia, obiekty sceny, ściany, efekty, zamek drzwi, ukryta figura zauważona, ikony urządzeń, wspólny widok drużyny, okienko strefy przy marszu gracza, scena pościgu, jazda kierowcy i dryf, Manewr i taranowanie, przeszkody pościgu, sceny przykładowe, wzorzec zwykłej mapy, ulepszenia pojazdu, stojące auto na drodze, kreator pościgu i wbudowane drogi, załoga auta poza pościgiem, rama pościgu i pęd auta bez kierowcy, długa pętla drogi, ucieczka auta ręką MG, otarcie brył, wrak za autem, podpis w fotelu, furgon z wyglądu (`van-6`), przesadzanie foteli przy starcie, skręt z menu przed przeszkodą, wysiadka tylko przeciągnięciem, światła, zamki, strefy i pojemniki we wzorcu, obszar straży we wzorcu, model jazdy etapu 72 (`chase-drive.ts`), jazda 72 na serwerze (`realtime/chase-drive.ts`) i sonda styku, widok sceny po rundzie pościgu (`emitSceneView`), Wyścig rundy (`realtime/chase-race.ts`), auto o prędkości 0 i skręt o dwa pasy, mapa kokpitu (duch, dopiski, dojazd), autopilot aut NPC-ów (`chase-autopilot.ts`), pasy, rola i prędkość startowa w kreatorze (`chaseEffectiveLanes`), okno „Pościg” MG (`ChaseWindow.tsx`, `startSpeed`, posiłki, przeszkoda na pas), plan rund pościgu (`chase-plan.ts`, karta `chaseplan`) | 105  | 33      |
 | `czat`      | rodzaje wierszy, `visibleTo`, filtr, `seq`, `gmrecovery`, „to dotyczy mnie”, grupy kart, kolor gracza, czyszczenie, gęsta karta rzutu, przebieg ataku, `/jako` za NPC-a, karta rzutu bez konta, karta Wyścigu (`chaserace`), karta planu rund tylko dla MG (`chaseplan`) | 19   | 3       |
 | `serwer`    | Prisma i migracje, zdarzenia gniazda, zapisy karty, uploady    | 26   | 21      |
 | `ui`        | okna pływające, `z-index`, motyw, skróty, dostępność, wejście, panel decyzji MG, kubek przestawiany i jego menu (Szczęście jako żetony), lewa belka bez ramek i dymek `HudTip`, grupa „Pojazd” w belce (`HudVehicle.tsx`) i jej decyzje kierowcy, portret za kierownicą | 45   | 16      |
@@ -167,6 +167,26 @@ a nie do tego pliku.
 ## Notatki z dwóch ostatnich sesji
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
+
+### Sesja 21.11 (piąta) — poprawka: wezwanie do Manewru u auta bez kontroli
+
+**Zrobione (bez migracji; czeka na wdrożenie razem z 72b1–72g2):**
+
+- **Zgłoszenie MG:** po starcie sesji gracz od razu dostał „MG wzywa do Manewru: Gwałtowny skręt”,
+  a „Wykonaj Manewr” dawał tylko odmowę „Kierowca stracił panowanie…” — bez kości i czatu.
+  To nie była „Reklamacja”: aktywna scena kampanii to **„Zastaw 2”** („Reklamacja” od
+  utworzenia nie była aktywna, jej kombi nie ma kierowcy), a tamtejsze „Kombi drużyny” miało
+  w bazie naraz `lostControl` i `maneuverCall = 'swerve'` bez walki. Skąd ta para — nieustalone
+  (kopie kampanii nie niosą tych pól).
+- **Poprawka:** utrata kontroli (`loseControl`, przeszkoda, Wyścig) gasi wezwanie,
+  `callManeuver` odmawia autu bez kontroli (`VEHICLE_OUT_OF_CONTROL`; plan „każde auto” je
+  pomija), klient chowa pasek i wiersz kokpitu przy `control === 'lost'`. Testy
+  w `chase-ram.test.ts` i `chase-race.test.ts` (ten drugi pada bez poprawki). Pułapka na górze `mapa`.
+- **Dane MG nietknięte:** na „Zastawie 2” wezwanie dalej stoi w bazie (klient go już nie
+  pokaże) — MG może je odwołać i przywrócić kontrolę z menu auta.
+
+Testy: serwer 1894/1894; `tsc` serwera i klienta, lint i Prettier na zmienionych plikach czyste.
+**Nieoglądane w przeglądarce** — serwer dev nie działał, a gracz Morte wchodzi z zaproszenia.
 
 ### Sesja 21.11 (czwarta) — etap 72g2: stały E2E „Reklamacji” i sprzątanie pościgu
 
@@ -198,26 +218,4 @@ i Prettier na zmienionych plikach czyste. E2E: cały `48-poscig` **39/39** (tak�
 w Firefoksie (kokpit, karta kolczatki z „Moto 4”), MG w Chromium (karta Kamienia z pistoletem
 maszynowym, autopilot) i okno „Pościg” po lewej z odsłoniętym panelem decyzji w **Chromium
 i Firefoksie**. Na 1600 px okno zakrywa teraz przód kadru (jazda w lewo) — do oceny przy stole.
-`specs/99-zapomnij/` to dalej cudze oględziny z 14.11.
-
-### Sesja 21.11 (trzecia) — etap 72g1: scena przykładowa „Reklamacja”
-
-**Zrobione (bez migracji; czeka na wdrożenie razem z 72b1–72f3):**
-
-- **Decyzje MG:** „Ostatni zjazd” i „Zastaw” skasowane (66c, 66d ⛔); nowa scena przykładowa
-  pościgu na nowym modelu jazdy — 2 postacie, auto z wzorca, sam furgon + NCPD z planu rund,
-  więzień skuty i przytomny, plan: przeszkody i kolczatka; 72g podzielony na 72g1 i 72g2.
-- **Wzorzec `data/public/scenes/reklamacja/`** i test w `scene-templates.test.ts` (stare bloki
-  66c/66d usunięte). Projekt, rozegranie i pytania do MG: `etap-72g-reklamacja.md`.
-- **Rozegranie 8 rund** na instancji E2E z `role-start` (tymczasowy spec skasowany): Koleina
-  (Nomada, Moto 4) w **Firefoksie**, Brzytwa i MG w Chromium. Wnioski we wzorcu: posiłki
-  200 mil/h, furgon dalej od krawędzi, pomoc Tłoka jako zbicie prędkości, uwaga o karabinie.
-- **Naprawione:** spóźniona inicjatywa rzucona we własnej turze oddawała rundę 1 komuś, kto już
-  grał (`keepQueueForActiveSeat`, umowa na górze `tura`, test w `combat.test.ts`); MG widzi
-  w kokpicie wezwanie do Manewru kierowcy-NPC-a (`HudVehicle.tsx`) — poprawka klienta
-  **nieobejrzana w przeglądarce** (rozegranie szło na starym buildzie).
-- Nowe zaległości 21.11 (smuga strzału, okienko „Cel za szybą”, cel „Po ruchu”, kadr gracza).
-
-Testy: `shared` 3282/3282, klient 527/527, serwer — patrz commit; `tsc` czterech pakietów
-i Prettier czyste. E2E `48-poscig` po zmianie kolejki **nie puszczony** — pierwsza rzecz 72g2.
 `specs/99-zapomnij/` to dalej cudze oględziny z 14.11.

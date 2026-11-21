@@ -444,6 +444,16 @@ describe('etap 72c: Wyścig — gracz kubkiem, NPC od serwera, runda czeka', () 
     const { id, entry } = await raceCard();
     expect(entry.round).toBe(2);
     const callId = rowOf(entry, ours.id).callMessageId!;
+    // Wezwanie do Manewru czeka na aucie, gdy kierowca traci kontrolę — gaśnie
+    // z nią, bo auto bez kontroli Manewru nie wykona (21.11.2026).
+    expect(
+      (
+        await emitAck(gm, 'vehicle:maneuver-call', {
+          sceneVehicleId: ours.id,
+          maneuverId: 'swerve',
+        })
+      ).ok,
+    ).toBe(true);
     expect(
       await emitAck(owner, 'chase:race-roll', { messageId: id, vehicleId: ours.id }),
     ).toMatchObject({ ok: false });
@@ -458,7 +468,12 @@ describe('etap 72c: Wyścig — gracz kubkiem, NPC od serwera, runda czeka', () 
       lostControl: true,
     });
     expect((await callOf(callId)).resolved).toMatchObject({ total: 8, success: false });
-    expect(await vehicleRow(ours.id)).toMatchObject({ lostControl: true, speed: 10, raceBonus: 0 });
+    expect(await vehicleRow(ours.id)).toMatchObject({
+      lostControl: true,
+      speed: 10,
+      raceBonus: 0,
+      maneuverCall: null,
+    });
     expect(
       await built.prisma.chatMessage.findFirst({
         where: { campaignId, kind: 'action', text: 'Utrata kontroli' },

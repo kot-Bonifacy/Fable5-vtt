@@ -569,5 +569,8 @@ export async function callManeuver(
   if (maneuverCall && !(await driverOf(prisma, placed.id))) {
     throw new RealtimeError('NOT_DRIVER');
   }
+  // Auto bez kontroli Manewru nie wykona (`requireControllable`) — wezwanie
+  // wisiałoby u kierowcy z przyciskiem, który zawsze odmawia (21.11.2026).
+  if (maneuverCall && placed.lostControl) throw new RealtimeError('VEHICLE_OUT_OF_CONTROL');
   await prisma.sceneVehicle.update({ where: { id: placed.id }, data: { maneuverCall } });
 }

@@ -1,5 +1,27 @@
 # Dziennik sesji — archiwum
 
+### Sesja 21.11 (trzecia) — etap 72g1: scena przykładowa „Reklamacja”
+
+**Zrobione (bez migracji; czeka na wdrożenie razem z 72b1–72f3):**
+
+- **Decyzje MG:** „Ostatni zjazd” i „Zastaw” skasowane (66c, 66d ⛔); nowa scena przykładowa
+  pościgu na nowym modelu jazdy — 2 postacie, auto z wzorca, sam furgon + NCPD z planu rund,
+  więzień skuty i przytomny, plan: przeszkody i kolczatka; 72g podzielony na 72g1 i 72g2.
+- **Wzorzec `data/public/scenes/reklamacja/`** i test w `scene-templates.test.ts` (stare bloki
+  66c/66d usunięte). Projekt, rozegranie i pytania do MG: `etap-72g-reklamacja.md`.
+- **Rozegranie 8 rund** na instancji E2E z `role-start` (tymczasowy spec skasowany): Koleina
+  (Nomada, Moto 4) w **Firefoksie**, Brzytwa i MG w Chromium. Wnioski we wzorcu: posiłki
+  200 mil/h, furgon dalej od krawędzi, pomoc Tłoka jako zbicie prędkości, uwaga o karabinie.
+- **Naprawione:** spóźniona inicjatywa rzucona we własnej turze oddawała rundę 1 komuś, kto już
+  grał (`keepQueueForActiveSeat`, umowa na górze `tura`, test w `combat.test.ts`); MG widzi
+  w kokpicie wezwanie do Manewru kierowcy-NPC-a (`HudVehicle.tsx`) — poprawka klienta
+  **nieobejrzana w przeglądarce** (rozegranie szło na starym buildzie).
+- Nowe zaległości 21.11 (smuga strzału, okienko „Cel za szybą”, cel „Po ruchu”, kadr gracza).
+
+Testy: `shared` 3282/3282, klient 527/527, serwer — patrz commit; `tsc` czterech pakietów
+i Prettier czyste. E2E `48-poscig` po zmianie kolejki **nie puszczony** — pierwsza rzecz 72g2.
+`specs/99-zapomnij/` to dalej cudze oględziny z 14.11.
+
 ### Sesja 21.11 (druga) — etap 72f3: plan rund pościgu
 
 **Zrobione (czeka na wdrożenie razem z 72b1–72f2; bez migracji — `Scene.chasePlan` jest od 72b1):**

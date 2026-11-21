@@ -319,7 +319,12 @@ async function settleRace(
     await prisma.sceneVehicle.update({
       where: { id: vehicle.id },
       data: result.lostControl
-        ? { raceBonus: 0, lostControl: true, speed: cpredLostControlSpeed(vehicle.speed) }
+        ? {
+            raceBonus: 0,
+            lostControl: true,
+            maneuverCall: null,
+            speed: cpredLostControlSpeed(vehicle.speed),
+          }
         : { raceBonus: result.bonus },
     });
     if (result.lostControl) {

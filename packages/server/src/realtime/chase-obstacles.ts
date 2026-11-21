@@ -340,10 +340,11 @@ async function answerWithManeuver(
     await outcome.passed();
     return;
   }
-  // Etap 72: utrata kontroli zbija prędkość od razu o 10 Ruchu.
+  // Etap 72: utrata kontroli zbija prędkość od razu o 10 Ruchu i gasi wiszące
+  // wezwanie do Manewru (bez kontroli Manewru się nie wykona).
   await prisma.sceneVehicle.update({
     where: { id: placed.id },
-    data: { lostControl: true, speed: cpredLostControlSpeed(placed.speed) },
+    data: { lostControl: true, maneuverCall: null, speed: cpredLostControlSpeed(placed.speed) },
   });
   const line: CombatActionLogEntry = {
     combatantId: '',

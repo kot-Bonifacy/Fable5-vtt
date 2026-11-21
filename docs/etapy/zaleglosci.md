@@ -6,6 +6,8 @@ w `POMYSLY.md` („Do sprawdzenia przy stole”), decyzje MG — w `decyzje-i-up
 
 ## Otwarte
 
+**21.11.2026 — oględziny: wezwanie do Manewru chowa się u auta bez kontroli (poprawka po 72g2).** Zmiana klienta (`useManeuverCallNotice` w `ChaseVehicleMenu.tsx`, wiersz „MG wzywa” w `HudVehicle.tsx`) nieobejrzana. Najprościej na „Zastawie 2” kampanii MG, gdzie „Kombi drużyny” ma dalej w bazie `lostControl` + `maneuverCall`: gracz za kierownicą (Morte) nie może dostać paska; po „Oddaj kierowcy kontrolę” (menu auta MG) pasek wraca i „Wykonaj Manewr” rzuca. Oglądać gracza w Firefoksie.
+
 **21.11.2026 — drobiazgi z rozegrania „Reklamacji” (72g1).** (1) Smuga strzału Kamienia
 z furgonu do kombi (R1, MG w Chromium) poleciała w górę mapy, a nie w cel — trafienie policzone
 dobrze, zła tylko animacja; sprawdzić, czy smuga bierze położenie z przed przesunięcia kadru.

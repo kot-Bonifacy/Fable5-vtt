@@ -458,6 +458,14 @@ describe('etap 65d2: Manewr, taranowanie i broń pokładowa', () => {
   });
 
   it('Manewr gracza kosztuje Akcję, a oblany zbija prędkość i oddaje auto automatowi', async () => {
+    // Wezwanie do innego Manewru czeka na aucie — utrata kontroli ma je zgasić.
+    data(
+      await emitAck<SceneVehicleView>(gm, 'vehicle:maneuver-call', {
+        sceneVehicleId: carA.id,
+        maneuverId: 'swerve',
+      }),
+      'vehicle:maneuver-call before loss',
+    );
     // 8 + 4 + 1, Krytyczna Porażka odejmuje drugą kość: 12 < 17.
     scriptDice([1, 1]);
     const view = data(
@@ -470,6 +478,12 @@ describe('etap 65d2: Manewr, taranowanie i broń pokładowa', () => {
     expect(view.control).toBe('lost');
     // Etap 72: utrata kontroli zbija prędkość od razu o 10 Ruchu (−50 mil/h).
     expect(view.speed).toBe(10);
+    // Bez kontroli Manewru się nie wykona: wiszące wezwanie gaśnie, a nowego MG
+    // nie postawi — inaczej kierowca dostawał pasek, który zawsze odmawia (21.11).
+    expect(view.maneuverCall).toBeNull();
+    expect(
+      await emitAck(gm, 'vehicle:maneuver-call', { sceneVehicleId: carA.id, maneuverId: 'swerve' }),
+    ).toMatchObject({ ok: false, error: 'VEHICLE_OUT_OF_CONTROL' });
     expect(await emitAck(player, 'combat:action', { actionId: 'aim' })).toMatchObject({
       ok: false,
     });

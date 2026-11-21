@@ -665,7 +665,11 @@ export function HudVehicle({
   // Manewru odpowiada gracz za swoją figurę, a MG za kierowcę-NPC-a: plan rund
   // (72f3) wzywa także auta NPC-ów, a bez tego wiersza nikt by nie rzucił
   // (rozegranie „Reklamacji”, 21.11.2026).
-  const call = mayDrive && (!isGm || token.ownerId === null) ? vehicle.maneuverCall : null;
+  // Auto bez kontroli Manewru nie wykona, więc wezwanie wtedy nie stoi.
+  const call =
+    mayDrive && (!isGm || token.ownerId === null) && vehicle.control !== 'lost'
+      ? vehicle.maneuverCall
+      : null;
   const decisions: ReactNode[] = [];
   if (blocker) {
     decisions.push(

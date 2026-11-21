@@ -470,7 +470,8 @@ export async function loseControl(
   if (!placed) return;
   await prisma.sceneVehicle.update({
     where: { id: placed.id },
-    data: { lostControl: true, speed: cpredLostControlSpeed(placed.speed) },
+    // Wiszące wezwanie do Manewru gaśnie: bez kontroli Manewru się nie wykona.
+    data: { lostControl: true, maneuverCall: null, speed: cpredLostControlSpeed(placed.speed) },
   });
   const round = chaseRoundOf(placed.scene);
   if (round === null || placed.movedRound >= round) return;

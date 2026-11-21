@@ -243,7 +243,7 @@ async function releaseEntry(
           const driver = await prisma.token.findFirst({
             where: { sceneVehicleId: row.id, vehicleSeat: 0 },
           });
-          if (!driver) continue;
+          if (!driver || row.lostControl) continue;
           await callManeuver(prisma, { ...row, scene }, entry.maneuver);
           called += 1;
         }
