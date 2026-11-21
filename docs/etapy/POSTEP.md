@@ -170,8 +170,11 @@ Starsze — w całości w `archiwum/dziennik-sesji.md`.
 
 ### Sesja 21.11 (dziewiąta) — zlecenie MG: pościg klika jak zwykła scena (karta dwuklikiem, menu auta z PPM)
 
-**Zrobione (bez migracji; czeka na wdrożenie):**
+**Zrobione (bez migracji; wdrożone na VPS 21.11, commit `c9e56049`):**
 
+- **Wdrożenie 21.11 (`deploy.sh`, bez trwającej sesji):** razem z sesjami siódmą i ósmą,
+  migracja `20261121200000_sample_portrait_34_gm_only` przeszła (kopia bazy sprzed:
+  `backups/snapshot-2026-11-21-1758`).
 - **Lewy przycisk w aucie pościgu już nie otwiera menu auta** (decyzje MG z pytań, dwie rundy):
   LPM w figurę w fotelu ją zaznacza, dwuklik otwiera kartę postaci, PPM w figurę daje menu
   figury, a **menu auta jest tylko pod PPM w kadłub** (`vehicleMenuAt`, jak od 04.11). LPM
@@ -191,7 +194,7 @@ Oględziny w Firefoksie do dołożenia.
 
 ### Sesja 21.11 (ósma) — zlecenie MG: Piotrówna zamiast Tłoka, Avatar 34 tylko dla MG
 
-**Zrobione (migracja danych `20261121200000_sample_portrait_34_gm_only`; czeka na wdrożenie):**
+**Zrobione (migracja danych `20261121200000_sample_portrait_34_gm_only`; wdrożone 21.11):**
 
 - **„Reklamacja”: Tłok → Piotrówna** (decyzje MG z pytań): córka zastrzelonego lata temu Piotra,
   która po ojcu przejęła dziuplę, długi, kontakty i proceder z kradzionym sprzętem Militechu.
