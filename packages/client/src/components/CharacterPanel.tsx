@@ -25,6 +25,7 @@ import { useCampaignPlayersStore, type CampaignPlayer } from '../stores/campaign
 import { ensureCpredDataLoaded, useCharacterStore } from '../stores/characterStore.js';
 import { useCheckStore } from '../stores/checkStore.js';
 import { useCreationStore } from '../stores/creationStore.js';
+import { useExchangeStore } from '../stores/exchangeStore.js';
 import { useNpcCreateStore } from '../stores/npcCreateStore.js';
 import { useTokenStore } from '../stores/tokenStore.js';
 import { plural, pluralWord } from '../plural.js';
@@ -166,6 +167,16 @@ export function CharacterPanel() {
       .join(' '),
   );
   const onScene = new Set(onSceneKey.split(' '));
+  // Handlarze ze sklepem otwartym zdalnie (`remote`) działają bez figury —
+  // należą do każdej sceny (MG 21.11). Napis z tego samego powodu co wyżej.
+  const remoteShopsKey = useExchangeStore((s) =>
+    s.shops
+      .filter((shop) => shop.access === 'remote' && shop.open && shop.characterId)
+      .map((shop) => shop.characterId!)
+      .sort()
+      .join(' '),
+  );
+  const remoteShops = new Set(remoteShopsKey.split(' '));
 
   const players = useCampaignPlayersStore((s) => s.players);
   const [dragLearned, setDragLearned] = useState(() => readFlag(DRAG_LEARNED_KEY));
@@ -214,6 +225,11 @@ export function CharacterPanel() {
   };
   const party = live.filter((id) => isPlain(id) && characters[id]!.ownerId !== null);
   const npcs = live.filter((id) => isPlain(id) && characters[id]!.ownerId === null);
+  // Lista NPC-ów to karty całej kampanii, a każda scena przykładowa dokłada
+  // swoje (MG 21.11: „wciąż ich widać”). Na wierzchu stoją ci, którzy w oglądanej
+  // scenie coś robią — figura albo sklep zdalny; reszta w zwiniętej grupie.
+  const npcsHere = npcs.filter((id) => onScene.has(id) || remoteShops.has(id));
+  const npcsAway = npcs.filter((id) => !onScene.has(id) && !remoteShops.has(id));
   const templates = live.filter((id) => characters[id]!.template);
   const copies = live.filter((id) => !characters[id]!.template && !!characters[id]!.templateId);
   const containers = live.filter((id) => isContainerCard(characters[id]!.data));
@@ -277,7 +293,8 @@ export function CharacterPanel() {
               {!character.playReady && (
                 <span className="character-row-pending"> · czeka na przyjęcie przez MG</span>
               )}
-              {!container && onScene.has(id) && (
+              {/* W grupie „NPC” każdy jest na mapie albo za ladą — dopisek byłby szumem. */}
+              {!container && character.ownerId !== null && onScene.has(id) && (
                 <span className="character-row-scene" title="Ma figurę na oglądanej scenie">
                   {' '}
                   · na mapie
@@ -415,9 +432,16 @@ export function CharacterPanel() {
           <CharacterGroup
             id="npcs"
             label="NPC"
-            title="Nazwani NPC-e — jedna karta, jedna figura"
-            rows={npcs}
+            title="Nazwani NPC-e z figurą na tej scenie albo ze sklepem zdalnym — jedna karta, jedna figura"
+            rows={npcsHere}
             open
+            render={renderRow}
+          />
+          <CharacterGroup
+            id="npcs-away"
+            label="NPC poza sceną"
+            title="NPC-e kampanii bez figury na tej scenie — przeciągnij na mapę, żeby wprowadzić"
+            rows={npcsAway}
             render={renderRow}
           />
           <CharacterGroup

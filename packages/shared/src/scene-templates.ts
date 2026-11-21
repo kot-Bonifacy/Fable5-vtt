@@ -103,6 +103,12 @@ export type SceneTemplateVehicleStatus = (typeof SCENE_TEMPLATE_VEHICLE_STATUSES
 export const SCENE_TEMPLATE_FIGURE_STATUSES_MAX = 8;
 const STATUS_ID_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
+/**
+ * Plik z zestawu przykładowych portretów MG (`packages/server/assets/sample-portraits`,
+ * 21.11.2026) — tak nazywa go `manifest.json` i tak wskazuje go figura wzorca.
+ */
+export const SAMPLE_PORTRAIT_FILE_PATTERN = /^[a-z0-9-]+\.webp$/;
+
 export const SCENE_TEMPLATE_DESCRIPTION_MAX = 600;
 export const SCENE_TEMPLATE_VEHICLES_MAX = 12;
 export const SCENE_TEMPLATE_FIGURES_MAX = 40;
@@ -233,6 +239,12 @@ export interface SceneTemplateFigure {
    * sprawdza serwer z listą stanów systemu — nieznane idą do `missing`.
    */
   statuses: string[];
+  /**
+   * Portret karty i figury — plik z zestawu przykładowych portretów
+   * (`"21.webp"`, 21.11). Serwer bierze ten portret z puli kampanii, a gdy
+   * go tam nie ma, dokłada kopię; bez zestawu figura staje bez portretu.
+   */
+  portrait: string | null;
   /** Statblok karty NPC-a — czyta moduł systemu. */
   system: unknown;
 }
@@ -629,6 +641,13 @@ function readFigure(raw: unknown, vehicleKeys: ReadonlySet<string>): SceneTempla
     }
     statuses = [...new Set(raw.statuses as string[])];
   }
+  let portrait: string | null = null;
+  if (raw.portrait !== undefined && raw.portrait !== null) {
+    if (typeof raw.portrait !== 'string' || !SAMPLE_PORTRAIT_FILE_PATTERN.test(raw.portrait)) {
+      return null;
+    }
+    portrait = raw.portrait;
+  }
   return {
     key,
     name,
@@ -641,6 +660,7 @@ function readFigure(raw: unknown, vehicleKeys: ReadonlySet<string>): SceneTempla
     facing,
     visionRange,
     statuses,
+    portrait,
     system: raw.system ?? null,
   };
 }

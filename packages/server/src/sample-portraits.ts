@@ -2,7 +2,7 @@ import { randomBytes } from 'node:crypto';
 import { copyFile, readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import type { FastifyBaseLogger } from 'fastify';
-import { PORTRAIT_NAME_MAX_LENGTH } from '@vtt/shared';
+import { PORTRAIT_NAME_MAX_LENGTH, SAMPLE_PORTRAIT_FILE_PATTERN } from '@vtt/shared';
 import type { PrismaClient } from './db.js';
 import { campaignUploadTarget } from './campaign-uploads.js';
 
@@ -28,13 +28,11 @@ export interface SamplePortrait {
   height: number;
 }
 
-const FILE_PATTERN = /^[a-z0-9-]+\.webp$/;
-
 function readSample(raw: unknown): SamplePortrait | null {
   if (typeof raw !== 'object' || raw === null) return null;
   const row = raw as Record<string, unknown>;
   const { file, name, gmOnly, width, height } = row;
-  if (typeof file !== 'string' || !FILE_PATTERN.test(file)) return null;
+  if (typeof file !== 'string' || !SAMPLE_PORTRAIT_FILE_PATTERN.test(file)) return null;
   if (typeof name !== 'string' || name.trim() === '') return null;
   if (!Number.isInteger(width) || !Number.isInteger(height)) return null;
   if ((width as number) <= 0 || (height as number) <= 0) return null;
@@ -153,4 +151,68 @@ export async function seedPendingSamplePortraits(
       log.error({ err: error, campaignId: id }, 'sample portraits failed');
     }
   }
+}
+
+/** Wiersz puli do założenia w transakcji wzorca — plik już leży w uploadach. */
+export interface PendingPortraitRow {
+  campaignId: string;
+  name: string;
+  url: string;
+  width: number;
+  height: number;
+  gmOnly: boolean;
+}
+
+/**
+ * Portrety figur sceny przykładowej (21.11): plik zestawu → adres w puli
+ * kampanii. Najpierw wiersz puli o nazwie przykładu („Avatar 21”), także
+ * z kosza — pula ma już tę twarz z kadrem MG. Gdy go nie ma (zestaw sprzed
+ * kampanii skasowany albo przemianowany), plik się kopiuje, a wiersz zakłada
+ * transakcja wzorca. Bez zestawu (testy, E2E) figury stają bez portretu
+ * i nikt tego nie zgłasza; plik, którego zestaw nie zna, idzie do `missing`.
+ */
+export async function prepareTemplatePortraits(
+  prisma: PrismaClient,
+  options: { uploadsDir: string; samplesDir: string | undefined; samples: SamplePortrait[] },
+  campaignId: string,
+  files: readonly string[],
+): Promise<{ urls: Map<string, string>; rows: PendingPortraitRow[]; missing: string[] }> {
+  const { uploadsDir, samplesDir, samples } = options;
+  const urls = new Map<string, string>();
+  const rows: PendingPortraitRow[] = [];
+  const missing: string[] = [];
+  if (!samplesDir || samples.length === 0) return { urls, rows, missing };
+  for (const file of new Set(files)) {
+    const sample = samples.find((row) => row.file === file);
+    if (!sample) {
+      missing.push(`portrait:${file}`);
+      continue;
+    }
+    const pooled = await prisma.portraitAsset.findFirst({
+      where: { campaignId, name: sample.name },
+      orderBy: [{ retired: 'asc' }, { createdAt: 'desc' }],
+      select: { url: true },
+    });
+    if (pooled) {
+      urls.set(file, pooled.url);
+      continue;
+    }
+    const target = await campaignUploadTarget(
+      uploadsDir,
+      campaignId,
+      'portraits',
+      `${randomBytes(12).toString('base64url')}.webp`,
+    );
+    await copyFile(join(samplesDir, sample.file), target.path);
+    urls.set(file, target.url);
+    rows.push({
+      campaignId,
+      name: sample.name,
+      url: target.url,
+      width: sample.width,
+      height: sample.height,
+      gmOnly: sample.gmOnly,
+    });
+  }
+  return { urls, rows, missing };
 }

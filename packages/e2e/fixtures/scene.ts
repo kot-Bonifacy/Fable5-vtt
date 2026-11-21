@@ -120,7 +120,8 @@ export async function centreCamera(page: Page, point: WorldPoint): Promise<void>
 /**
  * Figura postaci z zakładki „Postacie” MG: wiersz przeciągnięty na mapę
  * (od 15.10 jedyna droga — przycisk „⊕ Postaw na scenie” zniknął).
- * Zakładka musi być otwarta, a wiersz w rozwiniętej grupie.
+ * Zakładka musi być otwarta; zwiniętą grupę wiersza (np. „NPC poza sceną”
+ * od 21.11) pomocnik rozwija sam.
  *
  * Zdarzenia HTML5 (`dragstart` → `dragover` → `drop`) idą z jednym
  * `DataTransfer` przez `dispatchEvent`, a nie myszą: natywne przeciąganie
@@ -137,6 +138,10 @@ export async function dragCharacterToMap(
     .filter({ has: page.locator('.character-row-name', { hasText: new RegExp(`^${name}`) }) });
   const handle = row.locator('.character-open');
   await expect(handle).toHaveAttribute('draggable', 'true');
+  await row.evaluate((element) => {
+    const group = element.closest('details');
+    if (group) group.open = true;
+  });
   const box = (await handle.boundingBox())!;
   const target = await worldToClient(page, point);
   await page.evaluate(

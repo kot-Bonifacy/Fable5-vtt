@@ -1,5 +1,25 @@
 # Dziennik sesji — archiwum
 
+### Sesja 21.11 (piąta) — poprawka: wezwanie do Manewru u auta bez kontroli
+
+**Zrobione (bez migracji; czeka na wdrożenie razem z 72b1–72g2):**
+
+- **Zgłoszenie MG:** po starcie sesji gracz od razu dostał „MG wzywa do Manewru: Gwałtowny skręt”,
+  a „Wykonaj Manewr” dawał tylko odmowę „Kierowca stracił panowanie…” — bez kości i czatu.
+  To nie była „Reklamacja”: aktywna scena kampanii to **„Zastaw 2”** („Reklamacja” od
+  utworzenia nie była aktywna, jej kombi nie ma kierowcy), a tamtejsze „Kombi drużyny” miało
+  w bazie naraz `lostControl` i `maneuverCall = 'swerve'` bez walki. Skąd ta para — nieustalone
+  (kopie kampanii nie niosą tych pól).
+- **Poprawka:** utrata kontroli (`loseControl`, przeszkoda, Wyścig) gasi wezwanie,
+  `callManeuver` odmawia autu bez kontroli (`VEHICLE_OUT_OF_CONTROL`; plan „każde auto” je
+  pomija), klient chowa pasek i wiersz kokpitu przy `control === 'lost'`. Testy
+  w `chase-ram.test.ts` i `chase-race.test.ts` (ten drugi pada bez poprawki). Pułapka na górze `mapa`.
+- **Dane MG nietknięte:** na „Zastawie 2” wezwanie dalej stoi w bazie (klient go już nie
+  pokaże) — MG może je odwołać i przywrócić kontrolę z menu auta.
+
+Testy: serwer 1894/1894; `tsc` serwera i klienta, lint i Prettier na zmienionych plikach czyste.
+**Nieoglądane w przeglądarce** — serwer dev nie działał, a gracz Morte wchodzi z zaproszenia.
+
 ### Sesja 21.11 (czwarta) — etap 72g2: stały E2E „Reklamacji” i sprzątanie pościgu
 
 **Zrobione (bez migracji; czeka na wdrożenie razem z 72b1–72g1):**

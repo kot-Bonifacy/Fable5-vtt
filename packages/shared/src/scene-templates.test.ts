@@ -52,6 +52,13 @@ describe('readSceneTemplate (etap 66)', () => {
     });
     expect(template.vehicles[0]!.intent).toBeNull();
     expect(template.figures[0]!.vehicle).toEqual({ key: 'a', seat: 0 });
+    expect(template.figures[0]!.portrait).toBeNull();
+    expect(
+      readSceneTemplate(
+        { ...minimal(), figures: [{ ...minimal().figures[0], portrait: '21.webp' }] },
+        'proba',
+      )!.figures[0]!.portrait,
+    ).toBe('21.webp');
     expect(sceneTemplatePoint(template.scene, { x: 2, y: 3 })).toEqual({ x: 100, y: 150 });
   });
 
@@ -79,6 +86,10 @@ describe('readSceneTemplate (etap 66)', () => {
         (raw) => ({ ...raw, figures: [raw.figures[0], raw.figures[0]] }),
       ],
       ['figura poza autem bez miejsca', (raw) => ({ ...raw, figures: [{ name: 'X' }] })],
+      [
+        'portret spoza zestawu przykładowego',
+        (raw) => ({ ...raw, figures: [{ ...raw.figures[0], portrait: '../x.png' }] }),
+      ],
       [
         'auto na zwykłej mapie',
         (raw) => ({ ...raw, scene: { ...raw.scene, kind: 'map', chase: null } }),

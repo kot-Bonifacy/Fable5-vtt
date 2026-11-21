@@ -62,6 +62,8 @@ const config: ServerConfig = {
   uploadsDir: mkdtempSync(join(tmpdir(), 'vtt-uploads-')),
   dataPublicDir: resolve(import.meta.dirname, '../../../data/public'),
   sceneTemplatesDir: SCENE_TEMPLATES_DIR,
+  // Portrety figur „Reklamacji” (21.11) pochodzą z zestawu przykładowego.
+  samplePortraitsDir: resolve(import.meta.dirname, '../assets/sample-portraits'),
   dataPrivateDir: resolve(import.meta.dirname, 'fixtures/no-private-data'),
   aiGatewayUrl: 'http://127.0.0.1:1',
   aiGatewayApiKey: '',
@@ -518,6 +520,56 @@ describe('etap 72g: „Reklamacja” — scena przykładowa pościgu w modelu pr
     expect(guardSheet.weapons.map((row) => row.compendiumId)).not.toContain('weapon.assault-rifle');
     expect(guardSheet.weapons.map((row) => row.name)).not.toContain('Grzechotnik');
     expect(await built.prisma.mapNote.count({ where: { sceneId: scene.id } })).toBe(5);
+
+    // Portrety (21.11): z puli kampanii, po nazwie przykładu — karta i figura.
+    const pool = new Map(
+      (await built.prisma.portraitAsset.findMany({ where: { campaignId } })).map((row) => [
+        row.name,
+        row.url,
+      ]),
+    );
+    const faces = await built.prisma.token.findMany({
+      where: { sceneId: scene.id },
+      include: { character: true },
+    });
+    expect(
+      Object.fromEntries(
+        faces.map((row) => [row.name, [row.imageUrl, row.character!.portraitUrl]]),
+      ),
+    ).toEqual({
+      Wektor: [pool.get('Avatar 14'), pool.get('Avatar 14')],
+      Kamień: [pool.get('Avatar 44'), pool.get('Avatar 44')],
+      Tłok: [pool.get('Avatar 21'), pool.get('Avatar 21')],
+      Gil: [pool.get('Avatar 45'), pool.get('Avatar 45')],
+      Szpak: [pool.get('Avatar 49'), pool.get('Avatar 49')],
+    });
+  });
+
+  it('portret, którego pula już nie ma, wraca do niej kopią z zestawu', async () => {
+    const gm = await connect(gmCookie);
+    await built.prisma.portraitAsset.deleteMany({ where: { campaignId, name: 'Avatar 21' } });
+    const result = data(
+      await emitAck<SceneTemplateCreateResult>(gm, 'scene:from-template', {
+        templateId: 'reklamacja',
+      }),
+      'from-template',
+    );
+    expect(result.missing).toEqual([]);
+    const restored = await built.prisma.portraitAsset.findMany({
+      where: { campaignId, name: 'Avatar 21' },
+    });
+    expect(restored).toHaveLength(1);
+    expect(restored[0]).toMatchObject({ gmOnly: false, retired: false });
+    const hostage = await built.prisma.token.findFirstOrThrow({
+      where: { sceneId: result.sceneId, name: 'Tłok' },
+      include: { character: true },
+    });
+    expect(hostage.imageUrl).toBe(restored[0]!.url);
+    expect(hostage.character!.portraitUrl).toBe(restored[0]!.url);
+    // Druga kopia nie mnoży twarzy, które pula ma.
+    expect(
+      await built.prisma.portraitAsset.count({ where: { campaignId, name: 'Avatar 45' } }),
+    ).toBe(1);
   });
 });
 

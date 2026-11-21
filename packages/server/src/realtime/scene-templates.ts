@@ -47,6 +47,7 @@ import {
 } from '@vtt/shared';
 import { randomBytes } from 'node:crypto';
 import type { Character, Scene, Vehicle } from '../generated/prisma/client.js';
+import { loadSamplePortraits, prepareTemplatePortraits } from '../sample-portraits.js';
 import { loadSceneTemplate, loadSceneTemplates, sceneTemplatesRoot } from '../scene-templates.js';
 import { vehicleBodyColumns, vehicleCatalog } from '../vehicles.js';
 import { emitCharacterUpsert, toCharacterView } from './character-io.js';
@@ -254,11 +255,33 @@ export async function instantiateSceneTemplate(
     }),
   );
 
+  // Portrety figur (21.11) z zestawu przykładowego: pliki kopiują się przed
+  // transakcją, wiersze puli zakłada ona — przerwana zostawia najwyżej pliki
+  // bez wiersza dla `uploads-gc`, jak przy zakładaniu kampanii.
+  const portraitFiles = template.figures.flatMap((figure) =>
+    figure.portrait ? [figure.portrait] : [],
+  );
+  const portraits =
+    portraitFiles.length > 0
+      ? await prepareTemplatePortraits(
+          prisma,
+          {
+            uploadsDir: deps.ctx.config.uploadsDir,
+            samplesDir: deps.ctx.config.samplePortraitsDir,
+            samples: await loadSamplePortraits(deps.ctx.config.samplePortraitsDir, deps.log),
+          },
+          campaignId,
+          portraitFiles,
+        )
+      : { urls: new Map<string, string>(), rows: [], missing: [] };
+  portraits.missing.forEach((id) => missing.add(id));
+
   const name = await freeSceneName(deps, campaignId, template.name);
   const t = template.scene;
   const point = (at: { x: number; y: number }) => sceneTemplatePoint(t, at);
 
   const result = await prisma.$transaction(async (tx) => {
+    if (portraits.rows.length > 0) await tx.portraitAsset.createMany({ data: portraits.rows });
     const scene = await tx.scene.create({
       data: {
         campaignId,
@@ -372,11 +395,13 @@ export async function instantiateSceneTemplate(
     const characters: Character[] = [];
     const placedFigures = new Map<string, CpredTemplatePlacedFigure>();
     for (const [index, figure] of template.figures.entries()) {
+      const portraitUrl = (figure.portrait && portraits.urls.get(figure.portrait)) ?? null;
       const character = await tx.character.create({
         data: {
           campaignId,
           name: figure.name,
           ownerId: null,
+          portraitUrl,
           data: JSON.stringify(mergeCharacterData(sheets[index]!, {})),
         },
       });
@@ -405,6 +430,8 @@ export async function instantiateSceneTemplate(
         data: {
           sceneId: scene.id,
           name: figure.name,
+          // Figura nosi portret karty, jak postawiona z listy (`createCharacterToken`).
+          imageUrl: portraitUrl,
           x: corner.x,
           y: corner.y,
           size: 1,
